@@ -17,7 +17,7 @@ struct NewProjectScreen: View {
                 }
             }
         }
-        .navBar("新项目 · 选目录")
+        .navBar(L10n.projectsNewChooseDirectory())
         .homeLaunchTweaks()
     }
 }

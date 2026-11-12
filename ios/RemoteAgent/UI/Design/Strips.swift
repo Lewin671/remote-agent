@@ -1,3 +1,4 @@
+import RACore
 // What floats under a session's title (design-system §6 「会话顶部与视图切换」
 // 「提示条」): the glass segmented control 聊天 / 终端, and the strips of
 // glass under it, for the connection, a schedule, the terminal's size.
@@ -102,7 +103,7 @@ struct MachineSegmented: View {
                         .buttonStyle(.plain)
                         .disabled(!item.online)
                         .accessibilityLabel(item.name)
-                        .accessibilityValue(item.online ? "在线" : "不在线")
+                        .accessibilityValue(item.online ? L10n.commonIosOnline() : L10n.commonIosOffline())
                         .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
                     }
                 }

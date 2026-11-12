@@ -18,6 +18,70 @@
 			<string>%1$lld sessions idle</string>
 		</dict>
 	</dict>
+	<key>home_ios_approval_remaining</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld minute left</string>
+			<key>other</key>
+			<string>%1$lld minutes left</string>
+		</dict>
+	</dict>
+	<key>home_ios_approval_timeout</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld minute left; denied on timeout</string>
+			<key>other</key>
+			<string>%1$lld minutes left; denied on timeout</string>
+		</dict>
+	</dict>
+	<key>home_ios_badge_sessions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session needs attention</string>
+			<key>other</key>
+			<string>%1$lld sessions need attention</string>
+		</dict>
+	</dict>
+	<key>home_ios_badge_tasks</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld task needs attention</string>
+			<key>other</key>
+			<string>%1$lld tasks need attention</string>
+		</dict>
+	</dict>
 	<key>home_matches</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -226,6 +290,22 @@
 			<string>%1$lld images could not be attached. Tap an image for details.</string>
 		</dict>
 	</dict>
+	<key>markdown_ios_hidden_lines</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more line hidden</string>
+			<key>other</key>
+			<string>%1$lld more lines hidden</string>
+		</dict>
+	</dict>
 	<key>markdown_line_count</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -256,6 +336,38 @@
 			<string>%1$lld project</string>
 			<key>other</key>
 			<string>%1$lld projects</string>
+		</dict>
+	</dict>
+	<key>projects_ios_active_prefix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld active · </string>
+			<key>other</key>
+			<string>%1$lld active · </string>
+		</dict>
+	</dict>
+	<key>projects_ios_ended_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Ended %1$lld</string>
+			<key>other</key>
+			<string>Ended %1$lld</string>
 		</dict>
 	</dict>
 	<key>projects_live_count</key>

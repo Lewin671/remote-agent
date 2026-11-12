@@ -37,17 +37,17 @@ public enum Status: Int, CaseIterable, Sendable {
 
     public var text: String {
         switch self {
-        case .loading: return "读取中"
-        case .exited: return "已结束"
-        case .offline: return "电脑离线"
-        case .unlinked: return "未连接"
-        case .approval: return "等待审批"
-        case .question: return "等你回答"
-        case .plan: return "计划待批准"
-        case .popup: return "终端里有弹窗"
-        case .running: return "运行中"
-        case .starting: return "启动中"
-        case .idle: return "空闲"
+        case .loading: return L10n.commonIosLoading()
+        case .exited: return L10n.listStateEnded()
+        case .offline: return L10n.listStateOffline()
+        case .unlinked: return L10n.listStateUnlinked()
+        case .approval: return L10n.listStateApproval()
+        case .question: return L10n.listStateQuestion()
+        case .plan: return L10n.listStatePlan()
+        case .popup: return L10n.listStatePopup()
+        case .running: return L10n.listStateRunning()
+        case .starting: return L10n.listStateStarting()
+        case .idle: return L10n.listStateIdle()
         }
     }
 
@@ -97,7 +97,7 @@ public func needsAttention(_ s: SessionView, machine: MachineView?) -> Bool { st
 public func titleOf(_ s: SessionView, zone: TimeZone = .current) -> String {
     let t = plain(s.info?.title ?? "").jvmTrim()
     if !t.isEmpty { return t }
-    guard let i = s.info else { return "新会话" }
+    guard let i = s.info else { return L10n.listStateIosNewSession() }
     let created: Int64 = i.hasCreatedAt ? i.createdAt.seconds * 1000 : 0
     return created > 0 ? "\(projectName(i.cwd)) · \(hhmm(created, zone: zone))" : projectName(i.cwd)
 }
@@ -190,9 +190,9 @@ public func plain(_ text: String) -> String {
 public func previewOf(_ s: SessionView, status: Status) -> String {
     guard let i = s.info else { return "" }
     switch status {
-    case .plan: return "计划待批准"
-    case .popup: return i.statusDetail.ifEmpty("终端里有弹窗")
-    default: return plain(i.preview).ifEmpty(i.title.isEmpty ? "还没发消息" : "")
+    case .plan: return L10n.listStatePlan()
+    case .popup: return i.statusDetail.ifEmpty(L10n.listStatePopup())
+    default: return plain(i.preview).ifEmpty(i.title.isEmpty ? L10n.listStateNoMessage() : "")
     }
 }
 
@@ -200,13 +200,13 @@ public func previewOf(_ s: SessionView, status: Status) -> String {
 public func whenText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
     if ms <= 0 { return "" }
     let d = now - ms
-    if d < 60_000 { return "刚刚" }
-    if d < 3_600_000 { return "\(d / 60_000) 分钟前" }
+    if d < 60_000 { return L10n.timeJustNow() }
+    if d < 3_600_000 { return L10n.timeMinutesAgo(count: Int(d / 60_000)) }
     let then = LocalDay(ms: ms, zone: zone)
     let today = LocalDay(ms: now, zone: zone)
     if then.sameDay(today) { return then.hhmm }
-    if then.epochDay == today.epochDay - 1 { return "昨天" }
-    return "\(then.month)月\(then.day)日"
+    if then.epochDay == today.epochDay - 1 { return L10n.timeYesterday() }
+    return L10n.timeMonthDay(day: then.day, month: then.month)
 }
 
 /// Elapsed hours today, as a machine's last-seen time is shown on the web.
@@ -214,7 +214,7 @@ public func ago(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) ->
     let elapsed = now - ms
     if ms > 0 && elapsed >= 3_600_000 && elapsed < 86_400_000
         && LocalDay(ms: ms, zone: zone).sameDay(LocalDay(ms: now, zone: zone)) {
-        return "\(elapsed / 3_600_000) 小时前"
+        return L10n.timeHoursAgo(count: Int(elapsed / 3_600_000))
     }
     return whenText(ms, now: now, zone: zone)
 }
@@ -224,8 +224,7 @@ public func hhmm(_ ms: Int64, zone: TimeZone = .current) -> String { LocalDay(ms
 /// 9月27日 9:12, or the time alone for a moment of today.
 public func dateTime(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
     let t = LocalDay(ms: ms, zone: zone)
-    let day = t.sameDay(LocalDay(ms: now, zone: zone)) ? "" : "\(t.month)月\(t.day)日 "
-    return day + t.hhmm
+    return t.sameDay(LocalDay(ms: now, zone: zone)) ? t.hhmm : L10n.timeIosDateTime(day: t.day, month: t.month, time: t.hhmm)
 }
 
 // --- approval modes ---

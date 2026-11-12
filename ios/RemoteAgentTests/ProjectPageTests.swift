@@ -57,7 +57,7 @@ import Testing
         }
         var c = NewConfig(machineId: "mac", cwd: "/work/app")
         #expect(newTaskModelSummary(c, models: ms, settings: nil, singleAgent: false) == .init(model: "First model", effort: "medium"))
-        #expect(newTaskModelSummary(c, models: nil, settings: nil, singleAgent: true) == .init(model: "读取设置…", prefix: "Codex · "))
+        #expect(newTaskModelSummary(c, models: nil, settings: nil, singleAgent: true) == .init(model: L10n.newSessionReadingSettings(), prefix: "Codex · "))
         let settings = withDefaults(PBDaemonSettings(), agent: .codex, model: "second", effort: "high")
         #expect(newTaskModelSummary(c, models: ms, settings: settings, singleAgent: true) == .init(model: "second", effort: "high", prefix: "Codex · "))
         #expect(chooseNewTaskModel(c, slug: "first", models: ms, settings: settings).effort == "high")
@@ -74,7 +74,7 @@ import Testing
         picker.chooseModel("second", models: ms)
         #expect(!picker.allModels && picker.isOpen)
         #expect(picker.config?.effort == "high")
-        #expect(newTaskModelSummary(picker.config!, models: ms, settings: nil, singleAgent: false).accessibilityLabel == "模型：second，推理强度：high")
+        #expect(newTaskModelSummary(picker.config!, models: ms, settings: nil, singleAgent: false).accessibilityLabel == L10n.modelsSummaryEffortLabel(effort: "high", model: "second"))
         picker.chooseModel("limited", models: ms)
         #expect(picker.config?.effort == "medium", "an unsupported effort falls back to the new model default")
         picker.chooseModel("fixed", models: ms)

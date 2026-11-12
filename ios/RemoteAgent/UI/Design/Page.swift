@@ -1,3 +1,4 @@
+import RACore
 // Pages (docs/design-system.md §6). Moving between them is the system's:
 // a NavigationStack with its bar, its back button and the swipe from the
 // edge, safe areas and keyboard avoidance as SwiftUI gives them. What the
@@ -104,8 +105,8 @@ struct MoreButton: View {
                     if dot { Circle().fill(DS.orange).frame(width: 5, height: 5).offset(x: 3, y: -1) }
                 }
         }
-        .accessibilityLabel("更多")
-        .accessibilityValue(dot ? "有需要注意的项" : "")
+        .accessibilityLabel(L10n.commonIosMore())
+        .accessibilityValue(dot ? L10n.commonIosAttention() : "")
     }
 }
 

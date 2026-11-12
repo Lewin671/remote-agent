@@ -97,7 +97,7 @@ struct Avatar: View {
     }
 
     /// 全, for 全部项目.
-    static func all(size: CGFloat = 28) -> Avatar { Avatar(letter: "全", size: size) }
+    static func all(size: CGFloat = 28) -> Avatar { Avatar(letter: L10n.commonAllProjectsAvatar(), size: size) }
 
     private init(letter: String, size: CGFloat) {
         self.letter = letter

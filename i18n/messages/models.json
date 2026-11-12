@@ -196,6 +196,76 @@
     }
   },
   {
+    "key": "models.ios_choose_hint",
+    "zh-CN": "选择模型和推理强度",
+    "en": "Choose model and reasoning effort",
+    "notes": "新任务模型按钮读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.ios_load_failed",
+    "zh-CN": "没能读取模型列表，会用 {agent} 自己的默认模型：{reason}",
+    "en": "Could not load models. Using {agent}’s own default model: {reason}",
+    "notes": "模型读取失败，iOS 保留错误详情。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      },
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.ios_picker",
+    "zh-CN": "模型选择",
+    "en": "Model selection",
+    "notes": "新任务模型面板读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.ios_reading_machine",
+    "zh-CN": "读取 {name} 的设置…",
+    "en": "Reading settings from {name}…",
+    "notes": "模型加载中。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "models.load_failed_default",
     "zh-CN": "没能读取模型列表，会用 {agent} 自己的默认模型",
     "en": "Could not load models. Using {agent}’s own default model",

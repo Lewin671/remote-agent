@@ -64,6 +64,64 @@
     }
   },
   {
+    "key": "markdown.ios_hidden_lines",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "还有 {count} 行没显示"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more line hidden",
+        "other": "{count} more lines hidden"
+      }
+    },
+    "notes": "首页审批命令折叠行数。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "markdown.ios_task_done",
+    "zh-CN": "已完成",
+    "en": "Completed",
+    "notes": "Markdown 勾选框读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "markdown.ios_task_todo",
+    "zh-CN": "未完成",
+    "en": "Not completed",
+    "notes": "Markdown 未勾选框读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "markdown.line_count",
     "zh-CN": {
       "plural": "count",

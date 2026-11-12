@@ -84,7 +84,7 @@ public func decodeScope(_ stored: String?, key: Data, listed: [Project]) -> Home
 /// The scope's name where the page writes it: 全部项目, or the project's.
 public func scopeName(_ scope: HomeScope) -> String {
     switch scope {
-    case .all: return "全部项目"
+    case .all: return L10n.homeAllProjects()
     case .of(let key): return projectName(key)
     }
 }
@@ -114,7 +114,7 @@ public func rowMeta(_ state: RemoteState, sessions: some Sequence<SessionView>, 
 /// The CLI is not among the words: its mark leads the line (`SessionRowText.agent`).
 public func metaLine(_ state: RemoteState, _ s: SessionView, meta: RowMeta) -> String {
     var parts = [String]()
-    if forked(s) { parts.append("分叉") }
+    if forked(s) { parts.append(L10n.homeForked()) }
     if meta.project { parts.append(projectName(projectKey(s))) }
     if meta.machine { parts.append(machineName(state.machines[s.machineId], id: s.machineId)) }
     return parts.joined(separator: " · ")
@@ -247,11 +247,11 @@ public func endedGroup(_ ms: Int64, now: Int64, zone: TimeZone = .current) -> En
 /// 今天, 昨天, 近 7 天, 9 月, and 2025 年 12 月 for a month of another year.
 public func groupTitle(_ g: EndedGroup, now: Int64, zone: TimeZone = .current) -> String {
     switch g {
-    case .today: return "今天"
-    case .yesterday: return "昨天"
-    case .week: return "近 7 天"
+    case .today: return L10n.timeToday()
+    case .yesterday: return L10n.timeYesterday()
+    case .week: return L10n.timeLastWeek()
     case .month(let year, let month):
-        return year == LocalDay(ms: now, zone: zone).year ? "\(month) 月" : "\(year) 年 \(month) 月"
+        return year == LocalDay(ms: now, zone: zone).year ? L10n.timeMonthGroup(month: month) : L10n.timeYearMonthGroup(month: month, year: year)
     }
 }
 
@@ -263,8 +263,8 @@ public func endedTime(_ ms: Int64, now: Int64, zone: TimeZone = .current) -> Str
     let day = LocalDay(ms: ms, zone: zone)
     switch endedGroup(ms, now: now, zone: zone) {
     case .today, .yesterday: return day.hhmm
-    case .week: return weekdayNames[day.weekdayIndex]
-    case .month: return "\(day.month)月\(day.day)日"
+    case .week: return L10n.timeWeekday(day: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"][day.weekdayIndex])
+    case .month: return L10n.timeMonthDay(day: day.day, month: day.month)
     }
 }
 
@@ -283,28 +283,28 @@ public func groupEnded(_ ended: [SessionView], now: Int64, zone: TimeZone = .cur
 /// that. `more`: not all of them are shown yet.
 public func endedTail(total: Int, more: Bool) -> String? {
     if total <= endedPage { return nil }
-    return more ? "共 \(total) 个，滚到底加载更早的" : "共 \(total) 个"
+    return more ? L10n.homeTotalLoadEarlier(count: total) : L10n.homeTotal(count: total)
 }
 
 /// The line that ends a list while earlier pages of the listing are on their way.
-public let loadingEarlier = "正在加载更早的会话…"
+public var loadingEarlier: String { L10n.homeLoadingEarlier() }
 
 /// The same place while there is no connection to fetch them over.
-public let earlierOffline = "连上服务器后加载更早的会话"
+public var earlierOffline: String { L10n.homeIosEarlierOffline() }
 
 /// The line that ends a list whose earlier sessions are not all fetched and
 /// are wanted now: on their way, waiting for the connection, or why the last
 /// page failed (a tap tries again).
 public func earlierTail(_ state: RemoteState) -> String {
     if state.conn != .online { return earlierOffline }
-    if !state.sessionsError.isEmpty && !state.sessionsListed { return "没能读取会话列表：\(state.sessionsError) · 点这里重试" }
-    if !state.sessionsError.isEmpty { return "没能加载更早的会话：\(state.sessionsError) · 点这里重试" }
+    if !state.sessionsError.isEmpty && !state.sessionsListed { return L10n.homeIosListFailed(reason: state.sessionsError) }
+    if !state.sessionsError.isEmpty { return L10n.homeIosEarlierFailed(reason: state.sessionsError) }
     return loadingEarlier
 }
 
 /// The line that ends a filtered list.
 public func filterTail(count: Int, query: String) -> String {
-    count == 0 ? "没有标题里有「\(query.jvmTrim())」的会话" : "\(count) 个会话的标题里有「\(query.jvmTrim())」"
+    count == 0 ? L10n.homeNoMatches(query: query.jvmTrim()) : L10n.homeMatches(count: count, query: query.jvmTrim())
 }
 
 // --- the scope menu ---
@@ -339,7 +339,8 @@ public func sessionCounts(_ state: RemoteState, _ sessions: some Sequence<Sessio
             live += 1
         }
     }
-    return [waiting > 0 ? "\(waiting) 个待处理" : "", live > 0 ? "\(live) 个进行中" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+    if waiting > 0 && live > 0 { return L10n.projectsPendingAndLive(count: waiting, live: live) }
+    return waiting > 0 ? L10n.projectsPendingCount(count: waiting) : live > 0 ? L10n.projectsLiveCount(count: live) : ""
 }
 
 /// What a project's row says under its name, the same wherever projects are listed (client-v34):
@@ -347,7 +348,7 @@ public func sessionCounts(_ state: RemoteState, _ sessions: some Sequence<Sessio
 public func projectDetail(_ state: RemoteState, _ pr: Project) -> String {
     let counts = sessionCounts(state, pr.sessions)
     let offline = !pr.machineIds.isEmpty && !pr.machineIds.contains { state.machines[$0]?.online == true }
-    return shortPath(pr.key) + (!counts.isEmpty ? " · \(counts)" : offline ? " · 电脑不在线" : "")
+    return [shortPath(pr.key), !counts.isEmpty ? counts : offline ? L10n.projectsComputerOffline() : ""].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
 /// The scope menu: 全部项目 when there is more than one project to choose
@@ -359,7 +360,7 @@ public func scopeRows(_ state: RemoteState, current: HomeScope, search: String =
     var rows = [ScopeRow]()
     if listed.count > 1 && q.isEmpty {
         let counts = sessionCounts(state, state.sessions.values)
-        rows.append(ScopeRow(scope: .all, name: "全部项目", detail: counts.ifEmpty("\(listed.count) 个项目"), current: current == .all))
+        rows.append(ScopeRow(scope: .all, name: L10n.homeAllProjects(), detail: counts.ifEmpty(L10n.projectsCount(count: listed.count)), current: current == .all))
     }
     for pr in listed {
         if !q.isEmpty && !pr.name.jvmContainsIgnoringCase(q) && !pr.key.jvmContainsIgnoringCase(q) { continue }

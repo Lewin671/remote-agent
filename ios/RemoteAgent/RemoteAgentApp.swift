@@ -1,5 +1,6 @@
 // The iOS client's entry: the app's one store, the window that follows it,
 // and the cover over the window whenever the app is not the one in use.
+import RACore
 import SwiftUI
 
 @main
@@ -27,6 +28,7 @@ struct RemoteAgentApp: App {
             RootView()
                 .environment(model)
                 .environment(settings)
+                .environment(\.locale, Locale(identifier: MessageLocale.current))
                 .preferredColorScheme(settings.settings.theme.colorScheme)
                 .task { LaunchDriver.orient() }
                 // The stream is kept only while the app is in front (architecture §10 「后台和内存」).

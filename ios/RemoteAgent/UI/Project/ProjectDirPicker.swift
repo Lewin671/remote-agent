@@ -14,7 +14,7 @@ struct DirectorySource {
     static func remote(_ remote: Remote) -> DirectorySource {
         DirectorySource { machine, path in
             let r = try await remote.machineCommand(machine, listDirectoriesCommand(path: path))
-            guard case .listDirectories(let dirs)? = r.kind else { throw CommandError("internal", "意外的回复") }
+            guard case .listDirectories(let dirs)? = r.kind else { throw CommandError("internal", L10n.newSessionUnexpectedReply()) }
             return dirs
         }
     }
@@ -96,7 +96,7 @@ struct ProjectDirPicker: View {
     }
 
     private func choose(_ d: PBListDirectoriesResponse) -> some View {
-        Btn("用 \(pathCrumbs(d.path) == ["/"] ? "/" : projectName(d.path)) 这个目录", kind: .primary, enabled: !loading) {
+        Btn(L10n.projectsUseDirectory(name: pathCrumbs(d.path) == ["/"] ? "/" : projectName(d.path)), kind: .primary, enabled: !loading) {
             Haptics.confirm()
             onChosen(at.machine, d.path)
         }
@@ -104,17 +104,17 @@ struct ProjectDirPicker: View {
 
     @ViewBuilder private var listing: some View {
         if at.machine.isEmpty {
-            Banner("没有在线的电脑", tone: .warn)
+            Banner(L10n.projectsIosNoOnline(), tone: .warn)
         } else if !error.isEmpty {
-            Banner("读不了这个目录：\(error)", tone: .error, action: "重试", onAction: { at.attempt += 1 })
+            Banner(L10n.projectsDirectoryFailed(reason: error), tone: .error, action: L10n.commonRetry(), onAction: { at.attempt += 1 })
         } else if let d = dirs {
             crumbs(d)
-            if d.dirs.isEmpty { Text("没有子目录").font(.subheadline).ink(DS.ink2).padding(.vertical, 8) }
+            if d.dirs.isEmpty { Text(L10n.projectsNoSubdirectories()).font(.subheadline).ink(DS.ink2).padding(.vertical, 8) }
             // The folder before stays, dimmed, until the next one is listed: no blank in between.
             ScrollView {
                 VStack(spacing: 0) {
                     if !d.parent.isEmpty {
-                        ListItem("上一级", last: d.dirs.isEmpty, icon: "chevron.left") { at.path = d.parent }
+                        ListItem(L10n.projectsParentDirectory(), last: d.dirs.isEmpty, icon: "chevron.left") { at.path = d.parent }
                     }
                     ForEach(Array(d.dirs.enumerated()), id: \.element) { i, name in
                         ListItem(name, last: i == d.dirs.count - 1) { at.path = childPath(d.path, name) }
@@ -151,6 +151,6 @@ struct ProjectDirPicker: View {
         return line.font(.footnote.monospaced()).ink(DS.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 6)
-            .accessibilityLabel("当前目录 \(shortPath(d.path))")
+            .accessibilityLabel(L10n.projectsIosCurrentDirectory(path: shortPath(d.path)))
     }
 }

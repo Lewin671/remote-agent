@@ -30,10 +30,10 @@ struct PickProjectSheet: View {
 
     var body: some View {
         if browsing {
-            SheetHead("新项目 · 选目录", onBack: { browsing = false })
+            SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
             ProjectDirPicker(state) { machine, path in onPick(NewTaskTarget(key: path, machine: machine)) }
         } else {
-            SheetHead("新会话 · 选项目", action: "取消", onAction: onClose)
+            SheetHead(L10n.newSessionIosChooseProject(), action: L10n.commonCancel(), onAction: onClose)
             ProjectPickList(
                 state: state,
                 onPick: { onPick(NewTaskTarget(key: $0)) },
@@ -63,7 +63,7 @@ struct PickProjectScreen: View {
                 .scrollDismissesKeyboard(.immediately)
             }
         }
-        .navBar("新会话 · 选项目")
+        .navBar(L10n.newSessionIosChooseProject())
         .homeLaunchTweaks()
     }
 }

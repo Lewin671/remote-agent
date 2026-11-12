@@ -15,7 +15,7 @@ import Testing
             #expect(AuthorityAccess(state: state, me: "authority").isAuthority)
             #expect(!AuthorityAccess(state: state, me: "member").isAuthority)
             #expect(AuthorityAccess(state: state, me: "member").addHint == "要添加电脑或客户端，在管理端（Studio）上打开「设置 › 添加设备」。")
-            #expect(AuthorityAccess(state: state, me: "member").emptyHint == "还没有电脑。在管理端（Studio）上打开「设置 › 添加设备」，把电脑加进来。")
+            #expect(AuthorityAccess(state: state, me: "member").emptyHint == L10n.homeAddViaManager(name: "Studio"))
             state.devices["authority"]!.kind = .machine
             #expect(!AuthorityAccess(state: state, me: "authority").isAuthority)
             #expect(!AuthorityAccess(state: state, me: "authority").isClient)

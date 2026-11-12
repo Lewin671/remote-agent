@@ -141,10 +141,10 @@ struct ProjectSettingsSheet: View {
     @ViewBuilder private func main(_ state: RemoteState, _ c: NewConfig, blocked: String?, done: (() -> Void)?) -> some View {
         let agents = draft.agents(state)
         let cur = draft.current(state)
-        SheetHead("项目设置", action: done == nil ? nil : L10n.commonDone(), onAction: done)
+        SheetHead(L10n.projectsIosSettings(), action: done == nil ? nil : L10n.commonDone(), onAction: done)
         if let blocked { Banner(blocked).padding(.bottom, 8) }
         SetCard([
-            AnyView(SetRow("机器", machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3) {
+            AnyView(SetRow(L10n.commonMachine(), machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3) {
                 page = .machine
             })
         ])
@@ -155,7 +155,7 @@ struct ProjectSettingsSheet: View {
             SetCard([AnyView(reading(state, cur))])
         } else {
             let shown = models.flatMap { projectModel(c, models: $0, settings: settings) }
-            SetCard([AnyView(SetRow("模型", settingsModelValue(c, shown: shown)) { page = .model })])
+            SetCard([AnyView(SetRow(L10n.modelsTitle(), settingsModelValue(c, shown: shown)) { page = .model })])
         }
     }
 
@@ -164,7 +164,7 @@ struct ProjectSettingsSheet: View {
             if state.conn != .online || !state.sessionsError.isEmpty {
                 EarlierTail(state)
             } else {
-                Text("正在读取 \(agentName(agent)) 上次的设置…").font(.subheadline).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
+                Text(L10n.projectsIosReadingCli(agent: agentName(agent))).font(.subheadline).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(14)
@@ -175,7 +175,7 @@ struct ProjectSettingsSheet: View {
     /// `alone`: the sheet was opened for the machine only, and picking one is done with it.
     @ViewBuilder private func machines(_ state: RemoteState, done: (() -> Void)?, back: (() -> Void)?, alone: Bool) -> some View {
         let rows = machineRows(state, cwd: cwd, agent: agent)
-        SheetHead("机器", action: done == nil ? nil : L10n.commonDone(), onAction: done, onBack: back)
+        SheetHead(L10n.commonMachine(), action: done == nil ? nil : L10n.commonDone(), onAction: done, onBack: back)
         ForEach(Array(rows.enumerated()), id: \.element.id) { i, m in
             ListItem(m.name, desc: m.note, checked: draft.machine == m.id, enabled: m.online, last: i == rows.count - 1) {
                 Haptics.selection()
@@ -183,13 +183,13 @@ struct ProjectSettingsSheet: View {
                 if alone, let done { done() } else { page = .main }
             }
             .trailing { Dot(m.online ? DS.green : DS.ink3) }
-            .accessibilityValue(m.online ? "在线" : "不在线")
+            .accessibilityValue(m.online ? L10n.commonIosOnline() : L10n.commonIosOffline())
         }
-        Hint("换机器后，各 CLI 的模型从那台机器的默认设置开始。")
+        Hint(L10n.projectsIosMachineDefaults())
     }
 
     @ViewBuilder private func modelPage(_ state: RemoteState, _ c: NewConfig, done: (() -> Void)?, back: (() -> Void)?) -> some View {
-        SheetHead("模型", action: done == nil ? nil : L10n.commonDone(), onAction: done, onBack: back)
+        SheetHead(L10n.modelsTitle(), action: done == nil ? nil : L10n.commonDone(), onAction: done, onBack: back)
         if let blocked = prefsBlocked(state), back == nil { Banner(blocked).padding(.bottom, 8) }
         if draft.unread(state) {
             reading(state, draft.current(state))
@@ -215,7 +215,7 @@ struct ModelSettingsBody: View {
         let c = config
         if let ms = models {
             let standing = defaultModelName(c, models: ms, settings: settings)
-            ListItem("默认" + (standing.isEmpty ? "" : "（\(standing)）"), checked: c.model.isEmpty) {
+            ListItem((standing.isEmpty ? L10n.modelsDefault() : L10n.modelsDefaultNamed(model: standing)), checked: c.model.isEmpty) {
                 Haptics.selection()
                 edit {
                     $0.model = ""
@@ -230,10 +230,10 @@ struct ModelSettingsBody: View {
                     onEdit(pickModel(c, m))
                 }
             }
-            if !few { TextAction("全部模型", style: .body, arrow: true) { allModels = true } }
+            if !few { TextAction(L10n.modelsAll(), style: .body, arrow: true) { allModels = true } }
             // With the default model an effort can still be chosen; choosing one does not fix the model.
             if let efforts = effortChoices(c, models: ms, settings: settings) {
-                FieldLabel("推理强度")
+                FieldLabel(L10n.modelsEffort())
                 ChoiceGrid(efforts.efforts, selected: efforts.selected) { effort in
                     Haptics.selection()
                     edit { $0.effort = effort }
@@ -241,9 +241,9 @@ struct ModelSettingsBody: View {
             }
             if agentInfo(c.agent).standardContextOption { context(c, shown: projectModel(c, models: ms, settings: settings)) }
         } else if !modelsError.isEmpty {
-            Banner("没能读取模型列表，会用 \(agentName(c.agent)) 自己的默认模型：\(modelsError)", tone: .warn)
+            Banner(L10n.modelsIosLoadFailed(agent: agentName(c.agent), reason: modelsError), tone: .warn)
         } else {
-            LoadingRow("读取 \(machineName) 的设置…", inset: 0)
+            LoadingRow(L10n.modelsIosReadingMachine(name: machineName), inset: 0)
         }
     }
 
@@ -256,12 +256,12 @@ struct ModelSettingsBody: View {
     /// The context window (Claude Code), under the model: a model without a larger window has nothing to choose.
     @ViewBuilder private func context(_ c: NewConfig, shown: PBModelInfo?) -> some View {
         let window = settingsContext(c, shown: shown)
-        FieldLabel("上下文窗口")
+        FieldLabel(L10n.modelsContextWindow())
         if window.fixed {
             Hint(window.text)
         } else {
             let options = ["extended", "standard"]
-            ChoiceGrid(options, selected: c.standardContext ? options[1] : options[0], label: { $0 == "standard" ? "标准 200k" : "1M" }) { picked in
+            ChoiceGrid(options, selected: c.standardContext ? options[1] : options[0], label: { $0 == "standard" ? L10n.modelsStandardWindow() : L10n.modelsExtendedWindow() }) { picked in
                 Haptics.selection()
                 edit { $0.standardContext = picked == options[1] }
             }

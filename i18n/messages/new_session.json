@@ -607,6 +607,302 @@
     }
   },
   {
+    "key": "new_session.ios_abandon",
+    "zh-CN": "放弃",
+    "en": "Abandon",
+    "notes": "未知启动结果的放弃操作；网页为放弃这次启动。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_attach",
+    "zh-CN": "添加附件",
+    "en": "Add attachment",
+    "notes": "新任务附件按钮读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_change_computer",
+    "zh-CN": "换一台电脑",
+    "en": "Change computer",
+    "notes": "新任务机器读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_change_project",
+    "zh-CN": "换一个项目",
+    "en": "Change project",
+    "notes": "新任务标题读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_choose_project",
+    "zh-CN": "新会话 · 选项目",
+    "en": "New session · Choose a project",
+    "notes": "新会话选择项目标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_cli_label",
+    "zh-CN": "新会话使用的 CLI",
+    "en": "CLI for the new session",
+    "notes": "项目内新会话 CLI 控件读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_computer_label",
+    "zh-CN": "电脑：{name}",
+    "en": "Computer: {name}",
+    "notes": "新任务机器读屏标签，网页用机器。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_describe",
+    "zh-CN": "描述任务…",
+    "en": "Describe the task…",
+    "notes": "项目内紧凑输入框占位及读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_draft_kept",
+    "zh-CN": "草稿已保留，请选择在线机器；不自动换机器或 CLI。",
+    "en": "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.",
+    "notes": "离线草稿横幅正文。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_expired_start",
+    "zh-CN": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
+    "en": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check the active sessions first",
+    "notes": "启动请求过期；prompt 是原输入前 40 字。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "prompt": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_machine_unavailable",
+    "zh-CN": "不在线，现在不能新建",
+    "en": "Offline. Cannot start a session now",
+    "notes": "项目设置机器行说明。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_offline_draft",
+    "zh-CN": "{name} 已离线，任务尚未开始",
+    "en": "{name} is offline. The task has not started",
+    "notes": "离线草稿横幅标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_offline_no_start",
+    "zh-CN": "{name} 不在线，现在不能新建",
+    "en": "{name} is offline. Cannot start a session now",
+    "notes": "项目内新会话机器离线提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_other_offline",
+    "zh-CN": "{name} 用过的其他电脑也都不在线。",
+    "en": "The other computers used by {name} are also offline.",
+    "notes": "没有替代电脑时的说明。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_prompt_label",
+    "zh-CN": "要做什么",
+    "en": "What would you like to do",
+    "notes": "新任务输入框读屏标签，中文无问号。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_settings_label",
+    "zh-CN": "新会话的设置：{summary}",
+    "en": "New session settings: {summary}",
+    "notes": "项目页新会话配置摘要读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "summary": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_start",
+    "zh-CN": "开始",
+    "en": "Start",
+    "notes": "新任务发送按钮读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_unknown_start",
+    "zh-CN": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
+    "en": "The last start has an unknown result. Tap ↑ again to resend the same request; the computer will not start it twice",
+    "notes": "未知结果重试，明确保留同一请求语义。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.ios_where",
+    "zh-CN": "在哪个项目",
+    "en": "Which project",
+    "notes": "新任务的选择项目弹层标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "new_session.location",
     "zh-CN": "在{project}",
     "en": "In {project}",

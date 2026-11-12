@@ -9,6 +9,7 @@
 // Sample data (here, Demo/DemoData.swift)
 //   -demo [everyday|crowded|empty]   sample data, no server, nothing stored
 //   -demoRoute <route>               with -demo: open on a destination (`Route.path`, e.g. devices, session/run)
+//   -messageLocale <zh-CN|en>       with -demo/-gallery: test-only UI language, no saved preference
 //   -demoRemoved                     with -demo: the 已被移出账户 notice
 //   -demoLink <waiting|noNetwork|noServer>   with -demo: a connection that is down
 //   -demoTweak <a,b,…>               with -demo: changes to the sample account: mismatch, fullAccess, loading,

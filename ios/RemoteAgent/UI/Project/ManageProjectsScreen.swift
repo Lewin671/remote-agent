@@ -31,12 +31,12 @@ struct ManageProjectsScreen: View {
                 List {
                     Group {
                         if elsewhere {
-                            Banner("项目列表已在另一客户端更新", action: "知道了", onAction: { elsewhere = false }).padding(.vertical, 4)
+                            Banner(L10n.projectsChangedElsewhere(), action: L10n.commonGotIt(), onAction: { elsewhere = false }).padding(.vertical, 4)
                         }
                         ProjectList(state, onNew: { adding = true }) { pr in
                             row(state, pr, blocked: blocked, saving: changes.states[JvmKey(pr.key)]?.saving == true)
                         }
-                        Hint("移除只是不再列出这个项目，会话和电脑上的目录都不动。").padding(.top, 4).padding(.bottom, 16)
+                        Hint(L10n.projectsRemoveNote()).padding(.top, 4).padding(.bottom, 16)
                     }
                     .listRowInsets(EdgeInsets(top: 0, leading: DS.Space.l, bottom: 0, trailing: DS.Space.l))
                     .listRowSeparator(.hidden)
@@ -49,7 +49,7 @@ struct ManageProjectsScreen: View {
                 .readableColumn()
             }
         }
-        .navBar("项目管理")
+        .navBar(L10n.projectsManage())
         .actionMenu(isPresented: $menuShown, actions: menu.map { actions(state, $0, blocked: blocked) } ?? []) {
             if let pr = menu {
                 VStack(alignment: .leading, spacing: 2) {
@@ -60,7 +60,7 @@ struct ManageProjectsScreen: View {
         }
         .removeProjectConfirm($removing)
         .kitSheet(isPresented: $adding, size: .large) {
-            SheetHead("新项目 · 选目录")
+            SheetHead(L10n.projectsNewChooseDirectory())
             // Chosen, the folder is listed and the page stays: the project appears under 其他.
             ProjectDirPicker(state) { machine, path in
                 context.addProject(model.state, machine: machine, path: path)
@@ -97,13 +97,13 @@ struct ManageProjectsScreen: View {
         let pinned = isPinned(state, key: pr.key)
         let can = blocked == nil && !saving
         // The name makes the project the home page's scope and goes there; it only changes this device.
-        return ProjectRow(state, pr, hint: "在主页看这个项目") {
+        return ProjectRow(state, pr, hint: L10n.projectsIosViewHome()) {
             context.homeScopes.choose(.of(key: pr.key))
             nav.open(.home)
         } trailing: {
             EmptyView()
         } accessory: {
-            IconButton("ellipsis", label: "管理 \(pr.name)", size: 20) {
+            IconButton("ellipsis", label: L10n.projectsManageNamed(name: pr.name), size: 20) {
                 menu = pr
                 menuShown = true
             }
@@ -111,14 +111,14 @@ struct ManageProjectsScreen: View {
             .opacity(saving ? 0.4 : 1)
         }
         .contextMenu {
-            Button(pinned ? "取消常用" : "设为常用") { pin(pr.key, !pinned) }.disabled(!can)
-            Button("移除项目…", role: .destructive) { removing = pr.key }.disabled(!can)
+            Button(pinned ? L10n.projectsUnpin() : L10n.projectsPin()) { pin(pr.key, !pinned) }.disabled(!can)
+            Button(L10n.projectsRemoveAction(), role: .destructive) { removing = pr.key }.disabled(!can)
         }
         // Out of reach of the server the changes cannot be made: the menu says why, a swipe offers nothing.
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if can {
-                Button("移除项目…") { removing = pr.key }.tint(DS.red)
-                Button(pinned ? "取消常用" : "设为常用") { pin(pr.key, !pinned) }.tint(DS.blue)
+                Button(L10n.projectsRemoveAction()) { removing = pr.key }.tint(DS.red)
+                Button(pinned ? L10n.projectsUnpin() : L10n.projectsPin()) { pin(pr.key, !pinned) }.tint(DS.blue)
             }
         }
     }
@@ -139,8 +139,8 @@ struct ManageProjectsScreen: View {
     private func actions(_ state: RemoteState, _ pr: Project, blocked: String?) -> [SheetAction] {
         let pinned = isPinned(state, key: pr.key)
         return [
-            SheetAction(pinned ? "取消常用" : "设为常用", enabled: blocked == nil, note: blocked ?? "") { pin(pr.key, !pinned) },
-            SheetAction("移除项目…", danger: true, enabled: blocked == nil) { askToRemove(pr.key) },
+            SheetAction(pinned ? L10n.projectsUnpin() : L10n.projectsPin(), enabled: blocked == nil, note: blocked ?? "") { pin(pr.key, !pinned) },
+            SheetAction(L10n.projectsRemoveAction(), danger: true, enabled: blocked == nil) { askToRemove(pr.key) },
         ]
     }
 }

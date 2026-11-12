@@ -89,7 +89,7 @@ struct CodeBlockView: View, Equatable {
                     .foregroundStyle(theme.link)
                 IconView(icon: open ? .chevronUp : .chevronDown, size: 13 * scale, color: theme.link)
                 Spacer(minLength: 8)
-                Text(verbatim: String(format: theme.strings.lineCount, count))
+                Text(verbatim: theme.strings.lineCount(count))
                     .font(.system(size: 12 * scale))
                     .foregroundStyle(theme.muted)
                     .lineLimit(1)

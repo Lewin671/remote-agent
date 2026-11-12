@@ -1,3 +1,4 @@
+import RACore
 // The bottom of the two first-level pages (design-system §6 「底部」): the
 // two tabs, 会话 and 定时, in one capsule of glass at the left, and at the
 // right the ink button that says what it makes, 新任务 or 新定时. There is
@@ -19,8 +20,8 @@ struct TabBadge: Equatable, Sendable {
 
     /// What VoiceOver says after the tab's name.
     var spoken: String {
-        if count > 0 { return "\(count) \(unit == .tasks ? "件" : "个")需要处理" }
-        return dot ? "有新结果" : ""
+        if count > 0 { return unit == .tasks ? L10n.homeIosBadgeTasks(count: count) : L10n.homeIosBadgeSessions(count: count) }
+        return dot ? L10n.homeIosNewResults() : ""
     }
 }
 
@@ -35,14 +36,14 @@ struct BottomBar: View {
         HStack(alignment: .bottom, spacing: 12) {
             GlassGroup {
                 HStack(spacing: 0) {
-                    item(.home, "会话", "message")
-                    item(.schedules, "定时", "clock")
+                    item(.home, L10n.homeSessionsTab(), "message")
+                    item(.schedules, L10n.homeSchedulesTab(), "clock")
                 }
                 .padding(4)
                 .glass(Capsule(), interactive: false)
             }
             Spacer(minLength: 0)
-            InkButton(tab == .schedules ? "新定时" : "新任务", symbol: tab == .schedules ? "plus" : "square.and.pencil", floating: true, action: onCreate)
+            InkButton(tab == .schedules ? L10n.homeNewSchedule() : L10n.homeNewTask(), symbol: tab == .schedules ? "plus" : "square.and.pencil", floating: true, action: onCreate)
                 .disabled(!canCreate)
                 .accessibilityIdentifier("new-button")
         }

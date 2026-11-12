@@ -1,3 +1,4 @@
+import RACore
 // Buttons and notices of design-system §6, built on the system's controls:
 // the screen's one ink button, a blue text action, the grey notice.
 import SwiftUI
@@ -142,7 +143,7 @@ struct Notice: View {
 /// The title filter (design-system §6 「筛选框」): a capsule on `fill`, ⌕ at the left, ✕ at the right once something is typed.
 struct FilterField: View {
     @Binding var text: String
-    var prompt = "按标题筛选"
+    var prompt = L10n.homeFilterTitle()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -160,7 +161,7 @@ struct FilterField: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(DS.ink3).frame(minWidth: 28, minHeight: 40)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("清空筛选")
+                .accessibilityLabel(L10n.homeClearFilter())
             }
         }
         .font(.body)

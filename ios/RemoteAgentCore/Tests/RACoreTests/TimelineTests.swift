@@ -53,8 +53,8 @@ import Testing
         let quiet = Mk.session("quiet") { $0.cwd = "/task"; $0.taskOwned = true }
         let approval = Mk.session("approval") { $0.cwd = "/task"; $0.taskOwned = true; $0.pendingApprovals = 1; $0.status = .idle }
         let snapshot = state(session("a", "/a"), session("b", "/b"), quiet, approval)
-        #expect(sessionCounts(snapshot, snapshot.sessions.values) == "1 个待处理 · 2 个进行中")
-        #expect(scopeRows(snapshot, current: .all).first?.detail == "1 个待处理 · 2 个进行中")
+        #expect(sessionCounts(snapshot, snapshot.sessions.values) == L10n.projectsPendingAndLive(count: 1, live: 2))
+        #expect(scopeRows(snapshot, current: .all).first?.detail == L10n.projectsPendingAndLive(count: 1, live: 2))
         #expect(homeTimeline(snapshot, scope: .all).attention.map(\.id) == ["approval"])
         #expect(Set(homeTimeline(snapshot, scope: .all).running.map(\.id)) == ["a", "b"])
     }
@@ -144,17 +144,17 @@ import Testing
         #expect(g(at(2026, 9, 27, 23, 59)) == .month(year: 2026, month: 9))
         #expect(g(at(2025, 12, 31)) == .month(year: 2025, month: 12))
 
-        #expect(groupTitle(.today, now: now, zone: zone) == "今天")
-        #expect(groupTitle(.yesterday, now: now, zone: zone) == "昨天")
-        #expect(groupTitle(.week, now: now, zone: zone) == "近 7 天")
-        #expect(groupTitle(.month(year: 2026, month: 9), now: now, zone: zone) == "9 月")
-        #expect(groupTitle(.month(year: 2025, month: 12), now: now, zone: zone) == "2025 年 12 月")
+        #expect(groupTitle(.today, now: now, zone: zone) == L10n.timeToday())
+        #expect(groupTitle(.yesterday, now: now, zone: zone) == L10n.timeYesterday())
+        #expect(groupTitle(.week, now: now, zone: zone) == L10n.timeLastWeek())
+        #expect(groupTitle(.month(year: 2026, month: 9), now: now, zone: zone) == L10n.timeMonthGroup(month: 9))
+        #expect(groupTitle(.month(year: 2025, month: 12), now: now, zone: zone) == L10n.timeYearMonthGroup(month: 12, year: 2025))
     }
 
     @Test func aMonthOfThisYearEarlierThanAWeekAgoCanBeTheCurrentMonth() {
         let late = at(2026, 10, 20)
         #expect(endedGroup(at(2026, 10, 2), now: late, zone: zone) == .month(year: 2026, month: 10))
-        #expect(groupTitle(.month(year: 2026, month: 10), now: late, zone: zone) == "10 月")
+        #expect(groupTitle(.month(year: 2026, month: 10), now: late, zone: zone) == L10n.timeMonthGroup(month: 10))
     }
 
     @Test func anEndedRowWritesTheTimeItsGroupCalls() {
@@ -162,8 +162,8 @@ import Testing
         #expect(endedTime(at(2026, 10, 3, 18, 44), now: now, zone: zone) == "18:44")
         #expect(endedTime(at(2026, 10, 2, 8, 0), now: now, zone: zone) == "周五")
         #expect(endedTime(at(2026, 9, 28, 8, 0), now: now, zone: zone) == "周一")
-        #expect(endedTime(at(2026, 9, 27, 8, 0), now: now, zone: zone) == "9月27日")
-        #expect(endedTime(at(2025, 12, 31), now: now, zone: zone) == "12月31日")
+        #expect(endedTime(at(2026, 9, 27, 8, 0), now: now, zone: zone) == L10n.timeMonthDay(day: 27, month: 9))
+        #expect(endedTime(at(2025, 12, 31), now: now, zone: zone) == L10n.timeMonthDay(day: 31, month: 12))
         #expect(endedTime(0, now: now, zone: zone) == "")
     }
 
@@ -221,7 +221,7 @@ import Testing
         let m1 = homeTimeline(one, scope: .of(key: "/a"), zone: zone).meta
         #expect(m1 == RowMeta())
         #expect(metaLine(one, one.sessions["1"]!, meta: m1) == "")
-        #expect(metaLine(one, one.sessions["2"]!, meta: m1) == "分叉")
+        #expect(metaLine(one, one.sessions["2"]!, meta: m1) == L10n.homeForked())
 
         let many = state(
             session("1", "/Code/foo", machine: "m"), session("2", "/Code/foo", machine: "n", agent: .claude, forkedFrom: "1"),
@@ -256,14 +256,14 @@ import Testing
         #expect(homeTimeline(st, scope: .of(key: "/a"), query: "/a", zone: zone).size == 0)
         #expect(homeTimeline(st, scope: .of(key: "/a"), query: "  ", zone: zone).size == 5)
 
-        #expect(filterTail(count: 3, query: " 接口 ") == "3 个会话的标题里有「接口」")
-        #expect(filterTail(count: 0, query: "zzz") == "没有标题里有「zzz」的会话")
+        #expect(filterTail(count: 3, query: " 接口 ") == L10n.homeMatches(count: 3, query: "接口"))
+        #expect(filterTail(count: 0, query: "zzz") == L10n.homeNoMatches(query: "zzz"))
     }
 
     @Test func theTailCountsEndedSessionsOnceTheyTakeMoreThanAPage() {
         #expect(endedTail(total: 30, more: false) == nil)
-        #expect(endedTail(total: 71, more: true) == "共 71 个，滚到底加载更早的")
-        #expect(endedTail(total: 71, more: false) == "共 71 个")
+        #expect(endedTail(total: 71, more: true) == L10n.homeTotalLoadEarlier(count: 71))
+        #expect(endedTail(total: 71, more: false) == L10n.homeTotal(count: 71))
     }
 
     private func summary(_ path: String, _ ended: UInt32) -> PBProjectSummary { .with { $0.path = path; $0.ended = ended } }
@@ -336,19 +336,19 @@ import Testing
         var online = RemoteState()
         online.conn = .online
         online.sessionsNext = SessionPlace(endedMs: 1, sessionId: "a")
-        #expect(earlierTail(online) == "正在加载更早的会话…")
+        #expect(earlierTail(online) == L10n.homeLoadingEarlier())
         var offline = online
         offline.conn = .offline
-        #expect(earlierTail(offline) == "连上服务器后加载更早的会话")
+        #expect(earlierTail(offline) == L10n.homeIosEarlierOffline())
         var failed = online
         failed.sessionsError = "超时"
-        #expect(earlierTail(failed) == "没能加载更早的会话：超时 · 点这里重试")
+        #expect(earlierTail(failed) == L10n.homeIosEarlierFailed(reason: "超时"))
         // The first page itself: there is no listing yet to have earlier pages.
         var first = RemoteState()
         first.conn = .online
         first.sessionsError = "超时"
         first.sessionsListed = false
-        #expect(earlierTail(first) == "没能读取会话列表：超时 · 点这里重试")
+        #expect(earlierTail(first) == L10n.homeIosListFailed(reason: "超时"))
     }
 
     @Test func theScopeMenuListsEveryProjectFirstThenPinnedThenTheOthers() {
@@ -357,8 +357,8 @@ import Testing
             session("3", "/Users/me/Code/billing", created: now - 50), session("4", "/Users/me/Code/blog", ended: now - 2 * 3600_000),
             session("5", "/Users/me/gone", ended: now - 1000), hidden: ["/Users/me/gone"], pinned: ["/Users/me/Code/blog"])
         let rows = scopeRows(st, current: .of(key: "/Users/me/Code/foo"))
-        #expect(rows.map(\.name) == ["全部项目", "blog", "billing", "foo"])
-        #expect(rows.map(\.detail) == ["3 个进行中", "~/Code/blog", "~/Code/billing · 1 个进行中", "~/Code/foo · 2 个进行中"])
+        #expect(rows.map(\.name) == [L10n.homeAllProjects(), "blog", "billing", "foo"])
+        #expect(rows.map(\.detail) == [L10n.projectsLiveCount(count: 3), "~/Code/blog", "~/Code/billing · 1 个进行中", "~/Code/foo · 2 个进行中"])
         #expect(rows.map(\.current) == [false, false, false, true])
         #expect(scopeRows(st, current: .all, search: "BILL").map(\.name) == ["billing"])
         // One project: nothing to choose 全部项目 over.
@@ -372,11 +372,11 @@ import Testing
             session("1", "/Users/me/Code/foo", approvals: 1), session("2", "/Users/me/Code/foo"),
             session("3", "/Users/me/Code/billing", approvals: 2), session("4", "/Users/me/Code/blog", ended: now - 1000))
         let rows = scopeRows(st, current: .all)
-        #expect(rows.map(\.detail) == ["2 个待处理 · 1 个进行中", "~/Code/billing · 1 个待处理", "~/Code/foo · 1 个待处理 · 1 个进行中", "~/Code/blog"])
+        #expect(rows.map(\.detail) == [L10n.projectsPendingAndLive(count: 2, live: 1), "~/Code/billing · 1 个待处理", "~/Code/foo · 1 个待处理 · 1 个进行中", "~/Code/blog"])
         #expect(sessionCounts(st, []) == "")
         // With nothing waiting or running, 全部项目 says how many projects there are.
         let quiet = state(session("1", "/a", ended: now - 1000), session("2", "/b", ended: now - 1000))
-        #expect(scopeRows(quiet, current: .all).first?.detail == "2 个项目")
+        #expect(scopeRows(quiet, current: .all).first?.detail == L10n.projectsCount(count: 2))
     }
 
     @Test func daysAreTheZonesNotTheDevices() {
@@ -403,7 +403,7 @@ import Testing
         #expect(ids("école") == ["2"])
         // An ideographic space is whitespace to trim(); the query between is what counts.
         #expect(ids("\u{3000}sign\u{3000}") == ["1"])
-        #expect(scopeName(.all) == "全部项目")
+        #expect(scopeName(.all) == L10n.homeAllProjects())
         #expect(scopeName(.of(key: "/Users/me/Code/foo")) == "foo")
     }
 }

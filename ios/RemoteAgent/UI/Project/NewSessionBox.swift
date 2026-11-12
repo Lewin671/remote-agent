@@ -122,24 +122,24 @@ struct NewSessionBox: View {
                     agents.map(agentName), marks: agents,
                     selected: Binding(get: { agents.firstIndex(of: c.agent) ?? 0 }, set: { switchAgent(draft, c, to: agents[$0]) })
                 )
-                .accessibilityLabel("新会话使用的 CLI")
+                .accessibilityLabel(L10n.newSessionIosCliLabel())
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, DS.Space.l)
             }
             MessageCapsule(
-                text: Bindable(draft).text, placeholder: "描述任务…", label: "描述任务…", identifier: "new-session-text",
+                text: Bindable(draft).text, placeholder: L10n.newSessionIosDescribe(), label: L10n.newSessionIosDescribe(), identifier: "new-session-text",
                 focus: $focused
             ) {
                 images.strip()
             } plus: {
                 Button { images.pick() } label: { PlusCircle(dimmed: images.blocked != nil) }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("添加附件")
+                    .accessibilityLabel(L10n.newSessionIosAttach())
             } trailing: {
                 Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
                     .buttonStyle(.plain)
                     .disabled(!canSend)
-                    .accessibilityLabel("开始")
+                    .accessibilityLabel(L10n.newSessionIosStart())
                     .accessibilityIdentifier("new-session-start")
             }
         }
@@ -162,7 +162,7 @@ struct NewSessionBox: View {
                     .padding(.horizontal, DS.Space.l).padding(.top, 8)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                MessageCard(text: Bindable(draft).text, placeholder: "要做什么？", label: "要做什么", identifier: "new-session-text", focus: $focused) {
+                MessageCard(text: Bindable(draft).text, placeholder: L10n.newSessionPrompt(), label: L10n.newSessionIosPromptLabel(), identifier: "new-session-text", focus: $focused) {
                     images.strip()
                 } accessories: {
                     AttachMenu(images: images)
@@ -183,7 +183,7 @@ struct NewSessionBox: View {
                     Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
                         .buttonStyle(.plain)
                         .disabled(!canSend)
-                        .accessibilityLabel("开始")
+                        .accessibilityLabel(L10n.newSessionIosStart())
                         .accessibilityIdentifier("new-session-start")
                 }
                 .readableColumn()
@@ -236,7 +236,7 @@ struct NewSessionBox: View {
         .onChange(of: draft.text) { _, _ in closeModel(draft) }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button { closeModel(draft); sheet.onClose() } label: { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
+                Button { closeModel(draft); sheet.onClose() } label: { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel(L10n.commonClose())
             }
             ToolbarItem(placement: .principal) {
                 NewTaskWhere(key: key, name: name, machine: sheet.parts?.machine ?? "", onProject: { closeModel(draft); sheet.onProject() }, onMachine: { closeModel(draft); sheet.onMachine() })
@@ -341,20 +341,20 @@ struct NewSessionBox: View {
         case .offline(let text), .mismatch(let text):
             Banner(text, tone: .warn)
         case .missingAgent(let text):
-            Banner(text, action: "换机器", onAction: onMachine)
+            Banner(text, action: L10n.newSessionChangeMachine(), onAction: onMachine)
         case .autoModel(let text):
-            Banner(text, tone: .warn, action: "换模型", onAction: { toggleModel(draft) })
+            Banner(text, tone: .warn, action: L10n.newSessionChangeModel(), onAction: { toggleModel(draft) })
         case .autoAccount(let text):
-            Banner(text, tone: .warn, action: "去改默认") {
+            Banner(text, tone: .warn, action: L10n.newSessionChangeDefaults()) {
                 if let id = draft.config.value?.machineId { onMachineSettings(id) }
             }
         case .starting(let text):
             Banner(text, icon: Mark.progress)
         case .failed(let text):
             // 重试 is ↑ again: it is offered when ↑ is.
-            Banner(text, tone: .error, action: canStart ? "重试" : nil, onAction: { start(draft) })
+            Banner(text, tone: .error, action: canStart ? L10n.commonRetry() : nil, onAction: { start(draft) })
         case .unknown(let text):
-            Banner(text, tone: .warn, action: "放弃", onAction: { draft.abandon() })
+            Banner(text, tone: .warn, action: L10n.newSessionIosAbandon(), onAction: { draft.abandon() })
         }
     }
 }
@@ -384,8 +384,8 @@ struct ProjectSummaryChip: View {
         }
         .buttonStyle(PressStyle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("新会话的设置：\(summary)")
-        .accessibilityHint("项目设置")
+        .accessibilityLabel(L10n.newSessionIosSettingsLabel(summary: summary))
+        .accessibilityHint(L10n.projectsIosSettings())
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("project-settings-summary")
     }

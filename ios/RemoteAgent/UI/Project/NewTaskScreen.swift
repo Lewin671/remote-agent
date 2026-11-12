@@ -80,10 +80,10 @@ struct NewTaskScreen: View {
         }
         .kitSheet(isPresented: $picking, size: .large, onDismiss: { browsing = false }) {
             if browsing {
-                SheetHead("新项目 · 选目录", onBack: { browsing = false })
+                SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
                 ProjectDirPicker(state) { machine, path in choose(path, on: machine, from: draft) }
             } else {
-                SheetHead("在哪个项目", action: "取消", onAction: { picking = false })
+                SheetHead(L10n.newSessionIosWhere(), action: L10n.commonCancel(), onAction: { picking = false })
                 ProjectPickList(state: state, onPick: { choose($0, from: draft) }, onNew: { browsing = true })
             }
         }
@@ -154,8 +154,8 @@ struct NewTaskWhere: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PressStyle())
-            .accessibilityLabel("项目：\(name)")
-            .accessibilityHint("换一个项目")
+            .accessibilityLabel(L10n.newSessionProjectLabel(name: name))
+            .accessibilityHint(L10n.newSessionIosChangeProject())
             .accessibilityIdentifier("new-task-project")
             if !machine.isEmpty {
                 Button(action: onMachine) {
@@ -166,8 +166,8 @@ struct NewTaskWhere: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
-                .accessibilityLabel("电脑：\(machine)")
-                .accessibilityHint("换一台电脑")
+                .accessibilityLabel(L10n.newSessionIosComputerLabel(name: machine))
+                .accessibilityHint(L10n.newSessionIosChangeComputer())
                 .accessibilityIdentifier("new-task-machine")
             }
         }
@@ -185,7 +185,7 @@ struct NewTaskCli: View {
     var body: some View {
         Menu {
             // The mark before each name, as an image: a system menu takes no other view.
-            Picker("CLI", selection: Binding(get: { agent }, set: { onAgent($0) })) {
+            Picker(L10n.newSessionCliPickerLabel(), selection: Binding(get: { agent }, set: { onAgent($0) })) {
                 ForEach(agents, id: \.self) { a in
                     if let glyph = AgentGlyph(a) {
                         Label { Text(agentName(a)) } icon: { Image(uiImage: glyph.image(side: 17)) }.tag(a)
@@ -235,7 +235,7 @@ struct NewTaskModel: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(summary.accessibilityLabel)
-        .accessibilityHint("选择模型和推理强度")
+        .accessibilityHint(L10n.modelsIosChooseHint())
         .accessibilityIdentifier("new-task-model")
     }
 }

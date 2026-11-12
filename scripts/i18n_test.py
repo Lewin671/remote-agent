@@ -128,7 +128,25 @@ class CompilerTest(unittest.TestCase):
     def test_lint_ratchet_and_references(self):
         i18n.generate(self.root)
         path=self.root/'web/src/pilot.tsx'
-        path.write_text('\n'.join(f't("{k}")' for k in i18n.load(self.root)[1]))
+        messages=i18n.load(self.root)[1]
+        path.write_text('\n'.join(f't("{k}")' for k,row in messages.items() if 'web' in row['platforms']))
+        # Reference platform-only keys on a declared platform, too. Their
+        # presence must not weaken the cross-platform misuse assertion below.
+        native = {
+            'ios': ('ios/RemoteAgent/Pilot.swift', 'L10n'),
+            'android': ('android/core/src/main/Pilot.kt', 'UiMessages'),
+            'go': ('internal/pilot/pilot.go', 'i18n'),
+        }
+        for platform, (name, receiver) in native.items():
+            refs = []
+            for key, row in messages.items():
+                if 'web' in row['platforms'] or row['platforms'][0] != platform: continue
+                fn = i18n.method(key)
+                if platform == 'go': fn = fn[0].upper() + fn[1:]
+                refs.append(f'{receiver}.{fn}()')
+            fixture = self.root/name
+            fixture.parent.mkdir(parents=True, exist_ok=True)
+            fixture.write_text('\n'.join(refs))
         i18n_lint.lint(self.root,True);i18n_lint.lint(self.root)
         clean=path.read_text()
         for literal in ['<button>New English action</button>', '<button>\nNew English action\n</button>', 'Text(\n"New action")','Text("新文案")','const a = { label: "New action" };']:

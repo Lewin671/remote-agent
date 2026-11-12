@@ -226,14 +226,14 @@ import Testing
         #expect(machineAgents(MachineView(id: "m", online: true, lastSeenMs: 0, meta: both)) == [.codex, .claude])
         let zone = Mk.shanghai
         let now = Mk.at(2026, 9, 29, 14, 0)
-        #expect(ago(now - 2 * 3600_000, now: now, zone: zone) == "2 小时前")
-        #expect(ago(now - 24 * 3600_000, now: now, zone: zone) == "昨天")
+        #expect(ago(now - 2 * 3600_000, now: now, zone: zone) == L10n.timeHoursAgo(count: 2))
+        #expect(ago(now - 24 * 3600_000, now: now, zone: zone) == L10n.timeYesterday())
         #expect(ago(0, now: now, zone: zone).isEmpty)
-        #expect(whenText(now - 10_000, now: now, zone: zone) == "刚刚")
-        #expect(whenText(now - 180_000, now: now, zone: zone) == "3 分钟前")
+        #expect(whenText(now - 10_000, now: now, zone: zone) == L10n.timeJustNow())
+        #expect(whenText(now - 180_000, now: now, zone: zone) == L10n.timeMinutesAgo(count: 3))
         #expect(whenText(now - (4 * 3600 + 55 * 60) * 1000, now: now, zone: zone) == "9:05")
-        #expect(whenText(now - 24 * 3600_000, now: now, zone: zone) == "昨天")
-        #expect(whenText(now - 48 * 3600_000, now: now, zone: zone) == "9月27日")
+        #expect(whenText(now - 24 * 3600_000, now: now, zone: zone) == L10n.timeYesterday())
+        #expect(whenText(now - 48 * 3600_000, now: now, zone: zone) == L10n.timeMonthDay(day: 27, month: 9))
         #expect(projectName("/Users/me/Code/foo/") == "foo")
         #expect(plain("修 `bug`") == "修 bug")
     }
@@ -354,7 +354,7 @@ import Testing
     @Test func idsAndNamesAreCutByUtf16Units() {
         #expect(shortId("0123456789abcdef") == "cdef")
         #expect(machineName(MachineView(id: "0123456789abcdef", online: true, lastSeenMs: 0)) == "01234567")
-        #expect(machineName(nil, id: "") == "未知电脑")
+        #expect(machineName(nil, id: "") == L10n.commonUnknownComputer())
         #expect(machineName(MachineView(id: "x", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local" })) == "mac")
         // An emoji is two units; a cut through one loses the half Swift cannot hold.
         #expect("ab😀cd".jvmTake(3) == "ab")
@@ -433,10 +433,10 @@ import Testing
         let s = Mk.session { $0.cwd = "/Users/me/Code/foo"; $0.createdAt = Mk.ts(Mk.at(2026, 10, 4, 9, 5)) }
         #expect(titleOf(s, zone: Mk.shanghai) == "foo · 9:05")
         #expect(titleOf(Mk.session { $0.cwd = "/Users/me/Code/foo" }) == "foo")
-        #expect(titleOf(SessionView(id: "s", machineId: "m")) == "新会话")
-        #expect(previewOf(s, status: .idle) == "还没发消息")
-        #expect(previewOf(s, status: .popup) == "终端里有弹窗")
-        #expect(dateTime(Mk.at(2026, 10, 3, 18, 44), now: Mk.at(2026, 10, 4, 9, 41), zone: Mk.shanghai) == "10月3日 18:44")
+        #expect(titleOf(SessionView(id: "s", machineId: "m")) == L10n.listStateIosNewSession())
+        #expect(previewOf(s, status: .idle) == L10n.listStateNoMessage())
+        #expect(previewOf(s, status: .popup) == L10n.listStatePopup())
+        #expect(dateTime(Mk.at(2026, 10, 3, 18, 44), now: Mk.at(2026, 10, 4, 9, 41), zone: Mk.shanghai) == L10n.timeIosDateTime(day: 3, month: 10, time: "18:44"))
         #expect(dateTime(Mk.at(2026, 10, 4, 7, 10), now: Mk.at(2026, 10, 4, 9, 41), zone: Mk.shanghai) == "7:10")
     }
 }

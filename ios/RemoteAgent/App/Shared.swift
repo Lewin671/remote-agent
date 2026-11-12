@@ -33,15 +33,15 @@ struct ConnectionStrip: View {
             case .online:
                 if !state.clockWarning.isEmpty { GlassStrip(text: state.clockWarning, symbol: "clock", tone: .attention) }
             case .noNetwork:
-                GlassStrip(text: "本机网络不通 · " + (state.loaded ? "显示的是上次的内容" : "联网后才能读取会话"), symbol: "wifi.slash")
+                GlassStrip(text: state.loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
             case .waiting:
-                GlassStrip(text: state.synced ? "正在重连…" : "连接中…", spinning: true)
+                GlassStrip(text: state.synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
             case .noServer:
                 // Nothing kept to show: the reason is the whole of what can be said, in red.
                 if !state.loaded && !state.error.isEmpty {
-                    GlassStrip(text: "连不上服务器：\(state.error)", symbol: "xmark", tone: .error, action: "详情") { details = true }
+                    GlassStrip(text: L10n.connectionIosServerError(reason: state.error), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
                 } else {
-                    GlassStrip(text: "连不上服务器 · 正在重试", symbol: "icloud.slash", action: "详情") { details = true }
+                    GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
                 }
             }
         }
@@ -58,23 +58,23 @@ struct ServerDetails: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        SheetHead("连不上服务器")
-        Text("本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。")
+        SheetHead(L10n.connectionNoServer())
+        Text(L10n.connectionIosExplanation())
             .font(.subheadline).ink(DS.ink2)
         if let server = model.account?.server {
-            Text("服务器　\(hostOf(server))").font(.subheadline).ink(DS.ink2).padding(.top, 10)
+            Text(L10n.connectionIosHost(host: hostOf(server))).font(.subheadline).ink(DS.ink2).padding(.top, 10)
         }
         // Since start nothing was reached: when it was last is not known here.
         if state.synced {
             Ticking { now in
-                Text("断开于　\(whenText(state.offlineSinceMs, now: now))").font(.subheadline).ink(DS.ink2).padding(.top, 2)
+                Text(L10n.connectionIosDisconnectedAt(time: whenText(state.offlineSinceMs, now: now))).font(.subheadline).ink(DS.ink2).padding(.top, 2)
             }
         }
-        if !state.error.isEmpty { Text("原因　\(state.error)").font(.subheadline).ink(DS.ink2).padding(.top, 2) }
+        if !state.error.isEmpty { Text(L10n.connectionIosReason(reason: state.error)).font(.subheadline).ink(DS.ink2).padding(.top, 2) }
         if !state.errorDetail.isEmpty && state.errorDetail != state.error {
             Code(state.errorDetail, maxLines: 4).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10)
         }
-        Btn("立即重试") {
+        Btn(L10n.connectionIosRetryNow()) {
             model.remote?.reconnectNow()
             onClose()
         }

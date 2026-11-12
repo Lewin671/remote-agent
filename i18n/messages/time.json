@@ -32,6 +32,33 @@
     }
   },
   {
+    "key": "time.ios_date_time",
+    "zh-CN": "{month}月{day}日 {time}",
+    "en": "{month}/{day} {time}",
+    "notes": "跨日日期与时间；本地日历与时区不变。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "month": {
+        "type": "integer",
+        "example": 2
+      },
+      "day": {
+        "type": "integer",
+        "example": 2
+      },
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "time.just_now",
     "zh-CN": "刚刚",
     "en": "Just now",

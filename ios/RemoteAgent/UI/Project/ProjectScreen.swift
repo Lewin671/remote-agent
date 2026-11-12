@@ -204,16 +204,16 @@ struct ProjectPageView: View {
                 Text(name).font(.title2.bold()).ink(DS.ink).lineLimit(2).accessibilityAddTraits(.isHeader)
                 Text(page.subtitle).font(.subheadline).ink(DS.ink2).lineLimit(2)
                 HStack(spacing: 0) {
-                    Text("\(page.active.count) 个进行中 · ").font(.subheadline).ink(DS.ink2)
+                    Text(L10n.projectsIosActivePrefix(count: page.active.count)).font(.subheadline).ink(DS.ink2)
                     Button {
                         showEnded.toggle()
                     } label: {
                         // With none there is nothing to open: it is said as the count before it is.
                         Group {
                             if page.endedTotal == 0 {
-                                Text("已结束 0").font(.subheadline).ink(DS.ink2)
+                                Text(L10n.projectsIosEndedCount(count: 0)).font(.subheadline).ink(DS.ink2)
                             } else {
-                                ArrowText("已结束 \(page.endedTotal)", style: .subheadline.weight(.semibold), direction: showEnded ? .down : .right)
+                                ArrowText(L10n.projectsIosEndedCount(count: page.endedTotal), style: .subheadline.weight(.semibold), direction: showEnded ? .down : .right)
                             }
                         }
                             // 44 pt to the finger without making the header taller.
@@ -221,7 +221,7 @@ struct ProjectPageView: View {
                     }
                     .buttonStyle(PressStyle())
                     .disabled(page.endedTotal == 0)
-                    .accessibilityValue(showEnded ? "已展开" : "已收起")
+                    .accessibilityValue(showEnded ? L10n.projectsIosExpanded() : L10n.projectsIosCollapsed())
                 }
                 .padding(.top, 2)
                 if let launch { chip(state, launch).padding(.top, 6) }
@@ -238,9 +238,9 @@ struct ProjectPageView: View {
             Group {
                 switch change {
                 case .saving:
-                    Banner("正在保存项目设置…", icon: Mark.progress)
+                    Banner(L10n.projectsIosSavingSettings(), icon: Mark.progress)
                 case .failed(let op, let error):
-                    Banner("项目设置没能保存：\(error)", tone: .error, action: "重试", onAction: { context.prefsChanges.run(context.remote, op) })
+                    Banner(L10n.projectsIosSettingsFailed(reason: error), tone: .error, action: L10n.commonRetry(), onAction: { context.prefsChanges.run(context.remote, op) })
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 4)
@@ -249,7 +249,7 @@ struct ProjectPageView: View {
 
     @ViewBuilder private func sessions(_ state: RemoteState, _ page: ProjectPage) -> some View {
         if !page.active.isEmpty {
-            SectionLabel("进行中", count: page.active.count).accessibilityElement(children: .combine)
+            SectionLabel(L10n.homeLive(), count: page.active.count).accessibilityElement(children: .combine)
             ForEach(page.active) { s in
                 HomeSessionRow(state: state, session: s, now: now, meta: page.meta, last: s.id == page.active.last?.id)
             }
@@ -257,7 +257,7 @@ struct ProjectPageView: View {
         let recent = page.recent(all: showEnded)
         let earlier = state.moreSessions && page.ended.count < page.endedTotal
         if !recent.isEmpty || (showEnded && earlier) {
-            SectionLabel(showEnded ? "已结束" : "最近结束", count: showEnded ? page.endedTotal : nil).accessibilityElement(children: .combine)
+            SectionLabel(showEnded ? L10n.listStateEnded() : L10n.projectsIosRecentEnded(), count: showEnded ? page.endedTotal : nil).accessibilityElement(children: .combine)
             ForEach(recent) { HomeEndedRow(session: $0, now: now) }
             // On screen when the end of the list is reached: that is when the next page is fetched.
             if showEnded && earlier {
@@ -268,7 +268,7 @@ struct ProjectPageView: View {
             }
         }
         if page.active.isEmpty && page.endedTotal == 0 && !isHidden(state, key: key) {
-            Text("这个项目还没有会话。").font(.subheadline).ink(DS.ink2).padding(DS.Space.l)
+            Text(L10n.projectsIosNoSessions()).font(.subheadline).ink(DS.ink2).padding(DS.Space.l)
         }
     }
 }
@@ -285,13 +285,13 @@ private struct HiddenProjectNotice: View {
         let blocked = prefsBlocked(state)
         VStack(alignment: .leading, spacing: 0) {
             Banner(
-                saving ? "正在添加到项目列表…" : "这个项目已从列表移除", action: blocked == nil && !saving ? "重新添加" : nil,
+                saving ? L10n.projectsIosAdding() : L10n.projectsRemoved(), action: blocked == nil && !saving ? L10n.projectsAddAgain() : nil,
                 onAction: {
                     Haptics.confirm()
                     context.prefsChanges.run(context.remote, .unhide(path: projectKey))
                 })
             if let blocked { Hint(blocked, color: DS.orangeInk) }
-            if case .failed(_, let error)? = change { Hint("没能保存：\(error)", color: DS.red) }
+            if case .failed(_, let error)? = change { Hint(L10n.commonIosSaveFailed(reason: error), color: DS.red) }
         }
         .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
     }

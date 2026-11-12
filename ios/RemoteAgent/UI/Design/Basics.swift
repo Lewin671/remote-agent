@@ -164,7 +164,7 @@ struct CutText: View {
 
 /// A project's name: the last folder of its path.
 func projectName(_ key: String) -> String {
-    key.split(separator: "/").last.map(String.init) ?? "未知项目"
+    key.split(separator: "/").last.map(String.init) ?? L10n.projectsUnknown()
 }
 
 /// The icon at the head of a device's row (design-system §6 「设备行」): the

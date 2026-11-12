@@ -70,7 +70,7 @@ private struct HomeTopBar: View {
                     .glass(Capsule())
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(scopeName(scope))
-                    .accessibilityHint("换范围")
+                    .accessibilityHint(L10n.homeIosChangeScope())
                     .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("scope-title")
                 }
@@ -79,7 +79,7 @@ private struct HomeTopBar: View {
                 if let create {
                     SidebarCreateButton(create: create, schedules: false)
                 } else {
-                    GlassIconButton("gearshape", label: "设置") { nav.open(.settings) }
+                    GlassIconButton("gearshape", label: L10n.commonSettings()) { nav.open(.settings) }
                         .accessibilityIdentifier("settings-button")
                 }
             }
@@ -116,7 +116,7 @@ private struct HomeHeadlineView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if headline.details {
-                        LinkButton("详情") { details = true }.font(.body).padding(.vertical, -12)
+                        LinkButton(L10n.commonDetails()) { details = true }.font(.body).padding(.vertical, -12)
                     }
                 }
             }
@@ -131,7 +131,9 @@ private struct HomeHeadlineView: View {
 
     private var title: Text {
         if case .waiting(let n) = headline.kind {
-            return Text("\(Text("\(n)").foregroundStyle(DS.orange)) 件事等你")
+            var title = AttributedString(L10n.homeWaitingCount(count: n))
+            if let range = title.range(of: String(n)) { title[range].foregroundColor = DS.orange }
+            return Text(title)
         }
         return Text(headline.title)
     }
@@ -197,12 +199,12 @@ private struct HomeTimeline: View {
             HomePendingRow(state: state, session: s, scope: scope, first: first, last: last)
                 .padding(.top, first ? 10 : 0)
         case .moreAttention(let n):
-            Button { shown.allAttention = true } label: { PendingMoreRow(text: "还有 \(n) 件") }
+            Button { shown.allAttention = true } label: { PendingMoreRow(text: L10n.homeMoreWaiting(count: n)) }
                 .buttonStyle(RowHighlight())
         case .running(let s, let last):
             HomeSessionRow(state: state, session: s, now: now, meta: list.meta, last: last)
         case .moreRunning(let n):
-            LinkButton("还有 \(n) 个", chevron: true) { shown.allRunning = true }
+            LinkButton(L10n.homeMoreLive(count: n), chevron: true) { shown.allRunning = true }
                 .font(.subheadline)
                 .padding(.horizontal, DS.Space.page)
         case .ended(let s):
@@ -228,21 +230,21 @@ private struct HomeTimeline: View {
         case .loading:
             ProgressView().frame(maxWidth: .infinity).padding(.vertical, 48)
         case .scope:
-            note("点右下角的「新任务」在这里开始一个。")
+            note(L10n.homeIosScopeStart())
         case .account(.noMachines):
             let access = AuthorityAccess(state: state, me: context.me)
             if access.isAuthority {
                 // Only here is a button in the page the thing to do: 新任务 has no computer to run on yet.
-                note("电脑运行 CLI，客户端操作会话。先添加一台电脑：在这里生成配对码，再在电脑上用它运行 remote-agent account join。")
-                InkButton("添加设备", symbol: "plus") { nav.open(.addDevice()) }
+                note(L10n.homeIosAddComputer())
+                InkButton(L10n.homeAddDevice(), symbol: "plus") { nav.open(.addDevice()) }
                     .padding(.horizontal, DS.Space.page).padding(.top, 4)
             } else {
                 note(access.emptyHint)
             }
         case .account(.noneOnline):
-            note("没有在线的电脑。在电脑上运行 remote-agent daemon。")
+            note(L10n.homeIosNoOnline())
         case .account(.ready(let machine)):
-            note("\(machine) 在线，点右下角的「新任务」开始第一个会话。")
+            note(L10n.homeOnlineNewTask(name: machine))
         case .account(.unlinked):
             // Which computers are online is not known now; the sentence above says why.
             EmptyView()
@@ -297,13 +299,13 @@ private struct HomeScopeSheet: View {
 
     var body: some View {
         if browsing {
-            SheetHead("新项目 · 选目录", onBack: { browsing = false })
+            SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
             ProjectDirPicker(state) { machine, path in
                 onClose()
                 nav.open(.newProjectAt(machine: machine, path: path))
             }
         } else {
-            SheetHead("看哪个项目", action: "取消", onAction: onClose)
+            SheetHead(L10n.homeChooseScope(), action: L10n.commonCancel(), onAction: onClose)
             ProjectList(state, onNew: { browsing = true }) {
                 // 全部项目, when there is more than one project to choose between.
                 if let all = scopeRows(state, current: scope).first(where: { $0.scope == .all }) {
@@ -331,7 +333,7 @@ private struct HomeScopeSheet: View {
                 ProjectRow(state, pr, action: { choose(.of(key: pr.key)) }) { check(current) }
                     .accessibilityAddTraits(current ? .isSelected : [])
             }
-            LinkButton("管理项目", chevron: true) {
+            LinkButton(L10n.homeManageProjects(), chevron: true) {
                 onClose()
                 nav.open(.manageProjects)
             }

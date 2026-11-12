@@ -287,6 +287,277 @@
     }
   },
   {
+    "key": "projects.ios_active_prefix",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个进行中 · "
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} active · ",
+        "other": "{count} active · "
+      }
+    },
+    "notes": "项目页独立活动计数段；尾随空格与分隔符用于并列的独立统计。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_adding",
+    "zh-CN": "正在添加到项目列表…",
+    "en": "Adding to the project list…",
+    "notes": "项目重新添加进度横幅。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_collapsed",
+    "zh-CN": "已收起",
+    "en": "Collapsed",
+    "notes": "项目已结束列表收起状态读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_current_directory",
+    "zh-CN": "当前目录 {path}",
+    "en": "Current folder {path}",
+    "notes": "目录面包屑读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "path": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_ended_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "已结束 {count}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Ended {count}",
+        "other": "Ended {count}"
+      }
+    },
+    "notes": "项目页展开按钮计数。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_expanded",
+    "zh-CN": "已展开",
+    "en": "Expanded",
+    "notes": "项目已结束列表展开状态读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_machine_defaults",
+    "zh-CN": "换机器后，各 CLI 的模型从那台机器的默认设置开始。",
+    "en": "After switching computers, each CLI uses that computer’s default model settings.",
+    "notes": "项目设置机器列表底部说明。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_no_online",
+    "zh-CN": "没有在线的电脑",
+    "en": "No computers online",
+    "notes": "目录浏览无在线电脑提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_no_sessions",
+    "zh-CN": "这个项目还没有会话。",
+    "en": "This project has no sessions yet.",
+    "notes": "项目页空提示；网页首页原句没有句号。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_reading_cli",
+    "zh-CN": "正在读取 {agent} 上次的设置…",
+    "en": "Reading the previous settings for {agent}…",
+    "notes": "项目设置模型尚未继承。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_recent_ended",
+    "zh-CN": "最近结束",
+    "en": "Recently ended",
+    "notes": "项目近期会话分组。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_saving_settings",
+    "zh-CN": "正在保存项目设置…",
+    "en": "Saving project settings…",
+    "notes": "项目设置提交中横幅。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_settings",
+    "zh-CN": "项目设置",
+    "en": "Project settings",
+    "notes": "项目设置标题及读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_settings_failed",
+    "zh-CN": "项目设置没能保存：{reason}",
+    "en": "Could not save project settings: {reason}",
+    "notes": "项目设置保存失败横幅。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_syncing",
+    "zh-CN": "正在同步…",
+    "en": "Syncing…",
+    "notes": "项目行保存偏好中；网页是正在同步项目列表…。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.ios_view_home",
+    "zh-CN": "在主页看这个项目",
+    "en": "View this project on the home page",
+    "notes": "项目管理行读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "projects.live_count",
     "zh-CN": {
       "plural": "count",

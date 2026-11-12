@@ -170,7 +170,7 @@ public func homeList(
     }
     if hidden > 0 { items.append(.moreAttention(hidden)) }
     if !tl.running.isEmpty {
-        items.append(.label(id: "running", title: "进行中", count: nil))
+        items.append(.label(id: "running", title: L10n.homeLive(), count: nil))
         let rows = shown.allRunning || filtering ? tl.running : Array(tl.running.prefix(runningMax))
         items += rows.enumerated().map { .running($1, last: $0 == rows.count - 1) }
         if rows.count < tl.running.count { items.append(.moreRunning(tl.running.count - rows.count)) }
@@ -228,8 +228,8 @@ public struct SessionRowText: Equatable, Sendable {
 
     /// The row as one sentence for VoiceOver: the title first, then its state, what it last said, where it runs and when.
     public var spoken: String {
-        [title, status.text, preview, agent.map { agentName($0) } ?? "", meta.replacingOccurrences(of: " · ", with: "，"), time]
-            .filter { !$0.isEmpty }.joined(separator: "，")
+        [title, status.text, preview, agent.map { agentName($0) } ?? "", meta.replacingOccurrences(of: " · ", with: L10n.commonIosSpokenSeparator()), time]
+            .filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator())
     }
 }
 
@@ -259,7 +259,7 @@ public struct EndedRowText: Equatable, Sendable {
     /// 「blog · 7:50」, or either alone.
     public var right: String { [project, time].filter { !$0.isEmpty }.joined(separator: " · ") }
 
-    public var spoken: String { [title, "已结束", project, time].filter { !$0.isEmpty }.joined(separator: "，") }
+    public var spoken: String { [title, L10n.listStateEnded(), project, time].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator()) }
 }
 
 public func endedRowText(_ s: SessionView, project: Bool, now: Int64, zone: TimeZone = .current) -> EndedRowText {
@@ -284,7 +284,7 @@ public struct PendingRowText: Equatable, Sendable {
         self.summary = summary
     }
 
-    public var spoken: String { [title, kind, summary.replacingOccurrences(of: " · ", with: "，")].filter { !$0.isEmpty }.joined(separator: "，") }
+    public var spoken: String { [title, kind, summary.replacingOccurrences(of: " · ", with: L10n.commonIosSpokenSeparator())].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator()) }
 }
 
 /// `approval` and `question`: the first of each still waiting, from the session's events (`Derived`).
@@ -302,7 +302,7 @@ public func pendingRowText(
         // One line: the row is a summary, the card and the dock show the command whole.
         about = approval.map { approvalBody($0).split(whereSeparator: \.isWhitespace).joined(separator: " ") } ?? ""
     case .question:
-        kind = "\(agentName(s.agent)) 在问你"
+        kind = L10n.listStateAgentAsking(agent: agentName(s.agent))
         about = question ?? ""
     case .popup:
         kind = st.text
@@ -336,7 +336,7 @@ public struct ApprovalCardText: Equatable, Sendable {
         self.place = place
     }
 
-    public var spoken: String { [title, kind, place.replacingOccurrences(of: " · ", with: "，"), time].filter { !$0.isEmpty }.joined(separator: "，") }
+    public var spoken: String { [title, kind, place.replacingOccurrences(of: " · ", with: L10n.commonIosSpokenSeparator()), time].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator()) }
 }
 
 /// `timeoutNote`: the home page's card says what the end of the time does (「，超时拒绝」); a docked one does not.
@@ -348,9 +348,11 @@ public func approvalCardText(
     let left = deadline - now
     let time: String
     if state.unlinked {
-        time = "未连接"
+        time = L10n.listStateUnlinked()
     } else if deadline > 0 {
-        time = "剩 \(minutesLeft(deadlineMs: deadline, now: now)) 分钟" + (timeoutNote && left > 0 ? "，超时拒绝" : "")
+        time = timeoutNote && left > 0
+            ? L10n.homeIosApprovalTimeout(count: Int(minutesLeft(deadlineMs: deadline, now: now)))
+            : L10n.homeIosApprovalRemaining(count: Int(minutesLeft(deadlineMs: deadline, now: now)))
     } else {
         time = ""
     }
@@ -412,18 +414,18 @@ public struct HomeHeadline: Equatable, Sendable {
 public func homeHeadline(_ state: RemoteState, scope: HomeScope) -> HomeHeadline? {
     // Something from before to show under the sentence: what was cached or listed.
     let kept = state.loaded || !state.sessions.isEmpty
-    let before = "下面是上次的内容"
+    let before = L10n.connectionPreviousBelow()
     switch state.link {
     case .noNetwork:
-        return HomeHeadline(kind: .noNetwork, title: "本机网络不通", sub: kept ? before : "联网后才能读取会话")
+        return HomeHeadline(kind: .noNetwork, title: L10n.connectionNoNetwork(), sub: kept ? before : L10n.connectionNetworkRequired())
     case .waiting:
         return state.synced
-            ? HomeHeadline(kind: .reconnecting, title: "正在重连…", sub: kept ? before : "")
-            : HomeHeadline(kind: .connecting, title: "连接中…", sub: kept ? before : "")
+            ? HomeHeadline(kind: .reconnecting, title: L10n.connectionReconnecting(), sub: kept ? before : "")
+            : HomeHeadline(kind: .connecting, title: L10n.connectionConnecting(), sub: kept ? before : "")
     case .noServer:
         return kept
-            ? HomeHeadline(kind: .noServer, title: "连不上服务器", sub: "正在重试，" + before, details: true)
-            : HomeHeadline(kind: .noServer, title: "连不上服务器", sub: state.error.ifEmpty("服务器没有回应"), subError: true, details: true)
+            ? HomeHeadline(kind: .noServer, title: L10n.connectionNoServer(), sub: L10n.connectionRetryingPrevious(), details: true)
+            : HomeHeadline(kind: .noServer, title: L10n.connectionNoServer(), sub: state.error.ifEmpty(L10n.connectionIosNoResponse()), subError: true, details: true)
     case .online:
         break
     }
@@ -440,22 +442,24 @@ public func homeHeadline(_ state: RemoteState, scope: HomeScope) -> HomeHeadline
     }
     if !tl.attention.isEmpty {
         let n = tl.attention.count
-        let parts = [running > 0 ? "\(running) 个会话在运行" : "", idle > 0 ? (running > 0 ? "\(idle) 个空闲" : "\(idle) 个会话空闲") : ""]
-        return HomeHeadline(kind: .waiting(count: n), title: "\(n) 件事等你", sub: parts.filter { !$0.isEmpty }.joined(separator: "，"))
+        let sub = running > 0 && idle > 0
+            ? L10n.homeRunningAndIdle(count: running, idle: idle)
+            : running > 0 ? L10n.homeRunningCount(count: running) : idle > 0 ? L10n.homeIdleCount(count: idle) : ""
+        return HomeHeadline(kind: .waiting(count: n), title: L10n.homeWaitingCount(count: n), sub: sub)
     }
     if running > 0 {
-        return HomeHeadline(kind: .running, title: "\(running) 个会话在运行", sub: idle > 0 ? "另有 \(idle) 个空闲" : "")
+        return HomeHeadline(kind: .running, title: L10n.homeRunningCount(count: running), sub: idle > 0 ? L10n.homeOtherIdle(count: idle) : "")
     }
     if case .of(let key) = scope, tl.total == 0 {
-        return HomeHeadline(kind: .emptyProject, title: "这个项目还没有会话", sub: shortPath(key), subPath: true)
+        return HomeHeadline(kind: .emptyProject, title: L10n.homeProjectNoSessions(), sub: shortPath(key), subPath: true)
     }
     if state.sessions.isEmpty {
         // The listing failed before anything came: that there are none is not known.
         return !state.sessionsListed && !state.sessionsError.isEmpty
-            ? HomeHeadline(kind: .unreadable, title: "暂时读不到会话")
-            : HomeHeadline(kind: .noSessions, title: "还没有会话")
+            ? HomeHeadline(kind: .unreadable, title: L10n.homeSessionsUnavailable())
+            : HomeHeadline(kind: .noSessions, title: L10n.homeNoSessions())
     }
-    return HomeHeadline(kind: .nothingWaits, title: "没有等你的事", sub: idle > 0 ? "\(idle) 个会话空闲" : "")
+    return HomeHeadline(kind: .nothingWaits, title: L10n.homeNothingWaiting(), sub: idle > 0 ? L10n.homeIdleCount(count: idle) : "")
 }
 
 /// The command that answers an approval.

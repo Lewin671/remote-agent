@@ -141,7 +141,7 @@ private struct ApprovalCardBody: View {
         .padding(.top, 12)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([t.title, t.place.replacingOccurrences(of: " · ", with: "，")].joined(separator: "，"))
-        .accessibilityHint("打开会话")
+        .accessibilityHint(L10n.homeIosOpenSession())
         .accessibilityAddTraits(.isButton)
     }
 
@@ -149,14 +149,14 @@ private struct ApprovalCardBody: View {
         let cut = more > 0 && !full
         CommandBlock(approvalBody(approval), lines: denying ? 2 : full ? nil : Self.lines, more: $more, total: $total)
             .padding(.top, 14)
-            .accessibilityLabel("命令：" + approvalBody(approval))
+            .accessibilityLabel(L10n.listStateIosCommandLabel(command: approvalBody(approval)))
         if !denying {
             if cut {
-                Text("还有 \(more) 行没显示").font(.footnote).foregroundStyle(DS.ink2).padding(.top, 8)
+                Text(L10n.markdownIosHiddenLines(count: more)).font(.footnote).foregroundStyle(DS.ink2).padding(.top, 8)
             } else if full && total > Self.lines {
                 HStack(spacing: 4) {
-                    Text("共 \(total) 行").font(.footnote).foregroundStyle(DS.ink2)
-                    LinkButton("收起") { withAnimation(Motion.enter()) { full = false } }.font(.footnote)
+                    Text(L10n.markdownLineCount(count: total)).font(.footnote).foregroundStyle(DS.ink2)
+                    LinkButton(L10n.markdownCollapse()) { withAnimation(Motion.enter()) { full = false } }.font(.footnote)
                 }
                 .padding(.vertical, -8).padding(.top, 8)
             }

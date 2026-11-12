@@ -13,855 +13,1163 @@ public enum L10n {
         // first two locales use English integer plurals or only `other`.
         return String(format: text, locale: Locale(identifier: "en_US_POSIX"), arguments: args)
     }
-    public static func commonAllProjectsAvatar(locale: String = "zh-CN") -> String {
+    public static func commonAllProjectsAvatar(locale: String = MessageLocale.current) -> String {
         let key = "common_all_projects_avatar"
         return format(key, locale: locale, args: [])
     }
-    public static func commonBack(locale: String = "zh-CN") -> String {
+    public static func commonBack(locale: String = MessageLocale.current) -> String {
         let key = "common_back"
         return format(key, locale: locale, args: [])
     }
-    public static func commonCancel(locale: String = "zh-CN") -> String {
+    public static func commonCancel(locale: String = MessageLocale.current) -> String {
         let key = "common_cancel"
         return format(key, locale: locale, args: [])
     }
-    public static func commonClearSearch(locale: String = "zh-CN") -> String {
+    public static func commonClearSearch(locale: String = MessageLocale.current) -> String {
         let key = "common_clear_search"
         return format(key, locale: locale, args: [])
     }
-    public static func commonClose(locale: String = "zh-CN") -> String {
+    public static func commonClose(locale: String = MessageLocale.current) -> String {
         let key = "common_close"
         return format(key, locale: locale, args: [])
     }
-    public static func commonCopied(locale: String = "zh-CN") -> String {
+    public static func commonCopied(locale: String = MessageLocale.current) -> String {
         let key = "common_copied"
         return format(key, locale: locale, args: [])
     }
-    public static func commonCopy(locale: String = "zh-CN") -> String {
+    public static func commonCopy(locale: String = MessageLocale.current) -> String {
         let key = "common_copy"
         return format(key, locale: locale, args: [])
     }
-    public static func commonDetails(locale: String = "zh-CN") -> String {
+    public static func commonDetails(locale: String = MessageLocale.current) -> String {
         let key = "common_details"
         return format(key, locale: locale, args: [])
     }
-    public static func commonDone(locale: String = "zh-CN") -> String {
+    public static func commonDone(locale: String = MessageLocale.current) -> String {
         let key = "common_done"
         return format(key, locale: locale, args: [])
     }
-    public static func commonGotIt(locale: String = "zh-CN") -> String {
+    public static func commonGotIt(locale: String = MessageLocale.current) -> String {
         let key = "common_got_it"
         return format(key, locale: locale, args: [])
     }
-    public static func commonListSeparator(locale: String = "zh-CN") -> String {
+    public static func commonIosAttention(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_attention"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosLoading(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_loading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosMore(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_more"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosOffline(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_offline"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosOnline(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_online"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosSaveFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_save_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func commonIosSaving(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_saving"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosSpokenSeparator(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_spoken_separator"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonListSeparator(locale: String = MessageLocale.current) -> String {
         let key = "common_list_separator"
         return format(key, locale: locale, args: [])
     }
-    public static func commonLoading(locale: String = "zh-CN") -> String {
+    public static func commonLoading(locale: String = MessageLocale.current) -> String {
         let key = "common_loading"
         return format(key, locale: locale, args: [])
     }
-    public static func commonMachine(locale: String = "zh-CN") -> String {
+    public static func commonMachine(locale: String = MessageLocale.current) -> String {
         let key = "common_machine"
         return format(key, locale: locale, args: [])
     }
-    public static func commonReload(locale: String = "zh-CN") -> String {
+    public static func commonReload(locale: String = MessageLocale.current) -> String {
         let key = "common_reload"
         return format(key, locale: locale, args: [])
     }
-    public static func commonRemove(locale: String = "zh-CN") -> String {
+    public static func commonRemove(locale: String = MessageLocale.current) -> String {
         let key = "common_remove"
         return format(key, locale: locale, args: [])
     }
-    public static func commonRetry(locale: String = "zh-CN") -> String {
+    public static func commonRetry(locale: String = MessageLocale.current) -> String {
         let key = "common_retry"
         return format(key, locale: locale, args: [])
     }
-    public static func commonSave(locale: String = "zh-CN") -> String {
+    public static func commonSave(locale: String = MessageLocale.current) -> String {
         let key = "common_save"
         return format(key, locale: locale, args: [])
     }
-    public static func commonSettings(locale: String = "zh-CN") -> String {
+    public static func commonSettings(locale: String = MessageLocale.current) -> String {
         let key = "common_settings"
         return format(key, locale: locale, args: [])
     }
-    public static func commonUnknownComputer(locale: String = "zh-CN") -> String {
+    public static func commonUnknownComputer(locale: String = MessageLocale.current) -> String {
         let key = "common_unknown_computer"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionConnecting(locale: String = "zh-CN") -> String {
+    public static func connectionConnecting(locale: String = MessageLocale.current) -> String {
         let key = "connection_connecting"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionNetworkRequired(locale: String = "zh-CN") -> String {
+    public static func connectionIosDisconnectedAt(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_disconnected_at"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func connectionIosExplanation(locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_explanation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func connectionIosHost(host: String, locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_host"
+        return format(key, locale: locale, args: [host])
+    }
+    public static func connectionIosNoResponse(locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_no_response"
+        return format(key, locale: locale, args: [])
+    }
+    public static func connectionIosReason(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_reason"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func connectionIosRetryNow(locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_retry_now"
+        return format(key, locale: locale, args: [])
+    }
+    public static func connectionIosServerError(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "connection_ios_server_error"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func connectionNetworkRequired(locale: String = MessageLocale.current) -> String {
         let key = "connection_network_required"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionNoNetwork(locale: String = "zh-CN") -> String {
+    public static func connectionNoNetwork(locale: String = MessageLocale.current) -> String {
         let key = "connection_no_network"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionNoNetworkEmpty(locale: String = "zh-CN") -> String {
+    public static func connectionNoNetworkEmpty(locale: String = MessageLocale.current) -> String {
         let key = "connection_no_network_empty"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionNoNetworkPrevious(locale: String = "zh-CN") -> String {
+    public static func connectionNoNetworkPrevious(locale: String = MessageLocale.current) -> String {
         let key = "connection_no_network_previous"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionNoResponse(locale: String = "zh-CN") -> String {
+    public static func connectionNoResponse(locale: String = MessageLocale.current) -> String {
         let key = "connection_no_response"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionNoServer(locale: String = "zh-CN") -> String {
+    public static func connectionNoServer(locale: String = MessageLocale.current) -> String {
         let key = "connection_no_server"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionPreviousBelow(locale: String = "zh-CN") -> String {
+    public static func connectionPreviousBelow(locale: String = MessageLocale.current) -> String {
         let key = "connection_previous_below"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionReconnecting(locale: String = "zh-CN") -> String {
+    public static func connectionReconnecting(locale: String = MessageLocale.current) -> String {
         let key = "connection_reconnecting"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionRetryingPrevious(locale: String = "zh-CN") -> String {
+    public static func connectionRetryingPrevious(locale: String = MessageLocale.current) -> String {
         let key = "connection_retrying_previous"
         return format(key, locale: locale, args: [])
     }
-    public static func connectionServerDetails(reason: String, locale: String = "zh-CN") -> String {
+    public static func connectionServerDetails(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "connection_server_details"
         return format(key, locale: locale, args: [reason])
     }
-    public static func connectionServerRetrying(locale: String = "zh-CN") -> String {
+    public static func connectionServerRetrying(locale: String = MessageLocale.current) -> String {
         let key = "connection_server_retrying"
         return format(key, locale: locale, args: [])
     }
-    public static func homeAddDevice(locale: String = "zh-CN") -> String {
+    public static func homeAddDevice(locale: String = MessageLocale.current) -> String {
         let key = "home_add_device"
         return format(key, locale: locale, args: [])
     }
-    public static func homeAddViaManager(name: String, locale: String = "zh-CN") -> String {
+    public static func homeAddViaManager(name: String, locale: String = MessageLocale.current) -> String {
         let key = "home_add_via_manager"
         return format(key, locale: locale, args: [name])
     }
-    public static func homeAllProjects(locale: String = "zh-CN") -> String {
+    public static func homeAllProjects(locale: String = MessageLocale.current) -> String {
         let key = "home_all_projects"
         return format(key, locale: locale, args: [])
     }
-    public static func homeChooseScope(locale: String = "zh-CN") -> String {
+    public static func homeChooseScope(locale: String = MessageLocale.current) -> String {
         let key = "home_choose_scope"
         return format(key, locale: locale, args: [])
     }
-    public static func homeClearFilter(locale: String = "zh-CN") -> String {
+    public static func homeClearFilter(locale: String = MessageLocale.current) -> String {
         let key = "home_clear_filter"
         return format(key, locale: locale, args: [])
     }
-    public static func homeComputerRunsCli(locale: String = "zh-CN") -> String {
+    public static func homeComputerRunsCli(locale: String = MessageLocale.current) -> String {
         let key = "home_computer_runs_cli"
         return format(key, locale: locale, args: [])
     }
-    public static func homeConnectionCheck(locale: String = "zh-CN") -> String {
+    public static func homeConnectionCheck(locale: String = MessageLocale.current) -> String {
         let key = "home_connection_check"
         return format(key, locale: locale, args: [])
     }
-    public static func homeConnectionLabel(state: String, locale: String = "zh-CN") -> String {
+    public static func homeConnectionLabel(state: String, locale: String = MessageLocale.current) -> String {
         let key = "home_connection_label"
         return format(key, locale: locale, args: [state])
     }
-    public static func homeFilterTitle(locale: String = "zh-CN") -> String {
+    public static func homeFilterTitle(locale: String = MessageLocale.current) -> String {
         let key = "home_filter_title"
         return format(key, locale: locale, args: [])
     }
-    public static func homeForked(locale: String = "zh-CN") -> String {
+    public static func homeForked(locale: String = MessageLocale.current) -> String {
         let key = "home_forked"
         return format(key, locale: locale, args: [])
     }
-    public static func homeIdleCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeIdleCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_idle_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeListFailed(reason: String, locale: String = "zh-CN") -> String {
+    public static func homeIosAddComputer(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_add_computer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosApprovalRemaining(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_approval_remaining"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func homeIosApprovalTimeout(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_approval_timeout"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func homeIosBadgeSessions(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_badge_sessions"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func homeIosBadgeTasks(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_badge_tasks"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func homeIosChangeScope(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_change_scope"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosChooseSession(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_choose_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosChooseTask(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_choose_task"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosEarlierFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_earlier_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func homeIosEarlierOffline(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_earlier_offline"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosListFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_list_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func homeIosNewResults(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_new_results"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosNoOnline(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_no_online"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosOpenSession(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_open_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeIosScopeStart(locale: String = MessageLocale.current) -> String {
+        let key = "home_ios_scope_start"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeListFailed(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "home_list_failed"
         return format(key, locale: locale, args: [reason])
     }
-    public static func homeLive(locale: String = "zh-CN") -> String {
+    public static func homeLive(locale: String = MessageLocale.current) -> String {
         let key = "home_live"
         return format(key, locale: locale, args: [])
     }
-    public static func homeLoadingEarlier(locale: String = "zh-CN") -> String {
+    public static func homeLoadingEarlier(locale: String = MessageLocale.current) -> String {
         let key = "home_loading_earlier"
         return format(key, locale: locale, args: [])
     }
-    public static func homeManageProjects(locale: String = "zh-CN") -> String {
+    public static func homeManageProjects(locale: String = MessageLocale.current) -> String {
         let key = "home_manage_projects"
         return format(key, locale: locale, args: [])
     }
-    public static func homeMatches(count: Int, query: String, locale: String = "zh-CN") -> String {
+    public static func homeMatches(count: Int, query: String, locale: String = MessageLocale.current) -> String {
         let key = "home_matches"
         return format(key, locale: locale, args: [Int64(count), query])
     }
-    public static func homeMatchesLoading(count: Int, query: String, locale: String = "zh-CN") -> String {
+    public static func homeMatchesLoading(count: Int, query: String, locale: String = MessageLocale.current) -> String {
         let key = "home_matches_loading"
         return format(key, locale: locale, args: [Int64(count), query])
     }
-    public static func homeMoreLive(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeMoreLive(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_more_live"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeMoreWaiting(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeMoreWaiting(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_more_waiting"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeNewSchedule(locale: String = "zh-CN") -> String {
+    public static func homeNewSchedule(locale: String = MessageLocale.current) -> String {
         let key = "home_new_schedule"
         return format(key, locale: locale, args: [])
     }
-    public static func homeNewTask(locale: String = "zh-CN") -> String {
+    public static func homeNewTask(locale: String = MessageLocale.current) -> String {
         let key = "home_new_task"
         return format(key, locale: locale, args: [])
     }
-    public static func homeNoMatches(query: String, locale: String = "zh-CN") -> String {
+    public static func homeNoMatches(query: String, locale: String = MessageLocale.current) -> String {
         let key = "home_no_matches"
         return format(key, locale: locale, args: [query])
     }
-    public static func homeNoOnlineComputer(command: String, locale: String = "zh-CN") -> String {
+    public static func homeNoOnlineComputer(command: String, locale: String = MessageLocale.current) -> String {
         let key = "home_no_online_computer"
         return format(key, locale: locale, args: [command])
     }
-    public static func homeNoSessions(locale: String = "zh-CN") -> String {
+    public static func homeNoSessions(locale: String = MessageLocale.current) -> String {
         let key = "home_no_sessions"
         return format(key, locale: locale, args: [])
     }
-    public static func homeNothingWaiting(locale: String = "zh-CN") -> String {
+    public static func homeNothingWaiting(locale: String = MessageLocale.current) -> String {
         let key = "home_nothing_waiting"
         return format(key, locale: locale, args: [])
     }
-    public static func homeOnlineNewTask(name: String, locale: String = "zh-CN") -> String {
+    public static func homeOnlineNewTask(name: String, locale: String = MessageLocale.current) -> String {
         let key = "home_online_new_task"
         return format(key, locale: locale, args: [name])
     }
-    public static func homeOnlineStart(name: String, locale: String = "zh-CN") -> String {
+    public static func homeOnlineStart(name: String, locale: String = MessageLocale.current) -> String {
         let key = "home_online_start"
         return format(key, locale: locale, args: [name])
     }
-    public static func homeOtherIdle(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeOtherIdle(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_other_idle"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homePendingLabel(count: Int, locale: String = "zh-CN") -> String {
+    public static func homePendingLabel(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_pending_label"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeProjectNoSessions(locale: String = "zh-CN") -> String {
+    public static func homeProjectNoSessions(locale: String = MessageLocale.current) -> String {
         let key = "home_project_no_sessions"
         return format(key, locale: locale, args: [])
     }
-    public static func homeRunningAndIdle(count: Int, idle: Int, locale: String = "zh-CN") -> String {
+    public static func homeRunningAndIdle(count: Int, idle: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_running_and_idle"
         return format(key, locale: locale, args: [Int64(count), Int64(idle)])
     }
-    public static func homeRunningCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeRunningCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_running_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeScheduledFrequency(frequency: String, locale: String = "zh-CN") -> String {
+    public static func homeScheduledFrequency(frequency: String, locale: String = MessageLocale.current) -> String {
         let key = "home_scheduled_frequency"
         return format(key, locale: locale, args: [frequency])
     }
-    public static func homeScheduledTasks(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeScheduledTasks(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_scheduled_tasks"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeSchedulesTab(locale: String = "zh-CN") -> String {
+    public static func homeSchedulesTab(locale: String = MessageLocale.current) -> String {
         let key = "home_schedules_tab"
         return format(key, locale: locale, args: [])
     }
-    public static func homeScopeLabel(name: String, locale: String = "zh-CN") -> String {
+    public static func homeScopeLabel(name: String, locale: String = MessageLocale.current) -> String {
         let key = "home_scope_label"
         return format(key, locale: locale, args: [name])
     }
-    public static func homeSessionsOrSchedules(locale: String = "zh-CN") -> String {
+    public static func homeSessionsOrSchedules(locale: String = MessageLocale.current) -> String {
         let key = "home_sessions_or_schedules"
         return format(key, locale: locale, args: [])
     }
-    public static func homeSessionsTab(locale: String = "zh-CN") -> String {
+    public static func homeSessionsTab(locale: String = MessageLocale.current) -> String {
         let key = "home_sessions_tab"
         return format(key, locale: locale, args: [])
     }
-    public static func homeSessionsUnavailable(locale: String = "zh-CN") -> String {
+    public static func homeSessionsUnavailable(locale: String = MessageLocale.current) -> String {
         let key = "home_sessions_unavailable"
         return format(key, locale: locale, args: [])
     }
-    public static func homeStartFirst(locale: String = "zh-CN") -> String {
+    public static func homeStartFirst(locale: String = MessageLocale.current) -> String {
         let key = "home_start_first"
         return format(key, locale: locale, args: [])
     }
-    public static func homeTotal(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeTotal(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_total"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeTotalLoadEarlier(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeTotalLoadEarlier(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_total_load_earlier"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func homeUpdateReady(locale: String = "zh-CN") -> String {
+    public static func homeUpdateReady(locale: String = MessageLocale.current) -> String {
         let key = "home_update_ready"
         return format(key, locale: locale, args: [])
     }
-    public static func homeWaitingCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func homeWaitingCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "home_waiting_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func imageAttachFailed(count: Int, locale: String = "zh-CN") -> String {
+    public static func imageAttachFailed(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "image_attach_failed"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func listStateAgentAsking(agent: String, locale: String = "zh-CN") -> String {
+    public static func listStateAgentAsking(agent: String, locale: String = MessageLocale.current) -> String {
         let key = "list_state_agent_asking"
         return format(key, locale: locale, args: [agent])
     }
-    public static func listStateApproval(locale: String = "zh-CN") -> String {
+    public static func listStateApproval(locale: String = MessageLocale.current) -> String {
         let key = "list_state_approval"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateEnded(locale: String = "zh-CN") -> String {
+    public static func listStateEnded(locale: String = MessageLocale.current) -> String {
         let key = "list_state_ended"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateIdle(locale: String = "zh-CN") -> String {
+    public static func listStateIdle(locale: String = MessageLocale.current) -> String {
         let key = "list_state_idle"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateNoMessage(locale: String = "zh-CN") -> String {
+    public static func listStateIosCommandLabel(command: String, locale: String = MessageLocale.current) -> String {
+        let key = "list_state_ios_command_label"
+        return format(key, locale: locale, args: [command])
+    }
+    public static func listStateIosNewSession(locale: String = MessageLocale.current) -> String {
+        let key = "list_state_ios_new_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func listStateIosRequestCommand(locale: String = MessageLocale.current) -> String {
+        let key = "list_state_ios_request_command"
+        return format(key, locale: locale, args: [])
+    }
+    public static func listStateIosRequestPermission(locale: String = MessageLocale.current) -> String {
+        let key = "list_state_ios_request_permission"
+        return format(key, locale: locale, args: [])
+    }
+    public static func listStateNoMessage(locale: String = MessageLocale.current) -> String {
         let key = "list_state_no_message"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateOffline(locale: String = "zh-CN") -> String {
+    public static func listStateOffline(locale: String = MessageLocale.current) -> String {
         let key = "list_state_offline"
         return format(key, locale: locale, args: [])
     }
-    public static func listStatePlan(locale: String = "zh-CN") -> String {
+    public static func listStatePlan(locale: String = MessageLocale.current) -> String {
         let key = "list_state_plan"
         return format(key, locale: locale, args: [])
     }
-    public static func listStatePopup(locale: String = "zh-CN") -> String {
+    public static func listStatePopup(locale: String = MessageLocale.current) -> String {
         let key = "list_state_popup"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateQuestion(locale: String = "zh-CN") -> String {
+    public static func listStateQuestion(locale: String = MessageLocale.current) -> String {
         let key = "list_state_question"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateRequestCommand(command: String, locale: String = "zh-CN") -> String {
+    public static func listStateRequestCommand(command: String, locale: String = MessageLocale.current) -> String {
         let key = "list_state_request_command"
         return format(key, locale: locale, args: [command])
     }
-    public static func listStateRequestPermission(tool: String, locale: String = "zh-CN") -> String {
+    public static func listStateRequestPermission(tool: String, locale: String = MessageLocale.current) -> String {
         let key = "list_state_request_permission"
         return format(key, locale: locale, args: [tool])
     }
-    public static func listStateRunning(locale: String = "zh-CN") -> String {
+    public static func listStateRunning(locale: String = MessageLocale.current) -> String {
         let key = "list_state_running"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateStarting(locale: String = "zh-CN") -> String {
+    public static func listStateStarting(locale: String = MessageLocale.current) -> String {
         let key = "list_state_starting"
         return format(key, locale: locale, args: [])
     }
-    public static func listStateUnlinked(locale: String = "zh-CN") -> String {
+    public static func listStateUnlinked(locale: String = MessageLocale.current) -> String {
         let key = "list_state_unlinked"
         return format(key, locale: locale, args: [])
     }
-    public static func markdownCollapse(locale: String = "zh-CN") -> String {
+    public static func markdownCollapse(locale: String = MessageLocale.current) -> String {
         let key = "markdown_collapse"
         return format(key, locale: locale, args: [])
     }
-    public static func markdownCopyCode(locale: String = "zh-CN") -> String {
+    public static func markdownCopyCode(locale: String = MessageLocale.current) -> String {
         let key = "markdown_copy_code"
         return format(key, locale: locale, args: [])
     }
-    public static func markdownCopyFailed(locale: String = "zh-CN") -> String {
+    public static func markdownCopyFailed(locale: String = MessageLocale.current) -> String {
         let key = "markdown_copy_failed"
         return format(key, locale: locale, args: [])
     }
-    public static func markdownExpand(locale: String = "zh-CN") -> String {
+    public static func markdownExpand(locale: String = MessageLocale.current) -> String {
         let key = "markdown_expand"
         return format(key, locale: locale, args: [])
     }
-    public static func markdownLineCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func markdownIosHiddenLines(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "markdown_ios_hidden_lines"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func markdownIosTaskDone(locale: String = MessageLocale.current) -> String {
+        let key = "markdown_ios_task_done"
+        return format(key, locale: locale, args: [])
+    }
+    public static func markdownIosTaskTodo(locale: String = MessageLocale.current) -> String {
+        let key = "markdown_ios_task_todo"
+        return format(key, locale: locale, args: [])
+    }
+    public static func markdownLineCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "markdown_line_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func modelsAll(locale: String = "zh-CN") -> String {
+    public static func modelsAll(locale: String = MessageLocale.current) -> String {
         let key = "models_all"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsBack(locale: String = "zh-CN") -> String {
+    public static func modelsBack(locale: String = MessageLocale.current) -> String {
         let key = "models_back"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsContextWindow(locale: String = "zh-CN") -> String {
+    public static func modelsContextWindow(locale: String = MessageLocale.current) -> String {
         let key = "models_context_window"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsDefault(locale: String = "zh-CN") -> String {
+    public static func modelsDefault(locale: String = MessageLocale.current) -> String {
         let key = "models_default"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsDefaultNamed(model: String, locale: String = "zh-CN") -> String {
+    public static func modelsDefaultNamed(model: String, locale: String = MessageLocale.current) -> String {
         let key = "models_default_named"
         return format(key, locale: locale, args: [model])
     }
-    public static func modelsEffort(locale: String = "zh-CN") -> String {
+    public static func modelsEffort(locale: String = MessageLocale.current) -> String {
         let key = "models_effort"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsEffortDefault(locale: String = "zh-CN") -> String {
+    public static func modelsEffortDefault(locale: String = MessageLocale.current) -> String {
         let key = "models_effort_default"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsExtendedWindow(locale: String = "zh-CN") -> String {
+    public static func modelsExtendedWindow(locale: String = MessageLocale.current) -> String {
         let key = "models_extended_window"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsFixedEffort(effort: String, locale: String = "zh-CN") -> String {
+    public static func modelsFixedEffort(effort: String, locale: String = MessageLocale.current) -> String {
         let key = "models_fixed_effort"
         return format(key, locale: locale, args: [effort])
     }
-    public static func modelsLoadFailedDefault(agent: String, locale: String = "zh-CN") -> String {
+    public static func modelsIosChooseHint(locale: String = MessageLocale.current) -> String {
+        let key = "models_ios_choose_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modelsIosLoadFailed(agent: String, reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "models_ios_load_failed"
+        return format(key, locale: locale, args: [agent, reason])
+    }
+    public static func modelsIosPicker(locale: String = MessageLocale.current) -> String {
+        let key = "models_ios_picker"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modelsIosReadingMachine(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "models_ios_reading_machine"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func modelsLoadFailedDefault(agent: String, locale: String = MessageLocale.current) -> String {
         let key = "models_load_failed_default"
         return format(key, locale: locale, args: [agent])
     }
-    public static func modelsStandardOnly(locale: String = "zh-CN") -> String {
+    public static func modelsStandardOnly(locale: String = MessageLocale.current) -> String {
         let key = "models_standard_only"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsStandardWindow(locale: String = "zh-CN") -> String {
+    public static func modelsStandardWindow(locale: String = MessageLocale.current) -> String {
         let key = "models_standard_window"
         return format(key, locale: locale, args: [])
     }
-    public static func modelsSummaryEffortLabel(effort: String, model: String, locale: String = "zh-CN") -> String {
+    public static func modelsSummaryEffortLabel(effort: String, model: String, locale: String = MessageLocale.current) -> String {
         let key = "models_summary_effort_label"
         return format(key, locale: locale, args: [effort, model])
     }
-    public static func modelsSummaryLabel(model: String, locale: String = "zh-CN") -> String {
+    public static func modelsSummaryLabel(model: String, locale: String = MessageLocale.current) -> String {
         let key = "models_summary_label"
         return format(key, locale: locale, args: [model])
     }
-    public static func modelsTitle(locale: String = "zh-CN") -> String {
+    public static func modelsTitle(locale: String = MessageLocale.current) -> String {
         let key = "models_title"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionAbandonStart(locale: String = "zh-CN") -> String {
+    public static func newSessionAbandonStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_abandon_start"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionAccountNoAuto(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionAccountNoAuto(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_account_no_auto"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionAttachmentsMoved(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionAttachmentsMoved(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_attachments_moved"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionChangeDefaults(locale: String = "zh-CN") -> String {
+    public static func newSessionChangeDefaults(locale: String = MessageLocale.current) -> String {
         let key = "new_session_change_defaults"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionChangeMachine(locale: String = "zh-CN") -> String {
+    public static func newSessionChangeMachine(locale: String = MessageLocale.current) -> String {
         let key = "new_session_change_machine"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionChangeModel(locale: String = "zh-CN") -> String {
+    public static func newSessionChangeModel(locale: String = MessageLocale.current) -> String {
         let key = "new_session_change_model"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionChooseCli(locale: String = "zh-CN") -> String {
+    public static func newSessionChooseCli(locale: String = MessageLocale.current) -> String {
         let key = "new_session_choose_cli"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionCliFallback(agent: String, missing: String, name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionCliFallback(agent: String, missing: String, name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_cli_fallback"
         return format(key, locale: locale, args: [agent, missing, name])
     }
-    public static func newSessionCliLabel(agent: String, locale: String = "zh-CN") -> String {
+    public static func newSessionCliLabel(agent: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_cli_label"
         return format(key, locale: locale, args: [agent])
     }
-    public static func newSessionCliPickerLabel(locale: String = "zh-CN") -> String {
+    public static func newSessionCliPickerLabel(locale: String = MessageLocale.current) -> String {
         let key = "new_session_cli_picker_label"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionConfigFallback(locale: String = "zh-CN") -> String {
+    public static func newSessionConfigFallback(locale: String = MessageLocale.current) -> String {
         let key = "new_session_config_fallback"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionDefaultModel(locale: String = "zh-CN") -> String {
+    public static func newSessionDefaultModel(locale: String = MessageLocale.current) -> String {
         let key = "new_session_default_model"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionDisconnected(locale: String = "zh-CN") -> String {
+    public static func newSessionDisconnected(locale: String = MessageLocale.current) -> String {
         let key = "new_session_disconnected"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionExpiredStart(locale: String = "zh-CN") -> String {
+    public static func newSessionExpiredStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_expired_start"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionFirstMessage(locale: String = "zh-CN") -> String {
+    public static func newSessionFirstMessage(locale: String = MessageLocale.current) -> String {
         let key = "new_session_first_message"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionFollowCli(locale: String = "zh-CN") -> String {
+    public static func newSessionFollowCli(locale: String = MessageLocale.current) -> String {
         let key = "new_session_follow_cli"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionInstalled(agents: String, locale: String = "zh-CN") -> String {
+    public static func newSessionInstalled(agents: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_installed"
         return format(key, locale: locale, args: [agents])
     }
-    public static func newSessionInstalledFallback(agent: String, agents: String, missing: String, locale: String = "zh-CN") -> String {
+    public static func newSessionInstalledFallback(agent: String, agents: String, missing: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_installed_fallback"
         return format(key, locale: locale, args: [agent, agents, missing])
     }
-    public static func newSessionLocation(project: String, locale: String = "zh-CN") -> String {
+    public static func newSessionIosAbandon(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_abandon"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosAttach(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_attach"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosChangeComputer(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_change_computer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosChangeProject(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_change_project"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosChooseProject(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_choose_project"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosCliLabel(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_cli_label"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosComputerLabel(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_computer_label"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func newSessionIosDescribe(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_describe"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosDraftKept(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_draft_kept"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosExpiredStart(prompt: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_expired_start"
+        return format(key, locale: locale, args: [prompt])
+    }
+    public static func newSessionIosMachineUnavailable(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_machine_unavailable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosOfflineDraft(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_offline_draft"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func newSessionIosOfflineNoStart(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_offline_no_start"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func newSessionIosOtherOffline(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_other_offline"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func newSessionIosPromptLabel(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_prompt_label"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosSettingsLabel(summary: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_settings_label"
+        return format(key, locale: locale, args: [summary])
+    }
+    public static func newSessionIosStart(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_start"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosUnknownStart(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_unknown_start"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosWhere(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_where"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionLocation(project: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_location"
         return format(key, locale: locale, args: [project])
     }
-    public static func newSessionLocationCli(cli: String, project: String, locale: String = "zh-CN") -> String {
+    public static func newSessionLocationCli(cli: String, project: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_location_cli"
         return format(key, locale: locale, args: [cli, project])
     }
-    public static func newSessionLocationMachine(machine: String, project: String, locale: String = "zh-CN") -> String {
+    public static func newSessionLocationMachine(machine: String, project: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_location_machine"
         return format(key, locale: locale, args: [machine, project])
     }
-    public static func newSessionLocationMachineCli(cli: String, machine: String, project: String, locale: String = "zh-CN") -> String {
+    public static func newSessionLocationMachineCli(cli: String, machine: String, project: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_location_machine_cli"
         return format(key, locale: locale, args: [cli, machine, project])
     }
-    public static func newSessionMachineLabel(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionMachineLabel(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_machine_label"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionMachineOffline(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionMachineOffline(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_machine_offline"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionModelNoAuto(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionModelNoAuto(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_model_no_auto"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionOfflineLastSeen(time: String, locale: String = "zh-CN") -> String {
+    public static func newSessionOfflineLastSeen(time: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_offline_last_seen"
         return format(key, locale: locale, args: [time])
     }
-    public static func newSessionOfflineNoStart(locale: String = "zh-CN") -> String {
+    public static func newSessionOfflineNoStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_offline_no_start"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionOfflineWithDraft(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionOfflineWithDraft(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_offline_with_draft"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionProjectLabel(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionProjectLabel(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_project_label"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionProjectSessionLabel(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionProjectSessionLabel(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_project_session_label"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionPrompt(locale: String = "zh-CN") -> String {
+    public static func newSessionPrompt(locale: String = MessageLocale.current) -> String {
         let key = "new_session_prompt"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionReadingModels(locale: String = "zh-CN") -> String {
+    public static func newSessionReadingModels(locale: String = MessageLocale.current) -> String {
         let key = "new_session_reading_models"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionReadingPrevious(locale: String = "zh-CN") -> String {
+    public static func newSessionReadingPrevious(locale: String = MessageLocale.current) -> String {
         let key = "new_session_reading_previous"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionReadingSettings(locale: String = "zh-CN") -> String {
+    public static func newSessionReadingSettings(locale: String = MessageLocale.current) -> String {
         let key = "new_session_reading_settings"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionRemovedBlocked(locale: String = "zh-CN") -> String {
+    public static func newSessionRemovedBlocked(locale: String = MessageLocale.current) -> String {
         let key = "new_session_removed_blocked"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionRetrySave(locale: String = "zh-CN") -> String {
+    public static func newSessionRetrySave(locale: String = MessageLocale.current) -> String {
         let key = "new_session_retry_save"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionSaveFailed(locale: String = "zh-CN") -> String {
+    public static func newSessionSaveFailed(locale: String = MessageLocale.current) -> String {
         let key = "new_session_save_failed"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionStart(locale: String = "zh-CN") -> String {
+    public static func newSessionStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_start"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionStartFailed(reason: String, locale: String = "zh-CN") -> String {
+    public static func newSessionStartFailed(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_start_failed"
         return format(key, locale: locale, args: [reason])
     }
-    public static func newSessionStartShortcut(keys: String, locale: String = "zh-CN") -> String {
+    public static func newSessionStartShortcut(keys: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_start_shortcut"
         return format(key, locale: locale, args: [keys])
     }
-    public static func newSessionStartUnknown(reason: String, locale: String = "zh-CN") -> String {
+    public static func newSessionStartUnknown(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_start_unknown"
         return format(key, locale: locale, args: [reason])
     }
-    public static func newSessionStartingOn(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionStartingOn(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_starting_on"
         return format(key, locale: locale, args: [name])
     }
-    public static func newSessionUnconfirmedStart(locale: String = "zh-CN") -> String {
+    public static func newSessionUnconfirmedStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_unconfirmed_start"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionUnexpectedReply(locale: String = "zh-CN") -> String {
+    public static func newSessionUnexpectedReply(locale: String = MessageLocale.current) -> String {
         let key = "new_session_unexpected_reply"
         return format(key, locale: locale, args: [])
     }
-    public static func newSessionUseMachine(name: String, locale: String = "zh-CN") -> String {
+    public static func newSessionUseMachine(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_use_machine"
         return format(key, locale: locale, args: [name])
     }
-    public static func projectsAddAgain(locale: String = "zh-CN") -> String {
+    public static func projectsAddAgain(locale: String = MessageLocale.current) -> String {
         let key = "projects_add_again"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsAdding(locale: String = "zh-CN") -> String {
+    public static func projectsAdding(locale: String = MessageLocale.current) -> String {
         let key = "projects_adding"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsChangedElsewhere(locale: String = "zh-CN") -> String {
+    public static func projectsChangedElsewhere(locale: String = MessageLocale.current) -> String {
         let key = "projects_changed_elsewhere"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsChoose(locale: String = "zh-CN") -> String {
+    public static func projectsChoose(locale: String = MessageLocale.current) -> String {
         let key = "projects_choose"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsChooseDirectory(locale: String = "zh-CN") -> String {
+    public static func projectsChooseDirectory(locale: String = MessageLocale.current) -> String {
         let key = "projects_choose_directory"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsComputerOffline(locale: String = "zh-CN") -> String {
+    public static func projectsComputerOffline(locale: String = MessageLocale.current) -> String {
         let key = "projects_computer_offline"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsConnectToEdit(locale: String = "zh-CN") -> String {
+    public static func projectsConnectToEdit(locale: String = MessageLocale.current) -> String {
         let key = "projects_connect_to_edit"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func projectsCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "projects_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func projectsDirectoryFailed(reason: String, locale: String = "zh-CN") -> String {
+    public static func projectsDirectoryFailed(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_directory_failed"
         return format(key, locale: locale, args: [reason])
     }
-    public static func projectsLiveCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func projectsIosActivePrefix(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_active_prefix"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func projectsIosAdding(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_adding"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosCollapsed(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_collapsed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosCurrentDirectory(path: String, locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_current_directory"
+        return format(key, locale: locale, args: [path])
+    }
+    public static func projectsIosEndedCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_ended_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func projectsIosExpanded(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_expanded"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosMachineDefaults(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_machine_defaults"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosNoOnline(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_no_online"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosNoSessions(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_no_sessions"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosReadingCli(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_reading_cli"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func projectsIosRecentEnded(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_recent_ended"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosSavingSettings(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_saving_settings"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosSettings(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_settings"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosSettingsFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_settings_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func projectsIosSyncing(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_syncing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsIosViewHome(locale: String = MessageLocale.current) -> String {
+        let key = "projects_ios_view_home"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsLiveCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "projects_live_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func projectsLoadFailed(locale: String = "zh-CN") -> String {
+    public static func projectsLoadFailed(locale: String = MessageLocale.current) -> String {
         let key = "projects_load_failed"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsLoading(locale: String = "zh-CN") -> String {
+    public static func projectsLoading(locale: String = MessageLocale.current) -> String {
         let key = "projects_loading"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsManage(locale: String = "zh-CN") -> String {
+    public static func projectsManage(locale: String = MessageLocale.current) -> String {
         let key = "projects_manage"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsManageNamed(name: String, locale: String = "zh-CN") -> String {
+    public static func projectsManageNamed(name: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_manage_named"
         return format(key, locale: locale, args: [name])
     }
-    public static func projectsNew(locale: String = "zh-CN") -> String {
+    public static func projectsNew(locale: String = MessageLocale.current) -> String {
         let key = "projects_new"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsNewChooseDirectory(locale: String = "zh-CN") -> String {
+    public static func projectsNewChooseDirectory(locale: String = MessageLocale.current) -> String {
         let key = "projects_new_choose_directory"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsNoOnlineComputers(locale: String = "zh-CN") -> String {
+    public static func projectsNoOnlineComputers(locale: String = MessageLocale.current) -> String {
         let key = "projects_no_online_computers"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsNoSubdirectories(locale: String = "zh-CN") -> String {
+    public static func projectsNoSubdirectories(locale: String = MessageLocale.current) -> String {
         let key = "projects_no_subdirectories"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsOthers(locale: String = "zh-CN") -> String {
+    public static func projectsOthers(locale: String = MessageLocale.current) -> String {
         let key = "projects_others"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsParentDirectory(locale: String = "zh-CN") -> String {
+    public static func projectsParentDirectory(locale: String = MessageLocale.current) -> String {
         let key = "projects_parent_directory"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsPendingAndLive(count: Int, live: Int, locale: String = "zh-CN") -> String {
+    public static func projectsPendingAndLive(count: Int, live: Int, locale: String = MessageLocale.current) -> String {
         let key = "projects_pending_and_live"
         return format(key, locale: locale, args: [Int64(count), Int64(live)])
     }
-    public static func projectsPendingCount(count: Int, locale: String = "zh-CN") -> String {
+    public static func projectsPendingCount(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "projects_pending_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func projectsPin(locale: String = "zh-CN") -> String {
+    public static func projectsPin(locale: String = MessageLocale.current) -> String {
         let key = "projects_pin"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsPinned(locale: String = "zh-CN") -> String {
+    public static func projectsPinned(locale: String = MessageLocale.current) -> String {
         let key = "projects_pinned"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsReadingDirectory(locale: String = "zh-CN") -> String {
+    public static func projectsReadingDirectory(locale: String = MessageLocale.current) -> String {
         let key = "projects_reading_directory"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsRemoveAction(locale: String = "zh-CN") -> String {
+    public static func projectsRemoveAction(locale: String = MessageLocale.current) -> String {
         let key = "projects_remove_action"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsRemoveExplanation(locale: String = "zh-CN") -> String {
+    public static func projectsRemoveExplanation(locale: String = MessageLocale.current) -> String {
         let key = "projects_remove_explanation"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsRemoveNote(locale: String = "zh-CN") -> String {
+    public static func projectsRemoveNote(locale: String = MessageLocale.current) -> String {
         let key = "projects_remove_note"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsRemoveTitle(name: String, locale: String = "zh-CN") -> String {
+    public static func projectsRemoveTitle(name: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_remove_title"
         return format(key, locale: locale, args: [name])
     }
-    public static func projectsRemoved(locale: String = "zh-CN") -> String {
+    public static func projectsRemoved(locale: String = MessageLocale.current) -> String {
         let key = "projects_removed"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsSaveFailed(reason: String, locale: String = "zh-CN") -> String {
+    public static func projectsSaveFailed(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_save_failed"
         return format(key, locale: locale, args: [reason])
     }
-    public static func projectsSearch(locale: String = "zh-CN") -> String {
+    public static func projectsSearch(locale: String = MessageLocale.current) -> String {
         let key = "projects_search"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsSearchEmpty(query: String, locale: String = "zh-CN") -> String {
+    public static func projectsSearchEmpty(query: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_search_empty"
         return format(key, locale: locale, args: [query])
     }
-    public static func projectsSyncing(locale: String = "zh-CN") -> String {
+    public static func projectsSyncing(locale: String = MessageLocale.current) -> String {
         let key = "projects_syncing"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsUnknown(locale: String = "zh-CN") -> String {
+    public static func projectsUnknown(locale: String = MessageLocale.current) -> String {
         let key = "projects_unknown"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsUnpin(locale: String = "zh-CN") -> String {
+    public static func projectsUnpin(locale: String = MessageLocale.current) -> String {
         let key = "projects_unpin"
         return format(key, locale: locale, args: [])
     }
-    public static func projectsUseDirectory(name: String, locale: String = "zh-CN") -> String {
+    public static func projectsUseDirectory(name: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_use_directory"
         return format(key, locale: locale, args: [name])
     }
-    public static func projectsViewSessions(name: String, locale: String = "zh-CN") -> String {
+    public static func projectsViewSessions(name: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_view_sessions"
         return format(key, locale: locale, args: [name])
     }
-    public static func quotaExhausted(name: String, window: String, locale: String = "zh-CN") -> String {
+    public static func quotaExhausted(name: String, window: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_exhausted"
         return format(key, locale: locale, args: [name, window])
     }
-    public static func quotaFailure(detail: String, name: String, locale: String = "zh-CN") -> String {
+    public static func quotaFailure(detail: String, name: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_failure"
         return format(key, locale: locale, args: [detail, name])
     }
-    public static func quotaFailureNoReason(name: String, locale: String = "zh-CN") -> String {
+    public static func quotaFailureNoReason(name: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_failure_no_reason"
         return format(key, locale: locale, args: [name])
     }
-    public static func quotaOldHours(count: Int, locale: String = "zh-CN") -> String {
+    public static func quotaOldHours(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "quota_old_hours"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func quotaOldMinutes(count: Int, locale: String = "zh-CN") -> String {
+    public static func quotaOldMinutes(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "quota_old_minutes"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func quotaReceived(time: String, locale: String = "zh-CN") -> String {
+    public static func quotaReceived(time: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_received"
         return format(key, locale: locale, args: [time])
     }
-    public static func quotaReceivedDate(day: Int, month: Int, time: String, locale: String = "zh-CN") -> String {
+    public static func quotaReceivedDate(day: Int, month: Int, time: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_received_date"
         return format(key, locale: locale, args: [Int64(day), Int64(month), time])
     }
-    public static func quotaReceivedSuccess(time: String, locale: String = "zh-CN") -> String {
+    public static func quotaReceivedSuccess(time: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_received_success"
         return format(key, locale: locale, args: [time])
     }
-    public static func quotaReceivedSuccessDate(day: Int, month: Int, time: String, locale: String = "zh-CN") -> String {
+    public static func quotaReceivedSuccessDate(day: Int, month: Int, time: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_received_success_date"
         return format(key, locale: locale, args: [Int64(day), Int64(month), time])
     }
-    public static func quotaUnknownTime(locale: String = "zh-CN") -> String {
+    public static func quotaUnknownTime(locale: String = MessageLocale.current) -> String {
         let key = "quota_unknown_time"
         return format(key, locale: locale, args: [])
     }
-    public static func quotaWaiting(name: String, locale: String = "zh-CN") -> String {
+    public static func quotaWaiting(name: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_waiting"
         return format(key, locale: locale, args: [name])
     }
-    public static func quotaWarning(name: String, window: String, locale: String = "zh-CN") -> String {
+    public static func quotaWarning(name: String, window: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_warning"
         return format(key, locale: locale, args: [name, window])
     }
-    public static func timeHoursAgo(count: Int, locale: String = "zh-CN") -> String {
+    public static func timeHoursAgo(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_hours_ago"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func timeJustNow(locale: String = "zh-CN") -> String {
+    public static func timeIosDateTime(day: Int, month: Int, time: String, locale: String = MessageLocale.current) -> String {
+        let key = "time_ios_date_time"
+        return format(key, locale: locale, args: [Int64(day), Int64(month), time])
+    }
+    public static func timeJustNow(locale: String = MessageLocale.current) -> String {
         let key = "time_just_now"
         return format(key, locale: locale, args: [])
     }
-    public static func timeLastWeek(locale: String = "zh-CN") -> String {
+    public static func timeLastWeek(locale: String = MessageLocale.current) -> String {
         let key = "time_last_week"
         return format(key, locale: locale, args: [])
     }
-    public static func timeMinutesAgo(count: Int, locale: String = "zh-CN") -> String {
+    public static func timeMinutesAgo(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_minutes_ago"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func timeMonthDay(day: Int, month: Int, locale: String = "zh-CN") -> String {
+    public static func timeMonthDay(day: Int, month: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_month_day"
         return format(key, locale: locale, args: [Int64(day), Int64(month)])
     }
-    public static func timeMonthGroup(month: Int, locale: String = "zh-CN") -> String {
+    public static func timeMonthGroup(month: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_month_group"
         return format(key, locale: locale, args: [Int64(month)])
     }
-    public static func timeToday(locale: String = "zh-CN") -> String {
+    public static func timeToday(locale: String = MessageLocale.current) -> String {
         let key = "time_today"
         return format(key, locale: locale, args: [])
     }
-    public static func timeWeekday(day: String, locale: String = "zh-CN") -> String {
+    public static func timeWeekday(day: String, locale: String = MessageLocale.current) -> String {
         let key: String
         switch day {
         case "fri": key = "time_weekday_fri"
@@ -875,17 +1183,32 @@ public enum L10n {
         }
         return format(key, locale: locale, args: [day])
     }
-    public static func timeYearMonthGroup(month: Int, year: Int, locale: String = "zh-CN") -> String {
+    public static func timeYearMonthGroup(month: Int, year: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_year_month_group"
         return format(key, locale: locale, args: [Int64(month), Int64(year)])
     }
-    public static func timeYesterday(locale: String = "zh-CN") -> String {
+    public static func timeYesterday(locale: String = MessageLocale.current) -> String {
         let key = "time_yesterday"
         return format(key, locale: locale, args: [])
     }
 }
 
 public enum MessageLocale {
+    /// Batch extraction keeps production Chinese. Tests may scope a locale;
+    /// sample-data launches can opt in without changing saved preferences.
+    @TaskLocal public static var overrideForTesting: String?
+    public static var current: String {
+        if let overrideForTesting { return resolve(overrideForTesting, system: []) }
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if (args.contains("-demo") || args.contains("-gallery")),
+           let index = args.firstIndex(of: "-messageLocale"), index + 1 < args.count {
+            return resolve(args[index + 1], system: [])
+        }
+        #endif
+        return "zh-CN"
+    }
+
     public static let appleTags: [String: String] = ["zh-CN": "zh-Hans", "en": "en"]
     private static let languages: [String: String] = ["zh": "zh-CN", "en": "en"]
     public static func resolve(_ preference: String = "auto", system: [String] = Locale.preferredLanguages) -> String {

@@ -42,7 +42,7 @@ struct HomeSessionRow: View {
     private func sessionMeta(_ base: String) -> String {
         let schedules = sessionSchedules(context.schedules.tasks, session: session)
         guard let first = schedules.first else { return base }
-        let note = schedules.count == 1 ? "定时 " + scheduleFrequency(first.task.spec.trigger) : "定时 \(schedules.count) 个任务"
+        let note = schedules.count == 1 ? L10n.homeScheduledFrequency(frequency: scheduleFrequency(first.task.spec.trigger)) : L10n.homeScheduledTasks(count: schedules.count)
         return [base, note].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

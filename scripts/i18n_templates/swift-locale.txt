@@ -1,5 +1,20 @@
 
 public enum MessageLocale {
+    /// Batch extraction keeps production Chinese. Tests may scope a locale;
+    /// sample-data launches can opt in without changing saved preferences.
+    @TaskLocal public static var overrideForTesting: String?
+    public static var current: String {
+        if let overrideForTesting { return resolve(overrideForTesting, system: []) }
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if (args.contains("-demo") || args.contains("-gallery")),
+           let index = args.firstIndex(of: "-messageLocale"), index + 1 < args.count {
+            return resolve(args[index + 1], system: [])
+        }
+        #endif
+        return "zh-CN"
+    }
+
     public static let appleTags: [String: String] = [APPLE_TAGS]
     private static let languages: [String: String] = [LANGUAGE_MAP]
     public static func resolve(_ preference: String = "auto", system: [String] = Locale.preferredLanguages) -> String {

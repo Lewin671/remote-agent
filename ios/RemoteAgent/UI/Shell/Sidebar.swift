@@ -1,3 +1,4 @@
+import RACore
 // The wide window's sidebar (design-system §6 「宽屏」): the first-level
 // page drawn on the grey window, 新任务 or 新定时 as a small ink button at
 // its top, and at its bottom 会话 / 定时 as a segmented control beside the
@@ -23,7 +24,7 @@ struct SidebarCreateButton: View {
 
     var body: some View {
         Button(action: create.action) {
-            Label(schedules ? "新定时" : "新任务", systemImage: schedules ? "plus" : "square.and.pencil")
+            Label(schedules ? L10n.homeNewSchedule() : L10n.homeNewTask(), systemImage: schedules ? "plus" : "square.and.pencil")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(DS.btnFg)
                 .padding(.horizontal, 14)
@@ -46,14 +47,14 @@ struct SidebarFooter: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            GlassSegmented(items: ["会话", "定时"], selected: Binding(get: { tab == .home ? 0 : 1 }, set: { i in
+            GlassSegmented(items: [L10n.homeSessionsTab(), L10n.homeSchedulesTab()], selected: Binding(get: { tab == .home ? 0 : 1 }, set: { i in
                 let next: MainTab = i == 0 ? .home : .schedules
                 guard next != tab else { return }
                 tab = next
                 nav.path.removeAll()
             }))
             Spacer(minLength: 0)
-            GlassIconButton("gearshape", label: "设置") { nav.open(.settings) }
+            GlassIconButton("gearshape", label: L10n.commonSettings()) { nav.open(.settings) }
         }
         .padding(.horizontal, DS.Space.card).padding(.top, 4).padding(.bottom, 8)
     }
@@ -64,7 +65,7 @@ struct WideEmpty: View {
     let tab: MainTab
 
     var body: some View {
-        Text(tab == .schedules ? "选一个任务查看结果" : "选一个会话")
+        Text(tab == .schedules ? L10n.homeIosChooseTask() : L10n.homeIosChooseSession())
             .font(.subheadline).foregroundStyle(DS.ink2)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(DS.paper.ignoresSafeArea())

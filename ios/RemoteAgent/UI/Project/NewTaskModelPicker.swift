@@ -98,12 +98,12 @@ struct NewTaskModelPanel: View {
                     HStack {
                         if picker.allModels {
                             Button { picker.allModels = false } label: {
-                                Label("全部模型", systemImage: "chevron.left").font(.headline)
+                                Label(L10n.modelsAll(), systemImage: "chevron.left").font(.headline)
                             }
                             .buttonStyle(.plain).tint(DS.blue)
                             .accessibilityIdentifier("new-model-back")
                         } else {
-                            Text("模型").font(.headline).ink(DS.ink)
+                            Text(L10n.modelsTitle()).font(.headline).ink(DS.ink)
                         }
                         Spacer()
                         Button(L10n.commonDone(), action: onClose).tint(DS.blue)
@@ -112,7 +112,7 @@ struct NewTaskModelPanel: View {
                     .frame(minHeight: 44)
                     .accessibilityFocused($announced)
                     if let blocked { Banner(blocked).padding(.bottom, 8) }
-                    if !settled { Hint("正在读取这个项目上次的设置…") }
+                    if !settled { Hint(L10n.newSessionReadingPrevious()) }
                 }
                 if let ms = models.list {
                     let selected = projectModel(c, models: ms, settings: picker.settings(for: c))
@@ -147,8 +147,8 @@ struct NewTaskModelPanel: View {
                     .accessibilityIdentifier("new-model-list")
                 } else {
                     Group {
-                        if !error.isEmpty { Banner("没能读取模型列表，会用 \(agentName(c.agent)) 自己的默认模型：\(error)", tone: .warn) }
-                        else { LoadingRow("读取 \(machineLabel(model.state, id: c.machineId)) 的设置…", inset: 0) }
+                        if !error.isEmpty { Banner(L10n.modelsIosLoadFailed(agent: agentName(c.agent), reason: error), tone: .warn) }
+                        else { LoadingRow(L10n.modelsIosReadingMachine(name: machineLabel(model.state, id: c.machineId)), inset: 0) }
                     }.frame(height: 120, alignment: .top)
                 }
             }
@@ -158,7 +158,7 @@ struct NewTaskModelPanel: View {
             .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(DS.rim, lineWidth: 0.5) }
             .floatShadow()
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("模型选择")
+            .accessibilityLabel(L10n.modelsIosPicker())
             .accessibilityIdentifier("new-model-popover")
             .accessibilityAction(.escape, onClose)
             .onAppear { announced = true }
@@ -184,7 +184,7 @@ struct NewTaskModelPanel: View {
             let defaultID = defaultModelName(c, models: ms, settings: picker.settings(for: c))
             let standing = findModel(ms.models, id: defaultID) { $0.slug }
             let name = standing.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? defaultID
-            row("默认" + (name.isEmpty ? "" : "（\(name)）"), checked: c.model.isEmpty) { pick("", ms) }
+            row((name.isEmpty ? L10n.modelsDefault() : L10n.modelsDefaultNamed(model: name)), checked: c.model.isEmpty) { pick("", ms) }
             ForEach(shown, id: \.slug) { m in
                 row(m.displayName.isEmpty ? m.slug : m.displayName,
                     checked: !c.model.isEmpty && selected?.slug == m.slug) { pick(m.slug, ms) }
@@ -192,7 +192,7 @@ struct NewTaskModelPanel: View {
             if more {
                 Button { picker.allModels = true } label: {
                     HStack {
-                        Text("全部模型")
+                        Text(L10n.modelsAll())
                         Spacer()
                         Image(systemName: "chevron.right")
                     }.foregroundStyle(DS.ink2).frame(height: 44).contentShape(Rectangle())
@@ -208,9 +208,9 @@ struct NewTaskModelPanel: View {
         VStack(alignment: .leading, spacing: 4) {
             if let effort = effortChoices(c, models: ms, settings: picker.settings(for: c)) {
                 if effort.efforts.count == 1 {
-                    Text("推理强度固定为 \(effort.efforts[0])").font(.footnote).ink(DS.ink2).padding(.vertical, 4)
+                    Text(L10n.modelsFixedEffort(effort: effort.efforts[0])).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
                 } else {
-                    Text("推理强度").font(.caption).ink(DS.ink2)
+                    Text(L10n.modelsEffort()).font(.caption).ink(DS.ink2)
                     NewTaskModelSegments(items: effort.efforts, selected: effort.selected) {
                         var next = c; next.effort = $0; picker.edited = next
                     }
@@ -221,8 +221,8 @@ struct NewTaskModelPanel: View {
                 if window.fixed {
                     Text(window.text).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
                 } else {
-                    Text("上下文窗口").font(.caption).ink(DS.ink2)
-                    NewTaskModelSegments(items: ["extended", "standard"], selected: c.standardContext ? "standard" : "extended", label: { $0 == "standard" ? "标准 200k" : "1M" }) {
+                    Text(L10n.modelsContextWindow()).font(.caption).ink(DS.ink2)
+                    NewTaskModelSegments(items: ["extended", "standard"], selected: c.standardContext ? "standard" : "extended", label: { $0 == "standard" ? L10n.modelsStandardWindow() : L10n.modelsExtendedWindow() }) {
                         var next = c; next.standardContext = $0 == "standard"; picker.edited = next
                     }
                 }
@@ -296,13 +296,13 @@ struct NewTaskModelSummary: Equatable {
     var model: String
     var effort = ""
     var prefix = ""
-    var accessibilityLabel: String { "模型：" + model + (effort.isEmpty ? "" : "，推理强度：" + effort) }
+    var accessibilityLabel: String { effort.isEmpty ? L10n.modelsSummaryLabel(model: model) : L10n.modelsSummaryEffortLabel(effort: effort, model: model) }
 }
 
 func newTaskModelSummary(_ c: NewConfig, models: PBListModelsResponse?, settings: PBDaemonSettings?, singleAgent: Bool) -> NewTaskModelSummary {
     let m = models.flatMap { projectModel(c, models: $0, settings: settings) }
     let id = c.model.isEmpty ? (defaultsFor(settings, agent: c.agent).model.isEmpty ? models?.defaultModel ?? "" : defaultsFor(settings, agent: c.agent).model) : c.model
-    let name = m.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? (id.isEmpty ? (models == nil ? "读取设置…" : "默认模型") : id)
+    let name = m.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? (id.isEmpty ? (models == nil ? L10n.newSessionReadingSettings() : L10n.newSessionDefaultModel()) : id)
     let effort = models.flatMap { effortChoices(c, models: $0, settings: settings) }
     return NewTaskModelSummary(model: name, effort: (effort?.efforts.count ?? 0) > 1 ? effort?.selected ?? "" : "",
                                prefix: singleAgent ? agentName(c.agent) + " · " : "")

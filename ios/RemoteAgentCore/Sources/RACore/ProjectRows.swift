@@ -41,7 +41,7 @@ public func projectListing(_ state: RemoteState, search: String = "") -> Project
     return ProjectListing(
         pinned: pinned, others: others, titled: !pinned.isEmpty && !others.isEmpty,
         searchable: g.pinned.count + g.others.count > filterOver, searching: !q.isEmpty,
-        noMatch: !q.isEmpty && pinned.isEmpty && others.isEmpty ? "没有名字或路径里有「\(q)」的项目" : nil)
+        noMatch: !q.isEmpty && pinned.isEmpty && others.isEmpty ? L10n.projectsSearchEmpty(query: q) : nil)
 }
 
 /// What choosing the folder at `path` on `machine` as a project writes
@@ -227,14 +227,14 @@ public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [OfflineMach
     projectMachines(state, key: c.cwd).filter { $0 != c.machineId && state.machines[$0]?.online == true }.map { id in
         let m = state.machines[id]
         let agents = machineAgents(m)
-        let installed = agents.map(agentName).joined(separator: "、")
+        let installed = agents.map(agentName).joined(separator: L10n.commonListSeparator())
         let has = agents.contains(c.agent)
         let fallback = switchMachine(c, machineId: id, agents: agents).agent
         let note = has
-            ? "已装 \(installed)"
-            : "已装 \(installed)；这台机器没有 \(agentName(c.agent))，会改用 \(agentName(fallback))"
+            ? L10n.newSessionInstalled(agents: installed)
+            : L10n.newSessionInstalledFallback(agent: agentName(fallback), agents: installed, missing: agentName(c.agent))
         return OfflineMachineChoice(
-            id: id, title: "改用 \(machineLabel(state, id: id))", note: note, config: switchMachine(c, machineId: id, agents: agents))
+            id: id, title: L10n.newSessionUseMachine(name: machineLabel(state, id: id)), note: note, config: switchMachine(c, machineId: id, agents: agents))
     }
 }
 
@@ -254,7 +254,7 @@ public func newSessionNotices(
         if state.conn != .online || !state.sessionsError.isEmpty {
             out.append(.reading(earlierTail(state), retry: state.conn == .online && !state.sessionsError.isEmpty))
         } else {
-            out.append(.reading("正在读取这个项目上次的设置…", retry: false))
+            out.append(.reading(L10n.newSessionReadingPrevious(), retry: false))
         }
     }
     if let c {
@@ -266,33 +266,33 @@ public func newSessionNotices(
             } else if drafting {
                 let choices = offlineChoices(state, c)
                 out.append(.offlineChoice(
-                    title: "\(label) 已离线，任务尚未开始", text: "草稿已保留，请选择在线机器；不自动换机器或 CLI。", choices: choices,
-                    none: choices.isEmpty ? "\(name) 用过的其他电脑也都不在线。" : nil))
+                    title: L10n.newSessionIosOfflineDraft(name: label), text: L10n.newSessionIosDraftKept(), choices: choices,
+                    none: choices.isEmpty ? L10n.newSessionIosOtherOffline(name: name) : nil))
             } else {
-                out.append(.offline("\(label) 不在线，现在不能新建"))
+                out.append(.offline(L10n.newSessionIosOfflineNoStart(name: label)))
             }
         } else if let refusal = protocolMismatch(machine) {
             out.append(.mismatch(refusal))
         }
         if let missing = missingAgent(state, c, pick: pick) {
-            out.append(.missingAgent("\(label) 没有 \(agentName(missing))，这次用 \(agentName(c.agent))"))
+            out.append(.missingAgent(L10n.newSessionCliFallback(agent: agentName(c.agent), missing: agentName(missing), name: label)))
         }
         switch autoIssue(state, c, models: models) {
         case .model?:
-            out.append(.autoModel("这个模型没有自动模式，而 \(label) 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认"))
+            out.append(.autoModel(L10n.newSessionModelNoAuto(name: label)))
         case .account?:
-            out.append(.autoAccount("当前账户不支持自动模式，而 \(label) 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始"))
+            out.append(.autoAccount(L10n.newSessionAccountNoAuto(name: label)))
         case nil: break
         }
-        if start.running { out.append(.starting("正在 \(label) 上启动…")) }
+        if start.running { out.append(.starting(L10n.newSessionStartingOn(name: label))) }
     }
     // An unknown start has its own notice below.
-    if !start.error.isEmpty && !start.frozen && !start.running { out.append(.failed("启动失败：\(start.error)")) }
+    if !start.error.isEmpty && !start.frozen && !start.running { out.append(.failed(L10n.newSessionStartFailed(reason: start.error))) }
     if !start.running && start.frozen {
         out.append(.unknown(
             start.expired
-                ? "不确定「\(start.prompt.jvmTake(40))」有没有启动，它已过期，不会再重发。请先看看进行中的会话"
-                : "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"))
+                ? L10n.newSessionIosExpiredStart(prompt: start.prompt.jvmTake(40))
+                : L10n.newSessionIosUnknownStart()))
     }
     return out
 }
@@ -398,13 +398,13 @@ public struct ProjectSettingsDraft: Equatable, Sendable {
 
 /// The 模型 row: the model's name and the effort, 默认模型 when neither is chosen.
 public func settingsModelValue(_ c: NewConfig, shown: PBModelInfo?) -> String {
-    [(shown?.displayName ?? "").ifEmpty(c.model), c.effort].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty("默认模型")
+    [(shown?.displayName ?? "").ifEmpty(c.model), c.effort].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty(L10n.newSessionDefaultModel())
 }
 
 /// The 上下文 row (Claude Code): a model without a larger window has nothing to choose (`fixed`).
 public func settingsContext(_ c: NewConfig, shown: PBModelInfo?) -> (text: String, fixed: Bool) {
     let fixed = shown.map { (1...standardWindow).contains($0.contextWindow) } ?? false
-    return (fixed ? "标准 200k · 这个模型只有标准窗口" : c.standardContext ? "标准 200k" : "1M", fixed)
+    return (fixed ? L10n.modelsStandardOnly() : c.standardContext ? L10n.modelsStandardWindow() : L10n.modelsExtendedWindow(), fixed)
 }
 
 /// Whether the 审批 row is red: full access chosen, or left to a default that is full access or could not be read.
@@ -491,15 +491,14 @@ public func machineRows(_ state: RemoteState, cwd: String, agent: PBAgent) -> [P
     projectMachines(state, key: cwd).map { id in
         let m = state.machines[id]
         let online = m?.online == true
-        let installed = machineAgents(m).map(agentName).joined(separator: "、")
+        let installed = machineAgents(m).map(agentName).joined(separator: L10n.commonListSeparator())
         let has = machineAgents(m).contains(agent)
         let note: String
         if !online {
-            note = "不在线，现在不能新建"
+            note = L10n.newSessionIosMachineUnavailable()
         } else {
-            let base = "已装 \(installed)"
             let fallback = (!has && m != nil) ? switchMachine(NewConfig(machineId: "", cwd: cwd, agent: agent), machineId: id, agents: machineAgents(m)).agent : agent
-            note = has ? base : "\(base)；这台机器没有 \(agentName(agent))，会改用 \(agentName(fallback))"
+            note = has ? L10n.newSessionInstalled(agents: installed) : L10n.newSessionInstalledFallback(agent: agentName(fallback), agents: installed, missing: agentName(agent))
         }
         return ProjectMachineRow(
             id: id, name: machineLabel(state, id: id), online: online,

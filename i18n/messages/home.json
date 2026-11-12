@@ -412,6 +412,290 @@
     }
   },
   {
+    "key": "home.ios_add_computer",
+    "zh-CN": "电脑运行 CLI，客户端操作会话。先添加一台电脑：在这里生成配对码，再在电脑上用它运行 remote-agent account join。",
+    "en": "The computer runs the CLI; clients control the session. Add a computer first: generate a pairing code here, then use it to run remote-agent account join on the computer.",
+    "notes": "无电脑的管理客户端首页指引；命令原样。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_approval_remaining",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "剩 {count} 分钟"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} minute left",
+        "other": "{count} minutes left"
+      }
+    },
+    "notes": "首页审批剩余时间。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_approval_timeout",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "剩 {count} 分钟，超时拒绝"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} minute left; denied on timeout",
+        "other": "{count} minutes left; denied on timeout"
+      }
+    },
+    "notes": "首页审批剩余时间及超时结果。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_badge_sessions",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个需要处理"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session needs attention",
+        "other": "{count} sessions need attention"
+      }
+    },
+    "notes": "底栏会话数量读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_badge_tasks",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 件需要处理"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} task needs attention",
+        "other": "{count} tasks need attention"
+      }
+    },
+    "notes": "底栏任务数量读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_change_scope",
+    "zh-CN": "换范围",
+    "en": "Change scope",
+    "notes": "范围胶囊读屏提示；网页为看哪个项目。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_choose_session",
+    "zh-CN": "选一个会话",
+    "en": "Choose a session",
+    "notes": "宽屏详情空白占位。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_choose_task",
+    "zh-CN": "选一个任务查看结果",
+    "en": "Choose a task to see its results",
+    "notes": "宽屏详情空白占位，属于公共壳。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_earlier_failed",
+    "zh-CN": "没能加载更早的会话：{reason} · 点这里重试",
+    "en": "Could not load earlier sessions: {reason} · Tap to retry",
+    "notes": "首页更早分页失败。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_earlier_offline",
+    "zh-CN": "连上服务器后加载更早的会话",
+    "en": "Connect to the server to load earlier sessions",
+    "notes": "首页分页离线。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_list_failed",
+    "zh-CN": "没能读取会话列表：{reason} · 点这里重试",
+    "en": "Could not read the session list: {reason} · Tap to retry",
+    "notes": "首页分页失败；iOS 含重试指引。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_new_results",
+    "zh-CN": "有新结果",
+    "en": "New results",
+    "notes": "底栏蓝点读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_no_online",
+    "zh-CN": "没有在线的电脑。在电脑上运行 remote-agent daemon。",
+    "en": "No computers online. Run remote-agent daemon on your computer.",
+    "notes": "首页无在线电脑；保留末尾句号。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_open_session",
+    "zh-CN": "打开会话",
+    "en": "Open session",
+    "notes": "iOS 首页待处理卡读屏提示。无参数。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.ios_scope_start",
+    "zh-CN": "点右下角的「新任务」在这里开始一个。",
+    "en": "Tap “New task” at the bottom right to start one here.",
+    "notes": "项目为空时的操作指引。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "home.list_failed",
     "zh-CN": "没能读取会话列表：{reason}",
     "en": "Could not load sessions: {reason}",

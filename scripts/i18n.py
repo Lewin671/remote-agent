@@ -233,7 +233,7 @@ def build(root):
                 app += f'            resources.getString(R.string.{symbol(key)}{suffix})\n'
             app += '        }\n'
         if 'ios' in row['platforms']:
-            args = ', '.join([f'{n}: {TYPES[row["params"][n]["type"]][2]}' for n in params]+['locale: String = "zh-CN"'])
+            args = ', '.join([f'{n}: {TYPES[row["params"][n]["type"]][2]}' for n in params]+['locale: String = MessageLocale.current'])
             swift += f'    public static func {fn}({args}) -> String {{\n'
             if kind == 'select':
                 swift += f'        let key: String\n        switch {value["select"]} {{\n'

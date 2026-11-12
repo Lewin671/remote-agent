@@ -1,3 +1,4 @@
+import RACore
 // Text entry (docs/design-system.md §6): a field on a `fill` surface with a
 // small label over what is typed, and the pill that filters a list.
 import SwiftUI
@@ -102,7 +103,7 @@ struct FilterBox: View {
     private let placeholder: String
     private let inset: CGFloat
 
-    init(text: Binding<String>, placeholder: String = "按标题筛选", inset: CGFloat = DS.Space.l) {
+    init(text: Binding<String>, placeholder: String = L10n.homeFilterTitle(), inset: CGFloat = DS.Space.l) {
         _text = text
         self.placeholder = placeholder
         self.inset = inset
@@ -123,7 +124,7 @@ struct FilterBox: View {
         .frame(minHeight: 36)
         .background(DS.fill, in: Capsule())
         .overlay(alignment: .trailing) {
-            if !text.isEmpty { IconButton("xmark", label: "清空筛选", size: 16, color: DS.ink3) { text = "" } }
+            if !text.isEmpty { IconButton("xmark", label: L10n.homeClearFilter(), size: 16, color: DS.ink3) { text = "" } }
         }
         .frame(minHeight: DS.minHit)
         .padding(.horizontal, inset)

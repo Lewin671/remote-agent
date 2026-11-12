@@ -23,7 +23,9 @@ public func approvalDisplay(_ text: String) -> String {
 
 /// What an approval asks for, as its card, its dock and its page head it.
 public func approvalHead(_ a: PBApprovalRequested) -> String {
-    a.command.isEmpty ? "请求权限" + (a.toolName.isEmpty ? "" : " · \(approvalDisplay(a.toolName))") : "请求执行"
+    a.command.isEmpty
+        ? (a.toolName.isEmpty ? L10n.listStateIosRequestPermission() : L10n.listStateRequestPermission(tool: approvalDisplay(a.toolName)))
+        : L10n.listStateIosRequestCommand()
 }
 
 /// What an approval would run or pass, shown with whatever it hides spelled

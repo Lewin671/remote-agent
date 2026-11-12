@@ -44,7 +44,7 @@ public func projectKey(_ s: SessionView) -> String { s.info?.cwd ?? "" }
 
 /// A project's name: the last folder of its path.
 public func projectName(_ key: String) -> String {
-    key.split(ascii: UInt8(ascii: "/")).last { !$0.isEmpty } ?? "未知项目"
+    key.split(ascii: UInt8(ascii: "/")).last { !$0.isEmpty } ?? L10n.projectsUnknown()
 }
 
 /// What the machines say of a project (MachineMeta.projects), added up.
@@ -181,7 +181,7 @@ public func isPinned(_ state: RemoteState, key: String) -> Bool {
 public func machineName(_ m: MachineView?, id: String = "") -> String {
     if let host = m?.meta?.hostname.removingSuffix(".local"), !host.isEmpty { return host }
     if let m { return m.id.jvmTake(8) }
-    return id.jvmTake(8).ifEmpty("未知电脑")
+    return id.jvmTake(8).ifEmpty(L10n.commonUnknownComputer())
 }
 
 /// Avatar color index 0..3, stable per project.

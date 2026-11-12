@@ -72,7 +72,7 @@ import Testing
         let hit = projectListing(st, search: " PROJ1 ")
         #expect(hit.pinned.map(\.name) == ["proj1"] && hit.others.isEmpty && hit.searching && !hit.titled)
         #expect(projectListing(st, search: "code").others.count == 8)
-        #expect(projectListing(st, search: "zzz").noMatch == "没有名字或路径里有「zzz」的项目")
+        #expect(projectListing(st, search: "zzz").noMatch == L10n.projectsSearchEmpty(query: "zzz"))
     }
 
     @Test func choosingAFolderStoresTheChosenMachine() {
@@ -153,20 +153,20 @@ import Testing
         var st = state([session("a", "/p/foo"), session("b", "/p/foo", machine: "vps")])
         st.machines["mac"]?.online = false
         let c = NewConfig(machineId: "mac", cwd: "/p/foo", agent: .claude, model: "sonnet", effort: "high")
-        #expect(notices(st, c) == [.offline("MacBook 不在线，现在不能新建")])
+        #expect(notices(st, c) == [.offline(L10n.newSessionIosOfflineNoStart(name: "MacBook"))])
         #expect(!canStartSession(st, config: c, drafting: true, settled: true, running: false))
         guard case .offlineChoice(let title, _, let choices, let none)? = notices(st, c, drafting: true).first else {
             Issue.record("no choice offered")
             return
         }
-        #expect(title == "MacBook 已离线，任务尚未开始" && none == nil)
-        #expect(choices.map(\.title) == ["改用 VPS-dev"])
+        #expect(title == L10n.newSessionIosOfflineDraft(name: "MacBook") && none == nil)
+        #expect(choices.map(\.title) == [L10n.newSessionUseMachine(name: "VPS-dev")])
         // That machine has only Codex: said, and the draft's model does not carry over.
-        #expect(choices[0].note == "已装 Codex；这台机器没有 Claude Code，会改用 Codex")
+        #expect(choices[0].note == L10n.newSessionInstalled(agents: "Codex；这台机器没有 Claude Code，会改用 Codex"))
         #expect(choices[0].config == NewConfig(machineId: "vps", cwd: "/p/foo", agent: .codex))
         st.machines["vps"]?.online = false
         guard case .offlineChoice(_, _, let empty, let said)? = notices(st, c, drafting: true).first else { return }
-        #expect(empty.isEmpty && said == "foo 用过的其他电脑也都不在线。")
+        #expect(empty.isEmpty && said == L10n.newSessionIosOtherOffline(name: "foo"))
     }
 
     @Test func outOfReachOfTheServerNothingIsSaidOfTheMachine() {
@@ -190,22 +190,22 @@ import Testing
         let st = state([session("a", "/p/foo", machine: "vps")], settings: [.with { $0.path = "/p/foo"; $0.machineID = "vps"; $0.agent = .claude }])
         let c = projectConfig(st, key: "/p/foo")!
         #expect(c.agent == .codex)
-        #expect(notices(st, c) == [.missingAgent("VPS-dev 没有 Claude Code，这次用 Codex")])
+        #expect(notices(st, c) == [.missingAgent(L10n.newSessionCliFallback(agent: "Codex", missing: "Claude Code", name: "VPS-dev"))])
     }
 
     @Test func aStartSaysHowItStands() {
         let st = state([session("a", "/p/foo")])
         let c = NewConfig(machineId: "mac", cwd: "/p/foo")
-        #expect(notices(st, c, start: NewSessionProgress(running: true)) == [.starting("正在 MacBook 上启动…")])
-        #expect(notices(st, c, start: NewSessionProgress(error: "目录不存在")) == [.failed("启动失败：目录不存在")])
+        #expect(notices(st, c, start: NewSessionProgress(running: true)) == [.starting(L10n.newSessionStartingOn(name: "MacBook"))])
+        #expect(notices(st, c, start: NewSessionProgress(error: "目录不存在")) == [.failed(L10n.newSessionStartFailed(reason: "目录不存在"))])
         let unknown = notices(st, c, start: NewSessionProgress(error: "结果未知", frozen: true, prompt: "say hi"))
-        #expect(unknown == [.unknown("上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次")])
+        #expect(unknown == [.unknown(L10n.newSessionIosUnknownStart())])
         let expired = notices(st, c, start: NewSessionProgress(frozen: true, expired: true, prompt: "say hi"))
-        #expect(expired == [.unknown("不确定「say hi」有没有启动，它已过期，不会再重发。请先看看进行中的会话")])
-        #expect(notices(st, c, settled: false) == [.reading("正在读取这个项目上次的设置…", retry: false)])
+        #expect(expired == [.unknown(L10n.newSessionIosExpiredStart(prompt: "say hi"))])
+        #expect(notices(st, c, settled: false) == [.reading(L10n.newSessionReadingPrevious(), retry: false)])
         var failed = st
         failed.sessionsError = "超时"
-        #expect(notices(failed, c, settled: false) == [.reading("没能加载更早的会话：超时 · 点这里重试", retry: true)])
+        #expect(notices(failed, c, settled: false) == [.reading(L10n.homeIosEarlierFailed(reason: "超时"), retry: true)])
     }
 
     @Test func theStartCommandCarriesTheConfiguration() {
@@ -268,7 +268,7 @@ import Testing
             $0.defaultModel = "sonnet"
         }
         var c = NewConfig(machineId: "mac", cwd: "/p/foo", agent: .claude)
-        #expect(settingsModelValue(c, shown: nil) == "默认模型")
+        #expect(settingsModelValue(c, shown: nil) == L10n.newSessionDefaultModel())
         #expect(settingsModelValue(c, shown: sonnet) == "Sonnet")
         #expect(defaultModelName(c, models: models, settings: nil) == "sonnet")
         #expect(defaultModelName(c, models: models, settings: .with { $0.claude.model = "opus" }) == "opus")
@@ -283,7 +283,7 @@ import Testing
         let h = pickModel(c, haiku)
         #expect(h.mode == nil && settingsContext(h, shown: haiku).fixed && effortChoices(h, models: models, settings: nil) == nil)
         let choices = modeChoices(h, models: models)
-        #expect(choices.map(\.title) == ["默认", "询问", "自动", "完全放行"])
+        #expect(choices.map(\.title) == [L10n.modelsDefault(), "询问", "自动", "完全放行"])
         #expect(choices[0].checked && choices[0].desc == "跟随 Claude Code 自己的配置")
         #expect(!choices[2].enabled && choices[2].desc == "当前模型不支持")
         #expect(modeChoices(c, models: models)[2].desc == "由 Claude Code 自己判断，拿不准的在对话里问你")
@@ -309,6 +309,6 @@ import Testing
             "已装 Codex；这台机器没有 Claude Code，会改用 Codex"
         ])
         st.machines["vps"]?.online = false
-        #expect(machineRows(st, cwd: "/p/foo", agent: .codex).last == ProjectMachineRow(id: "vps", name: "VPS-dev", online: false, note: "不在线，现在不能新建"))
+        #expect(machineRows(st, cwd: "/p/foo", agent: .codex).last == ProjectMachineRow(id: "vps", name: "VPS-dev", online: false, note: L10n.newSessionIosMachineUnavailable()))
     }
 }

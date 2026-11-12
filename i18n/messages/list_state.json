@@ -111,6 +111,67 @@
     }
   },
   {
+    "key": "list_state.ios_command_label",
+    "zh-CN": "命令：{command}",
+    "en": "Command: {command}",
+    "notes": "首页审批命令读屏标签，command 经过安全显示转义。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.ios_new_session",
+    "zh-CN": "新会话",
+    "en": "New session",
+    "notes": "未拿到会话信息时的缺省标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.ios_request_command",
+    "zh-CN": "请求执行",
+    "en": "Request to run",
+    "notes": "首页审批标题，不包含命令。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.ios_request_permission",
+    "zh-CN": "请求权限",
+    "en": "Permission requested",
+    "notes": "首页审批没有工具名的标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "list_state.no_message",
     "zh-CN": "还没发消息",
     "en": "No messages yet",

@@ -16,6 +16,62 @@
 			<string>%1$lld 个会话空闲</string>
 		</dict>
 	</dict>
+	<key>home_ios_approval_remaining</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>剩 %1$lld 分钟</string>
+		</dict>
+	</dict>
+	<key>home_ios_approval_timeout</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>剩 %1$lld 分钟，超时拒绝</string>
+		</dict>
+	</dict>
+	<key>home_ios_badge_sessions</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个需要处理</string>
+		</dict>
+	</dict>
+	<key>home_ios_badge_tasks</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 件需要处理</string>
+		</dict>
+	</dict>
 	<key>home_matches</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -198,6 +254,20 @@
 			<string>%1$lld 张图没加上，点图片看原因</string>
 		</dict>
 	</dict>
+	<key>markdown_ios_hidden_lines</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>还有 %1$lld 行没显示</string>
+		</dict>
+	</dict>
 	<key>markdown_line_count</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -224,6 +294,34 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>%1$lld 个项目</string>
+		</dict>
+	</dict>
+	<key>projects_ios_active_prefix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个进行中 · </string>
+		</dict>
+	</dict>
+	<key>projects_ios_ended_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>已结束 %1$lld</string>
 		</dict>
 	</dict>
 	<key>projects_live_count</key>

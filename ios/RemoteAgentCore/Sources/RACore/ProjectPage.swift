@@ -361,7 +361,7 @@ public func summaryMachine(_ state: RemoteState, id: String) -> String {
 public func summaryModel(_ c: NewConfig, models: PBListModelsResponse? = nil) -> String {
     let modelId = c.model.ifEmpty(models?.defaultModel ?? "")
     let chosen = models.flatMap { findModel($0.models, id: modelId) { $0.slug } }
-    return chosen.map { $0.displayName.ifEmpty(modelId) } ?? modelId.ifEmpty("默认模型")
+    return chosen.map { $0.displayName.ifEmpty(modelId) } ?? modelId.ifEmpty(L10n.newSessionDefaultModel())
 }
 
 /// What 新任务 shows of where and with what it starts (design-system §6
@@ -449,7 +449,7 @@ public func switchMachine(_ c: NewConfig, machineId: String, agents: [PBAgent]) 
 public func configLines(_ state: RemoteState, _ c: NewConfig, default d: DefaultMode) -> (String, String) {
     (
         "\(machineLabel(state, id: c.machineId)) · \(modeLabel(chosen: c.mode, default: d, agent: c.agent))",
-        [c.model, c.effort].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty("默认模型")
+        [c.model, c.effort].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty(L10n.newSessionDefaultModel())
     )
 }
 

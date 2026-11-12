@@ -98,5 +98,25 @@
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt",
     "literal": "machine",
     "reason": "项目设置子页的稳定路由代码，用于选择电脑页面，不显示给用户；提取附近文案后被词法扫描器误判。"
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Project/NewTaskModelPicker.swift",
+    "literal": "extended",
+    "reason": "Stable context-window option code; the label closure renders generated localized text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Project/ProjectSettingsSheet.swift",
+    "literal": "extended",
+    "reason": "Stable context-window option code; the label closure renders generated localized text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Project/ProjectSettingsSheet.swift",
+    "literal": "standard",
+    "reason": "Stable context-window option code; the label closure renders generated localized text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Project/NewTaskModelPicker.swift",
+    "literal": "standard",
+    "reason": "Stable context-window option code; the label closure renders generated localized text."
   }
 ]

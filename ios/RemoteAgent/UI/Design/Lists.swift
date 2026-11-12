@@ -480,7 +480,7 @@ struct LoadingRow: View {
     private let text: String
     private let inset: CGFloat
 
-    init(_ text: String = "读取中…", inset: CGFloat = DS.Space.l) {
+    init(_ text: String = L10n.projectsReadingDirectory(), inset: CGFloat = DS.Space.l) {
         self.text = text
         self.inset = inset
     }
@@ -510,7 +510,7 @@ struct Skeleton: View {
         }
         .padding(.horizontal, inset).padding(.vertical, 14)
         .accessibilityElement()
-        .accessibilityLabel("读取中")
+        .accessibilityLabel(L10n.commonIosLoading())
     }
 }
 

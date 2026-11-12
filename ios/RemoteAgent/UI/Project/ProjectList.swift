@@ -173,7 +173,7 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
                             // A long path gives way in its middle: the folder's own name and what runs there stay.
                             Text(projectDetail(state, project)).font(.footnote).ink(DS.ink2)
                                 .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).truncationMode(.middle)
-                            if change?.saving == true { IconText(Mark.progress, "正在同步…", style: .footnote) }
+                            if change?.saving == true { IconText(Mark.progress, L10n.projectsIosSyncing(), style: .footnote) }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         trailing
@@ -187,7 +187,7 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
             }
             if case .failed(let op, let error)? = change {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Text("没能保存，列表保持原样：\(error)").font(.footnote).ink(DS.red).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(L10n.projectsSaveFailed(reason: error)).font(.footnote).ink(DS.red).frame(maxWidth: .infinity, alignment: .leading)
                     TextAction(L10n.commonRetry(), style: .footnote.weight(.semibold), enabled: prefsBlocked(state) == nil, alignment: .trailing) {
                         context.prefsChanges.run(context.remote, op)
                     }
@@ -230,18 +230,18 @@ struct ProjectList<First: View, Row: View>: View {
         let l = projectListing(state, search: search)
         if l.searchable {
             // The kit's pill brings the page's side margin, which the list already has.
-            FilterBox(text: $search, placeholder: "搜索项目", inset: 0).padding(.bottom, 4)
+            FilterBox(text: $search, placeholder: L10n.projectsSearch(), inset: 0).padding(.bottom, 4)
         }
         if !l.searching { first }
-        if l.titled { FieldLabel("常用") }
+        if l.titled { FieldLabel(L10n.projectsPinned()) }
         ForEach(l.pinned) { row($0) }
-        if l.titled { FieldLabel("其他") }
+        if l.titled { FieldLabel(L10n.projectsOthers()) }
         ForEach(l.others) { row($0) }
         if let none = l.noMatch { Hint(none).padding(.bottom, 8) }
         Button(action: onNew) {
             HStack(spacing: 12) {
                 SymbolImage("plus", size: 18, color: DS.blue, relativeTo: .subheadline).frame(width: 22)
-                Text("新项目…").font(.body.weight(.semibold)).ink(DS.blue)
+                Text(L10n.projectsNew()).font(.body.weight(.semibold)).ink(DS.blue)
             }
             .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         }
@@ -267,7 +267,7 @@ private struct RemoveProjectConfirm: ViewModifier {
             .onChange(of: key, initial: true) { _, new in if let new { shown = new } }
             .confirm(
                 isPresented: Binding(get: { key != nil }, set: { if !$0 { key = nil } }),
-                title: "移除 \(projectName(shown))？", text: "只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。",
+                title: L10n.projectsRemoveTitle(name: projectName(shown)), text: L10n.projectsRemoveExplanation(),
                 confirm: L10n.commonRemove(), danger: true
             ) {
                 context.prefsChanges.run(context.remote, .hide(path: shown), onDone: onRemoved)

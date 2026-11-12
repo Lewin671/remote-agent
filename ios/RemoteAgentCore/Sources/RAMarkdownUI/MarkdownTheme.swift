@@ -1,3 +1,4 @@
+import RACore
 // How a reply's Markdown looks: docs/design-system.md §7. The numbers here
 // are that section's; the app passes its own theme when its palette differs.
 import SwiftUI
@@ -50,17 +51,17 @@ public struct MarkdownTheme: Equatable, Sendable {
 
     public var strings = Strings()
 
-    /// What the renderer says itself. The app's language is Chinese, so are the defaults.
+    /// Renderer-owned text, resolved at the display boundary.
     public struct Strings: Equatable, Sendable {
-        public var expand = "展开全文"
-        public var collapse = "收起"
-        /// `%d` is the number of lines in the block.
-        public var lineCount = "共 %d 行"
-        public var copy = "复制代码"
-        public var copied = "已复制"
-        public var copyFailed = "复制失败"
-        public var taskDone = "已完成"
-        public var taskTodo = "未完成"
+        public var expand: String { L10n.markdownExpand() }
+        public var collapse: String { L10n.markdownCollapse() }
+        /// The complete line-count message uses the locale’s plural rules.
+        public func lineCount(_ count: Int) -> String { L10n.markdownLineCount(count: count) }
+        public var copy: String { L10n.markdownCopyCode() }
+        public var copied: String { L10n.commonCopied() }
+        public var copyFailed: String { L10n.markdownCopyFailed() }
+        public var taskDone: String { L10n.markdownIosTaskDone() }
+        public var taskTodo: String { L10n.markdownIosTaskTodo() }
 
         public init() {}
     }

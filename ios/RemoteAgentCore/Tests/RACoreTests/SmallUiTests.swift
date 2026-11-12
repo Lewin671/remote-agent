@@ -123,14 +123,14 @@ import Testing
     @Test func theLinkAndThePreferencesAreSaidInAWord() {
         var st = RemoteState()
         #expect(connWord(st) == "连接中")
-        #expect(prefsBlocked(st) == "连上服务器后才能修改")
+        #expect(prefsBlocked(st) == L10n.projectsConnectToEdit())
         st.link = .noServer
         #expect(connWord(st) == "连不上")
         st.synced = true
         #expect(connWord(st) == "重连中")
         st.conn = .online
         #expect(connWord(st) == "已连接")
-        #expect(prefsBlocked(st) == "正在读取项目列表…")
+        #expect(prefsBlocked(st) == L10n.projectsLoading())
         st.prefs = .empty
         #expect(prefsBlocked(st) == nil)
         #expect(fileName("/tmp/a/shot.png") == "shot.png")

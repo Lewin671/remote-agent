@@ -15,8 +15,8 @@ public func connWord(_ state: RemoteState) -> String {
 
 /// Why the preferences cannot be changed now, or nil when they can.
 public func prefsBlocked(_ state: RemoteState) -> String? {
-    if state.conn != .online { return "连上服务器后才能修改" }
-    if state.prefs == nil { return "正在读取项目列表…" }
+    if state.conn != .online { return L10n.projectsConnectToEdit() }
+    if state.prefs == nil { return L10n.projectsLoading() }
     return nil
 }
 

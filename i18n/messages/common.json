@@ -181,6 +181,123 @@
     }
   },
   {
+    "key": "common.ios_attention",
+    "zh-CN": "有需要注意的项",
+    "en": "Items need attention",
+    "notes": "更多操作按钮有提醒的读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_loading",
+    "zh-CN": "读取中",
+    "en": "Loading",
+    "notes": "读取状态和读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_more",
+    "zh-CN": "更多",
+    "en": "More",
+    "notes": "更多操作读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_offline",
+    "zh-CN": "不在线",
+    "en": "Offline",
+    "notes": "机器不可用状态读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_online",
+    "zh-CN": "在线",
+    "en": "Online",
+    "notes": "机器可用状态读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_save_failed",
+    "zh-CN": "没能保存：{reason}",
+    "en": "Could not save: {reason}",
+    "notes": "公共编辑框与项目添加错误。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_saving",
+    "zh-CN": "保存中…",
+    "en": "Saving…",
+    "notes": "公共编辑对话框提交中按钮。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_spoken_separator",
+    "zh-CN": "，",
+    "en": ", ",
+    "notes": "iOS 列表行读屏时并列独立元信息的分隔符；不是句子的语法拼接。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "common.list_separator",
     "zh-CN": "、",
     "en": ", ",

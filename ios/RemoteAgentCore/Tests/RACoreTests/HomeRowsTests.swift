@@ -64,7 +64,7 @@ import Testing
             if case .label(_, let title, let count) = item { return title + (count.map { " \($0)" } ?? "") }
             return nil
         }
-        #expect(titles == ["进行中", "今天", "昨天", "近 7 天", "9 月", "2025 年 12 月"])
+        #expect(titles == [L10n.homeLive(), L10n.timeToday(), L10n.timeYesterday(), L10n.timeLastWeek(), L10n.timeMonthGroup(month: 9), L10n.timeYearMonthGroup(month: 12, year: 2025)])
         #expect(l.empty == nil && !l.showFilter && !l.wantAll && !l.wantPage && !l.grows)
         // The approval that waits is the dark card.
         #expect(l.items[0] == .attentionCard(st.sessions["wait"]!))
@@ -111,10 +111,10 @@ import Testing
         let st = state((0..<71).map { session("e\($0)", ended: now - Int64($0 + 1) * 60_000) })
         let first = list(st)
         #expect(first.items.filter { if case .ended = $0 { true } else { false } }.count == 30)
-        #expect(first.items.last == .tail(.text("共 71 个，滚到底加载更早的")))
+        #expect(first.items.last == .tail(.text(L10n.homeTotalLoadEarlier(count: 71))))
         #expect(first.grows && first.endedHeld == 71 && !first.wantPage)
         let all = list(st, shown: HomeShown(ended: 90))
-        #expect(all.items.last == .tail(.text("共 71 个")) && !all.grows)
+        #expect(all.items.last == .tail(.text(L10n.homeTotal(count: 71))) && !all.grows)
         #expect(first.showFilter)
         // Thirty or fewer need no last line.
         #expect(!list(state((0..<30).map { session("e\($0)", ended: now - 1000) })).items.contains { if case .tail = $0 { true } else { false } })
@@ -131,21 +131,21 @@ import Testing
         st.machines["m"] = machine
         // Thirty of fifty held: nothing to fetch yet, the end shows the next thirty.
         let first = list(st)
-        #expect(!first.wantPage && first.grows && first.items.last == .tail(.text("共 80 个，滚到底加载更早的")))
+        #expect(!first.wantPage && first.grows && first.items.last == .tail(.text(L10n.homeTotalLoadEarlier(count: 80))))
         // Sixty wanted, fifty held: the next page, and the list waits for it.
         let second = list(st, shown: HomeShown(ended: 60))
-        #expect(second.wantPage && !second.grows && second.items.last == .tail(.text("共 80 个，滚到底加载更早的")))
+        #expect(second.wantPage && !second.grows && second.items.last == .tail(.text(L10n.homeTotalLoadEarlier(count: 80))))
         // A page that failed says so, with its retry.
         st.sessionsError = "超时"
-        #expect(list(st, shown: HomeShown(ended: 60)).items.last == .tail(.earlier("没能加载更早的会话：超时 · 点这里重试", retry: true)))
+        #expect(list(st, shown: HomeShown(ended: 60)).items.last == .tail(.earlier(L10n.homeIosEarlierFailed(reason: "超时"), retry: true)))
         st.conn = .offline
         #expect(list(st, shown: HomeShown(ended: 60)).items.last == .tail(.earlier(earlierOffline, retry: false)))
     }
 
     @Test func aFilterWantsEveryPageAndCountsWhatItMatched() {
         var st = state([session("a", title: "补充接口文档"), session("b", title: "接口限流", ended: now - 1000), session("c", title: "别的")])
-        #expect(list(st, query: "接口").items.last == .tail(.text("2 个会话的标题里有「接口」")))
-        #expect(list(st, query: "没有").items == [.tail(.text("没有标题里有「没有」的会话"))])
+        #expect(list(st, query: "接口").items.last == .tail(.text(L10n.homeMatches(count: 2, query: "接口"))))
+        #expect(list(st, query: "没有").items == [.tail(.text(L10n.homeNoMatches(query: "没有")))])
         #expect(list(st, query: "接口").showFilter)
         // While pages are left the count is not known yet.
         st.sessionsNext = SessionPlace(endedMs: 1, sessionId: "b")
@@ -180,7 +180,7 @@ import Testing
         let run = session("run", title: "修复登录超时", created: now - 20_000, status: .running, preview: "正在执行 `go test`")
         let st = state([run], machines: ["m", "n"])
         let row = sessionRowText(st, run, meta: RowMeta(project: true, agent: true, machine: true), now: now, zone: zone)
-        #expect(row == SessionRowText(title: "修复登录超时", time: "刚刚", status: .running, preview: "正在执行 go test", meta: "foo · m", agent: .codex))
+        #expect(row == SessionRowText(title: "修复登录超时", time: L10n.timeJustNow(), status: .running, preview: "正在执行 go test", meta: "foo · m", agent: .codex))
         // The CLI is spoken where its mark is drawn, ahead of the rest of the third line.
         #expect(row.spoken == "修复登录超时，运行中，正在执行 go test，Codex，foo，m，刚刚")
         // A list that uses one CLI draws no mark and says no CLI.
@@ -211,20 +211,20 @@ import Testing
             $0.command = "go test ./... \\\n  -count=1"
         }
         let row = pendingRowText(st, api, scope: .all, approval: request, question: nil, zone: zone)
-        #expect(row == PendingRowText(title: "重构 API 层", kind: "请求执行", summary: "go test ./... \\ -count=1"))
+        #expect(row == PendingRowText(title: "重构 API 层", kind: L10n.listStateIosRequestCommand(), summary: "go test ./... \\ -count=1"))
         // Before the approval is read the status says what waits.
-        #expect(pendingRowText(st, api, scope: .all, approval: nil, question: nil, zone: zone).kind == "等待审批")
+        #expect(pendingRowText(st, api, scope: .all, approval: nil, question: nil, zone: zone).kind == L10n.listStateApproval())
         let dep = session("dep", "/p/bar", title: "升级依赖", agent: .claude, questions: 1)
         // In another project's scope the row names its project.
         let asked = pendingRowText(st, dep, scope: .of(key: "/p/foo"), approval: nil, question: "大版本也一起升吗？", zone: zone)
-        #expect(asked.kind == "Claude Code 在问你" && asked.summary == "bar · 大版本也一起升吗？")
+        #expect(asked.kind == L10n.listStateAgentAsking(agent: "Claude Code") && asked.summary == "bar · 大版本也一起升吗？")
         #expect(asked.spoken == "升级依赖，Claude Code 在问你，bar，大版本也一起升吗？")
         #expect(pendingRowText(st, dep, scope: .of(key: "/p/bar"), approval: nil, question: "x", zone: zone).summary == "x")
         let plan = pendingRowText(st, session("p", plan: true), scope: .all, approval: nil, question: nil, zone: zone)
-        #expect(plan.kind == "计划待批准" && plan.summary.isEmpty)
+        #expect(plan.kind == L10n.listStatePlan() && plan.summary.isEmpty)
         var popup = session("t", status: .blocked)
         popup.info?.statusDetail = "Trust this folder?"
-        #expect(pendingRowText(st, popup, scope: .all, approval: nil, question: nil, zone: zone) == PendingRowText(title: "t", kind: "终端里有弹窗", summary: "Trust this folder?"))
+        #expect(pendingRowText(st, popup, scope: .all, approval: nil, question: nil, zone: zone) == PendingRowText(title: "t", kind: L10n.listStatePopup(), summary: "Trust this folder?"))
     }
 
     @Test func theDarkCardSaysWhatAndUntilWhenAndWhere() {
@@ -236,10 +236,10 @@ import Testing
             $0.deadline = ts(now + 8 * 60_000 - 20_000)
         }
         let card = approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone)
-        #expect(card == ApprovalCardText(kind: "请求执行", time: "剩 8 分钟，超时拒绝", hot: false, title: "重构 API 层", place: "foo · m"))
+        #expect(card == ApprovalCardText(kind: L10n.listStateIosRequestCommand(), time: L10n.homeIosApprovalTimeout(count: 8), hot: false, title: "重构 API 层", place: "foo · m"))
         // The computer is written only where the account has more than one.
         #expect(approvalCardText(state([]), api, approval: request, timeoutNote: true, now: now, zone: zone).place == "foo")
-        #expect(approvalCardText(st, api, approval: request, timeoutNote: false, now: now, zone: zone).time == "剩 8 分钟")
+        #expect(approvalCardText(st, api, approval: request, timeoutNote: false, now: now, zone: zone).time == L10n.homeIosApprovalRemaining(count: 8))
         // The last minute is orange.
         request.deadline = ts(now + 30_000)
         #expect(approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone).hot)
@@ -250,12 +250,12 @@ import Testing
             $0.toolInputJson = "{\"file_path\":\"/p/foo/a.go\"}"
         }
         let w = approvalCardText(st, api, approval: write, timeoutNote: true, now: now, zone: zone)
-        #expect(w.kind == "请求权限 · Write" && w.time.isEmpty && !w.hot)
+        #expect(w.kind == L10n.listStateRequestPermission(tool: "Write") && w.time.isEmpty && !w.hot)
         #expect(approvalBody(write) == "{\"file_path\":\"/p/foo/a.go\"}")
         // Out of reach of the server it cannot be decided: 未连接.
         st.link = .noNetwork
         let cut = approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone)
-        #expect(cut.time == "未连接" && !cut.hot)
+        #expect(cut.time == L10n.listStateUnlinked() && !cut.hot)
     }
 
     @Test func theSentenceAtTheTopSaysHowThingsStand() {
@@ -264,16 +264,16 @@ import Testing
         let idle = session("i")
         let idle2 = session("i2")
         func head(_ st: RemoteState, _ scope: HomeScope = .all) -> HomeHeadline? { homeHeadline(st, scope: scope) }
-        #expect(head(state([wait, run, idle, idle2])) == HomeHeadline(kind: .waiting(count: 1), title: "1 件事等你", sub: "1 个会话在运行，2 个空闲"))
-        #expect(head(state([wait, idle]))?.sub == "1 个会话空闲")
+        #expect(head(state([wait, run, idle, idle2])) == HomeHeadline(kind: .waiting(count: 1), title: L10n.homeWaitingCount(count: 1), sub: L10n.homeRunningAndIdle(count: 1, idle: 2)))
+        #expect(head(state([wait, idle]))?.sub == L10n.homeIdleCount(count: 1))
         // What waits is the account's; what runs is the scope's.
-        #expect(head(state([wait, run]), .of(key: "/p/bar")) == HomeHeadline(kind: .waiting(count: 1), title: "1 件事等你"))
-        #expect(head(state([run, idle, idle2])) == HomeHeadline(kind: .running, title: "1 个会话在运行", sub: "另有 2 个空闲"))
-        #expect(head(state([idle])) == HomeHeadline(kind: .nothingWaits, title: "没有等你的事", sub: "1 个会话空闲"))
-        #expect(head(state([session("e", ended: now - 1000)])) == HomeHeadline(kind: .nothingWaits, title: "没有等你的事"))
-        #expect(head(state([])) == HomeHeadline(kind: .noSessions, title: "还没有会话"))
+        #expect(head(state([wait, run]), .of(key: "/p/bar")) == HomeHeadline(kind: .waiting(count: 1), title: L10n.homeWaitingCount(count: 1)))
+        #expect(head(state([run, idle, idle2])) == HomeHeadline(kind: .running, title: L10n.homeRunningCount(count: 1), sub: L10n.homeOtherIdle(count: 2)))
+        #expect(head(state([idle])) == HomeHeadline(kind: .nothingWaits, title: L10n.homeNothingWaiting(), sub: L10n.homeIdleCount(count: 1)))
+        #expect(head(state([session("e", ended: now - 1000)])) == HomeHeadline(kind: .nothingWaits, title: L10n.homeNothingWaiting()))
+        #expect(head(state([])) == HomeHeadline(kind: .noSessions, title: L10n.homeNoSessions()))
         #expect(head(state([]) { $0.sessionsListed = false; $0.sessionsError = "超时" })?.kind == .unreadable)
-        #expect(head(state([idle]), .of(key: "/p/new")) == HomeHeadline(kind: .emptyProject, title: "这个项目还没有会话", sub: "/p/new", subPath: true))
+        #expect(head(state([idle]), .of(key: "/p/new")) == HomeHeadline(kind: .emptyProject, title: L10n.homeProjectNoSessions(), sub: "/p/new", subPath: true))
         // Connected and nothing read yet: no sentence; not connected yet, 连接中….
         var fresh = RemoteState()
         #expect(head(fresh)?.kind == .connecting)
@@ -283,24 +283,68 @@ import Testing
         let kept = state([wait, run])
         var cut = kept
         cut.link = .noNetwork
-        #expect(head(cut) == HomeHeadline(kind: .noNetwork, title: "本机网络不通", sub: "下面是上次的内容"))
+        #expect(head(cut) == HomeHeadline(kind: .noNetwork, title: L10n.connectionNoNetwork(), sub: L10n.connectionPreviousBelow()))
         cut.link = .waiting
-        #expect(head(cut) == HomeHeadline(kind: .reconnecting, title: "正在重连…", sub: "下面是上次的内容"))
+        #expect(head(cut) == HomeHeadline(kind: .reconnecting, title: L10n.connectionReconnecting(), sub: L10n.connectionPreviousBelow()))
         cut.synced = false
-        #expect(head(cut)?.title == "连接中…" && head(cut)?.unlinked == true)
+        #expect(head(cut)?.title == L10n.connectionConnecting() && head(cut)?.unlinked == true)
         cut.link = .noServer
-        #expect(head(cut) == HomeHeadline(kind: .noServer, title: "连不上服务器", sub: "正在重试，下面是上次的内容", details: true))
+        #expect(head(cut) == HomeHeadline(kind: .noServer, title: L10n.connectionNoServer(), sub: L10n.connectionRetryingPrevious(), details: true))
         var empty = RemoteState()
         empty.link = .noNetwork
-        #expect(head(empty)?.sub == "联网后才能读取会话")
+        #expect(head(empty)?.sub == L10n.connectionNetworkRequired())
         empty.link = .noServer
         empty.error = "证书无效"
-        #expect(head(empty) == HomeHeadline(kind: .noServer, title: "连不上服务器", sub: "证书无效", subError: true, details: true))
+        #expect(head(empty) == HomeHeadline(kind: .noServer, title: L10n.connectionNoServer(), sub: "证书无效", subError: true, details: true))
     }
 
     @Test func anAnswerToAnApprovalNamesItAndTheDecision() {
         let cmd = resolveApprovalCommand(sessionId: "s", approvalId: "A1", allow: false, message: "先别动", always: false)
         #expect(cmd.resolveApproval.sessionID == "s" && cmd.resolveApproval.approvalID == "A1")
         #expect(!cmd.resolveApproval.allow && cmd.resolveApproval.message == "先别动" && !cmd.resolveApproval.always)
+    }
+}
+
+extension HomeRowsTests {
+    @Test func translatedRowsKeepStateAndRawContent() {
+        let raw = session("raw", title: "User title", status: .running, preview: "运行中")
+        let planned = session("plan", plan: true)
+        let st = state([raw, planned])
+        let scope = encodeScope(.of(key: "/work/app"), key: Data(count: 32))
+        for locale in ["zh-CN", "en"] {
+            MessageLocale.$overrideForTesting.withValue(locale) {
+                let row = sessionRowText(st, raw, meta: RowMeta(), now: now, zone: zone)
+                #expect(row.status == .running && row.title == "User title")
+                #expect(row.preview == "运行中", "CLI text equal to a status label is still content")
+                #expect(sessionRowText(st, planned, meta: RowMeta(), now: now, zone: zone).preview.isEmpty)
+                #expect(homeHeadline(st, scope: .all)?.kind == .waiting(count: 1))
+                #expect(homeHeadline(st, scope: .all)?.title == L10n.homeWaitingCount(count: 1, locale: locale))
+                #expect(loadingEarlier == L10n.homeLoadingEarlier(locale: locale))
+                #expect(earlierOffline == L10n.homeIosEarlierOffline(locale: locale))
+                #expect(encodeScope(.of(key: "/work/app"), key: Data(count: 32)) == scope)
+            }
+        }
+        #expect(MessageLocale.current == "zh-CN")
+    }
+
+    @Test func localizedCountAndTimeContracts() {
+        #expect(L10n.homeWaitingCount(count: 2, locale: "zh-CN") == "2 件事等你")
+        #expect(L10n.homeRunningAndIdle(count: 1, idle: 2, locale: "zh-CN") == "1 个会话在运行，2 个空闲")
+        #expect(L10n.timeMonthDay(day: 3, month: 10, locale: "zh-CN") == "10月3日")
+        for count in [0, 1, 2, 1000] {
+            let english = L10n.homeIosBadgeSessions(count: count, locale: "en")
+            #expect(english == "\(count) \(count == 1 ? "session needs" : "sessions need") attention")
+            #expect(L10n.homeWaitingCount(count: count, locale: "zh-CN") == "\(count) 件事等你")
+        }
+        let la = TimeZone(identifier: "America/Los_Angeles")!
+        // DST has just ended; yesterday is a calendar date, not a 24-hour interval.
+        let after = Mk.at(2026, 11, 2, 0, 30, zone: la)
+        let before = Mk.at(2026, 11, 1, 0, 15, zone: la)
+        MessageLocale.$overrideForTesting.withValue("en") {
+            #expect(whenText(before, now: after, zone: la) == "Yesterday")
+            #expect(whenText(Mk.at(2025, 12, 31, 23, 0, zone: la), now: Mk.at(2026, 1, 1, 1, 0, zone: la), zone: la) == "Yesterday")
+            #expect(whenText(after - 120_000, now: after, zone: la) == "2 minutes ago")
+            #expect(endedTime(at(2026, 9, 29), now: now, zone: zone) == "Tue")
+        }
     }
 }

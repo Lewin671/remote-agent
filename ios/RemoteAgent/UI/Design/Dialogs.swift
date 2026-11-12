@@ -197,13 +197,13 @@ private struct InputDialog: View {
             .onChange(of: value) { _, new in typed(new) }
             .padding(.bottom, 8)
             if !runner.error.isEmpty {
-                Text("没能保存：\(runner.error)").font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)
+                Text(L10n.commonIosSaveFailed(reason: runner.error)).font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)
             } else if let text {
                 Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 8)
             }
             Btns {
                 Btn(dismissLabel, enabled: !running, action: onDismiss)
-                Btn(running ? "保存中…" : confirm, kind: .primary, enabled: !running, action: submit)
+                Btn(running ? L10n.commonIosSaving() : confirm, kind: .primary, enabled: !running, action: submit)
             }
             .padding(.top, 6)
         }
