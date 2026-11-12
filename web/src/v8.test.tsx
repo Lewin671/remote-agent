@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act } from "react";
+import { act, Profiler } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { create } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
@@ -275,4 +275,40 @@ it("keeps raw shell quoting and falls back to the original title for unknown str
   expect(commandOf({ kind: ToolKind.COMMAND, title: "original", input: "{}" })).toBe("original");
   expect(commandOf({ kind: ToolKind.COMMAND, title: "preview", input: '"printf"' })).toBe('"printf"');
   expect(commandOf({ kind: ToolKind.COMMAND, title: "preview", input: "true" })).toBe("true");
+});
+
+it("only renders the command being toggled within shared row state", () => {
+  const first = vi.fn(), sibling = vi.fn();
+  const calls = ["one", "two"].map(callId => create(ToolCallSchema, { callId, kind: ToolKind.COMMAND, title: callId }));
+  const short = { text: (s: string) => s, path: (s: string) => s };
+  mount(<RowState id="row" states={new Map()}>
+    <Profiler id="first" onRender={first}><ToolRow t={calls[0]!} short={short} /></Profiler>
+    <Profiler id="sibling" onRender={sibling}><ToolRow t={calls[1]!} short={short} /></Profiler>
+  </RowState>);
+  const row = host.querySelector<HTMLElement>(".command-row")!;
+  act(() => row.click());
+  act(() => row.click());
+  expect(first).toHaveBeenCalledTimes(3);
+  expect(sibling).toHaveBeenCalledTimes(1);
+});
+
+it("does not synchronously measure tool rerenders, disclosures or running timer ticks", () => {
+  vi.useFakeTimers();
+  const bounds = vi.spyOn(Element.prototype, "getBoundingClientRect");
+  const r = demo();
+  const call = create(ToolCallSchema, { callId: "one", kind: ToolKind.COMMAND, title: "preview", input: "long command\n".repeat(40) });
+  const tool = { seq: 1n, callId: "run", kind: ToolKind.COMMAND, title: "exec", input: "sleep 20", inputDigest: "", itemType: "exec", since: Date.now() };
+  const short = { text: (s: string) => s, path: (s: string) => s };
+  const view = () => <><ToolRow t={call} short={short} /><ToolGroup calls={[call, { ...call, callId: "two" }]} short={short} /><ActiveTool tool={tool} d={derive([])} remote={r} /></>;
+  try {
+    mount(view());
+    bounds.mockClear();
+    act(() => root!.render(view()));
+    act(() => host.querySelector<HTMLElement>(".command-row")!.click());
+    act(() => host.querySelector<HTMLButtonElement>(".tgrp")!.click());
+    act(() => host.querySelector<HTMLElement>(".grpbody .command-row")!.click());
+    act(() => vi.advanceTimersByTime(1000));
+    expect(host.querySelector(".tool.now")?.textContent).toContain("0:01");
+    expect(bounds).not.toHaveBeenCalled();
+  } finally { bounds.mockRestore(); r.stop(); vi.useRealTimers(); }
 });

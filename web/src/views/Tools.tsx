@@ -1,7 +1,7 @@
 // Tool calls in the chat (design-system §6 工具调用): one line of 13 ink2
 // per call, with finished runs folded; the command running now is its own
 // gray block at the end of the chat, with how long it has run.
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { CopyButton } from "../markdown";
 import { useRowExpanded } from "./RowState";
 import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb";
@@ -35,38 +35,14 @@ export function commandOf(t: Pick<RunningTool, "input" | "title" | "kind">): str
   return t.title;
 }
 
-/** The same measured height transition for a group and each command within it. */
-function ToolHeight({ children, className = "" }: { children: ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const height = useRef<number | undefined>(undefined);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const next = el.getBoundingClientRect().height;
-    if (height.current !== undefined && height.current !== next && el.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.animate([{ height: `${height.current}px`, overflow: "hidden" }, { height: `${next}px`, overflow: "hidden" }], { duration: 200, easing: "cubic-bezier(.2,.8,.2,1)" });
-    }
-    height.current = next;
-  });
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    // A child command can grow without rerendering its enclosing group.
-    const observer = new ResizeObserver(() => {
-      if (!el.getAnimations?.().length) height.current = el.getBoundingClientRect().height;
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return <div ref={ref} className={className}>{children}</div>;
-}
-
+// Change geometry once so the virtual list measures only the final size.
+// Height animation would resize and reposition the list on every frame.
 function CommandRow({ name, title, text, className = "single", mark, meta }: { name: string; title: string; text: string; className?: string; mark?: ReactNode; meta?: ReactNode }) {
   const [open, setOpen] = useRowExpanded(`command/${name}`);
   // A pointer-down may clear the selection before click gets to read it.
   const hadSelection = useRef(false);
   const toggle = () => { if (!window.getSelection()?.toString()) setOpen(!open); };
-  return <ToolHeight className="tool-entry"><div className={`tool ${className} command-row${open ? " expanded" : ""}`} role="button" tabIndex={0} aria-expanded={open}
+  return <div className="tool-entry"><div className={`tool ${className} command-row${open ? " expanded" : ""}`} role="button" tabIndex={0} aria-expanded={open}
     onPointerDown={() => { hadSelection.current = !!window.getSelection()?.toString(); }}
     onClick={(e) => {
       const selecting = hadSelection.current;
@@ -75,7 +51,7 @@ function CommandRow({ name, title, text, className = "single", mark, meta }: { n
     }}
     onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(); } }}>
     {mark}{open ? <div className="tool-command"><code>{text}</code><CopyButton text={text} /></div> : <code>{title}</code>}{meta}
-  </div></ToolHeight>;
+  </div></div>;
 }
 function runningPreview(t: RunningTool): string {
   if (t.input) {
@@ -108,7 +84,7 @@ export function ToolRow({ t, short, decision, by, resultText }: { t: ToolCall; s
 export function ToolGroup({ calls, short }: { calls: ToolCall[]; short: Short }) {
   const [open, setOpen] = useRowExpanded("tools");
   const images = calls.flatMap((c) => c.images);
-  return <><ToolHeight><button className="tool single tgrp" onClick={() => setOpen(!open)} aria-expanded={open}><span className="ok"><Check /></span><span>{toolsSummary(calls)}</span><span className="muted"><Exp up={open} /></span></button>{open && <div className="grpbody">{calls.map((t, i) => <CommandRow key={t.callId || i} name={t.callId || String(i)} title={toolTitle(t, short)} text={commandOf(t)} />)}</div>}</ToolHeight><ImageStrip refs={images} className="under-tool" /></>;
+  return <><div><button className="tool single tgrp" onClick={() => setOpen(!open)} aria-expanded={open}><span className="ok"><Check /></span><span>{toolsSummary(calls)}</span><span className="muted"><Exp up={open} /></span></button>{open && <div className="grpbody">{calls.map((t, i) => <CommandRow key={t.callId || i} name={t.callId || String(i)} title={toolTitle(t, short)} text={commandOf(t)} />)}</div>}</div><ImageStrip refs={images} className="under-tool" /></>;
 }
 export function BackgroundTool({ call, short }: { call: ToolCall; short: Short; remote: Remote; onTerminal?: () => void }) {
   return <CommandRow name={call.callId} title={toolTitle(call, short)} text={commandOf(call)} mark={<span className="sp faint" role="img" aria-label="后台运行"><LoaderCircle /></span>} meta={<span className="muted">后台运行</span>} />;

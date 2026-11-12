@@ -1929,3 +1929,9 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .new-task-model-panel .mi .mt { padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .new-task-model-panel .model-loading { min-height: 120px; }
 .sheet.new-task-model-sheet { display: flex; flex-direction: column; overflow: hidden; max-height: min(600px, calc(100dvh - 48px)); }
+
+/* Tool disclosure changes list geometry once; only the new content fades. */
+.tool-command, .grpbody { animation: mo-fade var(--m-fast) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  .tool-command, .grpbody { animation: none; }
+}
