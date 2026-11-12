@@ -60,8 +60,8 @@ tasks.test {
     inputs.files(testFixtures).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("raSecurityFixture", testFixtures.get().file("securityfixture").asFile.absolutePath)
     systemProperty("raServer", testFixtures.get().file("relaytestserver").asFile.absolutePath)
-    inputs.file(rootProject.file("../testdata/preview/markdown-table.json")).withPathSensitivity(PathSensitivity.NONE)
-    systemProperty("previewTableVectors", rootProject.file("../testdata/preview/markdown-table.json").absolutePath)
+    inputs.file(rootProject.file("../testdata/preview-plain.json")).withPathSensitivity(PathSensitivity.NONE)
+    systemProperty("previewTableVectors", rootProject.file("../testdata/preview-plain.json").absolutePath)
     // The test vectors are shared with Go and TypeScript.
     inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)
