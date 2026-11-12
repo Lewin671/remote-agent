@@ -102,3 +102,13 @@ it("labels an unfinished candidate and offers explicit removal to pair again", a
   await act(async () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "移除")!.click());
   expect(remove).toHaveBeenCalledWith("candidate");
 });
+
+it("calls this device 本机 in its list and detail", async () => {
+  const { DevicesPage, ClientPage } = await import("./Settings");
+  const r = demo("role=authority");
+  await mount(<DevicesPage remote={r} go={() => {}} onBack={() => {}} />);
+  expect(host.querySelector(".row.client .v")?.textContent).toBe("本机");
+  await act(async () => root.render(<ClientPage remote={r} id={r.account.deviceId} onBack={() => {}} />));
+  expect(host.querySelector(".navbar")?.textContent).toContain("本机");
+  expect(host.textContent).not.toContain("当前客户端");
+});

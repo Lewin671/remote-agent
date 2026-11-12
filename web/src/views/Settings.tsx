@@ -533,7 +533,7 @@ export function DevicesPage({
                   <small>{clientDetail(d)}</small>
                 </span>
                 <span className="v">
-                  {d.id === me ? "当前客户端" : d.id === remote.authorityDeviceId ? "管理端" : clientUsed(d)}
+                  {d.id === me ? "本机" : d.id === remote.authorityDeviceId ? "管理端" : clientUsed(d)}
                 </span>
                 {d.id !== me && <ChevronRight className="chev" />}
               </button>
@@ -600,7 +600,7 @@ export function ClientPage({
         title={clientName(d, remote.devices, id)}
         sub={
           current
-            ? "当前客户端"
+            ? "本机"
             : id === remote.authorityDeviceId
               ? "管理端"
               : "已配对的客户端"
