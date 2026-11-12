@@ -311,11 +311,11 @@ fun defaultModeOf(m: MachineView?, agent: Agent): DefaultMode {
 }
 
 /** The mode a start uses: chosen, or the CLI's effective default on that machine. */
-fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent): String = when {
+fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent, includeDefault: Boolean = true): String = when {
     chosen != null -> chosen.text
     !d.known -> "跟随 CLI 设置"
-    d.mode != null -> "默认：${d.mode.text}"
-    else -> "默认：${agentName(agent)} 自己的模式"
+    d.mode != null -> if (includeDefault) "默认：${d.mode.text}" else d.mode.text
+    else -> if (includeDefault) "默认：${agentName(agent)} 自己的模式" else "${agentName(agent)} 自己的模式"
 } + if (chosen == null && d.varies) "（项目设置可能不同）" else ""
 
 /**

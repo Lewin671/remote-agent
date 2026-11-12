@@ -91,7 +91,7 @@ fun scheduleAttentionWord(task: ScheduledTask) = if (task.status == "failed" &&
 fun scheduleInProgress(task: ScheduledTask) = task.active != null || task.allRuns.any { it.status in setOf("dispatching", "queued", "running") }
 fun schedulePreview(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = when {
     scheduleInProgress(task) -> task.latestNotification?.summary ?: "还没有结果"
-    taskGroup(task) == TaskGroup.ATTENTION -> "${scheduleAttentionWord(task)} · ${scheduleReason(task.reason).removeSuffix("，任务已停下")}"
+    taskGroup(task) == TaskGroup.ATTENTION -> "${scheduleAttentionWord(task)} · ${scheduleReason(task.reason, short = true)}"
     else -> task.latestNotification?.summary ?: if (task.allRuns.isEmpty()) "还没有运行" + task.next?.let { " · 下次 ${scheduleWhen(it, now, zone)}" }.orEmpty()
         else scheduleLastResult(task, now, zone)
 }
@@ -138,19 +138,19 @@ fun scheduleDefinitionAllowed(t: ScheduledTask) = t.active == null
 fun scheduleSupported(m: MachineView?) = capabilities(m)?.scheduledTasks == true && protocolMismatch(m) == null
 fun scheduleWritable(s: RemoteState, machine: String) = s.conn == ConnState.ONLINE && s.machines[machine]?.online == true && scheduleSupported(s.machines[machine])
 val stoppedScheduleRuns = setOf("failed", "uncertain", "interrupted", "skipped", "cancelled")
-fun scheduleReason(reason: String): String = when (reason) {
+fun scheduleReason(reason: String, short: Boolean = false): String = when (reason) {
     "relay_session_limit" -> "中继上的会话数已满"
-    "execution_failed" -> "运行失败，任务已停下"
-    "execution_interrupted" -> "运行被中断，任务已停下"
+    "execution_failed" -> if (short) "运行失败" else "运行失败，任务已停下"
+    "execution_interrupted" -> if (short) "运行被中断" else "运行被中断，任务已停下"
     "execution_session_exited" -> "运行中的对话已结束"
     "execution_session_missing" -> "找不到运行的对话"
     "message_delivery_failed" -> "消息没有送达 CLI"
     "could_not_queue_message" -> "消息没能加入待发队列"
-    "message_cancelled" -> "定时消息在送达前被取消，任务已停下"
+    "message_cancelled" -> if (short) "定时消息在送达前被取消" else "定时消息在送达前被取消，任务已停下"
     "execution_input_paused" -> "定时消息已暂停，请先在对话里恢复或取消这条消息"
     "restart_dispatching" -> "电脑重启前的发送结果无法确认"
-    "agent_schedule_permissions_changed" -> "创建任务时的权限已改变，任务已停下"
-    "agent_schedule_interval_below_minimum" -> "Agent 创建的任务间隔过短，任务已停下"
+    "agent_schedule_permissions_changed" -> if (short) "创建任务时的权限已改变" else "创建任务时的权限已改变，任务已停下"
+    "agent_schedule_interval_below_minimum" -> if (short) "Agent 创建的任务间隔过短" else "Agent 创建的任务间隔过短，任务已停下"
     "catch_up_window_expired" -> "已超过补跑时间，本次跳过"
     "completed_while_paused" -> "已暂停：期间计划已到期"
     "user_paused" -> "已暂停"

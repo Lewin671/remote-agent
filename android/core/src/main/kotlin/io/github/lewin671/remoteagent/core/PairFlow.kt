@@ -31,7 +31,7 @@ import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 
-class PairException(message: String) : Exception(message)
+class PairException(message: String, val retryable: Boolean = true, val uncertain: Boolean = false) : Exception(message)
 
 /** The approval binds this account, pairing, candidate, approver and expiry, as Go verifies it. */
 internal fun validJoinApproval(
@@ -88,8 +88,7 @@ fun canRetryPairApproval(error: Exception): Boolean {
                 )
     )
         return false
-    val words = error.message.orEmpty()
-    return listOf("过期", "取消", "拒绝", "无效", "失效", "不匹配").none { it in words }
+    return (error as? PairException)?.retryable ?: true
 }
 
 /** What a QR code carries: the code, the initiator's commitment and the server. */
@@ -141,15 +140,15 @@ private suspend fun poll(
     get: suspend () -> GetPairingResponse,
 ): GetPairingResponse {
     while (true) {
-        if (stopped()) throw PairException("已取消")
+        if (stopped()) throw PairException("已取消", retryable = false)
         val res =
             try {
                 get()
             } catch (e: ConnectException) {
-                if (e.code == Code.NOT_FOUND) throw PairException("配对已过期或被取消")
+                if (e.code == Code.NOT_FOUND) throw PairException("配对已过期或被取消", retryable = false)
                 throw e
             }
-        if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException("配对已取消")
+        if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException("配对已取消", retryable = false)
         if (res.stateValue >= want.number) return res
         delay(intervalMs)
     }
@@ -260,7 +259,7 @@ internal constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            throw PairException("这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。")
+            throw PairException("这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。", retryable = false, uncertain = true)
         }
         if (registered) {
             // Install and verify the published chain before clearing its durable intent.
@@ -269,7 +268,7 @@ internal constructor(
             remote.finishPairingOperation(pairingId)
             return
         }
-        throw PairException("这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。")
+        throw PairException("这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。", retryable = false)
     }
 
     /** Signs in foreground, uploads once, then waits without further signing. */
@@ -290,7 +289,7 @@ internal constructor(
                         // This can be replay of a previous pairing's durable intent;
                         // it says nothing about the current candidate's registration.
                         if (e.code !in setOf(Code.NOT_FOUND, Code.CANCELED, Code.FAILED_PRECONDITION)) throw e
-                        throw PairException("同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。")
+                        throw PairException("同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。", retryable = false, uncertain = true)
                     }
                     val xp = candidateX ?: throw PairException("没有候选设备")
                     val kind = candidateKind ?: throw PairException("没有候选设备")
@@ -542,7 +541,7 @@ suspend fun joinByPairing(
             peek.pairingId.isEmpty() ||
             link.commit != null && !link.commit.contentEquals(peek.commit.toByteArray())
     )
-        throw PairException("配对承诺不匹配")
+        throw PairException("配对承诺不匹配", retryable = false)
     val identity = loadIdentity(link.server, peek.pairingId)
     val deviceSeed =
         identity?.seed ?: if (existing != null && !removed) existing.deviceSeed else randomBytes(32)
@@ -601,7 +600,7 @@ suspend fun joinByPairing(
         try {
             DeviceSecurityRPC.parsePairTrustDescriptor(st.trust.toByteArray())
         } catch (_: Exception) {
-            throw PairException("无效的配对信任信息")
+            throw PairException("无效的配对信任信息", retryable = false)
         }
     if (
         !DeviceSecurityRPC.pairDomainCommit(
@@ -610,7 +609,7 @@ suspend fun joinByPairing(
             )
             .contentEquals(peek.commit.toByteArray())
     )
-        throw PairException("管理端信任信息与承诺不匹配")
+        throw PairException("管理端信任信息与承诺不匹配", retryable = false)
     val tr =
         Pairing.domainTranscript(
             id,
@@ -634,7 +633,7 @@ suspend fun joinByPairing(
             PairingPayload::parseFrom,
         )
     if (payload.server != link.server) throw PairException("账户属于另一个服务器")
-    if (stopped()) throw PairException("已取消本次加入")
+    if (stopped()) throw PairException("已取消本次加入", retryable = false)
     val accountPublicKey = payload.accountPublicKey.toByteArray()
     if (accountPublicKey.size != 32 || deviceId(accountPublicKey) != pin.account)
         throw PairException("配对载荷缺少账户公钥")
@@ -669,7 +668,7 @@ suspend fun joinByPairing(
             DeviceSecurity.verifyTransition(chain[i - 1], state, proof)
         }
     }
-    if (chain.last().core.authorityID != approver) throw PairException("配对载荷的管理端不匹配")
+    if (chain.last().core.authorityID != approver) throw PairException("配对载荷的管理端不匹配", retryable = false)
     val member =
         chain.last().core.member(deviceId(devicePublic)) ?: throw PairException("加入回执没有本机身份")
     if (
@@ -677,9 +676,9 @@ suspend fun joinByPairing(
             !member.x.contentEquals(xPublic) ||
             member.kind != 2u
     )
-        throw PairException("加入回执的本机公钥不匹配")
+        throw PairException("加入回执的本机公钥不匹配", retryable = false)
     DeviceSecurity.openGrant(pin, chain.last(), member.id, xPrivate)
-    if (payload.approval.size() > 1024) throw PairException("配对批准与这台设备不匹配或签名无效")
+    if (payload.approval.size() > 1024) throw PairException("配对批准与这台设备不匹配或签名无效", retryable = false)
     val approval = PairApproval.parseFrom(payload.approval)
     if (
         !validJoinApproval(
@@ -693,7 +692,7 @@ suspend fun joinByPairing(
             now,
         )
     )
-        throw PairException("配对批准与这台设备不匹配或签名无效")
+        throw PairException("配对批准与这台设备不匹配或签名无效", retryable = false)
     val acct =
         Account(
             link.server,

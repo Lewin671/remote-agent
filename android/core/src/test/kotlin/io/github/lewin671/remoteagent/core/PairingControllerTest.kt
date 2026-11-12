@@ -89,7 +89,7 @@ class PairingControllerTest {
         val first = Pairing(); val second = Pairing(); var begins = 0
         val model = PairingController(this, backgroundScope) { if (begins++ == 0) first else second }
         model.start(); runCurrent(); model.approve(); runCurrent()
-        first.approvals[0].completeExceptionally(PairException("配对已过期")); runCurrent()
+        first.approvals[0].completeExceptionally(PairException("any display language", retryable = false)); runCurrent()
         assertFalse((model.state.value as PairingUiState.Failed).canRetry)
         model.retry(); runCurrent()
         assertEquals(2, begins)

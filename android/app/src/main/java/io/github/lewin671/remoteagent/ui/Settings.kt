@@ -877,7 +877,7 @@ fun DeviceScreen(id: String) {
                 "${agentName(agent)} · 审批模式",
                 opts.map { mode ->
                     val desc = when {
-                        mode == null -> "不指定时实际用：" + modeLabel(null, eff, agent).removePrefix("默认：")
+                        mode == null -> "不指定时实际用：" + modeLabel(null, eff, agent, includeDefault = false)
                         mode == Mode.AUTO && noAuto -> if (allNoAuto) "当前账户不支持自动模式" else "当前模型不支持"
                         else -> modeHelp.getValue(mode).replace("CLI", agentName(agent))
                     }

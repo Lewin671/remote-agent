@@ -85,7 +85,7 @@ class PairingController(
             }
             catch (e: Exception) {
                 if (run == generation) {
-                    val uncertain = e !is PairException || e.message.orEmpty().let { "不确定" in it || "可能" in it || "无法核实" in it }
+                    val uncertain = e !is PairException || e.uncertain
                     val retryable = canRetryPairApproval(e)
                     val message = if (e is PairException) words(e)
                         else if (retryable) "暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果"
