@@ -50,14 +50,30 @@ installed() {
 # reaches the new one.
 wait_up() {
 	i=0
-	while [ $i -lt 30 ]; do
+	while [ $i -lt 120 ]; do
 		if "$BIN" ls >/dev/null 2>&1; then
 			return 0
 		fi
 		sleep 0.5
 		i=$((i + 1))
 	done
-	echo "the daemon did not come up within 15s; see $0 log" >&2
+	# A socket appears only after restoration. Ask the service manager for its
+	# process, rather than treating a slow recovery as a failed launch.
+	if [ "$(uname)" = Darwin ]; then
+		pid=$(launchctl print "$DOMAIN/$LABEL" 2>/dev/null | awk '/^[[:space:]]*pid = / { print $3; exit }')
+	else
+		pid=$(systemctl --user show remote-agent.service --property=MainPID --value 2>/dev/null || true)
+	fi
+	case $pid in
+	''|0|*[!0-9]*) ;;
+	*)
+		if kill -0 "$pid" 2>/dev/null; then
+			echo "the daemon process is running but is not ready after 60s; session recovery or CLI checks may still be in progress; see $0 log" >&2
+			return 1
+		fi
+		;;
+	esac
+	echo "the daemon process is not running after 60s (it failed to start or exited); see $0 log" >&2
 	return 1
 }
 
