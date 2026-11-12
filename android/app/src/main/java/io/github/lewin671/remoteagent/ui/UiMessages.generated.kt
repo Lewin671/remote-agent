@@ -12,6 +12,10 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
     val configuration = Configuration(context.resources.configuration)
     configuration.setLocale(java.util.Locale.forLanguageTag(MessageLocale.appleTags.getValue(language)))
     val resources = context.createConfigurationContext(configuration).resources
+    return resolveUiMessage0(resources, message) ?: resolveUiMessage1(resources, message) ?: resolveUiMessage2(resources, message) ?: resolveUiMessage3(resources, message) ?: resolveUiMessage4(resources, message) ?: resolveUiMessage5(resources, message) ?: resolveUiMessage6(resources, message) ?: resolveUiMessage7(resources, message) ?: resolveUiMessage8(resources, message) ?: resolveUiMessage9(resources, message) ?: error("Unknown UI message key")
+}
+
+private fun resolveUiMessage0(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
         "approval.allow" -> {
             resources.getString(R.string.approval_allow)
@@ -505,6 +509,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "connection.reconnect_now" -> {
             resources.getString(R.string.connection_reconnect_now)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage1(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "connection.reconnecting" -> {
             resources.getString(R.string.connection_reconnecting)
         }
@@ -982,6 +992,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "home.android_current_scope" -> {
             resources.getString(R.string.home_android_current_scope)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage2(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "home.android_earlier_failed_retry" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.home_android_earlier_failed_retry, reason)
@@ -1493,6 +1509,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "models.all" -> {
             resources.getString(R.string.models_all)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage3(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "models.android_load_failed_default" -> {
             val agent = message.args.getValue("agent") as String
             val reason = message.args.getValue("reason") as String
@@ -2007,6 +2029,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "projects.manage" -> {
             resources.getString(R.string.projects_manage)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "projects.manage_named" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.projects_manage_named, name)
@@ -2518,6 +2546,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "schedule.execution_interrupted_the_task_stopped" -> {
             resources.getString(R.string.schedule_execution_interrupted_the_task_stopped)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "schedule.execution_outcome_is_unconfirmed" -> {
             resources.getString(R.string.schedule_execution_outcome_is_unconfirmed)
         }
@@ -3009,6 +3043,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "security.account_public_key_restored" -> {
             resources.getString(R.string.security_account_public_key_restored)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.account_security" -> {
             resources.getString(R.string.security_account_security)
         }
@@ -3468,6 +3508,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "security.take_over_management" -> {
             resources.getString(R.string.security_take_over_management)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.the_48_hour_wait_has_not_ended" -> {
             resources.getString(R.string.security_the_48_hour_wait_has_not_ended)
         }
@@ -3962,6 +4008,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "session.other_session" -> {
             resources.getString(R.string.session_other_session)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "session.quiet_checks" -> {
             val times = message.args.getValue("times") as String
             resources.getString(R.string.session_quiet_checks, times)
@@ -4439,6 +4491,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "startup.opening" -> {
             resources.getString(R.string.startup_opening)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "startup.opening_remote_agent" -> {
             resources.getString(R.string.startup_opening_remote_agent)
         }
@@ -4757,6 +4815,6 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "tools.waiting_sync" -> {
             resources.getString(R.string.tools_waiting_sync)
         }
-        else -> error("Unknown UI message key")
+        else -> null
     }
 }

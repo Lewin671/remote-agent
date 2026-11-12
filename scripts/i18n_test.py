@@ -75,6 +75,14 @@ class CompilerTest(unittest.TestCase):
         (folder / 'web-shell.html').write_text('{{startup.unknown}}')
         with self.assertRaises(KeyError): i18n.build(self.root)
 
+    def test_android_resolver_stays_under_the_jvm_method_size_limit(self):
+        # A single `when` over every key fails to compile ("Method too large").
+        text=(i18n.ROOT/'android/app/src/main/java/io/github/lewin671/remoteagent/ui/UiMessages.generated.kt').read_text()
+        functions=text.split('\nprivate fun resolveUiMessage')[1:]
+        self.assertGreater(len(functions),1)
+        for body in functions:
+            self.assertLessEqual(body.count('\n        "'),i18n.KOTLIN_CASES_PER_FUNCTION)
+
     def test_duplicate_json_fields(self):
         with self.assertRaisesRegex(ValueError,'duplicate JSON field'):
             json.loads('{"key":1,"key":2}',object_pairs_hook=i18n.pairs)
