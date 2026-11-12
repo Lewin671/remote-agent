@@ -360,7 +360,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .segrow { flex: none; display: flex; justify-content: center; padding: 0 16px 8px; }
 .vseg { position: relative; display: flex; width: 188px; height: 38px; border-radius: 19px; padding: 3px; }
 .vseg button { flex: 1; position: relative; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; font-weight: var(--w5); color: var(--ink2); white-space: nowrap; }
-.vseg button::before { content: ""; position: absolute; inset: -3px 0; }
+.vseg button::before { content: ""; position: absolute; inset: 50% 0 auto; height: 44px; transform: translateY(-50%); }
 .vseg .on { color: var(--ink); font-weight: var(--w6); }
 .vseg > .mo-knob { border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
 .vseg button:disabled { color: var(--ink3); }
