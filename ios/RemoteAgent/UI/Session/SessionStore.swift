@@ -114,10 +114,12 @@ final class SessionStore {
     private var reasons: [String: String] = [:]
     private var prompts: [String: String] = [:]
 
+    private func draftName(_ key: String) -> String { sha256(Data(key.utf8)).hex }
+
     /// What is being typed in a session's message box.
     func draft(_ sid: String) -> String {
         if loadedDrafts.insert(sid).inserted, let draftFiles {
-            do { drafts[sid] = try draftFiles.get(folder: "composer-text", name: sid).flatMap { String(data: $0, encoding: .utf8) } }
+            do { drafts[sid] = try draftFiles.get(folder: "composer-text", name: draftName(sid)).flatMap { String(data: $0, encoding: .utf8) } }
             catch { draftErrors[sid] = "草稿没能恢复，请重新打开后重试" }
         }
         return drafts[sid] ?? ""
@@ -127,16 +129,18 @@ final class SessionStore {
         guard draft(sid) != text else { return }
         drafts[sid] = text.isEmpty ? nil : text
         guard let draftFiles else { return }
+        let name = draftName(sid)
         let bytes = Data(text.utf8)
         let write: @Sendable () -> Bool = {
             do {
-                if bytes.isEmpty { try draftFiles.remove(folder: "composer-text", name: sid) }
-                else { try draftFiles.put(folder: "composer-text", name: sid, data: bytes) }
+                if bytes.isEmpty { try draftFiles.remove(folder: "composer-text", name: name) }
+                else { try draftFiles.put(folder: "composer-text", name: name, data: bytes) }
                 return true
             } catch { return false }
         }
         let finish: @MainActor @Sendable (Bool) -> Void = { [weak self] saved in
-            self?.draftErrors[sid] = saved ? nil : "草稿没能保存到本机，关闭应用前请保留文字"
+            guard let self else { return }
+            self.draftErrors[sid] = saved ? nil : "草稿没能保存到本机，关闭应用前请保留文字"
         }
         if let draftQueue {
             draftQueue.async { let saved = write(); DispatchQueue.main.async { finish(saved) } }

@@ -47,6 +47,28 @@ import Testing
         #expect(second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("new".utf8))
     }
 
+    @Test @MainActor func projectDraftPathsAreSafeFilesAndSurviveReopening() throws {
+        defer { cleanUp() }
+        let files = store()
+        let first = SessionStore(draftFiles: files, draftQueue: nil)
+        let path = "/work/project/with spaces/项目"
+        let drafts = NewSessionDrafts(store: first)
+        drafts.of(path, initial: nil, settled: true).text = "project draft"
+        #expect(first.draftErrors["new:" + path] == nil)
+        let second = SessionStore(draftFiles: files, draftQueue: nil)
+        #expect(NewSessionDrafts(store: second).of(path, initial: nil, settled: true).text == "project draft")
+        #expect(filesOnDisk().allSatisfy { $0.lastPathComponent.count <= 64 })
+    }
+
+    @Test @MainActor func projectDraftWriteFailuresHaveANoticeAndDoNotBlockTyping() {
+        defer { cleanUp() }
+        let session = SessionStore(draftFiles: store(limit: 0), draftQueue: nil)
+        let draft = NewSessionDrafts(store: session).of("/work/app", initial: nil, settled: true)
+        draft.text = "typing remains available"
+        #expect(draft.text == "typing remains available")
+        #expect(session.draftErrors["new:/work/app"] != nil)
+    }
+
     @Test func whatIsPutComesBackAndIsNotReadableOnDisk() throws {
         defer { cleanUp() }
         let s = store()

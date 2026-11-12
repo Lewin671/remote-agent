@@ -70,6 +70,12 @@ struct NewSessionBox: View {
                 box(draft: draft, config: config, agents: agents, images: images, notices: notices, canSend: canSend)
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let error = context.sessionStore.draftErrors["new:" + key] {
+                Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
+                    .accessibilityIdentifier("new-session-draft-error")
+            }
+        }
         // What the next session inherits may be a session not fetched yet.
         .fetchEarlier(state, page: !settled)
         // The draft follows the project until something is written or chosen.
