@@ -977,6 +977,10 @@ h1, h2, h3 { font-weight: var(--w7); }
    value that is a segmented control. */
 .set-banners { display: flex; flex-direction: column; gap: 8px; margin: 10px 16px 0; }
 .set-banners:empty { display: none; }
+/* Quota warnings sit between a card and its metadata. The usual group
+   footer's negative top margin would pull its text into the warning. */
+.quota-warning { margin: 0 16px 12px; }
+.quota-warning + .gf { margin-top: 0; }
 .row > .chev { margin-left: -4px; }
 .row > .chev:only-child { margin-left: auto; }
 .row > .seg { margin-left: auto; }

@@ -396,7 +396,7 @@ export function QuotaPage({
               ))
             )}
             {v.banner && (
-              <div className="set-banners">
+              <div className="quota-warning">
                 <Banner kind="warn">{v.banner}</Banner>
               </div>
             )}
