@@ -80,8 +80,8 @@ export function NewTaskModelPanel({ cfg, info, enabled, pending, onChange, onClo
         {agentInfo(cfg.agent).standardContextOption && (model && model.contextWindow > 0n && model.contextWindow <= STANDARD_WINDOW ?
           <div className="hint">标准 200k · 这个模型只有标准窗口</div> : <>
             <div className="fl">上下文窗口</div>
-            <Segmented className="full" label="上下文窗口" value={cfg.standardContext ? "标准 200k" : "1M"}
-              onChange={value => onChange({ ...cfg, standardContext: value === "标准 200k" })} options={options(["1M", "标准 200k"])} />
+            <Segmented className="full" label="上下文窗口" value={cfg.standardContext ? "standard" : "extended"}
+              onChange={value => onChange({ ...cfg, standardContext: value === "standard" })} options={[{ value: "extended", label: "1M", disabled: !enabled }, { value: "standard", label: "标准 200k", disabled: !enabled }]} />
           </>)}
       </div>}
       <div className="model-list-scroll">

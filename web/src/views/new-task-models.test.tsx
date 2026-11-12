@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { ListModelsResponseSchema, DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
-import { chooseNewTaskModel, NewTaskTools, shouldPinModelControls } from "./NewTaskModels";
+import { chooseNewTaskModel, NewTaskModelPanel, NewTaskTools, shouldPinModelControls } from "./NewTaskModels";
 import { ConfigSummary } from "./NewSession";
 
 it("pins only when the remaining height fits two actual model rows and padding", () => {
@@ -59,5 +59,27 @@ it.each([
     expect(host.querySelector(".project-summary")?.getAttribute("aria-label")).toBe("模型：A very long model，推理强度：medium");
   } finally {
     act(() => root.unmount()); host.remove(); rect.mockRestore(); client.mockRestore(); scroll.mockRestore();
+  }
+});
+
+
+it("selects the context window by stable option values", () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const onChange = vi.fn();
+  const cfg = { machineId: "example", cwd: "/example", agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, model: "", effort: "" };
+  const info = { models: create(ListModelsResponseSchema), error: "", retry: vi.fn() };
+  try {
+    act(() => root.render(<NewTaskModelPanel cfg={cfg} info={info} enabled pending={false} onChange={onChange} onClose={() => {}} />));
+    const controls = host.querySelectorAll(".seg");
+    const buttons = controls[controls.length - 1].querySelectorAll("button");
+    act(() => buttons[1].click());
+    expect(onChange).toHaveBeenLastCalledWith({ ...cfg, standardContext: true });
+    act(() => root.render(<NewTaskModelPanel cfg={{ ...cfg, standardContext: true }} info={info} enabled pending={false} onChange={onChange} onClose={() => {}} />));
+    act(() => host.querySelectorAll(".seg button")[0].dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(onChange).toHaveBeenLastCalledWith({ ...cfg, standardContext: false });
+  } finally {
+    act(() => root.unmount()); host.remove();
   }
 });

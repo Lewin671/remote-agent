@@ -13,5 +13,15 @@
     "path": "web/src/i18n/index.ts",
     "literal": "Missing message parameter",
     "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
+    "path": "web/src/views/NewTaskModels.tsx",
+    "literal": "standard",
+    "reason": "Internal context-window option value, never displayed; the adjacent label uses models.* messages."
+  },
+  {
+    "path": "web/src/views/NewTaskModels.tsx",
+    "literal": "extended",
+    "reason": "Internal context-window option value, never displayed; the adjacent label uses models.* messages."
   }
 ]
