@@ -169,19 +169,25 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 	if d.reported == nil {
 		d.reported = map[string]quotaReport{}
 	}
-	if last, ok := d.reported[sessionID]; ok && last.account != e.Account && proto.Equal(&pb.AgentQuota{Windows: last.windows}, &pb.AgentQuota{Windows: e.Windows}) {
+	last, known := d.reported[sessionID]
+	unchanged := known && proto.Equal(&pb.AgentQuota{Windows: last.windows}, &pb.AgentQuota{Windows: e.Windows})
+	if unchanged && last.account != e.Account {
 		if dropped {
 			d.saveQuotasLocked()
 		}
 		return
 	}
 	d.reported[sessionID] = quotaReport{account: e.Account, windows: e.Windows}
+	fresh := monotonic && known && !unchanged
 	if old := d.quotas[key]; old != nil {
 		reported := e.Windows
 		if now.UnixMilli() < old.ObservedMs {
 			return
 		}
-		if monotonic {
+		if monotonic && unchanged {
+			return // this session is only repeating its last reply
+		}
+		if monotonic && !fresh {
 			e.Windows = newestWindows(old.Windows, reported)
 		} else {
 			e.Windows = latestWindows(old.Windows, reported)
@@ -189,8 +195,8 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 		same := proto.Equal(&pb.AgentQuota{Windows: old.Windows, Plan: old.Plan, Login: old.Login}, &pb.AgentQuota{Windows: e.Windows, Plan: e.Plan, Login: e.Login})
 		// Status lines repeat the last reply's limits without a source
 		// timestamp. Re-reading identical data cannot prove it is fresh,
-		// even when no other session has reported higher usage.
-		if same {
+		// unless this session's own report changed to confirm it.
+		if same && !fresh {
 			return
 		}
 	}
@@ -198,13 +204,17 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 	d.saveQuotasLocked()
 }
 
-// newestWindows merges a status line's windows into the recorded ones. A
-// session's status line repeats the limits of that session's last reply,
-// with no time, so an idle session keeps reporting old numbers next to a
-// busy one's. Per window the later reset wins, and with the same reset
-// the higher usage, which only grows until the reset. Without reset times
-// the report wins. A window only the record has is kept: the client marks
-// it once its reset has passed.
+// newestWindows conservatively merges a session's first status line, whose
+// age is unknown (also after a daemon restart): later resets win, then higher
+// usage for equal resets. Usage CAN fall within a reset cycle, e.g. when the
+// provider raises a limit or grants credit, so this is not a freshness rule.
+// Once any window changes from that session's own previous report, it has a
+// new reply: recordQuotaWithPolicy adopts ALL its reported windows through
+// latestWindows, including lower usage in unchanged windows. Later recorded
+// resets still win, and omitted windows/fields remain. Repeated reports are
+// not new evidence and cannot replace data or renew its observation time.
+// Without reset times the first report wins too. A window only the record
+// has is kept: the client marks it once its reset has passed.
 func newestWindows(old, reported []*pb.QuotaWindow) []*pb.QuotaWindow {
 	byName := map[string]*pb.QuotaWindow{}
 	for _, w := range old {

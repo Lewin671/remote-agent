@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	"github.com/Lewin671/remote-agent/internal/agent"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -10,9 +10,95 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/antigravity"
 	"github.com/Lewin671/remote-agent/internal/claude"
 )
+
+func TestClaudeQuotaSessionFreshness(t *testing.T) {
+	type step struct {
+		session      string
+		five, seven  float64
+		resetOffset  int64 // seconds added to the five-hour reset
+		restart      bool
+		want         [2]float64
+		wantReset    int64
+		observedStep int
+	}
+	for _, tt := range []struct {
+		name  string
+		steps []step
+	}{
+		{"same session usage can fall", []step{
+			{session: "A", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "A", five: 41, seven: 70, want: [2]float64{41, 70}, observedStep: 1},
+		}},
+		{"idle session cannot undo a fresh report", []step{
+			{session: "A", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "B", five: 30, seven: 60, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "A", five: 41, seven: 70, want: [2]float64{41, 70}, observedStep: 2},
+			{session: "B", five: 30, seven: 60, want: [2]float64{41, 70}, observedStep: 2},
+			{session: "B", five: 30, seven: 60, want: [2]float64{41, 70}, observedStep: 2},
+			{session: "B", five: 30, seven: 61, want: [2]float64{30, 61}, observedStep: 5},
+		}},
+		{"restart needs a changed report", []step{
+			{session: "A", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 0},
+			{restart: true, session: "A", five: 30, seven: 60, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "A", five: 30, seven: 60, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "A", five: 30, seven: 61, want: [2]float64{30, 61}, observedStep: 3},
+		}},
+		{"idle repetition cannot restore an older higher value", []step{
+			{session: "A", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "B", five: 30, seven: 60, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "A", five: 20, seven: 50, want: [2]float64{20, 50}, observedStep: 2},
+			{session: "B", five: 30, seven: 60, want: [2]float64{20, 50}, observedStep: 2},
+		}},
+		{"one changed window refreshes the whole report", []step{
+			{session: "A", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "B", five: 30, seven: 60, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "B", five: 31, seven: 60, want: [2]float64{31, 60}, observedStep: 2},
+		}},
+		{"first report can advance a reset", []step{
+			{session: "A", five: 97, seven: 97, want: [2]float64{97, 97}, observedStep: 0},
+			{session: "B", five: 1, seven: 60, resetOffset: 18000, want: [2]float64{1, 97}, wantReset: 18000, observedStep: 1},
+		}},
+		{"changed report cannot undo a later reset", []step{
+			{session: "A", five: 97, seven: 97, want: [2]float64{97, 97}, observedStep: 0},
+			{session: "B", five: 1, seven: 97, resetOffset: 18000, want: [2]float64{1, 97}, wantReset: 18000, observedStep: 1},
+			{session: "A", five: 98, seven: 70, want: [2]float64{1, 70}, wantReset: 18000, observedStep: 2},
+		}},
+		{"changed session confirms the current account snapshot", []step{
+			{session: "A", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "B", five: 30, seven: 60, want: [2]float64{41, 97}, observedStep: 0},
+			{session: "B", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 2},
+			{session: "B", five: 41, seven: 97, want: [2]float64{41, 97}, observedStep: 2},
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			home, dir := t.TempDir(), t.TempDir()
+			writeAccount(t, home, "quota-account")
+			newDaemon := func() *Daemon {
+				d := New(dir, Config{})
+				d.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
+				d.loadQuotas()
+				return d
+			}
+			d := newDaemon()
+			now := time.Now()
+			for i, s := range tt.steps {
+				if s.restart {
+					d = newDaemon()
+				}
+				raw := fmt.Sprintf(`{"rate_limits":{"five_hour":{"used_percentage":%g,"resets_at":%d},"seven_day":{"used_percentage":%g,"resets_at":1790960400}}}`, s.five, 1790774400+s.resetOffset, s.seven)
+				reportClaudeQuota(t, d, s.session, []byte(raw), now.Add(time.Duration(i)*time.Minute))
+				q := claudeQuota(d)[0]
+				if len(q.Windows) != 2 || q.Windows[0].GetUsedPercent() != s.want[0] || q.Windows[1].GetUsedPercent() != s.want[1] || q.Windows[0].ResetsAtMs != (1790774400+s.wantReset)*1000 || q.ObservedMs != now.Add(time.Duration(s.observedStep)*time.Minute).UnixMilli() {
+					t.Fatalf("step %d: got %v; want usage %v, reset offset %d, observation step %d", i, q, s.want, s.wantReset, s.observedStep)
+				}
+			}
+		})
+	}
+}
 
 func claudeQuota(d *Daemon) []*pb.AgentQuota {
 	var out []*pb.AgentQuota
@@ -76,7 +162,7 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 	// replace newer ones, nor renew the time.
 	later := now.Add(5 * time.Minute)
 	reportClaudeQuota(t, h.d, "s2", []byte(`{"rate_limits":{"five_hour":{"used_percentage":86,"resets_at":1790774400},"seven_day":{"used_percentage":3,"resets_at":1790960400}}}`), later)
-	reportClaudeQuota(t, h.d, "s1", []byte(`{"rate_limits":{"five_hour":{"used_percentage":80,"resets_at":1790774400}}}`), later.Add(5*time.Minute))
+	reportClaudeQuota(t, h.d, "s1", []byte(`{"rate_limits":{"five_hour":{"used_percentage":80,"resets_at":1790774400},"seven_day":{"resets_at":1790960400}}}`), later.Add(5*time.Minute))
 	q = claudeQuota(h.d)
 	if w := q[0].Windows; len(w) != 2 || w[0].GetUsedPercent() != 86 || w[1].GetUsedPercent() != 3 || q[0].ObservedMs != later.UnixMilli() {
 		t.Fatalf("stale report taken: %v", q)

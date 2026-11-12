@@ -121,7 +121,7 @@ type Daemon struct {
 	limitsAt    time.Time           // when Codex reported them
 	quotaErrors map[pb.Agent]string // last status line parse failure, without private data
 	quotas      quotaStore          // CLI account limits
-	// reported is each session's last Claude Code status line.
+	// reported is each session's last raw status line quota, before merging.
 	reported map[string]quotaReport
 
 	// syncStateDir overrides the durability boundary for state-file fault tests.
