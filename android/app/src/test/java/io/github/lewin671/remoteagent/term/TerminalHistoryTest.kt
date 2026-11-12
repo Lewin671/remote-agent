@@ -9,7 +9,10 @@ import org.junit.Test
 import org.junit.Assert.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class TerminalHistoryTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     private fun plain(page: TerminalHistory.Page) = page.lines.map { line -> line.joinToString("") { it.text } }
 
     @Test fun emptyCaptureDoesNotCreateABlankPageAndDoesNotEnter() = runTest {

@@ -87,7 +87,8 @@
     },
     "platforms": [
       "ios",
-      "web"
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",

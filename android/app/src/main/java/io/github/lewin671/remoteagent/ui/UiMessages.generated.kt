@@ -33,6 +33,28 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val command = message.args.getValue("command") as String
             resources.getString(R.string.approval_always_prefix, command)
         }
+        "approval.android_deny_decision" -> {
+            resources.getString(R.string.approval_android_deny_decision)
+        }
+        "approval.android_minutes_meta" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.approval_android_minutes_meta, count, count)
+        }
+        "approval.android_prefix" -> {
+            val command = message.args.getValue("command") as String
+            resources.getString(R.string.approval_android_prefix, command)
+        }
+        "approval.android_remaining_timeout" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.approval_android_remaining_timeout, count, count)
+        }
+        "approval.android_reply_expired" -> {
+            val decision = message.args.getValue("decision") as String
+            resources.getString(R.string.approval_android_reply_expired, decision)
+        }
+        "approval.android_unknown_result" -> {
+            resources.getString(R.string.approval_android_unknown_result)
+        }
         "approval.approve" -> {
             resources.getString(R.string.approval_approve)
         }
@@ -86,6 +108,51 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "approval.truncated" -> {
             resources.getString(R.string.approval_truncated)
+        }
+        "attachment.android_choose_computer" -> {
+            resources.getString(R.string.attachment_android_choose_computer)
+        }
+        "attachment.android_failed_meta" -> {
+            resources.getString(R.string.attachment_android_failed_meta)
+        }
+        "attachment.android_files_limit" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.attachment_android_files_limit, count, count)
+        }
+        "attachment.android_missing_files" -> {
+            resources.getString(R.string.attachment_android_missing_files)
+        }
+        "attachment.android_name_too_long" -> {
+            resources.getString(R.string.attachment_android_name_too_long)
+        }
+        "attachment.android_name_unreadable" -> {
+            resources.getString(R.string.attachment_android_name_unreadable)
+        }
+        "attachment.android_not_saved" -> {
+            resources.getString(R.string.attachment_android_not_saved)
+        }
+        "attachment.android_permission_temporary" -> {
+            resources.getString(R.string.attachment_android_permission_temporary)
+        }
+        "attachment.android_preparing_meta" -> {
+            resources.getString(R.string.attachment_android_preparing_meta)
+        }
+        "attachment.android_reading_files" -> {
+            resources.getString(R.string.attachment_android_reading_files)
+        }
+        "attachment.android_restore_limit" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.attachment_android_restore_limit, count, count)
+        }
+        "attachment.android_source_unreadable" -> {
+            resources.getString(R.string.attachment_android_source_unreadable)
+        }
+        "attachment.android_upload_meta" -> {
+            val percent = message.args.getValue("percent") as String
+            resources.getString(R.string.attachment_android_upload_meta, percent)
+        }
+        "attachment.android_upload_required" -> {
+            resources.getString(R.string.attachment_android_upload_required)
         }
         "attachment.computer_offline" -> {
             val name = message.args.getValue("name") as String
@@ -216,6 +283,9 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "common.got_it" -> {
             resources.getString(R.string.common_got_it)
         }
+        "common.ios_spoken_separator" -> {
+            resources.getString(R.string.common_ios_spoken_separator)
+        }
         "common.list_separator" -> {
             resources.getString(R.string.common_list_separator)
         }
@@ -245,6 +315,16 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "composer.after_turn" -> {
             resources.getString(R.string.composer_after_turn)
+        }
+        "composer.android_not_sent" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.composer_android_not_sent, reason)
+        }
+        "composer.android_outbox_format" -> {
+            resources.getString(R.string.composer_android_outbox_format)
+        }
+        "composer.android_restart_unknown" -> {
+            resources.getString(R.string.composer_android_restart_unknown)
         }
         "composer.await_record" -> {
             val agent = message.args.getValue("agent") as String
@@ -403,6 +483,46 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "dock.agy_plan_note" -> {
             resources.getString(R.string.dock_agy_plan_note)
+        }
+        "dock.android_answer_expired" -> {
+            val answer = message.args.getValue("answer") as String
+            resources.getString(R.string.dock_android_answer_expired, answer)
+        }
+        "dock.android_answer_unknown" -> {
+            val answer = message.args.getValue("answer") as String
+            resources.getString(R.string.dock_android_answer_unknown, answer)
+        }
+        "dock.android_answered" -> {
+            resources.getString(R.string.dock_android_answered)
+        }
+        "dock.android_answered_values" -> {
+            val answers = message.args.getValue("answers") as String
+            resources.getString(R.string.dock_android_answered_values, answers)
+        }
+        "dock.android_plan_expired" -> {
+            val choice = message.args.getValue("choice") as String
+            resources.getString(R.string.dock_android_plan_expired, choice)
+        }
+        "dock.android_plan_keep" -> {
+            resources.getString(R.string.dock_android_plan_keep)
+        }
+        "dock.android_plan_unknown" -> {
+            val choice = message.args.getValue("choice") as String
+            resources.getString(R.string.dock_android_plan_unknown, choice)
+        }
+        "dock.android_question_answered" -> {
+            resources.getString(R.string.dock_android_question_answered)
+        }
+        "dock.android_question_changed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.dock_android_question_changed, reason)
+        }
+        "dock.android_reply_pending" -> {
+            resources.getString(R.string.dock_android_reply_pending)
+        }
+        "dock.android_retry_choice" -> {
+            val choice = message.args.getValue("choice") as String
+            resources.getString(R.string.dock_android_retry_choice, choice)
         }
         "dock.answer_title" -> {
             resources.getString(R.string.dock_answer_title)
@@ -576,6 +696,13 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.home_idle_count, count, count)
         }
+        "home.ios_approval_remaining" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_ios_approval_remaining, count, count)
+        }
+        "home.ios_open_session" -> {
+            resources.getString(R.string.home_ios_open_session)
+        }
         "home.list_failed" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.home_list_failed, reason)
@@ -699,6 +826,79 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "image.add" -> {
             resources.getString(R.string.image_add)
+        }
+        "image.android_bubble" -> {
+            resources.getString(R.string.image_android_bubble)
+        }
+        "image.android_download_retry" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.image_android_download_retry, reason)
+        }
+        "image.android_empty" -> {
+            resources.getString(R.string.image_android_empty)
+        }
+        "image.android_generated_by" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.image_android_generated_by, agent)
+        }
+        "image.android_generated_size" -> {
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.image_android_generated_size, size)
+        }
+        "image.android_missing_uploads" -> {
+            resources.getString(R.string.image_android_missing_uploads)
+        }
+        "image.android_name_only" -> {
+            resources.getString(R.string.image_android_name_only)
+        }
+        "image.android_no_preview" -> {
+            resources.getString(R.string.image_android_no_preview)
+        }
+        "image.android_original_meta" -> {
+            resources.getString(R.string.image_android_original_meta)
+        }
+        "image.android_restore_limit" -> {
+            val added = message.args.getValue("added") as Int
+            val current = message.args.getValue("current") as Int
+            val limit = message.args.getValue("limit") as Int
+            resources.getQuantityString(R.plurals.image_android_restore_limit, added, added, current, limit)
+        }
+        "image.android_restore_retry" -> {
+            resources.getString(R.string.image_android_restore_retry)
+        }
+        "image.android_restore_wait" -> {
+            resources.getString(R.string.image_android_restore_wait)
+        }
+        "image.android_restoring" -> {
+            resources.getString(R.string.image_android_restoring)
+        }
+        "image.android_save_permission" -> {
+            resources.getString(R.string.image_android_save_permission)
+        }
+        "image.android_saved" -> {
+            resources.getString(R.string.image_android_saved)
+        }
+        "image.android_share_title" -> {
+            resources.getString(R.string.image_android_share_title)
+        }
+        "image.android_total_size" -> {
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.image_android_total_size, size)
+        }
+        "image.android_upload_progress" -> {
+            val percent = message.args.getValue("percent") as String
+            resources.getString(R.string.image_android_upload_progress, percent)
+        }
+        "image.android_user_pasted" -> {
+            resources.getString(R.string.image_android_user_pasted)
+        }
+        "image.android_verify_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.image_android_verify_failed, reason)
+        }
+        "image.android_viewed_by" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.image_android_viewed_by, agent)
         }
         "image.attach_failed" -> {
             val count = message.args.getValue("count") as Int
@@ -900,6 +1100,10 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "markdown.expand" -> {
             resources.getString(R.string.markdown_expand)
         }
+        "markdown.ios_hidden_lines" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.markdown_ios_hidden_lines, count, count)
+        }
         "markdown.line_count" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.markdown_line_count, count, count)
@@ -979,6 +1183,10 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "modes.agy_plan_desc" -> {
             resources.getString(R.string.modes_agy_plan_desc)
+        }
+        "modes.android_permission_notice" -> {
+            val mode = message.args.getValue("mode") as String
+            resources.getString(R.string.modes_android_permission_notice, mode)
         }
         "modes.ask" -> {
             resources.getString(R.string.modes_ask)
@@ -1195,6 +1403,9 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val missing = message.args.getValue("missing") as String
             resources.getString(R.string.new_session_installed_fallback, agent, agents, missing)
         }
+        "new_session.ios_attach" -> {
+            resources.getString(R.string.new_session_ios_attach)
+        }
         "new_session.location" -> {
             val project = message.args.getValue("project") as String
             resources.getString(R.string.new_session_location, project)
@@ -1351,6 +1562,9 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.projects_directory_failed, reason)
         }
+        "projects.ios_expanded" -> {
+            resources.getString(R.string.projects_ios_expanded)
+        }
         "projects.live_count" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.projects_live_count, count, count)
@@ -1463,6 +1677,52 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "queue.already_submitted" -> {
             resources.getString(R.string.queue_already_submitted)
+        }
+        "queue.android_after_answer" -> {
+            resources.getString(R.string.queue_android_after_answer)
+        }
+        "queue.android_after_approval" -> {
+            resources.getString(R.string.queue_android_after_approval)
+        }
+        "queue.android_after_plan" -> {
+            resources.getString(R.string.queue_android_after_plan)
+        }
+        "queue.android_agent_note" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.queue_android_agent_note, agent)
+        }
+        "queue.android_answer_note" -> {
+            resources.getString(R.string.queue_android_answer_note)
+        }
+        "queue.android_approval_note" -> {
+            resources.getString(R.string.queue_android_approval_note)
+        }
+        "queue.android_draft" -> {
+            resources.getString(R.string.queue_android_draft)
+        }
+        "queue.android_input_note" -> {
+            resources.getString(R.string.queue_android_input_note)
+        }
+        "queue.android_message" -> {
+            resources.getString(R.string.queue_android_message)
+        }
+        "queue.android_plan_note" -> {
+            resources.getString(R.string.queue_android_plan_note)
+        }
+        "queue.android_popup_note" -> {
+            resources.getString(R.string.queue_android_popup_note)
+        }
+        "queue.android_scheduled" -> {
+            resources.getString(R.string.queue_android_scheduled)
+        }
+        "queue.android_sending_soon" -> {
+            resources.getString(R.string.queue_android_sending_soon)
+        }
+        "queue.android_turn_note" -> {
+            resources.getString(R.string.queue_android_turn_note)
+        }
+        "queue.android_unconfirmed" -> {
+            resources.getString(R.string.queue_android_unconfirmed)
         }
         "queue.cancel_failed" -> {
             resources.getString(R.string.queue_cancel_failed)
@@ -1585,6 +1845,75 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val action = message.args.getValue("action") as String
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.session_action_failed, action, reason)
+        }
+        "session.android_collapse_title" -> {
+            val title = message.args.getValue("title") as String
+            resources.getString(R.string.session_android_collapse_title, title)
+        }
+        "session.android_compacted_usage" -> {
+            val after = message.args.getValue("after") as String
+            val before = message.args.getValue("before") as String
+            resources.getString(R.string.session_android_compacted_usage, after, before)
+        }
+        "session.android_connect_read" -> {
+            resources.getString(R.string.session_android_connect_read)
+        }
+        "session.android_context_usage" -> {
+            resources.getString(R.string.session_android_context_usage)
+        }
+        "session.android_ended_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.session_android_ended_at, time)
+        }
+        "session.android_execution_unknown" -> {
+            resources.getString(R.string.session_android_execution_unknown)
+        }
+        "session.android_fork_connected" -> {
+            resources.getString(R.string.session_android_fork_connected)
+        }
+        "session.android_fork_prefix" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.session_android_fork_prefix, time)
+        }
+        "session.android_history_partial" -> {
+            resources.getString(R.string.session_android_history_partial)
+        }
+        "session.android_history_tail_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_android_history_tail_failed, reason)
+        }
+        "session.android_interrupt_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_android_interrupt_failed, reason)
+        }
+        "session.android_interrupted_by" -> {
+            val origin = message.args.getValue("origin") as String
+            resources.getString(R.string.session_android_interrupted_by, origin)
+        }
+        "session.android_models_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_android_models_failed, reason)
+        }
+        "session.android_resume_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_android_resume_failed, reason)
+        }
+        "session.android_switch_after_turn" -> {
+            resources.getString(R.string.session_android_switch_after_turn)
+        }
+        "session.android_switch_note" -> {
+            resources.getString(R.string.session_android_switch_note)
+        }
+        "session.android_terminal_changes" -> {
+            val changes = message.args.getValue("changes") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_android_terminal_changes, changes, name)
+        }
+        "session.android_thinking" -> {
+            resources.getString(R.string.session_android_thinking)
+        }
+        "session.android_unknown" -> {
+            resources.getString(R.string.session_android_unknown)
         }
         "session.approval_resolved" -> {
             resources.getString(R.string.session_approval_resolved)
@@ -1944,6 +2273,45 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "session.view" -> {
             resources.getString(R.string.session_view)
         }
+        "terminal.android_closed" -> {
+            resources.getString(R.string.terminal_android_closed)
+        }
+        "terminal.android_font_larger" -> {
+            resources.getString(R.string.terminal_android_font_larger)
+        }
+        "terminal.android_font_size" -> {
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.terminal_android_font_size, size)
+        }
+        "terminal.android_font_smaller" -> {
+            resources.getString(R.string.terminal_android_font_smaller)
+        }
+        "terminal.android_hide_details" -> {
+            resources.getString(R.string.terminal_android_hide_details)
+        }
+        "terminal.android_not_running" -> {
+            resources.getString(R.string.terminal_android_not_running)
+        }
+        "terminal.android_paused" -> {
+            resources.getString(R.string.terminal_android_paused)
+        }
+        "terminal.android_reconnect_note" -> {
+            resources.getString(R.string.terminal_android_reconnect_note)
+        }
+        "terminal.android_selection_copy" -> {
+            resources.getString(R.string.terminal_android_selection_copy)
+        }
+        "terminal.android_selection_more" -> {
+            resources.getString(R.string.terminal_android_selection_more)
+        }
+        "terminal.android_selection_paste" -> {
+            resources.getString(R.string.terminal_android_selection_paste)
+        }
+        "terminal.android_size_changed" -> {
+            val cols = message.args.getValue("cols") as Int
+            val rows = message.args.getValue("rows") as Int
+            resources.getString(R.string.terminal_android_size_changed, cols, rows)
+        }
         "terminal.closed" -> {
             resources.getString(R.string.terminal_closed)
         }
@@ -2107,6 +2475,40 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "time.yesterday" -> {
             resources.getString(R.string.time_yesterday)
+        }
+        "tools.android_background_command" -> {
+            resources.getString(R.string.tools_android_background_command)
+        }
+        "tools.android_background_edit" -> {
+            resources.getString(R.string.tools_android_background_edit)
+        }
+        "tools.android_background_generic" -> {
+            resources.getString(R.string.tools_android_background_generic)
+        }
+        "tools.android_background_label" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.tools_android_background_label, name)
+        }
+        "tools.android_background_search" -> {
+            resources.getString(R.string.tools_android_background_search)
+        }
+        "tools.android_collapsed" -> {
+            resources.getString(R.string.tools_android_collapsed)
+        }
+        "tools.android_edit" -> {
+            resources.getString(R.string.tools_android_edit)
+        }
+        "tools.android_processing" -> {
+            resources.getString(R.string.tools_android_processing)
+        }
+        "tools.android_search" -> {
+            resources.getString(R.string.tools_android_search)
+        }
+        "tools.android_sync_suffix" -> {
+            resources.getString(R.string.tools_android_sync_suffix)
+        }
+        "tools.android_unconfirmed" -> {
+            resources.getString(R.string.tools_android_unconfirmed)
         }
         "tools.background" -> {
             resources.getString(R.string.tools_background)

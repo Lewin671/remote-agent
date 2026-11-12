@@ -22,9 +22,9 @@ interface AgentEntry {
     fun modelLabel(id: String): String
     val toolLabelFromItemType: Boolean
     val planClearContext: Boolean
-    val planKeepLabel: String
-    val planApproveLabel: String
-    val planNote: String?
+    val planKeepLabel: UiMessage
+    val planApproveLabel: UiMessage
+    val planNote: UiMessage?
     val standardContextOption: Boolean
     val autoMayBeUnavailable: Boolean
     val trustFolderHint: String?
@@ -89,9 +89,9 @@ private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = true
-    override val planKeepLabel = "继续规划…"
-    override val planApproveLabel = "批准执行"
-    override val planNote: String? = null
+    override val planKeepLabel = UiMessages.dockAndroidPlanKeep()
+    override val planApproveLabel = UiMessages.approvalApproveExecute()
+    override val planNote: UiMessage? = null
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = false
     override val trustFolderHint: String? = null
@@ -137,9 +137,9 @@ private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = true
     override val planClearContext: Boolean = false
-    override val planKeepLabel = "修改计划…"
-    override val planApproveLabel = "批准"
-    override val planNote: String? = "批准后使用询问模式"
+    override val planKeepLabel = UiMessages.modesPlanEdit()
+    override val planApproveLabel = UiMessages.approvalApprove()
+    override val planNote: UiMessage? = UiMessages.dockClaudePlanNote()
     override val standardContextOption: Boolean = true
     override val autoMayBeUnavailable: Boolean = true
     override val trustFolderHint: String? = "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"
@@ -183,9 +183,9 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = false
-    override val planKeepLabel = "修改计划…"
-    override val planApproveLabel = "批准"
-    override val planNote: String? = "批准后回到默认模式（询问）"
+    override val planKeepLabel = UiMessages.modesPlanEdit()
+    override val planApproveLabel = UiMessages.approvalApprove()
+    override val planNote: UiMessage? = UiMessages.dockAgyPlanNote()
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = true
     override val trustFolderHint: String? = null
@@ -227,9 +227,9 @@ private class UnknownAgentEntry(override val agent: Agent) : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = false
-    override val planKeepLabel = "修改计划…"
-    override val planApproveLabel = "批准"
-    override val planNote: String? = null
+    override val planKeepLabel = UiMessages.modesPlanEdit()
+    override val planApproveLabel = UiMessages.approvalApprove()
+    override val planNote: UiMessage? = null
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = false
     override val trustFolderHint: String? = null

@@ -103,6 +103,7 @@ sealed interface Big {
  */
 @Composable
 fun ImageViewer(sid: String, seq: Long, index: Int) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -118,15 +119,15 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             n.coerceIn(0, (all.size - 1).coerceAtLeast(0))
         }
     BackHandler { nav.back() }
-    PagedImageViewer(all.size, start, nav.back, io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
+    PagedImageViewer(all.size, start, nav.back, io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
         picture = { page -> ViewerPage(remote, sid, all[page], state.conn == ConnState.ONLINE) },
         info = { page ->
             val cur = all[page]
             val agent = agentName(s?.agent() ?: DEFAULT_AGENT)
             val from = when (cur.ref.source) {
-                ImageSource.IMAGE_SOURCE_TOOL -> "$agent 查看的图片"
-                ImageSource.IMAGE_SOURCE_GENERATED -> "$agent 生成的图片"
-                else -> "用户粘贴"
+                ImageSource.IMAGE_SOURCE_TOOL -> copy(UiMessages.imageAndroidViewedBy(agent = agent))
+                ImageSource.IMAGE_SOURCE_GENERATED -> copy(UiMessages.imageAndroidGeneratedBy(agent = agent))
+                else -> copy(UiMessages.imageAndroidUserPasted())
             }
             Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
             val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
@@ -138,7 +139,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
 
 /** The same full-screen paging/close controls for message and draft images. */
 @Composable
-internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty: String = "没有图片", picture: @Composable (Int) -> Unit, info: @Composable (Int) -> Unit) {
+internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty: String = uiText(UiMessages.imageAndroidEmpty()), picture: @Composable (Int) -> Unit, info: @Composable (Int) -> Unit) {
     BackHandler { onClose() }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (count == 0) { Text(empty, Modifier.align(Alignment.Center), color = Color.White); return@Box }
@@ -184,6 +185,7 @@ internal val ViewerImages = AccountCache<Big.Ready>(6)
 
 @Composable
 private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: Boolean) {
+    val copy = uiText()
     val ref = img.ref
     val preview = rememberPreview(ref)
     var big by remember(ref.imageId) { mutableStateOf<Big>(Big.Loading) }
@@ -195,19 +197,19 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
         val b = big
         val bmp = (b as? Big.Ready)?.bitmap ?: preview
         if (bmp != null)
-            ViewerBitmap(bmp, ref.path.ifEmpty { "图片" })
-        else Text(fileName(ref.path), color = Color.White)
+            ViewerBitmap(bmp, ref.path.ifEmpty { copy(UiMessages.imageTitle()) })
+        else Text(fileName(ref.path, copy = copy), color = Color.White)
         val note =
             when (b) {
                 Big.Loading -> null
                 is Big.Ready -> null
                 Big.NotSynced ->
-                    if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) "图片没有同步：只有文件名，原图在电脑上"
-                    else "只有预览，原图在电脑上"
-                Big.Expired -> "大图已过期，只剩预览"
-                Big.Offline -> "连上后加载"
-                is Big.Failed -> "没能下载：${b.why} · 点按重试"
-                is Big.Corrupt -> if (b.why == RETIRED_HISTORY_ERROR) b.why else "图片校验失败：${b.why}"
+                    if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) copy(UiMessages.imageAndroidNameOnly())
+                    else copy(UiMessages.imageOriginalOnComputer())
+                Big.Expired -> copy(UiMessages.imageOriginalExpired())
+                Big.Offline -> copy(UiMessages.imageLoadConnected())
+                is Big.Failed -> copy(UiMessages.imageAndroidDownloadRetry(reason = b.why))
+                is Big.Corrupt -> if (b.why == RETIRED_HISTORY_ERROR) b.why else copy(UiMessages.imageAndroidVerifyFailed(reason = b.why))
             }
         if (b == Big.Loading)
             Spinner(Color.White, Modifier.align(Alignment.Center), size = 32.dp, stroke = 3.dp)
@@ -289,6 +291,7 @@ private fun mime(f: ImageFormat) =
  */
 @Composable
 private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
+    val copy = uiText()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var msg by remember(img.ref.imageId) { mutableStateOf("") }
@@ -305,11 +308,11 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
             msg =
                 try {
                     withContext(Dispatchers.IO) {
-                        save(context, b.first, b.second, fileName(img.ref.path))
+                        save(context, b.first, b.second, fileName(img.ref.path, copy = copy))
                     }
-                    "已保存到相册"
+                    copy(UiMessages.imageAndroidSaved())
                 } catch (e: Exception) {
-                    "没能保存：${errorText(e)}"
+                    copy(UiMessages.projectsAndroidSaveFailed(reason = (errorText(e)).toString()))
                 }
         }
     }
@@ -318,7 +321,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
         androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
         ) { ok ->
-            if (ok) doSave() else msg = "没有存储权限，没能保存"
+            if (ok) doSave() else msg = copy(UiMessages.imageAndroidSavePermission())
         }
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -337,7 +340,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
                 else doSave()
             },
         ) {
-            Text("保存", style = T.s15b, color = CardColors.link)
+            Text(copy(UiMessages.commonSave()), style = T.s15b, color = CardColors.link)
         }
         TextButton(
             onClick = {
@@ -352,16 +355,16 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
                                     .setType(mime(b.second))
                                     .putExtra(Intent.EXTRA_STREAM, uri)
                                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                                "分享图片",
+                                copy(UiMessages.imageAndroidShareTitle()),
                             ),
                         )
                     } catch (e: Exception) {
-                        msg = "没能分享：${errorText(e)}"
+                        msg = copy(UiMessages.imageShareFailed(reason = (errorText(e)).toString()))
                     }
                 }
             },
         ) {
-            Text("分享", style = T.s15b, color = CardColors.link)
+            Text(copy(UiMessages.imageShare()), style = T.s15b, color = CardColors.link)
         }
         if (msg.isNotEmpty())
             Text(msg, color = Color.White, style = T.s13)

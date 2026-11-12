@@ -6,21 +6,24 @@ import io.github.lewin671.remoteagent.proto.*
 import org.junit.Assert.*
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class DeliveryTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     private val pending = PendingInput("r", "hello", SendMode.SEND_MODE_STEER, false, false, null)
 
     @Test fun pendingWordsStayShortAndKeepActionProgress() {
         fun label(p: PendingInput = pending, starting: String? = null, cancel: Cancels.State? = null, resuming: Boolean = false, failed: Boolean = false) = pendingInputLabel(p, starting, cancel, resuming, failed)
-        assertEquals("插入这一轮", label())
-        assertEquals("插入这一轮", label(pending.copy(held = true)))
-        assertEquals("这一轮结束后发", label(pending.copy(mode = SendMode.SEND_MODE_QUEUE)))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queueInsert()), label())
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queueInsert()), label(pending.copy(held = true)))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queueAfterTurn()), label(pending.copy(mode = SendMode.SEND_MODE_QUEUE)))
         assertEquals("等 Codex 就绪后发出", label(starting = "Codex"))
-        assertEquals("已暂停", label(pending.copy(paused = true)))
-        assertEquals("正在取消…", label(cancel = Cancels.State.Canceling))
-        assertEquals("正在发送…", label(resuming = true))
-        assertEquals("发送没成功，仍已暂停", label(failed = true))
-        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 2, ChatSource("本客户端", true), false))
-        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 1, ChatSource("本客户端", true)))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queuePaused()), label(pending.copy(paused = true)))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queueCanceling()), label(cancel = Cancels.State.Canceling))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queueResuming()), label(resuming = true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queueResumeFailed()), label(failed = true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queuePaused()), pendingInputCaption("已暂停", 1, 2, ChatSource("本客户端", true), false))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.queuePaused()), pendingInputCaption("已暂停", 1, 1, ChatSource("本客户端", true)))
         assertEquals("插入这一轮 · 第 2 条 · Android · Pixel 9", pendingInputCaption("插入这一轮", 2, 4, ChatSource("Android · Pixel 9")))
     }
 

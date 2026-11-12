@@ -15,7 +15,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class RunningToolsTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test
     fun expandedTextUsesOriginalInputAndFullPaths() {
         val kind = ToolKind.TOOL_KIND_COMMAND
@@ -119,7 +122,10 @@ class RunningToolsTest {
 
 }
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class BackgroundFieldTest {
+    @org.junit.Before fun sessionMessageContext() = installSessionMessageContext()
     private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
 
     @Test
@@ -136,8 +142,8 @@ class BackgroundFieldTest {
         assertEquals("e2", tool.key)
         assertTrue(tool.background)
         assertTrue(items.none { it is ChatItem.Running })
-        assertEquals("这一轮结束时它仍在运行；它什么时候结束这里不知道，请到终端确认。", io.github.lewin671.remoteagent.core.backgroundNote(tool.call.background))
-        assertEquals("后台命令", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE))
-        assertEquals("Task（后台）", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_OTHER, "Task", Agent.AGENT_CLAUDE))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.toolsBackgroundTurn()), messageTextForTest(io.github.lewin671.remoteagent.core.backgroundNote(tool.call.background)))
+        assertEquals("后台命令", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE).testText())
+        assertEquals("Task（后台）", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_OTHER, "Task", Agent.AGENT_CLAUDE).testText())
     }
 }

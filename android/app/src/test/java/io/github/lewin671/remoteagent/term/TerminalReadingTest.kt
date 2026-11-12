@@ -4,7 +4,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /** What the live screen shows and does while the reader opens, and what the pull has to be. */
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class TerminalReadingTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     private fun reading(visible: Boolean = true, entered: Boolean = false, cursor: String = "", pending: String = "", failed: Boolean = false) =
         TerminalHistory.State(visible = visible, entered = entered, cursor = cursor, pending = pending, failed = failed)
 

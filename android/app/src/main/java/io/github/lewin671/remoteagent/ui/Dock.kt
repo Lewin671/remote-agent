@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.approvalDisplay
 import io.github.lewin671.remoteagent.core.approvalHead
 import io.github.lewin671.remoteagent.core.approvalBody
@@ -63,7 +64,6 @@ import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.isSkeleton
 import io.github.lewin671.remoteagent.core.minutesLeft
 import io.github.lewin671.remoteagent.core.optionLabel
-import io.github.lewin671.remoteagent.core.skeletonMessage
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.proto.AnswerPlanRequest
 import io.github.lewin671.remoteagent.proto.AnswerQuestionRequest
@@ -99,20 +99,20 @@ sealed interface DockItem {
 }
 
 /** The dock's one line when folded: type, a summary, 处理 (client-v7). */
-fun dockSummary(item: DockItem, agent: String): Pair<String, String> =
+fun dockSummary(item: DockItem, agent: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): Pair<String, String> =
     when (item) {
         is DockItem.Approval ->
-            if (isSkeleton(item.a)) skeletonMessage to ""
+            if (isSkeleton(item.a)) copy(UiMessages.sessionSkeleton()) to ""
             else
-                (if (item.a.command.isNotEmpty()) "请求执行" else "请求权限") to
+                (if (item.a.command.isNotEmpty()) copy(UiMessages.listStateAndroidRequestCommand()) else copy(UiMessages.listStateAndroidRequestPermission())) to
                     approvalDisplay(item.a.command.ifEmpty { item.a.toolName }).lines().first()
         is DockItem.Question ->
-            if (isSkeleton(item.q)) skeletonMessage to ""
+            if (isSkeleton(item.q)) copy(UiMessages.sessionSkeleton()) to ""
             else
-                "$agent 在问你" to
+                copy(UiMessages.listStateAgentAsking(agent = agent)) to
                     item.q.questionsList.firstOrNull()?.text?.lines()?.firstOrNull().orEmpty()
-        is DockItem.Plan -> if (isSkeleton(item.text)) skeletonMessage to "" else "计划待批准" to ""
-        is DockItem.Popup -> "终端里有弹窗" to item.title
+        is DockItem.Plan -> if (isSkeleton(item.text)) copy(UiMessages.sessionSkeleton()) to "" else copy(UiMessages.listStatePlan()) to ""
+        is DockItem.Popup -> copy(UiMessages.listStatePopup()) to item.title
     }
 
 /**
@@ -127,11 +127,12 @@ fun dockHeadLine(
     meta: String = "",
     left: String = "",
     openLabel: String? = null,
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
 ): Pair<String, String> {
-    val (label, brief) = dockSummary(item, agent)
+    val (label, brief) = dockSummary(item, agent, copy = copy)
     val rest =
-        if (open) listOf(meta, if (more > 0) "还有 $more 项" else "", left)
-        else listOf(brief, if (more > 0) "还有 $more 项" else "")
+        if (open) listOf(meta, if (more > 0) copy(UiMessages.dockMore(count = more)) else "", left)
+        else listOf(brief, if (more > 0) copy(UiMessages.dockMore(count = more)) else "")
     return (if (open) openLabel ?: label else label) to
         rest.filter { it.isNotEmpty() }.joinToString(" · ")
 }
@@ -195,10 +196,11 @@ fun PendingDock(
     body: @Composable ColumnScope.(close: () -> Unit) -> Unit,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
+    val copy = uiText()
     val open = DockFolds.isOpen(sid, item.id) { hasDraft(sid) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
-    val (label, rest) = dockHeadLine(item, agent, open, more, meta, left, openLabel)
+    val (label, rest) = dockHeadLine(item, agent, open, more, meta, left, openLabel, copy = copy)
     val toggle = {
         if (!open) {
             keyboard?.hide()
@@ -220,7 +222,7 @@ fun PendingDock(
             else DarkCard(float = true) {
                 DarkCardHead(label, rest, trailing = {
                     headExtra?.invoke()
-                    CardLink("收起", toggle, up = true)
+                    CardLink(copy(UiMessages.markdownCollapse()), toggle, up = true)
                 })
                 Column(Modifier.heightIn(max = LocalDockMax.current)) {
                     Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
@@ -252,11 +254,12 @@ val ChatMax = 760.dp
 /** The folded dock: one dark capsule, 「● 类型 · 摘要」 and 处理 with a down arrow. */
 @Composable
 private fun DockLine(label: String, rest: String, onOpen: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val shape = RoundedCornerShape(22.dp)
     Row(
         Modifier.fillMaxWidth().floating(p, shape).clip(shape).background(p.tc).border(0.5.dp, p.tcLine, shape)
-            .heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "处理", onClick = onOpen)
+            .heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = copy(UiMessages.dockHandle()), onClick = onOpen)
             .padding(start = 16.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -270,7 +273,7 @@ private fun DockLine(label: String, rest: String, onOpen: () -> Unit) {
             },
             style = T.s13, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
         )
-        ArrowText("处理", CardColors.link, T.s13, down = true)
+        ArrowText(copy(UiMessages.dockHandle()), CardColors.link, T.s13, down = true)
     }
 }
 
@@ -294,11 +297,12 @@ fun CardNote(text: String, modifier: Modifier = Modifier, action: String? = null
 /** A waiting item that cannot be read yet, on the same card. */
 @Composable
 private fun DockSkeleton() = DockShell {
-    DarkCard(float = true) { Text(skeletonMessage, style = T.s15, color = CardColors.text2) }
+    DarkCard(float = true) { Text(uiText(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2) }
 }
 
 @Composable
 fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
+    val copy = uiText()
     if (isSkeleton(a)) return DockSkeleton()
     val state by LocalRemote.current.state.collectAsState()
     val d = rememberApprovalReply(s, a)
@@ -306,14 +310,14 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
     var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     // Answered, the card shrinks to the one line saying what was answered (§4 动效, 常).
     AnimatedContent(d.submitted, transitionSpec = { dockSwap() }, label = "approval-answered") { submitted ->
-        if (submitted) DockShell { ApprovalSubmitted(approvalHead(a), d) }
+        if (submitted) DockShell { ApprovalSubmitted(uiText(approvalHead(a)), d) }
         else PendingDock(
             s.id,
             DockItem.Approval(a),
             agentName(s.agent()),
             more,
-            left = if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "",
-            openLabel = approvalHead(a),
+            left = if (a.hasDeadline()) copy(UiMessages.homeIosApprovalRemaining(count = (minutesLeft(a.deadline.seconds * 1000, t)).toInt())) else "",
+            openLabel = uiText(approvalHead(a)),
             body = { ApprovalContent(a) },
         ) {
             ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, t))
@@ -326,7 +330,7 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
 fun ApprovalContent(a: ApprovalRequested) {
     val body = approvalBody(a)
     if (body.isNotEmpty()) CommandBlock(body, Modifier.padding(top = 14.dp))
-    if (approvalTruncated(a)) Text(approvalTruncatedMessage, style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+    if (approvalTruncated(a)) Text(uiText(approvalTruncatedMessage), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
     if (a.description.isNotEmpty())
         Text(approvalDisplay(a.description), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
 }
@@ -363,10 +367,10 @@ suspend fun resolveApproval(
     message: String,
     always: Boolean = false,
 ): Boolean {
-    require(!isSkeleton(a)) { skeletonMessage }
+    require(!isSkeleton(a)) { sessionText(UiMessages.sessionSkeleton()) }
     val r = Resolves.of(a.approvalId)
     require(!approvalTruncated(a) || !(allow || (r.attempt.frozen && r.allow))) {
-        approvalTruncatedMessage
+        sessionText(approvalTruncatedMessage)
     }
     try {
         val retry = r.attempt.frozen
@@ -483,8 +487,9 @@ fun QuestionBody(
     part: Int = 0,
     act: Action = rememberAction(),
 ) {
+    val copy = uiText()
     if (isSkeleton(q)) {
-        if (part != 2) Text(skeletonMessage, style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
+        if (part != 2) Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
         return
     }
     val remote = LocalRemote.current
@@ -544,7 +549,7 @@ fun QuestionBody(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 12.dp),
         )
-        if (!full && longQuestion(cur)) CardLink("展开全文", onLong, lead = 0.dp)
+        if (!full && longQuestion(cur)) CardLink(copy(UiMessages.markdownExpand()), onLong, lead = 0.dp)
         cur.optionsList.forEachIndexed { i, o ->
             val (label, rec) = optionLabel(o.label)
             val sel =
@@ -582,10 +587,10 @@ fun QuestionBody(
                 Column(Modifier.weight(1f)) {
                     Text(label, style = T.s17.copy(lineHeight = 23.sp), color = ink)
                     if (o.description.isNotEmpty()) Text(o.description, style = T.s13, color = ink2)
-                    if (sel && act.running && !cur.multiSelect) Text("提交中…", style = T.s13, color = ink2)
+                    if (sel && act.running && !cur.multiSelect) Text(copy(UiMessages.dockSubmitting()), style = T.s13, color = ink2)
                 }
                 if (rec) Text(
-                    "推荐", style = T.s12b, color = if (sel) ink2 else CardColors.text.copy(alpha = .8f),
+                    copy(UiMessages.dockRecommended()), style = T.s12b, color = if (sel) ink2 else CardColors.text.copy(alpha = .8f),
                     modifier = Modifier.clip(Radii.Pill).background(if (sel) Color(0x14000000) else Color(0x24FFFFFF)).padding(horizontal = 8.dp, vertical = 2.dp),
                 )
             }
@@ -596,48 +601,49 @@ fun QuestionBody(
                     cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}"
                 }
             CardNote(
-                if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
-                else "上次的回答「$shown」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答",
-                action = if (answer.attempt.expired) "放弃" else null,
+                if (answer.attempt.expired) copy(UiMessages.dockAndroidAnswerExpired(answer = shown))
+                else copy(UiMessages.dockAndroidAnswerUnknown(answer = shown)),
+                action = if (answer.attempt.expired) copy(UiMessages.newSessionAndroidAbandon()) else null,
             ) {
                 answer.attempt.abandon()
                 act.error = ""
             }
         } else if (act.error.isNotEmpty()) {
-            CardNote("没能提交，终端里的问题可能已经变了：${act.error}")
+            CardNote(copy(UiMessages.dockAndroidQuestionChanged(reason = act.error)))
         }
     }
     if (part != 1) {
         val n = QuestionPicks.multi[key]?.size ?: 0
         if (cur.multiSelect)
             CardButton(
-                if (act.running) "提交中…" else if (n == 0) "选好后提交" else "提交 $n 项",
+                if (act.running) copy(UiMessages.dockSubmitting()) else if (n == 0) copy(UiMessages.dockSelectThenSubmit()) else copy(UiMessages.dockSubmitSelected(count = n)),
                 { submit((QuestionPicks.multi[key] ?: emptySet()).sorted()) },
                 Modifier.fillMaxWidth().padding(top = 16.dp),
                 primary = true,
                 enabled = !act.running && n > 0,
             )
         Row(Modifier.fillMaxWidth().padding(top = if (cur.multiSelect) 4.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (cur.multiSelect && n > 0) "已选 $n 项" else "都不合适？", style = T.s13, color = CardColors.text2)
-            CardLink("其他回答：去终端", onTerminal)
+            Text(if (cur.multiSelect && n > 0) copy(UiMessages.dockSelected(count = n)) else copy(UiMessages.dockNoneFit()), style = T.s13, color = CardColors.text2)
+            CardLink(copy(UiMessages.dockOtherTerminal()), onTerminal)
         }
     }
 }
 
 /** Where the user is in [q]: 第 2 题，共 3 题, and 可多选 when the current one is. */
-fun questionProgress(q: QuestionAsked): String {
+fun questionProgress(q: QuestionAsked, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     val qs = q.questionsList
     val index = QuestionPicks.index[q.questionId] ?: 0
     val cur = qs.getOrNull(index) ?: qs.lastOrNull() ?: return ""
     return listOfNotNull(
-            if (qs.size > 1) "第 ${minOf(index, qs.size - 1) + 1} 题，共 ${qs.size} 题" else null,
-            if (cur.multiSelect) "可多选" else null,
+            if (qs.size > 1) copy(UiMessages.dockQuestionProgress(count = qs.size, index = (minOf(index, qs.size - 1) + 1).toInt())) else null,
+            if (cur.multiSelect) copy(UiMessages.dockMultiselect()) else null,
         )
         .joinToString(" · ")
 }
 
 @Composable
 fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> Unit) {
+    val copy = uiText()
     if (isSkeleton(q)) return DockSkeleton()
     val nav = LocalNav.current
     // One submission for both halves, which the dock lays out apart.
@@ -647,7 +653,7 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
         DockItem.Question(q),
         agentName(s.agent()),
         more,
-        meta = questionProgress(q),
+        meta = questionProgress(q, copy = copy),
         body = {
             QuestionBody(s, q, onTerminal, full = false, onLong = { nav.question(s.id, q.questionId) }, part = 1, act = act)
         },
@@ -659,6 +665,7 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
 /** 回答提问: a long question on a page of its own, on the same card; the answer stays at hand. */
 @Composable
 fun QuestionPage(sid: String, qid: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -671,11 +678,11 @@ fun QuestionPage(sid: String, qid: String) {
             s?.agent() ?: DEFAULT_AGENT,
         )
     val q = d.questions[qid]
-    PageScaffold("回答提问", subtitle = s?.let { titleOf(it) + " · " + agentName(it.agent()) }) {
+    PageScaffold(copy(UiMessages.dockAnswerTitle()), subtitle = s?.let { titleOf(it) + " · " + agentName(it.agent()) }) {
         if (s == null || q == null) {
             PageNote(
-                if (d.answered.containsKey(qid)) "这个问题已经回答了。"
-                else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
+                if (d.answered.containsKey(qid)) copy(UiMessages.dockAndroidQuestionAnswered())
+                else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
             )
             return@PageScaffold
         }
@@ -685,7 +692,7 @@ fun QuestionPage(sid: String, qid: String) {
             nav.sessionTerminal(sid)
         }
         DarkCard(Modifier.weight(1f, fill = false).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
-            DarkCardHead("${agentName(s.agent())} 在问你", questionProgress(q))
+            DarkCardHead(copy(UiMessages.listStateAgentAsking(agent = (agentName(s.agent())).toString())), questionProgress(q, copy = copy))
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                 QuestionBody(s, q, toTerminal, full = true, onAnswered = { nav.back() }, part = 1, act = act)
             }
@@ -696,6 +703,7 @@ fun QuestionPage(sid: String, qid: String) {
 
 @Composable
 fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
+    val copy = uiText()
     if (isSkeleton(text)) return DockSkeleton()
     PendingDock(
         s.id,
@@ -703,7 +711,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
         agentName(s.agent()),
         more,
         // In the open line before 收起, as on the web (design-system §6).
-        headExtra = { CardLink("展开全文", onFull) },
+        headExtra = { CardLink(copy(UiMessages.markdownExpand()), onFull) },
         body = {
             // The whole plan, scrolling with the dock; 展开全文 in its line opens it as a page.
             Text(
@@ -716,7 +724,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     ) {
         PlanButtons(s, full = false)
         agentInfo(s.agent()).planNote?.let {
-            Text(it, style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
+            Text(copy(it), style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
@@ -734,10 +742,11 @@ fun PlanButtons(
     onCard: Boolean = true,
     onDone: () -> Unit = {},
 ) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val act = rememberAction()
     val reply = Plans.of(s.id)
-    val offer = planOffer(reply)
+    val offer = planOffer(reply, copy = copy)
     fun answer(c: PlanChoice) =
         act.run(
             {
@@ -788,7 +797,7 @@ fun PlanButtons(
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (offer.abandon)
                 Choice(
-                    "放弃",
+                    copy(UiMessages.newSessionAndroidAbandon()),
                     {
                         Plans.abandon(reply)
                         act.error = ""
@@ -797,15 +806,15 @@ fun PlanButtons(
                     enabled = !act.running,
                 )
             offer.retry?.let {
-                Choice(if (act.running) "提交中…" else it, { retry() }, Modifier.weight(1f), primary = true, enabled = !act.running)
+                Choice(if (act.running) copy(UiMessages.dockSubmitting()) else it, { retry() }, Modifier.weight(1f), primary = true, enabled = !act.running)
             }
         }
         return
     }
     Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Choice(agentInfo(s.agent()).planKeepLabel, { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, Modifier.weight(1f), enabled = !act.running)
+        Choice(copy(agentInfo(s.agent()).planKeepLabel), { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, Modifier.weight(1f), enabled = !act.running)
         Choice(
-            if (act.running) "提交中…" else agentInfo(s.agent()).planApproveLabel,
+            if (act.running) copy(UiMessages.dockSubmitting()) else copy(agentInfo(s.agent()).planApproveLabel),
             { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) },
             Modifier.weight(1f),
             primary = true,
@@ -815,20 +824,21 @@ fun PlanButtons(
     // Claude Code has no such choice.
     if (full && !act.running && agentInfo(s.agent()).planClearContext) {
         val clear = { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }
-        if (onCard) CardLink("清空上下文后执行", clear, Modifier.fillMaxWidth(), arrow = false)
-        else TextLink("清空上下文后执行", clear, Modifier.fillMaxWidth())
+        if (onCard) CardLink(copy(UiMessages.dockPlanClear()), clear, Modifier.fillMaxWidth(), arrow = false)
+        else TextLink(copy(UiMessages.dockPlanClear()), clear, Modifier.fillMaxWidth())
     }
-    if (act.error.isNotEmpty()) Note("没能提交：${act.error}")
+    if (act.error.isNotEmpty()) Note(copy(UiMessages.dockSubmitFailed(reason = act.error)))
 }
 
 @Composable
 fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) {
+    val copy = uiText()
     PendingDock(
         s.id,
         DockItem.Popup(title),
         agentName(s.agent()),
         more,
-        meta = "${agentName(s.agent())} 在等你",
+        meta = copy(UiMessages.dockAgentWaiting(agent = (agentName(s.agent())).toString())),
         body = {
             if (title.isNotEmpty())
                 Text(title, style = T.mono13.copy(fontSize = 15.sp, lineHeight = 22.sp), color = CardColors.text, modifier = Modifier.padding(top = 12.dp))
@@ -836,6 +846,6 @@ fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) 
             if (hint.isNotEmpty()) Text(hint, style = T.s13, color = CardColors.orange, modifier = Modifier.padding(top = 8.dp))
         },
     ) {
-        CardButton("去终端处理", onTerminal, Modifier.fillMaxWidth().padding(top = 16.dp), primary = true)
+        CardButton(copy(UiMessages.dockHandleTerminal()), onTerminal, Modifier.fillMaxWidth().padding(top = 16.dp), primary = true)
     }
 }

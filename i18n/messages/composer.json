@@ -16,6 +16,53 @@
     }
   },
   {
+    "key": "composer.android_not_sent",
+    "zh-CN": "这条没有发出：{reason}",
+    "en": "This message was not sent: {reason}",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.android_outbox_format",
+    "zh-CN": "待确认记录格式已变更，请清理旧记录并重新选择附件",
+    "en": "The pending record format has changed. Clear old records and select attachments again",
+    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.android_restart_unknown",
+    "zh-CN": "App 重启过，不确定这条有没有送到",
+    "en": "The app restarted; it is unclear whether this message arrived",
+    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "composer.await_record",
     "zh-CN": "已送入终端，等 {agent} 记录",
     "en": "Written to terminal, waiting for {agent} to record it",

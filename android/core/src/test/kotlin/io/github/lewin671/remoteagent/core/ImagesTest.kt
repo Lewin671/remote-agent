@@ -56,15 +56,15 @@ class ImagesTest {
     fun oversizedImageNumbersStayAsText() {
         val refs = listOf(io.github.lewin671.remoteagent.proto.ImageRef.newBuilder().setCliIndex(1).build())
         val huge = "[Image #999999999999999999999]"
-        assertEquals("$huge text", imageText("$huge text", refs))
-        assertEquals("text $huge 图 1", imageText("text $huge [Image #1]", refs))
+        assertMessageEquals("$huge text", imageText("$huge text", refs))
+        assertMessageEquals("text $huge 图 1", imageText("text $huge [Image #1]", refs))
     }
 
     @Test
     fun readsTheOrientationOfAJpeg() {
-        assertEquals(6, jpegOrientation(exifJpeg(6)))
-        assertEquals(1, jpegOrientation(picture("jpg")))
-        assertEquals(6, orientationOf(exifJpeg(6)))
+        assertMessageEquals(6, jpegOrientation(exifJpeg(6)))
+        assertMessageEquals(1, jpegOrientation(picture("jpg")))
+        assertMessageEquals(6, orientationOf(exifJpeg(6)))
     }
 
     @Test
@@ -87,7 +87,7 @@ class ImagesTest {
         val sos = { b: ByteArray -> String(b, Charsets.ISO_8859_1).indexOf("ÿÚ") }
         assertArrayEquals(src.copyOfRange(sos(src), src.size), out.copyOfRange(sos(out), out.size))
         val img = ImageIO.read(ByteArrayInputStream(out))
-        assertEquals(40, img.width)
+        assertMessageEquals(40, img.width)
         assertTrue(contains(out, "JFIF"))
     }
 
@@ -117,8 +117,8 @@ class ImagesTest {
         val out = stripOriginal(src)!!
         assertFalse(contains(out, "taken at home"))
         assertFalse(contains(out, "LOCATION"))
-        assertEquals(40, ImageIO.read(ByteArrayInputStream(out)).width)
-        assertEquals(6, pngOrientation(pngWith(pngChunk("eXIf", tiff(6)))))
+        assertMessageEquals(40, ImageIO.read(ByteArrayInputStream(out)).width)
+        assertMessageEquals(6, pngOrientation(pngWith(pngChunk("eXIf", tiff(6)))))
         assertNull(stripOriginal(pngWith(pngChunk("eXIf", tiff(6)))))
     }
 
@@ -142,14 +142,14 @@ class ImagesTest {
         val vp8x = ByteArray(10).also { it[0] = 0x0C } // Exif and XMP flags
         val image = ByteArray(15) { 7 }
         val src = webp(riffChunk("VP8X", vp8x), riffChunk("VP8L", image), riffChunk("EXIF", tiff(1)), riffChunk("XMP ", "<x:xmpmeta/>".toByteArray()))
-        assertEquals(ImageFormat.IMAGE_FORMAT_WEBP, detectFormat(src))
+        assertMessageEquals(ImageFormat.IMAGE_FORMAT_WEBP, detectFormat(src))
         val out = stripWebp(src)
         assertFalse(contains(out, "LOCATION"))
         assertFalse(contains(out, "xmpmeta"))
-        assertEquals(out.size - 8, (out[4].toInt() and 0xff) or ((out[5].toInt() and 0xff) shl 8))
-        assertEquals(0, out[20].toInt() and 0x0C)
+        assertMessageEquals(out.size - 8, (out[4].toInt() and 0xff) or ((out[5].toInt() and 0xff) shl 8))
+        assertMessageEquals(0, out[20].toInt() and 0x0C)
         assertTrue(contains(out, "VP8L"))
-        assertEquals(6, webpOrientation(webp(riffChunk("VP8X", vp8x), riffChunk("EXIF", tiff(6)))))
+        assertMessageEquals(6, webpOrientation(webp(riffChunk("VP8X", vp8x), riffChunk("EXIF", tiff(6)))))
     }
 
     @Test
@@ -163,14 +163,14 @@ class ImagesTest {
         val out = stripOriginal(src)!!
         assertFalse(contains(out, "home, 5pm"))
         assertNotNull(ImageIO.read(ByteArrayInputStream(out)))
-        assertEquals(base.size, out.size)
+        assertMessageEquals(base.size, out.size)
     }
 
     @Test
     fun formatsAreToldBySignatureOnly() {
-        assertEquals(ImageFormat.IMAGE_FORMAT_JPEG, detectFormat(picture("jpg")))
-        assertEquals(ImageFormat.IMAGE_FORMAT_PNG, detectFormat(picture("png")))
-        assertEquals(ImageFormat.IMAGE_FORMAT_GIF, detectFormat(picture("gif")))
+        assertMessageEquals(ImageFormat.IMAGE_FORMAT_JPEG, detectFormat(picture("jpg")))
+        assertMessageEquals(ImageFormat.IMAGE_FORMAT_PNG, detectFormat(picture("png")))
+        assertMessageEquals(ImageFormat.IMAGE_FORMAT_GIF, detectFormat(picture("gif")))
         // HEIC is not one the CLIs read: it gets new pixels.
         val heic = ByteArray(16).also { System.arraycopy("ftypheic".toByteArray(), 0, it, 4, 8) }
         assertNull(detectFormat(heic))
@@ -180,16 +180,16 @@ class ImagesTest {
     @Test
     fun aMessageTakesSixAtMostInPickOrder() {
         val (taken, left) = takePicked(4, listOf("a", "b", "c", "d"))
-        assertEquals(listOf("a", "b"), taken)
-        assertEquals(2, left)
-        assertEquals(emptyList<String>() to 1, takePicked(6, listOf("x")))
+        assertMessageEquals(listOf("a", "b"), taken)
+        assertMessageEquals(2, left)
+        assertMessageEquals(emptyList<String>() to 1, takePicked(6, listOf("x")))
     }
 
     @Test
     fun compressionShrinksTheLongSideOnly() {
-        assertEquals(2048 to 1536, fitLongSide(4032, 3024))
-        assertEquals(1536 to 2048, fitLongSide(3024, 4032))
-        assertEquals(800 to 600, fitLongSide(800, 600))
+        assertMessageEquals(2048 to 1536, fitLongSide(4032, 3024))
+        assertMessageEquals(1536 to 2048, fitLongSide(3024, 4032))
+        assertMessageEquals(800 to 600, fitLongSide(800, 600))
     }
 }
 
@@ -237,16 +237,16 @@ class UploadTest {
     @Test
     fun sendsEveryChunkAndCompletes() = kotlinx.coroutines.runBlocking {
         val d = FakeDaemon()
-        assertEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
+        assertMessageEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
         assertArrayEquals(png, d.stored)
-        assertEquals((png.size + 9) / 10, d.puts)
+        assertMessageEquals((png.size + 9) / 10, d.puts)
     }
 
     @Test
     fun aLostReplyGoesOnFromWhatTheDaemonStored() = kotlinx.coroutines.runBlocking {
         val d = FakeDaemon()
         d.failNextPutAfterStoring = true
-        assertEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
+        assertMessageEquals(UploadedImage("img1", 123456), uploadImage(d, "t", png))
         assertArrayEquals(png, d.stored)
     }
 
@@ -270,21 +270,21 @@ class SessionImagesTest {
         val refs = listOf(ref(1))
         for (number in listOf("2147483648", "4294967297", "9".repeat(100))) {
             val large = "[Image #$number]"
-            assertEquals("$large text", imageText("$large text", refs))
-            assertEquals("see $large", imageText("see $large", refs))
-            assertEquals("$large and 图 1", imageText("$large and [Image #1]", refs))
-            assertEquals("$large text", imageText("[Image #1] $large text", refs))
+            assertMessageEquals("$large text", imageText("$large text", refs))
+            assertMessageEquals("see $large", imageText("see $large", refs))
+            assertMessageEquals("$large and 图 1", imageText("$large and [Image #1]", refs))
+            assertMessageEquals("$large text", imageText("[Image #1] $large text", refs))
         }
     }
 
     @Test
     fun placeholdersBecomeNumbersAndLeadingOnesGo() {
         val refs = listOf(ref(1), ref(2))
-        assertEquals("这两个页面底部的按钮都点不到", imageText("[Image #1] [Image #2]这两个页面底部的按钮都点不到", refs))
-        assertEquals("图 1 电脑上，图 2 手机上", imageText("图 1 电脑上，[Image #2] 手机上".replace("图 1", "[Image #1]"), refs))
+        assertMessageEquals("这两个页面底部的按钮都点不到", imageText("[Image #1] [Image #2]这两个页面底部的按钮都点不到", refs))
+        assertMessageEquals("图 1 电脑上，图 2 手机上", imageText("图 1 电脑上，[Image #2] 手机上".replace("图 1", "[Image #1]"), refs))
         // A placeholder without its image is left as typed.
-        assertEquals("see [Image #9]", imageText("see [Image #9]", refs))
-        assertEquals("[Image #1] text", imageText("[Image #1] text", emptyList()))
+        assertMessageEquals("see [Image #9]", imageText("see [Image #9]", refs))
+        assertMessageEquals("[Image #1] text", imageText("[Image #1] text", emptyList()))
     }
 
     @Test
@@ -294,7 +294,7 @@ class SessionImagesTest {
             io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(2).setToolCall(io.github.lewin671.remoteagent.proto.ToolCall.newBuilder().setTitle("Read a.png").addImages(ref(0, "t"))).build(),
             io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(3).setImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated.newBuilder().addImages(ref(0, "g"))).build(),
         )
-        assertEquals(listOf("i1", "i2", "t", "g"), sessionImages(events).map { it.ref.imageId })
+        assertMessageEquals(listOf("i1", "i2", "t", "g"), sessionImages(events).map { it.ref.imageId })
     }
 }
 
@@ -302,8 +302,8 @@ class TitleTest {
     @Test
     fun titlesAndPreviewsLeaveOutImagePlaceholders() {
         val s = SessionView("s", "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("[Image #1]Which half is red?").setPreview("[Image #1] [Image #2] look").build())
-        assertEquals("Which half is red?", titleOf(s))
-        assertEquals("look", previewOf(s, Status.IDLE))
+        assertMessageEquals("Which half is red?", titleOf(s))
+        assertMessageEquals("look", previewOf(s, Status.IDLE))
     }
 }
 
@@ -360,7 +360,7 @@ class JpegAfterScanTest {
         val out = stripJpeg(src)
         assertFalse(leaks(out, "BETWEEN-SCANS"))
         assertArrayEquals(pixels(base), pixels(out))
-        assertEquals(s.split("ÿÚ").size, String(out, Charsets.ISO_8859_1).split("ÿÚ").size)
+        assertMessageEquals(s.split("ÿÚ").size, String(out, Charsets.ISO_8859_1).split("ÿÚ").size)
     }
 
     @Test
@@ -384,7 +384,7 @@ class JpegAfterScanTest {
             }
             out.write(src[i].toInt())
         }
-        assertEquals(11, restarts)
+        assertMessageEquals(11, restarts)
         val filled = out.toByteArray()
         val stripped = stripJpeg(filled)
         assertArrayEquals(filled, stripped)
@@ -404,12 +404,12 @@ class DecodeBudgetTest {
         // A 200 MP panorama as an original: never decoded whole.
         val s = decodeSample(20_000, 10_000, 0, MAX_DECODE_PIXELS)
         assertTrue((20_000L / s) * (10_000L / s) <= MAX_DECODE_PIXELS)
-        assertEquals(4, s)
+        assertMessageEquals(4, s)
         // A 12 MP photo fits as it is.
-        assertEquals(1, decodeSample(4032, 3024, 0, MAX_DECODE_PIXELS))
+        assertMessageEquals(1, decodeSample(4032, 3024, 0, MAX_DECODE_PIXELS))
         // Compressed: sampled down toward the 2048 long side, then the budget.
-        assertEquals(1, decodeSample(4032, 3024, 2048, MAX_DECODE_PIXELS))
-        assertEquals(2, decodeSample(8064, 6048, 2048, MAX_DECODE_PIXELS))
-        assertEquals(8, decodeSample(4032, 3024, 0, 300_000))
+        assertMessageEquals(1, decodeSample(4032, 3024, 2048, MAX_DECODE_PIXELS))
+        assertMessageEquals(2, decodeSample(8064, 6048, 2048, MAX_DECODE_PIXELS))
+        assertMessageEquals(8, decodeSample(4032, 3024, 0, 300_000))
     }
 }

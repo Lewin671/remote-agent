@@ -15,22 +15,22 @@ import org.junit.Test
 class AgentsTest {
     @Test
     fun listsKnownClisInStableOrder() {
-        assertEquals(listOf("codex", "claude", "agy"), AGENTS.map { it.id })
-        assertEquals(
+        assertMessageEquals(listOf("codex", "claude", "agy"), AGENTS.map { it.id })
+        assertMessageEquals(
             listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE, Agent.AGENT_ANTIGRAVITY),
             AGENTS.map { it.agent },
         )
-        assertEquals(Agent.AGENT_CODEX, DEFAULT_AGENT)
+        assertMessageEquals(Agent.AGENT_CODEX, DEFAULT_AGENT)
     }
 
     @Test
     fun looksUpAgentInfoByEnum() {
         val codex = agentInfo(Agent.AGENT_CODEX)
-        assertEquals(QuotaWindowDescriptor("5 小时"), codex.quotaWindow("primary"))
-        assertEquals(QuotaWindowDescriptor("7 天"), codex.quotaWindow("secondary"))
+        assertMessageEquals(QuotaWindowDescriptor("5 小时"), codex.quotaWindow("primary"))
+        assertMessageEquals(QuotaWindowDescriptor("7 天"), codex.quotaWindow("secondary"))
         assertTrue(codex.planClearContext)
-        assertEquals("继续规划…", codex.planKeepLabel)
-        assertEquals("批准执行", codex.planApproveLabel)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.dockAndroidPlanKeep()), codex.planKeepLabel)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.approvalApproveExecute()), codex.planApproveLabel)
         assertNull(codex.planNote)
         assertFalse(codex.standardContextOption)
         assertFalse(codex.autoMayBeUnavailable)
@@ -40,12 +40,12 @@ class AgentsTest {
         assertTrue(codex.forks)
 
         val claude = agentInfo(Agent.AGENT_CLAUDE)
-        assertEquals(QuotaWindowDescriptor("5 小时"), claude.quotaWindow("five_hour"))
-        assertEquals(QuotaWindowDescriptor("7 天"), claude.quotaWindow("seven_day"))
+        assertMessageEquals(QuotaWindowDescriptor("5 小时"), claude.quotaWindow("five_hour"))
+        assertMessageEquals(QuotaWindowDescriptor("7 天"), claude.quotaWindow("seven_day"))
         assertFalse(claude.planClearContext)
-        assertEquals("修改计划…", claude.planKeepLabel)
-        assertEquals("批准", claude.planApproveLabel)
-        assertEquals("批准后使用询问模式", claude.planNote)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.modesPlanEdit()), claude.planKeepLabel)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.approvalApprove()), claude.planApproveLabel)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.dockClaudePlanNote()), claude.planNote)
         assertTrue(claude.standardContextOption)
         assertTrue(claude.autoMayBeUnavailable)
         assertTrue(claude.reconcilesUnclaimedInput)
@@ -54,17 +54,17 @@ class AgentsTest {
         assertTrue(claude.forks)
 
         val agy = agentInfo(Agent.AGENT_ANTIGRAVITY)
-        assertEquals(QuotaWindowDescriptor("Gemini · 5 小时", "Gemini"), agy.quotaWindow("gemini-5h"))
-        assertEquals(QuotaWindowDescriptor("Gemini · 7 天", "Gemini"), agy.quotaWindow("gemini-weekly"))
-        assertEquals(QuotaWindowDescriptor("Gemini 4 Argon · 7 天", "Gemini"), agy.quotaWindow("gemini-argon-wtu-weekly"))
-        assertEquals(QuotaWindowDescriptor("第三方模型 · 5 小时", "第三方模型（Claude、GPT-OSS）"), agy.quotaWindow("3p-5h"))
-        assertEquals(QuotaWindowDescriptor("第三方模型 · 7 天", "第三方模型（Claude、GPT-OSS）"), agy.quotaWindow("3p-weekly"))
-        assertEquals(QuotaWindowDescriptor("custom", "custom"), agy.quotaWindow("custom"))
+        assertMessageEquals(QuotaWindowDescriptor("Gemini · 5 小时", "Gemini"), agy.quotaWindow("gemini-5h"))
+        assertMessageEquals(QuotaWindowDescriptor("Gemini · 7 天", "Gemini"), agy.quotaWindow("gemini-weekly"))
+        assertMessageEquals(QuotaWindowDescriptor("Gemini 4 Argon · 7 天", "Gemini"), agy.quotaWindow("gemini-argon-wtu-weekly"))
+        assertMessageEquals(QuotaWindowDescriptor("第三方模型 · 5 小时", "第三方模型（Claude、GPT-OSS）"), agy.quotaWindow("3p-5h"))
+        assertMessageEquals(QuotaWindowDescriptor("第三方模型 · 7 天", "第三方模型（Claude、GPT-OSS）"), agy.quotaWindow("3p-weekly"))
+        assertMessageEquals(QuotaWindowDescriptor("custom", "custom"), agy.quotaWindow("custom"))
         assertFalse(agy.toolLabelFromItemType)
         assertFalse(agy.planClearContext)
-        assertEquals("修改计划…", agy.planKeepLabel)
-        assertEquals("批准", agy.planApproveLabel)
-        assertEquals("批准后回到默认模式（询问）", agy.planNote)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.modesPlanEdit()), agy.planKeepLabel)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.approvalApprove()), agy.planApproveLabel)
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.dockAgyPlanNote()), agy.planNote)
         assertFalse(agy.standardContextOption)
         assertTrue(agy.autoMayBeUnavailable)
         assertFalse(agy.reconcilesUnclaimedInput)
@@ -75,21 +75,21 @@ class AgentsTest {
 
     @Test
     fun mapsUnspecifiedAndNullToCodex() {
-        assertEquals("codex", agentInfo(Agent.AGENT_UNSPECIFIED).id)
-        assertEquals("codex", agentInfo(null).id)
-        assertEquals("Codex", agentName(Agent.AGENT_UNSPECIFIED))
-        assertEquals("Codex", agentName(null))
-        assertEquals("Codex", agentName())
+        assertMessageEquals("codex", agentInfo(Agent.AGENT_UNSPECIFIED).id)
+        assertMessageEquals("codex", agentInfo(null).id)
+        assertMessageEquals("Codex", agentName(Agent.AGENT_UNSPECIFIED))
+        assertMessageEquals("Codex", agentName(null))
+        assertMessageEquals("Codex", agentName())
     }
 
     @Test
     fun mapsUnrecognizedAgentValuesToUnknownEntryAndNeverCodex() {
         val unknown = agentInfo(Agent.UNRECOGNIZED)
-        assertEquals(Agent.UNRECOGNIZED, unknown.agent)
-        assertEquals("", unknown.id)
-        assertEquals("未知 CLI", unknown.name)
-        assertEquals(emptyList<String>(), unknown.quotaWindows)
-        assertEquals(QuotaWindowDescriptor("primary"), unknown.quotaWindow("primary"))
+        assertMessageEquals(Agent.UNRECOGNIZED, unknown.agent)
+        assertMessageEquals("", unknown.id)
+        assertMessageEquals("未知 CLI", unknown.name)
+        assertMessageEquals(emptyList<String>(), unknown.quotaWindows)
+        assertMessageEquals(QuotaWindowDescriptor("primary"), unknown.quotaWindow("primary"))
         assertFalse(unknown.planClearContext)
         assertNull(unknown.planNote)
         assertFalse(unknown.standardContextOption)
@@ -100,24 +100,24 @@ class AgentsTest {
         assertFalse(unknown.sessionNeedsModelList)
         assertFalse(unknown.switchesModelInSession)
         assertFalse(unknown.forks)
-        assertEquals("any-slug", unknown.modelLabel("any-slug"))
-        assertEquals("any-plan", unknown.planName("any-plan"))
-        assertEquals("未知 CLI", agentName(Agent.UNRECOGNIZED))
+        assertMessageEquals("any-slug", unknown.modelLabel("any-slug"))
+        assertMessageEquals("any-plan", unknown.planName("any-plan"))
+        assertMessageEquals("未知 CLI", agentName(Agent.UNRECOGNIZED))
 
         // Retains unrecognized agent on roundtrip through agentInfo
         val roundtrip = agentInfo(unknown.agent)
-        assertEquals("未知 CLI", roundtrip.name)
-        assertEquals(Agent.UNRECOGNIZED, roundtrip.agent)
+        assertMessageEquals("未知 CLI", roundtrip.name)
+        assertMessageEquals(Agent.UNRECOGNIZED, roundtrip.agent)
     }
 
     @Test
     fun looksUpAgentsByTargetId() {
-        assertEquals(Agent.AGENT_CODEX, agentById("codex").agent)
-        assertEquals(Agent.AGENT_CLAUDE, agentById("claude").agent)
-        assertEquals(Agent.AGENT_ANTIGRAVITY, agentById("agy").agent)
-        assertEquals("", agentById("").id)
-        assertEquals("", agentById("unknown").id)
-        assertEquals("", agentById(null).id)
+        assertMessageEquals(Agent.AGENT_CODEX, agentById("codex").agent)
+        assertMessageEquals(Agent.AGENT_CLAUDE, agentById("claude").agent)
+        assertMessageEquals(Agent.AGENT_ANTIGRAVITY, agentById("agy").agent)
+        assertMessageEquals("", agentById("").id)
+        assertMessageEquals("", agentById("unknown").id)
+        assertMessageEquals("", agentById(null).id)
     }
 
     @Test
@@ -139,19 +139,19 @@ class AgentsTest {
             .build()
 
         val defaults = defaultsFor(base, Agent.AGENT_CODEX)
-        assertEquals("gpt-6-sol", defaults.model)
-        assertEquals("medium", defaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_AUTO, defaults.mode)
+        assertMessageEquals("gpt-6-sol", defaults.model)
+        assertMessageEquals("medium", defaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_AUTO, defaults.mode)
 
         val updated = withDefaults(base, Agent.AGENT_CODEX, model = "gpt-6.1", effort = "high")
-        assertEquals("gpt-6.1", updated.defaultModel)
-        assertEquals("high", updated.defaultEffort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_AUTO, updated.defaultMode)
+        assertMessageEquals("gpt-6.1", updated.defaultModel)
+        assertMessageEquals("high", updated.defaultEffort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_AUTO, updated.defaultMode)
 
         val updatedDefaults = defaultsFor(updated, Agent.AGENT_CODEX)
-        assertEquals("gpt-6.1", updatedDefaults.model)
-        assertEquals("high", updatedDefaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_AUTO, updatedDefaults.mode)
+        assertMessageEquals("gpt-6.1", updatedDefaults.model)
+        assertMessageEquals("high", updatedDefaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_AUTO, updatedDefaults.mode)
     }
 
     @Test
@@ -166,19 +166,19 @@ class AgentsTest {
             .build()
 
         val defaults = defaultsFor(base, Agent.AGENT_CLAUDE)
-        assertEquals("claude-sonnet-5-5", defaults.model)
-        assertEquals("low", defaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, defaults.mode)
+        assertMessageEquals("claude-sonnet-5-5", defaults.model)
+        assertMessageEquals("low", defaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_ASK, defaults.mode)
 
         val updated = withDefaults(base, Agent.AGENT_CLAUDE, model = "claude-opus-9")
-        assertEquals("claude-opus-9", updated.claude.model)
-        assertEquals("low", updated.claude.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updated.claude.mode)
+        assertMessageEquals("claude-opus-9", updated.claude.model)
+        assertMessageEquals("low", updated.claude.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_ASK, updated.claude.mode)
 
         val updatedDefaults = defaultsFor(updated, Agent.AGENT_CLAUDE)
-        assertEquals("claude-opus-9", updatedDefaults.model)
-        assertEquals("low", updatedDefaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updatedDefaults.mode)
+        assertMessageEquals("claude-opus-9", updatedDefaults.model)
+        assertMessageEquals("low", updatedDefaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_ASK, updatedDefaults.mode)
     }
 
     @Test
@@ -193,29 +193,29 @@ class AgentsTest {
             .build()
 
         val defaults = defaultsFor(base, Agent.AGENT_ANTIGRAVITY)
-        assertEquals("gemini-3.1-pro-high", defaults.model)
-        assertEquals("high", defaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, defaults.mode)
+        assertMessageEquals("gemini-3.1-pro-high", defaults.model)
+        assertMessageEquals("high", defaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_ASK, defaults.mode)
 
         val updated = withDefaults(base, Agent.AGENT_ANTIGRAVITY, model = "gemini-3.8-flash")
-        assertEquals("gemini-3.8-flash", updated.antigravity.model)
-        assertEquals("high", updated.antigravity.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updated.antigravity.mode)
+        assertMessageEquals("gemini-3.8-flash", updated.antigravity.model)
+        assertMessageEquals("high", updated.antigravity.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_ASK, updated.antigravity.mode)
 
         val updatedDefaults = defaultsFor(updated, Agent.AGENT_ANTIGRAVITY)
-        assertEquals("gemini-3.8-flash", updatedDefaults.model)
-        assertEquals("high", updatedDefaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updatedDefaults.mode)
+        assertMessageEquals("gemini-3.8-flash", updatedDefaults.model)
+        assertMessageEquals("high", updatedDefaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_ASK, updatedDefaults.mode)
     }
 
     @Test
     fun preservesSettingsWhenUpdatingUnknownAgentDefaults() {
         val base = DaemonSettings.newBuilder().setDefaultModel("m").build()
-        assertEquals(base, withDefaults(base, Agent.UNRECOGNIZED, model = "x"))
+        assertMessageEquals(base, withDefaults(base, Agent.UNRECOGNIZED, model = "x"))
         val defaults = defaultsFor(base, Agent.UNRECOGNIZED)
-        assertEquals("", defaults.model)
-        assertEquals("", defaults.effort)
-        assertEquals(ApprovalMode.APPROVAL_MODE_UNSPECIFIED, defaults.mode)
+        assertMessageEquals("", defaults.model)
+        assertMessageEquals("", defaults.effort)
+        assertMessageEquals(ApprovalMode.APPROVAL_MODE_UNSPECIFIED, defaults.mode)
     }
 
     @Test
@@ -225,9 +225,9 @@ class AgentsTest {
             .setCodexVerified(true)
             .build()
         val legacyVersions = machineVersions(legacy)
-        assertEquals(1, legacyVersions.size)
-        assertEquals(Agent.AGENT_CODEX, legacyVersions[0].agent)
-        assertEquals("1.2.3", legacyVersions[0].version)
+        assertMessageEquals(1, legacyVersions.size)
+        assertMessageEquals(Agent.AGENT_CODEX, legacyVersions[0].agent)
+        assertMessageEquals("1.2.3", legacyVersions[0].version)
         assertTrue(legacyVersions[0].verified)
 
         val modern = MachineMeta.newBuilder()
@@ -235,10 +235,10 @@ class AgentsTest {
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setVersion("3.0.0"))
             .build()
         val modernVersions = machineVersions(modern)
-        assertEquals(2, modernVersions.size)
-        assertEquals(Agent.AGENT_CODEX, modernVersions[0].agent)
-        assertEquals("2.0.0", modernVersions[0].version)
-        assertEquals(Agent.AGENT_CLAUDE, modernVersions[1].agent)
-        assertEquals("3.0.0", modernVersions[1].version)
+        assertMessageEquals(2, modernVersions.size)
+        assertMessageEquals(Agent.AGENT_CODEX, modernVersions[0].agent)
+        assertMessageEquals("2.0.0", modernVersions[0].version)
+        assertMessageEquals(Agent.AGENT_CLAUDE, modernVersions[1].agent)
+        assertMessageEquals("3.0.0", modernVersions[1].version)
     }
 }

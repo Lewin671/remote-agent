@@ -9,7 +9,10 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class RestoreImagesTest {
+    @org.junit.Before fun sessionMessageContext() = installSessionMessageContext()
     private fun image() = PendingImage("picked", "content://picked").apply {
         processed = Processed(byteArrayOf(1, 2, 3), ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
     }

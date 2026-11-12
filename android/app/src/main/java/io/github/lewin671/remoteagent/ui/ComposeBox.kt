@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -86,7 +87,7 @@ fun ComposeBox(
     modifier: Modifier = Modifier,
     plusEnabled: Boolean = true,
     onFile: (() -> Unit)? = null,
-    sendLabel: String = "发送",
+    sendLabel: String = uiText(UiMessages.composerSend()),
     focusRequester: FocusRequester? = null,
     onFocus: (Boolean) -> Unit = {},
     top: (@Composable () -> Unit)? = null,
@@ -96,6 +97,7 @@ fun ComposeBox(
     hasDraft: Boolean = text.isNotBlank(),
     tools: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
 ) {
+    val copy = uiText()
     val p = pal
     val menu = remember { ComposerPicker() }
     ComposerPickerBack(menu)
@@ -155,8 +157,8 @@ fun ComposeBox(
             if (menu.open == "send") ComposerMenuPopup(menu, AboveProvider(gap, right = true)) {
                 Column(Modifier.padding(12.dp).width(IntrinsicSize.Max).widthIn(min = 200.dp, max = 260.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
                     listOf(
-                        Triple("现在插入这一轮", "点 ↑ 就是这个", onSend),
-                        Triple("这一轮结束后再发", "先排队，结束后按顺序发出", { onQueue?.invoke() }),
+                        Triple(copy(UiMessages.composerInsertNow()), copy(UiMessages.composerInsertHint()), onSend),
+                        Triple(copy(UiMessages.composerAfterTurn()), copy(UiMessages.composerQueueHint()), { onQueue?.invoke() }),
                     ).forEachIndexed { i, (label, detail, action) ->
                         Column(
                             Modifier.fillMaxWidth().heightIn(min = 52.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
@@ -181,6 +183,7 @@ fun ComposeBox(
  */
 @Composable
 private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+    val copy = uiText()
     val p = pal
     val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
@@ -192,10 +195,10 @@ private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onCli
         // Keep the touch target fixed while only the 40dp ink circle shrinks on press.
         Modifier.size(44.dp).disabledAlpha(!interrupt || on)
             .combinedClickable(interactionSource = source, indication = null, enabled = on, role = Role.Button,
-                onClickLabel = if (interrupt) "中断本轮" else sendLabel,
+                onClickLabel = if (interrupt) copy(UiMessages.sessionInterruptTurn()) else sendLabel,
                 onClick = onClick,
                 onLongClick = onLongClick)
-            .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
+            .semantics { contentDescription = if (interrupt) copy(UiMessages.sessionInterruptTurn()) else sendLabel },
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.size(40.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape)
@@ -213,10 +216,11 @@ private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onCli
  */
 @Composable
 private fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boolean, menu: ComposerPicker) {
+    val copy = uiText()
     val p = pal
     val open = menu.open == "attach"
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
-    val label = if (onFile != null) "添加附件" else "添加图片"
+    val label = if (onFile != null) copy(UiMessages.newSessionIosAttach()) else copy(UiMessages.imageAdd())
     Box(
         Modifier.size(40.dp).onGloballyPositioned { menu.attach = it.boundsInWindow() }.disabledAlpha(enabled).clip(CircleShape).background(if (open) p.fill2 else p.fill)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label) { if (onFile != null) menu.toggle("attach") else onPlus() }
@@ -233,9 +237,10 @@ private fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boo
 /** The ＋ menu when the computer takes files: 照片和视频, 文件, and that files go as they are. */
 @Composable
 private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit) {
+    val copy = uiText()
     val p = pal
     Column(Modifier.padding(12.dp).width(248.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
-        listOf(Triple(Lucide.Image, "照片和视频", onMedia), Triple(Lucide.File, "文件", onFile)).forEachIndexed { i, (icon, label, action) ->
+        listOf(Triple(Lucide.Image, copy(UiMessages.attachmentPhotosVideos()), onMedia), Triple(Lucide.File, copy(UiMessages.attachmentFile()), onFile)).forEachIndexed { i, (icon, label, action) ->
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
                     .clip(Radii.R18).clickable(role = Role.Button, onClick = action).padding(horizontal = 12.dp),
@@ -246,9 +251,9 @@ private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit) {
                 Text(label, style = T.s17, color = p.ink)
             }
         }
-        Text(FILES_AS_THEY_ARE, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
+        Text(uiText(FILES_AS_THEY_ARE), style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
     }
 }
 
 /** Said wherever files are offered or waiting to go. */
-const val FILES_AS_THEY_ARE = "文件原样发送，包含其中的元数据。"
+val FILES_AS_THEY_ARE get() = UiMessages.attachmentMetadata()

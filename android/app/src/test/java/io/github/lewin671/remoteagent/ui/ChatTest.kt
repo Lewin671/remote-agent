@@ -16,7 +16,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ChatTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test
     fun retainsAcknowledgedStartUntilHistoryArrivesAndShowsFailuresHonestly() {
         val d = io.github.lewin671.remoteagent.core.Derived()
@@ -26,7 +29,7 @@ class ChatTest {
         // Waiting: the pending bubble shows it, not a second copy here.
         assertEquals(null, pendingStartPrompt("first", emptyList(), d, setOf("later-local")))
         d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED
-        assertEquals("已送达电脑", pendingStartPrompt("first", emptyList(), d, setOf("later-local"))?.caption)
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionDelivered()), pendingStartPrompt("first", emptyList(), d, setOf("later-local"))?.caption)
         val recorded = listOf(Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("first")).build())
         assertEquals(null, pendingStartPrompt("first", recorded, d, setOf("later-local")))
         d.inputs["start"] = io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
@@ -71,7 +74,7 @@ class ChatTest {
         assertEquals("登录超时：限流", forkSource(fork, mapOf("src" to renamed)))
         assertEquals("登录接口偶尔超时", forkSource(fork, mapOf("src" to io.github.lewin671.remoteagent.core.SessionView("src", "m"))))
         assertEquals("登录接口偶尔超时", forkSource(fork, emptyMap()))
-        assertEquals("另一个会话", forkSource(fork.copy(sourceTitle = ""), emptyMap()))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionOtherSession()), forkSource(fork.copy(sourceTitle = ""), emptyMap()))
     }
 
     @Test
@@ -98,7 +101,7 @@ class ChatTest {
         val events = listOf(ev(1, Event.newBuilder().setTurnEnded(
             TurnEnded.newBuilder().setOutcome(io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED).setDurationMs(1000))))
         val rows = buildChat(events, derive(events), "Example")
-        assertEquals("已中断", (rows[0] as ChatItem.Note).text)
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionInterrupted()), (rows[0] as ChatItem.Note).text)
         assertEquals("本轮用时 1 秒", (rows[1] as ChatItem.TurnEnd).text)
     }
 
@@ -219,10 +222,10 @@ class ChatTest {
     @Test
     fun rawCodexItemTypesAreNotToolTitles() {
         val generic = ToolCall.newBuilder().setKind(ToolKind.TOOL_KIND_OTHER).setItemType("ToolCall").setTitle("ToolCall").build()
-        assertEquals("工具", toolTitle(generic, ""))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.toolsTool()), toolTitle(generic, ""))
         assertEquals("", toolRaw(generic, "", ""))
         val command = generic.toBuilder().setKind(ToolKind.TOOL_KIND_COMMAND).setItemType("CommandExecution").setTitle("CommandExecution").build()
-        assertEquals("命令", toolTitle(command, ""))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.toolsCommand()), toolTitle(command, ""))
     }
 
     @Test

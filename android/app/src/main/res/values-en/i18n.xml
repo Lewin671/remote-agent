@@ -7,6 +7,18 @@
     <string name="approval_always_allowed" formatted="false">"Allowed; always allow"</string>
     <string name="approval_always_directory">"Always allow access to %1$s in this project"</string>
     <string name="approval_always_prefix">"Always allow commands starting with “%1$s”"</string>
+    <string name="approval_android_deny_decision" formatted="false">"Deny"</string>
+    <plurals name="approval_android_minutes_meta">
+        <item quantity="one">" · %1$d min left"</item>
+        <item quantity="other">" · %1$d min left"</item>
+    </plurals>
+    <string name="approval_android_prefix">"Do not ask again for commands starting with `%1$s`"</string>
+    <plurals name="approval_android_remaining_timeout">
+        <item quantity="one">"%1$d min left; denied on timeout"</item>
+        <item quantity="other">"%1$d min left; denied on timeout"</item>
+    </plurals>
+    <string name="approval_android_reply_expired">"It is unclear whether “%1$s” arrived. It has expired and will not be resent"</string>
+    <string name="approval_android_unknown_result" formatted="false">"Result unknown"</string>
     <string name="approval_approve" formatted="false">"Approve"</string>
     <string name="approval_approve_execute" formatted="false">"Approve execution"</string>
     <string name="approval_auto_edits" formatted="false">"Automatically accept edits in this session"</string>
@@ -27,6 +39,26 @@
     <string name="approval_timeout_note">"%1$s; deny on timeout"</string>
     <string name="approval_title" formatted="false">"Approval"</string>
     <string name="approval_truncated" formatted="false">"Content truncated; view in terminal"</string>
+    <string name="attachment_android_choose_computer" formatted="false">"Select a computer first"</string>
+    <string name="attachment_android_failed_meta" formatted="false">" · Upload failed"</string>
+    <plurals name="attachment_android_files_limit">
+        <item quantity="one">"A message can contain at most %1$d file; extra file were not added"</item>
+        <item quantity="other">"A message can contain at most %1$d files; extra files were not added"</item>
+    </plurals>
+    <string name="attachment_android_missing_files" formatted="false">"Attachments are not on the computer. Returning to the composer uploads them again and keeps the text and attachments"</string>
+    <string name="attachment_android_name_too_long" formatted="false">"Filename is too long. Rename the file and select it again"</string>
+    <string name="attachment_android_name_unreadable" formatted="false">"Could not read the filename. Select the file again"</string>
+    <string name="attachment_android_not_saved" formatted="false">"Attachments were not saved to the phone. Check free space. You can still send them now, but they may be lost when the app closes"</string>
+    <string name="attachment_android_permission_temporary" formatted="false">"Read permission for this file cannot be kept. You may need to select it again after the app restarts"</string>
+    <string name="attachment_android_preparing_meta" formatted="false">" · Preparing"</string>
+    <string name="attachment_android_reading_files" formatted="false">"Reading selected files…"</string>
+    <plurals name="attachment_android_restore_limit">
+        <item quantity="one">"Returning these file would exceed the %1$d-file limit. Remove some file first"</item>
+        <item quantity="other">"Returning these files would exceed the %1$d-file limit. Remove some files first"</item>
+    </plurals>
+    <string name="attachment_android_source_unreadable" formatted="false">"Could not read the source file. Select it again"</string>
+    <string name="attachment_android_upload_meta">" · Uploading %1$s%%"</string>
+    <string name="attachment_android_upload_required" formatted="false">"Attachments need to be uploaded to the computer again. Wait for upload to finish before sending"</string>
     <string name="attachment_computer_offline">"%1$s is offline. Reconnect to add images."</string>
     <string name="attachment_computer_unread">"Information for %1$s has not loaded yet. Add images shortly."</string>
     <string name="attachment_disconnected" formatted="false">"Disconnected from server. Reconnect to add images."</string>
@@ -74,6 +106,7 @@
     <string name="common_details" formatted="false">"Details"</string>
     <string name="common_done" formatted="false">"Done"</string>
     <string name="common_got_it" formatted="false">"Got it"</string>
+    <string name="common_ios_spoken_separator" formatted="false">", "</string>
     <string name="common_list_separator" formatted="false">", "</string>
     <string name="common_loading" formatted="false">"Loading"</string>
     <string name="common_machine" formatted="false">"Computer"</string>
@@ -84,6 +117,9 @@
     <string name="common_settings" formatted="false">"Settings"</string>
     <string name="common_unknown_computer" formatted="false">"Unknown computer"</string>
     <string name="composer_after_turn" formatted="false">"Send after this turn"</string>
+    <string name="composer_android_not_sent">"This message was not sent: %1$s"</string>
+    <string name="composer_android_outbox_format" formatted="false">"The pending record format has changed. Clear old records and select attachments again"</string>
+    <string name="composer_android_restart_unknown" formatted="false">"The app restarted; it is unclear whether this message arrived"</string>
     <string name="composer_await_record">"Written to terminal, waiting for %1$s to record it"</string>
     <string name="composer_computer_restarted" formatted="false">"remote-agent on the computer restarted while writing"</string>
     <string name="composer_images_unrecognized">"%1$s did not recognize the images"</string>
@@ -138,6 +174,17 @@
     <string name="connection_server_retrying" formatted="false">"Cannot connect to server · Retrying"</string>
     <string name="dock_agent_waiting">"%1$s is waiting for you"</string>
     <string name="dock_agy_plan_note" formatted="false">"Return to the default mode (Ask) after approval"</string>
+    <string name="dock_android_answer_expired">"It is unclear whether “%1$s” was submitted. It has expired and will not be resent. Check the terminal"</string>
+    <string name="dock_android_answer_unknown">"The previous answer “%1$s” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer"</string>
+    <string name="dock_android_answered" formatted="false">"Question answered"</string>
+    <string name="dock_android_answered_values">"Answered: %1$s"</string>
+    <string name="dock_android_plan_expired">"It is unclear whether “%1$s” arrived. It has expired and will not be resent. Check the terminal first; abandon it to choose again"</string>
+    <string name="dock_android_plan_keep" formatted="false">"Continue planning…"</string>
+    <string name="dock_android_plan_unknown">"The result of “%1$s” is unknown. Retry resends the same request; the computer will not execute it twice"</string>
+    <string name="dock_android_question_answered" formatted="false">"This question has already been answered."</string>
+    <string name="dock_android_question_changed">"Could not submit; the terminal question may have changed: %1$s"</string>
+    <string name="dock_android_reply_pending" formatted="false">"The previous reply is still unconfirmed. Retry or abandon it first"</string>
+    <string name="dock_android_retry_choice">"Retry “%1$s”"</string>
     <string name="dock_answer_title" formatted="false">"Answer question"</string>
     <string name="dock_answer_unknown" formatted="false">"Submission is unconfirmed. Retry sends the same answer."</string>
     <string name="dock_answered">"Answered %1$s"</string>
@@ -211,6 +258,11 @@
         <item quantity="one">"%1$d session idle"</item>
         <item quantity="other">"%1$d sessions idle"</item>
     </plurals>
+    <plurals name="home_ios_approval_remaining">
+        <item quantity="one">"%1$d minute left"</item>
+        <item quantity="other">"%1$d minutes left"</item>
+    </plurals>
+    <string name="home_ios_open_session" formatted="false">"Open session"</string>
     <string name="home_list_failed">"Could not load sessions: %1$s"</string>
     <string name="home_live" formatted="false">"In progress"</string>
     <string name="home_loading_earlier" formatted="false">"Loading earlier sessions…"</string>
@@ -281,6 +333,30 @@
         <item quantity="other">"%1$d items need you"</item>
     </plurals>
     <string name="image_add" formatted="false">"Add image"</string>
+    <string name="image_android_bubble" formatted="false">"(Image)"</string>
+    <string name="image_android_download_retry">"Could not download: %1$s · Tap to retry"</string>
+    <string name="image_android_empty" formatted="false">"No images"</string>
+    <string name="image_android_generated_by">"Image generated by %1$s"</string>
+    <string name="image_android_generated_size">"Generated image%1$s"</string>
+    <string name="image_android_missing_uploads" formatted="false">"Images are not on the computer. Returning to the composer uploads them again and keeps the text and images"</string>
+    <string name="image_android_name_only" formatted="false">"Image not synced: filename only; the original is on the computer"</string>
+    <string name="image_android_no_preview" formatted="false">"No preview"</string>
+    <string name="image_android_original_meta" formatted="false">" Original"</string>
+    <plurals name="image_android_restore_limit">
+        <item quantity="one">"Images in composer: %2$d. Returning %1$d image would exceed the limit of %3$d. Remove some images first."</item>
+        <item quantity="other">"Images in composer: %2$d. Returning %1$d images would exceed the limit of %3$d. Remove some images first."</item>
+    </plurals>
+    <string name="image_android_restore_retry" formatted="false">"Pending images could not be restored. You can still type; retry on the next edit or return to the composer"</string>
+    <string name="image_android_restore_wait" formatted="false">"Restoring pending images; wait before returning them to the composer"</string>
+    <string name="image_android_restoring" formatted="false">"Restoring pending images…"</string>
+    <string name="image_android_save_permission" formatted="false">"Could not save without storage permission"</string>
+    <string name="image_android_saved" formatted="false">"Saved to photos"</string>
+    <string name="image_android_share_title" formatted="false">"Share image"</string>
+    <string name="image_android_total_size">" · %1$s MB total"</string>
+    <string name="image_android_upload_progress">"Uploading to computer, %1$s%%"</string>
+    <string name="image_android_user_pasted" formatted="false">"Pasted by user"</string>
+    <string name="image_android_verify_failed">"Image verification failed: %1$s"</string>
+    <string name="image_android_viewed_by">"Image viewed by %1$s"</string>
     <plurals name="image_attach_failed">
         <item quantity="one">"%1$d image could not be attached. Tap it for details."</item>
         <item quantity="other">"%1$d images could not be attached. Tap an image for details."</item>
@@ -359,6 +435,10 @@
     <string name="markdown_copy_code" formatted="false">"Copy code"</string>
     <string name="markdown_copy_failed" formatted="false">"Copy failed"</string>
     <string name="markdown_expand" formatted="false">"Show full text"</string>
+    <plurals name="markdown_ios_hidden_lines">
+        <item quantity="one">"%1$d more line hidden"</item>
+        <item quantity="other">"%1$d more lines hidden"</item>
+    </plurals>
     <plurals name="markdown_line_count">
         <item quantity="one">"%1$d line"</item>
         <item quantity="other">"%1$d lines"</item>
@@ -385,6 +465,7 @@
     <string name="modes_account_unsupported" formatted="false">"This account does not support Auto mode"</string>
     <string name="modes_agy_ask_desc" formatted="false">"You confirm approval requests; automatically deny on timeout"</string>
     <string name="modes_agy_plan_desc" formatted="false">"Explore read-only and write a plan; after approval, return to the default mode to execute"</string>
+    <string name="modes_android_permission_notice">"Shows the actual terminal mode; no button is offered to switch to %1$s."</string>
     <string name="modes_ask" formatted="false">"Ask"</string>
     <string name="modes_ask_desc" formatted="false">"You confirm approval requests; deny on timeout"</string>
     <string name="modes_ask_generic_desc" formatted="false">"You confirm approval requests"</string>
@@ -449,6 +530,7 @@
     <string name="new_session_follow_cli" formatted="false">"Follow CLI settings"</string>
     <string name="new_session_installed">"Installed: %1$s"</string>
     <string name="new_session_installed_fallback">"Installed: %2$s; this computer does not have %3$s, so %1$s will be used"</string>
+    <string name="new_session_ios_attach" formatted="false">"Add attachment"</string>
     <string name="new_session_location">"In %1$s"</string>
     <string name="new_session_location_cli">"In %2$s using %1$s"</string>
     <string name="new_session_location_machine">"On %1$s in %2$s"</string>
@@ -496,6 +578,7 @@
         <item quantity="other">"%1$d projects"</item>
     </plurals>
     <string name="projects_directory_failed">"Could not read this folder: %1$s"</string>
+    <string name="projects_ios_expanded" formatted="false">"Expanded"</string>
     <plurals name="projects_live_count">
         <item quantity="one">"%1$d in progress"</item>
         <item quantity="other">"%1$d in progress"</item>
@@ -539,6 +622,21 @@
     <string name="queue_after_turn" formatted="false">"Send after this turn"</string>
     <string name="queue_agent_ready">"Send when %1$s is ready"</string>
     <string name="queue_already_submitted" formatted="false">"The previous message is already in the terminal and cannot be canceled"</string>
+    <string name="queue_android_after_answer" formatted="false">"Continue after answering"</string>
+    <string name="queue_android_after_approval" formatted="false">"Continue after approval"</string>
+    <string name="queue_android_after_plan" formatted="false">"Continue after the plan is handled"</string>
+    <string name="queue_android_agent_note">"Waiting for %1$s to be ready"</string>
+    <string name="queue_android_answer_note" formatted="false">"Waiting for the question to be answered"</string>
+    <string name="queue_android_approval_note" formatted="false">"Waiting for the approval to be handled"</string>
+    <string name="queue_android_draft" formatted="false">"Draft in terminal"</string>
+    <string name="queue_android_input_note" formatted="false">"Waiting for the input box to be ready"</string>
+    <string name="queue_android_message" formatted="false">"A queued message"</string>
+    <string name="queue_android_plan_note" formatted="false">"Waiting for the plan to be handled"</string>
+    <string name="queue_android_popup_note" formatted="false">"Waiting for the terminal popup to be handled"</string>
+    <string name="queue_android_scheduled" formatted="false">"Scheduled task"</string>
+    <string name="queue_android_sending_soon" formatted="false">"Sending soon"</string>
+    <string name="queue_android_turn_note" formatted="false">"Waiting for this turn to end"</string>
+    <string name="queue_android_unconfirmed" formatted="false">"Written to the terminal but unconfirmed"</string>
     <string name="queue_cancel_failed" formatted="false">"Could not cancel; still queued"</string>
     <string name="queue_canceled" formatted="false">"Canceled"</string>
     <string name="queue_canceled_elsewhere" formatted="false">"The previous message was canceled on another client"</string>
@@ -581,6 +679,25 @@
     <string name="quota_warning">"%1$s · %2$s quota is nearly exhausted. CLI and model will not switch automatically."</string>
     <string name="session_abandon_fork" formatted="false">"Abandon previous fork"</string>
     <string name="session_action_failed">"%1$s failed: %2$s"</string>
+    <string name="session_android_collapse_title">"Collapse %1$s"</string>
+    <string name="session_android_compacted_usage">"Context compacted · %2$s%% → %1$s%%"</string>
+    <string name="session_android_connect_read" formatted="false">"This session will load after connecting to the server"</string>
+    <string name="session_android_context_usage" formatted="false">"Context usage"</string>
+    <string name="session_android_ended_at">"%1$s ended"</string>
+    <string name="session_android_execution_unknown" formatted="false">"It is unclear whether the computer executed the command"</string>
+    <string name="session_android_fork_connected" formatted="false">"Available after connecting to the server"</string>
+    <string name="session_android_fork_prefix">"%1$s forked from"</string>
+    <string name="session_android_history_partial" formatted="false">"History has not loaded completely."</string>
+    <string name="session_android_history_tail_failed">"Could not load later records: %1$s"</string>
+    <string name="session_android_interrupt_failed">"Could not interrupt: %1$s"</string>
+    <string name="session_android_interrupted_by">"Interrupted (%1$s)"</string>
+    <string name="session_android_models_failed">"Could not load the model list: %1$s"</string>
+    <string name="session_android_resume_failed">"Could not resume: %1$s"</string>
+    <string name="session_android_switch_after_turn" formatted="false">"Can only switch when idle; choose after this turn ends"</string>
+    <string name="session_android_switch_note" formatted="false">"Only levels supported by the current model are shown. Choose while idle to submit; the value updates after the computer confirms."</string>
+    <string name="session_android_terminal_changes">"In the terminal on %2$s, %1$s"</string>
+    <string name="session_android_thinking" formatted="false">"Thought process"</string>
+    <string name="session_android_unknown" formatted="false">"Unknown session"</string>
     <string name="session_approval_resolved" formatted="false">"This approval has already been handled."</string>
     <string name="session_auto_title_hint" formatted="false">"Save an empty title to restore the automatic title"</string>
     <string name="session_back_task" formatted="false">"Back to task"</string>
@@ -692,6 +809,18 @@
     <string name="session_turn_duration">"Turn took %1$s"</string>
     <string name="session_update_computer" formatted="false">"Update remote-agent on the computer"</string>
     <string name="session_view" formatted="false">"View"</string>
+    <string name="terminal_android_closed" formatted="false">"Terminal closed"</string>
+    <string name="terminal_android_font_larger" formatted="false">"Increase font size"</string>
+    <string name="terminal_android_font_size">"Font size %1$s"</string>
+    <string name="terminal_android_font_smaller" formatted="false">"Decrease font size"</string>
+    <string name="terminal_android_hide_details" formatted="false">"Hide details"</string>
+    <string name="terminal_android_not_running" formatted="false">"The session is not running."</string>
+    <string name="terminal_android_paused" formatted="false">"Terminal paused; the screen will reload when the connection returns"</string>
+    <string name="terminal_android_reconnect_note" formatted="false">"The terminal screen will reload when the server connection returns."</string>
+    <string name="terminal_android_selection_copy" formatted="false">"Copy"</string>
+    <string name="terminal_android_selection_more" formatted="false">"More…"</string>
+    <string name="terminal_android_selection_paste" formatted="false">"Paste"</string>
+    <string name="terminal_android_size_changed">"Remote size changed · %1$d×%2$d"</string>
     <string name="terminal_closed" formatted="false">"Terminal connection lost"</string>
     <string name="terminal_closed_ended_note" formatted="false">"The last frame before disconnection is shown below. The session has ended."</string>
     <string name="terminal_closed_running_note" formatted="false">"The last frame before disconnection is shown below. The session is still running; chat updates continue."</string>
@@ -753,6 +882,17 @@
     <string name="time_weekday_wed">"Wed"</string>
     <string name="time_year_month_group">"%2$d/%1$d"</string>
     <string name="time_yesterday" formatted="false">"Yesterday"</string>
+    <string name="tools_android_background_command" formatted="false">"Background command"</string>
+    <string name="tools_android_background_edit" formatted="false">"Edit (background)"</string>
+    <string name="tools_android_background_generic" formatted="false">"Tool (background)"</string>
+    <string name="tools_android_background_label">"%1$s (background)"</string>
+    <string name="tools_android_background_search" formatted="false">"Search (background)"</string>
+    <string name="tools_android_collapsed" formatted="false">"Collapsed"</string>
+    <string name="tools_android_edit" formatted="false">"Edit"</string>
+    <string name="tools_android_processing" formatted="false">"Processing"</string>
+    <string name="tools_android_search" formatted="false">"Search"</string>
+    <string name="tools_android_sync_suffix" formatted="false">" · Waiting for sync"</string>
+    <string name="tools_android_unconfirmed" formatted="false">"Status unconfirmed"</string>
     <string name="tools_background" formatted="false">"Running in background"</string>
     <string name="tools_background_agent" formatted="false">"Running in the background at the model’s request. Its completion time is unknown here; check the terminal."</string>
     <string name="tools_background_returned" formatted="false">"The call returned and the command moved to the background. Its completion time is unknown here; check the terminal."</string>

@@ -400,7 +400,8 @@
     "notes": "项目已结束列表展开状态读屏值。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
     "platforms": [
-      "ios"
+      "ios",
+      "android"
     ],
     "status": {
       "zh-CN": "source",

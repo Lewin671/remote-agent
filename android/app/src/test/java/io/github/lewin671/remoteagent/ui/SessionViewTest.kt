@@ -4,7 +4,10 @@ import io.github.lewin671.remoteagent.core.Status
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class SessionViewTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test
     fun theTerminalGivesWayToTheChatWhenItCannotBeShown() {
         // The computer is away: the cached chat can still be read, the terminal cannot.
@@ -33,14 +36,14 @@ class SessionViewTest {
             "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
             exitReason("the login shell did not start the CLI within 1m0s"),
         )
-        assertEquals("定时任务运行已结束，会话自动关闭了。", exitReason("stopped", true))
-        assertEquals("会话是被手动结束的。", exitReason("stopped", false))
-        assertEquals("会话长时间没有活动，已自动结束。", exitReason("stopped", idleClosed = true))
-        assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone", idleClosed = true))
-        assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone", true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionScheduledClosed()), exitReason("stopped", true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionManuallyClosed()), exitReason("stopped", false))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionIdleClosed()), exitReason("stopped", idleClosed = true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionTmuxMissing()), exitReason("tmux session gone", idleClosed = true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionTmuxMissing()), exitReason("tmux session gone", true))
         // Every other detail keeps the words the card had before.
-        assertEquals("会话是被手动结束的。", exitReason("stopped"))
-        assertEquals("tmux 会话已经不在了。", exitReason(""))
-        assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone"))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionManuallyClosed()), exitReason("stopped"))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionTmuxMissing()), exitReason(""))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionTmuxMissing()), exitReason("tmux session gone"))
     }
 }

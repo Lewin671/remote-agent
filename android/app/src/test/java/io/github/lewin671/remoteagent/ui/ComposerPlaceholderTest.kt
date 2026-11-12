@@ -3,11 +3,14 @@ package io.github.lewin671.remoteagent.ui
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ComposerPlaceholderTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test fun theBoxSaysOnlyWhatTheMessageWillDo() {
-        assertEquals("消息", composerPlaceholder(questionPending = false, planOpen = false))
-        assertEquals("排队发送，回答后继续", composerPlaceholder(questionPending = true, planOpen = false))
-        assertEquals("补充你对计划的要求…", composerPlaceholder(questionPending = false, planOpen = true))
-        assertEquals("排队发送，回答后继续", composerPlaceholder(questionPending = true, planOpen = true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.composerMessage()), composerPlaceholder(questionPending = false, planOpen = false))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.composerQueueAfterAnswer()), composerPlaceholder(questionPending = true, planOpen = false))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.composerPlanPlaceholder()), composerPlaceholder(questionPending = false, planOpen = true))
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.composerQueueAfterAnswer()), composerPlaceholder(questionPending = true, planOpen = true))
     }
 }

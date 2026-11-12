@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -112,7 +113,7 @@ class Outgoing(
             state = if (unknown) State.UNKNOWN else State.FAILED
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
                 (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
-            error = if (missingImages) { if (fileIds.isNotEmpty()) "附件不在电脑上。放回输入框后会重新上传，文字和附件都会保留" else "图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留" } else errorText(e)
+            error = if (missingImages) { if (fileIds.isNotEmpty()) sessionText(UiMessages.attachmentAndroidMissingFiles()) else sessionText(UiMessages.imageAndroidMissingUploads()) } else errorText(e)
         } finally {
             delivering = false
         }
@@ -120,7 +121,7 @@ class Outgoing(
 
     internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest): io.github.lewin671.remoteagent.core.PreparedCommand {
         val machine = targetMachineId ?: remote.state.value.sessions[sid]?.machineId
-            ?: throw CommandException("not_found", "未知会话")
+            ?: throw CommandException("not_found", sessionText(UiMessages.sessionAndroidUnknown()))
         targetMachineId = machine
         return remote.prepare(machine, sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() },
             requestId = commandRequestId, deadlineMs = commandDeadlineMs)
@@ -238,14 +239,14 @@ class OutgoingRecords(private val files: SealedFiles) {
             val mode = files.get(f, "mode")?.toString(Charsets.UTF_8)?.let { runCatching { io.github.lewin671.remoteagent.proto.SendMode.valueOf(it) }.getOrNull() }
                 ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
             val fileIds = files.get(f, "file-ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
-            val intent = files.get(f, "intent") ?: error("待确认记录格式已变更，请清理旧记录并重新选择附件")
+            val intent = files.get(f, "intent") ?: error(sessionText(UiMessages.composerAndroidOutboxFormat()))
             val (commandId, deadline, machine) = java.io.DataInputStream(intent.inputStream()).use {
                 Triple(it.readUTF(), it.readLong(), it.readUTF().ifEmpty { null })
             }
             Outgoing(req, text, ids, images, original, mode, fileIds, deadline, machine, commandId).apply {
                 // From a run that ended: whether it reached the computer is not known.
                 state = Outgoing.State.UNKNOWN
-                error = "App 重启过，不确定这条有没有送到"
+                error = sessionText(UiMessages.composerAndroidRestartUnknown())
             }
         }
     }
@@ -379,7 +380,7 @@ object Outbox {
                         images.filterNot { it.isFile }.mapNotNull { it.imageId } != imageIds ||
                         images.filter { it.isFile }.mapNotNull { it.fileId } != fileIds) {
                         drop(sid, o.requestId)
-                        throw IllegalStateException("附件需要重新传到电脑，请上传完成后再发送")
+                        throw IllegalStateException(sessionText(UiMessages.attachmentAndroidUploadRequired()))
                     }
                 }
             }

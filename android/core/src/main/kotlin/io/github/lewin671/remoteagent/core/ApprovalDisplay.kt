@@ -14,8 +14,10 @@ fun approvalDisplay(text: String): String = buildString {
 }
 
 /** What an approval asks for, as its card, its dock and its page head it. */
-fun approvalHead(a: ApprovalRequested): String =
-    if (a.command.isNotEmpty()) "请求执行" else "请求权限" + (if (a.toolName.isNotEmpty()) " · ${approvalDisplay(a.toolName)}" else "")
+fun approvalHead(a: ApprovalRequested): MessageText =
+    (if (a.command.isNotEmpty()) UiMessages.listStateAndroidRequestCommand()
+    else if (a.toolName.isNotEmpty()) UiMessages.listStateRequestPermission(approvalDisplay(a.toolName))
+    else UiMessages.listStateAndroidRequestPermission()).messageText()
 
 /**
  * What an approval would run or pass, shown with whatever it hides spelled
@@ -26,6 +28,6 @@ fun approvalBody(a: ApprovalRequested): String = approvalDisplay(a.command.ifEmp
 
 // The relay's existing suffix marks every field shortened for upload.
 private const val truncatedNote = "\n…（remote-agent：内容过长，已截断）"
-const val approvalTruncatedMessage = "内容被截断，请在终端查看"
+val approvalTruncatedMessage get() = UiMessages.approvalTruncated()
 fun approvalTruncated(a: ApprovalRequested): Boolean =
     listOf(a.description, a.command, a.toolInputJson).any { it.endsWith(truncatedNote) }

@@ -86,11 +86,12 @@ import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
 import kotlinx.coroutines.launch
 
-internal fun sessionSubtitle(status: Status, mode: String?): String =
-    status.text + if (status == Status.EXITED || mode == null) "" else " · $mode"
+internal fun sessionSubtitle(status: Status, mode: String?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
+    copy(io.github.lewin671.remoteagent.core.listStatus(status)) + if (status == Status.EXITED || mode == null) "" else " · $mode"
 
 @Composable
 fun SessionScreen(sid: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -125,7 +126,7 @@ fun SessionScreen(sid: String) {
             } else {
                 Spinner(p.ink2, size = 24.dp)
                 Text(
-                    if (state.conn == ConnState.ONLINE) "读取中…" else "连上服务器后读取这个会话",
+                    if (state.conn == ConnState.ONLINE) copy(UiMessages.projectsReadingDirectory()) else copy(UiMessages.sessionAndroidConnectRead()),
                     color = p.ink2,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -178,7 +179,7 @@ fun SessionScreen(sid: String) {
             dark = term,
         )
         if (!compactTerminal) Segmented(
-            if (wide) listOf("聊天", "终端", "并排") else listOf("聊天", "终端"),
+            if (wide) listOf(copy(UiMessages.sessionChat()), copy(UiMessages.sessionTerminal()), copy(UiMessages.sessionSplit())) else listOf(copy(UiMessages.sessionChat()), copy(UiMessages.sessionTerminal())),
             if (term) 1 else if (both) 2 else 0,
             {
                 tab = it
@@ -202,9 +203,9 @@ fun SessionScreen(sid: String) {
         } else Row(Modifier.weight(1f)) {
             Column(Modifier.weight(1f)) {
             val note = Modifier.padding(horizontal = 20.dp)
-            if (events.historyPartial) Hint("历史记录尚未读全。", note, inset = 0.dp)
+            if (events.historyPartial) Hint(copy(UiMessages.sessionAndroidHistoryPartial()), note, inset = 0.dp)
             if (events.unavailableCount > 0)
-                Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。", note, inset = 0.dp)
+                Hint(copy(UiMessages.sessionHistoryUnavailable(count = events.unavailableCount)), note, inset = 0.dp)
             events.liveError?.let { Hint(it, note, inset = 0.dp) }
             ChatPane(
                 state,
@@ -262,6 +263,7 @@ private fun SessionTopBar(
     sent: Boolean,
     dark: Boolean,
 ) {
+    val copy = uiText()
     val p = pal
     val nav = LocalNav.current
     val remote = LocalRemote.current
@@ -283,11 +285,12 @@ private fun SessionTopBar(
     val forkScope = rememberCoroutineScope()
     val forkRow =
         forkAction(
-            io.github.lewin671.remoteagent.core.forkBlocked(status, running, sent),
+            io.github.lewin671.remoteagent.core.forkBlocked(status, running, sent)?.let(copy),
             forking,
             fork.error,
             fork.frozen,
             fork.expired,
+            copy = copy,
         )
     // Claude Code records full model IDs; show the alias the list offers.
     var models by
@@ -310,13 +313,13 @@ private fun SessionTopBar(
     val high = (pc ?: 0) > 80
     val mode =
         if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s)
-    val subtitle = sessionSubtitle(status, mode?.text)
+    val subtitle = sessionSubtitle(status, mode?.let { it.mode?.let { m -> copy(io.github.lewin671.remoteagent.core.sessionMode(m)) } ?: it.text }, copy = copy)
     val rich =
         if (mode?.mode == Mode.FULL)
             androidx.compose.ui.text.buildAnnotatedString {
-                append(status.text + " · ")
+                append(copy(io.github.lewin671.remoteagent.core.listStatus(status)) + " · ")
                 pushStyle(androidx.compose.ui.text.SpanStyle(color = p.red))
-                append(mode.text)
+                append(mode.mode?.let { copy(io.github.lewin671.remoteagent.core.sessionMode(it)) } ?: mode.text)
                 pop()
             }
         else null
@@ -329,7 +332,7 @@ private fun SessionTopBar(
     ) {
         GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), back, dark = dark)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(titleOf(s), style = T.s17b, color = if (dark) CardColors.text else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(uiText(io.github.lewin671.remoteagent.core.listTitle(s)), style = T.s17b, color = if (dark) CardColors.text else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val sub = if (dark) CardColors.text2 else p.ink2
                 markOf(status)?.let {
@@ -340,13 +343,13 @@ private fun SessionTopBar(
                 else Text(subtitle, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        GlassButton(Lucide.Ellipsis, "更多", { menu = true }, dot = high, dark = dark)
+        GlassButton(Lucide.Ellipsis, copy(UiMessages.commonAndroidMore()), { menu = true }, dot = high, dark = dark)
     }
     if (menu)
         ActionSheet(
             info = {
                 SheetInfo(
-                    sessionMenuTitle(state, s),
+                    sessionMenuTitle(state, s, copy = copy),
                     shortPath(s.info?.cwd.orEmpty()),
                     mono = true,
                     lead = { AgentMarkLead(s.agent(), T.s17b, p.ink) },
@@ -357,8 +360,8 @@ private fun SessionTopBar(
                     if (live) {
                         if (mode != null) add(
                             SheetAction(
-                                "审批模式",
-                                value = mode.text,
+                                copy(UiMessages.modesTitle()),
+                                value = mode.mode?.let { copy(io.github.lewin671.remoteagent.core.sessionMode(it)) } ?: mode.text,
                                 danger = mode.mode == Mode.FULL,
                                 enabled = !forking,
                             ) {
@@ -367,7 +370,7 @@ private fun SessionTopBar(
                         )
                         add(
                             SheetAction(
-                                if (model.isEmpty()) "会话设置" else "模型",
+                                if (model.isEmpty()) copy(UiMessages.sessionSettings()) else copy(UiMessages.modelsTitle()),
                                 value = model + if (effort.isNotEmpty()) " · $effort" else "",
                                 enabled = !forking,
                             ) {
@@ -376,7 +379,7 @@ private fun SessionTopBar(
                         )
                         pc?.let {
                             add(
-                                SheetAction("上下文", value = "已用 $it%", warn = high, enabled = !forking) {
+                                SheetAction(copy(UiMessages.sessionContext()), value = copy(UiMessages.sessionContextUsed(percent = it)), warn = high, enabled = !forking) {
                                     sheet = 2
                                 }
                             )
@@ -384,11 +387,11 @@ private fun SessionTopBar(
                     }
                 },
                 buildList {
-                    add(SheetAction("项目设置", enabled = !forking && projectConfig(state, projectKey(s)) != null) {
+                    add(SheetAction(copy(UiMessages.projectsAndroidSettings()), enabled = !forking && projectConfig(state, projectKey(s)) != null) {
                         sheet = 3
                     })
                     if (canRename) {
-                        add(SheetAction("重命名", enabled = !forking) { rename = true })
+                        add(SheetAction(copy(UiMessages.sessionRename()), enabled = !forking) { rename = true })
                         if (agentInfo(s.agent()).forks) add(
                             SheetAction(
                                 forkRow.text,
@@ -427,10 +430,10 @@ private fun SessionTopBar(
                             }
                         )
                     }
-                    add(SheetAction("定时发送…", enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
+                    add(SheetAction(copy(UiMessages.sessionScheduleSend()), enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
                     if (running && canRename)
                         add(
-                            SheetAction("中断本轮", danger = true, enabled = !forking) {
+                            SheetAction(copy(UiMessages.sessionInterruptTurn()), danger = true, enabled = !forking) {
                                 act.run({
                                     remote.command(
                                         s.id,
@@ -448,7 +451,7 @@ private fun SessionTopBar(
                 buildList {
                     if (status != Status.EXITED && canRename)
                         add(
-                            SheetAction("结束会话…", danger = true, enabled = !forking) {
+                            SheetAction(copy(UiMessages.sessionEndAction()), danger = true, enabled = !forking) {
                                 confirmStop = true
                             }
                         )
@@ -475,9 +478,9 @@ private fun SessionTopBar(
         Text(act.error, Modifier.padding(horizontal = 20.dp), color = p.red, style = T.s12)
     if (confirmStop)
         Confirm(
-            "结束这个会话？",
-            "${machineLabel(state, s.machineId)} 上的 ${agentName(s.agent())} 会被关掉，聊天记录保留，之后可以恢复。",
-            "结束",
+            copy(UiMessages.sessionEndTitle()),
+            copy(UiMessages.sessionEndNote(agent = (agentName(s.agent())).toString(), name = (machineLabel(state, s.machineId)).toString())),
+            copy(UiMessages.sessionEnd()),
             danger = true,
             onDismiss = { confirmStop = false },
         ) {
@@ -505,6 +508,7 @@ internal fun ChatPane(
     modifier: Modifier,
     onTerminal: () -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     val nav = LocalNav.current
     val remote = LocalRemote.current
@@ -525,7 +529,7 @@ internal fun ChatPane(
             d.inputs.keys.firstOrNull { id -> outbox.none { it.requestId == id } }
         else null
     val startPrompt =
-        pendingStartPrompt(initialPrompt, events, d, outbox.map { it.requestId }.toSet(), s.agent())
+        pendingStartPrompt(initialPrompt, events, d, outbox.map { it.requestId }.toSet(), s.agent(), copy = copy)
     val projection =
         remember(
             remote,
@@ -572,7 +576,7 @@ internal fun ChatPane(
     }
     // Capture UI-owned outbox state before handing the immutable inputs to the worker.
     val texts = outbox.associate { it.requestId to it.text }
-    LaunchedEffect(events, d, projection, texts) {
+    LaunchedEffect(events, d, projection, texts, copy) {
         projection.update(
             events,
             d,
@@ -580,6 +584,7 @@ internal fun ChatPane(
             cwd,
             home,
             s.agent(),
+            copy,
             { texts[it] ?: initialPrompt?.takeIf { _ -> it == initialId } },
         ) { o ->
             chatSource(
@@ -587,6 +592,7 @@ internal fun ChatPane(
                 state,
                 remote.account.deviceId,
                 machine,
+                copy = copy,
             )
         }
         show(projection.rows { currentReveal })
@@ -714,7 +720,7 @@ internal fun ChatPane(
                     if (shown != null)
                         item {
                             Notice(
-                                "后面的记录没读到：$shown",
+                                copy(UiMessages.sessionAndroidHistoryTailFailed(reason = shown)),
                                 Modifier.padding(horizontal = ChatSide, vertical = 8.dp),
                                 NoticeTone.ERROR,
                                 action = uiText(UiMessages.commonRetry()),
@@ -737,7 +743,7 @@ internal fun ChatPane(
                     }
                     if (pendingInputs.size > 3 && !allPending)
                         item {
-                            TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true }, Modifier.padding(horizontal = ChatSide), style = T.s13)
+                            TextAction(copy(UiMessages.queueMore(count = pendingInputs.size - 2)), { allPending = true }, Modifier.padding(horizontal = ChatSide), style = T.s13)
                         }
                     // Messages from this device, until the chat shows them.
                     items(sentHere, key = { "out" + it.requestId }) { o ->
@@ -769,12 +775,12 @@ internal fun ChatPane(
             ) {
                 GlassCapsule({ scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } }) {
                     Spacer(Modifier.width(6.dp))
-                    IconText(Lucide.ArrowDown, "$shownFresh 条新消息", p.ink, T.s13)
+                    IconText(Lucide.ArrowDown, copy(UiMessages.sessionNewMessages(count = shownFresh)), p.ink, T.s13)
                 }
             }
         }
         androidx.compose.runtime.CompositionLocalProvider(LocalDockMax provides dockMax) {
-            if (s.info?.taskOwned == true) Hint("回复后，这个对话会移到会话列表", Modifier.padding(horizontal = ChatSide), inset = 0.dp)
+            if (s.info?.taskOwned == true) Hint(copy(UiMessages.sessionReplyMoves()), Modifier.padding(horizontal = ChatSide), inset = 0.dp)
             Bottom(
                 state,
                 s,
@@ -799,11 +805,12 @@ private fun PendingBubble(
     remote: io.github.lewin671.remoteagent.core.Remote,
     starting: String?,
 ) {
+    val copy = uiText()
     if (
         io.github.lewin671.remoteagent.core.isSkeleton(pending.id) ||
             io.github.lewin671.remoteagent.core.isSkeleton(pending.text)
     ) {
-        Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = ChatSide))
+        Text(copy(UiMessages.sessionSkeleton()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = ChatSide))
         return
     }
     val p = pal
@@ -811,13 +818,14 @@ private fun PendingBubble(
     val cancel = Cancels.states[pending.id]
     val resume = rememberAction()
     val online = state.conn == ConnState.ONLINE
-    val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty())
+    val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty(), copy = copy)
     val origin =
         chatSource(
             pending.origin,
             state,
             remote.account.deviceId,
             "",
+            copy = copy,
         )
     // A message waiting its turn: a thin faint outline and no fill, its text in ink2 (design-system §6 输入框).
     Column(
@@ -833,7 +841,7 @@ private fun PendingBubble(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (pending.text.isNotEmpty() || pending.files.isEmpty()) Text(
-                pending.text.ifEmpty { "（图片）" },
+                pending.text.ifEmpty { copy(UiMessages.imageAndroidBubble()) },
                 style = T.s17,
                 color = p.ink2,
                 maxLines = if (expanded) Int.MAX_VALUE else 4,
@@ -847,7 +855,7 @@ private fun PendingBubble(
             horizontalArrangement = Arrangement.End,
         ) {
             Text(
-                scheduledPendingCaption(pending, events, label) ?: pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null),
+                scheduledPendingCaption(pending, events, label, copy = copy) ?: pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null, copy = copy),
                 style = T.s13,
                 color = if (cancel is Cancels.State.Failed) p.red else p.ink2,
                 maxLines = 1,
@@ -857,7 +865,7 @@ private fun PendingBubble(
             )
             if (pending.paused && cancel != Cancels.State.Canceling)
                 TextAction(
-                    if (resume.error.isNotEmpty()) uiText(UiMessages.commonRetry()) else "发送",
+                    if (resume.error.isNotEmpty()) uiText(UiMessages.commonRetry()) else copy(UiMessages.composerSend()),
                     {
                         resume.run({
                             remote.command(
@@ -898,6 +906,7 @@ private fun OutgoingView(
     failure: String?,
     onTerminal: () -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val agent =
@@ -905,7 +914,7 @@ private fun OutgoingView(
             ?: DEFAULT_AGENT
     val feedback = when (input) {
         InputStatus.INPUT_STATUS_FAILED, InputStatus.INPUT_STATUS_NEEDS_TERMINAL, InputStatus.INPUT_STATUS_UNCONFIRMED -> inputFeedback(input, failure.orEmpty(), agent)
-        else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN)
+        else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN, copy = copy)
     }
     val failed = input == InputStatus.INPUT_STATUS_FAILED || (input == null && o.state == Outgoing.State.FAILED)
     val links = mutableListOf<Pair<String, () -> Unit>>()
@@ -915,7 +924,7 @@ private fun OutgoingView(
             // Nothing was submitted and the terminal is as it was.
             input == InputStatus.INPUT_STATUS_FAILED -> {
                 links +=
-                    "放回输入框" to
+                    copy(UiMessages.composerRestore()) to
                         {
                             putBack(remote, sid, o)
                             Unit
@@ -924,14 +933,14 @@ private fun OutgoingView(
             }
             // Not submitted, and part of it may still be in the input box.
             input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
-                links += "去终端" to onTerminal
-                if (o.hasLocalAttachments || (o.imageIds.isEmpty() && o.fileIds.isEmpty() && o.text.isNotEmpty())) links += "放回输入框" to { putBack(remote, sid, o); Unit }
+                links += copy(UiMessages.sessionGoTerminal()) to onTerminal
+                if (o.hasLocalAttachments || (o.imageIds.isEmpty() && o.fileIds.isEmpty() && o.text.isNotEmpty())) links += copy(UiMessages.composerRestore()) to { putBack(remote, sid, o); Unit }
                 feedback.text to p.orangeInk
             }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {
                 // Its images are kept until then; the user decides when to let go.
                 links +=
-                    "移除此提示" to
+                    copy(UiMessages.sessionDismissNotice()) to
                         {
                             Outbox.remove(sid, o)
                             o.images.forEach { it.release(abort = false) }
@@ -940,13 +949,13 @@ private fun OutgoingView(
             }
             o.state == Outgoing.State.SENDING -> {
                 sending = true
-                "正在发送…" to p.ink2
+                copy(UiMessages.queueResuming()) to p.ink2
             }
-            o.state == Outgoing.State.SENT -> "已送达电脑" to p.ink2
+            o.state == Outgoing.State.SENT -> copy(UiMessages.sessionDelivered()) to p.ink2
             else -> {
                 if (o.canPutBack)
                     links +=
-                        "放回输入框" to
+                        copy(UiMessages.composerRestore()) to
                             {
                                 putBack(remote, sid, o)
                                 Unit
@@ -954,7 +963,7 @@ private fun OutgoingView(
                 if (!o.missingImages)
                     links += uiText(UiMessages.commonRetry()) to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
                 links +=
-                    "移除此提示" to
+                    copy(UiMessages.sessionDismissNotice()) to
                         {
                             Outbox.remove(sid, o)
                             o.images.forEach { it.release(abort = false) }
@@ -1002,25 +1011,26 @@ private fun Bottom(
     onPlan: () -> Unit,
     onSent: () -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val m = state.machines[s.machineId]
     if (status == Status.EXITED) {
         val act = rememberAction()
         EndCard(
-            if (act.running) "正在恢复…" else "会话已结束",
+            if (act.running) copy(UiMessages.sessionResuming()) else copy(UiMessages.sessionEnded()),
             buildString {
-                append(exitReason(s.info?.statusDetail.orEmpty(), d.scheduledClosed, d.idleClosed))
-                if (state.unlinked) append("连上服务器后才能恢复。")
+                append(exitReason(s.info?.statusDetail.orEmpty(), d.scheduledClosed, d.idleClosed, copy = copy))
+                if (state.unlinked) append(copy(UiMessages.sessionConnectResume()))
                 else if (m?.online == true)
-                    append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
-                else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
+                    append(copy(UiMessages.sessionResumeNote(name = (machineLabel(state, s.machineId)).toString())))
+                else append(copy(UiMessages.sessionOfflineResume(name = (machineLabel(state, s.machineId)).toString())))
             },
             running = act.running,
         ) {
             if (m?.online == true && !state.unlinked && !act.running)
                 PillButton(
-                    if (act.error.isNotEmpty()) "再试一次" else "恢复会话",
+                    if (act.error.isNotEmpty()) copy(UiMessages.sessionTryAgain()) else copy(UiMessages.sessionResume()),
                     {
                         act.run({
                             remote.command(
@@ -1038,7 +1048,7 @@ private fun Bottom(
                 )
             if (act.error.isNotEmpty())
                 Text(
-                    "恢复失败：${act.error}",
+                    copy(UiMessages.sessionAndroidResumeFailed(reason = act.error)),
                     color = p.red,
                     style = T.s13,
                     modifier = Modifier.padding(top = 8.dp),
@@ -1049,9 +1059,8 @@ private fun Bottom(
     if (status == Status.OFFLINE) {
         val t = now()
         EndCard(
-            "${machineLabel(state, s.machineId)} 不在线",
-            (if ((m?.lastSeenMs ?: 0) > 0) whenText(m!!.lastSeenMs, t) + "断开，" else "") +
-                "可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
+            copy(UiMessages.newSessionMachineOffline(name = (machineLabel(state, s.machineId)).toString())),
+            copy(UiMessages.sessionOfflineNote(lastSeen = (if ((m?.lastSeenMs ?: 0) > 0) copy(UiMessages.sessionDisconnectedAgo(io.github.lewin671.remoteagent.core.listWhen(m!!.lastSeenMs, t).resolve(copy))) else "").toString())),
         ) {}
         return
     }
@@ -1118,11 +1127,11 @@ private fun EndCard(
  * The placeholder of the message box: it follows what the message will do (wait for the answer, go to
  * the plan), never what is running, so it does not change while a turn's tools start and stop.
  */
-internal fun composerPlaceholder(questionPending: Boolean, planOpen: Boolean): String =
+internal fun composerPlaceholder(questionPending: Boolean, planOpen: Boolean, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
     when {
-        questionPending -> "排队发送，回答后继续"
-        planOpen -> "补充你对计划的要求…"
-        else -> "消息"
+        questionPending -> copy(UiMessages.composerQueueAfterAnswer())
+        planOpen -> copy(UiMessages.composerPlanPlaceholder())
+        else -> copy(UiMessages.composerMessage())
     }
 
 /**
@@ -1139,6 +1148,7 @@ internal fun Composer(
     onSent: () -> Unit = {},
     onFocus: (Boolean) -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val interruptAction = rememberAction()
@@ -1150,13 +1160,13 @@ internal fun Composer(
     val keeping = Outbox.keeping(s.id)
     val machine = state.machines[s.machineId]
     val maxImg = maxImages(machine)
-    val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
+    val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId), copy = copy)
     // Images picked before the machine went away go there again once it is back.
     RefreshDraftUploads(images, remote, s.machineId, blocked)
     val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg, videos = io.github.lewin671.remoteagent.core.filesSupported(machine))
     fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
-        if (images.restoring || images.readingFiles || fileDraftBlocked(images, machine) != null || (msg.isEmpty() && images.images.isEmpty())) return
+        if (images.restoring || images.readingFiles || fileDraftBlocked(images, machine, copy = copy) != null || (msg.isEmpty() && images.images.isEmpty())) return
         images.sendAllTo(remote, s.machineId)
         // Every image must be on the computer first: never a message with some of them.
         if (!images.ready(s.machineId) && images.images.isNotEmpty()) return
@@ -1190,7 +1200,7 @@ internal fun Composer(
                     onSent()
                 }
                 .onFailure {
-                    images.notice = "这条没有发出：${errorText(it)}"
+                    images.notice = copy(UiMessages.composerAndroidNotSent(reason = (errorText(it)).toString()))
                     images.sendAllTo(remote, s.machineId)
                 }
         }
@@ -1198,9 +1208,9 @@ internal fun Composer(
     ComposeBox(
         text,
         { text = it },
-        placeholder = composerPlaceholder(d.questions.isNotEmpty(), s.info?.planOpen == true),
+        placeholder = composerPlaceholder(d.questions.isNotEmpty(), s.info?.planOpen == true, copy = copy),
         canSend =
-            !images.restoring && !images.readingFiles && fileDraftBlocked(images, machine) == null &&
+            !images.restoring && !images.readingFiles && fileDraftBlocked(images, machine, copy = copy) == null &&
                 !keeping &&
                 online &&
                 (text.isNotBlank() || images.images.isNotEmpty()) &&
@@ -1229,10 +1239,10 @@ internal fun Composer(
         top = { ImageStrip(images, remote, s.machineId, maxImg) },
     )
     if (interruptAction.error.isNotEmpty())
-        Notice("没能中断：${interruptAction.error}", Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)
+        Notice(copy(UiMessages.sessionAndroidInterruptFailed(reason = interruptAction.error)), Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)
     if (text.trimStart().startsWith("/"))
         Text(
-            "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。",
+            copy(UiMessages.composerSlashNote()),
             Modifier.padding(horizontal = ChatSide).padding(bottom = 8.dp),
             style = T.s13,
             color = p.orangeInk,
@@ -1361,15 +1371,15 @@ private const val LOGIN_SHELL_TIMEOUT_DETAIL = "did not start the CLI within"
 // Why the session ended, in plain words. A login shell that could not start
 // the CLI says so in the daemon's own words (they name the command or the
 // timeout), with what the user can do about it.
-fun exitReason(detail: String, scheduledClosed: Boolean = false, idleClosed: Boolean = false): String {
-    if (detail == "stopped" && scheduledClosed) return "定时任务运行已结束，会话自动关闭了。"
-    if (detail == "stopped" && idleClosed) return "会话长时间没有活动，已自动结束。"
-    if (detail == "stopped") return "会话是被手动结束的。"
+fun exitReason(detail: String, scheduledClosed: Boolean = false, idleClosed: Boolean = false, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
+    if (detail == "stopped" && scheduledClosed) return copy(UiMessages.sessionScheduledClosed())
+    if (detail == "stopped" && idleClosed) return copy(UiMessages.sessionIdleClosed())
+    if (detail == "stopped") return copy(UiMessages.sessionManuallyClosed())
     if (detail.startsWith(LOGIN_SHELL_DETAIL)) {
-        val stuck = if (detail.contains(LOGIN_SHELL_TIMEOUT_DETAIL)) "，可能卡在等待输入" else ""
-        return "电脑上的登录 shell 没能启动 CLI（$detail）$stuck。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
+        return if (detail.contains(LOGIN_SHELL_TIMEOUT_DETAIL)) copy(UiMessages.sessionShellTimeout(detail = detail))
+        else copy(UiMessages.sessionShellFailed(detail = detail))
     }
-    return "tmux 会话已经不在了。"
+    return copy(UiMessages.sessionTmuxMissing())
 }
 
 /**
@@ -1424,7 +1434,7 @@ object Forks {
             val result = forward(f.attempt.next(prepare), retry)
             f.attempt.settle()
             return io.github.lewin671.remoteagent.core.forkedSession(result)
-                ?: throw io.github.lewin671.remoteagent.core.CommandException("internal", "意外的回复")
+                ?: throw io.github.lewin671.remoteagent.core.CommandException("internal", sessionText(UiMessages.newSessionUnexpectedReply()))
         } catch (e: kotlinx.coroutines.CancellationException) {
             // The page went away with the request on its way: whether the computer got it is not
             // known.
@@ -1433,7 +1443,7 @@ object Forks {
                     f.attempt.settle(
                         io.github.lewin671.remoteagent.core.CommandException(
                             io.github.lewin671.remoteagent.core.CommandException.UNKNOWN,
-                            "不确定电脑有没有执行",
+                            sessionText(UiMessages.sessionAndroidExecutionUnknown()),
                         )
                     ) ?: e
                 )
@@ -1471,7 +1481,7 @@ object Forks {
  * forking.
  */
 data class ForkAction(
-    val text: String = "分叉会话",
+    val text: String = sessionText(UiMessages.sessionFork()),
     val note: String = "",
     /** The note is something that went wrong, not when the row can be used. */
     val noteError: Boolean = false,
@@ -1492,19 +1502,20 @@ fun forkAction(
     error: String,
     frozen: Boolean,
     expired: Boolean,
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
 ): ForkAction =
     when {
-        running -> ForkAction(text = "正在分叉…", busy = true)
-        blocked != null -> ForkAction(note = blocked, enabled = false)
+        running -> ForkAction(text = copy(UiMessages.sessionForking()), busy = true)
+        blocked != null -> ForkAction(text = copy(UiMessages.sessionFork()), note = blocked, enabled = false)
         expired ->
             ForkAction(
-                text = "放弃上次的分叉",
-                note = "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
+                text = copy(UiMessages.sessionAbandonFork()),
+                note = copy(UiMessages.sessionForkExpired()),
                 noteError = true,
                 abandons = true,
             )
-        frozen -> ForkAction(note = "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次", noteError = true)
-        else -> ForkAction(note = if (error.isNotEmpty()) "没能分叉：$error" else "", noteError = true)
+        frozen -> ForkAction(text = copy(UiMessages.sessionFork()), note = copy(UiMessages.sessionForkUnknown()), noteError = true)
+        else -> ForkAction(text = copy(UiMessages.sessionFork()), note = if (error.isNotEmpty()) copy(UiMessages.sessionForkFailed(reason = error)) else "", noteError = true)
     }
 
 /** Sessions whose terminal another page asked to show. */
@@ -1558,5 +1569,5 @@ internal fun putBackReferences(
 }
 
 /** What a session's ⋯ menu is about: the CLI, the project, and the machine only where the account has more than one (design-system §6). */
-internal fun sessionMenuTitle(state: RemoteState, s: SessionView): String =
+internal fun sessionMenuTitle(state: RemoteState, s: SessionView, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
     listOfNotNull(agentName(s.agent()), projectName(projectKey(s)), machineLabel(state, s.machineId).takeIf { state.machines.size > 1 }).joinToString(" · ")

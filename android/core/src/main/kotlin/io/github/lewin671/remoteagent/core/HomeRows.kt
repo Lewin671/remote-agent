@@ -293,16 +293,16 @@ fun pendingRowText(
 /** The head and the place of the dark card of an approval (design-system §6 「终端卡」). */
 data class ApprovalCardText(
     /** 请求执行, 「请求权限 · Write」. */
-    val kind: String,
+    val kind: MessageText,
     /** 「剩 8 分钟，超时拒绝」, 未连接 out of reach of the server, or empty for no deadline. */
-    val time: String,
+    val time: MessageText,
     /** The deadline is less than a minute away: the time turns orange. */
     val hot: Boolean,
-    val title: String,
+    val title: MessageText,
     /** 「项目 · 机器」. */
-    val place: String,
+    val place: MessageText,
 ) {
-    val spoken: String get() = listOf(title, kind, place.replace(" · ", "，"), time).filter { it.isNotEmpty() }.joinToString("，")
+    val spoken: MessageText get() = listOf(title, kind, place.spokenText(), time).joinMessages("，")
 }
 
 /** [timeoutNote]: the home page's card says what the end of the time does (「，超时拒绝」); a docked one does not. */
@@ -317,17 +317,17 @@ fun approvalCardText(
     val deadline = if (approval.hasDeadline()) approval.deadline.seconds * 1000 else 0
     val left = deadline - now
     val time = when {
-        state.unlinked -> "未连接"
-        deadline > 0 -> "剩 ${minutesLeft(deadline, now)} 分钟" + if (timeoutNote && left > 0) "，超时拒绝" else ""
-        else -> ""
+        state.unlinked -> UiMessages.listStateUnlinked().messageText()
+        deadline > 0 -> (if (timeoutNote && left > 0) UiMessages.approvalAndroidRemainingTimeout(minutesLeft(deadline, now).toInt()) else UiMessages.homeIosApprovalRemaining(minutesLeft(deadline, now).toInt())).messageText()
+        else -> "".messageText()
     }
     return ApprovalCardText(
         kind = approvalHead(approval),
         time = time,
         hot = !state.unlinked && deadline > 0 && left < 60_000,
-        title = titleOf(s, zone),
+        title = listTitle(s, zone),
         // The computer is named only where the account has more than one (design-system §6 终端卡).
-        place = listOfNotNull(projectName(projectKey(s)), machineName(state.machines[s.machineId], s.machineId).takeIf { state.machines.size > 1 }).joinToString(" · "),
+        place = listOfNotNull(listProjectName(projectKey(s)), listMachineName(state.machines[s.machineId], s.machineId).takeIf { state.machines.size > 1 }).joinMessages(" · "),
     )
 }
 

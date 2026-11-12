@@ -46,7 +46,10 @@ class MemoryFiles : SealedFiles {
     }
 }
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class AttachmentsTest {
+    @org.junit.Before fun sessionMessageContext() = installSessionMessageContext()
     @Test
     fun aCompletedUploadExpiresAndMustGoToTheMachineAgain() = kotlinx.coroutines.runBlocking {
         val expires = System.currentTimeMillis() + 60_000

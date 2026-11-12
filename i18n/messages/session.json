@@ -41,6 +41,330 @@
     }
   },
   {
+    "key": "session.android_collapse_title",
+    "zh-CN": "收起{title}",
+    "en": "Collapse {title}",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：title 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "title": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_compacted_usage",
+    "zh-CN": "上下文已压缩 · {before}% → {after}%",
+    "en": "Context compacted · {before}% → {after}%",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：before 为显示值/原始内容，不翻译用户或 CLI 内容；after 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "before": {
+        "type": "string",
+        "example": "Example"
+      },
+      "after": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_connect_read",
+    "zh-CN": "连上服务器后读取这个会话",
+    "en": "This session will load after connecting to the server",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_context_usage",
+    "zh-CN": "上下文占用",
+    "en": "Context usage",
+    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_ended_at",
+    "zh-CN": "{time} 结束",
+    "en": "{time} ended",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：time 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_execution_unknown",
+    "zh-CN": "不确定电脑有没有执行",
+    "en": "It is unclear whether the computer executed the command",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_fork_connected",
+    "zh-CN": "连上服务器后可用",
+    "en": "Available after connecting to the server",
+    "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_fork_prefix",
+    "zh-CN": "{time} 分叉自",
+    "en": "{time} forked from",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：time 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_history_partial",
+    "zh-CN": "历史记录尚未读全。",
+    "en": "History has not loaded completely.",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_history_tail_failed",
+    "zh-CN": "后面的记录没读到：{reason}",
+    "en": "Could not load later records: {reason}",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_interrupt_failed",
+    "zh-CN": "没能中断：{reason}",
+    "en": "Could not interrupt: {reason}",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_interrupted_by",
+    "zh-CN": "已中断（{origin}）",
+    "en": "Interrupted ({origin})",
+    "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。参数为原始内容或无分组显示数字，不翻译 CLI/用户内容。英文初稿待审。",
+    "params": {
+      "origin": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_models_failed",
+    "zh-CN": "没能读取模型列表：{reason}",
+    "en": "Could not load the model list: {reason}",
+    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_resume_failed",
+    "zh-CN": "恢复失败：{reason}",
+    "en": "Could not resume: {reason}",
+    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_switch_after_turn",
+    "zh-CN": "只在空闲时能切换；这一轮结束后再选",
+    "en": "Can only switch when idle; choose after this turn ends",
+    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_switch_note",
+    "zh-CN": "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。",
+    "en": "Only levels supported by the current model are shown. Choose while idle to submit; the value updates after the computer confirms.",
+    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_terminal_changes",
+    "zh-CN": "{name} 终端里{changes}",
+    "en": "In the terminal on {name}, {changes}",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。参数：name 为显示值/原始内容，不翻译用户或 CLI 内容；changes 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      },
+      "changes": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_thinking",
+    "zh-CN": "思考过程",
+    "en": "Thought process",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.android_unknown",
+    "zh-CN": "未知会话",
+    "en": "Unknown session",
+    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "session.approval_resolved",
     "zh-CN": "这条审批已经处理了。",
     "en": "This approval has already been handled.",

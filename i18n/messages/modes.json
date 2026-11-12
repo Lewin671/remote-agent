@@ -64,6 +64,25 @@
     }
   },
   {
+    "key": "modes.android_permission_notice",
+    "zh-CN": "照实显示终端中的模式；不提供切到 {mode} 的按钮。",
+    "en": "Shows the actual terminal mode; no button is offered to switch to {mode}.",
+    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。参数：mode 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "mode": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "modes.ask",
     "zh-CN": "询问",
     "en": "Ask",

@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.MessageText
+import io.github.lewin671.remoteagent.core.messageText
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -37,7 +40,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         data object Connecting : State
         /** The screen shows the remote terminal and what is typed goes to it. */
         data object Live : State
-        data class Closed(val reason: String) : State
+        data class Closed(val reason: MessageText) : State
     }
 
     val history = TerminalHistory(scope)
@@ -129,7 +132,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 })
                 if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
-                if (gen == generation) _state.value = State.Closed(errorText(e))
+                if (gen == generation) _state.value = State.Closed(errorText(e).messageText())
             }
         }
     }
@@ -167,7 +170,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 session.append(b, b.size)
             }
             // The daemon says why before it hangs up; the end of the connection that follows says less.
-            TerminalFrame.KindCase.CLOSED -> { history.disconnected(); if (_state.value !is State.Closed) _state.value = State.Closed(f.closed.ifEmpty { "终端已关闭" }) }
+            TerminalFrame.KindCase.CLOSED -> { history.disconnected(); if (_state.value !is State.Closed) _state.value = State.Closed(f.closed.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.terminalAndroidClosed().messageText()) }
             else -> {}
         }
     }
@@ -226,7 +229,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         history.disconnected()
         generation++
         frames.close()
-        _state.value = State.Closed("终端已暂停，连接恢复后会重新获取画面")
+        _state.value = State.Closed(UiMessages.terminalAndroidPaused().messageText())
         job?.cancel()
         conn?.close()
         conn = null

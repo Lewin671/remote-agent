@@ -5,7 +5,10 @@ import io.github.lewin671.remoteagent.proto.*
 import org.junit.Assert.*
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class AsyncQuestionTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test fun asyncQuestionsStayInChatWithAllContentAndNoAnswerCard() {
         val questions = listOf(
             Question.newBuilder().setHeader("测试方式").setText("请选择 **测试方式**。")

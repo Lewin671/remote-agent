@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -40,7 +41,7 @@ object Plans {
         forward: suspend (PreparedCommand, Boolean) -> Unit,
     ) {
         // Never the earlier command under this choice's name.
-        if (reply.attempt.frozen) throw CommandException("failed_precondition", "上一次回复的结果还不确定，请先重试或放弃它")
+        if (reply.attempt.frozen) throw CommandException("failed_precondition", sessionText(UiMessages.dockAndroidReplyPending()))
         run(reply, forward) { reply.choice = choice; prepare(choice) }
     }
 
@@ -71,10 +72,10 @@ object Plans {
     }
 }
 
-fun planChoiceName(c: PlanChoice): String = when (c) {
-    PlanChoice.PLAN_CHOICE_KEEP_PLANNING -> "继续规划"
-    PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT -> "清空上下文后执行"
-    else -> "批准执行"
+fun planChoiceName(c: PlanChoice, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String = when (c) {
+    PlanChoice.PLAN_CHOICE_KEEP_PLANNING -> copy(UiMessages.dockPlanKeep())
+    PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT -> copy(UiMessages.dockPlanClear())
+    else -> copy(UiMessages.approvalApproveExecute())
 }
 
 /** What a plan's buttons offer: every choice, or only what can be done about a reply whose outcome is unknown. */
@@ -89,11 +90,11 @@ data class PlanOffer(
     val abandon: Boolean = false,
 )
 
-fun planOffer(reply: Plans.Reply): PlanOffer {
-    val what = planChoiceName(reply.choice)
+fun planOffer(reply: Plans.Reply, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): PlanOffer {
+    val what = planChoiceName(reply.choice, copy = copy)
     return when {
-        reply.expired -> PlanOffer(choices = false, note = "不确定「$what」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择", abandon = true)
-        reply.frozen -> PlanOffer(choices = false, note = "「$what」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次", retry = "重试「$what」", abandon = true)
+        reply.expired -> PlanOffer(choices = false, note = copy(UiMessages.dockAndroidPlanExpired(choice = what)), abandon = true)
+        reply.frozen -> PlanOffer(choices = false, note = copy(UiMessages.dockAndroidPlanUnknown(choice = what)), retry = copy(UiMessages.dockAndroidRetryChoice(choice = what)), abandon = true)
         else -> PlanOffer()
     }
 }

@@ -115,9 +115,9 @@ public class TextSelectionCursorController implements CursorController {
                 int show = MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT;
 
                 ClipboardManager clipboard = (ClipboardManager) terminalView.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-                menu.add(Menu.NONE, ACTION_COPY, Menu.NONE, R.string.copy_text).setShowAsAction(show);
-                menu.add(Menu.NONE, ACTION_PASTE, Menu.NONE, R.string.paste_text).setEnabled(clipboard != null && clipboard.hasPrimaryClip()).setShowAsAction(show);
-                menu.add(Menu.NONE, ACTION_MORE, Menu.NONE, R.string.text_selection_more);
+                menu.add(Menu.NONE, ACTION_COPY, Menu.NONE, terminalView.textSelectionLabel(0)).setShowAsAction(show);
+                menu.add(Menu.NONE, ACTION_PASTE, Menu.NONE, terminalView.textSelectionLabel(1)).setEnabled(clipboard != null && clipboard.hasPrimaryClip()).setShowAsAction(show);
+                menu.add(Menu.NONE, ACTION_MORE, Menu.NONE, terminalView.textSelectionLabel(2));
                 return true;
             }
 

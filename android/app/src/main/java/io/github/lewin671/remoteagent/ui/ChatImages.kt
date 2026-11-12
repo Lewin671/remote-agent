@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -57,7 +58,7 @@ fun aspect(ref: ImageRef): Float {
     return (w.toFloat() / h).coerceIn(0.4f, 2.5f)
 }
 
-fun fileName(path: String): String = path.substringAfterLast('/').ifEmpty { "图片" }
+fun fileName(path: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String = path.substringAfterLast('/').ifEmpty { copy(UiMessages.imageTitle()) }
 
 internal data class ImageRowGeometry(val widths: List<Int>, val height: Int, val gap: Int)
 
@@ -98,14 +99,15 @@ fun ImageRow(refs: List<ImageRef>, onOpen: (Int) -> Unit, modifier: Modifier = M
 
 @Composable
 fun Thumb(ref: ImageRef, modifier: Modifier, more: Int = 0, onClick: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val bmp = rememberPreview(ref)
     Box(modifier.clip(Radii.R14).background(p.fill).clickable(onClick = onClick)) {
-        if (bmp != null) Image(bmp, fileName(ref.path), Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        if (bmp != null) Image(bmp, fileName(ref.path, copy = copy), Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Column(Modifier.fillMaxSize().padding(6.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             // Not even a preview: the file name is all there is.
-            Text(if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) "图片没有同步" else "没有预览", style = T.s12, color = p.ink2)
-            if (ref.path.isNotEmpty()) Text(fileName(ref.path), style = T.s12, color = p.ink3, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) copy(UiMessages.imageUnsynced()) else copy(UiMessages.imageAndroidNoPreview()), style = T.s12, color = p.ink2)
+            if (ref.path.isNotEmpty()) Text(fileName(ref.path, copy = copy), style = T.s12, color = p.ink3, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         if (ref.cliIndex > 0) Text(
             "${ref.cliIndex}",
@@ -113,7 +115,7 @@ fun Thumb(ref: ImageRef, modifier: Modifier, more: Int = 0, onClick: () -> Unit)
             color = Color.White, style = T.s12b,
         )
         if (ref.sync == ImageSync.IMAGE_SYNC_PREVIEW_ONLY && more == 0) Text(
-            "只有预览",
+            copy(UiMessages.imagePreviewOnly()),
             Modifier.align(Alignment.BottomStart).padding(4.dp).background(Color(0x99000000), RoundedCornerShape(6.dp)).padding(horizontal = 5.dp),
             color = Color.White, style = T.s12b,
         )
@@ -126,6 +128,7 @@ fun Thumb(ref: ImageRef, modifier: Modifier, more: Int = 0, onClick: () -> Unit)
 /** A generated image: its own card across the chat, with the prompt the CLI rewrote behind 提示词. */
 @Composable
 fun GeneratedCard(item: ChatItem.Generated, onOpen: (Int) -> Unit) {
+    val copy = uiText()
     val p = pal
     var open by rememberSaveable(item.key) { mutableStateOf(false) }
     Column(Modifier.padding(horizontal = ChatSide, vertical = 6.dp).fillMaxWidth().clip(Radii.R18).background(p.gbg)) {
@@ -133,15 +136,15 @@ fun GeneratedCard(item: ChatItem.Generated, onOpen: (Int) -> Unit) {
             item.images.forEachIndexed { i, ref ->
                 val bmp = rememberPreview(ref)
                 Box(Modifier.fillMaxWidth().aspectRatio(aspect(ref)).clip(Radii.R14).background(p.fill).clickable { onOpen(i) }) {
-                    if (bmp != null) Image(bmp, "生成的图片", Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                    else Text("没有预览", Modifier.align(Alignment.Center), color = p.ink2)
+                    if (bmp != null) Image(bmp, copy(UiMessages.imageGenerated()), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                    else Text(copy(UiMessages.imageAndroidNoPreview()), Modifier.align(Alignment.Center), color = p.ink2)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val r = item.images.firstOrNull()
                 val size = r?.let { if (it.width > 0) " · ${it.width} × ${it.height}" else "" }.orEmpty()
-                Text("生成的图片$size", Modifier.weight(1f), style = T.s13, color = p.ink2)
-                if (item.prompt.isNotEmpty()) Box(Modifier.clickable { open = !open }.padding(6.dp)) { ArrowText("提示词", p.blue, T.s13, down = !open, up = open) }
+                Text(copy(UiMessages.imageAndroidGeneratedSize(size = size)), Modifier.weight(1f), style = T.s13, color = p.ink2)
+                if (item.prompt.isNotEmpty()) Box(Modifier.clickable { open = !open }.padding(6.dp)) { ArrowText(copy(UiMessages.imagePrompt()), p.blue, T.s13, down = !open, up = open) }
             }
             if (open) Text(item.prompt, style = T.s15, color = p.ink)
         }

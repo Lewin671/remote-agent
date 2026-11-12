@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -24,6 +25,7 @@ import io.github.lewin671.remoteagent.proto.SentFile
 
 @Composable
 internal fun rememberDocumentPicker(draft: ImageDraft, remote: Remote, machineId: String?): (() -> Unit)? {
+    val copy = uiText()
     val context = LocalContext.current
     val state by remote.state.collectAsState()
     val machine = state.machines[machineId]
@@ -34,7 +36,7 @@ internal fun rememberDocumentPicker(draft: ImageDraft, remote: Remote, machineId
     return {
         when {
             draft.restoring || draft.readingFiles -> Unit
-            draft.documents.size >= maxFiles(machine) -> ImageNotices.show(draft.key, "一条消息最多 ${maxFiles(machine)} 个文件")
+            draft.documents.size >= maxFiles(machine) -> ImageNotices.show(draft.key, copy(UiMessages.attachmentMaxFiles(count = (maxFiles(machine)).toInt())))
             else -> picker.launch(arrayOf("*/*"))
         }
     }
@@ -48,6 +50,7 @@ internal fun rememberDocumentPicker(draft: ImageDraft, remote: Remote, machineId
  */
 @Composable
 internal fun FileChip(name: String, size: Long, state: PendingImage.State? = null, onRetry: (() -> Unit)? = null, onRemove: (() -> Unit)? = null) {
+    val copy = uiText()
     val p = pal
     // One line is a capsule; once a reason or a large font makes it taller, a card's corners (design-system §5).
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -63,9 +66,9 @@ internal fun FileChip(name: String, size: Long, state: PendingImage.State? = nul
         Column(Modifier.weight(1f)) {
             Text(fileChipName(name), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis, style = T.s15.copy(fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.Medium)), color = p.ink, modifier = Modifier.semantics { contentDescription = name })
             val status = when (state) {
-                PendingImage.State.Processing -> " · 准备中"
-                is PendingImage.State.Uploading -> " · 上传 ${(state.progress * 100).toInt()}%"
-                is PendingImage.State.Failed -> " · 上传失败"
+                PendingImage.State.Processing -> copy(UiMessages.attachmentAndroidPreparingMeta())
+                is PendingImage.State.Uploading -> copy(UiMessages.attachmentAndroidUploadMeta(percent = ((state.progress * 100).toInt()).toString()))
+                is PendingImage.State.Failed -> copy(UiMessages.attachmentAndroidFailedMeta())
                 else -> ""
             }
             Text(fileSize(size) + status, style = T.s13, color = if (state is PendingImage.State.Failed) p.red else p.ink2)
@@ -75,9 +78,9 @@ internal fun FileChip(name: String, size: Long, state: PendingImage.State? = nul
             if (state is PendingImage.State.Failed) Text(state.error, style = T.s13, color = p.red)
         }
         if (state is PendingImage.State.Failed && onRetry != null) Box(Modifier.heightIn(min = 44.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRetry).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
-            Text("重试", style = T.s15b, color = p.ink)
+            Text(copy(UiMessages.commonRetry()), style = T.s15b, color = p.ink)
         }
-        if (onRemove != null) Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRemove).semantics { contentDescription = "移除文件 $name" }, contentAlignment = Alignment.Center) {
+        if (onRemove != null) Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRemove).semantics { contentDescription = copy(UiMessages.attachmentRemoveFile(name = name)) }, contentAlignment = Alignment.Center) {
             Ic(Lucide.X, 18.dp, p.ink2)
         }
     }
@@ -93,10 +96,11 @@ internal fun FileChips(files: List<SentFile>) {
 /** The files in the box, apart from videos from the library, which sit among the images ([ImageStrip]). */
 @Composable
 internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?) {
-    if (draft.readingFiles) Text("正在读取所选文件…", style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+    val copy = uiText()
+    if (draft.readingFiles) Text(copy(UiMessages.attachmentAndroidReadingFiles()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     val files = draft.documents.filterNot { isVideoDraft(it) }
     val state by remote.state.collectAsState()
-    val blocked = fileDraftBlocked(draft, state.machines[machineId])
+    val blocked = fileDraftBlocked(draft, state.machines[machineId], copy = copy)
     if (files.isEmpty() && blocked == null) return
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         files.forEach { file ->
@@ -104,6 +108,6 @@ internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?) {
                 onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true) } }, onRemove = { draft.remove(file) })
         }
         blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
-        if (files.isNotEmpty()) Text(FILES_AS_THEY_ARE, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
+        if (files.isNotEmpty()) Text(uiText(FILES_AS_THEY_ARE), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
     }
 }

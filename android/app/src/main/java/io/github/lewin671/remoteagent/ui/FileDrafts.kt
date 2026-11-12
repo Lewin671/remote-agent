@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -21,8 +22,8 @@ internal fun documentEntry(context: Context, uri: Uri): PendingImage {
             if (b >= 0 && !it.isNull(b)) size = it.getLong(b).coerceAtLeast(0)
         }
     }
-    require(!name.isNullOrBlank()) { "无法读取文件名，请重新选择文件" }
-    require(name!!.toByteArray().size <= 255) { "文件名过长，请重命名后重新选择" }
+    require(!name.isNullOrBlank()) { sessionText(UiMessages.attachmentAndroidNameUnreadable()) }
+    require(name!!.toByteArray().size <= 255) { sessionText(UiMessages.attachmentAndroidNameTooLong()) }
     return PendingImage(newRequestId(), uri.toString(), name, size, retainSource = false)
 }
 
@@ -37,30 +38,30 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
             for (uri in uris) {
                 try {
                     val target = remote.state.value.machines[machine]
-                    check(filesSupported(target)) { "这台电脑不支持发送文件，请更新电脑上的 remote-agent" }
-                    if (documents.size >= maxFiles(target)) { notice = "一条消息最多 ${maxFiles(target)} 个文件，多选的文件没有加入"; break }
+                    check(filesSupported(target)) { sessionText(UiMessages.attachmentUpdateRequired()) }
+                    if (documents.size >= maxFiles(target)) { notice = sessionText(UiMessages.attachmentAndroidFilesLimit(count = (maxFiles(target)).toInt())); break }
                     val entry = withContext(Dispatchers.IO) { documentEntry(context, uri) }
                     if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, maxFileBytes(target))?.let { notice = it; continue }
                     if (AccountMemory.token !== accountToken) { PendingUris.release(entry); return@launch }
                     PendingUris.retain(entry)
                     val kept = runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess
-                    if (!kept) notice = "这个文件的读取权限无法长期保留，App 重启后可能需要重新选择文件"
+                    if (!kept) notice = sessionText(UiMessages.attachmentAndroidPermissionTemporary())
                     images += entry
                     prepared(entry)
                     machine?.let { upload(remote, entry, it) }
                 } catch (e: CancellationException) { throw e
                 } catch (e: Exception) {
-                    notice = if (e is java.io.IOException || e is SecurityException) "无法读取源文件，请重新选择文件" else errorText(e)
+                    notice = if (e is java.io.IOException || e is SecurityException) sessionText(UiMessages.attachmentAndroidSourceUnreadable()) else errorText(e)
                 }
             }
         } finally { readingFiles = false }
     }
 }
 
-internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?): String? {
+internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
     if (draft.documents.isEmpty()) return null
-    if (!filesSupported(machine)) return "这台电脑不支持发送文件，请更新电脑上的 remote-agent"
-    if (draft.documents.size > maxFiles(machine)) return "一条消息最多 ${maxFiles(machine)} 个文件"
+    if (!filesSupported(machine)) return copy(UiMessages.attachmentUpdateRequired())
+    if (draft.documents.size > maxFiles(machine)) return copy(UiMessages.attachmentMaxFiles(count = (maxFiles(machine)).toInt()))
     return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, maxFiles(machine), maxFileBytes(machine)) }
 }
 

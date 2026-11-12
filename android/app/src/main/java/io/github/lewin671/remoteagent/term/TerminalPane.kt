@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.ui.uiText
+import io.github.lewin671.remoteagent.ui.sessionText
+import io.github.lewin671.remoteagent.core.UiMessages
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,17 +77,23 @@ import kotlin.math.max
  * the program asked for application cursor keys, as a keyboard would.
  */
 internal sealed interface Key {
-    val label: String
+    val label: io.github.lewin671.remoteagent.core.MessageText
 
     /** Drawn in place of [label], which then only names the key to a screen reader. */
     val icon: ImageVector?
 
-    data class Text(override val label: String, val seq: String, override val icon: ImageVector? = null) : Key
-    data class Arrow(override val label: String, val letter: Char, override val icon: ImageVector) : Key
+    data class Text(override val label: io.github.lewin671.remoteagent.core.MessageText, val seq: String, override val icon: ImageVector? = null) : Key {
+        constructor(label: String, seq: String, icon: ImageVector? = null) : this(io.github.lewin671.remoteagent.core.MessageText.Raw(label), seq, icon)
+        constructor(label: io.github.lewin671.remoteagent.core.UiMessage, seq: String, icon: ImageVector? = null) : this(io.github.lewin671.remoteagent.core.MessageText.Message(label), seq, icon)
+    }
+    data class Arrow(override val label: io.github.lewin671.remoteagent.core.MessageText, val letter: Char, override val icon: ImageVector) : Key {
+        constructor(label: String, letter: Char, icon: ImageVector) : this(io.github.lewin671.remoteagent.core.MessageText.Raw(label), letter, icon)
+        constructor(label: io.github.lewin671.remoteagent.core.UiMessage, letter: Char, icon: ImageVector) : this(io.github.lewin671.remoteagent.core.MessageText.Message(label), letter, icon)
+    }
 }
 
 internal val keyRows: List<List<Key>> = listOf(
-    listOf(Key.Text("Esc", "\u001b"), Key.Arrow("左", 'D', Lucide.ArrowLeft), Key.Arrow("上", 'A', Lucide.ArrowUp), Key.Arrow("下", 'B', Lucide.ArrowDown), Key.Arrow("右", 'C', Lucide.ArrowRight), Key.Text("回车", "\r", Lucide.CornerDownLeft)),
+    listOf(Key.Text("Esc", "\u001b"), Key.Arrow(UiMessages.terminalLeft(), 'D', Lucide.ArrowLeft), Key.Arrow(UiMessages.terminalUp(), 'A', Lucide.ArrowUp), Key.Arrow(UiMessages.terminalDown(), 'B', Lucide.ArrowDown), Key.Arrow(UiMessages.terminalRight(), 'C', Lucide.ArrowRight), Key.Text(UiMessages.terminalEnter(), "\r", Lucide.CornerDownLeft)),
     listOf(Key.Text("Tab", "\t"), Key.Text("Ctrl+C", "\u0003")),
 )
 
@@ -150,14 +159,14 @@ internal data class TerminalToolbar(val text: String, val fit: Boolean)
  * then does the fit button go away: while the first page is on its way, or after it failed, the
  * screen behind the grey line is still the live one.
  */
-internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHistory.State, fitted: Boolean, resized: Boolean, cols: Int, rows: Int) =
+internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHistory.State, fitted: Boolean, resized: Boolean, cols: Int, rows: Int, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText) =
     TerminalToolbar(
         text = when {
-            reading.entered -> "回看中 · 只读"
-            state != RemoteTerminal.State.Live -> "终端"
-            resized -> "远端尺寸已变化 · ${cols}×$rows"
-            fitted -> "已适配这块屏幕 · ${cols}×$rows"
-            else -> "电脑上 ${cols}×$rows"
+            reading.entered -> copy(UiMessages.terminalReadonly())
+            state != RemoteTerminal.State.Live -> copy(UiMessages.sessionTerminal())
+            resized -> copy(UiMessages.terminalAndroidSizeChanged(cols = cols, rows = rows))
+            fitted -> copy(UiMessages.terminalFittedSize(cols = cols, rows = rows))
+            else -> copy(UiMessages.terminalComputerDimensions(cols = cols, rows = rows))
         },
         fit = state == RemoteTerminal.State.Live && !reading.entered,
     )
@@ -173,6 +182,7 @@ internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHisto
  */
 @Composable
 fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
+    val copy = uiText()
     val scope = rememberCoroutineScope()
     val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -251,21 +261,21 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             val (cols, rows) = size
-            val toolbar = terminalToolbar(state, history, fitted, resized, cols, rows)
+            val toolbar = terminalToolbar(state, history, fitted, resized, cols, rows, copy = copy)
             Row(
                 Modifier.weight(1f).heightIn(min = 38.dp).glass(p, Radii.Pill, dark = true).padding(start = 14.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(toolbar.text, style = T.s13, color = CardColors.text.copy(alpha = .75f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 if (toolbar.fit) Box(Modifier.heightIn(min = 44.dp).clickable(role = Role.Button) { term.toggleFit() }.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-                    if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.s13, color = CardColors.link)
-                    else IconText(Lucide.Maximize2, "适配我的屏幕", CardColors.link, T.s13)
+                    if (fitted || resized) Text(if (fitted) copy(UiMessages.terminalRestore()) else copy(UiMessages.terminalFitShort()), style = T.s13, color = CardColors.link)
+                    else IconText(Lucide.Maximize2, copy(UiMessages.terminalFit()), CardColors.link, T.s13)
                 }
             }
             Row(Modifier.heightIn(min = 38.dp).glass(p, Radii.Pill, dark = true).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                FontButton("A−", "字号减小", fontDp > FONT_MIN_DP) { changeFont(-1) }
-                Text("$fontDp", style = T.s13, color = CardColors.text.copy(alpha = .75f), modifier = Modifier.semantics { contentDescription = "字号 $fontDp" })
-                FontButton("A+", "字号增大", fontDp < FONT_MAX_DP) { changeFont(1) }
+                FontButton("A−", copy(UiMessages.terminalAndroidFontSmaller()), fontDp > FONT_MIN_DP) { changeFont(-1) }
+                Text("$fontDp", style = T.s13, color = CardColors.text.copy(alpha = .75f), modifier = Modifier.semantics { contentDescription = copy(UiMessages.terminalAndroidFontSize(size = fontDp.toString())) })
+                FontButton("A+", copy(UiMessages.terminalAndroidFontLarger()), fontDp < FONT_MAX_DP) { changeFont(1) }
             }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(TermColors.bg)) {
@@ -314,6 +324,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                 AndroidView(
                     factory = { ctx ->
                         TerminalView(ctx, null).apply {
+                            setTextSelectionLabels(copy(UiMessages.terminalAndroidSelectionCopy()), copy(UiMessages.terminalAndroidSelectionPaste()), copy(UiMessages.terminalAndroidSelectionMore()))
                             val v = this
                             setTerminalViewClient(RemoteTerminal.ViewClient {
                                 v.requestFocus()
@@ -330,6 +341,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                         }
                     },
                     update = { v ->
+                        v.setTextSelectionLabels(copy(UiMessages.terminalAndroidSelectionCopy()), copy(UiMessages.terminalAndroidSelectionPaste()), copy(UiMessages.terminalAndroidSelectionMore()))
                         if (v.tag != fontPx) {
                             v.setTextSize(fontPx)
                             v.tag = fontPx
@@ -367,20 +379,20 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                     when (val s = state) {
                         RemoteTerminal.State.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
                             Spinner(CardColors.text2, size = 15.dp)
-                            Text("连接终端…", style = T.s15, color = CardColors.text2, modifier = Modifier.padding(start = 8.dp))
+                            Text(copy(UiMessages.terminalConnecting()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(start = 8.dp))
                         }
                         is RemoteTerminal.State.Closed -> {
-                            Text("终端连接断开了", style = T.s17b, color = CardColors.text)
+                            Text(copy(UiMessages.terminalClosed()), style = T.s17b, color = CardColors.text)
                             Text(
-                                (if (!online) "等待服务器连接恢复后，会重新获取终端画面。" else if (sessionRunning) "下面是断开前的画面。会话还在运行，聊天照常更新。" else "会话不在运行。"),
+                                (if (!online) copy(UiMessages.terminalAndroidReconnectNote()) else if (sessionRunning) copy(UiMessages.terminalClosedRunningNote()) else copy(UiMessages.terminalAndroidNotRunning())),
                                 style = T.s15, color = CardColors.text.copy(alpha = .7f), modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                             )
                             var details by remember { mutableIntStateOf(0) }
-                            CardButton("重新连接", { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
+                            CardButton(copy(UiMessages.terminalReconnect()), { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
                             Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.Center) {
-                                Text(if (details % 2 == 1) "收起详情" else "查看详情", style = T.s13, color = CardColors.link)
+                                Text(if (details % 2 == 1) copy(UiMessages.terminalAndroidHideDetails()) else copy(UiMessages.terminalViewDetails()), style = T.s13, color = CardColors.link)
                             }
-                            if (details % 2 == 1) Text(s.reason, style = T.mono12, color = CardColors.text2)
+                            if (details % 2 == 1) Text(uiText(s.reason), style = T.mono12, color = CardColors.text2)
                         }
                         else -> {}
                     }
@@ -424,6 +436,7 @@ private fun FontButton(label: String, said: String, enabled: Boolean, onClick: (
  */
 @Composable
 internal fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit, compact: Boolean = false) {
+    val copy = uiText()
     val p = pal
     Column(
         Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = if (compact) 4.dp else 12.dp)
@@ -431,12 +444,12 @@ internal fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Un
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(Modifier.fillMaxWidth().disabledAlpha(enabled), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in if (compact) keyRows.flatten() else keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
-            if (compact) KeyButton("键盘", true, Modifier.weight(1f), Lucide.Keyboard, white = true, onClick = onKeyboard)
+            for (k in if (compact) keyRows.flatten() else keyRows[0]) KeyButton(uiText(k.label), enabled, Modifier.weight(1f), k.icon) { onKey(k) }
+            if (compact) KeyButton(copy(UiMessages.terminalKeyboard()), true, Modifier.weight(1f), Lucide.Keyboard, white = true, onClick = onKeyboard)
         }
         if (!compact) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f).disabledAlpha(enabled), k.icon) { onKey(k) }
-            KeyButton("键盘", true, Modifier.weight(1.5f), Lucide.Keyboard, named = true, white = true, onClick = onKeyboard)
+            for (k in keyRows[1]) KeyButton(uiText(k.label), enabled, Modifier.weight(1f).disabledAlpha(enabled), k.icon) { onKey(k) }
+            KeyButton(copy(UiMessages.terminalKeyboard()), true, Modifier.weight(1.5f), Lucide.Keyboard, named = true, white = true, onClick = onKeyboard)
         }
     }
 }

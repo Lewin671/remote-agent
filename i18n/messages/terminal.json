@@ -1,5 +1,187 @@
 [
   {
+    "key": "terminal.android_closed",
+    "zh-CN": "终端已关闭",
+    "en": "Terminal closed",
+    "notes": "Android 批次 B：RemoteTerminal.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_font_larger",
+    "zh-CN": "字号增大",
+    "en": "Increase font size",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_font_size",
+    "zh-CN": "字号 {size}",
+    "en": "Font size {size}",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。参数：size 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_font_smaller",
+    "zh-CN": "字号减小",
+    "en": "Decrease font size",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_hide_details",
+    "zh-CN": "收起详情",
+    "en": "Hide details",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_not_running",
+    "zh-CN": "会话不在运行。",
+    "en": "The session is not running.",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_paused",
+    "zh-CN": "终端已暂停，连接恢复后会重新获取画面",
+    "en": "Terminal paused; the screen will reload when the connection returns",
+    "notes": "Android 批次 B：RemoteTerminal.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_reconnect_note",
+    "zh-CN": "等待服务器连接恢复后，会重新获取终端画面。",
+    "en": "The terminal screen will reload when the server connection returns.",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_selection_copy",
+    "zh-CN": "Copy",
+    "en": "Copy",
+    "notes": "Android 原生终端文本选择菜单。历史中文界面也显示此英文原句；本批逐字保留，不擅自改中文显示。英文同文，仍待人工审校。无变量。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_selection_more",
+    "zh-CN": "More…",
+    "en": "More…",
+    "notes": "Android 原生终端文本选择菜单。历史中文界面也显示此英文原句；本批逐字保留，不擅自改中文显示。英文同文，仍待人工审校。无变量。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_selection_paste",
+    "zh-CN": "Paste",
+    "en": "Paste",
+    "notes": "Android 原生终端文本选择菜单。历史中文界面也显示此英文原句；本批逐字保留，不擅自改中文显示。英文同文，仍待人工审校。无变量。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.android_size_changed",
+    "zh-CN": "远端尺寸已变化 · {cols}×{rows}",
+    "en": "Remote size changed · {cols}×{rows}",
+    "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。参数：cols 为显示值/原始内容，不翻译用户或 CLI 内容；rows 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "cols": {
+        "type": "integer",
+        "example": 2
+      },
+      "rows": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "terminal.closed",
     "zh-CN": "终端连接断开了",
     "en": "Terminal connection lost",

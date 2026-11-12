@@ -106,6 +106,132 @@
     }
   },
   {
+    "key": "approval.android_deny_decision",
+    "zh-CN": "拒绝",
+    "en": "Deny",
+    "notes": "Android 审批未知结果提示中已有决定的名称；保留原句「拒绝」。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.android_minutes_meta",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": " · 剩 {count} 分钟"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": " · {count} min left",
+        "other": " · {count} min left"
+      }
+    },
+    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。参数：count 为非负数量，控制复数。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.android_prefix",
+    "zh-CN": "`{command}` 开头的命令以后不再问",
+    "en": "Do not ask again for commands starting with `{command}`",
+    "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。参数为原始内容或无分组显示数字，不翻译 CLI/用户内容。英文初稿待审。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.android_remaining_timeout",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "剩 {count} 分钟，超时拒绝"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} min left; denied on timeout",
+        "other": "{count} min left; denied on timeout"
+      }
+    },
+    "notes": "Android 审批卡现有原句。剩余分钟向上取整，完整数量句；英文初稿待审。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 8
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.android_reply_expired",
+    "zh-CN": "不确定「{decision}」有没有送到，它已过期，不会再重发",
+    "en": "It is unclear whether “{decision}” arrived. It has expired and will not be resent",
+    "notes": "Android 批次 B：DarkCard.kt 的现有显示文案，保留原中文措辞与标点。参数：decision 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "decision": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.android_unknown_result",
+    "zh-CN": "结果未知",
+    "en": "Result unknown",
+    "notes": "Android 审批结果未确认，原始错误详情为空时的显示值。不是状态判据。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "approval.approve",
     "zh-CN": "批准",
     "en": "Approve",

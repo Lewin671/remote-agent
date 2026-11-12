@@ -13,7 +13,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ForksTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     private var n = 0
     private fun prepare() = PreparedCommand("m1", "s1", "req-${++n}", 0, Envelope.getDefaultInstance())
     private val forked = CommandResult.newBuilder().setForkSession(ForkSessionResponse.newBuilder().setSession(Session.newBuilder().setId("s-fork"))).build()
@@ -75,7 +78,7 @@ class ForksTest {
     fun anAnswerThatNamesNoSessionIsAFailure() = runBlocking {
         val f = Forks.Fork()
         assertNull(Forks.send(f, ::prepare) { _, _ -> CommandResult.getDefaultInstance() })
-        assertEquals("意外的回复", f.error)
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.newSessionUnexpectedReply()), f.error)
         assertFalse(f.frozen)
     }
 
@@ -91,6 +94,6 @@ class ForksTest {
         // Expired: it cannot be asked again, so the tap gives it up and nothing is sent.
         val gone = forkAction(null, running = false, error = "x", frozen = true, expired = true)
         assertTrue(gone.abandons && gone.enabled)
-        assertEquals("放弃上次的分叉", gone.text)
+        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionAbandonFork()), gone.text)
     }
 }

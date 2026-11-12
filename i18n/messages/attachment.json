@@ -1,5 +1,238 @@
 [
   {
+    "key": "attachment.android_choose_computer",
+    "zh-CN": "先选一台电脑",
+    "en": "Select a computer first",
+    "notes": "Android 批次 B：ImageDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_failed_meta",
+    "zh-CN": " · 上传失败",
+    "en": " · Upload failed",
+    "notes": "Android 批次 B：Files.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_files_limit",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "一条消息最多 {count} 个文件，多选的文件没有加入"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "A message can contain at most {count} file; extra file were not added",
+        "other": "A message can contain at most {count} files; extra files were not added"
+      }
+    },
+    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。参数：count 为非负数量，控制复数。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_missing_files",
+    "zh-CN": "附件不在电脑上。放回输入框后会重新上传，文字和附件都会保留",
+    "en": "Attachments are not on the computer. Returning to the composer uploads them again and keeps the text and attachments",
+    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_name_too_long",
+    "zh-CN": "文件名过长，请重命名后重新选择",
+    "en": "Filename is too long. Rename the file and select it again",
+    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_name_unreadable",
+    "zh-CN": "无法读取文件名，请重新选择文件",
+    "en": "Could not read the filename. Select the file again",
+    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_not_saved",
+    "zh-CN": "附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失",
+    "en": "Attachments were not saved to the phone. Check free space. You can still send them now, but they may be lost when the app closes",
+    "notes": "Android 批次 B：ImageDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_permission_temporary",
+    "zh-CN": "这个文件的读取权限无法长期保留，App 重启后可能需要重新选择文件",
+    "en": "Read permission for this file cannot be kept. You may need to select it again after the app restarts",
+    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_preparing_meta",
+    "zh-CN": " · 准备中",
+    "en": " · Preparing",
+    "notes": "Android 批次 B：Files.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_reading_files",
+    "zh-CN": "正在读取所选文件…",
+    "en": "Reading selected files…",
+    "notes": "Android 批次 B：Files.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_restore_limit",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "放回后会超过 {count} 个文件，先移除一些再放回"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Returning these file would exceed the {count}-file limit. Remove some file first",
+        "other": "Returning these files would exceed the {count}-file limit. Remove some files first"
+      }
+    },
+    "notes": "Android 批次 B：ImageDrafts.kt 的现有显示文案，保留原中文措辞与标点。参数：count 为非负数量，控制复数。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_source_unreadable",
+    "zh-CN": "无法读取源文件，请重新选择文件",
+    "en": "Could not read the source file. Select it again",
+    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_upload_meta",
+    "zh-CN": " · 上传 {percent}%",
+    "en": " · Uploading {percent}%",
+    "notes": "Android 批次 B：Files.kt 的现有显示文案，保留原中文措辞与标点。参数：percent 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {
+      "percent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.android_upload_required",
+    "zh-CN": "附件需要重新传到电脑，请上传完成后再发送",
+    "en": "Attachments need to be uploaded to the computer again. Wait for upload to finish before sending",
+    "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "attachment.computer_offline",
     "zh-CN": "{name} 离线，连上后才能添加图片",
     "en": "{name} is offline. Reconnect to add images.",

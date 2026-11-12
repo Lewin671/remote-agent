@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
@@ -70,7 +71,7 @@ import io.github.lewin671.remoteagent.proto.TurnOutcome
 data class StartPrompt(val text: String, val caption: String, val warning: Boolean = false, val uncertain: Boolean = false)
 
 /** A new session's acknowledged prompt until history records it; never resend it here. */
-fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>, agent: Agent = DEFAULT_AGENT): StartPrompt? {
+fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>, agent: Agent = DEFAULT_AGENT, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): StartPrompt? {
     if (prompt.isNullOrEmpty() || events.any { it.hasUserMessage() }) return null
     val first = d.inputs.keys.firstOrNull { it !in localIds }
     val status = first?.let { d.inputs[it] }
@@ -80,13 +81,13 @@ fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localId
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED,
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL,
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED -> {
-            val feedback = inputFeedback(status, reason, agent)
+            val feedback = inputFeedback(status, reason, agent, copy = copy)
             StartPrompt(prompt, feedback.text, warning = true, uncertain = feedback.uncertain)
         }
         // Still waiting: the pending bubble shows it, with what it waits for and a way to cancel.
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_QUEUED,
         io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_HELD_BY_CLI -> null
-        else -> StartPrompt(prompt, "已送达电脑")
+        else -> StartPrompt(prompt, copy(UiMessages.sessionDelivered()))
     }
 }
 
@@ -148,28 +149,28 @@ sealed interface ChatItem {
  * either way: one on a page of the listing not fetched yet is fetched by
  * its ID when opened (architecture §8 「按 ID 取」).
  */
-fun forkSource(item: ChatItem.Fork, sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView>): String =
-    sessions[item.sourceId]?.takeIf { it.info != null }?.let { io.github.lewin671.remoteagent.core.titleOf(it) }
-        ?: io.github.lewin671.remoteagent.core.plain(item.sourceTitle).ifEmpty { "另一个会话" }
+fun forkSource(item: ChatItem.Fork, sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView>, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
+    sessions[item.sourceId]?.takeIf { it.info != null }?.let { io.github.lewin671.remoteagent.core.listTitle(it).resolve(copy) }
+        ?: io.github.lewin671.remoteagent.core.plain(item.sourceTitle).ifEmpty { copy(UiMessages.sessionOtherSession()) }
 
 fun toolOk(t: ToolCall) = t.status != "failed" && (!t.hasExitCode() || t.exitCode == 0)
 
 /** How a tool call is named in the chat: paths shortened, as on the web; the details keep them whole. */
-fun toolTitle(t: ToolCall, cwd: String, home: String = ""): String = toolTitle(t.kind, t.title, t.itemType, cwd, home)
+fun toolTitle(t: ToolCall, cwd: String, home: String = "", copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String = toolTitle(t.kind, t.title, t.itemType, cwd, home, copy = copy)
 
 /** The same for a call still running, so that its row reads the same before and after. */
-fun toolTitle(t: io.github.lewin671.remoteagent.core.RunningTool, cwd: String, home: String = ""): String = toolTitle(t.kind, t.title, t.itemType, cwd, home)
+fun toolTitle(t: io.github.lewin671.remoteagent.core.RunningTool, cwd: String, home: String = "", copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String = toolTitle(t.kind, t.title, t.itemType, cwd, home, copy = copy)
 
-private fun toolTitle(kind: ToolKind, title: String, itemType: String, cwd: String, home: String): String {
+private fun toolTitle(kind: ToolKind, title: String, itemType: String, cwd: String, home: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     // A file edit's title is one path, spaces and all.
-    if (kind == ToolKind.TOOL_KIND_FILE_CHANGE) return "编辑 " + shortenPath(title, cwd, home)
+    if (kind == ToolKind.TOOL_KIND_FILE_CHANGE) return copy(UiMessages.toolsEditFile(path = (shortenPath(title, cwd, home)).toString()))
     val fallback = when (itemType) {
         "ToolCall", "CommandExecution" -> when (kind) {
-            ToolKind.TOOL_KIND_COMMAND -> "命令"
-            ToolKind.TOOL_KIND_FILE_CHANGE -> "编辑"
-            else -> "工具"
+            ToolKind.TOOL_KIND_COMMAND -> copy(UiMessages.toolsCommand())
+            ToolKind.TOOL_KIND_FILE_CHANGE -> copy(UiMessages.toolsAndroidEdit())
+            else -> copy(UiMessages.toolsTool())
         }
-        else -> itemType.ifEmpty { "工具" }
+        else -> itemType.ifEmpty { copy(UiMessages.toolsTool()) }
     }
     return shortenPaths(title.takeUnless { it == "ToolCall" || it == "CommandExecution" }.orEmpty().ifEmpty { fallback }, cwd, home)
 }
@@ -179,27 +180,27 @@ private fun toolTitle(kind: ToolKind, title: String, itemType: String, cwd: Stri
  * title as the CLI wrote it when the row shortened its paths (a command's
  * input is often its title). Empty when there is nothing more to show.
  */
-fun toolRaw(t: ToolCall, cwd: String, home: String): String {
+fun toolRaw(t: ToolCall, cwd: String, home: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     if (t.input.isNotEmpty() && t.input != t.title) return t.input
     if (t.title == "ToolCall" || t.title == "CommandExecution" ||
         t.title.isEmpty() && (t.itemType == "ToolCall" || t.itemType == "CommandExecution")) return ""
-    val asIs = if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) "编辑 " + t.title else t.title.ifEmpty { t.itemType }
-    return if (asIs != toolTitle(t, cwd, home)) t.title.ifEmpty { t.itemType } else ""
+    val asIs = if (t.kind == ToolKind.TOOL_KIND_FILE_CHANGE) copy(UiMessages.toolsEditFile(path = t.title)) else t.title.ifEmpty { t.itemType }
+    return if (asIs != toolTitle(t, cwd, home, copy = copy)) t.title.ifEmpty { t.itemType } else ""
 }
 
 /** "运行了 3 条命令" and the like, for a folded run. */
-fun toolsSummary(calls: List<ToolCall>): String = when {
-    calls.all { it.kind == ToolKind.TOOL_KIND_COMMAND } -> "运行了 ${calls.size} 条命令"
-    calls.all { it.kind == ToolKind.TOOL_KIND_FILE_CHANGE } -> "编辑了 ${calls.size} 个文件"
-    else -> "完成了 ${calls.size} 个工具调用"
-} + calls.sumOf { it.imagesCount }.let { if (it > 0) " · $it 张截图" else "" }
+fun toolsSummary(calls: List<ToolCall>, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String = when {
+    calls.all { it.kind == ToolKind.TOOL_KIND_COMMAND } -> copy(UiMessages.toolsCompletedCommands(count = calls.size))
+    calls.all { it.kind == ToolKind.TOOL_KIND_FILE_CHANGE } -> copy(UiMessages.toolsCompletedFiles(count = calls.size))
+    else -> copy(UiMessages.toolsCompletedCalls(count = calls.size))
+} + calls.sumOf { it.imagesCount }.let { if (it > 0) copy(UiMessages.imageScreenshots(count = it)) else "" }
 
 /** Canceled, or answered in the CLI's own prompt: the call that follows shows what happened. */
 private fun recorded(d: ApprovalDecision) =
     d != ApprovalDecision.APPROVAL_DECISION_CANCELED && d != ApprovalDecision.APPROVAL_DECISION_TERMINAL
 
-private fun decisionLine(d: ApprovalDecision, message: String) = decisionText(d) + if (message.isNotEmpty()) " · " +
-    (if (d == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS) io.github.lewin671.remoteagent.core.approvalAlwaysText(message) else message) else ""
+private fun decisionLine(d: ApprovalDecision, message: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText) = decisionText(d).resolve(copy) + if (message.isNotEmpty()) " · " +
+    (if (d == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS) io.github.lewin671.remoteagent.core.approvalAlwaysText(message).resolve(copy) else message) else ""
 
 internal fun noteText(item: ChatItem.Note) = androidx.compose.ui.text.buildAnnotatedString {
     val split = if (item.emphasis.isNotEmpty() && item.text.endsWith(item.emphasis)) item.text.length - item.emphasis.length else item.text.length
@@ -213,18 +214,18 @@ internal fun noteText(item: ChatItem.Note) = androidx.compose.ui.text.buildAnnot
 
 data class ChatSource(val label: String?, val self: Boolean = false)
 
-internal fun chatSource(o: io.github.lewin671.remoteagent.proto.Origin?, state: io.github.lewin671.remoteagent.core.RemoteState, me: String, machine: String): ChatSource? =
-    o?.let { ChatSource(io.github.lewin671.remoteagent.core.originLabel(it, state, me, machine), it.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT && it.deviceId == me) }
+internal fun chatSource(o: io.github.lewin671.remoteagent.proto.Origin?, state: io.github.lewin671.remoteagent.core.RemoteState, me: String, machine: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): ChatSource? =
+    o?.let { ChatSource(io.github.lewin671.remoteagent.core.sessionOrigin(it, state, me, machine)?.resolve(copy), it.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT && it.deviceId == me) }
 
-internal fun messageSource(source: ChatSource?, local: Boolean, machine: String): String? = when {
+internal fun messageSource(source: ChatSource?, local: Boolean, machine: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? = when {
     source?.self == true -> null
     source?.label != null -> source.label
-    local -> "$machine 终端"
+    local -> copy(UiMessages.sessionOriginTerminal(name = machine))
     else -> null
 }
 
-private fun decisionSource(source: ChatSource?): String =
-    if (source?.self == true) "" else " · ${source?.label ?: "另一端"}"
+private fun decisionSource(source: ChatSource?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
+    if (source?.self == true) "" else " · ${source?.label ?: copy(UiMessages.sessionOriginElsewhere())}"
 
 /** Decisions to show on their tool calls (by the call's seq), and the approvals they came from. */
 class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged: Set<String>)
@@ -239,11 +240,11 @@ class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged
  * Codex gives no digest, so its approvals keep their
  * own line; so do parallel or repeated calls that cannot be told apart.
  */
-fun approvalDecisions(events: List<Event>, d: Derived, who: ((io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource?)? = null): ApprovalDecisions {
+fun approvalDecisions(events: List<Event>, d: Derived, who: ((io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource?)? = null, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): ApprovalDecisions {
     val ids = io.github.lewin671.remoteagent.core.approvalCallIDs(events, d)
     val onCall = ids.mapValues { (_, id) ->
         val (decision, message) = d.resolved.getValue(id)
-        (decisionLine(decision, message) + if (who != null) decisionSource(who(d.resolvedBy[id])) else "") to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
+        (decisionLine(decision, message, copy = copy) + if (who != null) decisionSource(who(d.resolvedBy[id]), copy = copy) else "") to (decision != ApprovalDecision.APPROVAL_DECISION_DENY && decision != ApprovalDecision.APPROVAL_DECISION_TIMEOUT)
     }
     val merged = ids.values.toSet()
     return ApprovalDecisions(onCall, merged)
@@ -263,12 +264,13 @@ fun buildChat(
     textOf: (String) -> String? = { null },
     /** Names who caused an event (Event.origin); see originLabel. */
     who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null },
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
 ): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
     val runSeqs = mutableListOf<Long>()
     var runKey = ""
-    val decisions = approvalDecisions(events, d, who)
+    val decisions = approvalDecisions(events, d, who, copy = copy)
     fun flushRun() {
         when (run.size) {
             0 -> {}
@@ -321,7 +323,7 @@ fun buildChat(
         val k = "e${e.seq}"
         if (io.github.lewin671.remoteagent.core.isSkeleton(e)) {
             flush()
-            out += ChatItem.Agent(k, io.github.lewin671.remoteagent.core.skeletonMessage)
+            out += ChatItem.Agent(k, copy(UiMessages.sessionSkeleton()))
             continue
         }
         unsentAt[e.seq]?.let { ids ->
@@ -345,11 +347,11 @@ fun buildChat(
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 val imgs = e.userMessage.imagesList
-                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), imgs), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq, e.userMessage.filesList, e.origin.scheduledTaskId.isNotEmpty())
+                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), imgs).resolve(copy), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e, copy = copy) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine, copy = copy), imgs, e.seq, e.userMessage.filesList, e.origin.scheduledTaskId.isNotEmpty())
             }
             Event.KindCase.SCHEDULED_NOTIFICATION -> {
                 flush()
-                out += ChatItem.Note(k, "通知你：${e.scheduledNotification.text}", Lucide.Check)
+                out += ChatItem.Note(k, copy(UiMessages.sessionNotification(text = e.scheduledNotification.text)), Lucide.Check)
             }
             Event.KindCase.AGENT_MESSAGE -> if (e.agentMessage.text.isNotBlank()) {
                 flush()
@@ -372,14 +374,14 @@ fun buildChat(
                 flush()
                 val ok = r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW || r.first == ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS
                 val what = shortenPaths(a.command.ifEmpty { a.toolName.ifEmpty { a.description } }, cwd, home)
-                val by = decisionSource(who(d.resolvedBy[a.approvalId]))
-                out += ChatItem.Note(k, what, if (ok) Lucide.Check else Lucide.X, if (ok) 1 else 2, decisionLine(r.first, r.second) + by)
+                val by = decisionSource(who(d.resolvedBy[a.approvalId]), copy = copy)
+                out += ChatItem.Note(k, what, if (ok) Lucide.Check else Lucide.X, if (ok) 1 else 2, decisionLine(r.first, r.second, copy = copy) + by)
             }
             Event.KindCase.QUESTION_ANSWERED -> {
                 flush()
                 val answers = e.questionAnswered.answersList.flatMap { it.answersList }
-                val by = decisionSource(who(e.originOrNull()))
-                out += ChatItem.Note(k, (if (answers.isEmpty()) "已回答提问" else "已回答：" + answers.joinToString("、")) + by, Lucide.Check, 1)
+                val by = decisionSource(who(e.originOrNull()), copy = copy)
+                out += ChatItem.Note(k, (if (answers.isEmpty()) copy(UiMessages.dockAndroidAnswered()) else copy(UiMessages.dockAndroidAnsweredValues(answers = (answers.joinToString("、")).toString()))) + by, Lucide.Check, 1)
             }
             Event.KindCase.IMAGE_GENERATED -> if (e.imageGenerated.imagesCount > 0) {
                 flush()
@@ -393,40 +395,37 @@ fun buildChat(
                 flush()
                 val t = e.turnEnded
                 if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED)
-                    out += ChatItem.Note("$k-interrupted", "已中断" + (who(e.originOrNull())?.takeUnless { it.self }?.label?.let { "（$it）" } ?: ""))
-                if (t.durationMs > 0) out += ChatItem.TurnEnd(k, "本轮用时 ${duration(t.durationMs)}")
+                    out += ChatItem.Note("$k-interrupted", (who(e.originOrNull())?.takeUnless { it.self }?.label?.let { copy(UiMessages.sessionAndroidInterruptedBy(it)) } ?: copy(UiMessages.sessionInterrupted())))
+                if (t.durationMs > 0) out += ChatItem.TurnEnd(k, copy(UiMessages.sessionTurnDuration(duration = (duration(t.durationMs, copy = copy)).toString())))
             }
             Event.KindCase.SETTINGS_CHANGED -> {
                 val c = e.settingsChanged
                 val by = who(e.originOrNull())?.takeUnless { it.self }?.label
                 var text = when {
-                    c.compacted -> "上下文已压缩"
-                    c.model.isNotEmpty() -> (by?.let { "$it 将模型切到 " } ?: "切换到 ") + c.model + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
-                    else -> modeOf(c.mode)?.let { (by?.let { b -> "$b 将模式切到 " } ?: "模式切换到 ") + it.text }
+                    c.compacted -> copy(UiMessages.sessionCompacted())
+                    c.model.isNotEmpty() -> (by?.let { copy(UiMessages.sessionModelChangedBy(origin = it, value = c.model)) } ?: copy(UiMessages.sessionModelChanged(value = c.model))) + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                    else -> modeOf(c.mode)?.let { (by?.let { b -> copy(UiMessages.sessionModeChangedBy(origin = b, value = copy(io.github.lewin671.remoteagent.core.sessionMode(it)))) } ?: copy(UiMessages.sessionModeChanged(value = copy(io.github.lewin671.remoteagent.core.sessionMode(it))))) }
                 }
                 if (text != null) {
                     flush()
                     if (c.compacted) {
                         val usage = d.compactions[e.seq]
-                        if (usage?.before != null && usage.after != null) text = "上下文已压缩 · ${usage.before}% → ${usage.after}%"
+                        if (usage?.before != null && usage.after != null) text = copy(UiMessages.sessionAndroidCompactedUsage(after = usage.after.toString(), before = usage.before.toString()))
                     }
-                    out += ChatItem.Note(k, text, emphasis = if (!c.compacted && c.model.isEmpty()) modeOf(c.mode)?.text.orEmpty() else "")
+                    out += ChatItem.Note(k, text, emphasis = if (!c.compacted && c.model.isEmpty()) modeOf(c.mode)?.let { copy(io.github.lewin671.remoteagent.core.sessionMode(it)) }.orEmpty() else "")
                 }
             }
             Event.KindCase.TURN_CONTEXT -> d.terminalChanges[e.seq]?.let {
                 flush()
-                out += ChatItem.Note(k, "$machine 终端里${it.joinToString("，") { c -> when (c) {
-                    is io.github.lewin671.remoteagent.core.TerminalChange.ModeChanged -> "模式切到了 ${c.mode?.text ?: c.raw}"
-                    is io.github.lewin671.remoteagent.core.TerminalChange.ModelChanged -> "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
-                } }}")
+                out += ChatItem.Note(k, copy(UiMessages.sessionAndroidTerminalChanges(changes = (terminalChangesText(it, copy)).toString(), name = machine)))
             }
             Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                 flush()
-                out += ChatItem.TurnEnd(k, dateTime(eventTime(e)) + " 结束")
+                out += ChatItem.TurnEnd(k, copy(UiMessages.sessionAndroidEndedAt(time = (io.github.lewin671.remoteagent.core.sessionDateTime(eventTime(e)).resolve(copy)).toString())))
             }
             Event.KindCase.SESSION_FORKED -> {
                 flush()
-                out += ChatItem.Fork(k, dateTime(eventTime(e)), e.sessionForked.sourceSessionId, e.sessionForked.sourceTitle)
+                out += ChatItem.Fork(k, io.github.lewin671.remoteagent.core.sessionDateTime(eventTime(e)).resolve(copy), e.sessionForked.sourceSessionId, e.sessionForked.sourceTitle)
             }
             else -> {}
         }
@@ -435,12 +434,12 @@ fun buildChat(
     return out
 }
 
-fun duration(ms: Long): String {
+fun duration(ms: Long, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     val s = ms / 1000
     return when {
-        s < 60 -> "$s 秒"
-        s < 3600 -> "${s / 60} 分 ${s % 60} 秒"
-        else -> "${s / 3600} 小时 ${s % 3600 / 60} 分"
+        s < 60 -> copy(UiMessages.timeDurationSeconds(count = s.toInt()))
+        s < 3600 -> copy(UiMessages.timeDurationMinutesSeconds(minutes = (s / 60).toInt(), seconds = (s % 60).toInt()))
+        else -> copy(UiMessages.timeDurationHoursMinutes(hours = (s / 3600).toInt(), minutes = (s % 3600 / 60).toInt()))
     }
 }
 
@@ -522,13 +521,14 @@ private fun CaptionRow(
     expanded: Boolean,
     onToggle: () -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     Row(Modifier.padding(top = 6.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         if (captionIcon != null) {
             Mark(captionIcon, captionColor ?: p.ink2, iconSize(T.s13))
             Spacer(Modifier.width(4.dp))
         }
-        if (caption != null) Text(caption + if (foldScheduled && long) " · ${if (expanded) "收起" else "展开全文"}" else "", style = T.s13, color = captionColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable(onClick = onToggle) else Modifier))
+        if (caption != null) Text(caption + if (foldScheduled && long) (" · " + if (expanded) copy(UiMessages.markdownCollapse()) else copy(UiMessages.markdownExpand())) else "", style = T.s13, color = captionColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable(onClick = onToggle) else Modifier))
         for ((label, go) in links) Text(label, style = T.s13, color = p.blue, modifier = Modifier.padding(start = 12.dp).heightIn(min = 32.dp).clickable(onClick = go).wrapContentHeight())
     }
 }
@@ -551,6 +551,7 @@ fun SepLine(text: String) {
  */
 @Composable
 fun ForkLine(time: String, title: String, onOpen: (() -> Unit)?) {
+    val copy = uiText()
     val p = pal
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = ChatSide)) {
         // The rules give way to a long title, down to a stub at each side.
@@ -558,7 +559,7 @@ fun ForkLine(time: String, title: String, onOpen: (() -> Unit)?) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).height(0.5.dp).background(p.sep))
             Row(Modifier.widthIn(max = room).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("$time 分叉自", style = T.s13, color = p.ink2, maxLines = 1, softWrap = false)
+                Text(copy(UiMessages.sessionAndroidForkPrefix(time = time)), style = T.s13, color = p.ink2, maxLines = 1, softWrap = false)
                 Spacer(Modifier.width(4.dp))
                 Row(
                     Modifier.weight(1f, fill = false).then(if (onOpen != null) Modifier.tap(onClick = onOpen) else Modifier).padding(vertical = 12.dp),
@@ -594,13 +595,14 @@ fun ToolLine(mark: ImageVector, markColor: Color, title: String, modifier: Modif
 
 @Composable
 fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", settling: Boolean = false, onPutBack: ((requestId: String, text: String) -> Unit)? = null) {
+    val copy = uiText()
     val p = pal
     val chat = LocalChat.current
     when (item) {
         is ChatItem.QuietScheduled -> {
             var expanded by rememberSaveable(item.key) { mutableStateOf(false) }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { expanded = !expanded }.padding(horizontal = ChatSide), verticalAlignment = Alignment.CenterVertically) {
-                Text(quietScheduledLabel(item.times), Modifier.weight(1f), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(quietScheduledLabel(item.times, copy = copy), Modifier.weight(1f), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Arrow(p.ink2, T.s13, down = !expanded, up = expanded)
             }
             if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack = onPutBack) }
@@ -633,7 +635,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                 }
             }
         }
-        is ChatItem.Thought -> Expandable("思考过程", Modifier.padding(horizontal = ChatSide)) {
+        is ChatItem.Thought -> Expandable(copy(UiMessages.sessionAndroidThinking()), Modifier.padding(horizontal = ChatSide)) {
             Text(item.text, style = T.s15, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp))
         }
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = ChatSide)) {
@@ -648,7 +650,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = ChatSide).animateContentSize(Motion.enter(Motion.BASE))) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
             var commands by rememberSaveable(item.key) { mutableStateOf(emptyList<String>()) }
-            ToolLine(Lucide.Check, p.ink3, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
+            ToolLine(Lucide.Check, p.ink3, toolsSummary(item.calls, copy = copy), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
                 Arrow(p.ink2, T.s13, down = !open, up = open)
             }
             if (open) Column(Modifier.padding(start = 12.dp)) {
@@ -657,7 +659,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                         val id = c.callId.ifEmpty { ci.toString() }
                         ExpandableTool("${item.key}/$id", commandOf(c.kind, c.title, c.input),
                             expanded = id in commands, onToggle = { commands = if (id in commands) commands - id else commands + id }) {
-                            Text(toolTitle(c, cwd, home).lines().first(), style = T.mono13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            Text(toolTitle(c, cwd, home, copy = copy).lines().first(), style = T.mono13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp))
                         }
                     }
@@ -682,7 +684,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             if (item.icon != null) ToolLine(item.icon, p.ink3, item.text, Modifier.padding(horizontal = ChatSide), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.ink2)
             else Text(noteText(item), style = T.s13, color = p.ink2, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 10.dp))
         is ChatItem.Plan -> Column(Modifier.padding(horizontal = ChatSide, vertical = 8.dp).fillMaxWidth().clip(Radii.R18).background(p.gbg).padding(14.dp)) {
-            Text("计划", style = T.s13b, color = p.ink)
+            Text(copy(UiMessages.modesPlan()), style = T.s13b, color = p.ink)
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
             // The preview does not show all of its six lines: they wrap past the six it is drawn in.
             var cut by remember(item.key) { mutableStateOf(false) }
@@ -695,15 +697,15 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                 )
             }
             // Whatever the preview leaves out can be opened, and what was opened can be closed again.
-            if (open || cut || planFolds(item.text, 6)) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.s13b, down = !open, up = open) }
+            if (open || cut || planFolds(item.text, 6)) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) copy(UiMessages.markdownCollapse()) else copy(UiMessages.markdownExpand()), p.blue, T.s13b, down = !open, up = open) }
         }
         is ChatItem.Unsent -> MeBubble(
-            item.text ?: "一条排队的消息", caption = "没发出去：会话已结束", captionColor = p.red, failed = true,
-            links = if (item.text != null && onPutBack != null) listOf("放回输入框" to { onPutBack(item.requestId, item.text) }) else emptyList(),
+            item.text ?: copy(UiMessages.queueAndroidMessage()), caption = copy(UiMessages.sessionEndedSendFailed()), captionColor = p.red, failed = true,
+            links = if (item.text != null && onPutBack != null) listOf(copy(UiMessages.composerRestore()) to { onPutBack(item.requestId, item.text) }) else emptyList(),
         )
         is ChatItem.TurnEnd -> SepLine(item.text)
         is ChatItem.Fork -> {
-            ForkLine(item.time, forkSource(item, chat?.sessions.orEmpty()), if (chat != null && item.sourceId.isNotEmpty()) ({ chat.onSession(item.sourceId) }) else null)
+            ForkLine(item.time, forkSource(item, chat?.sessions.orEmpty(), copy = copy), if (chat != null && item.sourceId.isNotEmpty()) ({ chat.onSession(item.sourceId) }) else null)
         }
     }
 }
@@ -717,11 +719,12 @@ fun planFolds(text: String, lines: Int): Boolean = text.lines().size > lines
 /** A line that opens what is under it in place: 思考过程 and an arrow down. */
 @Composable
 fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = null, content: @Composable () -> Unit) {
+    val copy = uiText()
     val p = pal
     var open by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier.animateContentSize()) {
         Box(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp)) {
-            ArrowText(if (open) "收起$title" else title, color ?: p.ink2, T.s13, down = !open, up = open)
+            ArrowText(if (open) copy(UiMessages.sessionAndroidCollapseTitle(title = title)) else title, color ?: p.ink2, T.s13, down = !open, up = open)
         }
         if (open) content()
     }
@@ -729,14 +732,15 @@ fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = nul
 
 @Composable
 private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "", decisionOk: Boolean = true) {
+    val copy = uiText()
     val p = pal
     val ok = toolOk(t)
     // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
     val meta = listOfNotNull(
-        if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
+        if (!ok && t.hasExitCode()) copy(UiMessages.toolsExitCode(code = t.exitCode.toString())) else null,
         decision.takeIf { it.isNotEmpty() },
     ).joinToString(" · ").ifEmpty { if (t.durationMs >= 1000) "${t.durationMs / 1000}s" else "" }
-    ToolLine(if (ok) Lucide.Check else Lucide.X, if (ok) p.ink3 else p.ink2, toolTitle(t, cwd, home).lines().first(),
+    ToolLine(if (ok) Lucide.Check else Lucide.X, if (ok) p.ink3 else p.ink2, toolTitle(t, cwd, home, copy = copy).lines().first(),
         meta = meta, metaColor = if (!decisionOk) p.red else p.ink2)
 }
 
@@ -747,10 +751,11 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
  */
 @Composable
 private fun BackgroundRow(t: ToolCall, cwd: String, home: String, decision: String = "") {
+    val copy = uiText()
     val p = pal
-    val title = toolTitle(t, cwd, home).lines().first()
+    val title = toolTitle(t, cwd, home, copy = copy).lines().first()
     val generic = (t.title.isEmpty() || t.title == "ToolCall" || t.title == "CommandExecution") && (t.itemType == "ToolCall" || t.itemType == "CommandExecution")
-    ToolLine(Lucide.LoaderCircle, p.ink3, if (generic) "后台运行" else title, meta = listOf(if (generic) "" else "后台运行", decision).filter { it.isNotEmpty() }.joinToString(" · "))
+    ToolLine(Lucide.LoaderCircle, p.ink3, if (generic) copy(UiMessages.toolsBackground()) else title, meta = listOf(if (generic) "" else copy(UiMessages.toolsBackground()), decision).filter { it.isNotEmpty() }.joinToString(" · "))
 }
 
 /** Ordinary messages append without rebuilding old rows. State-changing events use the full builder. */
@@ -758,8 +763,8 @@ class ChatProjection {
     private var previous: List<Event> = emptyList()
     private var items: List<ChatItem> = emptyList()
     private var context: List<Any>? = null
-    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null }): List<ChatItem> {
-        val nextContext = listOf(machine, cwd, home, agent)
+    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null }): List<ChatItem> {
+        val nextContext = listOf(machine, cwd, home, agent, copy)
         val append = context == nextContext && previous.isNotEmpty() && events.size > previous.size && io.github.lewin671.remoteagent.core.unchangedPrefix(events, previous)
         val tail = if (append) events.subList(previous.size, events.size) else emptyList()
         val messages = append && tail.all { it.kindCase == Event.KindCase.USER_MESSAGE || it.kindCase == Event.KindCase.AGENT_MESSAGE || it.kindCase == Event.KindCase.REASONING }
@@ -767,14 +772,14 @@ class ChatProjection {
             val added = tail.mapNotNull { e ->
                 val key = "e${e.seq}"
                 when (e.kindCase) {
-                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq, e.userMessage.filesList, e.origin.scheduledTaskId.isNotEmpty())
+                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), e.userMessage.imagesList).resolve(copy), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e, copy = copy) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine, copy = copy), e.userMessage.imagesList, e.seq, e.userMessage.filesList, e.origin.scheduledTaskId.isNotEmpty())
                     Event.KindCase.AGENT_MESSAGE -> e.agentMessage.text.takeIf { it.isNotBlank() }?.let { ChatItem.Agent(key, it) }
                     Event.KindCase.REASONING -> e.reasoning.text.takeIf { it.isNotBlank() }?.let { ChatItem.Thought(key, it) }
                     else -> null
                 }
             }
             if (added.isEmpty()) items else (items as io.github.lewin671.remoteagent.core.PagedList<ChatItem>).append(added)
-        } else io.github.lewin671.remoteagent.core.PagedList.from(buildChat(events, d, machine, cwd, home, textOf, who))
+        } else io.github.lewin671.remoteagent.core.PagedList.from(buildChat(events, d, machine, cwd, home, textOf, who, copy = copy))
         previous = events
         context = nextContext
         return items
@@ -782,3 +787,6 @@ class ChatProjection {
 }
 
 internal fun sentBubbleText(text: String, images: Boolean, files: Boolean): String? = text.takeIf { it.isNotBlank() || !images && !files }
+
+private fun terminalChangesText(changes: List<io.github.lewin671.remoteagent.core.TerminalChange>, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String): String =
+    io.github.lewin671.remoteagent.core.terminalChangeMessages(changes, copy).joinToString(copy(UiMessages.commonIosSpokenSeparator())) { copy(it) }

@@ -5,11 +5,14 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class KeysTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test
     fun arrowsFollowTheCursorKeyMode() {
-        val left = keyRows[0].first { it.label == "左" }
-        val right = keyRows[0].first { it.label == "右" }
+        val left = keyRows[0].first { it is Key.Arrow && it.letter == 'D' }
+        val right = keyRows[0].first { it is Key.Arrow && it.letter == 'C' }
         assertEquals("\u001b[D", keySequence(left, appCursor = false))
         assertEquals("\u001bOD", keySequence(left, appCursor = true))
         assertEquals("\u001b[C", keySequence(right, appCursor = false))
@@ -17,8 +20,8 @@ class KeysTest {
 
     @Test
     fun theFirstRowHasEscArrowsAndEnter() {
-        assertEquals(listOf("Esc", "左", "上", "下", "右", "回车"), keyRows[0].map { it.label })
-        assertEquals(listOf("Tab", "Ctrl+C"), keyRows[1].map { it.label })
+        assertEquals(listOf("Esc", "左", "上", "下", "右", "回车"), keyRows[0].map { it.label.resolve { m -> io.github.lewin671.remoteagent.ui.messageTextForTest(m) } })
+        assertEquals(listOf("Tab", "Ctrl+C"), keyRows[1].map { it.label.resolve { m -> io.github.lewin671.remoteagent.ui.messageTextForTest(m) } })
     }
 
     @Test

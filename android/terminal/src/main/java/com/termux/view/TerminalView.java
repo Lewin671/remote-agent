@@ -57,6 +57,17 @@ public final class TerminalView extends View {
 
     public TerminalViewClient mClient;
 
+    // Product labels are supplied by the owning app's message resolver.
+    private String[] mTextSelectionLabels;
+
+    public void setTextSelectionLabels(String copy, String paste, String more) {
+        mTextSelectionLabels = new String[]{copy, paste, more};
+    }
+
+    public String textSelectionLabel(int index) {
+        return java.util.Objects.requireNonNull(mTextSelectionLabels)[index];
+    }
+
     private TextSelectionCursorController mTextSelectionCursorController;
 
     private Handler mTerminalCursorBlinkerHandler;

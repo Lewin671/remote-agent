@@ -11,7 +11,10 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class SendImagesTest {
+    @org.junit.Before fun sessionMessageContext() = installSessionMessageContext()
     @Test
     fun anImageExpiringWhileItsRecordIsSavedDoesNotSendOrDetach() = kotlinx.coroutines.runBlocking {
         val image = PendingImage("picked", null).apply {

@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.runtime.mutableStateMapOf
 import io.github.lewin671.remoteagent.core.Derived
 import io.github.lewin671.remoteagent.core.EventProjection
@@ -13,8 +14,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 object ScheduleJump { val requested = mutableStateMapOf<String, Long>() }
-fun scheduledMessageCaption(e: Event): String? = e.origin.scheduledTaskId.takeIf { it.isNotEmpty() }?.let {
-    "定时任务 · " + Instant.ofEpochMilli(eventTime(e)).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
+fun scheduledMessageCaption(e: Event, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? = e.origin.scheduledTaskId.takeIf { it.isNotEmpty() }?.let {
+    copy(UiMessages.sessionScheduledAt(time = (Instant.ofEpochMilli(eventTime(e)).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))).toString()))
 }
 
 data class QuietSpan(val task: String, val run: String, val from: Long, val through: Long, val time: Long)
@@ -134,10 +135,10 @@ private fun foldSpans(items: List<ChatItem>, spans: List<QuietSpan>, revealSeq: 
 }
 
 /** Shared copy; the view keeps long clock lists to one ellipsized line. */
-fun quietScheduledLabel(times: List<Long>, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
+fun quietScheduledLabel(times: List<Long>, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     val dates = times.map { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }.distinct()
     fun time(ms: Long) = if (dates.size == 1) Instant.ofEpochMilli(ms).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
         else io.github.lewin671.remoteagent.core.scheduleWhen(Instant.ofEpochMilli(ms), now, zone)
-    val whenText = times.joinToString("、", transform = ::time)
-    return "$whenText 定时检查 · 没有新回复"
+    val whenText = times.joinToString(copy(UiMessages.commonListSeparator()), transform = ::time)
+    return copy(UiMessages.sessionQuietChecks(times = whenText))
 }

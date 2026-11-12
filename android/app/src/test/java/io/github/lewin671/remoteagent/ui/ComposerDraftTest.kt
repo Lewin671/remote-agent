@@ -4,7 +4,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ComposerDraftTest {
+    @org.junit.Before fun sessionMessageContext() = installSessionMessageContext()
     @Test fun removingASessionDropsItsDraftAndOutgoingRecordsOnly() {
         val files = MemoryFiles()
         val records = OutgoingRecords(files)

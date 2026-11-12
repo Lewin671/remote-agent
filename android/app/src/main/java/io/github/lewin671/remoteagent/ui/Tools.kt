@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,12 +83,13 @@ fun commandOf(kind: ToolKind, title: String, input: String): String {
 /** Saveable with its chat row, including independent calls inside a group. */
 @Composable
 fun ExpandableTool(rowKey: String, text: String, modifier: Modifier = Modifier, textColor: Color? = null, expanded: Boolean? = null, onToggle: (() -> Unit)? = null, preview: @Composable () -> Unit) {
+    val copy = uiText()
     var saved by rememberSaveable(rowKey) { mutableStateOf(false) }
     val open = expanded ?: saved
     val p = pal
     val maxHeight = with(LocalDensity.current) { (19.5.sp.toPx() * 12).toDp() }
     Column(modifier.animateContentSize(Motion.enter(Motion.BASE))
-        .semantics { stateDescription = if (open) "已展开" else "已折叠" }
+        .semantics { stateDescription = if (open) copy(UiMessages.projectsIosExpanded()) else copy(UiMessages.toolsAndroidCollapsed()) }
         .clickable(role = Role.Button) { if (onToggle != null) onToggle() else saved = !saved }) {
         preview()
         if (open) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.gbg)) {
@@ -119,11 +121,11 @@ class ChatContext(
 val LocalChat = compositionLocalOf<ChatContext?> { null }
 
 /** How a tool without a result reads now. */
-enum class ToolState(val text: String) {
-    RUNNING("处理中"),
-    APPROVAL("等待审批"),
-    SYNC("等待同步"),
-    UNCONFIRMED("状态待确认"),
+enum class ToolState(val message: io.github.lewin671.remoteagent.core.UiMessage) {
+    RUNNING(UiMessages.toolsAndroidProcessing()),
+    APPROVAL(UiMessages.listStateApproval()),
+    SYNC(UiMessages.toolsWaitingSync()),
+    UNCONFIRMED(UiMessages.toolsAndroidUnconfirmed()),
 }
 
 fun toolState(t: RunningTool, unfinished: Boolean, d: Derived, frozenAt: Long): ToolState = when {
@@ -134,10 +136,10 @@ fun toolState(t: RunningTool, unfinished: Boolean, d: Derived, frozenAt: Long): 
 }
 
 /** Name the elapsed time and freeze it at disconnection; omit unknown start times. */
-fun toolTimer(t: RunningTool, state: ToolState, now: Long, frozenAt: Long): String {
+fun toolTimer(t: RunningTool, state: ToolState, now: Long, frozenAt: Long, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     if (state == ToolState.UNCONFIRMED || state == ToolState.APPROVAL) return "—"
     val ms = toolElapsed(t, now, frozenAt) ?: return ""
-    return "已运行 ${clock(ms)}" + if (state == ToolState.SYNC) " · 等待同步" else ""
+    return copy(UiMessages.toolsElapsed(duration = (clock(ms)).toString())) + if (state == ToolState.SYNC) copy(UiMessages.toolsAndroidSyncSuffix()) else ""
 }
 
 /**
@@ -148,21 +150,22 @@ fun toolTimer(t: RunningTool, state: ToolState, now: Long, frozenAt: Long): Stri
  */
 @Composable
 fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
+    val copy = uiText()
     val p = pal
     val ctx = LocalChat.current ?: return
     val t = now(1000)
     val tool = item.tool
     val state = toolState(tool, item.unfinished, ctx.derived, ctx.frozenAt)
-    val title = toolTitle(tool, cwd, home).lines().first()
+    val title = toolTitle(tool, cwd, home, copy = copy).lines().first()
     // The turn completed without this tool's result: say only that.
     ExpandableTool(item.key, commandOf(tool.kind, tool.title, tool.input), Modifier.padding(horizontal = ChatSide),
         textColor = if (item.unfinished && tool.seq !in ctx.derived.noResult) p.ink2 else p.ink) {
-        if (item.unfinished && tool.seq in ctx.derived.noResult) NowRow(title, "等待同步", spin = false)
-        else if (item.unfinished) ToolLine(Lucide.LoaderCircle, p.ink3, title, meta = "后台运行")
+        if (item.unfinished && tool.seq in ctx.derived.noResult) NowRow(title, copy(UiMessages.toolsWaitingSync()), spin = false)
+        else if (item.unfinished) ToolLine(Lucide.LoaderCircle, p.ink3, title, meta = copy(UiMessages.toolsBackground()))
         else {
-            val timer = toolTimer(tool, state, t, ctx.frozenAt)
-            if (state == ToolState.SYNC) NowRow(title, timer.ifEmpty { "等待同步" }, spin = false)
-            else NowRow(title, if (state == ToolState.APPROVAL) state.text else timer, spin = true)
+            val timer = toolTimer(tool, state, t, ctx.frozenAt, copy = copy)
+            if (state == ToolState.SYNC) NowRow(title, timer.ifEmpty { copy(UiMessages.toolsWaitingSync()) }, spin = false)
+            else NowRow(title, if (state == ToolState.APPROVAL) copy(state.message) else timer, spin = true)
         }
     }
 }

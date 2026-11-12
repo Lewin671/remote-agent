@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.PendingInput
 import io.github.lewin671.remoteagent.core.failureText
 import io.github.lewin671.remoteagent.proto.Agent
@@ -8,8 +9,8 @@ import io.github.lewin671.remoteagent.proto.SendMode
 
 internal data class SendFeedback(val text: String, val uncertain: Boolean)
 
-internal fun deliveryFailure(reason: String, uncertain: Boolean): SendFeedback =
-    SendFeedback((if (uncertain) "可能没发出去：" else "没发出去：") + shortSendReason(reason), uncertain)
+internal fun deliveryFailure(reason: String, uncertain: Boolean, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback =
+    SendFeedback(if (uncertain) copy(UiMessages.composerMaybeFailure(reason = (shortSendReason(reason)).toString())) else copy(UiMessages.composerSendFailure(reason = (shortSendReason(reason)).toString())), uncertain)
 
 private fun shortSendReason(reason: String): String = when {
     reason.contains("回复打不开") || reason.contains("可验证的执行结果") -> "回复验证失败"
@@ -20,9 +21,9 @@ private fun shortSendReason(reason: String): String = when {
     else -> reason.trim().ifEmpty { "原因未知" }
 }
 
-internal fun inputFeedback(status: InputStatus, reason: String, agent: Agent): SendFeedback =
-    if (status == InputStatus.INPUT_STATUS_UNCONFIRMED) deliveryFailure("已送到终端但没确认", true)
-    else deliveryFailure(failureText(reason, agent), status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL)
+internal fun inputFeedback(status: InputStatus, reason: String, agent: Agent, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback =
+    if (status == InputStatus.INPUT_STATUS_UNCONFIRMED) SendFeedback(copy(UiMessages.composerMaybeFailure(copy(UiMessages.queueAndroidUnconfirmed()))), true)
+    else deliveryFailure(copy(failureText(reason, agent)), status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL, copy = copy)
 
 internal fun pendingInputLabel(
     pending: PendingInput,
@@ -30,25 +31,26 @@ internal fun pendingInputLabel(
     cancel: Cancels.State?,
     resuming: Boolean,
     resumeFailed: Boolean,
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
 ): String = when {
-    cancel == Cancels.State.Canceling -> "正在取消…"
-    cancel is Cancels.State.Failed -> "取消没成功，仍在排队"
-    resuming -> "正在发送…"
-    resumeFailed -> "发送没成功，仍已暂停"
-    pending.paused -> "已暂停"
-    pending.held -> "插入这一轮"
-    pending.mode == SendMode.SEND_MODE_QUEUE -> "这一轮结束后发"
-    starting != null -> "等 $starting 就绪后发出"
-    else -> "插入这一轮"
+    cancel == Cancels.State.Canceling -> copy(UiMessages.queueCanceling())
+    cancel is Cancels.State.Failed -> copy(UiMessages.queueCancelFailed())
+    resuming -> copy(UiMessages.queueResuming())
+    resumeFailed -> copy(UiMessages.queueResumeFailed())
+    pending.paused -> copy(UiMessages.queuePaused())
+    pending.held -> copy(UiMessages.queueInsert())
+    pending.mode == SendMode.SEND_MODE_QUEUE -> copy(UiMessages.queueAfterTurn())
+    starting != null -> copy(UiMessages.queueAgentReady(agent = starting))
+    else -> copy(UiMessages.queueInsert())
 }
 
-internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: ChatSource?, showPosition: Boolean = true): String =
-    label + (if (total > 1 && showPosition) " · 第 $index 条" else "") +
+internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: ChatSource?, showPosition: Boolean = true, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
+    label + (if (total > 1 && showPosition) copy(UiMessages.queueRank(rank = index)) else "") +
         (if (origin?.label != null && !origin.self) " · ${origin.label}" else "")
 
-internal fun scheduledPendingCaption(pending: PendingInput, events: List<io.github.lewin671.remoteagent.proto.Event>, label: String): String? {
+internal fun scheduledPendingCaption(pending: PendingInput, events: List<io.github.lewin671.remoteagent.proto.Event>, label: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
     if (pending.origin?.scheduledTaskId.isNullOrEmpty()) return null
     val accepted = events.firstOrNull { it.hasInputState() && it.inputState.requestId == pending.id && it.inputState.status == InputStatus.INPUT_STATUS_QUEUED }
     val clock = accepted?.let { io.github.lewin671.remoteagent.core.scheduleClock(java.time.Instant.ofEpochMilli(io.github.lewin671.remoteagent.core.eventTime(it))) }
-    return listOfNotNull("定时任务", clock, label).joinToString(" · ")
+    return listOfNotNull(copy(UiMessages.queueAndroidScheduled()), clock, label).joinToString(" · ")
 }

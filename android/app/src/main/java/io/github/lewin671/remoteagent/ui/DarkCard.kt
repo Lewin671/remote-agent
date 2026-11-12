@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +56,6 @@ import io.github.lewin671.remoteagent.core.approvalTruncated
 import io.github.lewin671.remoteagent.core.approvalTruncatedMessage
 import io.github.lewin671.remoteagent.core.capabilities
 import io.github.lewin671.remoteagent.core.isSkeleton
-import io.github.lewin671.remoteagent.core.skeletonMessage
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 
 /*
@@ -176,6 +176,7 @@ fun CardField(value: String, onValue: (String) -> Unit, placeholder: String, mod
  */
 @Composable
 fun DarkCardLine(kind: String, status: String, modifier: Modifier = Modifier, error: Boolean = false, retry: (() -> Unit)? = null) {
+    val copy = uiText()
     val p = pal
     Row(
         modifier.fillMaxWidth().clip(Radii.R24).background(p.tc).border(0.5.dp, p.tcLine, Radii.R24).heightIn(min = 48.dp)
@@ -189,7 +190,7 @@ fun DarkCardLine(kind: String, status: String, modifier: Modifier = Modifier, er
         Spacer(Modifier.width(8.dp))
         Text(status, style = T.s13, color = if (error) CardColors.red else CardColors.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (retry != null) Box(Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = retry).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-            Text("重试", style = T.s13b, color = CardColors.link)
+            Text(copy(UiMessages.commonRetry()), style = T.s13b, color = CardColors.link)
         }
     }
 }
@@ -209,7 +210,7 @@ class ApprovalReply internal constructor(
 
     fun resolve(allow: Boolean, message: String = "", always: Boolean = false) = send(allow, message, always)
 
-    internal val said: String get() = if (which.value ?: r.allow) "已允许" else "已拒绝"
+    internal val said: io.github.lewin671.remoteagent.core.UiMessage get() = if (which.value ?: r.allow) UiMessages.approvalAllowed() else UiMessages.approvalDenied()
 }
 
 @Composable
@@ -237,11 +238,12 @@ fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply {
  */
 @Composable
 fun ApprovalSubmitted(kind: String, d: ApprovalReply, modifier: Modifier = Modifier) {
+    val copy = uiText()
     val failed = !d.act.running && (d.r.attempt.frozen || d.act.error.isNotEmpty())
     when {
-        !failed -> DarkCardLine(kind, d.said, modifier)
-        d.r.attempt.expired -> DarkCardLine(kind, "不确定「${if (d.r.allow) "允许" else "拒绝"}」有没有送到，它已过期，不会再重发", modifier, error = true)
-        else -> DarkCardLine(kind, "没送到电脑：${d.act.error.ifEmpty { "结果未知" }}", modifier, error = true) { d.resolve(d.r.allow, d.r.message, d.r.always) }
+        !failed -> DarkCardLine(kind, copy(d.said), modifier)
+        d.r.attempt.expired -> DarkCardLine(kind, copy(UiMessages.approvalAndroidReplyExpired(decision = (if (d.r.allow) copy(UiMessages.approvalAllow()) else copy(UiMessages.approvalAndroidDenyDecision())).toString())), modifier, error = true)
+        else -> DarkCardLine(kind, copy(UiMessages.approvalDeliveryFailed(reason = (d.act.error.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) }).toString())), modifier, error = true) { d.resolve(d.r.allow, d.r.message, d.r.always) }
     }
 }
 
@@ -265,26 +267,27 @@ fun ApprovalButtons(
     cut: Boolean = false,
     onFull: () -> Unit = {},
 ) {
+    val copy = uiText()
     var reason by Drafts.of("deny:${a.approvalId}")
     val truncated = approvalTruncated(a)
     val always = capabilities(state.machines[s.machineId])?.approvalAlways == true
     if (denying) {
-        CardField(reason, { reason = it }, "说说该怎么做，可以不填", Modifier.padding(top = 12.dp), label = "不允许的理由")
+        CardField(reason, { reason = it }, copy(UiMessages.approvalReasonPlaceholder()), Modifier.padding(top = 12.dp), label = copy(UiMessages.approvalDenialReason()))
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardButton("取消", { onDenying(false) }, Modifier.weight(1f))
-            CardButton("不允许", { d.resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
+            CardButton(copy(UiMessages.commonCancel()), { onDenying(false) }, Modifier.weight(1f))
+            CardButton(copy(UiMessages.approvalDeny()), { d.resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
         }
         return
     }
     Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CardButton("不允许", { onDenying(true) }, Modifier.weight(1f), enabled = !locked)
-        if (cut) CardButton("看完整命令", onFull, Modifier.weight(1f), primary = true)
-        else CardButton("允许", { d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
+        CardButton(copy(UiMessages.approvalDeny()), { onDenying(true) }, Modifier.weight(1f), enabled = !locked)
+        if (cut) CardButton(copy(UiMessages.approvalFullCommand()), onFull, Modifier.weight(1f), primary = true)
+        else CardButton(copy(UiMessages.approvalAllow()), { d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
     }
     if (always && !cut && !locked && !truncated) Box(
         Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { d.resolve(true, always = true) },
         contentAlignment = Alignment.Center,
-    ) { Text("允许，这类请求以后不再问", style = T.s15, color = CardColors.link) }
+    ) { Text(copy(UiMessages.approvalAlwaysAllow()), style = T.s15, color = CardColors.link) }
 }
 
 /** Whether an approval can be decided now: not out of reach of the server, and not past its deadline. */
@@ -311,45 +314,46 @@ fun ApprovalCard(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val copy = uiText()
     val d = rememberApprovalReply(s, a)
     var full by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var lines by remember(a.approvalId) { mutableIntStateOf(0) }
     if (isSkeleton(a)) return DarkCard(modifier) {
-        DarkCardHead(text.kind, text.time, text.hot)
-        Text(skeletonMessage, style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
+        DarkCardHead(uiText(text.kind), uiText(text.time), text.hot)
+        Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
     }
     // Submitted: one line of where it stands; the next item comes up when this one is gone from the session.
-    if (d.submitted) return ApprovalSubmitted(text.kind, d, modifier)
+    if (d.submitted) return ApprovalSubmitted(uiText(text.kind), d, modifier)
     val command = approvalBody(a)
     val more = lines - CARD_LINES
     val cut = command.isNotEmpty() && more > 0 && !full
     DarkCard(modifier.semantics(mergeDescendants = false) {}) {
-        DarkCardHead(text.kind, text.time, text.hot)
+        DarkCardHead(uiText(text.kind), uiText(text.time), text.hot)
         Row(
-            Modifier.padding(top = 12.dp).heightIn(min = 32.dp).clickable(onClickLabel = "打开会话", role = Role.Button, onClick = onOpen).semantics { heading() },
+            Modifier.padding(top = 12.dp).heightIn(min = 32.dp).clickable(onClickLabel = copy(UiMessages.homeIosOpenSession()), role = Role.Button, onClick = onOpen).semantics { heading() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text.title, style = T.h20, color = CardColors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Text(uiText(text.title), style = T.h20, color = CardColors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             Spacer(Modifier.width(2.dp))
             Ic(Lucide.ChevronRight, 20.dp, CardColors.text.copy(alpha = .5f))
         }
-        Text(text.place, style = T.s13, color = CardColors.text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+        Text(uiText(text.place), style = T.s13, color = CardColors.text2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
         if (command.isNotEmpty()) CommandBlock(
             command, Modifier.padding(top = 14.dp),
             maxLines = if (denying) REASON_LINES else if (cut) CARD_LINES else Int.MAX_VALUE,
             onLines = { lines = it },
         )
         if (!denying) {
-            if (cut) Text("还有 $more 行没显示", style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
+            if (cut) Text(copy(UiMessages.markdownIosHiddenLines(count = more)), style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
             else if (full && more > 0) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("共 $lines 行", style = T.s13, color = CardColors.text2)
+                Text(copy(UiMessages.markdownLineCount(count = lines)), style = T.s13, color = CardColors.text2)
                 Box(Modifier.heightIn(min = 36.dp).clickable(role = Role.Button) { full = false }.padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
-                    Text("收起", style = T.s13, color = CardColors.link)
+                    Text(copy(UiMessages.markdownCollapse()), style = T.s13, color = CardColors.link)
                 }
             }
         }
-        if (approvalTruncated(a)) Text(approvalTruncatedMessage, style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+        if (approvalTruncated(a)) Text(uiText(approvalTruncatedMessage), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
         if (!denying && a.description.isNotEmpty())
             Text(approvalDisplay(a.description), style = T.s15, color = CardColors.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp))
         ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, now), cut = cut) { full = true }

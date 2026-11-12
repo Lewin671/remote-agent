@@ -7,6 +7,16 @@
     <string name="approval_always_allowed" formatted="false">"已允许，以后不再问"</string>
     <string name="approval_always_directory">"本项目访问 %1$s 以后不再问"</string>
     <string name="approval_always_prefix">"「%1$s」开头的命令以后不再问"</string>
+    <string name="approval_android_deny_decision" formatted="false">"拒绝"</string>
+    <plurals name="approval_android_minutes_meta">
+        <item quantity="other">" · 剩 %1$d 分钟"</item>
+    </plurals>
+    <string name="approval_android_prefix">"`%1$s` 开头的命令以后不再问"</string>
+    <plurals name="approval_android_remaining_timeout">
+        <item quantity="other">"剩 %1$d 分钟，超时拒绝"</item>
+    </plurals>
+    <string name="approval_android_reply_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发"</string>
+    <string name="approval_android_unknown_result" formatted="false">"结果未知"</string>
     <string name="approval_approve" formatted="false">"批准"</string>
     <string name="approval_approve_execute" formatted="false">"批准执行"</string>
     <string name="approval_auto_edits" formatted="false">"本会话自动接受编辑"</string>
@@ -26,6 +36,24 @@
     <string name="approval_timeout_note">"%1$s，超时拒绝"</string>
     <string name="approval_title" formatted="false">"审批"</string>
     <string name="approval_truncated" formatted="false">"内容被截断，请在终端查看"</string>
+    <string name="attachment_android_choose_computer" formatted="false">"先选一台电脑"</string>
+    <string name="attachment_android_failed_meta" formatted="false">" · 上传失败"</string>
+    <plurals name="attachment_android_files_limit">
+        <item quantity="other">"一条消息最多 %1$d 个文件，多选的文件没有加入"</item>
+    </plurals>
+    <string name="attachment_android_missing_files" formatted="false">"附件不在电脑上。放回输入框后会重新上传，文字和附件都会保留"</string>
+    <string name="attachment_android_name_too_long" formatted="false">"文件名过长，请重命名后重新选择"</string>
+    <string name="attachment_android_name_unreadable" formatted="false">"无法读取文件名，请重新选择文件"</string>
+    <string name="attachment_android_not_saved" formatted="false">"附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"</string>
+    <string name="attachment_android_permission_temporary" formatted="false">"这个文件的读取权限无法长期保留，App 重启后可能需要重新选择文件"</string>
+    <string name="attachment_android_preparing_meta" formatted="false">" · 准备中"</string>
+    <string name="attachment_android_reading_files" formatted="false">"正在读取所选文件…"</string>
+    <plurals name="attachment_android_restore_limit">
+        <item quantity="other">"放回后会超过 %1$d 个文件，先移除一些再放回"</item>
+    </plurals>
+    <string name="attachment_android_source_unreadable" formatted="false">"无法读取源文件，请重新选择文件"</string>
+    <string name="attachment_android_upload_meta">" · 上传 %1$s%%"</string>
+    <string name="attachment_android_upload_required" formatted="false">"附件需要重新传到电脑，请上传完成后再发送"</string>
     <string name="attachment_computer_offline">"%1$s 离线，连上后才能添加图片"</string>
     <string name="attachment_computer_unread">"还没读到 %1$s 的信息，稍后才能添加图片"</string>
     <string name="attachment_disconnected" formatted="false">"和服务器断线了，连上后才能添加图片"</string>
@@ -70,6 +98,7 @@
     <string name="common_details" formatted="false">"详情"</string>
     <string name="common_done" formatted="false">"完成"</string>
     <string name="common_got_it" formatted="false">"知道了"</string>
+    <string name="common_ios_spoken_separator" formatted="false">"，"</string>
     <string name="common_list_separator" formatted="false">"、"</string>
     <string name="common_loading" formatted="false">"加载中"</string>
     <string name="common_machine" formatted="false">"机器"</string>
@@ -80,6 +109,9 @@
     <string name="common_settings" formatted="false">"设置"</string>
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
     <string name="composer_after_turn" formatted="false">"这一轮结束后再发"</string>
+    <string name="composer_android_not_sent">"这条没有发出：%1$s"</string>
+    <string name="composer_android_outbox_format" formatted="false">"待确认记录格式已变更，请清理旧记录并重新选择附件"</string>
+    <string name="composer_android_restart_unknown" formatted="false">"App 重启过，不确定这条有没有送到"</string>
     <string name="composer_await_record">"已送入终端，等 %1$s 记录"</string>
     <string name="composer_computer_restarted" formatted="false">"电脑上的 remote-agent 写入时重启了"</string>
     <string name="composer_images_unrecognized">"%1$s 没认出图片"</string>
@@ -132,6 +164,17 @@
     <string name="connection_server_retrying" formatted="false">"连不上服务器 · 正在重试"</string>
     <string name="dock_agent_waiting">"%1$s 在等你"</string>
     <string name="dock_agy_plan_note" formatted="false">"批准后回到默认模式（询问）"</string>
+    <string name="dock_android_answer_expired">"不确定「%1$s」有没有提交，它已过期，不会再重发。请去终端看看"</string>
+    <string name="dock_android_answer_unknown">"上次的回答「%1$s」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答"</string>
+    <string name="dock_android_answered" formatted="false">"已回答提问"</string>
+    <string name="dock_android_answered_values">"已回答：%1$s"</string>
+    <string name="dock_android_plan_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择"</string>
+    <string name="dock_android_plan_keep" formatted="false">"继续规划…"</string>
+    <string name="dock_android_plan_unknown">"「%1$s」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次"</string>
+    <string name="dock_android_question_answered" formatted="false">"这个问题已经回答了。"</string>
+    <string name="dock_android_question_changed">"没能提交，终端里的问题可能已经变了：%1$s"</string>
+    <string name="dock_android_reply_pending" formatted="false">"上一次回复的结果还不确定，请先重试或放弃它"</string>
+    <string name="dock_android_retry_choice">"重试「%1$s」"</string>
     <string name="dock_answer_title" formatted="false">"回答提问"</string>
     <string name="dock_answer_unknown" formatted="false">"不确定提交了没有，重试会发送同一个回答"</string>
     <string name="dock_answered">"回答了 %1$s"</string>
@@ -198,6 +241,10 @@
     <plurals name="home_idle_count">
         <item quantity="other">"%1$d 个会话空闲"</item>
     </plurals>
+    <plurals name="home_ios_approval_remaining">
+        <item quantity="other">"剩 %1$d 分钟"</item>
+    </plurals>
+    <string name="home_ios_open_session" formatted="false">"打开会话"</string>
     <string name="home_list_failed">"没能读取会话列表：%1$s"</string>
     <string name="home_live" formatted="false">"进行中"</string>
     <string name="home_loading_earlier" formatted="false">"正在加载更早的会话…"</string>
@@ -256,6 +303,29 @@
         <item quantity="other">"%1$d 件事等你"</item>
     </plurals>
     <string name="image_add" formatted="false">"添加图片"</string>
+    <string name="image_android_bubble" formatted="false">"（图片）"</string>
+    <string name="image_android_download_retry">"没能下载：%1$s · 点按重试"</string>
+    <string name="image_android_empty" formatted="false">"没有图片"</string>
+    <string name="image_android_generated_by">"%1$s 生成的图片"</string>
+    <string name="image_android_generated_size">"生成的图片%1$s"</string>
+    <string name="image_android_missing_uploads" formatted="false">"图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留"</string>
+    <string name="image_android_name_only" formatted="false">"图片没有同步：只有文件名，原图在电脑上"</string>
+    <string name="image_android_no_preview" formatted="false">"没有预览"</string>
+    <string name="image_android_original_meta" formatted="false">" 原图"</string>
+    <plurals name="image_android_restore_limit">
+        <item quantity="other">"输入框里已有 %2$d 张图，放回这 %1$d 张会超过 %3$d 张。先移除一些再放回"</item>
+    </plurals>
+    <string name="image_android_restore_retry" formatted="false">"待发图片没能恢复，仍可输入，下次编辑或放回时重试"</string>
+    <string name="image_android_restore_wait" formatted="false">"正在恢复待发图片，请稍后再放回"</string>
+    <string name="image_android_restoring" formatted="false">"正在恢复待发图片…"</string>
+    <string name="image_android_save_permission" formatted="false">"没有存储权限，没能保存"</string>
+    <string name="image_android_saved" formatted="false">"已保存到相册"</string>
+    <string name="image_android_share_title" formatted="false">"分享图片"</string>
+    <string name="image_android_total_size">" · 共 %1$s MB"</string>
+    <string name="image_android_upload_progress">"正在传到电脑，%1$s%%"</string>
+    <string name="image_android_user_pasted" formatted="false">"用户粘贴"</string>
+    <string name="image_android_verify_failed">"图片校验失败：%1$s"</string>
+    <string name="image_android_viewed_by">"%1$s 查看的图片"</string>
     <plurals name="image_attach_failed">
         <item quantity="other">"%1$d 张图没加上，点图片看原因"</item>
     </plurals>
@@ -328,6 +398,9 @@
     <string name="markdown_copy_code" formatted="false">"复制代码"</string>
     <string name="markdown_copy_failed" formatted="false">"复制失败"</string>
     <string name="markdown_expand" formatted="false">"展开全文"</string>
+    <plurals name="markdown_ios_hidden_lines">
+        <item quantity="other">"还有 %1$d 行没显示"</item>
+    </plurals>
     <plurals name="markdown_line_count">
         <item quantity="other">"共 %1$d 行"</item>
     </plurals>
@@ -353,6 +426,7 @@
     <string name="modes_account_unsupported" formatted="false">"当前账户不支持自动模式"</string>
     <string name="modes_agy_ask_desc" formatted="false">"需要审批时由你确认，超时自动拒绝"</string>
     <string name="modes_agy_plan_desc" formatted="false">"先只读探索并写方案，批准后回到默认模式执行"</string>
+    <string name="modes_android_permission_notice">"照实显示终端中的模式；不提供切到 %1$s 的按钮。"</string>
     <string name="modes_ask" formatted="false">"询问"</string>
     <string name="modes_ask_desc" formatted="false">"需要审批时由你确认，超时拒绝"</string>
     <string name="modes_ask_generic_desc" formatted="false">"需要审批时由你确认"</string>
@@ -417,6 +491,7 @@
     <string name="new_session_follow_cli" formatted="false">"跟随 CLI 设置"</string>
     <string name="new_session_installed">"已装 %1$s"</string>
     <string name="new_session_installed_fallback">"已装 %2$s；这台机器没有 %3$s，会改用 %1$s"</string>
+    <string name="new_session_ios_attach" formatted="false">"添加附件"</string>
     <string name="new_session_location">"在%1$s"</string>
     <string name="new_session_location_cli">"在%2$s用%1$s"</string>
     <string name="new_session_location_machine">"在%1$s的%2$s"</string>
@@ -463,6 +538,7 @@
         <item quantity="other">"%1$d 个项目"</item>
     </plurals>
     <string name="projects_directory_failed">"读不了这个目录：%1$s"</string>
+    <string name="projects_ios_expanded" formatted="false">"已展开"</string>
     <plurals name="projects_live_count">
         <item quantity="other">"%1$d 个进行中"</item>
     </plurals>
@@ -503,6 +579,21 @@
     <string name="queue_after_turn" formatted="false">"这一轮结束后发"</string>
     <string name="queue_agent_ready">"等 %1$s 就绪后发出"</string>
     <string name="queue_already_submitted" formatted="false">"上一条已送入终端，不能取消"</string>
+    <string name="queue_android_after_answer" formatted="false">"回答后继续"</string>
+    <string name="queue_android_after_approval" formatted="false">"审批后继续"</string>
+    <string name="queue_android_after_plan" formatted="false">"处理计划后继续"</string>
+    <string name="queue_android_agent_note">"等 %1$s 就绪"</string>
+    <string name="queue_android_answer_note" formatted="false">"等提问回答完"</string>
+    <string name="queue_android_approval_note" formatted="false">"等审批处理完"</string>
+    <string name="queue_android_draft" formatted="false">"终端里有草稿"</string>
+    <string name="queue_android_input_note" formatted="false">"等待输入框就绪"</string>
+    <string name="queue_android_message" formatted="false">"一条排队的消息"</string>
+    <string name="queue_android_plan_note" formatted="false">"等计划处理完"</string>
+    <string name="queue_android_popup_note" formatted="false">"等终端里的弹窗处理完"</string>
+    <string name="queue_android_scheduled" formatted="false">"定时任务"</string>
+    <string name="queue_android_sending_soon" formatted="false">"即将发送"</string>
+    <string name="queue_android_turn_note" formatted="false">"等待本轮结束"</string>
+    <string name="queue_android_unconfirmed" formatted="false">"已送到终端但没确认"</string>
     <string name="queue_cancel_failed" formatted="false">"取消没成功，仍在排队"</string>
     <string name="queue_canceled" formatted="false">"已取消"</string>
     <string name="queue_canceled_elsewhere" formatted="false">"上一条已在另一客户端取消"</string>
@@ -542,6 +633,25 @@
     <string name="quota_warning">"%1$s · %2$s额度即将用尽，不会自动切换 CLI 或模型"</string>
     <string name="session_abandon_fork" formatted="false">"放弃上次的分叉"</string>
     <string name="session_action_failed">"%1$s失败：%2$s"</string>
+    <string name="session_android_collapse_title">"收起%1$s"</string>
+    <string name="session_android_compacted_usage">"上下文已压缩 · %2$s%% → %1$s%%"</string>
+    <string name="session_android_connect_read" formatted="false">"连上服务器后读取这个会话"</string>
+    <string name="session_android_context_usage" formatted="false">"上下文占用"</string>
+    <string name="session_android_ended_at">"%1$s 结束"</string>
+    <string name="session_android_execution_unknown" formatted="false">"不确定电脑有没有执行"</string>
+    <string name="session_android_fork_connected" formatted="false">"连上服务器后可用"</string>
+    <string name="session_android_fork_prefix">"%1$s 分叉自"</string>
+    <string name="session_android_history_partial" formatted="false">"历史记录尚未读全。"</string>
+    <string name="session_android_history_tail_failed">"后面的记录没读到：%1$s"</string>
+    <string name="session_android_interrupt_failed">"没能中断：%1$s"</string>
+    <string name="session_android_interrupted_by">"已中断（%1$s）"</string>
+    <string name="session_android_models_failed">"没能读取模型列表：%1$s"</string>
+    <string name="session_android_resume_failed">"恢复失败：%1$s"</string>
+    <string name="session_android_switch_after_turn" formatted="false">"只在空闲时能切换；这一轮结束后再选"</string>
+    <string name="session_android_switch_note" formatted="false">"仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。"</string>
+    <string name="session_android_terminal_changes">"%2$s 终端里%1$s"</string>
+    <string name="session_android_thinking" formatted="false">"思考过程"</string>
+    <string name="session_android_unknown" formatted="false">"未知会话"</string>
     <string name="session_approval_resolved" formatted="false">"这条审批已经处理了。"</string>
     <string name="session_auto_title_hint" formatted="false">"留空保存会恢复自动标题"</string>
     <string name="session_back_task" formatted="false">"返回任务"</string>
@@ -651,6 +761,18 @@
     <string name="session_turn_duration">"本轮用时 %1$s"</string>
     <string name="session_update_computer" formatted="false">"请更新电脑上的 remote-agent"</string>
     <string name="session_view" formatted="false">"视图"</string>
+    <string name="terminal_android_closed" formatted="false">"终端已关闭"</string>
+    <string name="terminal_android_font_larger" formatted="false">"字号增大"</string>
+    <string name="terminal_android_font_size">"字号 %1$s"</string>
+    <string name="terminal_android_font_smaller" formatted="false">"字号减小"</string>
+    <string name="terminal_android_hide_details" formatted="false">"收起详情"</string>
+    <string name="terminal_android_not_running" formatted="false">"会话不在运行。"</string>
+    <string name="terminal_android_paused" formatted="false">"终端已暂停，连接恢复后会重新获取画面"</string>
+    <string name="terminal_android_reconnect_note" formatted="false">"等待服务器连接恢复后，会重新获取终端画面。"</string>
+    <string name="terminal_android_selection_copy" formatted="false">"Copy"</string>
+    <string name="terminal_android_selection_more" formatted="false">"More…"</string>
+    <string name="terminal_android_selection_paste" formatted="false">"Paste"</string>
+    <string name="terminal_android_size_changed">"远端尺寸已变化 · %1$d×%2$d"</string>
     <string name="terminal_closed" formatted="false">"终端连接断开了"</string>
     <string name="terminal_closed_ended_note" formatted="false">"下面是断开前的画面。会话已经结束。"</string>
     <string name="terminal_closed_running_note" formatted="false">"下面是断开前的画面。会话还在运行，聊天照常更新。"</string>
@@ -709,6 +831,17 @@
     <string name="time_weekday_wed">"周三"</string>
     <string name="time_year_month_group">"%2$d 年 %1$d 月"</string>
     <string name="time_yesterday" formatted="false">"昨天"</string>
+    <string name="tools_android_background_command" formatted="false">"后台命令"</string>
+    <string name="tools_android_background_edit" formatted="false">"编辑（后台）"</string>
+    <string name="tools_android_background_generic" formatted="false">"工具（后台）"</string>
+    <string name="tools_android_background_label">"%1$s（后台）"</string>
+    <string name="tools_android_background_search" formatted="false">"搜索（后台）"</string>
+    <string name="tools_android_collapsed" formatted="false">"已折叠"</string>
+    <string name="tools_android_edit" formatted="false">"编辑"</string>
+    <string name="tools_android_processing" formatted="false">"处理中"</string>
+    <string name="tools_android_search" formatted="false">"搜索"</string>
+    <string name="tools_android_sync_suffix" formatted="false">" · 等待同步"</string>
+    <string name="tools_android_unconfirmed" formatted="false">"状态待确认"</string>
     <string name="tools_background" formatted="false">"后台运行"</string>
     <string name="tools_background_agent" formatted="false">"按模型的要求在后台运行；它什么时候结束这里不知道，请到终端确认。"</string>
     <string name="tools_background_returned" formatted="false">"调用已返回，命令转到了后台；它什么时候结束这里不知道，请到终端确认。"</string>

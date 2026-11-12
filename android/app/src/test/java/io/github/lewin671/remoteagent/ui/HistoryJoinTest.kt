@@ -28,6 +28,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], application = Application::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HistoryJoinTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @get:Rule val ui = createComposeRule()
 
     private fun message(seq: Long) =

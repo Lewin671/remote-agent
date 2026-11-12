@@ -12,7 +12,10 @@ import org.junit.Test
 
 /** Rendering reads the same domain facts tested by core. In particular an
  * async question is a chat message even though it is not pending. */
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ProjectionRowsVectorsTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @Test fun sharedHistoryFactsReachChat() {
         val corpus = Json.parseToJsonElement(File(requireNotNull(System.getProperty("projectionVectors"))).readText()).jsonObject
         for (item in corpus.getValue("vectors").jsonArray) {

@@ -3,7 +3,6 @@ package io.github.lewin671.remoteagent.core
 import io.github.lewin671.remoteagent.proto.*
 
 const val skeletonNote = "\n…（remote-agent：内容过大，请在终端查看/回答）"
-const val skeletonMessage = "内容过大，请在终端查看/回答"
 fun isSkeleton(text: String): Boolean = text.endsWith(skeletonNote)
 fun isSkeleton(a: ApprovalRequested): Boolean = listOf(a.description, a.approvalId, a.command, a.toolInputJson, a.inputDigest).any(::isSkeleton)
 fun isSkeleton(q: QuestionAsked): Boolean = isSkeleton(q.questionId) || q.questionsList.any { x ->

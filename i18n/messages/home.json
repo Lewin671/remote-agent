@@ -449,7 +449,8 @@
     },
     "platforms": [
       "ios",
-      "web"
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -675,7 +676,8 @@
     "notes": "iOS 首页待处理卡读屏提示。无参数。",
     "params": {},
     "platforms": [
-      "ios"
+      "ios",
+      "android"
     ],
     "status": {
       "zh-CN": "source",

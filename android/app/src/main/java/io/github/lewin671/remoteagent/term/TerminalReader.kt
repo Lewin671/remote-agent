@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.ui.uiText
+import io.github.lewin671.remoteagent.ui.sessionText
+import io.github.lewin671.remoteagent.core.UiMessages
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.view.ViewConfiguration
@@ -443,11 +446,12 @@ internal fun HistoryStatusLine(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val status = historyStatus(history, waiting) ?: return
+    val copy = uiText()
+    val status = historyStatus(history, waiting, copy = copy) ?: return
     Row(modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(status, style = T.s12, color = TermColors.tool, softWrap = false, maxLines = 1)
         if (history.failed) Text(
-            "重试", style = T.s12b, color = TermColors.link,
+            copy(UiMessages.commonRetry()), style = T.s12b, color = TermColors.link,
             modifier = Modifier.clickable(onClick = onRetry).padding(start = 8.dp, top = 12.dp, bottom = 12.dp),
         )
     }
@@ -457,19 +461,20 @@ internal fun HistoryStatusLine(
  * What the top line says, in the words of the design; null while there is nothing to say.
  * [waiting] is the first capture, which has no reader yet to put a line in.
  */
-internal fun historyStatus(history: TerminalHistory.State, waiting: Boolean): String? = when {
-    history.disconnected -> "终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的"
-    history.expired -> "记录已过期，回到实时后重新往上滑"
-    history.failed -> "读取失败"
-    history.pending.isNotEmpty() -> if (waiting) "读取记录…" else "读取更早的记录…"
+internal fun historyStatus(history: TerminalHistory.State, waiting: Boolean, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? = when {
+    history.disconnected -> copy(UiMessages.terminalHistoryClosed())
+    history.expired -> copy(UiMessages.terminalHistoryExpired())
+    history.failed -> copy(UiMessages.terminalReadFailed())
+    history.pending.isNotEmpty() -> if (waiting) copy(UiMessages.terminalReading()) else copy(UiMessages.terminalEarlier())
     !history.entered -> null
-    history.cursor.isEmpty() -> "已经是保留的最早记录"
+    history.cursor.isEmpty() -> copy(UiMessages.terminalHistoryStart())
     else -> null
 }
 
 /** The floating way back to the live screen; it says when output has arrived since. */
 @Composable
 internal fun HistoryPill(newOutput: Boolean, onLeave: () -> Unit, modifier: Modifier = Modifier) {
+    val copy = uiText()
     val shape = RoundedCornerShape(999.dp)
     Row(
         modifier.shadow(4.dp, shape).clip(shape).background(TermColors.key).clickable(onClick = onLeave).padding(horizontal = 14.dp, vertical = 9.dp),
@@ -478,13 +483,13 @@ internal fun HistoryPill(newOutput: Boolean, onLeave: () -> Unit, modifier: Modi
         if (newOutput) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(TermColors.link))
             Spacer(Modifier.width(6.dp))
-            Text("有新输出", style = pillText, color = TermColors.fg, maxLines = 1)
+            Text(copy(UiMessages.terminalFresh()), style = pillText, color = TermColors.fg, maxLines = 1)
             Spacer(Modifier.width(6.dp))
             Ic(Lucide.ArrowDown, 15.dp, TermColors.fg)
         } else {
             Ic(Lucide.ArrowDown, 15.dp, TermColors.fg)
             Spacer(Modifier.width(6.dp))
-            Text("回到实时", style = pillText, color = TermColors.fg, maxLines = 1)
+            Text(copy(UiMessages.terminalLive()), style = pillText, color = TermColors.fg, maxLines = 1)
         }
     }
 }

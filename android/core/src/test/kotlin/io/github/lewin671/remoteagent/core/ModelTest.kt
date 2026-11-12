@@ -32,7 +32,7 @@ class ModelTest {
         for (vector in vectors) {
             val fields = vector as kotlinx.serialization.json.JsonObject
             fun value(key: String) = (fields.getValue(key) as kotlinx.serialization.json.JsonPrimitive).content
-            assertEquals(value("input"), value("expected"), plain(value("input")))
+            org.junit.Assert.assertEquals(value("input"), value("expected"), plain(value("input")))
         }
     }
 
@@ -43,69 +43,69 @@ class ModelTest {
         val online = MachineView("m", online = true, lastSeenMs = 0)
         val offline = online.copy(online = false)
         fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        assertEquals(Status.EXITED, statusOf(s { status = SessionStatus.SESSION_STATUS_EXITED; pendingApprovals = 1 }, offline))
-        assertEquals(Status.OFFLINE, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING; pendingApprovals = 1 }, offline))
-        assertEquals(Status.APPROVAL, statusOf(s { pendingApprovals = 1; pendingQuestions = 1; planOpen = true }, online))
-        assertEquals(Status.QUESTION, statusOf(s { pendingQuestions = 1; planOpen = true }, online))
-        assertEquals(Status.PLAN, statusOf(s { planOpen = true; status = SessionStatus.SESSION_STATUS_BLOCKED }, online))
-        assertEquals(Status.POPUP, statusOf(s { status = SessionStatus.SESSION_STATUS_BLOCKED }, online))
-        assertEquals(Status.RUNNING, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING }, online))
-        assertEquals(Status.IDLE, statusOf(s { status = SessionStatus.SESSION_STATUS_IDLE }, online))
-        assertEquals(Status.LOADING, statusOf(SessionView("s", "m"), online))
+        assertMessageEquals(Status.EXITED, statusOf(s { status = SessionStatus.SESSION_STATUS_EXITED; pendingApprovals = 1 }, offline))
+        assertMessageEquals(Status.OFFLINE, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING; pendingApprovals = 1 }, offline))
+        assertMessageEquals(Status.APPROVAL, statusOf(s { pendingApprovals = 1; pendingQuestions = 1; planOpen = true }, online))
+        assertMessageEquals(Status.QUESTION, statusOf(s { pendingQuestions = 1; planOpen = true }, online))
+        assertMessageEquals(Status.PLAN, statusOf(s { planOpen = true; status = SessionStatus.SESSION_STATUS_BLOCKED }, online))
+        assertMessageEquals(Status.POPUP, statusOf(s { status = SessionStatus.SESSION_STATUS_BLOCKED }, online))
+        assertMessageEquals(Status.RUNNING, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING }, online))
+        assertMessageEquals(Status.IDLE, statusOf(s { status = SessionStatus.SESSION_STATUS_IDLE }, online))
+        assertMessageEquals(Status.LOADING, statusOf(SessionView("s", "m"), online))
     }
 
     @Test
     fun renameStartsFromTheTitleAndSendsOnlyAChange() {
         fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        assertEquals("登录接口偶尔超时", renameInitial(s { title = " 登录接口偶尔超时 " }))
+        assertMessageEquals("登录接口偶尔超时", renameInitial(s { title = " 登录接口偶尔超时 " }))
         // The "<folder> · <start time>" placeholder is not a title to edit.
-        assertEquals("", renameInitial(s { cwd = "/Users/me/Code/billing" }))
-        assertEquals("", renameInitial(SessionView("s", "m")))
+        assertMessageEquals("", renameInitial(s { cwd = "/Users/me/Code/billing" }))
+        assertMessageEquals("", renameInitial(SessionView("s", "m")))
 
         // 60 code points, not UTF-16 units: an emoji counts once and is never cut in half.
-        assertEquals("字".repeat(60), titleInput("字".repeat(61)))
-        assertEquals("😀".repeat(60), titleInput("😀".repeat(61)))
-        assertEquals("a".repeat(59) + "😀", titleInput("a".repeat(59) + "😀" + "b"))
-        assertEquals("第一行 第二行", titleInput("第一行\r\n第二行"))
+        assertMessageEquals("字".repeat(60), titleInput("字".repeat(61)))
+        assertMessageEquals("😀".repeat(60), titleInput("😀".repeat(61)))
+        assertMessageEquals("a".repeat(59) + "😀", titleInput("a".repeat(59) + "😀" + "b"))
+        assertMessageEquals("第一行 第二行", titleInput("第一行\r\n第二行"))
 
-        assertEquals(null, renameTitle("  登录超时 ", "登录超时"))
-        assertEquals("登录超时：限流和重试", renameTitle(" 登录超时：限流和重试\u3000", "登录超时"))
+        assertMessageEquals(null, renameTitle("  登录超时 ", "登录超时"))
+        assertMessageEquals("登录超时：限流和重试", renameTitle(" 登录超时：限流和重试\u3000", "登录超时"))
         // Emptied: back to the automatic title; nothing to do when there was none.
-        assertEquals("", renameTitle("  ", "登录超时"))
-        assertEquals(null, renameTitle("", ""))
+        assertMessageEquals("", renameTitle("  ", "登录超时"))
+        assertMessageEquals(null, renameTitle("", ""))
     }
 
     @Test
     fun forkNeedsAnIdleOrEndedSessionWithAMessage() {
-        assertEquals(null, forkBlocked(Status.IDLE, running = false, sent = true))
-        assertEquals(null, forkBlocked(Status.EXITED, running = false, sent = true))
-        for (st in listOf(Status.RUNNING, Status.APPROVAL, Status.QUESTION)) assertEquals("这一轮结束后可用", forkBlocked(st, running = false, sent = true))
+        assertMessageEquals(null, forkBlocked(Status.IDLE, running = false, sent = true))
+        assertMessageEquals(null, forkBlocked(Status.EXITED, running = false, sent = true))
+        for (st in listOf(Status.RUNNING, Status.APPROVAL, Status.QUESTION)) assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterTurn()), forkBlocked(st, running = false, sent = true))
         // The events show a turn before the session's status does.
-        assertEquals("这一轮结束后可用", forkBlocked(Status.IDLE, running = true, sent = true))
-        for (st in listOf(Status.PLAN, Status.POPUP)) assertEquals("处理完等待事项后可用", forkBlocked(st, running = false, sent = true))
-        assertEquals("启动完成后可用", forkBlocked(Status.STARTING, running = false, sent = false))
-        assertEquals("发过消息后可用", forkBlocked(Status.IDLE, running = false, sent = false))
-        assertEquals("发过消息后可用", forkBlocked(Status.EXITED, running = false, sent = false))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterTurn()), forkBlocked(Status.IDLE, running = true, sent = true))
+        for (st in listOf(Status.PLAN, Status.POPUP)) assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterPending()), forkBlocked(st, running = false, sent = true))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterStart()), forkBlocked(Status.STARTING, running = false, sent = false))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterMessage()), forkBlocked(Status.IDLE, running = false, sent = false))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterMessage()), forkBlocked(Status.EXITED, running = false, sent = false))
         // What it waits for comes before the missing message.
-        assertEquals("这一轮结束后可用", forkBlocked(Status.RUNNING, running = true, sent = false))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.sessionForkAfterTurn()), forkBlocked(Status.RUNNING, running = true, sent = false))
 
         fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
         val message = listOf(ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hi"))))
         assertTrue(sentMessage(s { title = "登录接口偶尔超时" }, emptyList()))
         assertTrue(sentMessage(s {}, message))
-        assertEquals(false, sentMessage(s { cwd = "/Users/me/Code/foo" }, listOf(ev(1, Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("m"))))))
-        assertEquals(false, sentMessage(SessionView("s", "m"), emptyList()))
+        assertMessageEquals(false, sentMessage(s { cwd = "/Users/me/Code/foo" }, listOf(ev(1, Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("m"))))))
+        assertMessageEquals(false, sentMessage(SessionView("s", "m"), emptyList()))
 
         assertTrue(forked(s { forkedFrom = "a1" }))
-        assertEquals(false, forked(s {}))
-        assertEquals(false, forked(SessionView("s", "m")))
+        assertMessageEquals(false, forked(s {}))
+        assertMessageEquals(false, forked(SessionView("s", "m")))
 
         val made = io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setForkSession(
             io.github.lewin671.remoteagent.proto.ForkSessionResponse.newBuilder().setSession(Session.newBuilder().setId("new")),
         ).build()
-        assertEquals("new", forkedSession(made))
-        assertEquals(null, forkedSession(io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()))
-        assertEquals(null, forkedSession(null))
+        assertMessageEquals("new", forkedSession(made))
+        assertMessageEquals(null, forkedSession(io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()))
+        assertMessageEquals(null, forkedSession(null))
     }
 
     @Test
@@ -119,10 +119,10 @@ class ModelTest {
                 ev(4, Event.newBuilder().setSessionForked(io.github.lewin671.remoteagent.proto.SessionForked.newBuilder().setSourceSessionId("src").setSourceTitle("登录超时"))),
             ),
         )
-        assertEquals(false, d.running)
+        assertMessageEquals(false, d.running)
         assertTrue(d.approvals.isEmpty())
         assertTrue(d.tools.isEmpty())
-        assertEquals(setOf(3L), d.unfinished)
+        assertMessageEquals(setOf(3L), d.unfinished)
     }
 
     @Test
@@ -138,10 +138,10 @@ class ModelTest {
                 ev(7, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("typed locally"))),
             ),
         )
-        assertEquals(listOf("a2"), d.approvals.keys.toList())
+        assertMessageEquals(listOf("a2"), d.approvals.keys.toList())
         assertTrue(d.resolved.containsKey("a1"))
-        assertEquals(InputStatus.INPUT_STATUS_SUBMITTED, d.inputs["r1"])
-        assertEquals(setOf(7L), d.typedLocally)
+        assertMessageEquals(InputStatus.INPUT_STATUS_SUBMITTED, d.inputs["r1"])
+        assertMessageEquals(setOf(7L), d.typedLocally)
         assertTrue(d.running)
     }
 
@@ -154,7 +154,7 @@ class ModelTest {
                 ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("y"))),
             ),
         )
-        assertEquals(listOf("a"), d.tools.map { it.title })
+        assertMessageEquals(listOf("a"), d.tools.map { it.title })
     }
 
     @Test
@@ -165,7 +165,7 @@ class ModelTest {
                 ev(2, Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("m").setEffort("low").setApprovalPolicy("on-request").setApprovalsReviewer("auto_review"))),
             ),
         )
-        assertEquals(listOf(TerminalChange.ModeChanged(Mode.AUTO, "AUTO")), d.terminalChanges[2])
+        assertMessageEquals(listOf(TerminalChange.ModeChanged(Mode.AUTO, "AUTO")), d.terminalChanges[2])
     }
 
     private fun changed(model: String = "", effort: String = "") =
@@ -186,7 +186,7 @@ class ModelTest {
                 ev(5, context("gpt-6-sol", "high")), // as chosen here: nothing to note
             ),
         )
-        assertEquals(mapOf(3L to listOf(TerminalChange.ModelChanged("gpt-6-luna", "low"))), d.terminalChanges)
+        assertMessageEquals(mapOf(3L to listOf(TerminalChange.ModelChanged("gpt-6-luna", "low"))), d.terminalChanges)
     }
 
     // The web's "notes a switch back made in the terminal after a switch from here".
@@ -202,7 +202,7 @@ class ModelTest {
                 ev(4, context("gpt-6-sol")), // and to Sol again there
             ),
         )
-        assertEquals(mapOf(3L to listOf(TerminalChange.ModelChanged("gpt-6-astra", "medium")), 4L to listOf(TerminalChange.ModelChanged("gpt-6-sol", "medium"))), d.terminalChanges)
+        assertMessageEquals(mapOf(3L to listOf(TerminalChange.ModelChanged("gpt-6-astra", "medium")), 4L to listOf(TerminalChange.ModelChanged("gpt-6-sol", "medium"))), d.terminalChanges)
     }
 
     private fun claudeContext(permission: String, model: String = "claude-haiku-4-5-20251001") =
@@ -222,7 +222,7 @@ class ModelTest {
             ),
             Agent.AGENT_CLAUDE,
         )
-        assertEquals(mapOf(2L to listOf(TerminalChange.ModeChanged(null, "accept edits")), 5L to listOf(TerminalChange.ModeChanged(Mode.PLAN, "PLAN")), 6L to listOf(TerminalChange.ModeChanged(Mode.ASK, "ASK"))), d.terminalChanges)
+        assertMessageEquals(mapOf(2L to listOf(TerminalChange.ModeChanged(null, "accept edits")), 5L to listOf(TerminalChange.ModeChanged(Mode.PLAN, "PLAN")), 6L to listOf(TerminalChange.ModeChanged(Mode.ASK, "ASK"))), d.terminalChanges)
     }
 
     // The web's "notes nothing when a mode-only context carries the switched model".
@@ -239,7 +239,7 @@ class ModelTest {
             ),
             Agent.AGENT_CLAUDE,
         )
-        assertEquals(mapOf(3L to listOf(TerminalChange.ModeChanged(null, "accept edits")), 5L to listOf(TerminalChange.ModelChanged("claude-opus-5-5", "")), 6L to listOf(TerminalChange.ModeChanged(Mode.ASK, "ASK"))), d.terminalChanges)
+        assertMessageEquals(mapOf(3L to listOf(TerminalChange.ModeChanged(null, "accept edits")), 5L to listOf(TerminalChange.ModelChanged("claude-opus-5-5", "")), 6L to listOf(TerminalChange.ModeChanged(Mode.ASK, "ASK"))), d.terminalChanges)
     }
 
     @Test
@@ -254,45 +254,45 @@ class ModelTest {
     @Test
     fun saysWhichSideToUpdateWhenProtocolVersionsDiffer() {
         fun m(v: Int) = MachineView("m", true, 0, MachineMeta.newBuilder().setHostname("mac.local").setProtocolVersion(v).build())
-        assertEquals(null, protocolMismatch(m(PROTOCOL_VERSION)))
-        assertEquals("mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", protocolMismatch(m(PROTOCOL_VERSION - 1)))
-        assertEquals("这个 App 版本较旧，请更新后再试", protocolMismatch(m(PROTOCOL_VERSION + 1)))
+        assertMessageEquals(null, protocolMismatch(m(PROTOCOL_VERSION)))
+        assertMessageEquals("mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", protocolMismatch(m(PROTOCOL_VERSION - 1)))
+        assertMessageEquals("这个 App 版本较旧，请更新后再试", protocolMismatch(m(PROTOCOL_VERSION + 1)))
         // Not read yet: the daemon answers for itself.
-        assertEquals(null, protocolMismatch(MachineView("m", true, 0)))
-        assertEquals(null, protocolMismatch(null))
+        assertMessageEquals(null, protocolMismatch(MachineView("m", true, 0)))
+        assertMessageEquals(null, protocolMismatch(null))
     }
 
     @Test
     fun namesAgentsAndTimes() {
-        assertEquals("Codex", agentName(Agent.AGENT_UNSPECIFIED))
-        assertEquals("Claude Code", agentName(Agent.AGENT_CLAUDE))
-        assertEquals(listOf(Agent.AGENT_CODEX), machineAgents(MachineView("m", true, 0, MachineMeta.getDefaultInstance())))
+        assertMessageEquals("Codex", agentName(Agent.AGENT_UNSPECIFIED))
+        assertMessageEquals("Claude Code", agentName(Agent.AGENT_CLAUDE))
+        assertMessageEquals(listOf(Agent.AGENT_CODEX), machineAgents(MachineView("m", true, 0, MachineMeta.getDefaultInstance())))
         val both = MachineMeta.newBuilder()
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build()
-        assertEquals(listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE), machineAgents(MachineView("m", true, 0, both)))
+        assertMessageEquals(listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE), machineAgents(MachineView("m", true, 0, both)))
         val zone = ZoneId.of("Asia/Shanghai")
         val now = ZonedDateTime.of(2026, 9, 29, 14, 0, 0, 0, zone).toInstant().toEpochMilli()
-        assertEquals("2 小时前", ago(now - 2 * 3600_000L, now, zone))
-        assertEquals("昨天", ago(now - 24 * 3600_000L, now, zone))
-        assertEquals("", ago(0, now, zone))
-        assertEquals("刚刚", whenText(now - 10_000, now, zone))
-        assertEquals("3 分钟前", whenText(now - 180_000, now, zone))
-        assertEquals("9:05", whenText(now - (4 * 3600 + 55 * 60) * 1000L, now, zone))
-        assertEquals("昨天", whenText(now - 24 * 3600_000L, now, zone))
-        assertEquals("9月27日", whenText(now - 48 * 3600_000L, now, zone))
-        assertEquals("foo", projectName("/Users/me/Code/foo/"))
-        assertEquals("修 bug", plain("修 `bug`"))
+        assertMessageEquals("2 小时前", ago(now - 2 * 3600_000L, now, zone))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.timeYesterday()), ago(now - 24 * 3600_000L, now, zone))
+        assertMessageEquals("", ago(0, now, zone))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.timeJustNow()), whenText(now - 10_000, now, zone))
+        assertMessageEquals("3 分钟前", whenText(now - 180_000, now, zone))
+        assertMessageEquals("9:05", whenText(now - (4 * 3600 + 55 * 60) * 1000L, now, zone))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.timeYesterday()), whenText(now - 24 * 3600_000L, now, zone))
+        assertMessageEquals("9月27日", whenText(now - 48 * 3600_000L, now, zone))
+        assertMessageEquals("foo", projectName("/Users/me/Code/foo/"))
+        assertMessageEquals("修 bug", plain("修 `bug`"))
     }
 
     @Test
     fun followsClaudeCodeModes() {
         fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        assertEquals(Mode.AUTO, modeLabel(s { mode = io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO })?.mode)
+        assertMessageEquals(Mode.AUTO, modeLabel(s { mode = io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO })?.mode)
         val own = modeLabel(s { permissionMode = "acceptEdits" })!!
-        assertEquals("acceptEdits", own.text)
-        assertEquals(null, own.mode)
-        assertEquals(Mode.PLAN, modeLabel(s { collaborationMode = "plan"; approvalPolicy = "on-request" })?.mode)
+        assertMessageEquals("acceptEdits", own.text)
+        assertMessageEquals(null, own.mode)
+        assertMessageEquals(Mode.PLAN, modeLabel(s { collaborationMode = "plan"; approvalPolicy = "on-request" })?.mode)
         // The list says which models come without the auto mode; a model it
         // does not know gives no answer.
         val list = listOf(
@@ -315,23 +315,23 @@ class ModelTest {
         assertFalse(allAutoUnavailable(emptyList()))
         assertFalse(allAutoUnavailable(null))
 
-        assertEquals("GPT-6-Sol", modelLabel(emptyList(), "gpt-6-sol", Agent.AGENT_CODEX))
-        assertEquals("gpt-6-sol", modelLabel(null, "gpt-6-sol", Agent.AGENT_CODEX))
-        assertEquals("claude-sonnet-5-5", modelLabel(list, "claude-sonnet-5-5", Agent.AGENT_CLAUDE))
+        assertMessageEquals("GPT-6-Sol", modelLabel(emptyList(), "gpt-6-sol", Agent.AGENT_CODEX))
+        assertMessageEquals("gpt-6-sol", modelLabel(null, "gpt-6-sol", Agent.AGENT_CODEX))
+        assertMessageEquals("claude-sonnet-5-5", modelLabel(list, "claude-sonnet-5-5", Agent.AGENT_CLAUDE))
         val models = listOf("opus", "sonnet", "haiku")
-        assertEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
-        assertEquals("sonnet", findModel(models, "sonnet") { it })
-        assertEquals(null, findModel(models, "gpt-6-luna") { it })
+        assertMessageEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
+        assertMessageEquals("sonnet", findModel(models, "sonnet") { it })
+        assertMessageEquals(null, findModel(models, "gpt-6-luna") { it })
     }
 
     @Test
     fun aLongModelListShowsThreeAndThePickedOne() {
         val few = listOf("a", "b", "c", "d", "e")
-        assertEquals(few, shownModels(few, null, false))
+        assertMessageEquals(few, shownModels(few, null, false))
         val many = few + listOf("f", "g")
-        assertEquals(listOf("a", "b", "c"), shownModels(many, "b", false))
-        assertEquals(listOf("a", "b", "c", "g"), shownModels(many, "g", false))
-        assertEquals(many, shownModels(many, "g", true))
+        assertMessageEquals(listOf("a", "b", "c"), shownModels(many, "b", false))
+        assertMessageEquals(listOf("a", "b", "c", "g"), shownModels(many, "g", false))
+        assertMessageEquals(many, shownModels(many, "g", true))
     }
 
     @Test
@@ -345,9 +345,9 @@ class ModelTest {
             ev(5, Event.newBuilder().setOrigin(client).setUserMessage(UserMessage.newBuilder().setText("sent from the phone").setRequestId("a"))),
             ev(6, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("typed later"))),
         )
-        assertEquals(setOf(3L, 6L), derive(events, Agent.AGENT_CLAUDE).typedLocally)
-        assertEquals(setOf(3L, 6L), derive(events, Agent.AGENT_CODEX).typedLocally)
-        assertEquals(InputStatus.INPUT_STATUS_SUBMITTED, derive(events, Agent.AGENT_CLAUDE).inputs["a"])
+        assertMessageEquals(setOf(3L, 6L), derive(events, Agent.AGENT_CLAUDE).typedLocally)
+        assertMessageEquals(setOf(3L, 6L), derive(events, Agent.AGENT_CODEX).typedLocally)
+        assertMessageEquals(InputStatus.INPUT_STATUS_SUBMITTED, derive(events, Agent.AGENT_CLAUDE).inputs["a"])
     }
 
     @Test
@@ -356,16 +356,16 @@ class ModelTest {
             ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hi"))),
             ev(2, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("r").setStatus(InputStatus.INPUT_STATUS_SUBMITTED))),
         )
-        assertEquals(emptySet<Long>(), derive(events, Agent.AGENT_CLAUDE).typedLocally)
-        assertEquals(setOf(1L), derive(events, Agent.AGENT_CODEX).typedLocally)
+        assertMessageEquals(emptySet<Long>(), derive(events, Agent.AGENT_CLAUDE).typedLocally)
+        assertMessageEquals(setOf(1L), derive(events, Agent.AGENT_CODEX).typedLocally)
     }
 
     @Test
     fun warnsAboutClaudeCodesTrustDialogOnly() {
-        assertEquals("默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎", popupHint(Agent.AGENT_CLAUDE, "trust folder"))
-        assertEquals("", popupHint(Agent.AGENT_CODEX, "trust folder"))
-        assertEquals("", popupHint(Agent.AGENT_UNSPECIFIED, "trust folder"))
-        assertEquals("", popupHint(Agent.AGENT_CLAUDE, "hooks review"))
+        assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.dockTrustFolder()), popupHint(Agent.AGENT_CLAUDE, "trust folder"))
+        assertMessageEquals("", popupHint(Agent.AGENT_CODEX, "trust folder"))
+        assertMessageEquals("", popupHint(Agent.AGENT_UNSPECIFIED, "trust folder"))
+        assertMessageEquals("", popupHint(Agent.AGENT_CLAUDE, "hooks review"))
     }
 
     @Test
@@ -374,9 +374,9 @@ class ModelTest {
             .setDefaultMode(io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_FULL_ACCESS)
             .setClaude(io.github.lewin671.remoteagent.proto.AgentDefaults.newBuilder().setMode(io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO))
             .build()
-        assertEquals(Mode.FULL, defaultMode(s, Agent.AGENT_CODEX))
-        assertEquals(Mode.FULL, defaultMode(s, Agent.AGENT_UNSPECIFIED))
-        assertEquals(Mode.AUTO, defaultMode(s, Agent.AGENT_CLAUDE))
-        assertEquals(null, defaultMode(io.github.lewin671.remoteagent.proto.DaemonSettings.getDefaultInstance(), Agent.AGENT_CODEX))
+        assertMessageEquals(Mode.FULL, defaultMode(s, Agent.AGENT_CODEX))
+        assertMessageEquals(Mode.FULL, defaultMode(s, Agent.AGENT_UNSPECIFIED))
+        assertMessageEquals(Mode.AUTO, defaultMode(s, Agent.AGENT_CLAUDE))
+        assertMessageEquals(null, defaultMode(io.github.lewin671.remoteagent.proto.DaemonSettings.getDefaultInstance(), Agent.AGENT_CODEX))
     }
 }

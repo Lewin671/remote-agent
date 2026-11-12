@@ -213,5 +213,60 @@
     "path": "web/src/views/Attach.tsx",
     "literal": "file-chips",
     "reason": "CSS class for file attachment layout, never rendered as text; lexical presentation sink false positive."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/ComposeBox.kt",
+    "literal": "attach",
+    "reason": "Internal composer popup discriminator; never displayed."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/DarkCard.kt",
+    "literal": "deny:${a.approvalId}",
+    "reason": "Internal remember/saveable key for approval denial input; never displayed."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Sheets.kt",
+    "literal": "acceptEdits",
+    "reason": "External CLI permission-mode code; never translated."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Sheets.kt",
+    "literal": "accept edits",
+    "reason": "External CLI native permission-mode name; preserved verbatim."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Model.kt",
+    "literal": "accept edits",
+    "reason": "External CLI native permission-mode name; preserved verbatim."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Model.kt",
+    "literal": "(?:Yes, and )?always allow access to (.+?) from this project$",
+    "reason": "Regex matching the external CLI approval option; never displayed as product copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
+    "literal": "^\\\\s*\\\\[Image #(\\\\d+)]",
+    "reason": "Regex parsing external CLI image placeholders; never displayed."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Sheets.kt",
+    "literal": "CLI",
+    "reason": "External CLI family placeholder in the legacy mode-help getter; replaced with the selected CLI name before display."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/ImageDrafts.kt",
+    "literal": "remote-agent",
+    "reason": "Constant diagnostic log tag; not UI text."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/ImageDrafts.kt",
+    "literal": "pending images not kept: ${it.javaClass.simpleName}",
+    "reason": "Existing developer diagnostic logging only the exception class, never user content."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Model.kt",
+    "literal": "MCP",
+    "reason": "Native tool protocol/brand identifier, preserved verbatim."
   }
 ]

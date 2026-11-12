@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -159,14 +160,14 @@ fun needsUpload(img: PendingImage, machineId: String): Boolean =
     !img.needsProcessing && !img.readyFor(machineId) && !(img.transportMachine() == machineId && (img.job?.isActive == true || img.state is PendingImage.State.Uploading))
 
 /** Whether a machine takes images, and if not, why, in words. */
-fun uploadBlocked(m: MachineView?, online: Boolean, name: String): String? {
+fun uploadBlocked(m: MachineView?, online: Boolean, name: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
     val caps = capabilities(m)
     return when {
-        m == null -> "先选一台电脑"
-        caps == null -> "还没读到 $name 的信息，稍后才能添加图片"
+        m == null -> copy(UiMessages.attachmentAndroidChooseComputer())
+        caps == null -> copy(UiMessages.attachmentComputerUnread(name = name))
         // The daemon's folder has spaces in its path, which the CLIs do not take.
-        !caps.imageUpload -> "$name 上 remote-agent 的目录路径带空格，不能发图片"
-        !m.online || !online -> "$name 离线，连上后才能添加图片"
+        !caps.imageUpload -> copy(UiMessages.attachmentPathSpaces(name = name))
+        !m.online || !online -> copy(UiMessages.attachmentComputerOffline(name = name))
         else -> null
     }
 }
@@ -315,7 +316,7 @@ class ImageDraft(
     fun add(context: Context, picked: List<Uri>, max: Int, remote: Remote, machine: () -> String?) {
         if (restoring) return
         val (taken, left) = takePicked(pictures.size, picked, max)
-        notice = if (left > 0) "一条消息最多 $max 张，多选的 $left 张没有加入" else ""
+        notice = if (left > 0) sessionText(UiMessages.attachmentImagesLimit(count = left, limit = max)) else ""
         for (uri in taken) {
             val img = PendingImage(newRequestId(), uri.toString())
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -370,7 +371,7 @@ class ImageDraft(
             saveOrder(files, key, now, original)
             synchronized(marks) { for ((img, turn) in fresh) if ((turns[img.id] ?: 0) == turn) saved += img.id }
         } }.onFailure {
-            notice = "附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"
+            notice = sessionText(UiMessages.attachmentAndroidNotSaved())
             android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}")
         }
         scope?.launch { settle() } ?: settle()
@@ -531,7 +532,7 @@ class ImageDraft(
         if (selectedMachine != machineId) return
         val machine = remote.state.value.machines[machineId]
         for (img in images) {
-            if (img.isFile && fileDraftBlocked(this, machine) != null) continue
+            if (img.isFile && fileDraftBlocked(this, machine, copy = ::sessionText) != null) continue
             if (!img.isFile && capabilities(machine)?.imageUpload != true) continue
             if (img.hasSource() && !img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId)
         }
@@ -617,15 +618,15 @@ class ImageDraft(
      */
     fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = io.github.lewin671.remoteagent.core.MAX_FILES): Boolean {
         if (restoring) {
-            notice = "正在恢复待发图片，请稍后再放回"
+            notice = sessionText(UiMessages.imageAndroidRestoreWait())
             return false
         }
         if (documents.size + back.count { it.isFile } > fileMax) {
-            notice = "放回后会超过 $fileMax 个文件，先移除一些再放回"
+            notice = sessionText(UiMessages.attachmentAndroidRestoreLimit(count = fileMax))
             return false
         }
         if (pictures.size + back.count { !it.isFile } > max) {
-            notice = "输入框里已有 ${pictures.size} 张图，放回这 ${back.count { !it.isFile }} 张会超过 $max 张。先移除一些再放回"
+            notice = sessionText(UiMessages.imageAndroidRestoreLimit(added = (back.count { !it.isFile }).toInt(), current = pictures.size, limit = max))
             return false
         }
         if (pictures.isEmpty()) original = wereOriginal
@@ -680,7 +681,7 @@ class ImageDraft(
                 throw e
             } catch (e: Exception) {
                 restoreFailed = true
-                if (account === AccountMemory.token) { notice = "待发图片没能恢复，仍可输入，下次编辑或放回时重试"; restoreNoticeActive = true }
+                if (account === AccountMemory.token) { notice = sessionText(UiMessages.imageAndroidRestoreRetry()); restoreNoticeActive = true }
             } finally {
                 restoring = false
                 if (loaded && account === AccountMemory.token) {

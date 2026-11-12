@@ -71,17 +71,18 @@ import io.github.lewin671.remoteagent.proto.RenameSessionRequest
 import io.github.lewin671.remoteagent.proto.SetApprovalModeRequest
 import io.github.lewin671.remoteagent.proto.SetModelRequest
 
-val modeHelp =
+val modeHelp get() =
     mapOf(
-        Mode.ASK to "需要审批时由你确认，超时拒绝",
-        Mode.AUTO to "由 CLI 自己判断，拿不准的在对话里问你",
-        Mode.PLAN to "只读和出计划，你批准后才开始改",
-        Mode.FULL to "所有操作都不审批",
+        Mode.ASK to sessionText(UiMessages.modesAskDesc()),
+        Mode.AUTO to sessionText(UiMessages.modesAutoDesc(agent = ("CLI").toString())),
+        Mode.PLAN to sessionText(UiMessages.modesPlanDesc()),
+        Mode.FULL to sessionText(UiMessages.modesSkipAll()),
     )
 
 /** 审批模式: the four modes; full access is confirmed first; only this session changes. */
 @Composable
 fun ModeSheet(s: SessionView, onClose: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val act = rememberAction()
@@ -96,11 +97,11 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
             runCatching { remote.listModels(s.machineId, s.agent()) }.getOrNull()?.modelsList
     }
     fun unavailable(m: Mode): String? {
-        if (s.info?.modeLocked == true) return "本会话以完全放行启动，不能切换审批模式"
-        if (m == Mode.FULL && s.info?.fullAccessUnavailable == true) return "本会话启动时未启用；需要时新建会话选择"
+        if (s.info?.modeLocked == true) return copy(UiMessages.modesLocked())
+        if (m == Mode.FULL && s.info?.fullAccessUnavailable == true) return copy(UiMessages.modesFullUnavailable())
         if (m == Mode.AUTO) {
-            if (io.github.lewin671.remoteagent.core.allAutoUnavailable(modelList)) return "当前账户不支持自动模式"
-            if (io.github.lewin671.remoteagent.core.autoUnavailable(modelList, s.info?.model.orEmpty())) return "当前模型不支持"
+            if (io.github.lewin671.remoteagent.core.allAutoUnavailable(modelList)) return copy(UiMessages.modesAccountUnsupported())
+            if (io.github.lewin671.remoteagent.core.autoUnavailable(modelList, s.info?.model.orEmpty())) return copy(UiMessages.modesModelUnsupported())
         }
         return null
     }
@@ -127,10 +128,10 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
             it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null
         }
     Sheet(onClose) {
-        SheetHead("审批模式")
+        SheetHead(copy(UiMessages.modesTitle()))
         if (outside != null)
             Text(
-                "当前：${if (outside == "acceptEdits") "accept edits" else outside}（在终端设置）",
+                copy(UiMessages.modesCurrentTerminal(mode = (if (outside == "acceptEdits") "accept edits" else outside).toString())),
                 style = T.s12,
                 color = p.ink2,
                 modifier = Modifier.padding(bottom = 4.dp),
@@ -138,8 +139,8 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
         SheetList { Mode.entries.forEachIndexed { i, m ->
             val reason = unavailable(m)
             ListItem(
-                m.text,
-                reason ?: modeHelp.getValue(m).replace("CLI", agentName(s.agent())),
+                copy(io.github.lewin671.remoteagent.core.sessionMode(m)),
+                reason ?: modeHelpText(m, agentName(s.agent()), copy),
                 checked = m == cur,
                 enabled = reason == null && !act.running,
                 danger = m == Mode.FULL && reason == null,
@@ -152,20 +153,20 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
         Hint(
             when {
                 s.info?.modeLocked == true ->
-                    "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"
+                    copy(UiMessages.modesLockedNote())
                 outside != null ->
-                    "照实显示终端中的模式；不提供切到 ${if (outside == "acceptEdits") "accept edits" else outside} 的按钮。"
-                else -> "只改当前会话"
+                    copy(UiMessages.modesAndroidPermissionNotice(mode = (if (outside == "acceptEdits") "accept edits" else outside).toString()))
+                else -> copy(UiMessages.sessionOnlyCurrent())
             },
         )
-        if (act.running) Hint("正在切换…")
-        if (act.error.isNotEmpty()) Hint("没能切换：${act.error}", color = p.red)
+        if (act.running) Hint(copy(UiMessages.modesSwitching()))
+        if (act.error.isNotEmpty()) Hint(copy(UiMessages.modesSwitchFailed(reason = act.error)), color = p.red)
     }
     if (confirmFull)
         Confirm(
-            "切到完全放行？",
-            "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
-            "切换",
+            copy(UiMessages.modesFullTitle()),
+            copy(UiMessages.modesFullCurrentNote()),
+            copy(UiMessages.modesSwitch()),
             danger = true,
             onDismiss = { confirmFull = false },
         ) {
@@ -180,6 +181,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
  */
 @Composable
 fun RenameDialog(s: SessionView, onClose: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val act = rememberAction()
@@ -230,7 +232,7 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "重命名会话",
+                    copy(UiMessages.sessionRenameTitle()),
                     style = T.s17b,
                     color = p.ink,
                     textAlign = TextAlign.Center,
@@ -248,7 +250,7 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
                     decorationBox = { inner -> FieldBox { inner() } },
                 )
                 Text(
-                    if (act.error.isNotEmpty()) "没能保存：${act.error}" else "留空保存会恢复自动标题",
+                    if (act.error.isNotEmpty()) copy(UiMessages.projectsAndroidSaveFailed(reason = act.error)) else copy(UiMessages.sessionAutoTitleHint()),
                     style = T.s13,
                     color = if (act.error.isNotEmpty()) p.red else p.ink2,
                     textAlign = TextAlign.Center,
@@ -334,6 +336,7 @@ fun ChoiceGrid(items: List<String>, selected: String?, enabled: Boolean, onPick:
  */
 @Composable
 fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     var models by remember { mutableStateOf<ListModelsResponse?>(null) }
@@ -370,16 +373,16 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             onClose()
         }
     Sheet(onClose) {
-        SheetHead("会话设置")
+        SheetHead(copy(UiMessages.sessionSettings()))
         val pc = contextPercent(s)
         if (pc != null) {
             val i = s.info!!
             ContextBox(
                 pc,
                 if (i.contextWindow > 0)
-                    "上下文 ${i.contextTokens / 1000}k / ${i.contextWindow / 1000}k"
-                else "上下文占用",
-                if (compact.running) "正在压缩…" else "压缩",
+                    copy(UiMessages.sessionContextTokens(total = ("${i.contextWindow / 1000}k").toString(), used = ("${i.contextTokens / 1000}k").toString()))
+                else copy(UiMessages.sessionAndroidContextUsage()),
+                if (compact.running) copy(UiMessages.sessionCompacting()) else copy(UiMessages.sessionCompact()),
                 enabled = !running && !compact.running,
                 onAction = {
                     compact.run(
@@ -397,10 +400,10 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                     }
                 },
             )
-            if (compact.error.isNotEmpty()) Hint("没能压缩：${compact.error}", color = p.red)
+            if (compact.error.isNotEmpty()) Hint(copy(UiMessages.sessionCompactFailed(reason = compact.error)), color = p.red)
         }
         val canSwitch = agentInfo(s.agent()).switchesModelInSession
-        FieldLabel("模型", Modifier.padding(top = 2.dp))
+        FieldLabel(copy(UiMessages.modelsTitle()), Modifier.padding(top = 2.dp))
         val ms = models
         when {
             !canSwitch -> {
@@ -414,24 +417,24 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 val modelDisplay = current?.displayName?.ifEmpty { current.slug }
                     ?: io.github.lewin671.remoteagent.core.modelLabel(ms?.modelsList, s.info?.model.orEmpty(), s.agent())
                     ?: s.info?.model?.ifEmpty { null }
-                    ?: "默认模型"
+                    ?: copy(UiMessages.newSessionDefaultModel())
                 SheetList {
                     ListItem(
                         modelDisplay,
-                        small = "运行中不能换模型，新建会话时可选",
+                        small = copy(UiMessages.sessionModelLocked()),
                         enabled = false,
                         last = true,
                         onClick = null,
                     )
                 }
-                FieldLabel("推理强度")
+                FieldLabel(copy(UiMessages.modelsEffort()))
                 val effortDisplay = s.info?.effort?.ifEmpty { null }
                     ?: current?.defaultEffort?.ifEmpty { null }
-                    ?: "默认"
+                    ?: copy(UiMessages.modelsDefault())
                 SheetList {
                     ListItem(
                         effortDisplay,
-                        small = "运行中不能换推理强度",
+                        small = copy(UiMessages.sessionEffortLocked()),
                         enabled = false,
                         last = true,
                         onClick = null,
@@ -440,14 +443,14 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             }
             loadError.isNotEmpty() ->
                 Notice(
-                    "没能读取模型列表：$loadError",
+                    copy(UiMessages.sessionAndroidModelsFailed(reason = loadError)),
                     tone = NoticeTone.ERROR,
                     action = uiText(UiMessages.commonRetry()),
                     onAction = { attempt++ },
                 )
             ms == null ->
                 Text(
-                    "读取中…",
+                    copy(UiMessages.projectsReadingDirectory()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -473,12 +476,12 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
                         small =
-                            if (m.effortsList.isEmpty()) "无推理强度"
+                            if (m.effortsList.isEmpty()) copy(UiMessages.sessionNoEffort())
                             else
                                 m.effortsList
                                     .lastOrNull()
                                     ?.takeIf { it != "high" }
-                                    ?.let { "最高 $it" },
+                                    ?.let { copy(UiMessages.sessionMaxEffort(effort = it)) },
                         checked = m.slug == pickedModel,
                         enabled = !running && !act.running,
                         last = i == list.size - 1,
@@ -492,7 +495,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 if (!few) AllModels { all = true }
                 val model = offered.firstOrNull { it.slug == pickedModel }
                 if (model != null && model.effortsList.isNotEmpty()) {
-                    FieldLabel("推理强度")
+                    FieldLabel(copy(UiMessages.modelsEffort()))
                     ChoiceGrid(
                         model.effortsList,
                         if (model == current) s.info?.effort else null,
@@ -504,16 +507,17 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             }
         }
         if (canSwitch) {
-            Hint(if (running) "只在空闲时能切换；这一轮结束后再选" else "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
+            Hint(if (running) copy(UiMessages.sessionAndroidSwitchAfterTurn()) else copy(UiMessages.sessionAndroidSwitchNote()))
         }
-        if (act.running) Hint("正在切换…")
-        if (act.error.isNotEmpty()) Hint("没能切换：${act.error}", color = p.red)
+        if (act.running) Hint(copy(UiMessages.modesSwitching()))
+        if (act.error.isNotEmpty()) Hint(copy(UiMessages.modesSwitchFailed(reason = act.error)), color = p.red)
     }
 }
 
 /** 审批详情: the whole request, with a reason box that stays above the keyboard. */
 @Composable
 fun ApprovalPage(sid: String, aid: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -527,20 +531,20 @@ fun ApprovalPage(sid: String, aid: String) {
     val act = rememberAction()
     var reason by Drafts.of("deny:$aid")
     PageScaffold(
-        "审批详情",
+        copy(UiMessages.approvalDetails()),
         subtitle =
             s?.let {
                 titleOf(it) +
                     if (a != null && a.hasDeadline())
-                        " · 剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟"
+                        copy(UiMessages.approvalAndroidMinutesMeta(count = (minutesLeft(a.deadline.seconds * 1000, t)).toInt()))
                     else ""
             },
     ) {
         if (s == null || a == null) {
             val r = d.resolved[aid]
             Text(
-                if (r != null) "这条审批已经处理了。"
-                else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
+                if (r != null) copy(UiMessages.sessionApprovalResolved())
+                else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
                 style = T.s15,
                 color = p.ink2,
                 modifier = Modifier.padding(16.dp),
@@ -576,15 +580,15 @@ fun ApprovalPage(sid: String, aid: String) {
         val decision = rememberApprovalReply(s, a)
         val card = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)
         if (decision.submitted) {
-            ApprovalSubmitted(approvalHead(a), decision, card)
+            ApprovalSubmitted(uiText(approvalHead(a)), decision, card)
             return@PageScaffold
         }
         var denying by androidx.compose.runtime.saveable.rememberSaveable(aid) { mutableStateOf(false) }
         // The command first, then why, scrolling in the card; the buttons and a reason stay above the keyboard.
         DarkCard(Modifier.weight(1f, fill = false).then(card)) {
-            DarkCardHead(approvalHead(a))
+            DarkCardHead(uiText(approvalHead(a)))
             if (io.github.lewin671.remoteagent.core.isSkeleton(a)) {
-                Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
+                Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
                 return@DarkCard
             }
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) { ApprovalContent(a) }
@@ -595,6 +599,7 @@ fun ApprovalPage(sid: String, aid: String) {
 
 @Composable
 fun PlanPage(sid: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -602,11 +607,11 @@ fun PlanPage(sid: String) {
     val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events, s?.agent() ?: DEFAULT_AGENT)
-    PageScaffold("计划", subtitle = s?.let { titleOf(it) }) {
+    PageScaffold(copy(UiMessages.modesPlan()), subtitle = s?.let { titleOf(it) }) {
         val plan = d.plan
         if (s == null || plan == null) {
             Text(
-                io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
+                io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
                 style = T.s15,
                 color = pal.ink2,
                 modifier = Modifier.padding(16.dp),
@@ -615,7 +620,7 @@ fun PlanPage(sid: String) {
         }
         if (io.github.lewin671.remoteagent.core.isSkeleton(plan.text)) {
             Text(
-                io.github.lewin671.remoteagent.core.skeletonMessage,
+                copy(UiMessages.sessionSkeleton()),
                 style = T.s13,
                 color = pal.ink2,
             )
@@ -687,3 +692,10 @@ fun AllModels(onClick: () -> Unit) {
         ArrowText(uiText(UiMessages.modelsAll()), pal.blue, T.s15)
     }
 }
+
+internal fun modeHelpText(mode: Mode, agent: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String): String = copy(when (mode) {
+    Mode.ASK -> UiMessages.modesAskDesc()
+    Mode.AUTO -> UiMessages.modesAutoDesc(agent)
+    Mode.PLAN -> UiMessages.modesPlanDesc()
+    Mode.FULL -> UiMessages.modesSkipAll()
+})

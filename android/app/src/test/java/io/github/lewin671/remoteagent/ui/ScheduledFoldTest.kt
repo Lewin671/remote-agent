@@ -9,7 +9,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ScheduledFoldTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     private fun turn(from: Long, run: String, outcome: TurnOutcome = TurnOutcome.TURN_OUTCOME_COMPLETED, scheduled: Boolean = true): List<Event> {
         val origin = if (scheduled) Origin.newBuilder().setScheduledTaskId("task").setScheduledRunId(run).build() else Origin.getDefaultInstance()
         return listOf(

@@ -73,6 +73,7 @@ import androidx.compose.foundation.layout.BoxScope
  */
 @Composable
 fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, max: Int, videos: Boolean = false): () -> Unit {
+    val copy = uiText()
     val context = LocalContext.current
     val state by remote.state.collectAsState()
     val machine = state.machines[machineId]
@@ -93,7 +94,7 @@ fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, b
         when {
             draft.restoring -> Unit
             blocked != null && !videos -> ImageNotices.show(draft.key, blocked)
-            room == 0 -> ImageNotices.show(draft.key, if (images) "一条消息最多 $max 张" else "一条消息最多 ${io.github.lewin671.remoteagent.core.maxFiles(machine)} 个文件")
+            room == 0 -> ImageNotices.show(draft.key, if (images) copy(UiMessages.attachmentMaxImages(count = max)) else copy(UiMessages.attachmentMaxFiles(count = (io.github.lewin671.remoteagent.core.maxFiles(machine)).toInt())))
             else -> {
                 val type = when {
                     !images -> ActivityResultContracts.PickVisualMedia.VideoOnly
@@ -124,6 +125,7 @@ object ImageNotices {
  */
 @Composable
 fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) {
+    val copy = uiText()
     val p = pal
     val context = LocalContext.current
     var viewing by remember(draft.key) { mutableStateOf<Int?>(null) }
@@ -135,7 +137,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         }
     }
     if (draft.restoring) {
-        Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.ink2)
+        Text(copy(UiMessages.imageAndroidRestoring()), Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.ink2)
         return
     }
     FileStrip(draft, remote, machineId)
@@ -156,7 +158,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                         if (!img.isFile) viewing = index
                         else if (img.state is PendingImage.State.Failed) machineId?.let { draft.upload(remote, img, it, forceFresh = true) }
                     }.semantics {
-                        if (!img.isFile) { contentDescription = "图片 ${index + 1}，共 ${draft.pictures.size} 张"; stateDescription = imageStateWords(img) }
+                        if (!img.isFile) { contentDescription = copy(UiMessages.imagePosition(count = draft.pictures.size, index = (index + 1).toInt())); stateDescription = imageStateWords(img) }
                     }) {
                     if (img.isFile) VideoFrame(img)
                     else img.thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
@@ -171,7 +173,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                         is PendingImage.State.Failed -> Box(
                             Modifier.fillMaxSize().background(Color(0x99000000)),
                             contentAlignment = Alignment.BottomCenter,
-                        ) { Text(if (img.isFile) uiText(UiMessages.commonRetry()) else "失败", color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {}) }
+                        ) { Text(if (img.isFile) uiText(UiMessages.commonRetry()) else copy(UiMessages.attachmentFailed()), color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {}) }
                         PendingImage.State.Ready -> {}
                     }
                   }
@@ -184,7 +186,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                     }) {
                         Box(Modifier.align(Alignment.TopStart).offset(x = 42.dp).size(44.dp)
                             .clickable(role = Role.Button) { draft.remove(img) }
-                            .semantics { contentDescription = if (img.isFile) "移除视频 ${img.fileName}" else "移除图片 ${index + 1}" }, contentAlignment = Alignment.Center) {
+                            .semantics { contentDescription = if (img.isFile) copy(UiMessages.attachmentRemoveVideo(name = img.fileName.toString())) else copy(UiMessages.imageRemoveIndex(index = (index + 1).toInt())) }, contentAlignment = Alignment.Center) {
                             // Keep the mark at its existing inset inside the picture.
                             Box(Modifier.offset(x = (-11).dp, y = 9.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
                                 Ic(Lucide.X, 12.dp, Color.White, contentDescription = null)
@@ -197,7 +199,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         if (draft.pictures.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.heightIn(min = 44.dp).clickable { draft.setOriginal(context, !draft.original, remote) { machineId } }, verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(16.dp).clip(CircleShape).border(if (draft.original) 5.dp else 1.5.dp, if (draft.original) p.blue else p.ink3, CircleShape))
-                Text(" 原图" + if (draft.original) " · 共 ${"%.1f".format(draft.totalBytes / 1024.0 / 1024.0)} MB" else "", style = T.s13, color = p.ink)
+                Text(copy(UiMessages.imageAndroidOriginalMeta()) + if (draft.original) copy(UiMessages.imageAndroidTotalSize(size = ("%.1f".format(draft.totalBytes / 1024.0 / 1024.0)).toString())) else "", style = T.s13, color = p.ink)
             }
             Spacer(Modifier.weight(1f))
             Text("${draft.pictures.size} / $max", style = T.s13, color = p.ink2)
@@ -267,10 +269,11 @@ private object VideoFrames {
 /** Upload again when an unused image expires, including after the page returns from the background. */
 @Composable
 internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?) {
+    val copy = uiText()
     draft.bindRemote(remote)
     val state by remote.state.collectAsState()
     val machine = state.machines[machineId]
-    val fileBlocked = fileDraftBlocked(draft, machine)
+    val fileBlocked = fileDraftBlocked(draft, machine, copy = copy)
     val deadlines = draft.images.map { it.expiresMs }
     LaunchedEffect(draft, machineId, blocked, fileBlocked, deadlines, draft.images.size, draft.restoring) {
         if (!draft.restoring && machineId != null) draft.retarget(remote, machineId)

@@ -85,6 +85,221 @@
     }
   },
   {
+    "key": "queue.android_after_answer",
+    "zh-CN": "回答后继续",
+    "en": "Continue after answering",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_after_approval",
+    "zh-CN": "审批后继续",
+    "en": "Continue after approval",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_after_plan",
+    "zh-CN": "处理计划后继续",
+    "en": "Continue after the plan is handled",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_agent_note",
+    "zh-CN": "等 {agent} 就绪",
+    "en": "Waiting for {agent} to be ready",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。参数为 CLI/工具原名，不翻译。英文初稿待审。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_answer_note",
+    "zh-CN": "等提问回答完",
+    "en": "Waiting for the question to be answered",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_approval_note",
+    "zh-CN": "等审批处理完",
+    "en": "Waiting for the approval to be handled",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_draft",
+    "zh-CN": "终端里有草稿",
+    "en": "Draft in terminal",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_input_note",
+    "zh-CN": "等待输入框就绪",
+    "en": "Waiting for the input box to be ready",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_message",
+    "zh-CN": "一条排队的消息",
+    "en": "A queued message",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_plan_note",
+    "zh-CN": "等计划处理完",
+    "en": "Waiting for the plan to be handled",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_popup_note",
+    "zh-CN": "等终端里的弹窗处理完",
+    "en": "Waiting for the terminal popup to be handled",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_scheduled",
+    "zh-CN": "定时任务",
+    "en": "Scheduled task",
+    "notes": "Android 批次 B：Delivery.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_sending_soon",
+    "zh-CN": "即将发送",
+    "en": "Sending soon",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_turn_note",
+    "zh-CN": "等待本轮结束",
+    "en": "Waiting for this turn to end",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.android_unconfirmed",
+    "zh-CN": "已送到终端但没确认",
+    "en": "Written to the terminal but unconfirmed",
+    "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "queue.cancel_failed",
     "zh-CN": "取消没成功，仍在排队",
     "en": "Could not cancel; still queued",

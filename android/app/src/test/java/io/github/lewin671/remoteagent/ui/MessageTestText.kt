@@ -17,3 +17,8 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
     }
     org.junit.Assert.assertEquals(rendered(expected), rendered(actual))
 }
+
+/** Install only a resource context; previews/tests never start the application engine. */
+fun installSessionMessageContext() {
+    sessionMessageContextForTesting = org.robolectric.RuntimeEnvironment.getApplication()
+}

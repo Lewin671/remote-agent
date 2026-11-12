@@ -434,9 +434,9 @@ private val placeholder = Regex("\\[Image #(\\d+)]")
  * their meaning. Placeholders the message has no image for, e.g. typed as
  * text, stay as written.
  */
-fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.ImageRef>): String {
+fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.ImageRef>): MessageText {
     val known = refs.map { it.cliIndex }.filter { it > 0 }.toSet()
-    if (known.isEmpty()) return text
+    if (known.isEmpty()) return text.messageText()
     var t = text
     while (true) {
         val m = Regex("^\\s*\\[Image #(\\d+)]").find(t) ?: break
@@ -445,7 +445,16 @@ fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.Imag
     }
     val laterRefs = placeholder.findAll(t).any { it.groupValues[1].toIntOrNull() in known }
     val base = if (laterRefs) text else t.trimStart()
-    return placeholder.replace(base) { m -> if (m.groupValues[1].toIntOrNull() in known) "图 ${m.groupValues[1]}" else m.value }
+    val pieces = mutableListOf<MessageText>()
+    var at = 0
+    for (match in placeholder.findAll(base)) {
+        pieces += base.substring(at, match.range.first).messageText()
+        val index = match.groupValues[1].toIntOrNull()
+        pieces += if (index in known) UiMessages.imagePlaceholder(index!!).messageText() else match.value.messageText()
+        at = match.range.last + 1
+    }
+    pieces += base.substring(at).messageText()
+    return pieces.joinMessages("")
 }
 
 /** Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB. */

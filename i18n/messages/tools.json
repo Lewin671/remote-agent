@@ -1,5 +1,164 @@
 [
   {
+    "key": "tools.android_background_command",
+    "zh-CN": "后台命令",
+    "en": "Background command",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_background_edit",
+    "zh-CN": "编辑（后台）",
+    "en": "Edit (background)",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_background_generic",
+    "zh-CN": "工具（后台）",
+    "en": "Tool (background)",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_background_label",
+    "zh-CN": "{name}（后台）",
+    "en": "{name} (background)",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。参数为 CLI/工具原名，不翻译。英文初稿待审。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_background_search",
+    "zh-CN": "搜索（后台）",
+    "en": "Search (background)",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_collapsed",
+    "zh-CN": "已折叠",
+    "en": "Collapsed",
+    "notes": "Android 批次 B：Tools.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_edit",
+    "zh-CN": "编辑",
+    "en": "Edit",
+    "notes": "Android 批次 B：Chat.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_processing",
+    "zh-CN": "处理中",
+    "en": "Processing",
+    "notes": "Android 批次 B：Tools.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_search",
+    "zh-CN": "搜索",
+    "en": "Search",
+    "notes": "Android 会话排队/工具状态 helper 的现有显示原句，返回延迟消息，不以文字判断状态。无变量。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_sync_suffix",
+    "zh-CN": " · 等待同步",
+    "en": " · Waiting for sync",
+    "notes": "Android 批次 B：Tools.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.android_unconfirmed",
+    "zh-CN": "状态待确认",
+    "en": "Status unconfirmed",
+    "notes": "Android 批次 B：Tools.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "tools.background",
     "zh-CN": "后台运行",
     "en": "Running in background",

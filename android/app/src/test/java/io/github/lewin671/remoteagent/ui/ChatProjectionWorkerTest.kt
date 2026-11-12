@@ -8,7 +8,10 @@ import kotlinx.coroutines.test.*
 import org.junit.Assert.*
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ChatProjectionWorkerTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     private val user = Event.newBuilder().setSeq(1).setUserMessage(UserMessage.newBuilder().setText("hello")).build()
     private val reply = Event.newBuilder().setSeq(2).setAgentMessage(AgentMessage.newBuilder().setText("reply")).build()
 

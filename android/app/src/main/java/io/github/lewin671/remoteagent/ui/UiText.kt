@@ -29,3 +29,20 @@ fun uiText(text: io.github.lewin671.remoteagent.core.MessageText): String {
     val locale = LocalMessageLocale.current
     return text.resolve { resolveUiMessage(context, it, locale) }
 }
+
+/** Capture display language before entering callbacks or the chat projection worker. */
+@Composable
+fun uiText(): (UiMessage) -> String {
+    val context = LocalContext.current
+    val locale = LocalMessageLocale.current
+    return androidx.compose.runtime.remember(context, locale) {
+        { message -> resolveUiMessage(context, message, locale) }
+    }
+}
+
+// Resource-only JVM fixtures must not create RaApp: that also enables asynchronous disk work.
+internal var sessionMessageContextForTesting: android.content.Context? = null
+
+/** Background UI feedback uses the installed app's current language (stage 0: Chinese). */
+internal fun sessionText(message: UiMessage): String =
+    resolveUiMessage(sessionMessageContextForTesting ?: io.github.lewin671.remoteagent.RaApp.instance, message)

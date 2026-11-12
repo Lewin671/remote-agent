@@ -24,6 +24,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class LibraryVideoStripTest {
+    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
     @get:Rule val ui = createComposeRule()
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
 
@@ -59,6 +60,6 @@ class LibraryVideoStripTest {
         ui.onNodeWithContentDescription("移除文件 clip.mp4").assertDoesNotExist()
         // Only a video: no 原图 and no image count.
         ui.onNodeWithText("原图", substring = true).assertDoesNotExist()
-        ui.onNodeWithText(FILES_AS_THEY_ARE).assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(FILES_AS_THEY_ARE)).assertIsDisplayed()
     }
 }

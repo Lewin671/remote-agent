@@ -371,19 +371,19 @@ fun sentMessage(s: SessionView, events: List<Event>): Boolean =
  * computer is reachable and the session is read, so OFFLINE and LOADING do not come here; they read
  * as not up yet.
  */
-fun forkBlocked(status: Status, running: Boolean, sent: Boolean): String? =
+fun forkBlocked(status: Status, running: Boolean, sent: Boolean): UiMessage? =
     when (status) {
         Status.RUNNING,
         Status.APPROVAL,
-        Status.QUESTION -> "这一轮结束后可用"
+        Status.QUESTION -> UiMessages.sessionForkAfterTurn()
         Status.PLAN,
-        Status.POPUP -> "处理完等待事项后可用"
+        Status.POPUP -> UiMessages.sessionForkAfterPending()
         Status.STARTING,
         Status.LOADING,
-        Status.OFFLINE -> "启动完成后可用"
-        Status.UNLINKED -> "连上服务器后可用"
-        Status.IDLE -> if (running) "这一轮结束后可用" else if (!sent) "发过消息后可用" else null
-        Status.EXITED -> if (!sent) "发过消息后可用" else null
+        Status.OFFLINE -> UiMessages.sessionForkAfterStart()
+        Status.UNLINKED -> UiMessages.sessionAndroidForkConnected()
+        Status.IDLE -> if (running) UiMessages.sessionForkAfterTurn() else if (!sent) UiMessages.sessionForkAfterMessage() else null
+        Status.EXITED -> if (!sent) UiMessages.sessionForkAfterMessage() else null
     }
 
 /** The session a fork made, or null when the answer names none. */
@@ -718,19 +718,12 @@ fun wentToBackground(c: io.github.lewin671.remoteagent.proto.ToolCall): Boolean 
         c.background != io.github.lewin671.remoteagent.proto.ToolBackground.UNRECOGNIZED
 
 /** Why a call is in the background and what that means, as the web client says it. */
-fun backgroundNote(b: io.github.lewin671.remoteagent.proto.ToolBackground): String {
-    val rest = "它什么时候结束这里不知道，请到终端确认。"
-    return when (b) {
-        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED ->
-            "按模型的要求在后台运行；"
-        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT ->
-            "运行超时后被移到后台继续运行；"
-        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_BY_USER ->
-            "在电脑终端里被移到后台（Ctrl+B）；"
-        io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING ->
-            "这一轮结束时它仍在运行；"
-        else -> "调用已返回，命令转到了后台；"
-    } + rest
+fun backgroundNote(b: io.github.lewin671.remoteagent.proto.ToolBackground): UiMessage = when (b) {
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED -> UiMessages.toolsBackgroundAgent()
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT -> UiMessages.toolsBackgroundTimeout()
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_BY_USER -> UiMessages.toolsBackgroundTerminal()
+    io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING -> UiMessages.toolsBackgroundTurn()
+    else -> UiMessages.toolsBackgroundReturned()
 }
 
 /** A background call's title: 后台命令 for a shell call, else the tool's name with （后台）. */
@@ -738,13 +731,14 @@ fun backgroundTitle(
     kind: io.github.lewin671.remoteagent.proto.ToolKind,
     itemType: String,
     agent: Agent,
-): String =
-    if (
-        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND ||
-            kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_UNSPECIFIED
-    )
-        "后台命令"
-    else "${toolLabel(kind, itemType, agent)}（后台）"
+): MessageText = when {
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND || kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_UNSPECIFIED -> UiMessages.toolsAndroidBackgroundCommand()
+    agentInfo(agent).toolLabelFromItemType && itemType.isNotEmpty() -> UiMessages.toolsAndroidBackgroundLabel(itemType)
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_FILE_CHANGE -> UiMessages.toolsAndroidBackgroundEdit()
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_WEB_SEARCH -> UiMessages.toolsAndroidBackgroundSearch()
+    kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_MCP -> UiMessages.toolsAndroidBackgroundLabel("MCP")
+    else -> UiMessages.toolsAndroidBackgroundGeneric()
+}.messageText()
 
 /**
  * A tool whose end is not known (architecture §13, 工具执行反馈): its call went to the background, or the
@@ -1240,28 +1234,28 @@ fun toolLabel(
     kind: io.github.lewin671.remoteagent.proto.ToolKind,
     itemType: String,
     agent: Agent,
-): String =
+): MessageText =
     when {
-        agentInfo(agent).toolLabelFromItemType && itemType.isNotEmpty() -> itemType
-        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND -> "命令"
-        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_FILE_CHANGE -> "编辑"
-        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_MCP -> "MCP"
-        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_WEB_SEARCH -> "搜索"
-        else -> "工具"
+        agentInfo(agent).toolLabelFromItemType && itemType.isNotEmpty() -> itemType.messageText()
+        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND -> UiMessages.toolsCommand().messageText()
+        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_FILE_CHANGE -> UiMessages.toolsAndroidEdit().messageText()
+        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_MCP -> "MCP".messageText()
+        kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_WEB_SEARCH -> UiMessages.toolsAndroidSearch().messageText()
+        else -> UiMessages.toolsTool().messageText()
     }
 
 fun eventTime(e: Event): Long =
     if (e.hasTime()) e.time.seconds * 1000 + e.time.nanos / 1_000_000 else 0
 
-fun decisionText(d: ApprovalDecision): String =
+fun decisionText(d: ApprovalDecision): MessageText =
     when (d) {
-        ApprovalDecision.APPROVAL_DECISION_ALLOW -> "已允许"
-        ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS -> "已允许"
-        ApprovalDecision.APPROVAL_DECISION_DENY -> "已拒绝"
-        ApprovalDecision.APPROVAL_DECISION_TIMEOUT -> "超时，已拒绝"
-        ApprovalDecision.APPROVAL_DECISION_CANCELED -> "已取消"
-        ApprovalDecision.APPROVAL_DECISION_TERMINAL -> "已在终端处理"
-        else -> ""
+        ApprovalDecision.APPROVAL_DECISION_ALLOW -> UiMessages.approvalAllowed().messageText()
+        ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS -> UiMessages.approvalAllowed().messageText()
+        ApprovalDecision.APPROVAL_DECISION_DENY -> UiMessages.approvalDenied().messageText()
+        ApprovalDecision.APPROVAL_DECISION_TIMEOUT -> UiMessages.approvalTimedOut().messageText()
+        ApprovalDecision.APPROVAL_DECISION_CANCELED -> UiMessages.queueCanceled().messageText()
+        ApprovalDecision.APPROVAL_DECISION_TERMINAL -> UiMessages.approvalInTerminal().messageText()
+        else -> "".messageText()
     }
 
 /** Splits a "(Recommended)" marker off an option label. */
@@ -1340,15 +1334,15 @@ fun minutesLeft(deadlineMs: Long, now: Long = System.currentTimeMillis()): Long 
 // --- the message queue ---
 
 /** Why a message was not submitted (InputState.reason), in words. */
-fun failureText(reason: String, agent: Agent): String =
+fun failureText(reason: String, agent: Agent): UiMessage =
     when (reason) {
-        "image_not_recognized" -> "${agentName(agent)} 没认出图片"
-        "input_changed" -> "无法确认终端输入框的内容"
-        "timeout" -> "等终端就绪超时"
-        "restarted" -> "电脑上的 remote-agent 写入时重启了"
-        "write_failed" -> "写入终端失败"
-        "exited" -> "会话已结束"
-        else -> "没有写进终端"
+        "image_not_recognized" -> UiMessages.composerImagesUnrecognized(agentName(agent))
+        "input_changed" -> UiMessages.composerInputUnconfirmed()
+        "timeout" -> UiMessages.composerReadyTimeout()
+        "restarted" -> UiMessages.composerComputerRestarted()
+        "write_failed" -> UiMessages.composerWriteFailed()
+        "exited" -> UiMessages.sessionEnded()
+        else -> UiMessages.composerNotWritten()
     }
 
 /** Messages the daemon accepted and has not written yet, in the order it accepted them. */
@@ -1391,19 +1385,19 @@ fun pendingInputs(d: Derived): List<PendingInput> =
     }
 
 /** CLI's native second approval option, translated only when its form is known. */
-fun approvalAlwaysText(message: String): String {
+fun approvalAlwaysText(message: String): MessageText {
     Regex("(?:Yes, and )?don't ask again for commands that start with [`]?(.+?)[`]?$")
         .matchEntire(message)
         ?.let {
-            return "`${it.groupValues[1].trim('`')}` 开头的命令以后不再问"
+            return UiMessages.approvalAndroidPrefix(it.groupValues[1].trim('`')).messageText()
         }
     Regex("(?:Yes, and )?always allow access to (.+?) from this project$")
         .matchEntire(message)
         ?.let {
-            return "本项目访问 ${it.groupValues[1]} 以后不再问"
+            return UiMessages.approvalAlwaysDirectory(it.groupValues[1]).messageText()
         }
-    if (message.contains("accept edits", ignoreCase = true)) return "本会话自动接受编辑"
-    return message
+    if (message.contains("accept edits", ignoreCase = true)) return UiMessages.approvalAutoEdits().messageText()
+    return message.messageText()
 }
 
 /**
@@ -1411,22 +1405,22 @@ fun approvalAlwaysText(message: String): String {
  * one for the queue page. The daemon's own reason (Session.input_wait) comes first; else the
  * session's state says it.
  */
-data class QueueWhy(val short: String, val long: String)
+data class QueueWhy(val short: UiMessage, val long: UiMessage)
 
 fun queueWhy(s: SessionView, status: Status): QueueWhy =
     when (s.info?.inputWait) {
-        "draft" -> QueueWhy("终端里有草稿", "终端里有没发出的草稿，发完或清掉后再发")
-        "popup" -> QueueWhy("就绪后发送", "等终端里的弹窗处理完")
-        "unrecognized" -> QueueWhy("已暂停", "认不出输入框，已暂停")
+        "draft" -> QueueWhy(UiMessages.queueAndroidDraft(), UiMessages.queueTerminalDraft())
+        "popup" -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidPopupNote())
+        "unrecognized" -> QueueWhy(UiMessages.queuePaused(), UiMessages.queueUnrecognized())
         else ->
             when (status) {
-                Status.QUESTION -> QueueWhy("回答后继续", "等提问回答完")
-                Status.APPROVAL -> QueueWhy("审批后继续", "等审批处理完")
-                Status.PLAN -> QueueWhy("处理计划后继续", "等计划处理完")
-                Status.POPUP -> QueueWhy("就绪后发送", "等终端里的弹窗处理完")
-                Status.RUNNING -> QueueWhy("本轮结束后发送", "等待本轮结束")
-                Status.STARTING -> QueueWhy("就绪后发送", "等 ${agentName(s.agent())} 就绪")
-                else -> QueueWhy("即将发送", "等待输入框就绪")
+                Status.QUESTION -> QueueWhy(UiMessages.queueAndroidAfterAnswer(), UiMessages.queueAndroidAnswerNote())
+                Status.APPROVAL -> QueueWhy(UiMessages.queueAndroidAfterApproval(), UiMessages.queueAndroidApprovalNote())
+                Status.PLAN -> QueueWhy(UiMessages.queueAndroidAfterPlan(), UiMessages.queueAndroidPlanNote())
+                Status.POPUP -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidPopupNote())
+                Status.RUNNING -> QueueWhy(UiMessages.queueAfterCurrentTurn(), UiMessages.queueAndroidTurnNote())
+                Status.STARTING -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidAgentNote(agentName(s.agent())))
+                else -> QueueWhy(UiMessages.queueAndroidSendingSoon(), UiMessages.queueAndroidInputNote())
             }
     }
 
