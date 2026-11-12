@@ -15,6 +15,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/tail"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -51,6 +52,8 @@ func (w *idWindow) Add(id string) {
 // to drop duplicates and to pair calls; Replay and Restore rebuild that
 // after a restart.
 type Parser struct {
+	usage *pb.TokenUsage // last token counters, also for quota-only reports
+
 	questions idWindow // call IDs of request_user_input calls
 	// userImages are the images of the user message just recorded as a
 	// response item; the UserMessage item that follows takes them.
@@ -106,6 +109,9 @@ func (p *Parser) Reported(*pb.Event) bool { return false }
 
 // Replay restores what the parser needs from an event logged earlier.
 func (p *Parser) Replay(e *pb.Event) {
+	if u := e.GetTokenUsage(); u != nil {
+		p.usage = proto.CloneOf(u)
+	}
 	if q := e.GetQuestionAsked(); q != nil {
 		p.RememberQuestion(q.QuestionId)
 	}
@@ -263,7 +269,11 @@ func (p *Parser) eventMsg(raw json.RawMessage) ([]*pb.Event, error) {
 			Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: m.Reason, DurationMs: m.DurationMS,
 		}}})...), nil
 	case "token_count":
-		return tokenCount(raw)
+		evs, err := tokenCount(raw, p.usage)
+		if err == nil && len(evs) > 0 {
+			p.usage = proto.CloneOf(evs[0].GetTokenUsage())
+		}
+		return evs, err
 	case "item_completed":
 		evs, err := p.itemCompleted(raw)
 		for _, e := range evs {
@@ -300,7 +310,7 @@ func (r *rateLimit) pb() *pb.RateLimit {
 	return &pb.RateLimit{UsedPercent: r.UsedPercent, WindowMinutes: r.WindowMinutes, ResetsAt: r.ResetsAt}
 }
 
-func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
+func tokenCount(raw json.RawMessage, previous *pb.TokenUsage) ([]*pb.Event, error) {
 	var m struct {
 		Info *struct {
 			Total   usage `json:"total_token_usage"`
@@ -317,17 +327,20 @@ func tokenCount(raw json.RawMessage) ([]*pb.Event, error) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
 	}
-	if m.Info == nil {
+	r := m.RateLimits
+	accountLimits := r != nil && (r.LimitID == "" || r.LimitID == "codex") && (r.Primary != nil || r.Secondary != nil)
+	if m.Info == nil && !accountLimits {
 		return nil, nil
 	}
-	u := &pb.TokenUsage{
-		InputTokens:           m.Info.Total.InputTokens,
-		CachedInputTokens:     m.Info.Total.CachedInputTokens,
-		OutputTokens:          m.Info.Total.OutputTokens,
-		ReasoningOutputTokens: m.Info.Total.ReasoningOutputTokens,
-		TotalTokens:           m.Info.Total.TotalTokens,
-		LastTotalTokens:       m.Info.Last.TotalTokens,
-		ContextWindow:         m.Info.Context,
+	u := &pb.TokenUsage{}
+	if m.Info != nil {
+		u.InputTokens, u.CachedInputTokens = m.Info.Total.InputTokens, m.Info.Total.CachedInputTokens
+		u.OutputTokens, u.ReasoningOutputTokens = m.Info.Total.OutputTokens, m.Info.Total.ReasoningOutputTokens
+		u.TotalTokens, u.LastTotalTokens, u.ContextWindow = m.Info.Total.TotalTokens, m.Info.Last.TotalTokens, m.Info.Context
+	} else if previous != nil {
+		u = proto.CloneOf(previous)
+		// Token counters are unchanged; limits must come from this report.
+		u.PrimaryLimit, u.SecondaryLimit, u.PlanType = nil, nil, ""
 	}
 	// A rollout also carries other limits (base_model_inference, shown as
 	// gpt-reserve) with their own windows; only "codex" is the account's

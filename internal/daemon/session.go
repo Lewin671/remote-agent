@@ -2391,6 +2391,8 @@ func (s *session) recordStatusLine(report *agent.StatusLine, now time.Time) {
 		if s.usage != nil {
 			u = proto.CloneOf(s.usage)
 		}
+		// A local context update is not a new account quota observation.
+		u.PrimaryLimit, u.SecondaryLimit, u.PlanType = nil, nil, ""
 		u.ContextWindow = report.ContextWindow
 		evs = append(evs, &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: u}})
 	}

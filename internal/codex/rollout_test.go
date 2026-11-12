@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 	"unsafe"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -217,7 +218,7 @@ func TestTokenCountLimitID(t *testing.T) {
 		{`{"primary":{"used_percent":21,"window_minutes":10080,"resets_at":1791949426},"plan_type":"prolite"}`, true},
 		{`{"limit_id":"base_model_inference","limit_name":"gpt-reserve","primary":{"used_percent":0,"window_minutes":10080,"resets_at":1792140878},"plan_type":"prolite"}`, false},
 	} {
-		evs, err := tokenCount([]byte(`{` + info + `,"rate_limits":` + c.limits + `}`))
+		evs, err := tokenCount([]byte(`{`+info+`,"rate_limits":`+c.limits+`}`), nil)
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("%s: %v %v", c.limits, evs, err)
 		}
@@ -227,6 +228,41 @@ func TestTokenCountLimitID(t *testing.T) {
 		}
 		if u.TotalTokens != 1 {
 			t.Errorf("%s: token usage lost", c.limits)
+		}
+	}
+}
+
+// A provider may report limits before token accounting is available. Keep
+// those reports without resetting context/token counters or borrowing limits
+// from a different pool. Replay must restore the same parser state.
+func TestQuotaOnlyTokenCount(t *testing.T) {
+	for _, replay := range []bool{false, true} {
+		p := NewParser()
+		seed := &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: &pb.TokenUsage{TotalTokens: 123, ContextWindow: 760000}}}
+		if replay {
+			p.Replay(seed)
+		} else {
+			_, err := p.Parse([]byte(`{"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":123},"model_context_window":760000}}}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		evs, err := p.Parse([]byte(`{"timestamp":"2026-11-12T08:16:00Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":{"limit_id":"codex","primary":{"used_percent":29,"window_minutes":10080},"plan_type":"prolite"}}}`))
+		if err != nil || len(evs) != 1 {
+			t.Fatalf("quota-only report: %v %v", evs, err)
+		}
+		u := evs[0].GetTokenUsage()
+		if u.TotalTokens != 123 || u.ContextWindow != 760000 || u.PrimaryLimit.GetWindowMinutes() != 10080 || u.SecondaryLimit != nil || u.PlanType != "prolite" {
+			t.Fatalf("incorrect quota-only projection: %v", u)
+		}
+		if evs[0].Time.AsTime().Format(time.RFC3339) != "2026-11-12T08:16:00Z" {
+			t.Fatal("lost provider timestamp")
+		}
+		for _, limits := range []string{`null`, `{"limit_id":"base_model_inference","primary":{"used_percent":99}}`} {
+			evs, err = p.Parse([]byte(`{"type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":` + limits + `}}`))
+			if err != nil || len(evs) != 0 {
+				t.Fatalf("non-account report emitted: %v %v", evs, err)
+			}
 		}
 	}
 }
