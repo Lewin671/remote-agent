@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.animation.core.animateFloat
 
 import androidx.compose.foundation.background
@@ -132,14 +133,14 @@ fun PageBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(Modifier.widthIn(min = 44.dp)) { if (onBack != null) GlassButton(Lucide.ChevronLeft, "返回", onBack) }
+        Box(Modifier.widthIn(min = 44.dp)) { if (onBack != null) GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), onBack) }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             if (title.isNotEmpty()) Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) Text(subtitle, style = T.s12, color = subtitleColor ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(Modifier.widthIn(min = 44.dp), contentAlignment = Alignment.CenterEnd) {
             if (right != null) right()
-            else if (more != null) GlassButton(Lucide.Ellipsis, "更多", more)
+            else if (more != null) GlassButton(Lucide.Ellipsis, uiText(UiMessages.commonAndroidMore()), more)
         }
     }
 }
@@ -285,7 +286,7 @@ fun GLabel(text: String, action: String? = null, onAction: (() -> Unit)? = null)
 fun SheetHead(title: String, action: String? = null, onAction: (() -> Unit)? = null, onBack: (() -> Unit)? = null) {
     val p = pal
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Ic(Lucide.ChevronLeft, 22.dp, p.blue, contentDescription = "返回") }
+        if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Ic(Lucide.ChevronLeft, 22.dp, p.blue, contentDescription = uiText(UiMessages.commonBack())) }
         Text(title, style = T.s17b, color = p.ink, modifier = Modifier.weight(1f))
         // As wide as its words: 完成 and 取消 fit in 44 dp, 以后再说 does not.
         if (action != null) Box(Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.s15, color = p.blue, maxLines = 1) }
@@ -388,7 +389,7 @@ fun Alert(title: String, text: String, confirm: String, danger: Boolean = false,
         Text(title, style = T.s17b, color = pal.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp))
         Text(text, style = T.s15, color = pal.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp))
         Btns {
-            PillButton("取消", onDismiss, Modifier.weight(1f))
+            PillButton(uiText(UiMessages.commonCancel()), onDismiss, Modifier.weight(1f))
             PillButton(confirm, { onDismiss(); onConfirm() }, Modifier.weight(1f), if (danger) ButtonKind.DANGER else ButtonKind.INK)
         }
     }
@@ -499,7 +500,7 @@ fun FieldBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> 
 internal val WIDE_WINDOW_MIN_WIDTH = 840.dp
 
 @Composable
-fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, dismiss: String = "取消", text: String? = null, onConfirm: (String) -> Unit) {
+fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, dismiss: String = uiText(UiMessages.commonCancel()), text: String? = null, onConfirm: (String) -> Unit) {
     var value by remember(initial) { androidx.compose.runtime.mutableStateOf(initial) }
     DialogCard(onDismiss) {
         Text(title, style = T.s17b, color = pal.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp))

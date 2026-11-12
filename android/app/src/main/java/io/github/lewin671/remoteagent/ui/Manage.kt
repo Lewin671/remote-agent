@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.listProjectName
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.UiMessage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
@@ -134,9 +137,9 @@ object PrefsChanges {
 }
 
 /** Why the preferences cannot be changed now, or null when they can. */
-fun prefsBlocked(state: RemoteState): String? = when {
-    state.conn != ConnState.ONLINE -> "连上服务器后才能修改"
-    state.prefs == null -> "正在读取项目列表…"
+fun prefsBlocked(state: RemoteState): UiMessage? = when {
+    state.conn != ConnState.ONLINE -> UiMessages.projectsConnectToEdit()
+    state.prefs == null -> UiMessages.projectsLoading()
     else -> null
 }
 
@@ -168,13 +171,13 @@ fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel:
         ) {
             ProjectAvatar(pr.key, 28)
             Column(Modifier.weight(1f)) {
-                Text(pr.name, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(projectDetail(pr), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(uiText(listProjectName(pr.key)), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(uiText(projectDetail(pr)), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 when (change) {
-                    PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, "正在同步…", p.ink2, T.s12)
+                    PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, uiText(UiMessages.projectsAndroidSyncing()), p.ink2, T.s12)
                     is PrefsChanges.State.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("没能保存，列表保持原样：${change.error}", style = T.s12, color = p.red, modifier = Modifier.weight(1f, fill = false))
-                        Text(" · 重试", style = T.s12b, color = p.blue, modifier = Modifier.clickable(enabled = prefsBlocked(state) == null) { PrefsChanges.run(remote, change.op) })
+                        Text(uiText(UiMessages.projectsSaveFailed(reason = change.error)), style = T.s12, color = p.red, modifier = Modifier.weight(1f, fill = false))
+                        Text(" · " + uiText(UiMessages.commonRetry()), style = T.s12b, color = p.blue, modifier = Modifier.clickable(enabled = prefsBlocked(state) == null) { PrefsChanges.run(remote, change.op) })
                     }
                     null -> {}
                 }
@@ -213,18 +216,18 @@ fun ProjectList(
     }
     @Composable
     fun Title(text: String) = Text(text, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 6.dp))
-    if (g.pinned.size + g.others.size > 8) FilterField(search, { search = it }, Modifier.padding(bottom = 12.dp), placeholder = "搜索项目")
+    if (g.pinned.size + g.others.size > 8) FilterField(search, { search = it }, Modifier.padding(bottom = 12.dp), placeholder = uiText(UiMessages.projectsSearch()))
     if (q.isEmpty() && first != null) Card(listOf(first))
-    if (titled) Title("常用")
+    if (titled) Title(uiText(UiMessages.projectsPinned()))
     if (pinned.isNotEmpty()) Card(pinned.map { pr -> @Composable { row(pr) } })
-    if (titled) Title("其他")
+    if (titled) Title(uiText(UiMessages.projectsOthers()))
     if (others.isNotEmpty()) Card(others.map { pr -> @Composable { row(pr) } })
-    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint("没有名字或路径里有「$q」的项目", Modifier.padding(bottom = 12.dp))
+    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint(uiText(UiMessages.projectsSearchEmpty(query = q)), Modifier.padding(bottom = 12.dp))
     Card(listOfNotNull(
         @Composable {
             Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 20.dp, p.blue) }
-                Text("新项目…", style = T.s17, color = p.blue)
+                Text(uiText(UiMessages.projectsNew()), style = T.s17, color = p.blue)
             }
         },
         foot,
@@ -236,7 +239,7 @@ fun ProjectList(
 fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, onRemoved: () -> Unit = {}) {
     val remote = LocalRemote.current
     Confirm(
-        "移除 ${projectName(key)}？", "只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。", "移除", danger = true,
+        uiText(UiMessages.projectsRemoveTitle(name = uiText(listProjectName(key)))), uiText(UiMessages.projectsRemoveExplanation()), uiText(UiMessages.commonRemove()), danger = true,
         onDismiss = onDismiss,
     ) {
         onDismiss()
@@ -264,18 +267,18 @@ fun ManageProjectsScreen() {
         if (seenRev != null && rev != null && rev != seenRev && PrefsChanges.states.isEmpty()) elsewhere = true
         seenRev = rev
     }
-    PageScaffold("项目管理") {
+    PageScaffold(uiText(UiMessages.projectsManage())) {
         FormColumn(Modifier.weight(1f).verticalScrollFaded()) {
-            if (elsewhere) Notice("项目列表已在另一客户端更新", Modifier.padding(vertical = 4.dp), action = "知道了", onAction = { elsewhere = false })
+            if (elsewhere) Notice(uiText(UiMessages.projectsChangedElsewhere()), Modifier.padding(vertical = 4.dp), action = uiText(UiMessages.commonGotIt()), onAction = { elsewhere = false })
             ProjectList(state, onNew = { adding = true }, card = p.gbg) { pr ->
                 // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.
-                ProjectRow(state, pr, onClick = { HomeScopes.choose(context, remote.account.localKey, HomeScope.Of(pr.key)); nav.home() }, clickLabel = "在主页看这个项目") {
+                ProjectRow(state, pr, onClick = { HomeScopes.choose(context, remote.account.localKey, HomeScope.Of(pr.key)); nav.home() }, clickLabel = uiText(UiMessages.projectsAndroidViewHome())) {
                     Box(Modifier.size(44.dp).clickable(enabled = PrefsChanges.states[pr.key] != PrefsChanges.State.Saving) { menu = pr }, contentAlignment = Alignment.Center) {
-                        Ic(Lucide.Ellipsis, 20.dp, p.blue, contentDescription = "管理 ${pr.name}")
+                        Ic(Lucide.Ellipsis, 20.dp, p.blue, contentDescription = uiText(UiMessages.projectsManageNamed(name = pr.name)))
                     }
                 }
             }
-            Hint("移除只是不再列出这个项目，会话和电脑上的目录都不动。", Modifier.padding(top = 4.dp, bottom = 16.dp))
+            Hint(uiText(UiMessages.projectsRemoveNote()), Modifier.padding(top = 4.dp, bottom = 16.dp))
         }
     }
     menu?.let { pr ->
@@ -283,8 +286,8 @@ fun ManageProjectsScreen() {
         ActionSheet(
             info = { SheetInfo(pr.name, shortPath(pr.key), mono = true) },
             groups = listOf(
-                listOf(SheetAction(if (pinned) "取消常用" else "设为常用", enabled = blocked == null, note = blocked.orEmpty()) { PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key)) }),
-                listOf(SheetAction("移除项目…", danger = true, enabled = blocked == null) { removing = pr.key }),
+                listOf(SheetAction(if (pinned) uiText(UiMessages.projectsUnpin()) else uiText(UiMessages.projectsPin()), enabled = blocked == null, note = blocked?.let { uiText(it) }.orEmpty()) { PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key)) }),
+                listOf(SheetAction(uiText(UiMessages.projectsRemoveAction()), danger = true, enabled = blocked == null) { removing = pr.key }),
             ),
             onDismiss = { menu = null },
         )

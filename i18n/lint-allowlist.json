@@ -35,8 +35,68 @@
     "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
   },
   {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt",
+    "literal": "model",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Home.kt",
+    "literal": "running",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Home.kt",
+    "literal": "timeline-tail",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/NewTaskModels.kt",
+    "literal": "new-model",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/NewTaskModels.kt",
+    "literal": "new-agent",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/NewTaskModels.kt",
     "literal": "standard",
     "reason": "上下文窗口选择的稳定内部代码，用于选择标准窗口；显示标签独立翻译，不以文案判断状态。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt",
+    "literal": "mon",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt",
+    "literal": "tue",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt",
+    "literal": "wed",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt",
+    "literal": "thu",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt",
+    "literal": "fri",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Timeline.kt",
+    "literal": "sat",
+    "reason": "稳定的内部选项/列表键、测试定位标记或星期代码；仅用于身份/状态，不向用户显示。词法扫描器在移除邻近文案后把它识别为显示文字。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt",
+    "literal": "machine",
+    "reason": "项目设置子页的稳定路由代码，用于选择电脑页面，不显示给用户；提取附近文案后被词法扫描器误判。"
   }
 ]

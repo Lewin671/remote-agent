@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,23 +76,26 @@ fun SessionRow(
     val p = pal
     val nav = LocalNav.current
     val row = sessionRowText(state, s, meta, t)
+    val rowMeta = uiText(row.meta)
+    val spoken = uiText(row.spoken)
+    val preview = uiText(row.preview)
     val schedules by LocalRemote.current.schedules.state.collectAsState()
     val timed = schedules.values.flatMap { it.tasks }.filter {
         scheduleSupported(state.machines[it.machine]) && it.target.text("type") == "resume_session" &&
             it.target.text("session") == s.id && taskGroup(it) != TaskGroup.ENDED
     }
     val third = listOf(
-        row.meta,
+        rowMeta,
         when {
-            timed.size > 1 -> "定时 ${timed.size} 个任务"
-            timed.size == 1 -> "定时 " + scheduleFrequency(timed.single().trigger)
+            timed.size > 1 -> uiText(UiMessages.homeScheduledTasks(count = timed.size))
+            timed.size == 1 -> uiText(UiMessages.homeScheduledFrequency(scheduleFrequency(timed.single().trigger)))
             else -> ""
         },
     ).filter { it.isNotEmpty() }.joinToString(" · ")
     Row(
         Modifier.fillMaxWidth().background(if (selected) p.fill else Color.Transparent)
             .clickable(role = Role.Button) { nav.session(s.id) }
-            .semantics(mergeDescendants = true) { contentDescription = listOf(row.spoken, third.takeIf { it != row.meta }.orEmpty()).filter { it.isNotEmpty() }.joinToString("，") }
+            .semantics(mergeDescendants = true) { contentDescription = listOf(spoken, third.takeIf { it != rowMeta }.orEmpty()).filter { it.isNotEmpty() }.joinToString("，") }
             .padding(start = 24.dp),
     ) {
         // Running, waiting, unread and idle change shape: the one fades into the other (§4 动效, 快).
@@ -101,9 +105,9 @@ fun SessionRow(
         Column(
             Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).padding(top = 13.dp, bottom = 13.dp, end = 24.dp),
         ) {
-            TitleAndTime(row.title, row.time, T.s17b)
+            TitleAndTime(uiText(row.title), uiText(row.time), T.s17b)
             Text(
-                row.status.text + if (row.preview.isNotEmpty()) " · ${row.preview}" else "",
+                listOf(uiText(io.github.lewin671.remoteagent.core.listStatus(row.status)), preview).filter { it.isNotEmpty() }.joinToString(" · "),
                 style = T.s15, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp),
             )
             if (third.isNotEmpty() || row.agent != null) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -127,14 +131,15 @@ fun EndedRow(s: SessionView, t: Long, project: Boolean = false, selected: Boolea
     val p = pal
     val nav = LocalNav.current
     val row = endedRowText(s, project, t)
+    val spoken = uiText(row.spoken)
     Row(
         Modifier.fillMaxWidth().background(if (selected) p.fill else Color.Transparent)
             .clickable(role = Role.Button) { nav.session(s.id) }
-            .semantics(mergeDescendants = true) { contentDescription = row.spoken }
+            .semantics(mergeDescendants = true) { contentDescription = spoken }
             .padding(start = 24.dp),
     ) {
         Box(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).heightIn(min = 48.dp).padding(top = 12.dp, bottom = 12.dp, end = 24.dp)) {
-            TitleAndTime(row.title, row.right, T.s17)
+            TitleAndTime(uiText(row.title), uiText(row.right), T.s17)
         }
     }
 }
@@ -173,10 +178,13 @@ fun groupShape(first: Boolean, last: Boolean, radius: Int = 24): RoundedCornerSh
  */
 @Composable
 fun PendingRow(row: PendingRowText, first: Boolean, last: Boolean, onClick: () -> Unit) {
+    val spoken = uiText(row.spoken)
+    val kind = uiText(row.kind)
+    val summary = uiText(row.summary)
     val p = pal
     Row(
         Modifier.padding(horizontal = 16.dp).padding(top = if (first) 10.dp else 0.dp).fillMaxWidth().clip(groupShape(first, last)).background(p.gbg)
-            .clickable(role = Role.Button, onClick = onClick).semantics(mergeDescendants = true) { contentDescription = row.spoken }
+            .clickable(role = Role.Button, onClick = onClick).semantics(mergeDescendants = true) { contentDescription = spoken }
             .then(if (first) Modifier else Modifier.topLine(p.sep, start = 39.dp))
             .padding(start = 18.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -184,11 +192,11 @@ fun PendingRow(row: PendingRowText, first: Boolean, last: Boolean, onClick: () -
     ) {
         StatusMark(MarkKind.WAITING)
         Column(Modifier.weight(1f)) {
-            Text(row.title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(uiText(row.title), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 buildAnnotatedString {
-                    withStyle(SpanStyle(color = p.orangeInk, fontWeight = platformWeight(FontWeight.SemiBold))) { append(row.kind) }
-                    if (row.summary.isNotEmpty()) append(" · ${row.summary}")
+                    withStyle(SpanStyle(color = p.orangeInk, fontWeight = platformWeight(FontWeight.SemiBold))) { append(kind) }
+                    if (row.summary.isNotEmpty()) append(" · $summary")
                 },
                 style = T.s15, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp),
             )

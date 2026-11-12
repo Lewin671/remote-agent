@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.listProjectName
+import io.github.lewin671.remoteagent.core.UiMessages
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -151,11 +153,11 @@ fun HomeScreen() {
         Modifier.fillMaxSize(),
         top = {
             Box(Modifier.weight(1f)) { if (anyProject) ScopeCapsule(scope) { menu = true } }
-            GlassButton(Lucide.Settings, "设置", nav.settings)
+            GlassButton(Lucide.Settings, uiText(UiMessages.commonSettings()), nav.settings)
         },
         bottom = {
             ShellBottom(
-                ShellTab.SESSIONS, "新任务", Lucide.SquarePen, enabled = canStart,
+                ShellTab.SESSIONS, uiText(UiMessages.homeNewTask()), Lucide.SquarePen, enabled = canStart,
                 // A project as the scope is where the new session goes; every project asks which first.
                 onAction = { if (scope is HomeScope.Of) nav.projectNew(scope.key) else pick = true },
             )
@@ -176,7 +178,7 @@ fun HomeScreen() {
                 // Out of reach of the server the sentence says why nothing is here.
                 HomeEmpty.Loading -> if (headline == null) item(key = "loading") { Skeleton() }
                 is HomeEmpty.Account -> item(key = "empty") { EmptyAccount(state, e.why) }
-                HomeEmpty.Scope -> item(key = "empty") { EmptyNote("点右下角的「新任务」在这里开始一个。") }
+                HomeEmpty.Scope -> item(key = "empty") { EmptyNote(uiText(UiMessages.homeAndroidEmptyProject())) }
                 null -> {}
             }
             items(list.items, key = { it.id }) { item ->
@@ -224,18 +226,18 @@ private fun HomeLine(
             }
         }
         is HomeItem.Attention -> PendingItem(state, item.session, scope, item.first, item.last)
-        is HomeItem.MoreAttention -> MoreRow("还有 ${item.count} 件") { change { it.copy(allAttention = true) } }
-        is HomeItem.Label -> GroupTitle(item.title, date = item.key != "running")
+        is HomeItem.MoreAttention -> MoreRow(uiText(UiMessages.homeMoreWaiting(count = item.count))) { change { it.copy(allAttention = true) } }
+        is HomeItem.Label -> GroupTitle(uiText(item.title), date = item.key != "running")
         is HomeItem.Running -> SessionRow(state, item.session, t, meta, last = item.last, selected = LocalSelectedSession.current == item.session.id)
-        is HomeItem.MoreRunning -> ListMore("还有 ${item.count} 个", { change { it.copy(allRunning = true) } })
+        is HomeItem.MoreRunning -> ListMore(uiText(UiMessages.homeMoreLive(count = item.count)), { change { it.copy(allRunning = true) } })
         is HomeItem.Ended -> EndedRow(item.session, t, project = meta.project, selected = LocalSelectedSession.current == item.session.id)
         is HomeItem.Tail -> {
             // Reaching the end shows the next page, once the ones before it are all rendered.
             if (grows) LaunchedEffect(Unit) { change { it.copy(ended = it.ended + ENDED_PAGE) } }
             when (val tail = item.tail) {
-                is HomeTail.Text -> ListMore(tail.text, null, Modifier.testTag("timeline-tail"))
+                is HomeTail.Text -> ListMore(tail.text?.let { uiText(it) }.orEmpty(), null, Modifier.testTag("timeline-tail"))
                 is HomeTail.Earlier -> ListMore(
-                    tail.text,
+                    uiText(tail.text),
                     if (tail.retry) ({ coroutines.launch { runCatching { remote.loadMoreSessions() } } }) else null,
                     Modifier.testTag("timeline-tail"),
                 )
@@ -267,12 +269,14 @@ private fun PendingItem(state: RemoteState, s: SessionView, scope: HomeScope, fi
 private fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
     val p = pal
     val count = (h.kind as? HomeHeadline.Kind.Waiting)?.count
+    val title = uiText(h.title)
+    val sub = uiText(h.sub)
     Text(
         buildAnnotatedString {
-            if (count == null) append(h.title)
+            if (count == null) append(title)
             else {
                 withStyle(SpanStyle(color = p.orange)) { append("$count") }
-                append(h.title.removePrefix("$count"))
+                append(title.removePrefix("$count"))
             }
         },
         style = T.title, color = p.ink,
@@ -283,7 +287,7 @@ private fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (h.sub.isNotEmpty()) Text(
-            h.sub,
+            sub,
             style = if (h.subPath) T.mono13.copy(fontSize = 15.sp, lineHeight = 21.sp) else T.s17,
             color = if (h.subError) p.red else p.ink2,
             modifier = Modifier.weight(1f, fill = false),
@@ -291,7 +295,7 @@ private fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
         if (h.details) Box(
             Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onDetails).padding(start = 12.dp, end = 4.dp),
             contentAlignment = Alignment.Center,
-        ) { Text("详情", style = T.s17, color = p.blue) }
+        ) { Text(uiText(UiMessages.commonDetails()), style = T.s17, color = p.blue) }
     }
 }
 
@@ -311,11 +315,11 @@ internal fun EmptyAccount(state: RemoteState, why: AccountEmpty) {
     val nav = LocalNav.current
     when (why) {
         AccountEmpty.NoMachines -> if (state.isAuthority) Column {
-            EmptyNote("这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。")
-            PillButton("添加设备", { nav.pair() }, Modifier.padding(start = 24.dp, top = 20.dp), ButtonKind.INK, icon = Lucide.Plus)
-        } else EmptyNote(noMachinesHint(state))
-        AccountEmpty.NoneOnline -> EmptyNote("没有在线的电脑。在电脑上运行 remote-agent daemon。")
-        is AccountEmpty.Ready -> EmptyNote("${why.machine} 在线，点右下角的「新任务」开始第一个会话。")
+            EmptyNote(uiText(UiMessages.homeAndroidNoMachines()))
+            PillButton(uiText(UiMessages.homeAddDevice()), { nav.pair() }, Modifier.padding(start = 24.dp, top = 20.dp), ButtonKind.INK, icon = Lucide.Plus)
+        } else EmptyNote(uiText(UiMessages.homeAddViaManager(state.authorityName)))
+        AccountEmpty.NoneOnline -> EmptyNote(uiText(UiMessages.homeAndroidNoOnline()))
+        is AccountEmpty.Ready -> EmptyNote(uiText(UiMessages.homeOnlineNewTask(name = why.machine)))
         AccountEmpty.Unlinked -> {}
     }
 }
@@ -327,7 +331,7 @@ internal fun EmptyAccount(state: RemoteState, why: AccountEmpty) {
 @Composable
 private fun ScopeCapsule(scope: HomeScope, modifier: Modifier = Modifier, onOpen: () -> Unit) {
     val p = pal
-    GlassCapsule(onOpen, modifier.testTag("scope-title"), onClickLabel = "换范围") {
+    GlassCapsule(onOpen, modifier.testTag("scope-title"), onClickLabel = uiText(UiMessages.homeAndroidChangeScope())) {
         ProjectAvatar((scope as? HomeScope.Of)?.key.orEmpty(), 28, all = scope == HomeScope.All)
         Spacer(Modifier.size(7.dp))
         Text(scopeName(scope), style = T.s15b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -336,10 +340,11 @@ private fun ScopeCapsule(scope: HomeScope, modifier: Modifier = Modifier, onOpen
     }
 }
 
+@Composable
 private fun scopeName(scope: HomeScope): String =
     when (scope) {
-        HomeScope.All -> "全部项目"
-        is HomeScope.Of -> projectName(scope.key)
+        HomeScope.All -> uiText(UiMessages.homeAllProjects())
+        is HomeScope.Of -> uiText(listProjectName(scope.key))
     }
 
 /**
@@ -361,14 +366,17 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
             return@Sheet
         }
         Box(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-            Text("看哪个项目", style = T.s17b, color = p.ink, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center))
+            Text(uiText(UiMessages.homeChooseScope()), style = T.s17b, color = p.ink, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.Center))
             Box(Modifier.align(Alignment.CenterEnd).heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClose), contentAlignment = Alignment.Center) {
-                Text("取消", style = T.s17, color = p.blue)
+                Text(uiText(UiMessages.commonCancel()), style = T.s17, color = p.blue)
             }
         }
         @Composable
-        fun check(on: Boolean) = Box(Modifier.size(44.dp).semantics { if (on) contentDescription = "当前范围" }, contentAlignment = Alignment.Center) {
-            if (on) Ic(Lucide.Check, 18.dp, p.blue)
+        fun check(on: Boolean) {
+            val currentScope = uiText(UiMessages.homeAndroidCurrentScope())
+            Box(Modifier.size(44.dp).semantics { if (on) contentDescription = currentScope }, contentAlignment = Alignment.Center) {
+                if (on) Ic(Lucide.Check, 18.dp, p.blue)
+            }
         }
         ProjectList(
             state,
@@ -386,8 +394,8 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
                     ) {
                         ProjectAvatar("", 28, all = true)
                         Column(Modifier.weight(1f)) {
-                            Text(all.name, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(all.detail, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(uiText(all.name), style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(uiText(all.detail), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         check(all.current)
                     }
@@ -402,7 +410,7 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
                         }.padding(end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("管理项目", style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
+                    Text(uiText(UiMessages.homeManageProjects()), style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
                     Ic(Lucide.ChevronRight, 18.dp, p.ink3)
                 }
             },

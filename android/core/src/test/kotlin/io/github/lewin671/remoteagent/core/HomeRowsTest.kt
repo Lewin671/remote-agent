@@ -9,7 +9,7 @@ import io.github.lewin671.remoteagent.proto.ProjectSettings
 import io.github.lewin671.remoteagent.proto.ProjectSummary
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
-import org.junit.Assert.assertEquals
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -114,10 +114,10 @@ class HomeRowsTest {
         val st = state((0 until 71).map { session("e$it", ended = now - (it + 1) * 60_000L) })
         val first = list(st)
         assertEquals(30, first.items.count { it is HomeItem.Ended })
-        assertEquals(HomeItem.Tail(HomeTail.Text("共 71 个，滚到底加载更早的")), first.items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Text(UiMessages.homeTotalLoadEarlier(71))), first.items.last())
         assertTrue(first.grows && first.endedHeld == 71 && !first.wantPage)
         val all = list(st, shown = HomeShown(ended = 90))
-        assertEquals(HomeItem.Tail(HomeTail.Text("共 71 个")), all.items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Text(UiMessages.homeTotal(71))), all.items.last())
         assertFalse(all.grows)
         assertTrue(first.showFilter)
         // Thirty or fewer need no last line.
@@ -134,28 +134,28 @@ class HomeRowsTest {
         // Thirty of fifty held: nothing to fetch yet, the end shows the next thirty.
         val first = list(st)
         assertTrue(!first.wantPage && first.grows)
-        assertEquals(HomeItem.Tail(HomeTail.Text("共 80 个，滚到底加载更早的")), first.items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Text(UiMessages.homeTotalLoadEarlier(80))), first.items.last())
         // Sixty wanted, fifty held: the next page, and the list waits for it.
         val second = list(st, shown = HomeShown(ended = 60))
         assertTrue(second.wantPage && !second.grows)
-        assertEquals(HomeItem.Tail(HomeTail.Text("共 80 个，滚到底加载更早的")), second.items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Text(UiMessages.homeTotalLoadEarlier(80))), second.items.last())
         // A page that failed says so, with its retry.
         st = st.copy(sessionsError = "超时")
-        assertEquals(HomeItem.Tail(HomeTail.Earlier("没能加载更早的会话：超时 · 点这里重试", retry = true)), list(st, shown = HomeShown(ended = 60)).items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Earlier(UiMessages.homeAndroidEarlierFailedRetry("超时"), retry = true)), list(st, shown = HomeShown(ended = 60)).items.last())
         st = st.copy(conn = ConnState.OFFLINE)
-        assertEquals(HomeItem.Tail(HomeTail.Earlier(EARLIER_OFFLINE, retry = false)), list(st, shown = HomeShown(ended = 60)).items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Earlier(UiMessages.homeAndroidEarlierOffline(), retry = false)), list(st, shown = HomeShown(ended = 60)).items.last())
     }
 
     @Test fun aFilterWantsEveryPageAndCountsWhatItMatched() {
         var st = state(listOf(session("a", title = "补充接口文档"), session("b", title = "接口限流", ended = now - 1000), session("c", title = "别的")))
-        assertEquals(HomeItem.Tail(HomeTail.Text("2 个会话的标题里有「接口」")), list(st, query = "接口").items.last())
-        assertEquals(listOf(HomeItem.Tail(HomeTail.Text("没有标题里有「没有」的会话"))), list(st, query = "没有").items)
+        assertEquals(HomeItem.Tail(HomeTail.Text(UiMessages.homeMatches(2, "接口"))), list(st, query = "接口").items.last())
+        assertEquals(listOf(HomeItem.Tail(HomeTail.Text(UiMessages.homeNoMatches("没有")))), list(st, query = "没有").items)
         assertTrue(list(st, query = "接口").showFilter)
         // While pages are left the count is not known yet.
         st = st.copy(sessionsNext = SessionPlace(1, "b"))
         val loading = list(st, query = "接口")
         assertTrue(loading.wantAll && !loading.wantPage)
-        assertEquals(HomeItem.Tail(HomeTail.Earlier(LOADING_EARLIER, retry = false)), loading.items.last())
+        assertEquals(HomeItem.Tail(HomeTail.Earlier(UiMessages.homeLoadingEarlier(), retry = false)), loading.items.last())
         // Blank is not a filter.
         assertFalse(list(st, query = "  ").wantAll)
     }
@@ -183,7 +183,7 @@ class HomeRowsTest {
         val run = session("run", title = "修复登录超时", created = now - 20_000, status = SessionStatus.SESSION_STATUS_RUNNING, preview = "正在执行 `go test`")
         val st = state(listOf(run), machines = listOf("m", "n"))
         val row = sessionRowText(st, run, RowMeta(project = true, agent = true, machine = true), now, zone)
-        assertEquals(SessionRowText("修复登录超时", "刚刚", Status.RUNNING, "正在执行 go test", "foo · m", Agent.AGENT_CODEX), row)
+        assertEquals(SessionRowText("修复登录超时".messageText(), UiMessages.timeJustNow().messageText(), Status.RUNNING, "正在执行 go test".messageText(), "foo · m".messageText(), Agent.AGENT_CODEX), row)
         assertEquals("修复登录超时，运行中，正在执行 go test，Codex，foo，m，刚刚", row.spoken)
         // The status word already says a plan waits.
         assertTrue(sessionRowText(st, session("plan", plan = true), RowMeta(), now, zone).preview.isEmpty())
@@ -205,7 +205,7 @@ class HomeRowsTest {
         val st = state(emptyList(), machines = listOf("m", "n"))
         val api = session("api", "/p/foo", title = "重构 API 层", approvals = 1)
         val request = ApprovalRequested.newBuilder().setApprovalId("A1").setCommand("go test ./... \\\n  -count=1").build()
-        assertEquals(PendingRowText("重构 API 层", "请求执行", "go test ./... \\ -count=1"), pendingRowText(st, api, HomeScope.All, request, null, zone))
+        assertEquals(PendingRowText("重构 API 层".messageText(), UiMessages.listStateAndroidRequestCommand().messageText(), "go test ./... \\ -count=1".messageText()), pendingRowText(st, api, HomeScope.All, request, null, zone))
         // Before the approval is read the status says what waits.
         assertEquals("等待审批", pendingRowText(st, api, HomeScope.All, null, null, zone).kind)
         val dep = session("dep", "/p/bar", title = "升级依赖", agent = Agent.AGENT_CLAUDE, questions = 1)
@@ -216,9 +216,9 @@ class HomeRowsTest {
         assertEquals("升级依赖，Claude Code 在问你，bar，大版本也一起升吗？", asked.spoken)
         assertEquals("x", pendingRowText(st, dep, HomeScope.Of("/p/bar"), null, "x", zone).summary)
         val plan = pendingRowText(st, session("p", plan = true), HomeScope.All, null, null, zone)
-        assertTrue(plan.kind == "计划待批准" && plan.summary.isEmpty())
+        assertTrue(messageTextForTest(UiMessages.listStatePlan()) == plan.kind.testText() && plan.summary.isEmpty())
         val popup = session("t", status = SessionStatus.SESSION_STATUS_BLOCKED, detail = "Trust this folder?")
-        assertEquals(PendingRowText("t", "终端里有弹窗", "Trust this folder?"), pendingRowText(st, popup, HomeScope.All, null, null, zone))
+        assertEquals(PendingRowText("t".messageText(), UiMessages.listStatePopup().messageText(), "Trust this folder?".messageText()), pendingRowText(st, popup, HomeScope.All, null, null, zone))
     }
 
     @Test fun theDarkCardSaysWhatAndUntilWhenAndWhere() {
@@ -246,29 +246,29 @@ class HomeRowsTest {
         val idle = session("i")
         val idle2 = session("i2")
         fun head(st: RemoteState, scope: HomeScope = HomeScope.All) = homeHeadline(st, scope)
-        assertEquals(HomeHeadline(HomeHeadline.Kind.Waiting(1), "1 件事等你", "1 个会话在运行，2 个空闲"), head(state(listOf(wait, run, idle, idle2))))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.Waiting(1), UiMessages.homeWaitingCount(1), UiMessages.homeRunningAndIdle(1, 2).messageText()), head(state(listOf(wait, run, idle, idle2))))
         assertEquals("1 个会话空闲", head(state(listOf(wait, idle)))?.sub)
         // What waits is the account's; what runs is the scope's.
-        assertEquals(HomeHeadline(HomeHeadline.Kind.Waiting(1), "1 件事等你"), head(state(listOf(wait, run)), HomeScope.Of("/p/bar")))
-        assertEquals(HomeHeadline(HomeHeadline.Kind.Running, "1 个会话在运行", "另有 2 个空闲"), head(state(listOf(run, idle, idle2))))
-        assertEquals(HomeHeadline(HomeHeadline.Kind.NothingWaits, "没有等你的事", "1 个会话空闲"), head(state(listOf(idle))))
-        assertEquals(HomeHeadline(HomeHeadline.Kind.NothingWaits, "没有等你的事"), head(state(listOf(session("e", ended = now - 1000)))))
-        assertEquals(HomeHeadline(HomeHeadline.Kind.NoSessions, "还没有会话"), head(state(emptyList())))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.Waiting(1), UiMessages.homeWaitingCount(1)), head(state(listOf(wait, run)), HomeScope.Of("/p/bar")))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.Running, UiMessages.homeRunningCount(1), UiMessages.homeOtherIdle(2).messageText()), head(state(listOf(run, idle, idle2))))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.NothingWaits, UiMessages.homeNothingWaiting(), UiMessages.homeIdleCount(1).messageText()), head(state(listOf(idle))))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.NothingWaits, UiMessages.homeNothingWaiting()), head(state(listOf(session("e", ended = now - 1000)))))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.NoSessions, UiMessages.homeNoSessions()), head(state(emptyList())))
         assertEquals(HomeHeadline.Kind.Unreadable, head(state(emptyList()).copy(sessionsListed = false, sessionsError = "超时"))?.kind)
-        assertEquals(HomeHeadline(HomeHeadline.Kind.EmptyProject, "这个项目还没有会话", "/p/new", subPath = true), head(state(listOf(idle)), HomeScope.Of("/p/new")))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.EmptyProject, UiMessages.homeProjectNoSessions(), "/p/new".messageText(), subPath = true), head(state(listOf(idle)), HomeScope.Of("/p/new")))
         // Connected and nothing read yet: no sentence; not connected yet, 连接中….
         assertEquals(HomeHeadline.Kind.Connecting, head(RemoteState())?.kind)
         assertNull(head(RemoteState(link = Link.ONLINE)))
         // Out of reach the connection is the sentence, the nearest stretch that is down.
         val kept = state(listOf(wait, run))
-        assertEquals(HomeHeadline(HomeHeadline.Kind.NoNetwork, "本机网络不通", "下面是上次的内容"), head(kept.copy(link = Link.NO_NETWORK)))
-        assertEquals(HomeHeadline(HomeHeadline.Kind.Reconnecting, "正在重连…", "下面是上次的内容"), head(kept.copy(link = Link.WAITING)))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.NoNetwork, UiMessages.connectionNoNetwork(), UiMessages.connectionPreviousBelow().messageText()), head(kept.copy(link = Link.NO_NETWORK)))
+        assertEquals(HomeHeadline(HomeHeadline.Kind.Reconnecting, UiMessages.connectionReconnecting(), UiMessages.connectionPreviousBelow().messageText()), head(kept.copy(link = Link.WAITING)))
         val first = head(kept.copy(link = Link.WAITING, synced = false))
-        assertTrue(first?.title == "连接中…" && first.unlinked)
-        assertEquals(HomeHeadline(HomeHeadline.Kind.NoServer, "连不上服务器", "正在重试，下面是上次的内容", details = true), head(kept.copy(link = Link.NO_SERVER)))
+        assertTrue(first?.title?.key == "connection.connecting" && first.unlinked)
+        assertEquals(HomeHeadline(HomeHeadline.Kind.NoServer, UiMessages.connectionNoServer(), UiMessages.connectionRetryingPrevious().messageText(), details = true), head(kept.copy(link = Link.NO_SERVER)))
         assertEquals("联网后才能读取会话", head(RemoteState(link = Link.NO_NETWORK))?.sub)
         assertEquals(
-            HomeHeadline(HomeHeadline.Kind.NoServer, "连不上服务器", "证书无效", subError = true, details = true),
+            HomeHeadline(HomeHeadline.Kind.NoServer, UiMessages.connectionNoServer(), "证书无效".messageText(), subError = true, details = true),
             head(RemoteState(link = Link.NO_SERVER, error = "证书无效")),
         )
     }

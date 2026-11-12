@@ -86,11 +86,11 @@ fun rowMeta(state: RemoteState, sessions: Collection<SessionView>, project: Bool
  * A row's third line: 分叉 · 项目 · 机器, each only when it says something; empty for none.
  * The CLI is not among the words: its mark leads the line ([RowMeta.agent] says whether).
  */
-fun metaLine(state: RemoteState, s: SessionView, meta: RowMeta): String = buildList {
-    if (forked(s)) add("分叉")
-    if (meta.project) add(projectName(projectKey(s)))
-    if (meta.machine) add(machineName(state.machines[s.machineId], s.machineId))
-}.joinToString(" · ")
+fun metaLine(state: RemoteState, s: SessionView, meta: RowMeta): MessageText = buildList {
+    if (forked(s)) add(UiMessages.homeForked().messageText())
+    if (meta.project) add(listProjectName(projectKey(s)))
+    if (meta.machine) add(listMachineName(state.machines[s.machineId], s.machineId))
+}.joinMessages(" · ")
 
 /** Whether a title has [query] in it, ignoring case; a blank query matches everything. */
 fun titleMatches(s: SessionView, query: String, zone: ZoneId = ZoneId.systemDefault()): Boolean =
@@ -202,26 +202,20 @@ fun endedGroup(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): Ende
 }
 
 /** 今天, 昨天, 近 7 天, 9 月, and 2025 年 12 月 for a month of another year. */
-fun groupTitle(g: EndedGroup, now: Long, zone: ZoneId = ZoneId.systemDefault()): String = when (g) {
-    EndedGroup.Today -> "今天"
-    EndedGroup.Yesterday -> "昨天"
-    EndedGroup.Week -> "近 7 天"
-    is EndedGroup.Month -> if (g.year == dayOf(now, zone).year) "${g.month} 月" else "${g.year} 年 ${g.month} 月"
+fun groupTitle(g: EndedGroup, now: Long, zone: ZoneId = ZoneId.systemDefault()): UiMessage = when (g) {
+    EndedGroup.Today -> UiMessages.timeToday()
+    EndedGroup.Yesterday -> UiMessages.timeYesterday()
+    EndedGroup.Week -> UiMessages.timeLastWeek()
+    is EndedGroup.Month -> if (g.year == dayOf(now, zone).year) UiMessages.timeMonthGroup(g.month) else UiMessages.timeYearMonthGroup(g.month, g.year)
 }
 
-private val weekdays = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
-
-/**
- * When an ended session ended, as its row writes it: the time of day under
- * 今天 and 昨天, the weekday under 近 7 天, the date before that. Empty when
- * the time is not known.
- */
-fun endedTime(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
-    if (ms <= 0) return ""
+/** Time-of-day stays a clock; dates and weekdays keep message keys until displayed. */
+fun endedTime(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): MessageText {
+    if (ms <= 0) return "".messageText()
     return when (endedGroup(ms, now, zone)) {
-        EndedGroup.Today, EndedGroup.Yesterday -> hhmm(ms, zone)
-        EndedGroup.Week -> weekdays[dayOf(ms, zone).dayOfWeek.value - 1]
-        is EndedGroup.Month -> dayOf(ms, zone).let { "${it.monthValue}月${it.dayOfMonth}日" }
+        EndedGroup.Today, EndedGroup.Yesterday -> hhmm(ms, zone).messageText()
+        EndedGroup.Week -> UiMessages.timeWeekday(listOf("mon", "tue", "wed", "thu", "fri", "sat", "sun")[dayOf(ms, zone).dayOfWeek.value - 1]).messageText()
+        is EndedGroup.Month -> dayOf(ms, zone).let { UiMessages.timeMonthDay(it.dayOfMonth, it.monthValue).messageText() }
     }
 }
 
@@ -237,52 +231,44 @@ fun groupEnded(ended: List<SessionView>, now: Long, zone: ZoneId = ZoneId.system
  * ([total], by the summaries), once they do not fit one page; null before
  * that. [more]: not all of them are shown yet.
  */
-fun endedTail(total: Int, more: Boolean): String? = when {
+fun endedTail(total: Int, more: Boolean): UiMessage? = when {
     total <= ENDED_PAGE -> null
-    more -> "共 $total 个，滚到底加载更早的"
-    else -> "共 $total 个"
+    more -> UiMessages.homeTotalLoadEarlier(total)
+    else -> UiMessages.homeTotal(total)
 }
 
-/** The line that ends a list while earlier pages of the listing are on their way. */
-const val LOADING_EARLIER = "正在加载更早的会话…"
-
-/** The same place while there is no connection to fetch them over. */
-const val EARLIER_OFFLINE = "连上服务器后加载更早的会话"
-
-/**
- * The line that ends a list whose earlier sessions are not all fetched and
- * are wanted now: on their way, waiting for the connection, or why the last
- * page failed (a tap tries again).
- */
-fun earlierTail(state: RemoteState): String = when {
-    state.conn != ConnState.ONLINE -> EARLIER_OFFLINE
-    state.sessionsError.isNotEmpty() && !state.sessionsListed -> "没能读取会话列表：${state.sessionsError} · 点这里重试"
-    state.sessionsError.isNotEmpty() -> "没能加载更早的会话：${state.sessionsError} · 点这里重试"
-    else -> LOADING_EARLIER
+/** The listing tail keeps its diagnostics raw, inside a complete translated sentence. */
+fun earlierTail(state: RemoteState): UiMessage = when {
+    state.conn != ConnState.ONLINE -> UiMessages.homeAndroidEarlierOffline()
+    state.sessionsError.isNotEmpty() && !state.sessionsListed -> UiMessages.homeAndroidListFailedRetry(state.sessionsError)
+    state.sessionsError.isNotEmpty() -> UiMessages.homeAndroidEarlierFailedRetry(state.sessionsError)
+    else -> UiMessages.homeLoadingEarlier()
 }
 
 /** The line that ends a filtered list. */
-fun filterTail(count: Int, query: String): String =
-    if (count == 0) "没有标题里有「${query.trim()}」的会话" else "$count 个会话的标题里有「${query.trim()}」"
+fun filterTail(count: Int, query: String): UiMessage =
+    if (count == 0) UiMessages.homeNoMatches(query.trim()) else UiMessages.homeMatches(count, query.trim())
 
 // --- the scope menu ---
 
 /** A row of 看哪个项目. */
-data class ScopeRow(val scope: HomeScope, val name: String, val detail: String, val current: Boolean)
+data class ScopeRow(val scope: HomeScope, val name: MessageText, val detail: MessageText, val current: Boolean)
 
 /** Counts use the same waiting/running split as the home, including offline computers. */
-fun activityCounts(sessions: Collection<SessionView>): String {
+fun activityCounts(sessions: Collection<SessionView>): UiMessage? {
     val waiting = sessions.count(::needsAttention)
     val running = sessions.count { it.info?.taskOwned != true && !exited(it) && !needsAttention(it) }
-    return listOfNotNull(
-        if (waiting > 0) "$waiting 个待处理" else null,
-        if (running > 0) "$running 个进行中" else null,
-    ).joinToString(" · ")
+    return when {
+        waiting > 0 && running > 0 -> UiMessages.projectsPendingAndLive(waiting, running)
+        waiting > 0 -> UiMessages.projectsPendingCount(waiting)
+        running > 0 -> UiMessages.projectsLiveCount(running)
+        else -> null
+    }
 }
 
 /** The same path and activity counts wherever a project is listed. */
-fun projectDetail(pr: Project): String =
-    shortPath(pr.key) + activityCounts(pr.sessions).let { if (it.isEmpty()) "" else " · $it" }
+fun projectDetail(pr: Project): MessageText =
+    listOfNotNull(shortPath(pr.key).messageText(), activityCounts(pr.sessions)?.messageText()).joinMessages(" · ")
 
 /**
  * The scope menu: 全部项目 when there is more than one project to choose
@@ -295,11 +281,11 @@ fun scopeRows(state: RemoteState, current: HomeScope, search: String = ""): List
     return buildList {
         if (listed.size > 1 && q.isEmpty()) {
             val counts = activityCounts(state.sessions.values)
-            add(ScopeRow(HomeScope.All, "全部项目", counts.ifEmpty { "${listed.size} 个项目" }, current == HomeScope.All))
+            add(ScopeRow(HomeScope.All, UiMessages.homeAllProjects().messageText(), (counts ?: UiMessages.projectsCount(listed.size)).messageText(), current == HomeScope.All))
         }
         for (pr in listed) {
             if (q.isNotEmpty() && !pr.name.contains(q, ignoreCase = true) && !pr.key.contains(q, ignoreCase = true)) continue
-            add(ScopeRow(HomeScope.Of(pr.key), pr.name, projectDetail(pr), current == HomeScope.Of(pr.key)))
+            add(ScopeRow(HomeScope.Of(pr.key), listProjectName(pr.key), projectDetail(pr), current == HomeScope.Of(pr.key)))
         }
     }
 }

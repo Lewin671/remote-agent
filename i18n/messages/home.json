@@ -53,6 +53,216 @@
     }
   },
   {
+    "key": "home.android_change_scope",
+    "zh-CN": "换范围",
+    "en": "Change scope",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_current_scope",
+    "zh-CN": "当前范围",
+    "en": "Current scope",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_earlier_failed_retry",
+    "zh-CN": "没能加载更早的会话：{reason} · 点这里重试",
+    "en": "Could not load earlier sessions: {reason} · Tap to retry",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_earlier_offline",
+    "zh-CN": "连上服务器后加载更早的会话",
+    "en": "Earlier sessions will load when connected to the server",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_empty_project",
+    "zh-CN": "点右下角的「新任务」在这里开始一个。",
+    "en": "Tap “New task” at the bottom right to start one here.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_list_failed_retry",
+    "zh-CN": "没能读取会话列表：{reason} · 点这里重试",
+    "en": "Could not load sessions: {reason} · Tap to retry",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_no_machines",
+    "zh-CN": "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。",
+    "en": "This account has no computers yet. Tap “Add device” to generate a pairing code, then use it to run remote-agent account join on your computer.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_no_online",
+    "zh-CN": "没有在线的电脑。在电脑上运行 remote-agent daemon。",
+    "en": "No computers are online. Run remote-agent daemon on your computer.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_schedules_new",
+    "zh-CN": "定时，有新结果",
+    "en": "Schedules, new results",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_schedules_pending",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "定时，{count} 件需要处理"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Schedules, {count} item needs attention",
+        "other": "Schedules, {count} items need attention"
+      }
+    },
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_select_session",
+    "zh-CN": "选一个会话，在这里看",
+    "en": "Select a session to view it here",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.android_sessions_pending",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "会话，{count} 件等你处理"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Sessions, {count} item needs your attention",
+        "other": "Sessions, {count} items need your attention"
+      }
+    },
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "home.choose_scope",
     "zh-CN": "看哪个项目",
     "en": "Which project?",

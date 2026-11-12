@@ -1,5 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.listProjectName
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.UiMessage
+import io.github.lewin671.remoteagent.core.MessageText
+import io.github.lewin671.remoteagent.core.messageText
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.background
@@ -414,14 +419,14 @@ fun ProjectScreen(key: String, focus: Boolean) {
     var picking by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(p.paper)) {
         NewSessionBox(
-            state, start?.config, projectName(key), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
+            state, start?.config, uiText(listProjectName(key)), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
             onProject = { picking = true },
             banner = {
                 Column(Modifier.padding(horizontal = 12.dp)) {
                     when (val change = PrefsChanges.states[key]) {
-                        PrefsChanges.State.Saving -> Notice("正在保存项目设置…", Modifier.padding(top = 8.dp))
-                        is PrefsChanges.State.Failed -> Notice("项目设置没能保存：${change.error}", Modifier.padding(top = 8.dp), tone = NoticeTone.ERROR,
-                            action = "重试", onAction = { PrefsChanges.run(remote, change.op) })
+                        PrefsChanges.State.Saving -> Notice(uiText(UiMessages.projectsAndroidSavingSettings()), Modifier.padding(top = 8.dp))
+                        is PrefsChanges.State.Failed -> Notice(uiText(UiMessages.projectsAndroidSettingsFailed(reason = change.error)), Modifier.padding(top = 8.dp), tone = NoticeTone.ERROR,
+                            action = uiText(UiMessages.commonRetry()), onAction = { PrefsChanges.run(remote, change.op) })
                         else -> {}
                     }
                     if (hidden) HiddenBanner(state, key)
@@ -431,7 +436,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     }
     if (picking) PickProjectSheet(state, { picking = false }, replace = true)
     val open = settingsOpen
-    if (open != null && selected != null) NewSettingsSheet(state, key, projectName(key), selected.machineId, selected.agent, open, onDone = { op ->
+    if (open != null && selected != null) NewSettingsSheet(state, key, uiText(listProjectName(key)), selected.machineId, selected.agent, open, onDone = { op ->
         if (op != null) {
             PrefsChanges.run(remote, op)
             // The draft takes the new settings at once, written or not.
@@ -449,10 +454,10 @@ private fun draftPick(state: RemoteState, entry: Drafts.NewSession): Agent? =
     entry.config.value?.takeIf { missingAgent(state, it, entry.agent.value) == null }?.agent ?: entry.agent.value
 
 /** The model a start with [c] uses, as the box names it: its display name, the machine's default before one is chosen. */
-fun modelLabel(c: NewConfig, models: ListModelsResponse? = null): String {
+fun modelLabel(c: NewConfig, models: ListModelsResponse? = null): MessageText {
     val modelId = c.model.ifEmpty { models?.defaultModel.orEmpty() }
     val chosen = models?.let { io.github.lewin671.remoteagent.core.findModel(it.modelsList, modelId) { m -> m.slug } }
-    return chosen?.displayName?.ifEmpty { modelId } ?: modelId.ifEmpty { "默认模型" }
+    return (chosen?.displayName?.ifEmpty { modelId } ?: modelId).takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.newSessionDefaultModel().messageText()
 }
 
 fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
@@ -466,12 +471,12 @@ private fun HiddenBanner(state: RemoteState, key: String) {
     val blocked = prefsBlocked(state)
     Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
         Notice(
-            if (change == PrefsChanges.State.Saving) "正在添加到项目列表…" else "这个项目已从列表移除",
-            action = if (blocked == null && change != PrefsChanges.State.Saving) "重新添加" else null,
+            if (change == PrefsChanges.State.Saving) uiText(UiMessages.projectsAndroidAdding()) else uiText(UiMessages.projectsRemoved()),
+            action = if (blocked == null && change != PrefsChanges.State.Saving) uiText(UiMessages.projectsAddAgain()) else null,
             onAction = { PrefsChanges.run(remote, PrefsOp.Unhide(key)) },
         )
-        if (blocked != null) Hint(blocked, color = pal.orangeInk, inset = 12.dp)
-        if (change is PrefsChanges.State.Failed) Hint("没能保存：${change.error}", color = pal.red, inset = 12.dp)
+        if (blocked != null) Hint(uiText(blocked), color = pal.orangeInk, inset = 12.dp)
+        if (change is PrefsChanges.State.Failed) Hint(uiText(UiMessages.projectsAndroidSaveFailed(reason = change.error)), color = pal.red, inset = 12.dp)
     }
 }
 
@@ -673,25 +678,25 @@ fun NewSessionBox(
         Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // Why nothing can start yet; a page that failed says so, with the tap that tries again.
             if (!settled && (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty())) EarlierTail(state, Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
-            else if (!settled) Text("正在读取这个项目上次的设置…", style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
+            else if (!settled) Text(uiText(UiMessages.newSessionReadingPrevious()), style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
-            else if (c != null && state.machines[c.machineId]?.online != true) Notice("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = NoticeTone.WARN)
-            if (c != null && missing != null) Notice("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = { afterKeyboard(onMachine) })
-            if (c != null && issue == AutoIssue.MODEL) Notice("这个模型没有自动模式，而 ${machineLabel(state, c.machineId)} 的新项目默认审批模式是自动。换一个模型，或到这台电脑的设置里改默认",
-                tone = NoticeTone.WARN, action = "换模型", onAction = { picker.toggle("model") })
-            if (c != null && issue == AutoIssue.ACCOUNT) Notice("当前账户不支持自动模式，而 ${machineLabel(state, c.machineId)} 的新项目默认审批模式是自动。到这台电脑的设置里改默认后再开始",
-                tone = NoticeTone.WARN, action = "去改默认", onAction = { nav.device(c.machineId) })
-            if (act.running) Notice("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…")
+            else if (c != null && state.machines[c.machineId]?.online != true) Notice(uiText(UiMessages.newSessionAndroidMachineOffline(name = machineLabel(state, c.machineId))), tone = NoticeTone.WARN)
+            if (c != null && missing != null) Notice(uiText(UiMessages.newSessionCliFallback(agent = agentName(c.agent), missing = agentName(missing), name = machineLabel(state, c.machineId))), action = uiText(UiMessages.newSessionChangeMachine()), onAction = { afterKeyboard(onMachine) })
+            if (c != null && issue == AutoIssue.MODEL) Notice(uiText(UiMessages.newSessionAndroidModelNoAuto(name = machineLabel(state, c.machineId))),
+                tone = NoticeTone.WARN, action = uiText(UiMessages.newSessionChangeModel()), onAction = { picker.toggle("model") })
+            if (c != null && issue == AutoIssue.ACCOUNT) Notice(uiText(UiMessages.newSessionAndroidAccountNoAuto(name = machineLabel(state, c.machineId))),
+                tone = NoticeTone.WARN, action = uiText(UiMessages.newSessionChangeDefaults()), onAction = { nav.device(c.machineId) })
+            if (act.running) Notice(uiText(UiMessages.newSessionStartingOn(name = (c?.let { machineLabel(state, it.machineId) }).toString())))
             val frozen = Starts.of(key)
             // An unknown start has its own notice below.
             // 重试 is ↑ again: it is offered when ↑ is.
-            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Notice("启动失败：${act.error}", tone = NoticeTone.ERROR, action = "重试".takeIf { canStart }, onAction = { start() })
+            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Notice(uiText(UiMessages.newSessionStartFailed(reason = act.error)), tone = NoticeTone.ERROR, action = uiText(UiMessages.commonRetry()).takeIf { canStart }, onAction = { start() })
             if (!act.running && frozen.attempt.frozen) {
                 var gaveUp by remember { mutableStateOf(0) }
                 Notice(
-                    if (frozen.attempt.expired) "不确定「${frozen.prompt.take(40)}」有没有启动，它已过期，不会再重发。请先看看进行中的会话"
-                    else "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
-                    tone = NoticeTone.WARN, action = "放弃", onAction = { frozen.attempt.abandon(); act.error = ""; gaveUp++ },
+                    if (frozen.attempt.expired) uiText(UiMessages.newSessionAndroidExpiredStart(prompt = frozen.prompt.take(40)))
+                    else uiText(UiMessages.newSessionAndroidUnknownStart()),
+                    tone = NoticeTone.WARN, action = uiText(UiMessages.newSessionAndroidAbandon()), onAction = { frozen.attempt.abandon(); act.error = ""; gaveUp++ },
                 )
             }
         }
@@ -700,11 +705,11 @@ fun NewSessionBox(
     ComposerPickerBack(picker)
     Column(Modifier.fillMaxSize().composerPickerEvents(picker)) {
         Row(Modifier.fillMaxWidth().onGloballyPositioned { picker.top = it.boundsInWindow().bottom }.padding(start = 16.dp, end = 16.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassButton(Lucide.X, "关闭", nav.back)
+            GlassButton(Lucide.X, uiText(UiMessages.commonClose()), nav.back)
             Column(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(
                     Modifier.heightIn(min = 32.dp).clip(Radii.Pill)
-                        .then(if (onProject != null) Modifier.clickable(role = Role.Button, onClickLabel = "换项目", onClick = { afterKeyboard(onProject) }) else Modifier)
+                        .then(if (onProject != null) Modifier.clickable(role = Role.Button, onClickLabel = uiText(UiMessages.newSessionAndroidChangeProject()), onClick = { afterKeyboard(onProject) }) else Modifier)
                         .padding(horizontal = 6.dp).testTag("new-project"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -715,7 +720,7 @@ fun NewSessionBox(
                 }
                 // The computer only where there is more than one to mean.
                 if (c != null && state.machines.size > 1) Row(
-                    Modifier.heightIn(min = 24.dp).clip(Radii.Pill).clickable(role = Role.Button, onClickLabel = "换电脑", onClick = { afterKeyboard(onMachine) })
+                    Modifier.heightIn(min = 24.dp).clip(Radii.Pill).clickable(role = Role.Button, onClickLabel = uiText(UiMessages.newSessionAndroidChangeComputer()), onClick = { afterKeyboard(onMachine) })
                         .padding(horizontal = 6.dp).testTag("new-machine"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -731,13 +736,13 @@ fun NewSessionBox(
         ComposeBox(
             text, { text = it },
             modifier = Modifier.onGloballyPositioned { picker.composer = it.boundsInWindow() }.testTag("new-composer"),
-            placeholder = "要做什么？",
+            placeholder = uiText(UiMessages.newSessionPrompt()),
             canSend = canStart,
             onSend = { start() },
             onPlus = pick,
             onFile = rememberDocumentPicker(images, remote, machine),
             plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine?.let { state.machines[it] }) && machineOnline),
-            sendLabel = "开始",
+            sendLabel = uiText(UiMessages.newSessionAndroidStart()),
             focusRequester = fr,
             hasDraft = drafting,
             top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
@@ -756,7 +761,7 @@ fun NewSessionBox(
             },
         )
     }
-    if (picker.open == "agent" && c != null) ComposerPopover(picker, "CLI", panel = false) {
+    if (picker.open == "agent" && c != null) ComposerPopover(picker, uiText(UiMessages.newSessionCliPickerLabel()), panel = false) {
         agents.forEach { a ->
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp))
                 .selectable(selected = a == c.agent, role = Role.RadioButton, onClick = {
@@ -772,14 +777,14 @@ fun NewSessionBox(
             }
         }
     }
-    if (picker.open == "model" && c != null) ComposerPopover(picker, "模型", panel = true) {
+    if (picker.open == "model" && c != null) ComposerPopover(picker, uiText(UiMessages.modelsTitle()), panel = true) {
         val current = edited ?: c
         val blockedPrefs = prefsBlocked(state)
         NewTaskModelPanel(current, models, modelsError, settings, machineLabel(state, c.machineId),
             enabled = settled && blockedPrefs == null, onClose = picker::close,
             notice = {
-                if (blockedPrefs != null) Notice(blockedPrefs)
-                if (!settled) Text("正在读取这个项目上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.testTag("settings-unread"))
+                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                if (!settled) Text(uiText(UiMessages.newSessionReadingPrevious()), style = T.s13, color = p.ink2, modifier = Modifier.testTag("settings-unread"))
             }, edit = { edited = it })
     }
 }
@@ -810,12 +815,12 @@ internal fun BoxTool(onClick: () -> Unit, label: String, modifier: Modifier = Mo
 fun startable(text: String, images: List<PendingImage>, machineId: String): Boolean =
     (text.isNotBlank() || images.isNotEmpty()) && images.all { it.readyFor(machineId) }
 
-fun machineSubtitle(installed: List<Agent>, missing: Agent? = null, fallback: Agent? = null): String {
-    val names = installed.joinToString("、") { agentName(it) }
+fun machineSubtitle(installed: List<Agent>, separator: String, missing: Agent? = null, fallback: Agent? = null): UiMessage {
+    val names = installed.joinToString(separator) { agentName(it) }
     return if (missing != null && fallback != null) {
-        "已装 $names；这台机器没有 ${agentName(missing)}，会改用 ${agentName(fallback)}"
+        UiMessages.newSessionInstalledFallback(agent = agentName(fallback), agents = names, missing = agentName(missing))
     } else {
-        "已装 $names"
+        UiMessages.newSessionInstalled(agents = names)
     }
 }
 
@@ -829,23 +834,23 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
     val p = pal
     val others = projectMachines(state, c.cwd).filter { it != c.machineId && state.machines[it]?.online == true }
     Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg).padding(horizontal = 12.dp, vertical = 9.dp)) {
-        Text("${machineLabel(state, c.machineId)} 已离线，任务尚未开始", style = T.s13, color = p.orangeInk)
-        Text("草稿已保留，请选择在线机器；不自动换机器或 CLI。", style = T.s12, color = p.ink2)
+        Text(uiText(UiMessages.newSessionAndroidOfflineDraft(name = machineLabel(state, c.machineId))), style = T.s13, color = p.orangeInk)
+        Text(uiText(UiMessages.newSessionAndroidDraftPreserved()), style = T.s12, color = p.ink2)
         for (id in others) {
             val agents = machineAgents(state.machines[id])
             val cliNote = when {
-                c.agent in agents -> machineSubtitle(agents)
-                else -> machineSubtitle(agents, missing = c.agent, fallback = switchMachine(c, id, agents).agent)
+                c.agent in agents -> uiText(machineSubtitle(agents, uiText(UiMessages.commonListSeparator())))
+                else -> uiText(machineSubtitle(agents, uiText(UiMessages.commonListSeparator()), missing = c.agent, fallback = switchMachine(c, id, agents).agent))
             }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onChoose(switchMachine(c, id, agents)) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("改用 ${machineLabel(state, id)}", style = T.s15b, color = p.ink)
+                    Text(uiText(UiMessages.newSessionUseMachine(name = machineLabel(state, id))), style = T.s15b, color = p.ink)
                     Text(cliNote, style = T.s12, color = p.ink2)
                 }
                 Arrow(p.ink2, T.s15)
             }
         }
-        if (others.isEmpty()) Text("$name 用过的其他电脑也都不在线。", style = T.s12, color = p.ink2)
+        if (others.isEmpty()) Text(uiText(UiMessages.newSessionAndroidOthersOffline(name = name)), style = T.s12, color = p.ink2)
     }
 }
 
@@ -951,8 +956,8 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     Sheet(onClose) {
         when (page) {
             "" -> {
-                SheetHead(if (lockMachine) "任务设置" else "项目设置", if (blockedPrefs == null) "完成" else null, { done() })
-                if (blockedPrefs != null) Notice(blockedPrefs)
+                SheetHead(if (lockMachine) "任务设置" else uiText(UiMessages.projectsAndroidSettings()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() })
+                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
                 if (scheduling) Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ProjectAvatar(cwd, 28)
                     Column(Modifier.weight(1f)) {
@@ -960,14 +965,14 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         Text(shortPath(cwd), style = T.mono12, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                FieldLabel("新会话")
+                FieldLabel(uiText(UiMessages.newSessionAndroidNewSession()))
                 val machineRow: @Composable () -> Unit =
-                    { SetRow("机器", machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.online == true) p.green else p.faint) }
+                    { SetRow(uiText(UiMessages.commonMachine()), machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.online == true) p.green else p.faint) }
                 // A new task's machine is there only to choose among several.
                 val machineRows = if (scheduling || manyMachines) listOf(machineRow) else emptyList()
                 val rows = listOf<@Composable () -> Unit>(
                     {
-                        SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
+                        SetRow(uiText(UiMessages.modelsTitle()), listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { uiText(UiMessages.newSessionDefaultModel()) }, { page = "model" })
                     },
                     // A scheduled task's approval mode; a new task has none.
                     *(if (scheduling) arrayOf<@Composable () -> Unit>({
@@ -983,7 +988,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
                 val reading: @Composable () -> Unit = {
                     if (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty()) EarlierTail(state, Modifier.fillMaxWidth().padding(14.dp))
-                    else Text("正在读取 ${agentName(cur)} 上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(14.dp))
+                    else Text(uiText(UiMessages.newSessionAndroidReadingCli(agent = agentName(cur))), style = T.s13, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(14.dp))
                 }
                 if (unread && agents.size > 1) {
                     if (machineRows.isNotEmpty()) card(machineRows)
@@ -1012,7 +1017,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
             }
             "machine" -> {
-                SheetHead("机器", if (blockedPrefs == null) "完成" else null, { done() }, onBack = back)
+                SheetHead(uiText(UiMessages.commonMachine()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() }, onBack = back)
                 SheetList { used.forEachIndexed { i, id ->
                     val m = state.machines[id]
                     val online = m?.online == true
@@ -1020,9 +1025,9 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     val has = agent in agents
                     val fallback = if (has) null else switchMachine(c, id, agents).agent
                     val sub = when {
-                        !online -> "不在线，现在不能新建"
-                        !has -> machineSubtitle(agents, missing = agent, fallback = fallback)
-                        else -> machineSubtitle(agents)
+                        !online -> uiText(UiMessages.newSessionAndroidOfflineNoStart())
+                        !has -> uiText(machineSubtitle(agents, uiText(UiMessages.commonListSeparator()), missing = agent, fallback = fallback))
+                        else -> uiText(machineSubtitle(agents, uiText(UiMessages.commonListSeparator())))
                     }
                     ListItem(
                         machineLabel(state, id),
@@ -1042,10 +1047,10 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         trailing = { StatusMark(if (online) MarkKind.ONLINE else MarkKind.OFF) },
                     )
                 } }
-                Hint(if (scheduling) "换机器后，各 CLI 的模型和权限从那台机器的默认设置开始。" else "换电脑后，各 CLI 的模型从那台电脑的默认设置开始。")
+                Hint(if (scheduling) "换机器后，各 CLI 的模型和权限从那台机器的默认设置开始。" else uiText(UiMessages.newSessionAndroidChangeMachineHint()))
             }
             "model" -> {
-                SheetHead("模型", if (blockedPrefs == null) "完成" else null, { done() }, onBack = back)
+                SheetHead(uiText(UiMessages.modelsTitle()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() }, onBack = back)
                 ModelSettingsBody(c, models, modelsError, settings, machineLabel(state, c.machineId), scheduling) { edit(it) }
             }
             "mode" -> {
@@ -1083,18 +1088,18 @@ internal fun ModelSettingsBody(
     val shownModel = models?.let { projectModel(c, it, settings) }
     val ms = models
     when {
-        ms == null && modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
-        ms == null -> Text("读取 ${machineName} 的设置…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
+        ms == null && modelsError.isNotEmpty() -> Notice(uiText(UiMessages.modelsAndroidLoadFailedDefault(agent = agentName(c.agent), reason = modelsError)), tone = NoticeTone.WARN)
+        ms == null -> Text(uiText(UiMessages.modelsAndroidReadingMachine(name = machineName)), style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
         else -> {
             val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
             val shown = shownModels(ms.modelsList, ms.modelsList.firstOrNull { it.slug == c.model }, allModels)
             val few = shown.size == ms.modelsCount
             SheetList {
-            ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), enabled = enabled, last = shown.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
+            ListItem(if (defaultModel.isNotEmpty()) uiText(UiMessages.modelsDefaultNamed(defaultModel)) else uiText(UiMessages.modelsDefault()), checked = c.model.isEmpty(), enabled = enabled, last = shown.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
             shown.forEachIndexed { i, m ->
                 ListItem(
                     m.displayName.ifEmpty { m.slug },
-                    small = if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}" else null,
+                    small = if (m.effortsList.size == 1) uiText(UiMessages.modelsFixedEffort(effort = m.effortsList[0])) else null,
                     checked = c.model == m.slug, enabled = enabled,
                     last = i == shown.size - 1,
                     onClick = {
@@ -1108,17 +1113,17 @@ internal fun ModelSettingsBody(
                 val defaultEffort = if (c.model.isEmpty()) {
                     defaultsFor(settings, c.agent).effort.ifEmpty { m.defaultEffort }
                 } else m.defaultEffort
-                FieldLabel("推理强度")
+                FieldLabel(uiText(UiMessages.modelsEffort()))
                 ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, enabled) { edit(c.copy(effort = it)) }
             }
         }
     }
     // Claude Code's context window, on the model's page: a new task's settings are this page.
     if (agentInfo(c.agent).standardContextOption && !scheduling) {
-        FieldLabel("上下文窗口")
+        FieldLabel(uiText(UiMessages.modelsContextWindow()))
         // A model without a larger window has nothing to choose.
-        if (shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW) Hint("标准 200k · 这个模型只有标准窗口")
-        else Segmented(listOf("1M", "标准 200k"), if (c.standardContext) 1 else 0, { edit(c.copy(standardContext = it == 1)) }, Modifier.fillMaxWidth(), enabled = { enabled })
+        if (shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW) Hint(uiText(UiMessages.modelsStandardOnly()))
+        else Segmented(listOf(uiText(UiMessages.modelsExtendedWindow()), uiText(UiMessages.modelsStandardWindow())), if (c.standardContext) 1 else 0, { edit(c.copy(standardContext = it == 1)) }, Modifier.fillMaxWidth(), enabled = { enabled })
     }
 }
 
@@ -1141,7 +1146,7 @@ fun PickProjectSheet(state: RemoteState, onClose: () -> Unit, replace: Boolean =
     var browsing by remember { mutableStateOf(false) }
     Sheet(onClose, scroll = !browsing) {
         if (!browsing) {
-            SheetHead("新会话 · 选项目", "取消", onClose)
+            SheetHead(uiText(UiMessages.newSessionAndroidChooseProject()), uiText(UiMessages.commonCancel()), onClose)
             ProjectPickList(state, onPick = { onClose(); if (replace) nav.back(); nav.projectNew(it) }, onNew = { browsing = true })
         } else {
             DirPickerBody(state, onBack = { browsing = false }) { machine, path -> onClose(); nav.newProjectAt(machine, path) }
@@ -1155,7 +1160,7 @@ fun PickProjectScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    PageScaffold("新会话 · 选项目") {
+    PageScaffold(uiText(UiMessages.newSessionAndroidChooseProject())) {
         FormColumn(Modifier.weight(1f).verticalScrollFaded()) {
             ProjectPickList(state, onPick = { nav.projectNew(it) }, onNew = { nav.newProject() }, card = pal.gbg)
         }
@@ -1168,7 +1173,7 @@ fun PickProjectScreen() {
  * no 取消; [onBack] is there when the sheet came from a step before it.
  */
 @Composable
-fun DirPickerBody(state: RemoteState, title: String = "新项目 · 选目录", onBack: (() -> Unit)? = null, onChosen: (machine: String, path: String) -> Unit) {
+fun DirPickerBody(state: RemoteState, title: String = uiText(UiMessages.projectsNewChooseDirectory()), onBack: (() -> Unit)? = null, onChosen: (machine: String, path: String) -> Unit) {
     // Not the whole height: the sheet stays below the status bar, whose icons are drawn for the page behind it.
     Column(Modifier.fillMaxWidth().fillMaxHeight(.88f)) {
         SheetHead(title, onBack = onBack)
@@ -1216,9 +1221,9 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
         }
         val d = dirs
         when {
-            machine.isEmpty() -> Notice("没有在线的电脑", tone = NoticeTone.WARN)
-            error.isNotEmpty() -> Notice("读不了这个目录：$error", tone = NoticeTone.ERROR, action = "重试", onAction = { attempt++ })
-            d == null -> Text("读取中…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
+            machine.isEmpty() -> Notice(uiText(UiMessages.projectsAndroidNoOnline()), tone = NoticeTone.WARN)
+            error.isNotEmpty() -> Notice(uiText(UiMessages.projectsDirectoryFailed(reason = error)), tone = NoticeTone.ERROR, action = uiText(UiMessages.commonRetry()), onAction = { attempt++ })
+            d == null -> Text(uiText(UiMessages.projectsReadingDirectory()), style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
             else -> {
                 val parts = pathCrumbs(d.path)
                 Text(
@@ -1230,7 +1235,7 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
                     },
                     style = T.mono13, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp),
                 )
-                if (d.dirsList.isEmpty()) Text("没有子目录", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
+                if (d.dirsList.isEmpty()) Text(uiText(UiMessages.projectsNoSubdirectories()), style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
                 // The folder before stays, dimmed, until the next one is listed: no blank in between.
                 val listState = remember(d.path) { androidx.compose.foundation.lazy.LazyListState() }
                 Box(Modifier.weight(1f).fillMaxWidth().alpha(if (loading) .45f else 1f)) {
@@ -1239,7 +1244,7 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
                         state = listState,
                     ) {
                         if (d.parent.isNotEmpty()) item(key = "..") {
-                            ListItem("上一级", last = d.dirsList.isEmpty(), onClick = if (loading) null else ({ path = d.parent }), icon = Lucide.ChevronLeft)
+                            ListItem(uiText(UiMessages.projectsParentDirectory()), last = d.dirsList.isEmpty(), onClick = if (loading) null else ({ path = d.parent }), icon = Lucide.ChevronLeft)
                         }
                         itemsIndexed(d.dirsList, key = { _, name -> name }) { i, name ->
                             ListItem(name, last = i == d.dirsList.size - 1, onClick = if (loading) null else ({ path = d.path.trimEnd('/') + "/" + name }), trailing = { Arrow(p.ink2, T.s15) })
@@ -1247,7 +1252,7 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
                     }
                 }
                 PillButton(
-                    "用 ${if (parts == listOf("/")) "/" else projectName(d.path)} 这个目录", { onChosen(machine, d.path) },
+                    uiText(UiMessages.projectsUseDirectory(name = if (parts == listOf("/")) "/" else uiText(listProjectName(d.path)))), { onChosen(machine, d.path) },
                     Modifier.fillMaxWidth().padding(top = 10.dp), ButtonKind.INK, enabled = !loading,
                 )
             }
@@ -1261,7 +1266,7 @@ fun NewProjectScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
-    PageScaffold("新项目 · 选目录") {
+    PageScaffold(uiText(UiMessages.projectsNewChooseDirectory())) {
         DirPicker(state, Modifier.weight(1f).padding(horizontal = 16.dp).padding(bottom = 8.dp)) { machine, path -> nav.newProjectAt(machine, path) }
     }
 }
@@ -1289,11 +1294,11 @@ fun NewProjectAtScreen(machine: String, path: String) {
     var settingsOpen by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().background(p.paper)) {
         NewSessionBox(
-            state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
+            state, initial, uiText(listProjectName(path)), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
         )
     }
     val open = settingsOpen
-    if (open != null) NewSettingsSheet(state, path, projectName(path), selected.machineId, selected.agent, open, onDone = { op ->
+    if (open != null) NewSettingsSheet(state, path, uiText(listProjectName(path)), selected.machineId, selected.agent, open, onDone = { op ->
         if (op != null) {
             PrefsChanges.run(remote, op)
             projectConfig(state, path, entry.agent.value, null, applySettings(savedSettings(state, path), op, System.currentTimeMillis()))?.let { entry.config.choose(it) }

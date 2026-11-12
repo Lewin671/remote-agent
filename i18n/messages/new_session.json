@@ -37,6 +37,279 @@
     }
   },
   {
+    "key": "new_session.android_abandon",
+    "zh-CN": "放弃",
+    "en": "Abandon",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_account_no_auto",
+    "zh-CN": "当前账户不支持自动模式，而 {name} 的新项目默认审批模式是自动。到这台电脑的设置里改默认后再开始",
+    "en": "This account does not support auto mode, but {name} uses it by default for new projects. Change the default in this computer’s settings before starting.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_change_computer",
+    "zh-CN": "换电脑",
+    "en": "Change computer",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_change_machine_hint",
+    "zh-CN": "换电脑后，各 CLI 的模型从那台电脑的默认设置开始。",
+    "en": "After changing computers, each CLI’s model starts from that computer’s defaults.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_change_project",
+    "zh-CN": "换项目",
+    "en": "Change project",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_choose_project",
+    "zh-CN": "新会话 · 选项目",
+    "en": "New session · Choose a project",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_draft_preserved",
+    "zh-CN": "草稿已保留，请选择在线机器；不自动换机器或 CLI。",
+    "en": "Your draft is saved. Choose an online computer; the computer and CLI will not change automatically.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_expired_start",
+    "zh-CN": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
+    "en": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check running sessions first.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "prompt": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_machine_offline",
+    "zh-CN": "{name} 不在线，现在不能新建",
+    "en": "{name} is offline; cannot start a session now",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_model_no_auto",
+    "zh-CN": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到这台电脑的设置里改默认",
+    "en": "This model has no auto mode, but {name} uses auto mode by default for new projects. Choose another model or change the default in this computer’s settings.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_new_session",
+    "zh-CN": "新会话",
+    "en": "New session",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_offline_draft",
+    "zh-CN": "{name} 已离线，任务尚未开始",
+    "en": "{name} is offline. The task has not started",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_offline_no_start",
+    "zh-CN": "不在线，现在不能新建",
+    "en": "Offline; cannot start a session now",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_others_offline",
+    "zh-CN": "{name} 用过的其他电脑也都不在线。",
+    "en": "All other computers used for {name} are offline too.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_reading_cli",
+    "zh-CN": "正在读取 {agent} 上次的设置…",
+    "en": "Reading previous settings for {agent}…",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_start",
+    "zh-CN": "开始",
+    "en": "Start",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.android_unknown_start",
+    "zh-CN": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
+    "en": "The last start is unconfirmed. Tap ↑ to resend the same request; the computer will not start it again if it already received it.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "new_session.attachments_moved",
     "zh-CN": "已换到 {name}，附件正在重新上传",
     "en": "Switched to {name}. Uploading attachments again",

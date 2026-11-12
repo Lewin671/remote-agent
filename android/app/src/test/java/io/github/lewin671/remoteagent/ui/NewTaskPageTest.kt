@@ -75,11 +75,11 @@ class NewTaskPageTest {
         ui.onNodeWithTag("new-project", useUnmergedTree = true).assertExists()
         ui.onNodeWithText("demo", useUnmergedTree = true).assertExists()
         ui.onNodeWithTag("new-machine", useUnmergedTree = true).assertExists()
-        ui.onNodeWithText("要做什么？", useUnmergedTree = true).assertExists()
+        ui.onNodeWithText(messageTextForTest(UiMessages.newSessionPrompt()), useUnmergedTree = true).assertExists()
         ui.onNodeWithTag("new-agent", useUnmergedTree = true).assertExists()
         ui.onNodeWithTag("new-model", useUnmergedTree = true).assertExists()
-        ui.onNodeWithContentDescription("开始").assertExists()
-        ui.onNodeWithText("新任务").assertDoesNotExist()
+        ui.onNodeWithContentDescription(messageTextForTest(UiMessages.newSessionAndroidStart())).assertExists()
+        ui.onNodeWithText(messageTextForTest(UiMessages.homeNewTask())).assertDoesNotExist()
     }
 
     @Test fun cliMenuKeepsComposerAndTextFocusAndSameChipCloses() {
@@ -96,7 +96,7 @@ class NewTaskPageTest {
         ui.onNodeWithTag("new-agent").performClick()
         ui.onNodeWithText("Claude Code").performClick()
         ui.onNodeWithTag("new-agent-menu").assertDoesNotExist()
-        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals("CLI：Claude Code")
+        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals(messageTextForTest(UiMessages.newSessionCliLabel("Claude Code")))
         field.assertIsFocused()
         Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
     }
@@ -119,7 +119,7 @@ class NewTaskPageTest {
     }
 
     private fun selectSecondModel() {
-        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First，推理强度：默认").fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription(messageTextForTest(UiMessages.modelsSummaryEffortLabel(messageTextForTest(UiMessages.modelsDefault()), "First"))).fetchSemanticsNodes().isNotEmpty() }
         ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithText("Second").performClick()
     }
@@ -132,7 +132,7 @@ class NewTaskPageTest {
         selectSecondModel()
         field.performTouchInput { click() }
         ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
-        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Second，推理强度：默认")
+        ui.onNodeWithTag("new-model").assertContentDescriptionEquals(messageTextForTest(UiMessages.modelsSummaryEffortLabel(messageTextForTest(UiMessages.modelsDefault()), "Second")))
         field.assertIsFocused()
         Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
         ui.runOnIdle {
@@ -205,12 +205,12 @@ class NewTaskPageTest {
         Assert.assertEquals("low", newTaskRequest(initial.copy(effort = "low"), "hello", emptyList(), emptyList()).effort)
         val selected = chooseNewTaskModel(initial, "second", models, null)
         Assert.assertEquals("", newTaskRequest(selected, "hello", emptyList(), emptyList()).effort)
-        Assert.assertEquals("Second · 默认", newTaskModelSummary(selected, models, null, true, false).label)
+        Assert.assertEquals("Second · 默认", newTaskModelSummary(selected, models, null, true, false).label.testText())
     }
 
     @Test fun effortAndModelApplyImmediatelyAndAllModelsIsASeparatePage() {
         show("a")
-        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First，推理强度：默认").fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription(messageTextForTest(UiMessages.modelsSummaryEffortLabel(messageTextForTest(UiMessages.modelsDefault()), "First"))).fetchSemanticsNodes().isNotEmpty() }
         ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithTag("new-model").assertIsSelected()
         ui.onNodeWithText("low").performClick()
@@ -229,7 +229,7 @@ class NewTaskPageTest {
         ui.onNodeWithTag("new-model-main").assertExists()
         ui.onNodeWithTag("new-model-all").assertDoesNotExist()
         ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Sixth，推理强度：low")
-        ui.onNodeWithText("完成").performClick()
+        ui.onNodeWithText(messageTextForTest(UiMessages.commonDone())).performClick()
         ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
         ui.runOnIdle {
             Assert.assertEquals("sixth", Drafts.newSession(path, null).config.value!!.model)
@@ -241,16 +241,16 @@ class NewTaskPageTest {
     @Test fun summaryUsesExplicitEffortAndOmitsFixedMissingAndUnknownEfforts() {
         val c = NewConfig("a", path, Agent.AGENT_CODEX)
         fun summary(config: NewConfig = c, single: Boolean = false) = newTaskModelSummary(config, models, null, true, single)
-        Assert.assertEquals("First · 默认", summary().label)
-        Assert.assertEquals("Codex · First · high", summary(c.copy(effort = "high"), true).label)
-        Assert.assertEquals("Third", summary(c.copy(model = "third")).label)
-        Assert.assertEquals("Fourth", summary(c.copy(model = "fourth")).label)
-        Assert.assertEquals("custom", summary(c.copy(model = "custom", effort = "high")).label)
-        Assert.assertEquals("读取设置…", newTaskModelSummary(c, null, null, false, false).label)
-        Assert.assertEquals("默认模型", newTaskModelSummary(c, null, null, true, false).label)
+        Assert.assertEquals("First · 默认", summary().label.testText())
+        Assert.assertEquals("Codex · First · high", summary(c.copy(effort = "high"), true).label.testText())
+        Assert.assertEquals("Third", summary(c.copy(model = "third")).label.testText())
+        Assert.assertEquals("Fourth", summary(c.copy(model = "fourth")).label.testText())
+        Assert.assertEquals("custom", summary(c.copy(model = "custom", effort = "high")).label.testText())
+        Assert.assertEquals(messageTextForTest(UiMessages.newSessionReadingSettings()), newTaskModelSummary(c, null, null, false, false).label.testText())
+        Assert.assertEquals(messageTextForTest(UiMessages.newSessionDefaultModel()), newTaskModelSummary(c, null, null, true, false).label.testText())
         val settings = DaemonSettings.newBuilder().setDefaultModel("second").setDefaultEffort("low").build()
-        Assert.assertEquals("Second · 默认", newTaskModelSummary(c, models, settings, true, false).label)
-        Assert.assertEquals("custom", newTaskModelSummary(c, models, settings.toBuilder().setDefaultModel("custom").build(), true, false).label)
+        Assert.assertEquals("Second · 默认", newTaskModelSummary(c, models, settings, true, false).label.testText())
+        Assert.assertEquals("custom", newTaskModelSummary(c, models, settings.toBuilder().setDefaultModel("custom").build(), true, false).label.testText())
     }
 
     @Test fun changingModelKeepsExplicitSupportedEffortOtherwiseLeavesDefault() {
@@ -302,7 +302,7 @@ class NewTaskPageTest {
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
     @Test fun toolRowCollapsesCliBeforeTruncatingModel() {
         toolRow(260, "Opus 5.5")
-        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals("CLI：Claude Code")
+        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals(messageTextForTest(UiMessages.newSessionCliLabel("Claude Code")))
             .assert(hasText("Claude Code").not())
         Assert.assertFalse(modelTextLayout().isLineEllipsized(0))
         ui.onNodeWithTag("new-model-effort", useUnmergedTree = true).assertTextEquals(" · medium")
@@ -312,7 +312,7 @@ class NewTaskPageTest {
     @Test fun toolRowTruncatesLongModelAfterCollapsingCliKeepingUsefulPrefixAndEffort() {
         // Comparable to the space between the attachment/send buttons on a narrow phone.
         toolRow(220, "Opus 5.5 with a very long model name")
-        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals("CLI：Claude Code")
+        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals(messageTextForTest(UiMessages.newSessionCliLabel("Claude Code")))
             .assert(hasText("Claude Code").not())
         val layout = modelTextLayout()
         Assert.assertTrue(layout.isLineEllipsized(0))
@@ -341,10 +341,10 @@ class NewTaskPageTest {
         val before = controls.fetchSemanticsNode().boundsInRoot
         val header = ui.onNodeWithText("模型").fetchSemanticsNode().boundsInRoot
         ui.onNodeWithTag("new-model-show-all").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("推理强度").assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.modelsEffort())).assertIsDisplayed()
         ui.onNodeWithText("上下文窗口").assertIsDisplayed()
         ui.onNodeWithText("1M").assertIsDisplayed()
-        ui.onNodeWithText("标准 200k").assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(UiMessages.modelsStandardWindow())).assertIsDisplayed()
         Assert.assertEquals(before, controls.fetchSemanticsNode().boundsInRoot)
         Assert.assertEquals(header, ui.onNodeWithText("模型").fetchSemanticsNode().boundsInRoot)
     }

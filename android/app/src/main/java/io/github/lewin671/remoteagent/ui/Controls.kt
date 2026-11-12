@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.listProjectName
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -214,7 +216,7 @@ fun ProjectAvatar(key: String, size: Int = 28, all: Boolean = false) {
     // The letter only decorates the name beside it: hidden from screen readers (design-system §5).
     Box(Modifier.clearAndSetSemantics {}.size(size.dp).clip(CircleShape).background(p.fill2), contentAlignment = Alignment.Center) {
         Text(
-            if (all) "全" else projectName(key).take(1).lowercase(),
+            if (all) uiText(UiMessages.commonAllProjectsAvatar()) else uiText(listProjectName(key)).take(1).lowercase(),
             // In the circle's own scale: the letter does not grow past it with the font size.
             style = ts(with(LocalDensity.current) { (size / 2).dp.toSp() }, FontWeight.Bold, 1.2f),
             color = p.ink,
@@ -227,7 +229,8 @@ fun ProjectAvatar(key: String, size: Int = 28, all: Boolean = false) {
  * 按标题筛选, and ✕ to clear once something is typed.
  */
 @Composable
-fun FilterField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String = "按标题筛选") {
+fun FilterField(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String = uiText(UiMessages.homeFilterTitle())) {
+    val clearLabel = uiText(UiMessages.homeClearFilter())
     val p = pal
     BasicTextField(
         value,
@@ -248,7 +251,7 @@ fun FilterField(value: String, onChange: (String) -> Unit, modifier: Modifier = 
                     inner()
                 }
                 if (value.isNotEmpty()) Box(
-                    Modifier.size(40.dp).tap { onChange("") }.semantics { contentDescription = "清空筛选" },
+                    Modifier.size(40.dp).tap { onChange("") }.semantics { contentDescription = clearLabel },
                     contentAlignment = Alignment.Center,
                 ) { Ic(Lucide.X, 18.dp, p.ink3) }
             }

@@ -16,6 +16,20 @@
     }
   },
   {
+    "key": "common.android_more",
+    "zh-CN": "更多",
+    "en": "More",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "en": "Back",
     "key": "common.back",
     "notes": "公共操作按钮或读屏标签：返回。紧凑空间，允许英文自然换行；关闭指关闭界面，不指禁用设置。移除指移除条目，具体后果由所在确认说明解释。无变量。",

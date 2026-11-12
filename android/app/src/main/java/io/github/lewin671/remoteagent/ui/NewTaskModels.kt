@@ -29,17 +29,18 @@ import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.proto.*
 
-internal data class NewTaskModelSummary(val model: String, val effort: String = "", val prefix: String = "") {
-    val accessibilityLabel get() = "模型：$model" + if (effort.isEmpty()) "" else "，推理强度：$effort"
-    val label get() = prefix + model + if (effort.isEmpty()) "" else " · $effort"
+internal data class NewTaskModelSummary(val model: MessageText, val effort: MessageText = "".messageText(), val prefix: String = "") {
+    constructor(model: String, effort: String = "", prefix: String = "") : this(model.messageText(), effort.messageText(), prefix)
+    val label get() = listOf(prefix.removeSuffix(" · ").messageText(), model, effort).joinMessages(" · ")
 }
 
 internal fun newTaskModelSummary(c: NewConfig, models: ListModelsResponse?, settings: DaemonSettings?, read: Boolean, singleAgent: Boolean): NewTaskModelSummary {
     val m = models?.let { projectModel(c, it, settings) }
     val id = c.model.ifEmpty { defaultsFor(settings, c.agent).model.ifEmpty { models?.defaultModel.orEmpty() } }
-    val name = if (!read && c.model.isEmpty()) "读取设置…"
-        else m?.displayName?.ifEmpty { m.slug } ?: id.ifEmpty { "默认模型" }
-    val effort = if (models != null && m != null && m.effortsCount > 1) c.effort.ifEmpty { "默认" } else ""
+    val name = if (!read && c.model.isEmpty()) UiMessages.newSessionReadingSettings().messageText()
+        else (m?.displayName?.ifEmpty { m.slug } ?: id).takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.newSessionDefaultModel().messageText()
+    val effort = if (models != null && m != null && m.effortsCount > 1)
+        c.effort.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.modelsDefault().messageText() else "".messageText()
     return NewTaskModelSummary(name, effort, if (singleAgent) agentName(c.agent) + " · " else "")
 }
 
@@ -48,9 +49,9 @@ internal fun newTaskModelSummary(c: NewConfig, models: ListModelsResponse?, sett
 internal fun NewTaskModelLabel(summary: NewTaskModelSummary, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         if (summary.prefix.isNotEmpty()) Text(summary.prefix, style = T.s15, color = pal.ink2, maxLines = 1)
-        Text(summary.model, style = T.s15, color = pal.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        Text(uiText(summary.model), style = T.s15, color = pal.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false).testTag("new-model-name"))
-        if (summary.effort.isNotEmpty()) Text(" · ${summary.effort}", style = T.s15, color = pal.ink2, maxLines = 1,
+        if (summary.effort.isNotEmpty()) Text(" · " + uiText(summary.effort), style = T.s15, color = pal.ink2, maxLines = 1,
             modifier = Modifier.testTag("new-model-effort"))
     }
 }
@@ -68,7 +69,7 @@ internal fun NewTaskTools(
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val gap = if (agent == null) 0 else 2.dp.roundToPx()
         val modelMeasurable = subcompose("model") {
-            BoxTool(onModel, summary.accessibilityLabel, modelModifier.testTag("new-model"), active = modelOpen) {
+            BoxTool(onModel, uiText(if (summary.effort.isEmpty()) UiMessages.modelsSummaryLabel(uiText(summary.model)) else UiMessages.modelsSummaryEffortLabel(uiText(summary.effort), uiText(summary.model))), modelModifier.testTag("new-model"), active = modelOpen) {
                 NewTaskModelLabel(summary, Modifier.weight(1f, fill = false))
             }
         }.single()
@@ -79,7 +80,7 @@ internal fun NewTaskTools(
         }.single().maxIntrinsicWidth(Constraints.Infinity)
         val compact = fullAgentWidth + gap + modelWidth > constraints.maxWidth
         val agentPlaceable = if (agent == null) null else subcompose("agent") {
-            BoxTool(onAgent, "CLI：${agentName(agent)}", agentModifier.testTag("new-agent")) {
+            BoxTool(onAgent, uiText(UiMessages.newSessionCliLabel(agentName(agent))), agentModifier.testTag("new-agent")) {
                 AgentToolLabel(agent, compact)
             }
         }.single().measure(loose)
@@ -122,10 +123,10 @@ internal fun ColumnScope.NewTaskModelPanel(
         if (all) Row(Modifier.weight(1f).heightIn(min = 44.dp).clickable(role = Role.Button) { all = false }
             .testTag("new-model-back"), verticalAlignment = Alignment.CenterVertically) {
             Ic(Lucide.ChevronLeft, 20.dp, pal.blue)
-            Text("全部模型", style = T.s17b, color = pal.ink)
-        } else Text("模型", style = T.s17b, color = pal.ink, modifier = Modifier.weight(1f))
+            Text(uiText(UiMessages.modelsAll()), style = T.s17b, color = pal.ink)
+        } else Text(uiText(UiMessages.modelsTitle()), style = T.s17b, color = pal.ink, modifier = Modifier.weight(1f))
         Box(Modifier.size(44.dp).clickable(role = Role.Button, onClick = onClose), contentAlignment = Alignment.Center) {
-            Text("完成", style = T.s15, color = pal.blue)
+            Text(uiText(UiMessages.commonDone()), style = T.s15, color = pal.blue)
         }
     }
     // fill=false lets the popup wrap short content; long lists use only the available space.
@@ -143,9 +144,9 @@ internal fun ColumnScope.NewTaskModelPanel(
             Column(Modifier.verticalScroll(scroll).testTag(if (all) "new-model-all" else "new-model-main")) {
                 Box(Modifier.onSizeChanged { noticeHeight = it.height }) { notice() }
                 when {
-                    models == null && modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
+                    models == null && modelsError.isNotEmpty() -> Notice(uiText(UiMessages.modelsAndroidLoadFailedDefault(agent = agentName(c.agent), reason = modelsError)), tone = NoticeTone.WARN)
                     models == null -> Box(Modifier.fillMaxWidth().height(120.dp)) {
-                        Text("读取 $machineName 的设置…", style = T.s13, color = pal.ink2)
+                        Text(uiText(UiMessages.modelsAndroidReadingMachine(name = machineName)), style = T.s13, color = pal.ink2)
                     }
                     else -> {
                         val model = projectModel(c, models, settings)
@@ -157,18 +158,18 @@ internal fun ColumnScope.NewTaskModelPanel(
                             .testTag("new-model-controls")) {
                             when (model?.effortsCount) {
                                 null, 0 -> Unit
-                                1 -> Text("推理强度固定为 ${model.effortsList[0]}", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
+                                1 -> Text(uiText(UiMessages.modelsFixedEffort(effort = model.effortsList[0])), style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
                                 else -> {
-                                    Text("推理强度", style = T.s12, color = pal.ink2)
+                                    Text(uiText(UiMessages.modelsEffort()), style = T.s12, color = pal.ink2)
                                     ModelSegments(model.effortsList, c.effort, enabled) { edit(c.copy(effort = it)) }
                                 }
                             }
                             if (agentInfo(c.agent).standardContextOption) {
                                 if (model != null && model.contextWindow in 1..STANDARD_WINDOW) {
-                                    Text("标准 200k · 这个模型只有标准窗口", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
+                                    Text(uiText(UiMessages.modelsStandardOnly()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
                                 } else {
-                                    Text("上下文窗口", style = T.s12, color = pal.ink2, modifier = Modifier.padding(top = 4.dp))
-                                    ModelSegments(listOf("extended", "standard"), if (c.standardContext) "standard" else "extended", enabled, label = { if (it == "standard") "标准 200k" else "1M" }) { edit(c.copy(standardContext = it == "standard")) }
+                                    Text(uiText(UiMessages.modelsContextWindow()), style = T.s12, color = pal.ink2, modifier = Modifier.padding(top = 4.dp))
+                                    ModelSegments(listOf("extended", "standard"), if (c.standardContext) "standard" else "extended", enabled, label = { if (it == "standard") uiText(UiMessages.modelsStandardWindow()) else uiText(UiMessages.modelsExtendedWindow()) }) { edit(c.copy(standardContext = it == "standard")) }
                                 }
                             }
                         }
@@ -178,7 +179,7 @@ internal fun ColumnScope.NewTaskModelPanel(
                             val defaultName = findModel(models.modelsList, default) { it.slug }?.let { it.displayName.ifEmpty { it.slug } } ?: default
                             fun pick(slug: String) { edit(chooseNewTaskModel(c, slug, models, settings)); all = false }
                             Column(Modifier.selectableGroup()) {
-                                ModelPanelRow("默认" + if (defaultName.isNotEmpty()) "（$defaultName）" else "", c.model.isEmpty(), enabled,
+                                ModelPanelRow(if (defaultName.isNotEmpty()) uiText(UiMessages.modelsDefaultNamed(defaultName)) else uiText(UiMessages.modelsDefault()), c.model.isEmpty(), enabled,
                                     Modifier.onSizeChanged { rowHeight = it.height }) { pick("") }
                                 shown.forEach { m -> ModelPanelRow(m.displayName.ifEmpty { m.slug }, c.model.isNotEmpty() && model?.slug == m.slug, enabled) { pick(m.slug) } }
                             }
@@ -186,7 +187,7 @@ internal fun ColumnScope.NewTaskModelPanel(
                                 Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { all = true }.testTag("new-model-show-all"),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("全部模型", style = T.s15, color = pal.ink2, modifier = Modifier.weight(1f))
+                                Text(uiText(UiMessages.modelsAll()), style = T.s15, color = pal.ink2, modifier = Modifier.weight(1f))
                                 Ic(Lucide.ChevronRight, 18.dp, pal.ink3)
                             }
                         }
@@ -209,7 +210,7 @@ private fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, modi
 
 /** All efforts in one equal-width row, including six-choice models on narrow phones. */
 @Composable
-private fun ModelSegments(items: List<String>, selected: String, enabled: Boolean, label: (String) -> String = { it }, onPick: (String) -> Unit) {
+private fun ModelSegments(items: List<String>, selected: String, enabled: Boolean, label: @Composable (String) -> String = { it }, onPick: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().clip(Radii.R14).background(pal.fill).selectableGroup()) {
         items.forEach { item ->
             Box(Modifier.weight(1f).heightIn(min = 44.dp)

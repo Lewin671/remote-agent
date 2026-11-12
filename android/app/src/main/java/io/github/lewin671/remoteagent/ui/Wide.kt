@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -64,7 +65,7 @@ fun HomeOrWide() {
                         's' -> SessionScreen(arg)
                         'n' -> AppSafeArea { ProjectScreen(arg, focus = true) }
                         'p' -> arg.split('\n', limit = 2).let { AppSafeArea { NewProjectAtScreen(it[0], it.getOrElse(1) { "" }) } }
-                        else -> Text("选一个会话，在这里看", style = T.s15, color = p.ink2, modifier = Modifier.align(Alignment.Center))
+                        else -> Text(uiText(UiMessages.homeAndroidSelectSession()), style = T.s15, color = p.ink2, modifier = Modifier.align(Alignment.Center))
                     }
                 }
             }

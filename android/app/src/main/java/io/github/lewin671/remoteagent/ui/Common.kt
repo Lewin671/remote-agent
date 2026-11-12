@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -102,7 +103,7 @@ fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val failed = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty()
     Text(
-        io.github.lewin671.remoteagent.core.earlierTail(state),
+        uiText(io.github.lewin671.remoteagent.core.earlierTail(state)),
         style = T.s12,
         color = pal.ink2,
         modifier =
@@ -215,8 +216,8 @@ fun ConnBanner(state: RemoteState) {
     ) {
         Mark(line.icon, color, 12.dp)
         Spacer(Modifier.width(6.dp))
-        Text(line.text, Modifier.weight(1f), style = T.s12, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (line.details) Text("详情", Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
+        Text(uiText(line.text), Modifier.weight(1f), style = T.s12, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (line.details) Text(uiText(UiMessages.commonDetails()), Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
     }
     if (details && line.details) ServerDetails(state) { details = false }
 }
@@ -227,8 +228,8 @@ fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
     val line = connLine(state) ?: return
     var details by remember { mutableStateOf(false) }
     Strip(
-        line.icon, line.text, modifier,
-        action = if (line.details) "详情" else null,
+        line.icon, uiText(line.text), modifier,
+        action = if (line.details) uiText(UiMessages.commonDetails()) else null,
         onClick = if (line.details) ({ details = true }) else null,
         error = line.failed,
         spin = line.icon == Lucide.LoaderCircle,
@@ -237,7 +238,7 @@ fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
 }
 
 /** What the connection bar or strip says: the icon, the sentence, whether it is a failure in red, and whether 详情 opens. */
-class ConnLine(val icon: ImageVector, val text: String, val failed: Boolean, val details: Boolean)
+class ConnLine(val icon: ImageVector, val text: io.github.lewin671.remoteagent.core.UiMessage, val failed: Boolean, val details: Boolean)
 
 /** Nothing when online; otherwise the nearest stretch that is down (client-v30 「断线」). */
 fun connLine(state: RemoteState): ConnLine? {
@@ -252,9 +253,9 @@ fun connLine(state: RemoteState): ConnLine? {
         }
     val text =
         when (state.link) {
-            Link.NO_NETWORK -> "本机网络不通 · " + if (state.loaded) "显示的是上次的内容" else "联网后才能读取会话"
-            Link.NO_SERVER -> if (failed) "连不上服务器：${state.error}" else "连不上服务器 · 正在重试"
-            else -> if (state.synced) "正在重连…" else "连接中…"
+            Link.NO_NETWORK -> if (state.loaded) UiMessages.connectionNoNetworkPrevious() else UiMessages.connectionNoNetworkEmpty()
+            Link.NO_SERVER -> if (failed) UiMessages.connectionAndroidServerFailed(reason = state.error) else UiMessages.connectionServerRetrying()
+            else -> if (state.synced) UiMessages.connectionReconnecting() else UiMessages.connectionConnecting()
         }
     return ConnLine(icon, text, failed, state.link == Link.NO_SERVER)
 }
@@ -265,14 +266,14 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     Sheet(onClose) {
-        SheetHead("连不上服务器")
+        SheetHead(uiText(UiMessages.connectionNoServer()))
         Text(
-            "本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。",
+            uiText(UiMessages.connectionAndroidExplanation()),
             style = T.s13,
             color = p.ink,
         )
         Text(
-            "服务器　${remote.account.server.substringAfter("://")}",
+            uiText(UiMessages.connectionAndroidServer(name = remote.account.server.substringAfter("://"))),
             style = T.s13,
             color = p.ink2,
             modifier = Modifier.padding(top = 10.dp),
@@ -280,14 +281,14 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
         // Since start nothing was reached: when it was last is not known here.
         if (state.synced)
             Text(
-                "断开于　${whenText(state.offlineSinceMs, now())}",
+                uiText(UiMessages.connectionAndroidDisconnectedAt(time = uiText(io.github.lewin671.remoteagent.core.listWhen(state.offlineSinceMs, now())))),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
         if (state.error.isNotEmpty())
             Text(
-                "原因　${state.error}",
+                uiText(UiMessages.connectionAndroidReason(reason = state.error)),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
@@ -295,7 +296,7 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
         if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error)
             Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
         PillButton(
-            "立即重试",
+            uiText(UiMessages.connectionAndroidRetryNow()),
             {
                 remote.reconnectNow()
                 onClose()

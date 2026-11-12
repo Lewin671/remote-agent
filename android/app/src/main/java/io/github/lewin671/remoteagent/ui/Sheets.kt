@@ -684,6 +684,6 @@ fun PageNote(text: String) {
 @Composable
 fun AllModels(onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 44.dp).clickable(onClick = onClick), contentAlignment = Alignment.CenterStart) {
-        ArrowText("全部模型", pal.blue, T.s15)
+        ArrowText(uiText(UiMessages.modelsAll()), pal.blue, T.s15)
     }
 }

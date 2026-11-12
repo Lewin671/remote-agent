@@ -16,6 +16,9 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "common.all_projects_avatar" -> {
             resources.getString(R.string.common_all_projects_avatar)
         }
+        "common.android_more" -> {
+            resources.getString(R.string.common_android_more)
+        }
         "common.back" -> {
             resources.getString(R.string.common_back)
         }
@@ -70,6 +73,31 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "common.unknown_computer" -> {
             resources.getString(R.string.common_unknown_computer)
         }
+        "connection.android_disconnected_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.connection_android_disconnected_at, time)
+        }
+        "connection.android_explanation" -> {
+            resources.getString(R.string.connection_android_explanation)
+        }
+        "connection.android_no_response" -> {
+            resources.getString(R.string.connection_android_no_response)
+        }
+        "connection.android_reason" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.connection_android_reason, reason)
+        }
+        "connection.android_retry_now" -> {
+            resources.getString(R.string.connection_android_retry_now)
+        }
+        "connection.android_server" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.connection_android_server, name)
+        }
+        "connection.android_server_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.connection_android_server_failed, reason)
+        }
         "connection.connecting" -> {
             resources.getString(R.string.connection_connecting)
         }
@@ -116,6 +144,46 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "home.all_projects" -> {
             resources.getString(R.string.home_all_projects)
+        }
+        "home.android_change_scope" -> {
+            resources.getString(R.string.home_android_change_scope)
+        }
+        "home.android_current_scope" -> {
+            resources.getString(R.string.home_android_current_scope)
+        }
+        "home.android_earlier_failed_retry" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.home_android_earlier_failed_retry, reason)
+        }
+        "home.android_earlier_offline" -> {
+            resources.getString(R.string.home_android_earlier_offline)
+        }
+        "home.android_empty_project" -> {
+            resources.getString(R.string.home_android_empty_project)
+        }
+        "home.android_list_failed_retry" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.home_android_list_failed_retry, reason)
+        }
+        "home.android_no_machines" -> {
+            resources.getString(R.string.home_android_no_machines)
+        }
+        "home.android_no_online" -> {
+            resources.getString(R.string.home_android_no_online)
+        }
+        "home.android_schedules_new" -> {
+            resources.getString(R.string.home_android_schedules_new)
+        }
+        "home.android_schedules_pending" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_android_schedules_pending, count, count)
+        }
+        "home.android_select_session" -> {
+            resources.getString(R.string.home_android_select_session)
+        }
+        "home.android_sessions_pending" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_android_sessions_pending, count, count)
         }
         "home.choose_scope" -> {
             resources.getString(R.string.home_choose_scope)
@@ -272,6 +340,15 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val agent = message.args.getValue("agent") as String
             resources.getString(R.string.list_state_agent_asking, agent)
         }
+        "list_state.android_loading" -> {
+            resources.getString(R.string.list_state_android_loading)
+        }
+        "list_state.android_request_command" -> {
+            resources.getString(R.string.list_state_android_request_command)
+        }
+        "list_state.android_request_permission" -> {
+            resources.getString(R.string.list_state_android_request_permission)
+        }
         "list_state.approval" -> {
             resources.getString(R.string.list_state_approval)
         }
@@ -332,6 +409,15 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "models.all" -> {
             resources.getString(R.string.models_all)
         }
+        "models.android_load_failed_default" -> {
+            val agent = message.args.getValue("agent") as String
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.models_android_load_failed_default, agent, reason)
+        }
+        "models.android_reading_machine" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.models_android_reading_machine, name)
+        }
         "models.back" -> {
             resources.getString(R.string.models_back)
         }
@@ -386,6 +472,64 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "new_session.account_no_auto" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_account_no_auto, name)
+        }
+        "new_session.android_abandon" -> {
+            resources.getString(R.string.new_session_android_abandon)
+        }
+        "new_session.android_account_no_auto" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_android_account_no_auto, name)
+        }
+        "new_session.android_change_computer" -> {
+            resources.getString(R.string.new_session_android_change_computer)
+        }
+        "new_session.android_change_machine_hint" -> {
+            resources.getString(R.string.new_session_android_change_machine_hint)
+        }
+        "new_session.android_change_project" -> {
+            resources.getString(R.string.new_session_android_change_project)
+        }
+        "new_session.android_choose_project" -> {
+            resources.getString(R.string.new_session_android_choose_project)
+        }
+        "new_session.android_draft_preserved" -> {
+            resources.getString(R.string.new_session_android_draft_preserved)
+        }
+        "new_session.android_expired_start" -> {
+            val prompt = message.args.getValue("prompt") as String
+            resources.getString(R.string.new_session_android_expired_start, prompt)
+        }
+        "new_session.android_machine_offline" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_android_machine_offline, name)
+        }
+        "new_session.android_model_no_auto" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_android_model_no_auto, name)
+        }
+        "new_session.android_new_session" -> {
+            resources.getString(R.string.new_session_android_new_session)
+        }
+        "new_session.android_offline_draft" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_android_offline_draft, name)
+        }
+        "new_session.android_offline_no_start" -> {
+            resources.getString(R.string.new_session_android_offline_no_start)
+        }
+        "new_session.android_others_offline" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_android_others_offline, name)
+        }
+        "new_session.android_reading_cli" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.new_session_android_reading_cli, agent)
+        }
+        "new_session.android_start" -> {
+            resources.getString(R.string.new_session_android_start)
+        }
+        "new_session.android_unknown_start" -> {
+            resources.getString(R.string.new_session_android_unknown_start)
         }
         "new_session.attachments_moved" -> {
             val name = message.args.getValue("name") as String
@@ -550,6 +694,32 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "projects.adding" -> {
             resources.getString(R.string.projects_adding)
+        }
+        "projects.android_adding" -> {
+            resources.getString(R.string.projects_android_adding)
+        }
+        "projects.android_no_online" -> {
+            resources.getString(R.string.projects_android_no_online)
+        }
+        "projects.android_save_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.projects_android_save_failed, reason)
+        }
+        "projects.android_saving_settings" -> {
+            resources.getString(R.string.projects_android_saving_settings)
+        }
+        "projects.android_settings" -> {
+            resources.getString(R.string.projects_android_settings)
+        }
+        "projects.android_settings_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.projects_android_settings_failed, reason)
+        }
+        "projects.android_syncing" -> {
+            resources.getString(R.string.projects_android_syncing)
+        }
+        "projects.android_view_home" -> {
+            resources.getString(R.string.projects_android_view_home)
         }
         "projects.changed_elsewhere" -> {
             resources.getString(R.string.projects_changed_elsewhere)

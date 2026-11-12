@@ -1,5 +1,123 @@
 [
   {
+    "key": "connection.android_disconnected_at",
+    "zh-CN": "断开于　{time}",
+    "en": "Disconnected at  {time}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.android_explanation",
+    "zh-CN": "本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。",
+    "en": "This device is online, but the server is not responding. It may be stopped, restarting, or unreachable from this network. Reconnection will continue automatically, and missing content will be fetched once connected.",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.android_no_response",
+    "zh-CN": "服务器没有回应",
+    "en": "The server is not responding",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.android_reason",
+    "zh-CN": "原因　{reason}",
+    "en": "Reason  {reason}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.android_retry_now",
+    "zh-CN": "立即重试",
+    "en": "Retry now",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.android_server",
+    "zh-CN": "服务器　{name}",
+    "en": "Server  {name}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.android_server_failed",
+    "zh-CN": "连不上服务器：{reason}",
+    "en": "Cannot reach the server: {reason}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "connection.connecting",
     "zh-CN": "连接中…",
     "en": "Connecting…",

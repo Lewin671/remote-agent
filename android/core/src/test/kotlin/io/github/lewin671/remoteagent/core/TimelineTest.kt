@@ -6,7 +6,7 @@ import io.github.lewin671.remoteagent.proto.ProjectPref
 import io.github.lewin671.remoteagent.proto.ProjectPrefs
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
-import org.junit.Assert.assertEquals
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -363,9 +363,9 @@ class TimelineTest {
         )
         val expected = "2 个待处理 · 4 个进行中"
         assertEquals(expected, activityCounts(st.sessions.values))
-        assertEquals("/work/foo · $expected", scopeRows(st, HomeScope.All).single { it.name == "foo" }.detail)
+        assertEquals("/work/foo · $expected", scopeRows(st, HomeScope.All).single { it.name.testText() == "foo" }.detail)
         assertEquals(expected, scopeRows(st, HomeScope.All).first().detail)
-        assertEquals("/work/empty", scopeRows(st, HomeScope.All).single { it.name == "empty" }.detail)
+        assertEquals("/work/empty", scopeRows(st, HomeScope.All).single { it.name.testText() == "empty" }.detail)
         // Pending work does not disappear just because its computer is offline.
         val offline = st.copy(machines = st.machines.mapValues { (_, m) -> MachineView(m.id, false, m.lastSeenMs, m.meta) })
         assertEquals(expected, scopeRows(offline, HomeScope.All).first().detail)

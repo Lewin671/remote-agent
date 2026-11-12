@@ -45,9 +45,9 @@ sealed interface AccountEmpty {
 /** What ends the list. */
 sealed interface HomeTail {
     /** A count: 「共 71 个」, 「3 个会话的标题里有「接口」」. */
-    data class Text(val text: String) : HomeTail
+    data class Text(val text: UiMessage?) : HomeTail
     /** Earlier pages are wanted and on their way, waiting for the connection, or failed ([earlierTail]); [retry] when a tap tries again. */
-    data class Earlier(val text: String, val retry: Boolean) : HomeTail
+    data class Earlier(val text: UiMessage, val retry: Boolean) : HomeTail
 }
 
 /**
@@ -58,7 +58,7 @@ sealed interface HomeTail {
 sealed interface HomeItem {
     val id: String
 
-    data class Label(val key: String, val title: String) : HomeItem {
+    data class Label(val key: String, val title: UiMessage) : HomeItem {
         override val id get() = "h:$key"
     }
 
@@ -169,7 +169,7 @@ fun homeList(
     rows.forEachIndexed { i, s -> items += HomeItem.Attention(s, first = i == 0, last = i == rows.lastIndex && hidden == 0) }
     if (hidden > 0) items += HomeItem.MoreAttention(hidden)
     if (tl.running.isNotEmpty()) {
-        items += HomeItem.Label("running", "进行中")
+        items += HomeItem.Label("running", UiMessages.homeLive())
         val running = if (shown.allRunning || filtering) tl.running else tl.running.take(RUNNING_MAX)
         running.forEachIndexed { i, s -> items += HomeItem.Running(s, last = i == running.lastIndex) }
         if (running.size < tl.running.size) items += HomeItem.MoreRunning(tl.running.size - running.size)
@@ -192,7 +192,7 @@ fun homeList(
         items += HomeItem.Tail(
             if (listFailed || ((wantAll || wantPage) && (tail == null || state.sessionsError.isNotEmpty())))
                 HomeTail.Earlier(earlierTail(state), retry = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty())
-            else HomeTail.Text(tail.orEmpty()),
+            else HomeTail.Text(tail),
         )
     }
     return HomeList(
@@ -212,46 +212,46 @@ fun homeList(
 
 /** A session that has not ended, as its row writes it (design-system §6 会话行). */
 data class SessionRowText(
-    val title: String,
-    val time: String,
+    val title: MessageText,
+    val time: MessageText,
     /** The status word; its tone draws the graphic before the row, the word itself is not coloured. */
     val status: Status,
     /** After the status word; empty when the word already says it. */
-    val preview: String,
+    val preview: MessageText,
     /** The third line's words; empty for none. The CLI is not among them. */
-    val meta: String,
+    val meta: MessageText,
     /** The CLI whose mark leads the third line, when the list used more than one; null for none. */
     val agent: Agent? = null,
 ) {
     /** The row as one sentence for the screen reader: the title first, then its state, what it last said, where it runs and when. */
-    val spoken: String
-        get() = listOf(title, status.text, preview, agent?.let { agentName(it) }.orEmpty(), meta.replace(" · ", "，"), time).filter { it.isNotEmpty() }.joinToString("，")
+    val spoken: MessageText
+        get() = listOf(title, listStatus(status).messageText(), preview, agent?.let { agentName(it) }.orEmpty().messageText(), meta.spokenText(), time).joinMessages("，")
 }
 
 fun sessionRowText(state: RemoteState, s: SessionView, meta: RowMeta, now: Long, zone: ZoneId = ZoneId.systemDefault()): SessionRowText {
     val st = shownStatus(state, s)
-    val pv = previewOf(s, st)
+    val pv = listPreview(s, st)
     return SessionRowText(
-        title = titleOf(s, zone),
-        time = whenText(s.updatedMs, now, zone),
+        title = listTitle(s, zone),
+        time = listWhen(s.updatedMs, now, zone),
         status = st,
         // The status word already says a plan waits.
-        preview = if (st == Status.PLAN || (st == Status.POPUP && s.info?.statusDetail.isNullOrEmpty())) "" else pv,
+        preview = if (st == Status.PLAN || (st == Status.POPUP && s.info?.statusDetail.isNullOrEmpty())) "".messageText() else pv,
         meta = metaLine(state, s, meta),
         agent = s.agent().takeIf { meta.agent },
     )
 }
 
 /** An ended session on its one line: the title, and at the right when it ended, after the project where the list spans projects. */
-data class EndedRowText(val title: String, val project: String, val time: String) {
+data class EndedRowText(val title: MessageText, val project: MessageText, val time: MessageText) {
     /** 「blog · 7:50」, or either alone. */
-    val right: String get() = listOf(project, time).filter { it.isNotEmpty() }.joinToString(" · ")
+    val right: MessageText get() = listOf(project, time).joinMessages(" · ")
 
-    val spoken: String get() = listOf(title, "已结束", project, time).filter { it.isNotEmpty() }.joinToString("，")
+    val spoken: MessageText get() = listOf(title, UiMessages.listStateEnded().messageText(), project, time).joinMessages("，")
 }
 
 fun endedRowText(s: SessionView, project: Boolean, now: Long, zone: ZoneId = ZoneId.systemDefault()): EndedRowText =
-    EndedRowText(titleOf(s, zone), if (project) projectName(projectKey(s)) else "", endedTime(endedMs(s), now, zone))
+    EndedRowText(listTitle(s, zone), if (project) listProjectName(projectKey(s)) else "".messageText(), endedTime(endedMs(s), now, zone))
 
 /**
  * One row of what waits (design-system §6 「等你的事」): the title, then
@@ -259,13 +259,13 @@ fun endedRowText(s: SessionView, project: Boolean, now: Long, zone: ZoneId = Zon
  * project before the summary when the scope is one project.
  */
 data class PendingRowText(
-    val title: String,
+    val title: MessageText,
     /** 请求执行, 「Codex 在问你」, 计划待批准, 终端里有弹窗. */
-    val kind: String,
+    val kind: MessageText,
     /** After the type; empty for nothing. */
-    val summary: String,
+    val summary: MessageText,
 ) {
-    val spoken: String get() = listOf(title, kind, summary.replace(" · ", "，")).filter { it.isNotEmpty() }.joinToString("，")
+    val spoken: MessageText get() = listOf(title, kind, summary.spokenText()).joinMessages("，")
 }
 
 /** [approval] and [question]: the first of each still waiting, from the session's events. */
@@ -281,13 +281,13 @@ fun pendingRowText(
     val st = statusOf(s, state.machines[s.machineId])
     val (kind, about) = when (st) {
         // One line: the row is a summary, the card and the dock show the command whole.
-        Status.APPROVAL -> (approval?.let(::approvalHead) ?: st.text) to (approval?.let { approvalBody(it).split(Regex("\\s+")).filter(String::isNotEmpty).joinToString(" ") } ?: "")
-        Status.QUESTION -> "${agentName(s.agent())} 在问你" to question.orEmpty()
-        Status.POPUP -> st.text to s.info?.statusDetail.orEmpty()
-        else -> st.text to ""
+        Status.APPROVAL -> (approval?.let { if (it.command.isNotEmpty()) UiMessages.listStateAndroidRequestCommand() else if (it.toolName.isNotEmpty()) UiMessages.listStateRequestPermission(approvalDisplay(it.toolName)) else UiMessages.listStateAndroidRequestPermission() } ?: listStatus(st)).messageText() to (approval?.let { approvalBody(it).split(Regex("\\s+")).filter(String::isNotEmpty).joinToString(" ") } ?: "")
+        Status.QUESTION -> UiMessages.listStateAgentAsking(agentName(s.agent())).messageText() to question.orEmpty()
+        Status.POPUP -> listStatus(st).messageText() to s.info?.statusDetail.orEmpty()
+        else -> listStatus(st).messageText() to ""
     }
-    val other = if (outsideScope(s, scope)) projectName(projectKey(s)) else ""
-    return PendingRowText(titleOf(s, zone), kind, listOf(other, about).filter { it.isNotEmpty() }.joinToString(" · "))
+    val other = if (outsideScope(s, scope)) listProjectName(projectKey(s)) else "".messageText()
+    return PendingRowText(listTitle(s, zone), kind, listOf(other, about.messageText()).joinMessages(" · "))
 }
 
 /** The head and the place of the dark card of an approval (design-system §6 「终端卡」). */
@@ -337,9 +337,9 @@ fun approvalCardText(
 data class HomeHeadline(
     val kind: Kind,
     /** The whole sentence. */
-    val title: String,
+    val title: UiMessage,
     /** The line under it; empty for none. */
-    val sub: String = "",
+    val sub: MessageText = "".messageText(),
     /** The line under it is the reason the server cannot be reached, with nothing kept to show: red. */
     val subError: Boolean = false,
     /** The line under it is a path, in mono. */
@@ -378,13 +378,13 @@ data class HomeHeadline(
 fun homeHeadline(state: RemoteState, scope: HomeScope): HomeHeadline? {
     // Something from before to show under the sentence: what was cached or listed.
     val kept = state.loaded || state.sessions.isNotEmpty()
-    val before = "下面是上次的内容"
+    val before = UiMessages.connectionPreviousBelow().messageText()
     when (state.link) {
-        Link.NO_NETWORK -> return HomeHeadline(HomeHeadline.Kind.NoNetwork, "本机网络不通", if (kept) before else "联网后才能读取会话")
-        Link.WAITING -> return if (state.synced) HomeHeadline(HomeHeadline.Kind.Reconnecting, "正在重连…", if (kept) before else "")
-        else HomeHeadline(HomeHeadline.Kind.Connecting, "连接中…", if (kept) before else "")
-        Link.NO_SERVER -> return if (kept) HomeHeadline(HomeHeadline.Kind.NoServer, "连不上服务器", "正在重试，$before", details = true)
-        else HomeHeadline(HomeHeadline.Kind.NoServer, "连不上服务器", state.error.ifEmpty { "服务器没有回应" }, subError = true, details = true)
+        Link.NO_NETWORK -> return HomeHeadline(HomeHeadline.Kind.NoNetwork, UiMessages.connectionNoNetwork(), if (kept) before else UiMessages.connectionNetworkRequired().messageText())
+        Link.WAITING -> return if (state.synced) HomeHeadline(HomeHeadline.Kind.Reconnecting, UiMessages.connectionReconnecting(), if (kept) before else "".messageText())
+        else HomeHeadline(HomeHeadline.Kind.Connecting, UiMessages.connectionConnecting(), if (kept) before else "".messageText())
+        Link.NO_SERVER -> return if (kept) HomeHeadline(HomeHeadline.Kind.NoServer, UiMessages.connectionNoServer(), UiMessages.connectionRetryingPrevious().messageText(), details = true)
+        else HomeHeadline(HomeHeadline.Kind.NoServer, UiMessages.connectionNoServer(), state.error.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.connectionAndroidNoResponse().messageText(), subError = true, details = true)
         Link.ONLINE -> {}
     }
     if (!state.loaded && state.sessions.isEmpty()) return null
@@ -398,17 +398,22 @@ fun homeHeadline(state: RemoteState, scope: HomeScope): HomeHeadline? {
     }
     if (tl.attention.isNotEmpty()) {
         val n = tl.attention.size
-        val parts = listOf(if (running > 0) "$running 个会话在运行" else "", if (idle > 0) (if (running > 0) "$idle 个空闲" else "$idle 个会话空闲") else "")
-        return HomeHeadline(HomeHeadline.Kind.Waiting(n), "$n 件事等你", parts.filter { it.isNotEmpty() }.joinToString("，"))
+        val sub = when {
+            running > 0 && idle > 0 -> UiMessages.homeRunningAndIdle(running, idle)
+            running > 0 -> UiMessages.homeRunningCount(running)
+            idle > 0 -> UiMessages.homeIdleCount(idle)
+            else -> null
+        }
+        return HomeHeadline(HomeHeadline.Kind.Waiting(n), UiMessages.homeWaitingCount(n), sub?.messageText() ?: "".messageText())
     }
-    if (running > 0) return HomeHeadline(HomeHeadline.Kind.Running, "$running 个会话在运行", if (idle > 0) "另有 $idle 个空闲" else "")
-    if (scope is HomeScope.Of && tl.total == 0) return HomeHeadline(HomeHeadline.Kind.EmptyProject, "这个项目还没有会话", shortPath(scope.key), subPath = true)
+    if (running > 0) return HomeHeadline(HomeHeadline.Kind.Running, UiMessages.homeRunningCount(running), if (idle > 0) UiMessages.homeOtherIdle(idle).messageText() else "".messageText())
+    if (scope is HomeScope.Of && tl.total == 0) return HomeHeadline(HomeHeadline.Kind.EmptyProject, UiMessages.homeProjectNoSessions(), shortPath(scope.key).messageText(), subPath = true)
     if (state.sessions.isEmpty()) {
         // The listing failed before anything came: that there are none is not known.
-        return if (!state.sessionsListed && state.sessionsError.isNotEmpty()) HomeHeadline(HomeHeadline.Kind.Unreadable, "暂时读不到会话")
-        else HomeHeadline(HomeHeadline.Kind.NoSessions, "还没有会话")
+        return if (!state.sessionsListed && state.sessionsError.isNotEmpty()) HomeHeadline(HomeHeadline.Kind.Unreadable, UiMessages.homeSessionsUnavailable())
+        else HomeHeadline(HomeHeadline.Kind.NoSessions, UiMessages.homeNoSessions())
     }
-    return HomeHeadline(HomeHeadline.Kind.NothingWaits, "没有等你的事", if (idle > 0) "$idle 个会话空闲" else "")
+    return HomeHeadline(HomeHeadline.Kind.NothingWaits, UiMessages.homeNothingWaiting(), if (idle > 0) UiMessages.homeIdleCount(idle).messageText() else "".messageText())
 }
 
 /** The count on the 会话 tab: everything that waits for the user, kept while the server is out of reach. */

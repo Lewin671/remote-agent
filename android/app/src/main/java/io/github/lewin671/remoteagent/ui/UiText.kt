@@ -22,3 +22,10 @@ class MessagePreferences(context: android.content.Context) {
         }
     fun current(): String = "zh-CN"
 }
+
+@Composable
+fun uiText(text: io.github.lewin671.remoteagent.core.MessageText): String {
+    val context = LocalContext.current
+    val locale = LocalMessageLocale.current
+    return text.resolve { resolveUiMessage(context, it, locale) }
+}

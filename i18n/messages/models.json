@@ -16,6 +16,48 @@
     }
   },
   {
+    "key": "models.android_load_failed_default",
+    "zh-CN": "没能读取模型列表，会用 {agent} 自己的默认模型：{reason}",
+    "en": "Could not load models. {agent}’s own default model will be used: {reason}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      },
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.android_reading_machine",
+    "zh-CN": "读取 {name} 的设置…",
+    "en": "Reading settings from {name}…",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "models.back",
     "zh-CN": "返回模型",
     "en": "Back to models",

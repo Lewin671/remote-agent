@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,9 +57,9 @@ import io.github.lewin671.remoteagent.core.waitingCount
  */
 
 /** The two tabs at the bottom. */
-enum class ShellTab(val route: String, val label: String) {
-    SESSIONS("home", "会话"),
-    SCHEDULES("schedules", "定时"),
+enum class ShellTab(val route: String, val label: io.github.lewin671.remoteagent.core.UiMessage) {
+    SESSIONS("home", UiMessages.homeSessionsTab()),
+    SCHEDULES("schedules", UiMessages.homeSchedulesTab()),
 }
 
 /** How far a first-level page's content stays clear of the bottom, past the navigation bar: the tabs and their margin. */
@@ -131,16 +132,17 @@ fun BottomBar(
             for (tab in ShellTab.entries) {
                 val on = tab == active
                 val count = if (tab == ShellTab.SESSIONS) waiting else scheduled
+                val label = uiText(tab.label)
                 val spoken = when {
-                    count > 0 && tab == ShellTab.SESSIONS -> "，$count 件等你处理"
-                    count > 0 -> "，$count 件需要处理"
-                    tab == ShellTab.SCHEDULES && newResults -> "，有新结果"
-                    else -> ""
+                    count > 0 && tab == ShellTab.SESSIONS -> uiText(UiMessages.homeAndroidSessionsPending(count))
+                    count > 0 -> uiText(UiMessages.homeAndroidSchedulesPending(count))
+                    tab == ShellTab.SCHEDULES && newResults -> uiText(UiMessages.homeAndroidSchedulesNew())
+                    else -> label
                 }
                 Box(
                     Modifier.widthIn(min = 76.dp).heightIn(min = 52.dp).clip(Radii.Pill).background(if (on) p.fill2 else Color.Transparent)
                         .selectable(selected = on, role = Role.Tab) { if (!on) onSelect(tab) }
-                        .semantics(mergeDescendants = true) { contentDescription = tab.label + spoken },
+                        .semantics(mergeDescendants = true) { contentDescription = spoken },
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -152,7 +154,7 @@ fun BottomBar(
                                 else if (tab == ShellTab.SCHEDULES && newResults) Box(Modifier.offset(x = 3.dp, y = 3.dp).size(9.dp).clip(CircleShape).background(p.blue))
                             }
                         }
-                        Text(tab.label, style = T.s10, color = if (on) p.ink else p.ink2)
+                        Text(label, style = T.s10, color = if (on) p.ink else p.ink2)
                     }
                 }
             }
@@ -188,7 +190,7 @@ fun TabBadge(count: Int) {
 @Composable
 fun BackRow(onBack: () -> Unit, modifier: Modifier = Modifier, trailing: (@Composable RowScope.() -> Unit)? = null) {
     Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        GlassButton(Lucide.ChevronLeft, "返回", onBack)
+        GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), onBack)
         Spacer(Modifier.weight(1f))
         trailing?.invoke(this)
     }

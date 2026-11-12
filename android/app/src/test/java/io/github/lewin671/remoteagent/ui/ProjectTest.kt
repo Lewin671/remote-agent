@@ -16,9 +16,11 @@ import io.github.lewin671.remoteagent.proto.ProjectSettings
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import org.junit.Assert.assertTrue
-import org.junit.Assert.assertEquals
+import io.github.lewin671.remoteagent.ui.assertMessageEquals as assertEquals
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ProjectTest {
     @Test
     fun aFinishedDraftFollowsTheProjectsNextSuggestion() {
@@ -514,6 +516,8 @@ class ProjectTest {
     }
 }
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class SwitchTest {
     private val c = NewConfig("mac", "/p", io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, "gpt-6-astra", "medium", io.github.lewin671.remoteagent.core.Mode.AUTO)
 
@@ -552,17 +556,17 @@ class SwitchTest {
         val codexClaude = listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)
         val allThree = listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE, Agent.AGENT_ANTIGRAVITY)
 
-        assertEquals("已装 Codex", machineSubtitle(codexOnly))
-        assertEquals("已装 Codex、Claude Code", machineSubtitle(codexClaude))
-        assertEquals("已装 Codex、Claude Code、Antigravity", machineSubtitle(allThree))
+        assertEquals("已装 Codex", machineSubtitle(codexOnly, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator())))
+        assertEquals("已装 Codex、Claude Code", machineSubtitle(codexClaude, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator())))
+        assertEquals("已装 Codex、Claude Code、Antigravity", machineSubtitle(allThree, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator())))
 
         assertEquals(
             "已装 Codex；这台机器没有 Claude Code，会改用 Codex",
-            machineSubtitle(codexOnly, missing = Agent.AGENT_CLAUDE, fallback = Agent.AGENT_CODEX),
+            machineSubtitle(codexOnly, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator()), missing = Agent.AGENT_CLAUDE, fallback = Agent.AGENT_CODEX),
         )
         assertEquals(
             "已装 Codex、Claude Code；这台机器没有 Antigravity，会改用 Codex",
-            machineSubtitle(codexClaude, missing = Agent.AGENT_ANTIGRAVITY, fallback = Agent.AGENT_CODEX),
+            machineSubtitle(codexClaude, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator()), missing = Agent.AGENT_ANTIGRAVITY, fallback = Agent.AGENT_CODEX),
         )
     }
 }

@@ -32,6 +32,128 @@
     }
   },
   {
+    "key": "projects.android_adding",
+    "zh-CN": "正在添加到项目列表…",
+    "en": "Adding to the project list…",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_no_online",
+    "zh-CN": "没有在线的电脑",
+    "en": "No computers are online",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_save_failed",
+    "zh-CN": "没能保存：{reason}",
+    "en": "Could not save: {reason}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_saving_settings",
+    "zh-CN": "正在保存项目设置…",
+    "en": "Saving project settings…",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_settings",
+    "zh-CN": "项目设置",
+    "en": "Project settings",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_settings_failed",
+    "zh-CN": "项目设置没能保存：{reason}",
+    "en": "Could not save project settings: {reason}",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_syncing",
+    "zh-CN": "正在同步…",
+    "en": "Syncing…",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.android_view_home",
+    "zh-CN": "在主页看这个项目",
+    "en": "View this project on the home screen",
+    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "projects.changed_elsewhere",
     "zh-CN": "项目列表已在另一客户端更新",
     "en": "Projects were updated on another client",
