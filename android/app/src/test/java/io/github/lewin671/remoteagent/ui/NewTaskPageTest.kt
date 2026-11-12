@@ -119,7 +119,7 @@ class NewTaskPageTest {
     }
 
     private fun selectSecondModel() {
-        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First，推理强度：medium").fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First，推理强度：默认").fetchSemanticsNodes().isNotEmpty() }
         ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithText("Second").performClick()
     }
@@ -132,13 +132,13 @@ class NewTaskPageTest {
         selectSecondModel()
         field.performTouchInput { click() }
         ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
-        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Second，推理强度：high")
+        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Second，推理强度：默认")
         field.assertIsFocused()
         Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
         ui.runOnIdle {
             val config = Drafts.newSession(path, null).config.value!!
             Assert.assertEquals("second", config.model)
-            Assert.assertEquals("high", config.effort)
+            Assert.assertEquals("", config.effort)
             Assert.assertNotNull(PrefsChanges.states[path])
         }
     }
@@ -199,9 +199,18 @@ class NewTaskPageTest {
         Assert.assertEquals(2, saves)
     }
 
+    @Test fun unchosenEffortStaysEmptyInRequestAndChosenEffortIsForwarded() {
+        val initial = NewConfig("a", path, Agent.AGENT_CODEX)
+        Assert.assertEquals("", newTaskRequest(initial, "hello", emptyList(), emptyList()).effort)
+        Assert.assertEquals("low", newTaskRequest(initial.copy(effort = "low"), "hello", emptyList(), emptyList()).effort)
+        val selected = chooseNewTaskModel(initial, "second", models, null)
+        Assert.assertEquals("", newTaskRequest(selected, "hello", emptyList(), emptyList()).effort)
+        Assert.assertEquals("Second · 默认", newTaskModelSummary(selected, models, null, true, false).label)
+    }
+
     @Test fun effortAndModelApplyImmediatelyAndAllModelsIsASeparatePage() {
         show("a")
-        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First，推理强度：medium").fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First，推理强度：默认").fetchSemanticsNodes().isNotEmpty() }
         ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithTag("new-model").assertIsSelected()
         ui.onNodeWithText("low").performClick()
@@ -229,10 +238,10 @@ class NewTaskPageTest {
         }
     }
 
-    @Test fun summaryUsesEffectiveEffortAndOmitsFixedMissingAndUnknownEfforts() {
+    @Test fun summaryUsesExplicitEffortAndOmitsFixedMissingAndUnknownEfforts() {
         val c = NewConfig("a", path, Agent.AGENT_CODEX)
         fun summary(config: NewConfig = c, single: Boolean = false) = newTaskModelSummary(config, models, null, true, single)
-        Assert.assertEquals("First · medium", summary().label)
+        Assert.assertEquals("First · 默认", summary().label)
         Assert.assertEquals("Codex · First · high", summary(c.copy(effort = "high"), true).label)
         Assert.assertEquals("Third", summary(c.copy(model = "third")).label)
         Assert.assertEquals("Fourth", summary(c.copy(model = "fourth")).label)
@@ -240,17 +249,17 @@ class NewTaskPageTest {
         Assert.assertEquals("读取设置…", newTaskModelSummary(c, null, null, false, false).label)
         Assert.assertEquals("默认模型", newTaskModelSummary(c, null, null, true, false).label)
         val settings = DaemonSettings.newBuilder().setDefaultModel("second").setDefaultEffort("low").build()
-        Assert.assertEquals("Second · low", newTaskModelSummary(c, models, settings, true, false).label)
+        Assert.assertEquals("Second · 默认", newTaskModelSummary(c, models, settings, true, false).label)
         Assert.assertEquals("custom", newTaskModelSummary(c, models, settings.toBuilder().setDefaultModel("custom").build(), true, false).label)
     }
 
-    @Test fun changingModelKeepsSupportedEffortOtherwiseUsesNewDefault() {
+    @Test fun changingModelKeepsExplicitSupportedEffortOtherwiseLeavesDefault() {
         val c = NewConfig("a", path, Agent.AGENT_CODEX)
-        Assert.assertEquals("high", chooseNewTaskModel(c, "second", models, null).effort)
+        Assert.assertEquals("", chooseNewTaskModel(c, "second", models, null).effort)
         Assert.assertEquals("low", chooseNewTaskModel(c.copy(effort = "low"), "second", models, null).effort)
-        Assert.assertEquals("medium", chooseNewTaskModel(c.copy(model = "sixth", effort = "ultra"), "", models, null).effort)
+        Assert.assertEquals("", chooseNewTaskModel(c.copy(model = "sixth", effort = "ultra"), "", models, null).effort)
         Assert.assertEquals("", chooseNewTaskModel(c, "fourth", models, null).effort)
-        Assert.assertEquals("low", chooseNewTaskModel(c, "third", models, null).effort)
+        Assert.assertEquals("", chooseNewTaskModel(c, "third", models, null).effort)
     }
 
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)

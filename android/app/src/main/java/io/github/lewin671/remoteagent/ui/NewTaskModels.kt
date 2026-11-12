@@ -29,14 +29,6 @@ import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.proto.*
 
-internal fun newTaskEffort(c: NewConfig, models: ListModelsResponse, settings: DaemonSettings?): String {
-    val model = projectModel(c, models, settings) ?: return ""
-    return c.effort.ifEmpty {
-        if (c.model.isEmpty()) defaultsFor(settings, c.agent).effort.ifEmpty { model.defaultEffort }
-        else model.defaultEffort
-    }
-}
-
 internal data class NewTaskModelSummary(val model: String, val effort: String = "", val prefix: String = "") {
     val accessibilityLabel get() = "模型：$model" + if (effort.isEmpty()) "" else "，推理强度：$effort"
     val label get() = prefix + model + if (effort.isEmpty()) "" else " · $effort"
@@ -47,7 +39,7 @@ internal fun newTaskModelSummary(c: NewConfig, models: ListModelsResponse?, sett
     val id = c.model.ifEmpty { defaultsFor(settings, c.agent).model.ifEmpty { models?.defaultModel.orEmpty() } }
     val name = if (!read && c.model.isEmpty()) "读取设置…"
         else m?.displayName?.ifEmpty { m.slug } ?: id.ifEmpty { "默认模型" }
-    val effort = if (models != null && m != null && m.effortsCount > 1) newTaskEffort(c, models, settings) else ""
+    val effort = if (models != null && m != null && m.effortsCount > 1) c.effort.ifEmpty { "默认" } else ""
     return NewTaskModelSummary(name, effort, if (singleAgent) agentName(c.agent) + " · " else "")
 }
 
@@ -111,8 +103,8 @@ private fun RowScope.AgentToolLabel(agent: Agent, compact: Boolean) {
 internal fun chooseNewTaskModel(c: NewConfig, slug: String, models: ListModelsResponse, settings: DaemonSettings?): NewConfig {
     val next = c.copy(model = slug, effort = "")
     val model = projectModel(next, models, settings)
-    val effort = newTaskEffort(c, models, settings)
-    return next.copy(effort = if (model != null && effort in model.effortsList) effort else newTaskEffort(next, models, settings),
+    val effort = c.effort
+    return next.copy(effort = if (model != null && effort in model.effortsList) effort else "",
         mode = c.mode?.takeUnless { model?.autoUnavailable == true && it == Mode.AUTO })
 }
 
@@ -168,7 +160,7 @@ internal fun ColumnScope.NewTaskModelPanel(
                                 1 -> Text("推理强度固定为 ${model.effortsList[0]}", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
                                 else -> {
                                     Text("推理强度", style = T.s12, color = pal.ink2)
-                                    ModelSegments(model.effortsList, newTaskEffort(c, models, settings), enabled) { edit(c.copy(effort = it)) }
+                                    ModelSegments(model.effortsList, c.effort, enabled) { edit(c.copy(effort = it)) }
                                 }
                             }
                             if (agentInfo(c.agent).standardContextOption) {
