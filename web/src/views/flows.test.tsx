@@ -1388,7 +1388,7 @@ it("shows no approval mode in a new task's summary or settings", async () => {
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultMode: ApprovalMode.UNSPECIFIED });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · medium$/));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · 默认$/));
   expect(host.querySelector(".project-summary")?.textContent).not.toMatch(/自动|询问|完全放行|默认：|审批/);
   await fromMenu("新会话设置");
   expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
@@ -1562,7 +1562,7 @@ describe("a new-session draft", () => {
     r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · medium$/), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · 默认$/), { timeout: 3000 });
     expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
     expect(host.querySelector(".project-summary em")).toBeNull();
     await type("加限流");
@@ -3106,7 +3106,7 @@ describe("phone composer pickers", () => {
     await click(button("GPT-6-Sol"));
     expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · ultra");
     await click(button("GPT-6-Nova"));
-    expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Nova · low");
+    expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Nova · 默认");
     expect(save).toHaveBeenCalledTimes(3);
     await click(button("完成"));
     expect(save).toHaveBeenCalledTimes(3);
@@ -4176,4 +4176,38 @@ it("hands a new session to its chat with the first prompt before its listing arr
   expect(host.querySelector(".session")).toBeTruthy();
   expect(host.querySelector(".me")?.textContent).toContain("第一句话");
   expect(host.querySelector("textarea")).toBeTruthy();
+});
+
+it("shows 默认 for an unchosen effort, then sends the explicitly selected level", async () => {
+  const r = demo();
+  const project = "/example/default-effort";
+  vi.spyOn(r, "settings").mockResolvedValue(create(DaemonSettingsSchema));
+  const original = r.listModels.bind(r);
+  vi.spyOn(r, "listModels").mockImplementation(async (...args) => {
+    const result = await original(...args);
+    return { ...result, defaultModel: "gpt-6-sol", models: result.models.map(m => ({ ...m, defaultEffort: "low" })) };
+  });
+  mount(<ProjectPage remote={r} pkey={project} go={() => {}} onBack={() => {}} />);
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · 默认"));
+  await fromMenu("新会话设置");
+  expect(host.querySelector(".model-controls .fl")?.textContent).toBe("推理强度 · 默认");
+  expect(host.querySelector('[aria-label="推理强度"] button.on')).toBeNull();
+  await click(button("GPT-6-Astra"));
+  expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · 默认");
+  await click(button("high"));
+  expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · high");
+  await click(button("完成"));
+  const real = r.machineCommand.bind(r);
+  const sent: unknown[] = [];
+  vi.spyOn(r, "machineCommand").mockImplementation((m, cmd, ...rest) => {
+    if (cmd?.case === "createSession") sent.push(cmd.value);
+    return real(m, cmd, ...rest);
+  });
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "测试强度");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  expect(sent).toMatchObject([{ effort: "high", model: "gpt-6-astra" }]);
 });

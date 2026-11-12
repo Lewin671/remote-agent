@@ -462,7 +462,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // The model only once one is known: a CLI with none chosen yet says nothing of it.
   // The model's placeholder is written too, so the capsule is never empty.
   const currentModel = newTaskModel(cfg, info);
-  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label, effort: (currentModel.model?.efforts.length ?? 0) > 1 ? currentModel.effort : "" };
+  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label, effort: (currentModel.model?.efforts.length ?? 0) > 1 ? currentModel.effort || "默认" : "" };
   return {
     remote,
     go,

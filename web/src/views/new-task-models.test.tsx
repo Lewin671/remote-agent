@@ -15,7 +15,7 @@ it("pins only when the remaining height fits two actual model rows and padding",
   expect(shouldPinModelControls(204, 132, 32)).toBe(true);
 });
 
-it("keeps a supported effective effort, including defaults, otherwise uses the destination default", () => {
+it("keeps only explicitly configured effort across models, otherwise leaves the CLI default", () => {
   const info = {
     models: create(ListModelsResponseSchema, { defaultModel: "a", models: [
       { slug: "a", efforts: ["low", "high"], defaultEffort: "low" },
@@ -26,8 +26,8 @@ it("keeps a supported effective effort, including defaults, otherwise uses the d
     settings: create(DaemonSettingsSchema, { defaultEffort: "high" }),
   };
   const cfg = { machineId: "example", cwd: "/example", agent: Agent.CODEX, mode: ApprovalMode.UNSPECIFIED, model: "", effort: "" };
-  expect(chooseNewTaskModel(cfg, "b", info).effort).toBe("high");
-  expect(chooseNewTaskModel(cfg, "c", info).effort).toBe("medium");
+  expect(chooseNewTaskModel(cfg, "b", info).effort).toBe("");
+  expect(chooseNewTaskModel(cfg, "c", info).effort).toBe("");
   expect(chooseNewTaskModel(cfg, "d", info).effort).toBe("");
   expect(chooseNewTaskModel({ ...cfg, model: "b", effort: "low" }, "", info).effort).toBe("low");
 });

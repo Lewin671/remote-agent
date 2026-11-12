@@ -36,7 +36,7 @@ export function newTaskModel(cfg: NewConfig, info: ModelInfo) {
   const def = defaultsFor(info.settings, cfg.agent);
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
   const model = findModel(info.models?.models, slug);
-  const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
+  const effort = cfg.effort;
   return { slug, model, effort };
 }
 
@@ -44,7 +44,7 @@ export function chooseNewTaskModel(cfg: NewConfig, slug: string, info: ModelInfo
   const next = { ...cfg, model: slug, effort: "" };
   const current = newTaskModel(cfg, info).effort;
   const target = newTaskModel(next, info);
-  return { ...next, effort: target.model?.efforts.includes(current) ? current : target.effort };
+  return { ...next, effort: target.model?.efforts.includes(current) ? current : "" };
 }
 
 /** Only new-task panels use this layout. Settings and schedules retain theirs. */
@@ -73,10 +73,10 @@ export function NewTaskModelPanel({ cfg, info, enabled, pending, onChange, onClo
     {pending || (!info.models && !info.error) ? <div className="model-loading hint">{pending ? "正在读取这个项目上次的设置…" : "读取设置…"}</div> : info.models && <ModelPanelBody key={all ? "all" : "main"}>
       {!all && <div className="model-controls">
         {model && model.efforts.length > 1 && <>
-          <div className="fl">推理强度</div>
+          <div className="fl">推理强度{!effort && " · 默认"}</div>
           <Segmented className="full" label="推理强度" value={effort} onChange={effort => onChange({ ...cfg, effort })} options={options(model.efforts)} />
         </>}
-        {model?.efforts.length === 1 && <div className="hint">推理强度固定为 {model.efforts[0]}</div>}
+        {model?.efforts.length === 1 && <div className="hint">{effort ? `推理强度固定为 ${effort}` : "推理强度 · 默认"}</div>}
         {agentInfo(cfg.agent).standardContextOption && (model && model.contextWindow > 0n && model.contextWindow <= STANDARD_WINDOW ?
           <div className="hint">标准 200k · 这个模型只有标准窗口</div> : <>
             <div className="fl">上下文窗口</div>
