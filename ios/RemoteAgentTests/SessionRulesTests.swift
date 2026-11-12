@@ -248,8 +248,10 @@ extension Ref<LiveAnnouncer> {
         #expect(note(.sent, .failed, failure: "").caption == "没发出去：没有写进终端")
         // May not have gone: orange, with what could be done before.
         #expect(note(.unknown) == OutgoingNote(caption: "可能没发出去：原因", tone: .warn, failed: true, actions: [.retry, .remove]))
-        // The error's own 「不确定电脑有没有执行」 is said by 「可能没发出去」 already.
-        #expect(note(.unknown, error: "不确定电脑有没有执行：连接中途断了").caption == "可能没发出去：连接中途断了")
+        // SessionStore passes the separately captured outcome detail to the caption.
+        #expect(note(.unknown, error: "连接中途断了").caption == "可能没发出去：连接中途断了")
+        let raw = "不确定电脑有没有执行：CLI 原文"
+        #expect(note(.unknown, error: raw).caption.hasSuffix(raw))
         #expect(note(.sent, .needsTerminal, failure: "write_failed") == OutgoingNote(
             caption: "可能没发出去：写入终端失败", tone: .warn, failed: true, actions: [.terminal, .putBack]))
         #expect(note(.sent, .unconfirmed) == OutgoingNote(
