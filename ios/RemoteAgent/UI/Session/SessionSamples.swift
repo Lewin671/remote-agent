@@ -107,7 +107,10 @@ enum SessionSamples {
                     $0.home = "/Users/me"
                     $0.os = "darwin"
                     $0.protocolVersion = version
-                    $0.capabilities = .with { $0.imageUpload = true }
+                    $0.capabilities = .with {
+                        $0.imageUpload = true
+                        $0.fileUpload = ProcessInfo.processInfo.arguments.contains("-fileUploads")
+                    }
                     $0.agents = [PBAgent.codex, .claude, .antigravity].map { agent in .with { $0.agent = agent } }
                 }, metaRev: 1)
         }

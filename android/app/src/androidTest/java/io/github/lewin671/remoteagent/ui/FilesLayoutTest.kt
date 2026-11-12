@@ -50,6 +50,55 @@ class FilesLayoutTest {
         ui.runOnIdle { assertEquals(1, filePicks); assertEquals(0, picturePicks) }
     }
 
+    @Test fun menuChoicesKeepDraftFocusAndRunOnlyTheirAction() {
+        var media = 0
+        var files = 0
+        var sends = 0
+        var queues = 0
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                ComposeBox("Draft", {}, "消息", true, { sends++ }, { media++ }, onFile = { files++ }, onQueue = { queues++ })
+            }
+        }
+        val field = ui.onNode(hasSetTextAction())
+        field.performTouchInput { click() }
+        for (choice in listOf("照片和视频", "文件")) {
+            ui.onNodeWithContentDescription("添加附件").performClick()
+            field.assertIsFocused()
+            ui.onNodeWithText(choice).performClick()
+            ui.onNodeWithText("照片和视频").assertDoesNotExist()
+            field.assertIsFocused()
+        }
+        for (choice in listOf("现在插入这一轮", "这一轮结束后再发")) {
+            ui.onNodeWithContentDescription("发送").performTouchInput { longClick() }
+            field.assertIsFocused()
+            ui.onNodeWithText(choice, substring = true).performClick()
+            ui.onNodeWithText("这一轮结束后再发").assertDoesNotExist()
+            field.assertIsFocused()
+        }
+        ui.runOnIdle {
+            assertEquals(1, media); assertEquals(1, files)
+            assertEquals(1, sends); assertEquals(1, queues)
+        }
+    }
+
+    @Test fun newTaskAttachmentMenuDoesNotFocusAnUnfocusedDraft() {
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                ComposeBox("Draft", {}, "消息", true, {}, {}, onFile = {}, tools = { androidx.compose.material3.Text("CLI") })
+            }
+        }
+        val field = ui.onNode(hasSetTextAction())
+        field.assertIsNotFocused()
+        val plus = ui.onNodeWithContentDescription("添加附件")
+        plus.performTouchInput { click() }
+        ui.onNodeWithText("照片和视频").assertIsDisplayed()
+        field.assertIsNotFocused()
+        plus.performTouchInput { click() }
+        ui.onNodeWithText("照片和视频").assertDoesNotExist()
+        field.assertIsNotFocused()
+    }
+
     @Test fun filesOnlyHistoryHasChipsWithoutAnEmptyBubble() {
         val file = io.github.lewin671.remoteagent.proto.SentFile.newBuilder().setName("data.csv").setSizeBytes(3).build()
         ui.setContent { RaTheme(ThemeMode.LIGHT) { ChatItemView(ChatItem.User("u", "", false, 0, files = listOf(file)), "Codex") } }

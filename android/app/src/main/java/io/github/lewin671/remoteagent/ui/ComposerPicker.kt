@@ -56,6 +56,8 @@ internal class ComposerPicker(private val onClose: () -> Unit = {}) {
     var composer by mutableStateOf(Rect.Zero)
     var agent by mutableStateOf(Rect.Zero)
     var model by mutableStateOf(Rect.Zero)
+    var attach by mutableStateOf(Rect.Zero)
+    var send by mutableStateOf(Rect.Zero)
     var origin = Offset.Zero
     private var outsideChip: String? = null
     private var outsideTime = Long.MIN_VALUE
@@ -110,7 +112,13 @@ internal fun Modifier.composerPickerEvents(picker: ComposerPicker): Modifier =
                 val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                 val opened = picker.openedAtDown(down.uptimeMillis)
                 if (opened != null) {
-                    val chip = if (opened == "agent") picker.agent else picker.model
+                    val chip = when (opened) {
+                        "agent" -> picker.agent
+                        "model" -> picker.model
+                        "attach" -> picker.attach
+                        "send" -> picker.send
+                        else -> Rect.Zero
+                    }
                     if (chip.contains(down.position + picker.origin)) down.consume()
                     picker.close()
                 }
@@ -135,8 +143,7 @@ internal fun ComposerPopover(picker: ComposerPicker, title: String, panel: Boole
                 (anchor.top - gap - popupContentSize.height).roundToInt())
         }
     }
-    Popup(position, onDismissRequest = picker::dismissOutside,
-        properties = PopupProperties(focusable = false, dismissOnClickOutside = true)) {
+    ComposerMenuPopup(picker, position) {
         CompositionLocalProvider(LocalHintInset provides 12.dp, LocalOnSoft provides false) {
             Column(Modifier.width(width)
                 .heightIn(max = available.coerceAtMost(if (panel) 600.dp else available))
@@ -148,4 +155,11 @@ internal fun ComposerPopover(picker: ComposerPicker, title: String, panel: Boole
                 .padding(if (panel) 12.dp else 4.dp), content = content)
         }
     }
+}
+
+/** Shared window policy for every small composer menu, including attachment and send choices. */
+@Composable
+internal fun ComposerMenuPopup(picker: ComposerPicker, position: PopupPositionProvider, content: @Composable () -> Unit) {
+    Popup(position, onDismissRequest = picker::dismissOutside,
+        properties = PopupProperties(focusable = false, dismissOnClickOutside = true), content = content)
 }

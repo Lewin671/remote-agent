@@ -3,7 +3,8 @@
 // six, and on the right one ink button that sends, or interrupts a running
 // turn while the draft is empty. Chosen images and files sit above the line.
 
-import { useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import type { Tray } from "../attach";
 import type { Derived } from "../model";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
@@ -118,6 +119,9 @@ export function Composer({
   const [sendMenu, setSendMenu] = useState(() => remote.demoFlag("sendmenu"));
   const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const held = useRef(false);
+  const sendWrap = useRef<HTMLDivElement>(null);
+  useComposerMenuDismiss(sendMenu, sendWrap, () => setSendMenu(false));
+  useEffect(() => () => clearTimeout(hold.current), []);
   const input = ref;
   useAutoGrow(input, text);
   const online = remote.conn === "online";
@@ -149,16 +153,17 @@ export function Composer({
       <Square />
     </button>
   ) : (
-    <div className="send-wrap">
+    <div className="send-wrap" ref={sendWrap}>
       <button
         className={"snd" + (canSend ? "" : " off")}
         disabled={!canSend}
         onMouseDown={(e) => e.preventDefault()}
-        onPointerDown={() => { if (canQueue) { held.current = false; hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); } }}
+        onPointerDown={(e) => { keepComposerFocus(e); held.current = false; if (canQueue && !sendMenu) hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); }}
         onPointerUp={() => clearTimeout(hold.current)}
         onPointerLeave={() => clearTimeout(hold.current)}
+        onPointerCancel={() => clearTimeout(hold.current)}
         onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }}
-        onClick={() => { if (held.current) { held.current = false; return; } submit(); }}
+        onClick={() => { if (held.current) { held.current = false; return; } if (sendMenu) setSendMenu(false); else submit(); }}
         aria-label="发送"
       >
         <ArrowUp />

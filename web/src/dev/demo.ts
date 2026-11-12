@@ -16,6 +16,7 @@
 //   &history-prefix                        restore an incomplete cached prefix before the complete history
 //   ?demo&backfill=800&history-delay=500#/s/s-run  cold long history: empty, latest page, then full history
 //   ?demo&backfill=60#/s/s-run              60 turns of tools and replies, of which the last 10 show first and the rest load above 1.5 s later
+//   ?demo&files=1#/s/s-run             attachment menu on a file-capable machine
 //   ?demo&draft=1&sendmenu=1#/s/s-run       running draft and long-press menu
 //   ?demo&queue-all=1#/s/s-multi           queue, held, paused, other device
 //   ?demo&cancel=failed&queue-all=1#/s/s-multi  cancel retry
@@ -1801,6 +1802,7 @@ export class DemoRemote extends Remote {
         ],
         capabilities: {
           imageUpload: true,
+          fileUpload: this.opts.has("files"),
           maxImagesPerMessage: 6,
           maxUploadBytes: 20n * 1024n * 1024n,
           maxChunkBytes: 786432,
@@ -1818,6 +1820,7 @@ export class DemoRemote extends Remote {
           codexVerified: true,
           capabilities: {
             imageUpload: true,
+          fileUpload: this.opts.has("files"),
             maxImagesPerMessage: 6,
             maxChunkBytes: 786432,
             approvalAlways: true,

@@ -2301,6 +2301,36 @@ describe("sending images (v2)", () => {
     await click(dialog().querySelector<HTMLElement>('button[aria-label="关闭"]')!);
   });
 
+  it("opens draft image details from a keyboard-preserving attachment menu", async () => {
+    const t = setup(() => true);
+    act(() => {
+      const machine = t.r.machines.get(t.r.sessions.get("s-idle")!.machineId)!;
+      machine.meta!.capabilities!.fileUpload = true;
+      t.r.touch();
+    });
+    await t.pick("photo.png");
+    await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
+    const field = host.querySelector<HTMLTextAreaElement>(".draft")!;
+    act(() => field.focus());
+    await click(host.querySelector<HTMLButtonElement>('[aria-label="添加附件"]')!);
+    expect(host.querySelector(".attach-menu")).not.toBeNull();
+    expect(document.activeElement).toBe(field);
+    const thumb = host.querySelector<HTMLButtonElement>(".draft-open")!;
+    for (const type of ["pointerdown", "mousedown"]) {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+      act(() => thumb.dispatchEvent(event));
+      expect(event.defaultPrevented).toBe(true);
+    }
+    await click(thumb);
+    expect(host.querySelector(".attach-menu")).toBeNull();
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
+    expect(dialog.textContent).toContain("图片没能传到电脑，连接恢复后重试");
+    expect(button("重试", dialog)).toBeTruthy();
+    expect(button("移除", dialog)).toBeTruthy();
+    await click(dialog.querySelector<HTMLElement>('[aria-label="关闭"]')!);
+    expect(host.querySelectorAll(".draft-open")).toHaveLength(1);
+  });
+
   it("retries a recoverable upload from its details without dropping its source", async () => {
     let offline = true;
     const t = setup(() => offline);
@@ -4044,4 +4074,35 @@ it("rejects restoring a failed file message before changing draft or dismissing 
   expect(r.outbox(s.id).some(o => o.sendId === id)).toBe(true);
   expect(r.trays.get(s.id)?.items).toHaveLength(0);
   expect(upload).not.toHaveBeenCalled();
+});
+
+it.each(["retap", "outside", "typing", "escape"])("keeps the session draft focused and unsent when closing the send menu by %s", async (close) => {
+  const r = demo();
+  mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
+  const input = host.querySelector<HTMLTextAreaElement>(".draft")!;
+  await act(async () => {
+    input.focus();
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Keep this draft");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const send = sendButton()!;
+  const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+  act(() => send.dispatchEvent(down));
+  expect(down.defaultPrevented).toBe(true);
+  act(() => send.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true })));
+  // The native context menu is the alternate route to the same long-press menu.
+  act(() => send.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
+  await click(send); // release click from the original long press must not send
+  expect(host.querySelector(".send-menu")).not.toBeNull();
+  if (close === "retap") { act(() => send.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }))); await click(send); }
+  else if (close === "outside") {
+    const mouse = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    act(() => document.body.dispatchEvent(mouse));
+    expect(mouse.defaultPrevented).toBe(true);
+    act(() => document.body.click());
+  } else if (close === "typing") act(() => input.dispatchEvent(new InputEvent("beforeinput", { bubbles: true })));
+  else act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+  expect(host.querySelector(".send-menu")).toBeNull();
+  expect(input.value).toBe("Keep this draft");
+  expect(document.activeElement).toBe(input);
 });

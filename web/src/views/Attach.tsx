@@ -6,6 +6,7 @@
 
 import { memo, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import { Tray, type TrayItem } from "../attach";
 import { imageFailureLine, imageProblem, ORIGINAL_IMAGE_HINT } from "../image-problem";
 import { DraftImageViewer } from "./Images";
@@ -111,13 +112,7 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
   const files = useRef<HTMLInputElement>(null);
   const wrap = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
-    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("pointerdown", close); document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); };
-  }, [open]);
+  useComposerMenuDismiss(open, wrap, () => setOpen(false));
   const pick = (file: boolean) => {
     setOpen(false);
     if (blocked) return onBlocked(blocked);
@@ -128,7 +123,7 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
   };
   return <span className="attach-wrap" ref={wrap}>
     <button disabled={tray.restoring} className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? "添加附件" : "添加图片"} aria-expanded={tray.fileSupported ? open : undefined}
-      onMouseDown={(e) => e.preventDefault()} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
+      onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
     {open && (
       <div className="attach-menu glass" role="menu">
         <button role="menuitem" onClick={() => pick(false)}><ImageIcon />照片和视频</button>

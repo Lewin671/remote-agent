@@ -4,6 +4,40 @@ import XCTest
 /// CLI is involved; protocol end-to-end acceptance is a separate workflow.
 @MainActor
 final class ChatGestureTests: XCTestCase {
+    func testComposerMenusKeepKeyboardAndPosition() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads"]
+        app.launch()
+        let field = app.textFields["消息"]
+        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        field.tap()
+        field.typeText("Menu keyboard check")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let top = field.frame.minY
+        func check(_ name: String) {
+            XCTAssertTrue(app.keyboards.firstMatch.exists, name)
+            XCTAssertEqual(field.frame.minY, top, accuracy: 0.5, name)
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name
+            shot.lifetime = .keepAlways
+            add(shot)
+            print("COMPOSER_MENU \(name) top=\(field.frame.minY) baseline=\(top)")
+        }
+        check("ios-baseline")
+        app.buttons["添加附件"].tap()
+        XCTAssertTrue(app.buttons["照片和视频"].waitForExistence(timeout: 5))
+        check("ios-attach-open")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(app.buttons["照片和视频"].waitForNonExistence(timeout: 5))
+        check("ios-attach-closed")
+        app.buttons["发送"].firstMatch.press(forDuration: 1)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "这一轮结束后再发")).firstMatch.waitForExistence(timeout: 5))
+        check("ios-send-open")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "这一轮结束后再发")).firstMatch.waitForNonExistence(timeout: 5))
+        check("ios-send-closed")
+    }
+
     func testTallTranscriptDragFlingAndJump() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-demo", "-demoRoute", "session/sample-boundary"]

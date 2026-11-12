@@ -175,17 +175,18 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>) {
  * hears it, so a picker over a sheet does not take the sheet with it. */
 const escapes: { fn: () => void }[] = [];
 const onEscape = (e: KeyboardEvent) => { if (e.key === "Escape") escapes[escapes.length - 1]?.fn(); };
-export function useEscape(fn: () => void) {
+export function useEscape(fn: () => void, enabled = true) {
   const cell = useRef({ fn });
   cell.current.fn = fn;
   useEffect(() => {
+    if (!enabled) return;
     const c = cell.current;
     if (escapes.push(c) === 1) addEventListener("keydown", onEscape);
     return () => {
       escapes.splice(escapes.indexOf(c), 1);
       if (escapes.length === 0) removeEventListener("keydown", onEscape);
     };
-  }, []);
+  }, [enabled]);
 }
 
 /** The control a layer opens against, found when the layer is drawn: for a

@@ -31,14 +31,14 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -52,9 +52,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 
 /** Places a menu above the message box, at its left ([right] false: the ＋ menu) or its right (the send menu). */
 private class AboveProvider(private val gap: Int, private val right: Boolean) : PopupPositionProvider {
@@ -98,10 +96,11 @@ fun ComposeBox(
     tools: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
 ) {
     val p = pal
-    var sendMenu by remember { mutableStateOf(false) }
+    val menu = remember { ComposerPicker() }
+    ComposerPickerBack(menu)
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     val shape = RoundedCornerShape(27.dp)
-    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+    Box(modifier.fillMaxWidth().composerPickerEvents(menu), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.widthIn(max = ChatMax).fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
             // The box grows and shrinks with its lines and its tray of attachments (§4 动效, 常), the buttons
             // staying at the bottom; the glass outside the size animation so its shadow is not cut by it.
@@ -123,14 +122,20 @@ fun ComposeBox(
                     },
                 )
             }
-            val send = @Composable { SendButton(interrupt, on, sendLabel, { if (interrupt) onInterrupt?.invoke() else onSend() }, if (!interrupt && onQueue != null) ({ sendMenu = true }) else null) }
+            val send = @Composable {
+                Box(Modifier.onGloballyPositioned { menu.send = it.boundsInWindow() }) {
+                    SendButton(interrupt, on, sendLabel, {
+                        if (menu.open == "send") menu.close() else if (interrupt) onInterrupt?.invoke() else onSend()
+                    }, if (!interrupt && onQueue != null) ({ menu.toggle("send") }) else null)
+                }
+            }
             if (tools != null) {
                 // The new task's card: the text grows to eight lines, then scrolls inside.
                 Column(Modifier.fillMaxWidth().glass(p, Radii.R22, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, top = 10.dp, bottom = 7.dp)) {
                     field(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8)
                     top?.invoke()
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        AttachButton(onPlus, onFile, plusEnabled)
+                        AttachButton(onPlus, onFile, plusEnabled, menu)
                         // The tools take what they need of the room between ＋ and ↑, the gap the rest.
                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { tools() }
                         send()
@@ -140,13 +145,13 @@ fun ComposeBox(
                 Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(7.dp)) {
                     top?.invoke()
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AttachButton(onPlus, onFile, plusEnabled)
+                        AttachButton(onPlus, onFile, plusEnabled, menu)
                         field(Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp), 6)
                         send()
                     }
                 }
             }
-            if (sendMenu) Popup(popupPositionProvider = AboveProvider(gap, right = true), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
+            if (menu.open == "send") ComposerMenuPopup(menu, AboveProvider(gap, right = true)) {
                 Column(Modifier.padding(12.dp).width(IntrinsicSize.Max).widthIn(min = 200.dp, max = 260.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
                     listOf(
                         Triple("现在插入这一轮", "点 ↑ 就是这个", onSend),
@@ -155,7 +160,7 @@ fun ComposeBox(
                         Column(
                             Modifier.fillMaxWidth().heightIn(min = 52.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
                                 // The press follows the menu's corners: the menu's 24 less its 6 of padding.
-                                .clip(Radii.R18).clickable { sendMenu = false; action() }.padding(horizontal = 12.dp, vertical = 6.dp),
+                                .clip(Radii.R18).clickable { menu.close(); action() }.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Text(label, style = T.s17, color = p.ink)
@@ -204,20 +209,20 @@ private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onCli
  * once, or, when the computer takes files ([onFile]), a glass menu above it.
  */
 @Composable
-fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boolean) {
+private fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boolean, menu: ComposerPicker) {
     val p = pal
-    var open by remember { mutableStateOf(false) }
+    val open = menu.open == "attach"
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     val label = if (onFile != null) "添加附件" else "添加图片"
     Box(
-        Modifier.size(40.dp).disabledAlpha(enabled).clip(CircleShape).background(if (open) p.fill2 else p.fill)
-            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label) { if (onFile != null) open = true else onPlus() }
+        Modifier.size(40.dp).onGloballyPositioned { menu.attach = it.boundsInWindow() }.disabledAlpha(enabled).clip(CircleShape).background(if (open) p.fill2 else p.fill)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label) { if (onFile != null) menu.toggle("attach") else onPlus() }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Ic(Lucide.Plus, 22.dp, p.ink)
-        if (open && onFile != null) Popup(popupPositionProvider = AboveProvider(gap, right = false), onDismissRequest = { open = false }, properties = PopupProperties(focusable = true)) {
-            AttachMenu(onMedia = { open = false; onPlus() }, onFile = { open = false; onFile() })
+        if (open && onFile != null) ComposerMenuPopup(menu, AboveProvider(gap, right = false)) {
+            AttachMenu(onMedia = { menu.close(); onPlus() }, onFile = { menu.close(); onFile() })
         }
     }
 }

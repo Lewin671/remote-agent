@@ -1,11 +1,11 @@
-import { useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
-import { createPortal } from "react-dom";
 import { useEscape } from "../ui";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 
 /** Cancel pointer focus, not clicks or touch scrolling. Never focus the
  * textarea: a picker opened with the keyboard down must leave it down. */
 export function keepComposerFocus(e: PointerEvent | MouseEvent) {
-  if (document.activeElement instanceof HTMLTextAreaElement && document.activeElement.closest(".ntask")) e.preventDefault();
+  if (document.activeElement instanceof HTMLTextAreaElement && document.activeElement.closest(".ntask, .cbar")) e.preventDefault();
 }
 
 export type ComposerAnchor = {
@@ -22,7 +22,6 @@ export function ComposerPicker({ anchor, boundary, title, onClose, children }: C
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState({ left: 0, bottom: 0, width: 0, height: 0 });
-  useEscape(onClose);
   useLayoutEffect(() => {
     const measure = () => {
       const box = boundary.current;
@@ -52,21 +51,39 @@ export function ComposerPicker({ anchor, boundary, title, onClose, children }: C
       window.visualViewport?.removeEventListener("scroll", measure);
     };
   }, [anchor, boundary, title]);
-  useLayoutEffect(() => {
+  useComposerMenuDismiss(true, root, onClose, boundary);
+  if (!boundary.current) return null;
+  return createPortal(
+    <div ref={root} className={"composer-picker" + (title ? " model-picker" : "")} role="dialog" aria-label={title ?? "CLI"}
+      onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus}
+      style={{ left: place.left, bottom: place.bottom, width: place.width, maxHeight: place.height, visibility: place.width ? undefined : "hidden" }}>
+      {title ? children : <div className="composer-picker-scroll">{children}</div>}
+    </div>, boundary.current,
+  );
+}
+
+/** Keep focus through compatibility mouse events, then dismiss on outside click or typing. */
+export function useComposerMenuDismiss(open: boolean, root: RefObject<HTMLElement | null>, onClose: () => void, boundary?: RefObject<HTMLElement | null>) {
+  useEscape(onClose, open);
+  useEffect(() => {
+    if (!open) return;
+    const ownsField = (field: HTMLTextAreaElement) => boundary
+      ? !!boundary.current?.contains(field)
+      : !!field.closest(".ntask, .cbar")?.contains(root.current);
     const guard = (e: globalThis.MouseEvent) => {
       if (!(e.target instanceof Element) || e.target.closest("input, textarea, [contenteditable]")) return;
-      if (document.activeElement instanceof HTMLTextAreaElement && boundary.current?.contains(document.activeElement)) e.preventDefault();
+      if (document.activeElement instanceof HTMLTextAreaElement && ownsField(document.activeElement)) e.preventDefault();
     };
     const outside = (e: Event) => {
       const target = e.target;
       if (!(target instanceof Element) || root.current?.contains(target)) return;
       // Let the chips toggle/switch in their click handlers, without an
       // outside dismissal reopening the same picker in that click.
-      if (boundary.current?.contains(target) && target.closest("[data-composer-picker]")) return;
+      if (boundary?.current?.contains(target) && target.closest("[data-composer-picker]")) return;
       onClose();
     };
     const typing = (e: Event) => {
-      if (e.target instanceof HTMLTextAreaElement && boundary.current?.contains(e.target)) onClose();
+      if (e.target instanceof HTMLTextAreaElement && ownsField(e.target)) onClose();
     };
     // Keep the guard installed through the compatibility mouse events.
     // Closing on pointerdown would unmount it before Safari's mousedown,
@@ -83,13 +100,5 @@ export function ComposerPicker({ anchor, boundary, title, onClose, children }: C
       document.removeEventListener("focusin", outside);
       document.removeEventListener("beforeinput", typing);
     };
-  }, [boundary, onClose]);
-  if (!boundary.current) return null;
-  return createPortal(
-    <div ref={root} className={"composer-picker" + (title ? " model-picker" : "")} role="dialog" aria-label={title ?? "CLI"}
-      onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus}
-      style={{ left: place.left, bottom: place.bottom, width: place.width, maxHeight: place.height, visibility: place.width ? undefined : "hidden" }}>
-      {title ? children : <div className="composer-picker-scroll">{children}</div>}
-    </div>, boundary.current,
-  );
+  }, [open, root, boundary, onClose]);
 }

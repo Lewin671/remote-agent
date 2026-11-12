@@ -98,7 +98,7 @@ it("hides labeled file lines without hiding ordinary File: sentences", () => {
   }
 });
 
-it("closes the plus menu after either choice, outside pointerdown and Escape", async () => {
+it("closes the plus menu after either choice, outside click and Escape", async () => {
   const t = tray(); mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   const plus = () => host.querySelector<HTMLButtonElement>('button[aria-label="添加附件"]')!;
   const menus = () => host.querySelectorAll('[role="menu"]');
@@ -112,7 +112,7 @@ it("closes the plus menu after either choice, outside pointerdown and Escape", a
   }
   expect(clicks.every((c) => c.mock.calls.length === 1)).toBe(true);
   await act(async () => plus().click());
-  await act(async () => document.body.dispatchEvent(new Event("pointerdown", { bubbles: true })));
+  await act(async () => document.body.click());
   expect(menus()).toHaveLength(0);
   await act(async () => plus().click());
   await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
@@ -252,4 +252,39 @@ it("draws a chosen video among the images, its length in a corner, or its name w
   expect(thumbs[1].querySelector("video")).toBeNull();
   expect(thumbs[1].querySelector(".vname")?.textContent).toBe("clip.mov");
   expect(thumbs[1].querySelector(".dur")).toBeNull();
+});
+
+it.each(["same button", "outside", "textarea", "typing", "escape", "choice"])("keeps composer focus when the attachment menu closes by %s", async (close) => {
+  mount(<div className="cbar"><textarea /><AttachButton tray={tray()} blocked="" onBlocked={() => undefined} /><div className="outside">outside</div></div>);
+  const field = host.querySelector("textarea")!;
+  const plus = host.querySelector<HTMLButtonElement>(".cm-plus")!;
+  field.focus();
+  const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+  act(() => plus.dispatchEvent(down));
+  expect(down.defaultPrevented).toBe(true);
+  act(() => plus.click());
+  const target = close === "same button" ? plus : close === "textarea" ? field : close === "choice" ? host.querySelector<HTMLElement>('[role="menuitem"]')! : host.querySelector<HTMLElement>(".outside")!;
+  if (close === "typing") act(() => field.dispatchEvent(new InputEvent("beforeinput", { bubbles: true })));
+  else if (close === "escape") act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+  else {
+    for (const type of ["pointerdown", "mousedown"]) {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true });
+      act(() => target.dispatchEvent(event));
+      if (target !== field) expect(event.defaultPrevented).toBe(true);
+    }
+    act(() => target.click());
+  }
+  expect(host.querySelector('[role="menu"]')).toBeNull();
+  expect(document.activeElement).toBe(field);
+});
+
+it("does not focus a closed keyboard when the attachment menu is used", () => {
+  mount(<div className="cbar"><textarea /><AttachButton tray={tray()} blocked="" onBlocked={() => undefined} /></div>);
+  const plus = host.querySelector<HTMLButtonElement>(".cm-plus")!;
+  const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+  act(() => plus.dispatchEvent(down));
+  expect(down.defaultPrevented).toBe(false);
+  act(() => plus.click());
+  act(() => plus.click());
+  expect(document.activeElement).not.toBe(host.querySelector("textarea"));
 });
