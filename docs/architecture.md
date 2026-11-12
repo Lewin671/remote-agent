@@ -226,7 +226,7 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
     - **起点环境**：shell 拿到的是新终端的环境，不是 daemon 的：身份和系统变量（HOME、USER、LOGNAME、SHELL、TMPDIR、locale、`SSH_AUTH_SOCK`）加系统默认 PATH，再叠加 `~/.remote-agent/agent.env` 和 remote-agent 自己的变量（`RA_SESSION`、`RA_EXE`、`REMOTE_AGENT_HOME`、`CLAUDE_CODE_DISABLE_CRON`、`CLAUDE_CODE_DISABLE_1M_CONTEXT`）。daemon 的 PATH 是它启动时的快照，传下去的话 nvm 之类的工具会沿用旧路径，所以不传；`--clean-env` 让 PTY 代理只把这份环境交给 shell，不继承 tmux（即 daemon）的环境。
     - **CLI 怎么找**：命令和参数作为位置参数传给脚本，脚本本身是固定代码，不拼 shell 字符串。脚本解析到 CLI 后把路径写进会话目录的 `shell-bin` 再 `exec`；找不到就写 `shell-error` 并退出。daemon 读到路径（或从终端开的会话在 PATH 里找到的路径）就把它记成这个 CLI 的位置，之后的版本检查、机器元数据里的已装列表和 `doctor` 都用它——它们跟着会话实际跑的 CLI 走，而不是 daemon 启动时 PATH 里的那个；每次启动前清掉上一份报告。
     - **失败要看得见**：shell 一直没启动 CLI（例如配置里有等待输入的命令）时，超过 `ShellStartTimeout`（默认 1 分钟）daemon 结束这个会话并在状态详情里写明；shell 找不到 CLI（配置的 PATH 里没有）或没跑到脚本就退出（配置报错）时，会话直接以对应原因结束。两种都不会一直停在「启动中」。
-  - **环境变量**：`~/.remote-agent/agent.env`（放代理等变量，所有 CLI 共用一份；daemon 由 launchd 启动时读不到 shell 里的配置。没有这个文件时读以前的 `codex.env`）叠加在两种来源之上，并设置 `RA_SESSION=<会话 ID>`、`RA_EXE=<remote-agent 的路径>`。
+  - **环境变量**：`~/.remote-agent/agent.env`（放代理等变量，所有 CLI 共用一份；daemon 由 launchd 启动时读不到 shell 里的配置）叠加在两种来源之上，并设置 `RA_SESSION=<会话 ID>`、`RA_EXE=<remote-agent 的路径>`。
   - **不上命令行**：这些变量不经过 tmux 的命令行（命令行对本机所有用户可见，而环境变量里常有 API key），而是存进会话目录下只有自己可读的 `env.json`：从终端开的会话在恢复时沿用它，客户端开的会话只有起点环境（shell 现算的结果不落盘），每次启动另写一份副本交给 PTY 代理，读取后删除。
   - **hook**：用 `-c` 注入 `PermissionRequest`、`SessionStart` 两个 hook，只对这个会话生效。hook 的定义（命令和 `timeout`）必须固定：Codex 每个 hook 位置只记一份信任，定义一变就要重新信任，而且会顶掉之前的信任。所以命令写成 `"$RA_EXE" hook codex`，不含二进制的路径，换了路径或同时跑测试用的另一份二进制也不用重新信任（notes §3、§5）
 - **退出清理**：会话结束后清理该次 PTY 启动创建的进程组。停止信号先交给 CLI，给它时间保存历史；无论主进程何时退出，都向同组剩余进程发 TERM，并在有界宽限后对仍存在的组发 KILL，避免主进程及时退出却留下忽略挂断的 helper。PTY 代理在终端消失后继续排空输出，避免 CLI 因输出阻塞无法退出。

@@ -40,7 +40,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 8. **定时任务的联合验收**。三端功能已在整合分支实现；按「待确认 › 定时任务」补真机、跨电脑、睡眠/DST 与 Codex 路线。验收标准：各项有环境、操作方式和结果，修复已确认问题；尚未覆盖的项目继续明确标为未验证。设计见 [architecture §18](architecture.md#18-定时任务)，现有证据见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)
 9. **历史快照**。网页、Android 和 iOS 第一次打开长会话都已先取最新一段显示，更早的在后台补；再次打开从本地密文缓存恢复（原生端按页从最新一页起），同时只向 server 取之后的事件。剩下的是状态推导仍要从序号 1 开始的完整前缀：补齐之前只按已连上的前缀推导，所以第一次打开仍要在后台下完整段历史（瓶颈是下载量，见 [architecture §10](architecture.md#10-报文同步和指令) 的「后台和内存」）。下一步是快照，让推导不依赖完整历史；它改变两端约定，先评审协议。三端共同规则和共享向量见 [共同规则](architecture.md#客户端状态推导的共同规则)
 10. **v8 以后的界面改动补验收**。两端逐屏对照 client-v38（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
-11. **清理被登录 shell 取代的机制**。客户端开的会话现在由登录 shell 现算环境（[architecture §6](architecture.md#6-接入-codex)），`agent.env`、`daemon.sh install` 写进服务的 `PATH`、以及用户自己的 `~/.local/shims` 包装脚本都只是为了在没有这步之前把环境补上。先在真实使用里观察一段时间：从手机新开的会话能直接用到新装的命令和升级过的 CLI，不需要重装服务或改 `agent.env`；确认后删掉 daemon 读 `agent.env`/`codex.env` 和 install 写 `PATH` 的逻辑，并同步 README 和 architecture §6
+11. **清理被登录 shell 取代的机制**。客户端开的会话现在由登录 shell 现算环境（[architecture §6](architecture.md#6-接入-codex)），`agent.env`、`daemon.sh install` 写进服务的 `PATH`、以及用户自己的 `~/.local/shims` 包装脚本都只是为了在没有这步之前把环境补上。先在真实使用里观察一段时间：从手机新开的会话能直接用到新装的命令和升级过的 CLI，不需要重装服务或改 `agent.env`；确认后删掉 daemon 读 `agent.env` 和 install 写 `PATH` 的逻辑，并同步 README 和 architecture §6
 
 **Android 的小缺口**（没排期，碰到相关改动时一起做）：
 

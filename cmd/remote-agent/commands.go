@@ -150,17 +150,12 @@ func daemonConfig(agentBins map[string]string, tc *tmux.Client) (daemon.Config, 
 	}, nil
 }
 
-// readEnvFile reads KEY=VALUE lines; a missing file is not an error.
-// agentEnv reads the variables every CLI session gets, such as proxies:
-// ~/.remote-agent/agent.env, or codex.env from before Claude Code support.
+// agentEnv reads the variables every CLI session gets, such as proxies.
 func agentEnv() (map[string]string, error) {
-	path := filepath.Join(paths.Dir(), "agent.env")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		path = filepath.Join(paths.Dir(), "codex.env")
-	}
-	return readEnvFile(path)
+	return readEnvFile(filepath.Join(paths.Dir(), "agent.env"))
 }
 
+// readEnvFile reads KEY=VALUE lines; a missing file is not an error.
 func readEnvFile(path string) (map[string]string, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
