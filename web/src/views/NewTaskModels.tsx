@@ -7,6 +7,31 @@ import { Banner, Segmented } from "../ui";
 
 type ModelInfo = { models?: ListModelsResponse; settings?: DaemonSettings };
 
+export function shouldPinModelControls(bodyHeight: number, controlsHeight: number, rowHeight: number) {
+  return rowHeight > 0 && bodyHeight - controlsHeight >= rowHeight * 2 + 8;
+}
+
+/** One scroll owner in both modes. Sticky controls change only their paint
+ * position, so resizing never reparents content or resets the user's scroll. */
+function ModelPanelBody({ children }: { children: ReactNode }) {
+  const root = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const body = root.current!;
+    const controls = body.querySelector<HTMLElement>(".model-controls");
+    const row = body.querySelector<HTMLElement>(".mi");
+    const measure = () => {
+      body.dataset.pinned = String(!!controls && shouldPinModelControls(
+        body.clientHeight, controls.offsetHeight, row?.getBoundingClientRect().height ?? 0,
+      ));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    [body, controls, row].forEach(el => { if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  });
+  return <div className="model-panel-body" ref={root}>{children}</div>;
+}
+
 export function newTaskModel(cfg: NewConfig, info: ModelInfo) {
   const def = defaultsFor(info.settings, cfg.agent);
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
@@ -45,7 +70,7 @@ export function NewTaskModelPanel({ cfg, info, enabled, pending, onChange, onClo
       <button className="side-act" onClick={onClose}>完成</button>
     </div>
     {info.error && <Banner kind="warn" action="重试" onAction={info.retry}>没能读取模型列表，会用 {agentInfo(cfg.agent).name} 自己的默认模型</Banner>}
-    {pending || (!info.models && !info.error) ? <div className="model-loading hint">{pending ? "正在读取这个项目上次的设置…" : "读取设置…"}</div> : info.models && <>
+    {pending || (!info.models && !info.error) ? <div className="model-loading hint">{pending ? "正在读取这个项目上次的设置…" : "读取设置…"}</div> : info.models && <ModelPanelBody key={all ? "all" : "main"}>
       {!all && <div className="model-controls">
         {model && model.efforts.length > 1 && <>
           <div className="fl">推理强度</div>
@@ -59,7 +84,7 @@ export function NewTaskModelPanel({ cfg, info, enabled, pending, onChange, onClo
               onChange={value => onChange({ ...cfg, standardContext: value === "标准 200k" })} options={options(["1M", "标准 200k"])} />
           </>)}
       </div>}
-      <div className="model-list-scroll" key={all ? "all" : "main"}>
+      <div className="model-list-scroll">
         <div className="list" role="group" aria-label="模型">
           <button className="mi" disabled={!enabled} aria-pressed={!cfg.model} onClick={() => pick("")}>
             <span className="mt">默认{def ? `（${modelLabel(list, def, cfg.agent)}）` : ""}</span>
@@ -72,7 +97,7 @@ export function NewTaskModelPanel({ cfg, info, enabled, pending, onChange, onClo
           {!all && shown.length < list.length && <button className="mi link-row" onClick={() => setAll(true)}><span className="mt">全部模型</span><ChevronRight /></button>}
         </div>
       </div>
-    </>}
+    </ModelPanelBody>}
   </div>;
 }
 

@@ -1907,7 +1907,8 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .new-task-model-panel .model-controls .hint { font-size: 13px; margin: 4px 0; }
 .new-task-model-panel .seg { display: flex; padding: 0; }
 .new-task-model-panel .seg button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 2px; font-size: 13px; white-space: nowrap; }
-.new-task-model-panel .model-list-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.new-task-model-panel .model-panel-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; }
+.model-panel-body[data-pinned="true"] > .model-controls { position: sticky; top: 0; z-index: 1; background: var(--s3); }
 .new-task-model-panel .list { margin: 0; background: transparent; }
 .new-task-model-panel .mi .mt { padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .new-task-model-panel .model-loading { min-height: 120px; }

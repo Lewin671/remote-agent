@@ -5,8 +5,15 @@ import { expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { ListModelsResponseSchema, DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
-import { chooseNewTaskModel, NewTaskTools } from "./NewTaskModels";
+import { chooseNewTaskModel, NewTaskTools, shouldPinModelControls } from "./NewTaskModels";
 import { ConfigSummary } from "./NewSession";
+
+it("pins only when the remaining height fits two actual model rows and padding", () => {
+  expect(shouldPinModelControls(228, 132, 44)).toBe(true);
+  expect(shouldPinModelControls(227, 132, 44)).toBe(false);
+  expect(shouldPinModelControls(228, 132, 52)).toBe(false);
+  expect(shouldPinModelControls(204, 132, 32)).toBe(true);
+});
 
 it("keeps a supported effective effort, including defaults, otherwise uses the destination default", () => {
   const info = {
