@@ -380,11 +380,27 @@ export function previewOf(
   return s.info?.title ? st.text : "还没发消息";
 }
 
+/** Strip table delimiters before flattening Markdown into a preview. Rows
+ * without outer pipes are tables only beside their separator/header. */
+export function tablePreview(text: string): string {
+  const lines = text.split("\n");
+  const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/(?<!\\)\|$/, "").split(/(?<!\\)\|/).map(c => c.trim());
+  const separator = (line: string) => line.includes("|") && cells(line).every(c => /^:?-{3,}:?$/.test(c));
+  let inTable = false;
+  return lines.map((line, i) => {
+    if (separator(line)) { inTable = true; return ""; }
+    if (line.includes("|") && (/^\s*\||(?<!\\)\|\s*$/.test(line) || inTable || separator(lines[i + 1] ?? "")))
+      return cells(line).filter(Boolean).map(c => c.replace(/\\\|/g, "|")).join("、");
+    inTable = false;
+    return line;
+  }).join("\n");
+}
+
 /** Text for one-line previews: Markdown marks removed whole, so a cut
  * never leaves half a link or code mark. */
 export function plain(text: string): string {
   return oneLine(
-    text
+    tablePreview(text)
       // The CLIs' image placeholders: gone before the words, 图 N among them.
       .replace(/^(?:\s*\[Image #\d+\])+\s*/, "")
       .replace(/\[Image #(\d+)\]/g, "图 $1")

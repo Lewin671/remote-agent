@@ -1,0 +1,47 @@
+[
+  {
+    "name": "table with borders",
+    "input": "| 项目 | 状态 |\n| --- | :---: |\n| 网页 | 完成 |",
+    "expected": "项目、状态 网页、完成"
+  },
+  {
+    "name": "separator first",
+    "input": "| :--- | ---: |\n| Item | Value |",
+    "expected": "Item、Value"
+  },
+  {
+    "name": "without outer pipes",
+    "input": "Item | Value\n--- | ---\nOne | Two",
+    "expected": "Item、Value One、Two"
+  },
+  {
+    "name": "markdown cells",
+    "input": "| **项目** | `状态` |\n| --- | --- |\n| [网页](https://example.com) | 完成 |",
+    "expected": "项目、状态 网页、完成"
+  },
+  {
+    "name": "escaped pipe",
+    "input": "| A\\|B | C |\n| --- | --- |",
+    "expected": "A|B、C"
+  },
+  {
+    "name": "ordinary text",
+    "input": "hello\nworld",
+    "expected": "hello world"
+  },
+  {
+    "name": "ordinary pipe",
+    "input": "run a | b",
+    "expected": "run a | b"
+  },
+  {
+    "name": "only separator",
+    "input": "| --- | --- |",
+    "expected": ""
+  },
+  {
+    "name": "empty cells",
+    "input": "| 项目 | | 状态 |",
+    "expected": "项目、状态"
+  }
+]

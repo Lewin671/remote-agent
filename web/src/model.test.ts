@@ -1050,3 +1050,9 @@ describe("the folder picker's path", () => {
     expect(pathCrumbs("/")).toEqual(["/"]);
   });
 });
+
+// Shared with native clients: preview text is independent of rendering.
+import previewVectors from "../../testdata/preview-plain.json";
+it.each(previewVectors)("plain preview: $name", ({ input, expected }) => {
+  expect(plain(input)).toBe(expected);
+});
