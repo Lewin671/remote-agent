@@ -88,7 +88,40 @@ func (d *Daemon) saveSchedulesLocked() error {
 	return err
 }
 
-const maxNonTerminalTasks = 100
+const (
+	maxNonTerminalTasks              = 100
+	maxScheduledTasks                = 1000     // creation admission only; includes terminal records
+	maxScheduleDefinitionGrowthBytes = 64 << 10 // added serialized Spec bytes per request
+)
+
+var errScheduleRequestTooLarge = errors.New("task request is too large")
+
+func scheduleAdmissionCapacityError() error {
+	return connect.NewError(connect.CodeResourceExhausted, errScheduleRequestTooLarge)
+}
+
+// Only definition-changing requests pay this budget. Count normalized JSON
+// bytes (including escaping), never history, execution state or the whole file.
+// Existing oversized definitions may be reduced or edited within the same
+// incremental allowance. Storage saves and startup must not call this helper.
+func checkScheduleDefinitionGrowth(before *schedule.Spec, after schedule.Spec) error {
+	next, err := json.Marshal(after)
+	if err != nil {
+		return err
+	}
+	previousBytes := 0
+	if before != nil {
+		previous, err := json.Marshal(before)
+		if err != nil {
+			return err
+		}
+		previousBytes = len(previous)
+	}
+	if len(next)-previousBytes > maxScheduleDefinitionGrowthBytes {
+		return scheduleAdmissionCapacityError()
+	}
+	return nil
+}
 
 func (d *Daemon) nonTerminalTasksLocked() int {
 	count := 0
@@ -260,7 +293,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	}
 	if q.Operation == "create" {
 		if len(q.SpecJson) > 64<<10 || len(q.RequestId) > 256 {
-			return nil, errors.New("task request is too large")
+			return nil, errScheduleRequestTooLarge
 		}
 		spec, err := schedule.DecodeSpec(q.SpecJson)
 		if err != nil {
@@ -291,6 +324,9 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 				}
 			}
 		}
+		if len(d.tasks) >= maxScheduledTasks {
+			return nil, scheduleAdmissionCapacityError()
+		}
 		if d.nonTerminalTasksLocked() >= maxNonTerminalTasks {
 			return nil, scheduleCapacityError()
 		}
@@ -305,6 +341,9 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 			t.Source = "client"
 		}
 		if err := d.prepareSchedule(ctx, t, now); err != nil {
+			return nil, err
+		}
+		if err := checkScheduleDefinitionGrowth(nil, t.Spec); err != nil {
 			return nil, err
 		}
 		d.tasks[t.ID] = t
@@ -332,7 +371,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	var updateSpec schedule.Spec
 	if q.Operation == "update" {
 		if len(q.SpecJson) > 64<<10 {
-			return nil, errors.New("task request is too large")
+			return nil, errScheduleRequestTooLarge
 		}
 		var err error
 		updateSpec, err = schedule.DecodeSpec(q.SpecJson)
@@ -353,6 +392,9 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 				if err := d.restrictMCPTask(schedule.Clone(t), true); err != nil {
 					return nil, err
 				}
+			}
+			if err := checkScheduleDefinitionGrowth(&t.Spec, updateSpec); err != nil {
+				return nil, err
 			}
 			prev := schedule.Clone(t)
 			notifyChanged := effectiveNotify(t.Spec.Notify) != effectiveNotify(updateSpec.Notify)
@@ -407,6 +449,10 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 			}
 		}
 		if err := d.prepareSchedule(ctx, t, now); err != nil {
+			d.tasks[t.ID] = prev
+			return nil, err
+		}
+		if err := checkScheduleDefinitionGrowth(&prev.Spec, t.Spec); err != nil {
 			d.tasks[t.ID] = prev
 			return nil, err
 		}
