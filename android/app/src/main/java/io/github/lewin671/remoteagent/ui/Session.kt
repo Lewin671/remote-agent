@@ -917,7 +917,7 @@ private fun OutgoingView(
             // Not submitted, and part of it may still be in the input box.
             input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
                 links += "去终端" to onTerminal
-                if (o.hasLocalAttachments) links += "放回输入框" to { putBack(remote, sid, o); Unit }
+                if (o.hasLocalAttachments || (o.imageIds.isEmpty() && o.fileIds.isEmpty() && o.text.isNotEmpty())) links += "放回输入框" to { putBack(remote, sid, o); Unit }
                 feedback.text to p.orangeInk
             }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {

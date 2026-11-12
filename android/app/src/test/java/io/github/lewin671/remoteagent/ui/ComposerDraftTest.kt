@@ -5,6 +5,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ComposerDraftTest {
+    @Test fun unknownTextOnlyMessagesCanBePutBack() {
+        val o = Outgoing("text-only", "hello").apply { state = Outgoing.State.UNKNOWN }
+        org.junit.Assert.assertTrue(o.canPutBack)
+    }
+
     @Test fun textRestoresWithTheImagesAndEmptyTextRemovesItsRecord() = runBlocking {
         val files = MemoryFiles()
         val first = ImageDraft("session:example", files, scope = null)

@@ -593,7 +593,7 @@ public final class Outgoing: Identifiable {
     public var error = ""
     public var missingImages = false
     public var hasLocalAttachments: Bool { !images.isEmpty && images.allSatisfy(\.hasSource) }
-    public var canPutBack: Bool { (state == .failed || state == .unknown) && hasLocalAttachments }
+    public var canPutBack: Bool { (state == .failed || state == .unknown) && (hasLocalAttachments || (imageIds.isEmpty && fileIds.isEmpty && !text.isEmpty)) }
 
     public nonisolated var id: String { requestId }
 

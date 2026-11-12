@@ -64,6 +64,12 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(SessionStore(draftFiles: files, draftQueue: nil).draft("one").isEmpty)
     }
 
+    @Test func unknownTextOnlyMessagesCanBePutBack() {
+        let o = Outgoing(requestId: "text", text: "hello")
+        o.state = .unknown
+        #expect(o.canPutBack)
+    }
+
     // MARK: Sending
 
     @Test func aMessageIsSendingUntilTheComputerAnswers() async {
