@@ -19,9 +19,9 @@ class DeliveryTest {
         assertEquals("正在取消…", label(cancel = Cancels.State.Canceling))
         assertEquals("正在发送…", label(resuming = true))
         assertEquals("发送没成功，仍已暂停", label(failed = true))
-        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 2, "本客户端", false))
-        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 1, "本客户端"))
-        assertEquals("插入这一轮 · 第 2 条 · Android · Pixel 9", pendingInputCaption("插入这一轮", 2, 4, "Android · Pixel 9"))
+        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 2, ChatSource("本客户端", true), false))
+        assertEquals("已暂停", pendingInputCaption("已暂停", 1, 1, ChatSource("本客户端", true)))
+        assertEquals("插入这一轮 · 第 2 条 · Android · Pixel 9", pendingInputCaption("插入这一轮", 2, 4, ChatSource("Android · Pixel 9")))
     }
 
     @Test fun inputStatesDistinguishDefiniteAndUncertainDelivery() {

@@ -832,8 +832,13 @@ class Derived(
     /**
      * Mode or model changes made in the terminal, by the seq of the turn context that shows them.
      */
-    val terminalChanges: HashMap<Long, String> = HashMap(),
+    val terminalChanges: HashMap<Long, List<TerminalChange>> = HashMap(),
 )
+
+sealed interface TerminalChange {
+    data class ModeChanged(val mode: Mode?, val raw: String = "") : TerminalChange
+    data class ModelChanged(val model: String, val effort: String) : TerminalChange
+}
 
 /** Pending approvals and questions, input states and the running turn. */
 fun derive(events: List<Event>, agent: Agent = DEFAULT_AGENT): Derived =
@@ -1056,14 +1061,14 @@ internal class EventReducer(agent: Agent) {
                     // The next context should show this model; the client names it
                     // by slug or alias, the context by the CLI's own ID.
                     if (c.model.isNotEmpty()) expected = c.model to c.effort
-                    modeOf(c.mode)?.let { mode = it.text }
+                    modeOf(c.mode)?.let { mode = it.name }
                 }
                 Event.KindCase.TURN_CONTEXT -> {
                     val c = e.turnContext
                     // Claude Code's mode by its own name, so that one outside the four is a change
                     // like any other.
                     val m =
-                        if (c.permissionMode.isNotEmpty()) permissionModeName(c.permissionMode)
+                        if (c.permissionMode.isNotEmpty()) permissionMode(c.permissionMode)?.name ?: c.permissionMode
                         else
                             contextMode(
                                     c.approvalsReviewer,
@@ -1071,18 +1076,18 @@ internal class EventReducer(agent: Agent) {
                                     c.sandbox,
                                     c.collaborationMode,
                                 )
-                                ?.text
+                                ?.name
                                 .orEmpty()
                     val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
                     val mm = "${c.model} ${c.effort}"
-                    val changes = mutableListOf<String>()
+                    val changes = mutableListOf<TerminalChange>()
                     if (
                         mode.isNotEmpty() &&
                             m.isNotEmpty() &&
                             m != mode &&
-                            !(mode == Mode.PLAN.text && planned)
+                            !(mode == Mode.PLAN.name && planned)
                     )
-                        changes += "模式切到了 $m"
+                        changes += TerminalChange.ModeChanged(Mode.entries.find { it.name == m }, if (m == "acceptEdits") "accept edits" else m)
                     if (m.isNotEmpty() && m != mode) planned = false
                     // Plan mode runs at its own effort; only a model change counts
                     // there. A context without a model is Claude Code's mode, read
@@ -1106,10 +1111,10 @@ internal class EventReducer(agent: Agent) {
                             !planning
                     ) {
                         changes +=
-                            "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                            TerminalChange.ModelChanged(c.model, c.effort)
                     }
                     if (c.model.isNotEmpty() && !planning) expected = null
-                    if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.joinToString("，")
+                    if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.toList()
                     if (m.isNotEmpty()) mode = m
                     if (!planning && c.model.isNotEmpty()) model = mm
                 }

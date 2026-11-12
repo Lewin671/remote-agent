@@ -104,6 +104,7 @@ sealed interface ChatItem {
         val images: List<io.github.lewin671.remoteagent.proto.ImageRef> = emptyList(),
         val seq: Long = 0,
         val files: List<io.github.lewin671.remoteagent.proto.SentFile> = emptyList(),
+        val scheduled: Boolean = false,
     ) : ChatItem
 
     /** Images the agent made, as a card of their own. */
@@ -210,15 +211,20 @@ internal fun noteText(item: ChatItem.Note) = androidx.compose.ui.text.buildAnnot
     }
 }
 
-internal fun messageSource(source: String?, local: Boolean, machine: String): String? = when {
-    source == "本客户端" -> null
-    source != null -> source
+data class ChatSource(val label: String?, val self: Boolean = false)
+
+internal fun chatSource(o: io.github.lewin671.remoteagent.proto.Origin?, state: io.github.lewin671.remoteagent.core.RemoteState, me: String, machine: String): ChatSource? =
+    o?.let { ChatSource(io.github.lewin671.remoteagent.core.originLabel(it, state, me, machine), it.kind == io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT && it.deviceId == me) }
+
+internal fun messageSource(source: ChatSource?, local: Boolean, machine: String): String? = when {
+    source?.self == true -> null
+    source?.label != null -> source.label
     local -> "$machine 终端"
     else -> null
 }
 
-private fun decisionSource(source: String?): String =
-    if (source == "本客户端") "" else " · ${source ?: "另一端"}"
+private fun decisionSource(source: ChatSource?): String =
+    if (source?.self == true) "" else " · ${source?.label ?: "另一端"}"
 
 /** Decisions to show on their tool calls (by the call's seq), and the approvals they came from. */
 class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged: Set<String>)
@@ -233,7 +239,7 @@ class ApprovalDecisions(val onCall: Map<Long, Pair<String, Boolean>>, val merged
  * Codex gives no digest, so its approvals keep their
  * own line; so do parallel or repeated calls that cannot be told apart.
  */
-fun approvalDecisions(events: List<Event>, d: Derived, who: ((io.github.lewin671.remoteagent.proto.Origin?) -> String?)? = null): ApprovalDecisions {
+fun approvalDecisions(events: List<Event>, d: Derived, who: ((io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource?)? = null): ApprovalDecisions {
     val ids = io.github.lewin671.remoteagent.core.approvalCallIDs(events, d)
     val onCall = ids.mapValues { (_, id) ->
         val (decision, message) = d.resolved.getValue(id)
@@ -256,7 +262,7 @@ fun buildChat(
     home: String = "",
     textOf: (String) -> String? = { null },
     /** Names who caused an event (Event.origin); see originLabel. */
-    who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null },
+    who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null },
 ): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
@@ -339,7 +345,7 @@ fun buildChat(
             Event.KindCase.USER_MESSAGE -> {
                 flush()
                 val imgs = e.userMessage.imagesList
-                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), imgs), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq, e.userMessage.filesList)
+                out += ChatItem.User(k, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), imgs), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), imgs, e.seq, e.userMessage.filesList, e.origin.scheduledTaskId.isNotEmpty())
             }
             Event.KindCase.SCHEDULED_NOTIFICATION -> {
                 flush()
@@ -387,12 +393,12 @@ fun buildChat(
                 flush()
                 val t = e.turnEnded
                 if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED)
-                    out += ChatItem.Note("$k-interrupted", "已中断" + (who(e.originOrNull())?.takeIf { it != "本客户端" }?.let { "（$it）" } ?: ""))
+                    out += ChatItem.Note("$k-interrupted", "已中断" + (who(e.originOrNull())?.takeUnless { it.self }?.label?.let { "（$it）" } ?: ""))
                 if (t.durationMs > 0) out += ChatItem.TurnEnd(k, "本轮用时 ${duration(t.durationMs)}")
             }
             Event.KindCase.SETTINGS_CHANGED -> {
                 val c = e.settingsChanged
-                val by = who(e.originOrNull())?.takeIf { it != "本客户端" }
+                val by = who(e.originOrNull())?.takeUnless { it.self }?.label
                 var text = when {
                     c.compacted -> "上下文已压缩"
                     c.model.isNotEmpty() -> (by?.let { "$it 将模型切到 " } ?: "切换到 ") + c.model + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
@@ -409,7 +415,10 @@ fun buildChat(
             }
             Event.KindCase.TURN_CONTEXT -> d.terminalChanges[e.seq]?.let {
                 flush()
-                out += ChatItem.Note(k, "$machine 终端里$it")
+                out += ChatItem.Note(k, "$machine 终端里${it.joinToString("，") { c -> when (c) {
+                    is io.github.lewin671.remoteagent.core.TerminalChange.ModeChanged -> "模式切到了 ${c.mode?.text ?: c.raw}"
+                    is io.github.lewin671.remoteagent.core.TerminalChange.ModelChanged -> "模型切到了 ${c.model}" + if (c.effort.isNotEmpty()) " · ${c.effort}" else ""
+                } }}")
             }
             Event.KindCase.SESSION_STATE -> if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                 flush()
@@ -599,7 +608,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.User -> MeBubble(
             sentBubbleText(item.text, item.images.isNotEmpty(), item.files.isNotEmpty()),
             caption = item.from,
-            foldScheduled = item.from?.startsWith("定时任务 · ") == true,
+            foldScheduled = item.scheduled,
             settling = settling,
             top = if (item.images.isNotEmpty() || item.files.isNotEmpty()) ({ Column {
                 if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
@@ -749,7 +758,7 @@ class ChatProjection {
     private var previous: List<Event> = emptyList()
     private var items: List<ChatItem> = emptyList()
     private var context: List<Any>? = null
-    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null }): List<ChatItem> {
+    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null }): List<ChatItem> {
         val nextContext = listOf(machine, cwd, home, agent)
         val append = context == nextContext && previous.isNotEmpty() && events.size > previous.size && io.github.lewin671.remoteagent.core.unchangedPrefix(events, previous)
         val tail = if (append) events.subList(previous.size, events.size) else emptyList()
@@ -758,7 +767,7 @@ class ChatProjection {
             val added = tail.mapNotNull { e ->
                 val key = "e${e.seq}"
                 when (e.kindCase) {
-                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq, e.userMessage.filesList)
+                    Event.KindCase.USER_MESSAGE -> ChatItem.User(key, io.github.lewin671.remoteagent.core.imageText(io.github.lewin671.remoteagent.core.withoutFileLines(e.userMessage.text, e.userMessage.filesList), e.userMessage.imagesList), e.seq in d.typedLocally, eventTime(e), scheduledMessageCaption(e) ?: messageSource(who(e.originOrNull()), e.seq in d.typedLocally, machine), e.userMessage.imagesList, e.seq, e.userMessage.filesList, e.origin.scheduledTaskId.isNotEmpty())
                     Event.KindCase.AGENT_MESSAGE -> e.agentMessage.text.takeIf { it.isNotBlank() }?.let { ChatItem.Agent(key, it) }
                     Event.KindCase.REASONING -> e.reasoning.text.takeIf { it.isNotBlank() }?.let { ChatItem.Thought(key, it) }
                     else -> null

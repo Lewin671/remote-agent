@@ -582,7 +582,7 @@ internal fun ChatPane(
             s.agent(),
             { texts[it] ?: initialPrompt?.takeIf { _ -> it == initialId } },
         ) { o ->
-            io.github.lewin671.remoteagent.core.originLabel(
+            chatSource(
                 o,
                 state,
                 remote.account.deviceId,
@@ -813,7 +813,7 @@ private fun PendingBubble(
     val online = state.conn == ConnState.ONLINE
     val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty())
     val origin =
-        io.github.lewin671.remoteagent.core.originLabel(
+        chatSource(
             pending.origin,
             state,
             remote.account.deviceId,

@@ -20,7 +20,7 @@ class ChatProjectionWorkerTest {
             withContext(ui) {
                 val first = projection.update(listOf(user), derive(listOf(user)), "M", who = {
                     assertTrue(Thread.currentThread().name.startsWith("chat-worker"))
-                    "phone"
+                    ChatSource("phone")
                 })
                 val events = listOf(user, reply)
                 val next = projection.update(events, derive(events), "M")

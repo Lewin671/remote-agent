@@ -165,7 +165,7 @@ class ModelTest {
                 ev(2, Event.newBuilder().setTurnContext(TurnContext.newBuilder().setModel("m").setEffort("low").setApprovalPolicy("on-request").setApprovalsReviewer("auto_review"))),
             ),
         )
-        assertEquals("模式切到了 自动", d.terminalChanges[2])
+        assertEquals(listOf(TerminalChange.ModeChanged(Mode.AUTO, "AUTO")), d.terminalChanges[2])
     }
 
     private fun changed(model: String = "", effort: String = "") =
@@ -186,7 +186,7 @@ class ModelTest {
                 ev(5, context("gpt-6-sol", "high")), // as chosen here: nothing to note
             ),
         )
-        assertEquals(mapOf(3L to "模型切到了 gpt-6-luna · low"), d.terminalChanges)
+        assertEquals(mapOf(3L to listOf(TerminalChange.ModelChanged("gpt-6-luna", "low"))), d.terminalChanges)
     }
 
     // The web's "notes a switch back made in the terminal after a switch from here".
@@ -202,7 +202,7 @@ class ModelTest {
                 ev(4, context("gpt-6-sol")), // and to Sol again there
             ),
         )
-        assertEquals(mapOf(3L to "模型切到了 gpt-6-astra · medium", 4L to "模型切到了 gpt-6-sol · medium"), d.terminalChanges)
+        assertEquals(mapOf(3L to listOf(TerminalChange.ModelChanged("gpt-6-astra", "medium")), 4L to listOf(TerminalChange.ModelChanged("gpt-6-sol", "medium"))), d.terminalChanges)
     }
 
     private fun claudeContext(permission: String, model: String = "claude-haiku-4-5-20251001") =
@@ -222,7 +222,7 @@ class ModelTest {
             ),
             Agent.AGENT_CLAUDE,
         )
-        assertEquals(mapOf(2L to "模式切到了 accept edits", 5L to "模式切到了 计划", 6L to "模式切到了 询问"), d.terminalChanges)
+        assertEquals(mapOf(2L to listOf(TerminalChange.ModeChanged(null, "accept edits")), 5L to listOf(TerminalChange.ModeChanged(Mode.PLAN, "PLAN")), 6L to listOf(TerminalChange.ModeChanged(Mode.ASK, "ASK"))), d.terminalChanges)
     }
 
     // The web's "notes nothing when a mode-only context carries the switched model".
@@ -239,7 +239,7 @@ class ModelTest {
             ),
             Agent.AGENT_CLAUDE,
         )
-        assertEquals(mapOf(3L to "模式切到了 accept edits", 5L to "模型切到了 claude-opus-5-5", 6L to "模式切到了 询问"), d.terminalChanges)
+        assertEquals(mapOf(3L to listOf(TerminalChange.ModeChanged(null, "accept edits")), 5L to listOf(TerminalChange.ModelChanged("claude-opus-5-5", "")), 6L to listOf(TerminalChange.ModeChanged(Mode.ASK, "ASK"))), d.terminalChanges)
     }
 
     @Test

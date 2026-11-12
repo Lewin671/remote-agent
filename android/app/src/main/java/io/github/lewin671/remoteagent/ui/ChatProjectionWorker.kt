@@ -40,7 +40,7 @@ class ChatProjectionWorker(private val dispatcher: CoroutineDispatcher = Dispatc
         home: String = "",
         agent: Agent = DEFAULT_AGENT,
         textOf: (String) -> String? = { null },
-        who: (Origin?) -> String? = { null },
+        who: (Origin?) -> ChatSource? = { null },
     ): List<ChatItem> = withContext(dispatcher) {
         lock.withLock {
             projection.update(events, derived, machine, cwd, home, agent, textOf, who).also {

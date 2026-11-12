@@ -42,9 +42,9 @@ internal fun pendingInputLabel(
     else -> "插入这一轮"
 }
 
-internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: String?, showPosition: Boolean = true): String =
+internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: ChatSource?, showPosition: Boolean = true): String =
     label + (if (total > 1 && showPosition) " · 第 $index 条" else "") +
-        (if (origin != null && origin != "本客户端") " · $origin" else "")
+        (if (origin?.label != null && !origin.self) " · ${origin.label}" else "")
 
 internal fun scheduledPendingCaption(pending: PendingInput, events: List<io.github.lewin671.remoteagent.proto.Event>, label: String): String? {
     if (pending.origin?.scheduledTaskId.isNullOrEmpty()) return null
