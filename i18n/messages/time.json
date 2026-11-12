@@ -1,0 +1,246 @@
+[
+  {
+    "key": "time.hours_ago",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 小时前"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} hour ago",
+        "other": "{count} hours ago"
+      }
+    },
+    "notes": "项目/机器列表相对时间 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.just_now",
+    "zh-CN": "刚刚",
+    "en": "Just now",
+    "notes": "会话列表相对时间，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.last_week",
+    "zh-CN": "近 7 天",
+    "en": "Last 7 days",
+    "notes": "结束会话列表日期分组标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.minutes_ago",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟前"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} minute ago",
+        "other": "{count} minutes ago"
+      }
+    },
+    "notes": "列表相对时间 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.month_day",
+    "zh-CN": "{month}月{day}日",
+    "en": "{month}/{day}",
+    "notes": "列表日期短标签；month/day 为本地日期数字，保留中文原顺序 空间：短标签/列表行保持紧凑，正文可多行。 变量：month, day，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "month": {
+        "type": "integer",
+        "example": 11
+      },
+      "day": {
+        "type": "integer",
+        "example": 9
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.month_group",
+    "zh-CN": "{month} 月",
+    "en": "Month {month}",
+    "notes": "结束会话列表当前年份月份分组标题；month 为月份数字 空间：短标签/列表行保持紧凑，正文可多行。 变量：month，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "month": {
+        "type": "integer",
+        "example": 11
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.today",
+    "zh-CN": "今天",
+    "en": "Today",
+    "notes": "结束会话列表日期分组标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.weekday",
+    "zh-CN": {
+      "select": "day",
+      "forms": {
+        "sun": "周日",
+        "mon": "周一",
+        "tue": "周二",
+        "wed": "周三",
+        "thu": "周四",
+        "fri": "周五",
+        "sat": "周六",
+        "other": "周日"
+      }
+    },
+    "en": {
+      "select": "day",
+      "forms": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "other": "Sun"
+      }
+    },
+    "notes": "结束会话列表近七天短星期；day 为 本地星期代码 sun/mon/tue/wed/thu/fri/sat 空间：短标签/列表行保持紧凑，正文可多行。 变量：day，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "day": {
+        "type": "string",
+        "example": "mon"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.year_month_group",
+    "zh-CN": "{year} 年 {month} 月",
+    "en": "{year}/{month}",
+    "notes": "结束会话列表跨年份分组标题；year/month 为本地年月 空间：短标签/列表行保持紧凑，正文可多行。 变量：year, month，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "year": {
+        "type": "integer",
+        "example": 2025
+      },
+      "month": {
+        "type": "integer",
+        "example": 11
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.yesterday",
+    "zh-CN": "昨天",
+    "en": "Yesterday",
+    "notes": "会话列表时间及结束记录分组标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

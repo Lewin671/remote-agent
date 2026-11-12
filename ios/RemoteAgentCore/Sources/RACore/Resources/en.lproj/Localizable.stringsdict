@@ -2,6 +2,214 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>home_idle_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session idle</string>
+			<key>other</key>
+			<string>%1$lld sessions idle</string>
+		</dict>
+	</dict>
+	<key>home_matches</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session has “%2$@” in its title</string>
+			<key>other</key>
+			<string>%1$lld sessions have “%2$@” in their title</string>
+		</dict>
+	</dict>
+	<key>home_matches_loading</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session has “%2$@” in its title. Loading more</string>
+			<key>other</key>
+			<string>%1$lld sessions have “%2$@” in their title. Loading more</string>
+		</dict>
+	</dict>
+	<key>home_more_live</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more session</string>
+			<key>other</key>
+			<string>%1$lld more sessions</string>
+		</dict>
+	</dict>
+	<key>home_more_waiting</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more item</string>
+			<key>other</key>
+			<string>%1$lld more items</string>
+		</dict>
+	</dict>
+	<key>home_other_idle</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld other idle</string>
+			<key>other</key>
+			<string>%1$lld others idle</string>
+		</dict>
+	</dict>
+	<key>home_pending_label</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld item needs your attention</string>
+			<key>other</key>
+			<string>%1$lld items need your attention</string>
+		</dict>
+	</dict>
+	<key>home_running_and_idle</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session running, %2$lld idle</string>
+			<key>other</key>
+			<string>%1$lld sessions running, %2$lld idle</string>
+		</dict>
+	</dict>
+	<key>home_running_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session running</string>
+			<key>other</key>
+			<string>%1$lld sessions running</string>
+		</dict>
+	</dict>
+	<key>home_scheduled_tasks</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld scheduled task</string>
+			<key>other</key>
+			<string>%1$lld scheduled tasks</string>
+		</dict>
+	</dict>
+	<key>home_total</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session</string>
+			<key>other</key>
+			<string>%1$lld sessions</string>
+		</dict>
+	</dict>
+	<key>home_total_load_earlier</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld session. Scroll to load earlier ones</string>
+			<key>other</key>
+			<string>%1$lld sessions. Scroll to load earlier ones</string>
+		</dict>
+	</dict>
+	<key>home_waiting_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld item needs you</string>
+			<key>other</key>
+			<string>%1$lld items need you</string>
+		</dict>
+	</dict>
 	<key>image_attach_failed</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -16,6 +224,118 @@
 			<string>%1$lld image could not be attached. Tap it for details.</string>
 			<key>other</key>
 			<string>%1$lld images could not be attached. Tap an image for details.</string>
+		</dict>
+	</dict>
+	<key>markdown_line_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld line</string>
+			<key>other</key>
+			<string>%1$lld lines</string>
+		</dict>
+	</dict>
+	<key>projects_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld project</string>
+			<key>other</key>
+			<string>%1$lld projects</string>
+		</dict>
+	</dict>
+	<key>projects_live_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld in progress</string>
+			<key>other</key>
+			<string>%1$lld in progress</string>
+		</dict>
+	</dict>
+	<key>projects_pending_and_live</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld pending · %2$lld in progress</string>
+			<key>other</key>
+			<string>%1$lld pending · %2$lld in progress</string>
+		</dict>
+	</dict>
+	<key>projects_pending_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld pending</string>
+			<key>other</key>
+			<string>%1$lld pending</string>
+		</dict>
+	</dict>
+	<key>time_hours_ago</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld hour ago</string>
+			<key>other</key>
+			<string>%1$lld hours ago</string>
+		</dict>
+	</dict>
+	<key>time_minutes_ago</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld minute ago</string>
+			<key>other</key>
+			<string>%1$lld minutes ago</string>
 		</dict>
 	</dict>
 </dict>

@@ -1,0 +1,864 @@
+[
+  {
+    "key": "new_session.abandon_start",
+    "zh-CN": "放弃这次启动",
+    "en": "Abandon this start",
+    "notes": "启动结果未知横幅操作，放弃过期请求。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.account_no_auto",
+    "zh-CN": "当前账户不支持自动模式，而 {name} 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始",
+    "en": "This account does not support Auto mode, but {name} uses Auto by default for new projects. Change the default in “Settings › This computer” before starting.",
+    "notes": "新任务账户不支持自动模式时的警告横幅正文；name 是电脑显示名。说明须修改电脑默认值。允许多行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.attachments_moved",
+    "zh-CN": "已换到 {name}，附件正在重新上传",
+    "en": "Switched to {name}. Uploading attachments again",
+    "notes": "新任务附件区横幅正文；name 是刚改用的电脑名，说明附件会重新上传。允许多行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.change_defaults",
+    "zh-CN": "去改默认",
+    "en": "Change defaults",
+    "notes": "新任务横幅操作，打开电脑设置。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.change_machine",
+    "zh-CN": "换机器",
+    "en": "Change computer",
+    "notes": "新任务横幅操作，打开机器选择。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.change_model",
+    "zh-CN": "换模型",
+    "en": "Change model",
+    "notes": "新任务自动模式不可用横幅操作。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.choose_cli",
+    "zh-CN": "用哪个 CLI",
+    "en": "Which CLI?",
+    "notes": "新任务 CLI 选择弹层标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_fallback",
+    "zh-CN": "{name} 没有 {missing}，这次用 {agent}",
+    "en": "{name} does not have {missing}. Using {agent} for this session",
+    "notes": "新任务 CLI 缺失时的横幅正文；name 是电脑显示名，missing 是缺少的 CLI 品牌名，agent 是这次替用的 CLI 品牌名。允许多行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      },
+      "missing": {
+        "type": "string",
+        "example": "Codex"
+      },
+      "agent": {
+        "type": "string",
+        "example": "Claude Code"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_label",
+    "zh-CN": "CLI：{agent}",
+    "en": "CLI: {agent}",
+    "notes": "新任务 CLI 选择胶囊按钮的读屏标签；agent 是当前 CLI 品牌名。无可视空间限制。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.cli_picker_label",
+    "zh-CN": "CLI",
+    "en": "CLI",
+    "notes": "新任务 CLI 选择弹层的读屏标签；CLI 是产品术语，两个语种保持原样。无变量；读屏标签不占可视空间。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.config_fallback",
+    "zh-CN": "所选模型或推理强度在这台机器上不可用，这次用机器的默认值",
+    "en": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
+    "notes": "新任务配置回退横幅，允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.default_model",
+    "zh-CN": "默认模型",
+    "en": "Default model",
+    "notes": "模型选择首行与未加载配置摘要。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.disconnected",
+    "zh-CN": "和服务器断线了",
+    "en": "Disconnected from server",
+    "notes": "新会话禁用原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.expired_start",
+    "zh-CN": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
+    "en": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
+    "notes": "新任务启动过期横幅正文，允许换行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.first_message",
+    "zh-CN": "新会话的第一句话",
+    "en": "First message of the new session",
+    "notes": "新任务输入框读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.follow_cli",
+    "zh-CN": "跟随 CLI 设置",
+    "en": "Follow CLI settings",
+    "notes": "新会话审批模式摘要，尚不知道电脑默认值时显示。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.installed",
+    "zh-CN": "已装 {agents}",
+    "en": "Installed: {agents}",
+    "notes": "机器选择行下说明；agents 为 CLI 品牌名列表 空间：短标签/列表行保持紧凑，正文可多行。 变量：agents，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "agents": {
+        "type": "string",
+        "example": "Codex, Claude Code"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.installed_fallback",
+    "zh-CN": "已装 {agents}；这台机器没有 {missing}，会改用 {agent}",
+    "en": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
+    "notes": "机器选择行下说明；agents 为列表，missing 为缺少的 CLI，agent 为替代 CLI 空间：短标签/列表行保持紧凑，正文可多行。 变量：agents, missing, agent，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "agents": {
+        "type": "string",
+        "example": "Codex"
+      },
+      "missing": {
+        "type": "string",
+        "example": "Claude Code"
+      },
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.location",
+    "zh-CN": "在{project}",
+    "en": "In {project}",
+    "notes": "宽屏新任务顶部完整句子；machine/project/cli 是可点击选择胶囊，客户端将参数占位换为控件，可调整语序，不删占位 空间：短标签/列表行保持紧凑，正文可多行。 变量：project，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "project": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.location_cli",
+    "zh-CN": "在{project}用{cli}",
+    "en": "In {project} using {cli}",
+    "notes": "宽屏新任务顶部完整句子；machine/project/cli 是可点击选择胶囊，客户端将参数占位换为控件，可调整语序，不删占位 空间：短标签/列表行保持紧凑，正文可多行。 变量：project, cli，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "project": {
+        "type": "string",
+        "example": "Example"
+      },
+      "cli": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.location_machine",
+    "zh-CN": "在{machine}的{project}",
+    "en": "On {machine} in {project}",
+    "notes": "宽屏新任务顶部完整句子；machine/project/cli 是可点击选择胶囊，客户端将参数占位换为控件，可调整语序，不删占位 空间：短标签/列表行保持紧凑，正文可多行。 变量：machine, project，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "machine": {
+        "type": "string",
+        "example": "Example Computer"
+      },
+      "project": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.location_machine_cli",
+    "zh-CN": "在{machine}的{project}用{cli}",
+    "en": "On {machine} in {project} using {cli}",
+    "notes": "宽屏新任务顶部完整句子；machine/project/cli 是可点击选择胶囊，客户端将参数占位换为控件，可调整语序，不删占位 空间：短标签/列表行保持紧凑，正文可多行。 变量：machine, project, cli，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "machine": {
+        "type": "string",
+        "example": "Example Computer"
+      },
+      "project": {
+        "type": "string",
+        "example": "Example"
+      },
+      "cli": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.machine_label",
+    "zh-CN": "机器：{name}",
+    "en": "Computer: {name}",
+    "notes": "新任务机器选择胶囊按钮的读屏标签；name 是当前电脑显示名。无可视空间限制。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.machine_offline",
+    "zh-CN": "{name} 不在线",
+    "en": "{name} is offline",
+    "notes": "新任务的离线横幅正文和开始按钮禁用原因；name 是选中的电脑显示名。短提示可换行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.model_no_auto",
+    "zh-CN": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认",
+    "en": "This model has no Auto mode, but {name} uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.",
+    "notes": "新任务模型没有自动模式时的警告横幅正文；name 是电脑显示名。说明换模型或修改电脑默认值两条路径。允许多行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.offline_last_seen",
+    "zh-CN": "{time}在线，现在不能新建",
+    "en": "Last online {time}. Cannot start a session now",
+    "notes": "新任务机器选择行下说明；time 为本地化的相对时间 空间：短标签/列表行保持紧凑，正文可多行。 变量：time，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "2 hours ago"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.offline_no_start",
+    "zh-CN": "现在不能新建",
+    "en": "Cannot start a session now",
+    "notes": "新任务机器选择行下离线说明 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.offline_with_draft",
+    "zh-CN": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
+    "en": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
+    "notes": "新任务有草稿且电脑离线时的横幅正文；name 是选中的电脑显示名。允许多行，强调草稿保留。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.project_label",
+    "zh-CN": "项目：{name}",
+    "en": "Project: {name}",
+    "notes": "新任务项目选择胶囊按钮的读屏标签；name 是当前项目名。无可视空间限制。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.project_session_label",
+    "zh-CN": "{name} · 新会话",
+    "en": "{name} · New session",
+    "notes": "新任务表单分组的读屏标签；name 是当前项目名。无可视空间限制。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.prompt",
+    "zh-CN": "要做什么？",
+    "en": "What would you like to do?",
+    "notes": "新任务输入框占位。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.reading_models",
+    "zh-CN": "正在读取模型列表…",
+    "en": "Loading models…",
+    "notes": "新任务禁用原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.reading_previous",
+    "zh-CN": "正在读取这个项目上次的设置…",
+    "en": "Loading this project’s previous settings…",
+    "notes": "新任务横幅及模型面板加载状态。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.reading_settings",
+    "zh-CN": "读取设置…",
+    "en": "Loading settings…",
+    "notes": "新会话配置摘要和模型面板加载占位。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.removed_blocked",
+    "zh-CN": "这个项目已从列表移除，先重新添加",
+    "en": "This project was removed. Add it again first.",
+    "notes": "新会话禁用原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.retry_save",
+    "zh-CN": "重试保存",
+    "en": "Retry saving",
+    "notes": "项目配置失败横幅操作。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.save_failed",
+    "zh-CN": "项目设置没有保存，请重试",
+    "en": "Project settings were not saved. Try again.",
+    "notes": "项目配置保存失败横幅。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.start",
+    "zh-CN": "开始新会话",
+    "en": "Start new session",
+    "notes": "新任务发送图标按钮的读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.start_failed",
+    "zh-CN": "启动失败：{reason}",
+    "en": "Could not start: {reason}",
+    "notes": "新任务启动失败横幅正文；reason 是启动错误原文。允许多行。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Error"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.start_shortcut",
+    "zh-CN": "{keys} 开始",
+    "en": "{keys} Start",
+    "notes": "宽屏新任务发送按钮旁的快捷键提示；keys 是系统对应的快捷键符号（如 ⌘↵）。单行紧凑空间。",
+    "params": {
+      "keys": {
+        "type": "string",
+        "example": "⌘↵"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.start_unknown",
+    "zh-CN": "不确定是否已经启动：{reason}。重试会发送同一个请求，不会重复启动",
+    "en": "Start unconfirmed: {reason}. Retrying sends the same request and will not start another session.",
+    "notes": "新任务启动结果未知横幅正文；reason 是启动错误原文。说明重试保留请求身份，不会重复启动。允许多行。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Error"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.starting_on",
+    "zh-CN": "正在 {name} 上启动…",
+    "en": "Starting on {name}…",
+    "notes": "新任务输入区上方的启动进度说明；name 是正在启动会话的电脑显示名。允许换行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.unconfirmed_start",
+    "zh-CN": "上次的启动结果还没有确认",
+    "en": "The previous start is still unconfirmed",
+    "notes": "新会话启动结果未知时的错误原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.unexpected_reply",
+    "zh-CN": "意外的回复",
+    "en": "Unexpected response",
+    "notes": "新会话启动收到错误类型回复时的错误提示。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.use_machine",
+    "zh-CN": "改用 {name}",
+    "en": "Use {name}",
+    "notes": "新任务机器选择弹层中改用另一电脑的按钮文字；name 是目标电脑显示名。列表行可换行。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

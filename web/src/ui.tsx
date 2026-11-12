@@ -64,7 +64,7 @@ export function PathText({ path }: { path: string }) {
 /** A project's avatar: its name's first letter on a gray circle, the same
  * for every project; 全 for all of them. */
 export function Avatar({ name, size = "", all }: { name: string; size?: "" | "sm" | "xs" | "lg"; all?: boolean }) {
-  const letter = all ? "全" : ([...name].find((c) => /\p{L}|\p{N}/u.test(c)) ?? "?").toLowerCase();
+  const letter = all ? t("common.all_projects_avatar") : ([...name].find((c) => /\p{L}|\p{N}/u.test(c)) ?? "?").toLowerCase();
   return <span className={"av" + (size ? " " + size : "")} aria-hidden>{letter}</span>;
 }
 
@@ -384,23 +384,23 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
   // Nothing kept from before to show: the bar says what the connection is for.
   const kept = remote.listed || remote.sessions.size > 0;
   if (link === "waiting" && !remote.showWaiting) return null;
-  if (link === "no-network") return <div className={className}><WifiOff /><span>本机网络不通 · {kept ? "显示的是上次的内容" : "联网后才能读取会话"}</span></div>;
+  if (link === "no-network") return <div className={className}><WifiOff /><span>{kept ? t("connection.no_network_previous") : t("connection.no_network_empty")}</span></div>;
   if (link === "no-server")
     return (
       <div className={className + (kept ? "" : " err")}>
         {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}
         {kept ? <CloudOff /> : <X />}
-        <span>连不上服务器{details ? `：${remote.connError || "没有回应"}。也可能是这台设备的网络不通，会一直自动重试` : " · 正在重试"}</span>
+        <span>{details ? t("connection.server_details", { reason: remote.connError || t("connection.no_response") }) : t("connection.server_retrying")}</span>
         {details ? <button onClick={() => remote.reconnectNow(true)}>{t("common.retry")}</button> : <button onClick={() => setDetails(true)}>{t("common.details")}</button>}
       </div>
     );
-  return <div className={className}><LoaderCircle /><span>{remote.everOnline ? "正在重连…" : "连接中…"}</span></div>;
+  return <div className={className}><LoaderCircle /><span>{remote.everOnline ? t("connection.reconnecting") : t("connection.connecting")}</span></div>;
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {
   const widths = ["40%", "100%", "80%", "70%", "90%", "40%"];
   return (
-    <div className="skels" aria-label="加载中">
+    <div className="skels" aria-label={t("common.loading")}>
       {Array.from({ length: lines }, (_, i) => (
         <div key={i} className="skel" style={{ width: widths[i % widths.length] }} />
       ))}

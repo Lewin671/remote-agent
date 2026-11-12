@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // Interaction regressions: the pages rendered against the demo Remote,
 // clicked through as a user would.
@@ -152,14 +153,14 @@ it("chooses the computer for a new folder with a segmented control, only where t
   vi.spyOn(several, "machineCommand").mockResolvedValue(listing);
   mount(<NewProjectSheet remote={several} onDone={() => undefined} onClose={() => undefined} />);
   expect(host.querySelectorAll(".seg.machines button").length).toBe(several.machines.size);
-  expect(button("取消")).toBeUndefined();
+  expect(button(message("common.cancel", {}, "zh-CN"))).toBeUndefined();
   act(() => root!.unmount());
   const one = demo();
   vi.spyOn(one, "machineCommand").mockResolvedValue(listing);
   for (const id of [...one.machines.keys()].slice(1)) one.machines.delete(id);
   mount(<NewProjectSheet remote={one} onDone={() => undefined} onClose={() => undefined} />);
   expect(host.querySelector(".seg.machines")).toBeNull();
-  expect(button("取消")).toBeUndefined();
+  expect(button(message("common.cancel", {}, "zh-CN"))).toBeUndefined();
 });
 
 it("gives an open dock about 60% of the chat column, 240 at the least, within its room", () => {
@@ -233,8 +234,8 @@ it("moves to the next question when a retried answer goes through", async () => 
   };
   mount(<AskDock r={r} />);
   await click(button(/^只升小版本/));
-  await vi.waitFor(() => expect(button("重试")).toBeTruthy(), { timeout: 3000 });
-  await click(button("重试"));
+  await vi.waitFor(() => expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy(), { timeout: 3000 });
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
   expect(button(/^更新到 1.27/)?.disabled).toBe(false);
 });
@@ -293,7 +294,7 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
   };
   // s-run's CLI has not said its mode.
   mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
-  expect(host.querySelector(".navbar .title > span")!.textContent).toBe("运行中");
+  expect(host.querySelector(".navbar .title > span")!.textContent).toBe(message("list_state.running", {}, "zh-CN"));
   act(() => root!.unmount());
   host.remove();
   // Neither the project nor the machine says how a new Codex session starts.
@@ -302,9 +303,9 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · medium$/));
   await fromMenu("新会话设置");
   expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/审批|未读到/);
-  await click(button("完成", document));
+  await click(button(message("common.done", {}, "zh-CN"), document));
   await act(async () => {
-    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
@@ -331,7 +332,7 @@ it("shows a failed first listing and lists again", async () => {
     await act(async () => r.refresh());
     expect(r.listed).toBe(false);
     expect(host.querySelector(".skels")).toBeNull();
-    expect(host.textContent).toContain("没能读取会话列表：连接超时");
+    expect(host.textContent).toContain(message("home.list_failed", {"reason":"连接超时"}, "zh-CN"));
     // It tries again by itself.
     fail = false;
     await act(async () => vi.advanceTimersByTimeAsync(2500));
@@ -364,7 +365,7 @@ it("answers a multi-select question with every ticked option", async () => {
       onTerminal={() => undefined}
     />,
   );
-  expect(host.textContent).toContain("Claude Code 在问你");
+  expect(host.textContent).toContain(message("list_state.agent_asking", {"agent":"Claude Code"}, "zh-CN"));
   expect(button("选好后提交")?.disabled).toBe(true);
   await click(button(/^按 IP/));
   await click(button(/^按设备/));
@@ -553,7 +554,7 @@ it("shows an approval's whole command before its description in the dock", () =>
   expect(cmd.textContent!.split("\n")).toHaveLength(40);
   expect(cmd.nextElementSibling?.classList.contains("y")).toBe(true);
   // Nothing of it is cut away behind a page: it scrolls with the rest.
-  expect(button("展开全文")).toBeUndefined();
+  expect(button(message("markdown.expand", {}, "zh-CN"))).toBeUndefined();
 });
 
 it("puts a card's command first, five whole lines of it, and allows only once it is seen whole", async () => {
@@ -577,7 +578,7 @@ it("puts a card's command first, five whole lines of it, and allows only once it
   expect(cmd.classList.contains("clamp")).toBe(false);
   expect(card().querySelector(".ml")!.textContent).toContain("共 40 行");
   expect(button("允许", card())?.disabled).toBe(false);
-  await click(button("收起", card()));
+  await click(button(message("markdown.collapse", {}, "zh-CN"), card()));
   expect(cmd.classList.contains("clamp")).toBe(true);
   expect(button("允许", card())).toBeUndefined();
 });
@@ -604,8 +605,8 @@ it("writes a reason in place on 不允许, then shrinks to a line once sent", as
   await click(button("不允许", card()));
   const field = card().querySelector<HTMLTextAreaElement>("textarea.inp")!;
   expect(field.placeholder).toBe("说说该怎么做，可以不填");
-  expect([...card().querySelectorAll(".btns button")].map((b) => b.textContent)).toEqual(["取消", "不允许"]);
-  await click(button("取消", card()));
+  expect([...card().querySelectorAll(".btns button")].map((b) => b.textContent)).toEqual([message("common.cancel", {}, "zh-CN"), "不允许"]);
+  await click(button(message("common.cancel", {}, "zh-CN"), card()));
   expect(card().querySelector("textarea")).toBeNull();
   await click(button("不允许", card()));
   await click(button("不允许", card().querySelector(".btns")!));
@@ -673,7 +674,7 @@ it("retries a multi-select answer of unknown outcome unchanged", async () => {
   // The ticks are locked to what was sent; only 重试 remains.
   expect(button(/^按账户/)?.disabled).toBe(true);
   expect(button(/^提交/)).toBeUndefined();
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual([1, 3]);
   expect(slots[1]).toBe(slots[0]);
@@ -759,7 +760,7 @@ it("keeps ticks and a pending answer between the dock and the question page", as
   act(() => root!.render(<ClaudeQuestionPage r={r} />));
   expect(host.textContent).toContain("不确定提交了没有");
   expect(button(/按账户/)?.disabled).toBe(true);
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual([1, 3]);
   expect(slots[1]).toBe(slots[0]);
@@ -794,7 +795,7 @@ it("keeps the message being typed when a page opens and closes", async () => {
   });
   expect(input().value).toBe("顺便看下 lint");
   // The docked plan is open: to its page, then back.
-  await click(button("展开全文"));
+  await click(button(message("markdown.expand", {}, "zh-CN")));
   expect(host.querySelector(".navbar")!.textContent).toContain("计划");
   expect(button("清空上下文后执行")).toBeTruthy();
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
@@ -809,7 +810,7 @@ it("does not start an empty session when 重试 is tapped after the text was cle
     throw new CommandError("unavailable", "MacBook 没有回应");
   };
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   const write = (text: string) =>
     act(async () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input(), text);
@@ -822,7 +823,7 @@ it("does not start an empty session when 重试 is tapped after the text was cle
   // The send button is disabled now; the banner's 重试 is held to the same rule.
   await write("");
   expect(sendButton()?.disabled).toBe(true);
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await act(async () => undefined);
   expect(sent).toEqual(["加限流"]);
 });
@@ -840,7 +841,7 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
     throw new CommandError("unavailable", "no");
   };
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   await act(async () => {
     const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
     set.call(input(), "加限流");
@@ -848,7 +849,7 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
   });
   await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   // Retried as the same request; then the daemon no longer knew it.
   expect(sent[1]).toBe(sent[0]);
@@ -856,7 +857,7 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
   expect(sendButton()?.disabled).toBe(true);
   expect(sent).toHaveLength(2);
   // Only giving it up allows a new start, under a new request ID.
-  await click(button("放弃这次启动"));
+  await click(button(message("new_session.abandon_start", {}, "zh-CN")));
   await click(sendButton());
   await vi.waitFor(() => expect(sent).toHaveLength(3));
   expect(sent[2]).not.toBe(sent[0]);
@@ -878,10 +879,10 @@ it("keeps an answer of unknown outcome unknown when its retry comes back expired
   await click(button(/按 IP/));
   await click(button("提交 1 项"));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(2));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(3));
   expect(new Set(slots).size).toBe(1);
 });
@@ -930,10 +931,10 @@ it("keeps an answer of unknown outcome unknown when its retry finds the machine 
   await click(button(/按 IP/));
   await click(button("提交 1 项"));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(2));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(3));
   expect(new Set(slots).size).toBe(1);
 });
@@ -956,7 +957,7 @@ describe("an unknown session start", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     const type = async (value: string) =>
       act(async () => {
-        const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+        const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
         Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value);
         input.dispatchEvent(new Event("input", { bubbles: true }));
       });
@@ -1019,7 +1020,7 @@ describe("an unknown session start", () => {
 
 describe("an unknown session start, after leaving its page and coming back", () => {
   const page = (r: DemoRemote) => <ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />;
-  const input = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   const type = async (value: string) =>
     act(async () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input(), value);
@@ -1049,9 +1050,9 @@ describe("an unknown session start, after leaving its page and coming back", () 
     // The project's own machine is offline: this start goes to another.
     r.machines.get("mac")!.online = false;
     mount(page(r));
-    await click(button("换机器"));
+    await click(button(message("new_session.change_machine", {}, "zh-CN")));
     await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
-    if (document.querySelector(".sheet")) await click(button("完成", document));
+    if (document.querySelector(".sheet")) await click(button(message("common.done", {}, "zh-CN"), document));
     await act(async () => {
       const file = host.querySelector<HTMLInputElement>("input[type=file]")!;
       Object.defineProperty(file, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
@@ -1076,7 +1077,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await act(async () => { tray.items[0].expiresMs = 0; tray.refreshExpired(); });
     expect(uploads).toEqual(["imac", "imac"]);
     expect(tray.imageIds()).toEqual(["imac-image-2"]);
-    await click(button("重试"));
+    await click(button(message("common.retry", {}, "zh-CN")));
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual(sent[0]);
   });
@@ -1108,7 +1109,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     expect(sent).toHaveLength(1);
     // Its reply is lost: the page that is open now says so, and the other message is a new start.
     await act(async () => answers[0]());
-    await vi.waitFor(() => expect(host.textContent).toContain("上次的启动结果还没有确认"));
+    await vi.waitFor(() => expect(host.textContent).toContain(message("new_session.unconfirmed_start", {}, "zh-CN")));
     expect(sendButton()?.disabled).toBe(false);
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
@@ -1117,7 +1118,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     // That one's reply is lost too: it is retried as itself.
     await act(async () => answers[1]());
     await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-    await click(button("重试"));
+    await click(button(message("common.retry", {}, "zh-CN")));
     await vi.waitFor(() => expect(sent).toHaveLength(3));
     expect(sent[2]).toEqual(sent[1]);
   });
@@ -1174,9 +1175,9 @@ describe("an unknown session start, after leaving its page and coming back", () 
     r.machines.get("mac")!.online = false;
     mount(page(r));
     await type("给登录接口加限流");
-    await click(button("换机器"));
+    await click(button(message("new_session.change_machine", {}, "zh-CN")));
     await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
-    if (document.querySelector(".sheet")) await click(button("完成", document));
+    if (document.querySelector(".sheet")) await click(button(message("common.done", {}, "zh-CN"), document));
     expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
     // The first session starts, its machine back meanwhile.
     r.machines.get("mac")!.online = true;
@@ -1207,7 +1208,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   await click(button("GPT-6-Sol", document));
   await click(button("low", document));
   // Finish directly on the model page, without returning to project settings.
-  await click(button("完成", document));
+  await click(button(message("common.done", {}, "zh-CN"), document));
   expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "gpt-6-sol", effort: "low" }), { timeout: 3000 });
   // Rebuild the page with the saved account preference.
@@ -1221,7 +1222,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   const sheet = () => [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!;
   await vi.waitFor(() => expect(button("GPT-6-Sol", sheet())?.querySelector(".ck")).toBeTruthy());
   expect(button("low", sheet())?.className).toBe("on");
-  await click(button("完成", document));
+  await click(button(message("common.done", {}, "zh-CN"), document));
   const real = reloaded.machineCommand.bind(reloaded);
   let sent: unknown;
   reloaded.machineCommand = async (machine, cmd) => {
@@ -1232,7 +1233,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   const go = () => host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!;
   expect(go().disabled).toBe(true);
   await act(async () => {
-    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "看一下");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
@@ -1275,7 +1276,7 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await vi.waitFor(() => expect(button("high", document)).toBeDefined());
   await click(button("high", document));
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
-  await click(button("完成", document));
+  await click(button(message("common.done", {}, "zh-CN"), document));
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "", effort: "high" }));
   await fromMenu("新会话设置");
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
@@ -1300,7 +1301,7 @@ it("keeps the effort in sight under a long model list", async () => {
   await click(button(/^全部模型/, document));
   expect(button("Old 7", document)).toBeTruthy();
   await click(button("Old 7", document));
-  await click(button("完成", document));
+  await click(button(message("common.done", {}, "zh-CN"), document));
   await fromMenu("新会话设置");
   // Collapsed again, the picked model is still listed and checked.
   const sheet = () => [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!;
@@ -1499,7 +1500,7 @@ it("names models in switch records as the chips do", async () => {
 describe("a new-session draft", () => {
   const type = async (value: string) =>
     act(async () => {
-      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value);
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -1547,8 +1548,8 @@ describe("a new-session draft", () => {
     // The project's Claude Code session becomes its latest meanwhile.
     bump(r, "s-claude");
     await fromMenu("新会话设置");
-    expect(setting("CLI")).not.toContain("Claude Code");
-    await click(button("完成", document));
+    expect(setting(message("new_session.cli_picker_label", {}, "zh-CN"))).not.toContain("Claude Code");
+    await click(button(message("common.done", {}, "zh-CN"), document));
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -1595,7 +1596,7 @@ describe("approvals whose answer was not confirmed (v2)", () => {
     await vi.waitFor(() => expect(card().textContent).toContain("没送到电脑"), { timeout: 3000 });
     expect(button("不允许", card())).toBeUndefined();
     expect(button("允许", card())).toBeUndefined();
-    await click(button("重试", card()));
+    await click(button(message("common.retry", {}, "zh-CN"), card()));
     await vi.waitFor(() => expect(calls.length).toBe(2));
     expect(calls[1]).toEqual(calls[0]);
     expect(calls[1].allow).toBe(true);
@@ -1607,7 +1608,7 @@ describe("approvals whose answer was not confirmed (v2)", () => {
     await vi.waitFor(() => expect(card().textContent).toContain("没送到电脑"), { timeout: 3000 });
     expect(button("不允许", card())).toBeUndefined();
     expect(button("允许", card())).toBeUndefined();
-    expect(button("重试", card())).toBeTruthy();
+    expect(button(message("common.retry", {}, "zh-CN"), card())).toBeTruthy();
   });
 });
 
@@ -1636,7 +1637,7 @@ describe("pending bubbles in the chat (v8)", () => {
     expect(entries()[0].textContent).toContain("顺便补一个测试");
     expect(entries()[0].textContent).toContain("插入这一轮");
     expect(entries()[1].textContent).toContain("另一客户端");
-    await click(button("取消", entries()[0]));
+    await click(button(message("common.cancel", {}, "zh-CN"), entries()[0]));
     expect(entries()[0].textContent).toContain("正在取消…");
     await act(async () => cancel.release());
     await vi.waitFor(() => expect(entries().length).toBe(1), { timeout: 3000 });
@@ -1650,7 +1651,7 @@ describe("pending bubbles in the chat (v8)", () => {
       throw new CommandError("unavailable", "电脑不在线，指令没有发出");
     };
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    await click(button("取消", host.querySelector(".pending-bubble")!));
+    await click(button(message("common.cancel", {}, "zh-CN"), host.querySelector(".pending-bubble")!));
     await vi.waitFor(() => expect(host.querySelector(".pending-bubble")!.textContent).toContain("取消没成功，仍在排队"));
   });
 });
@@ -1669,19 +1670,19 @@ describe("switching a new session's CLI (v2)", () => {
     };
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await act(async () => {
-      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     // The CLI is picked in the sentence; project settings have no CLI row.
     await pickCli("Claude Code");
     expect(cliPicked()).toBe("Claude Code");
-    expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
+    expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!.value).toBe("加限流");
     // Nothing is stored for Claude Code here: the project's latest Claude Code session says which model it starts with, not Codex's set.
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Sonnet/), { timeout: 3000 });
     await fromMenu("新会话设置");
-    expect(setting("CLI")).toBe("");
-    await click(button("完成", document));
+    expect(setting(message("new_session.cli_picker_label", {}, "zh-CN"))).toBe("");
+    await click(button(message("common.done", {}, "zh-CN"), document));
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     // The approval mode that session ran in is not carried over: the machine's default applies.
@@ -1704,7 +1705,7 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await pickCli("Claude Code");
     await act(async () => {
-      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "梳理登录流程");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -1735,10 +1736,10 @@ describe("switching a new session's CLI (v2)", () => {
     await fromMenu("新会话设置");
     // No tabs: the sheet is the model page of the one CLI the sentence names.
     expect(document.querySelector(".cli-tabs")).toBeNull();
-    expect(document.querySelector(".sheet-head")?.textContent).toContain("模型");
+    expect(document.querySelector(".sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
     expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toContain("审批");
     await click(button("GPT-6-Luna", document));
-    await click(button("完成", document));
+    await click(button(message("common.done", {}, "zh-CN"), document));
     // The model is saved; the project's mode is not touched by it.
     await vi.waitFor(() => expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-luna", mode: ApprovalMode.UNSPECIFIED }), { timeout: 3000 });
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CODEX);
@@ -1751,7 +1752,7 @@ describe("switching a new session's CLI (v2)", () => {
     await r.changePrefs("settings", foo, { id: "t1", kind: "settings", path: foo, at: Date.now(), settings: { machineId: "vps", agent: Agent.CLAUDE } });
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
     expect(host.querySelector(".tok.cli")).toBeNull();
-    expect(host.textContent).toContain("VPS-dev 没有 Claude Code，这次用 Codex");
+    expect(host.textContent).toContain(message("new_session.cli_fallback", {"name":"VPS-dev","missing":"Claude Code","agent":"Codex"}, "zh-CN"));
     expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · /);
     // The project still remembers Claude Code.
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CLAUDE);
@@ -1766,7 +1767,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(host.querySelector(".wstart .sent")?.textContent).toBe("在MacBook的foo用Codex");
     expect(host.querySelector(".wstart .sent .tok.p")).toBeNull();
     const ask = host.querySelector(".wstart textarea.ask")!;
-    expect(ask.getAttribute("placeholder")).toBe("要做什么？");
+    expect(ask.getAttribute("placeholder")).toBe(message("new_session.prompt", {}, "zh-CN"));
     // The task is written in a box of its own, under the sentence.
     expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("sent");
     const row = host.querySelector(".wstart .acc")!;
@@ -1804,7 +1805,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(sentence()).toBe("在foo用Codex");
     // Before the model list arrives, no effort choice is known yet.
     expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
-    expect(summary().getAttribute("aria-label")).toBe(`模型：${summary().textContent}`);
+    expect(summary().getAttribute("aria-label")).toBe(message("models.summary_label", { model: summary().textContent ?? "" }, "zh-CN"));
   });
 });
 
@@ -1822,14 +1823,14 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await fromMenu("新会话设置");
     // No list of one row first: no 机器, no 审批, no project block, no note.
     const sheet = document.querySelector(":is(.sheet, .composer-picker)")!;
-    expect(sheet.querySelector(".sheet-head")?.textContent).toContain("模型");
+    expect(sheet.querySelector(".sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
     expect(sheet.querySelector('.sheet-head button[aria-label="返回"]')).toBeNull();
     expect(sheet.textContent).toContain("默认（");
     expect(sheet.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
     // Choosing a model stores it, and 完成 closes the sheet.
     await click(button("GPT-6-Luna", document));
     await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
-    await click(button("完成", document));
+    await click(button(message("common.done", {}, "zh-CN"), document));
     expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
   });
 
@@ -1837,12 +1838,12 @@ describe("a new task's settings have no approval mode (v2)", () => {
     const r = demo();
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await fromMenu("新会话设置");
-    expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain("模型");
+    expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
     expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
-    await click(button("完成", document));
+    await click(button(message("common.done", {}, "zh-CN"), document));
     // The machine chip opens the list of machines, and picking one closes it.
     await click(host.querySelector<HTMLButtonElement>(".tok.m")!);
-    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("机器");
+    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain(message("common.machine", {}, "zh-CN"));
     await click(button(/VPS-dev/, document));
     expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
     expect(host.querySelector(".tok.m")!.textContent).toContain("VPS-dev");
@@ -1855,7 +1856,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await pickCli("Claude Code");
     await fromMenu("新会话设置");
     await vi.waitFor(() => expect(document.querySelector(':is(.sheet, .composer-picker) [role="radiogroup"][aria-label="上下文窗口"], :is(.sheet, .composer-picker) [aria-label="上下文窗口"]')).not.toBeNull());
-    await click(button("标准 200k", document));
+    await click(button(message("models.standard_window", {}, "zh-CN"), document));
     await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo", Agent.CLAUDE)).toMatchObject({ standardContext: true }), { timeout: 3000 });
   });
 
@@ -1875,7 +1876,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
     await act(async () => {
-      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -1906,12 +1907,12 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await pickCli("Claude Code");
     await vi.waitFor(() => expect(host.textContent).toContain("这个模型没有自动模式"), { timeout: 3000 });
     expect(host.textContent).not.toContain("改模式");
-    expect(button("换模型")).toBeDefined();
+    expect(button(message("new_session.change_model", {}, "zh-CN"))).toBeDefined();
     expect(sendButton()?.disabled).toBe(true);
-    await click(button("换模型"));
-    expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain("模型");
+    await click(button(message("new_session.change_model", {}, "zh-CN")));
+    expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
     await click(button("Opus 5.5", document));
-    await click(button("完成", document));
+    await click(button(message("common.done", {}, "zh-CN"), document));
     await vi.waitFor(() => expect(host.textContent).not.toContain("这个模型没有自动模式"));
   });
 
@@ -1934,7 +1935,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await pickCli("Claude Code");
     await vi.waitFor(() => expect(host.textContent).toContain("当前账户不支持自动模式"), { timeout: 3000 });
     expect(host.textContent).toContain("设置 › 这台电脑");
-    await click(button("去改默认"));
+    await click(button(message("new_session.change_defaults", {}, "zh-CN")));
     expect(went).toEqual(["m/mac"]);
   });
 });
@@ -1947,14 +1948,14 @@ describe("project management (v2)", () => {
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
-    await click(button("移除项目…"));
+    await click(button(message("projects.remove_action", {}, "zh-CN")));
     // Nothing is removed until the dialog is confirmed.
     expect(host.querySelector(".dialog")?.textContent).toContain("移除 shop？");
-    await click(button("取消"));
+    await click(button(message("common.cancel", {}, "zh-CN")));
     expect(names(".plist .pi b")).toContain("shop");
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
-    await click(button("移除项目…"));
-    await click(button("移除"));
+    await click(button(message("projects.remove_action", {}, "zh-CN")));
+    await click(button(message("common.remove", {}, "zh-CN")));
     await vi.waitFor(() => expect(names(".plist .pi b")).not.toContain("shop"), { timeout: 3000 });
     // No undo and no list of removed projects: adding the folder again is the way back.
     expect(host.textContent).not.toContain("撤销");
@@ -1993,7 +1994,7 @@ describe("project management (v2)", () => {
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     const managed = seen();
     // Counted as the home's sections are: waiting, then running.
-    expect(managed.slice(0, 3)).toEqual(["常用", "foo", "~/Code/foo · 2 个待处理 · 4 个进行中"]);
+    expect(managed.slice(0, 3)).toEqual([message("projects.pinned", {}, "zh-CN"), "foo", "~/Code/foo · 2 个待处理 · 4 个进行中"]);
     expect(managed[managed.length - 1]).toBe(" 新项目…");
     act(() => root!.render(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />));
     expect(seen()).toEqual(managed);
@@ -2013,17 +2014,17 @@ describe("project management (v2)", () => {
     mount(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />);
     expect(host.textContent).not.toContain("~/Code/shop");
     act(() => root!.render(<ProjectPage remote={r} pkey="/Users/me/Code/shop" go={() => undefined} onBack={() => undefined} />));
-    expect(host.textContent).toContain("这个项目已从列表移除");
+    expect(host.textContent).toContain(message("projects.removed", {}, "zh-CN"));
     // The draft can be written, but nothing starts until the project is listed again.
     await act(async () => {
-      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(sendButton()?.disabled).toBe(true);
     // Its sessions are all still there.
     expect([...r.sessions.values()].some((s) => s.info?.title === "拆分订单服务")).toBe(true);
-    await click(button("重新添加"));
+    await click(button(message("projects.add_again", {}, "zh-CN")));
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false), { timeout: 3000 });
   });
 
@@ -2033,7 +2034,7 @@ describe("project management (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     expect(document.querySelector(":is(.sheet, .composer-picker)")).not.toBeNull();
-    expect(button("移除项目…")).toBeUndefined();
+    expect(button(message("projects.remove_action", {}, "zh-CN"))).toBeUndefined();
     expect(button(/^(设为|取消)常用$/)).toBeUndefined();
   });
 
@@ -2047,13 +2048,13 @@ describe("project management (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
-    await click(button("设为常用"));
+    await click(button(message("projects.pin", {}, "zh-CN")));
     await vi.waitFor(() => expect(host.textContent).toContain("没能保存，列表保持原样"), { timeout: 5000 });
     expect(names(".plist .pi b")[0]).toBe("foo");
     expect(host.querySelectorAll(".plist .fl").length).toBe(2);
     const id = r.prefs.failed!.op.id;
     retrying = true;
-    await click(button("重试"));
+    await click(button(message("common.retry", {}, "zh-CN")));
     await vi.waitFor(() => expect(r.prefs.pending.size).toBe(1));
     await act(async () => retry.release());
     await vi.waitFor(() => expect(r.prefs.failed?.op.id).toBe(id), { timeout: 5000 });
@@ -2066,8 +2067,8 @@ describe("project management (v2)", () => {
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     expect(button(/设为常用/)!.disabled).toBe(true);
-    expect(button(/设为常用/)!.textContent).toContain("连上服务器后才能修改");
-    expect(button("移除项目…")!.disabled).toBe(true);
+    expect(button(/设为常用/)!.textContent).toContain(message("projects.connect_to_edit", {}, "zh-CN"));
+    expect(button(message("projects.remove_action", {}, "zh-CN"))!.disabled).toBe(true);
   });
 });
 
@@ -2124,7 +2125,7 @@ describe("who did what (v2)", () => {
     expect(timedOut.classList.contains("fail")).toBe(false);
     expect(timedOut.querySelector("small")!.textContent).toBe("可能没发出去：连接超时放回输入框重试移除此提示");
     const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
-    await click(button("重试", failed));
+    await click(button(message("common.retry", {}, "zh-CN"), failed));
     expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
   });
 });
@@ -2142,7 +2143,7 @@ describe("a send that failed", () => {
       mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
       const bubble = [...host.querySelectorAll(cls)].find((x) => x.textContent?.includes("顺便补一个测试"))!;
       expect(bubble.querySelector("small")!.textContent).toMatch(new RegExp("^" + words));
-      expect(button("重试", bubble)).toBeTruthy();
+      expect(button(message("common.retry", {}, "zh-CN"), bubble)).toBeTruthy();
       expect(button("移除此提示", bubble)).toBeTruthy();
     });
 });
@@ -2288,14 +2289,14 @@ describe("sending images (v2)", () => {
       return { bytes: new Uint8Array(4), format: "png", width: 900, height: 600 };
     });
     await t.pick("ok.png", "bad.heic", "large.png");
-    await vi.waitFor(() => expect(host.textContent).toContain("2 张图没加上，点图片看原因"));
+    await vi.waitFor(() => expect(host.textContent).toContain(message("image.attach_failed", {"count":2}, "zh-CN")));
     await click(host.querySelectorAll<HTMLButtonElement>(".draft-open")[1]);
     const dialog = () => document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
     expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
-    expect(button("重试", dialog())).toBeFalsy();
+    expect(button(message("common.retry", {}, "zh-CN"), dialog())).toBeFalsy();
     act(() => dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })));
     expect(dialog().textContent).toContain("图片尺寸太大，缩小后再试");
-    await click(button("移除", dialog()));
+    await click(button(message("common.remove", {}, "zh-CN"), dialog()));
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
     expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
     await click(dialog().querySelector<HTMLElement>('button[aria-label="关闭"]')!);
@@ -2325,8 +2326,8 @@ describe("sending images (v2)", () => {
     expect(host.querySelector(".attach-menu")).toBeNull();
     const dialog = document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
     expect(dialog.textContent).toContain("图片没能传到电脑，连接恢复后重试");
-    expect(button("重试", dialog)).toBeTruthy();
-    expect(button("移除", dialog)).toBeTruthy();
+    expect(button(message("common.retry", {}, "zh-CN"), dialog)).toBeTruthy();
+    expect(button(message("common.remove", {}, "zh-CN"), dialog)).toBeTruthy();
     await click(dialog.querySelector<HTMLElement>('[aria-label="关闭"]')!);
     expect(host.querySelectorAll(".draft-open")).toHaveLength(1);
   });
@@ -2338,9 +2339,9 @@ describe("sending images (v2)", () => {
     await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
     await click(host.querySelector<HTMLElement>(".draft-open")!);
     const dialog = document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
-    expect(button("重试", dialog)).toBeTruthy();
+    expect(button(message("common.retry", {}, "zh-CN"), dialog)).toBeTruthy();
     offline = false;
-    await click(button("重试", dialog));
+    await click(button(message("common.retry", {}, "zh-CN"), dialog));
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     expect(host.querySelectorAll(".draft-open")).toHaveLength(1);
     await click(dialog.querySelector<HTMLElement>('button[aria-label="关闭"]')!);
@@ -2380,7 +2381,7 @@ it("sends a failed message again only once, however often retry is pressed", asy
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const before = r.outbox("s-msg").length;
   const failed = () => [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
-  const retry = () => button("重试", failed());
+  const retry = () => button(message("common.retry", {}, "zh-CN"), failed());
   await act(async () => {
     retry()!.click();
     retry()?.click();
@@ -2430,7 +2431,7 @@ describe("the first message of a session started here (review B5, B9)", () => {
     setup();
     const entry = host.querySelector(".pending-bubble")!;
     expect(entry.textContent).toContain("给登录接口加限流");
-    expect(button("取消", entry)).toBeTruthy();
+    expect(button(message("common.cancel", {}, "zh-CN"), entry)).toBeTruthy();
   });
 
 });
@@ -2510,7 +2511,7 @@ describe("a failed message with images (review B6)", () => {
   it("can retry or restore a message of images only", async () => {
     const t = setup("");
     expect(button("放回输入框", row())).toBeTruthy();
-    await click(button("重试", row()));
+    await click(button(message("common.retry", {}, "zh-CN"), row()));
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
     expect(t.sent[0]).toEqual({ text: "", imageIds: ["i1", "i2"] });
   });
@@ -2599,8 +2600,8 @@ describe("an image-only new-session draft (review B8)", () => {
     await pick();
     bump(r, "s-claude");
     await fromMenu("新会话设置");
-    expect(setting("CLI")).not.toContain("Claude Code");
-    await click(button("完成", document));
+    expect(setting(message("new_session.cli_picker_label", {}, "zh-CN"))).not.toContain("Claude Code");
+    await click(button(message("common.done", {}, "zh-CN"), document));
   });
 
   it("keeps its project on the wide home once an image is chosen", async () => {
@@ -2640,17 +2641,17 @@ it("asks to add a project again when it is removed while its draft is on the wid
   mount(<WideHome remote={r} go={() => undefined} />);
   await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
   await act(async () => {
-    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => {
     await r.changePrefs("hide", "/Users/me/Code/foo");
   });
-  expect(host.textContent).toContain("这个项目已从列表移除");
+  expect(host.textContent).toContain(message("projects.removed", {}, "zh-CN"));
   expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
-  expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
-  await click(button("重新添加"));
+  expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!.value).toBe("加限流");
+  await click(button(message("projects.add_again", {}, "zh-CN")));
   await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false), { timeout: 3000 });
 });
 
@@ -2802,24 +2803,24 @@ it("shows and saves the machine's idle close setting, including a value outside 
   await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话90 分钟"));
   await click(button(/^空闲自动结束会话/));
   const items = () => [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
-  expect(items().map((b) => b.textContent)).toEqual(["关闭", "1 小时", "90 分钟", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
+  expect(items().map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN"), "1 小时", "90 分钟", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
   expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual(["90 分钟"]);
   expect(document.querySelector(".sheet .hint")?.textContent).toContain("随时可以恢复，聊天记录都在");
-  await click(button("关闭", document));
+  await click(button(message("common.close", {}, "zh-CN"), document));
   await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话关闭"));
   expect((r as unknown as { saved: { idleCloseMinutes: number } }).saved.idleCloseMinutes).toBe(-1);
   await click(button(/^空闲自动结束会话/));
   // Off now: the custom value is gone from the list and 关闭 is checked.
-  expect(items().map((b) => b.textContent)).toEqual(["关闭", "1 小时", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
-  expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual(["关闭"]);
+  expect(items().map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN"), "1 小时", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
+  expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual([message("common.close", {}, "zh-CN")]);
   await click(button("12 小时", document));
   await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话12 小时"));
 });
 
 it("names idle close values the way the daemon applies them", async () => {
   const { idleCloseLabel } = await import("./Settings");
-  expect(idleCloseLabel(-1)).toBe("关闭");
-  expect(idleCloseLabel(-30)).toBe("关闭");
+  expect(idleCloseLabel(-1)).toBe(message("common.close", {}, "zh-CN"));
+  expect(idleCloseLabel(-30)).toBe(message("common.close", {}, "zh-CN"));
   expect(idleCloseLabel(0)).toBe("6 小时");
   expect(idleCloseLabel(180)).toBe("3 小时");
   expect(idleCloseLabel(90)).toBe("90 分钟");
@@ -2836,7 +2837,7 @@ it("lists installed CLIs in machine picker subtitles and explains fallback when 
   const macBtn = items.find((b) => b.textContent?.includes("MacBook"));
   expect(macBtn?.querySelector(".md")?.textContent).toBe("已装 Codex、Claude Code、Antigravity");
   const vpsBtn = items.find((b) => b.textContent?.includes("VPS-dev"));
-  expect(vpsBtn?.querySelector(".md")?.textContent).toBe("已装 Codex；这台机器没有 Antigravity，会改用 Codex");
+  expect(vpsBtn?.querySelector(".md")?.textContent).toBe(message("new_session.installed_fallback", {"agents":"Codex","missing":"Antigravity","agent":"Codex"}, "zh-CN"));
 });
 
 it("retries a start with a launch override whose reply was lost as the same request (review W1)", async () => {
@@ -2855,16 +2856,16 @@ it("retries a start with a launch override whose reply was lost as the same requ
   await fromMenu("新会话设置");
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
   await click(button("GPT-6-Sol"));
-  await click(button("完成"));
+  await click(button(message("common.done", {}, "zh-CN")));
   void ns;
   await act(async () => {
-    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual(sent[0]);
   expect(sent[0].model).toBeTruthy();
@@ -2967,10 +2968,10 @@ describe("the client-v7 conversation", () => {
     const mode = rows.find((x) => x.querySelector(".mt")?.textContent === "审批模式")!;
     expect(mode.querySelector(".mv.red")!.textContent).toBe("完全放行");
     expect(mode.querySelector(".chev")).toBeTruthy();
-    expect(rows.find((x) => x.querySelector(".mt")?.textContent === "模型")?.querySelector(".mv")?.textContent).toBeTruthy();
-    expect(host.querySelector(".menu-info")!.textContent).not.toContain("会话");
+    expect(rows.find((x) => x.querySelector(".mt")?.textContent === message("models.title", {}, "zh-CN"))?.querySelector(".mv")?.textContent).toBeTruthy();
+    expect(host.querySelector(".menu-info")!.textContent).not.toContain(message("home.sessions_tab", {}, "zh-CN"));
     expect(host.querySelector(".menu")!.textContent).not.toContain(s.id);
-    expect(button("取消", host.querySelector(".menu")!)).toBeUndefined();
+    expect(button(message("common.cancel", {}, "zh-CN"), host.querySelector(".menu")!)).toBeUndefined();
     expect(rows.find((x) => x.textContent === "结束会话…")?.classList.contains("danger")).toBe(true);
   });
 
@@ -2981,13 +2982,13 @@ describe("the client-v7 conversation", () => {
     expect(host.textContent).not.toContain("只打开终端");
     // Close at the top left; the title names the project; the box at the bottom holds ＋, the CLI, the model and send.
     const head = host.querySelector(".nt-hd")!;
-    expect(head.firstElementChild?.getAttribute("aria-label")).toBe("关闭");
+    expect(head.firstElementChild?.getAttribute("aria-label")).toBe(message("common.close", {}, "zh-CN"));
     expect(head.querySelector(".tok.p > span:not(.av)")?.textContent).toBe("foo");
     expect(cliPicked()).toBe("Codex");
     const ask = host.querySelector<HTMLTextAreaElement>(".pbox textarea[aria-label=新会话的第一句话]")!;
-    expect(ask.placeholder).toBe("要做什么？");
+    expect(ask.placeholder).toBe(message("new_session.prompt", {}, "zh-CN"));
     const send = host.querySelector(".pbox .acc")!.lastElementChild!;
-    expect(send.getAttribute("aria-label")).toBe("开始新会话");
+    expect(send.getAttribute("aria-label")).toBe(message("new_session.start", {}, "zh-CN"));
     expect(send.classList.contains("off")).toBe(true);
     await click(head.firstElementChild as HTMLButtonElement);
     expect(closed).toBe(1);
@@ -3027,7 +3028,7 @@ describe("phone composer pickers", () => {
       expect(host.querySelector(".sheet")).toBeNull();
       viewport.height = 700;
       act(() => viewport.dispatchEvent(new Event("resize")));
-      await vi.waitFor(() => expect(host.querySelector(".sheet .sheet-head")?.textContent).toContain(target === "project" ? "选项目" : "机器"));
+      await vi.waitFor(() => expect(host.querySelector(".sheet .sheet-head")?.textContent).toContain(target === "project" ? message("projects.choose", {}, "zh-CN") : message("common.machine", {}, "zh-CN")));
     } finally {
       media.mockRestore();
       vi.unstubAllGlobals();
@@ -3058,7 +3059,7 @@ describe("phone composer pickers", () => {
     expect(modelDown.defaultPrevented).toBe(true);
     await click(model);
     await click(button("high"));
-    if (close === "done") await click(button("完成"));
+    if (close === "done") await click(button(message("common.done", {}, "zh-CN")));
     else if (close === "same chip") await click(chip);
     else if (close === "other chip") await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
     else if (close === "escape") act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
@@ -3106,9 +3107,9 @@ describe("phone composer pickers", () => {
     await click(button("GPT-6-Sol"));
     expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · ultra");
     await click(button("GPT-6-Nova"));
-    expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Nova · 默认");
+    expect(host.querySelector(".project-summary")?.textContent).toBe(`GPT-6-Nova · ${message("models.default", {}, "zh-CN")}`);
     expect(save).toHaveBeenCalledTimes(3);
-    await click(button("完成"));
+    await click(button(message("common.done", {}, "zh-CN")));
     expect(save).toHaveBeenCalledTimes(3);
   });
 
@@ -3121,15 +3122,15 @@ describe("phone composer pickers", () => {
     });
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await fromMenu("新会话设置");
-    await vi.waitFor(() => expect(button("全部模型")).toBeDefined());
+    await vi.waitFor(() => expect(button(message("models.all", {}, "zh-CN"))).toBeDefined());
     const panel = () => host.querySelector(".new-task-model-panel")!;
     expect(panel().querySelector(".model-controls")).not.toBeNull();
-    await click(button("全部模型"));
+    await click(button(message("models.all", {}, "zh-CN")));
     expect(panel().getAttribute("data-page")).toBe("all");
     expect(panel().querySelector(".model-controls")).toBeNull();
-    await click(host.querySelector<HTMLButtonElement>('[aria-label="返回模型"]')!);
+    await click(host.querySelector<HTMLButtonElement>(`[aria-label="${message("models.back", {}, "zh-CN")}"]`)!);
     expect(panel().getAttribute("data-page")).toBe("main");
-    await click(button("全部模型"));
+    await click(button(message("models.all", {}, "zh-CN")));
     await click(button("Extra 3"));
     expect(panel().getAttribute("data-page")).toBe("main");
     expect(button("Extra 3")?.getAttribute("aria-pressed")).toBe("true");
@@ -3145,10 +3146,10 @@ describe("phone composer pickers", () => {
     });
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra"));
-    expect(host.querySelector(".project-summary")?.getAttribute("aria-label")).toBe("模型：GPT-6-Astra");
+    expect(host.querySelector(".project-summary")?.getAttribute("aria-label")).toBe(message("models.summary_label", { model: "GPT-6-Astra" }, "zh-CN"));
     await fromMenu("新会话设置");
-    expect(host.querySelector('[aria-label="推理强度"]')).toBeNull();
-    expect(host.querySelector(".new-task-model-panel")?.textContent.includes("推理强度固定为 medium")).toBe(efforts.length === 1);
+    expect(host.querySelector(`[aria-label="${message("models.effort", {}, "zh-CN")}"]`)).toBeNull();
+    expect(host.querySelector(".new-task-model-panel")?.textContent.includes(message("models.fixed_effort", { effort: "medium" }, "zh-CN"))).toBe(efforts.length === 1);
   });
 
   it("keeps the wide new task on its existing sheet", async () => {
@@ -3245,7 +3246,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   // The summary capsule is named like the model now: pick it in the sheet.
   await click(button("GPT-6.1-Sol", document.querySelector(":is(.sheet, .composer-picker)")!));
   await click(button("high", document));
-  await click(button("完成", document));
+  await click(button(message("common.done", {}, "zh-CN"), document));
   await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
   const before = reads;
   await fromMenu("新会话设置");
@@ -3272,11 +3273,11 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
 
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unavailable", "MacBook 不在线"));
-  await click(button("保存"));
-  await vi.waitFor(() => expect(host.querySelector(".dialog.rename")?.textContent).toContain("没能保存：MacBook 不在线"));
+  await click(button(message("common.save", {}, "zh-CN")));
+  await vi.waitFor(() => expect(host.querySelector(".dialog.rename")?.textContent).toContain(message("new_session.machine_offline", {"name":"没能保存：MacBook"}, "zh-CN")));
   expect(input().value).toBe("  登录超时：限流和重试 ");
 
-  await click(button("保存"));
+  await click(button(message("common.save", {}, "zh-CN")));
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "登录超时：限流和重试" } });
   await vi.waitFor(() => expect(host.querySelector(".dialog.rename")).toBeNull(), { timeout: 3000 });
   expect(r.sessions.get("s-run")!.info!.title).toBe("登录超时：限流和重试");
@@ -3284,12 +3285,12 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   // Saving the same title sends nothing; an empty one clears it.
   command.mockClear();
   await fromMenu("重命名");
-  await click(button("保存"));
+  await click(button(message("common.save", {}, "zh-CN")));
   expect(command).not.toHaveBeenCalled();
   expect(host.querySelector(".dialog.rename")).toBeNull();
   await fromMenu("重命名");
   write("");
-  await click(button("保存"));
+  await click(button(message("common.save", {}, "zh-CN")));
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "" } });
 });
 
@@ -3428,10 +3429,10 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     expect(sub()).toMatch(/^\d+ 个会话在运行，\d+ 个空闲$/);
     // The tab's badge is the same count; 新任务 is the bottom right's ink button.
     expect(host.querySelector(".tabs .on .count")?.textContent).toBe(String(n));
-    expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.textContent).toBe("新任务");
+    expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.textContent).toBe(message("home.new_task", {}, "zh-CN"));
     expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.disabled).toBe(false);
     // No tab for settings: the gear on the top right.
-    expect([...host.querySelectorAll(".tabs button")].map((b) => b.textContent)).toEqual([`会话${n}`, "定时"]);
+    expect([...host.querySelectorAll(".tabs button")].map((b) => b.textContent)).toEqual([`会话${n}`, message("home.schedules_tab", {}, "zh-CN")]);
     expect(host.querySelector('.tbar [aria-label="设置"]')).toBeTruthy();
   });
 
@@ -3444,10 +3445,10 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     expect(sub()).toMatch(/^另有 \d+ 个空闲$/);
     expect(host.querySelector(".tc, .pl")).toBeNull();
     drop(r, (s) => stateOf(s, r.machines.get(s.machineId)).tone !== "run");
-    expect(hl()).toBe("没有等你的事");
+    expect(hl()).toBe(message("home.nothing_waiting", {}, "zh-CN"));
     expect(sub()).toMatch(/^\d+ 个会话空闲$/);
     drop(r, () => false);
-    expect(hl()).toBe("还没有会话");
+    expect(hl()).toBe(message("home.no_sessions", {}, "zh-CN"));
     expect(host.querySelector(".home-note")?.textContent).toContain("点右下角的「新任务」开始第一个会话");
   });
 
@@ -3455,11 +3456,11 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     const r = createDemo(new URLSearchParams("conn=nonetwork"));
     r.start();
     mount(<Home remote={r} go={() => undefined} />);
-    expect(hl()).toBe("本机网络不通");
-    expect(sub()).toBe("下面是上次的内容");
+    expect(hl()).toBe(message("connection.no_network", {}, "zh-CN"));
+    expect(sub()).toBe(message("connection.previous_below", {}, "zh-CN"));
     // What waits stays on top, with its count on the tab, but cannot be handled now.
     const card = host.querySelector(".tc")!;
-    expect(card.querySelector(".k span")?.textContent).toBe("未连接");
+    expect(card.querySelector(".k span")?.textContent).toBe(message("list_state.unlinked", {}, "zh-CN"));
     expect(button("不允许", card)?.disabled).toBe(true);
     expect(button("允许", card)?.disabled).toBe(true);
     expect(host.querySelector(".tabs .count")?.textContent).toBe(String(todoList(r).length));
@@ -3475,11 +3476,11 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     const r = createDemo(new URLSearchParams("conn=noserver"));
     r.start();
     mount(<Home remote={r} go={() => undefined} />);
-    expect(hl()).toBe("连不上服务器");
+    expect(hl()).toBe(message("connection.no_server", {}, "zh-CN"));
     expect(sub()).toBe("正在重试，下面是上次的内容详情");
-    await click(button("详情"));
+    await click(button(message("common.details", {}, "zh-CN")));
     expect(sub()).toContain("连不上服务器：连接超时。也可能是这台设备的网络不通");
-    expect(button("重试")).toBeTruthy();
+    expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy();
   });
 });
 
@@ -3495,7 +3496,7 @@ describe("the home timeline and its scope (client-v27)", () => {
   it("lists every project's sessions under all projects, naming the project on each row", () => {
     const r = demo();
     mount(<Home remote={r} go={() => undefined} />);
-    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("全部项目");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe(message("home.all_projects", {}, "zh-CN"));
     expect(host.textContent).not.toContain("常用项目");
     // More than one project, CLI and machine: every live row has its third line.
     const live = [...host.querySelectorAll(".sess")];
@@ -3512,7 +3513,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     const went: string[] = [];
     mount(<Home remote={r} go={(x) => went.push(x)} />);
     await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
-    expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain("看哪个项目");
+    expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain(message("home.choose_scope", {}, "zh-CN"));
     await click([...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("b")?.textContent === "foo"));
     expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
     expect(host.querySelector(".tbar .scope b")?.textContent).toBe("foo");
@@ -3526,7 +3527,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     const bar = [...host.querySelectorAll(".pr")].find((c) => c.textContent?.includes("升级依赖"));
     expect(bar?.querySelector(".nb > span")?.textContent).toContain("bar · ");
     // 新任务 goes straight to the project.
-    await click(button("新任务"));
+    await click(button(message("home.new_task", {}, "zh-CN")));
     expect(went).toEqual(["p/" + encodeURIComponent(foo)]);
     expect(r.focusProject).toBe(foo);
   });
@@ -3538,7 +3539,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     mount(<Home remote={r} go={() => undefined} />);
     expect(host.querySelector(".tbar .scope b")?.textContent).toBe("shop");
     await act(async () => { await r.changePrefs("hide", "/Users/me/Code/shop"); });
-    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("全部项目");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe(message("home.all_projects", {}, "zh-CN"));
   });
 
   it("filters by title without regard to case, keeping the groups", async () => {
@@ -3550,9 +3551,9 @@ describe("the home timeline and its scope (client-v27)", () => {
     await type(box, "readme");
     expect(texts(".old .sm > span:first-child")).toEqual(["补充 README"]);
     expect(host.querySelectorAll(".sess, .pr, .tc")).toHaveLength(0);
-    expect(host.querySelector(".tail")?.textContent).toBe("1 个会话的标题里有「readme」");
+    expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", {"count":1,"query":"readme"}, "zh-CN"));
     await type(box, "没有这个标题");
-    expect(host.querySelector(".tail")?.textContent).toBe("没有标题里有「没有这个标题」的会话");
+    expect(host.querySelector(".tail")?.textContent).toBe(message("home.no_matches", {"query":"没有这个标题"}, "zh-CN"));
     await click(host.querySelector<HTMLButtonElement>('button[aria-label="清空筛选"]')!);
     expect(texts(".sess .row1 b")).toContain("修复登录超时");
   });
@@ -3595,10 +3596,10 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(host.querySelector(".tail")?.textContent).toMatch(/^共 \d+ 个，滚到底加载更早的$/);
     await type(host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!, "readme");
     expect(all).toBeGreaterThan(0);
-    expect(host.querySelector(".tail")?.textContent).toBe("正在加载更早的会话…");
+    expect(host.querySelector(".tail")?.textContent).toBe(message("home.loading_earlier", {}, "zh-CN"));
     r.moreSessions = false;
     act(() => (r as unknown as { changed(): void }).changed());
-    expect(host.querySelector(".tail")?.textContent).toBe("1 个会话的标题里有「readme」");
+    expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", {"count":1,"query":"readme"}, "zh-CN"));
   });
 
   it("makes a project the scope from project management", async () => {
@@ -3635,7 +3636,7 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   r.loadMoreSessions = async () => (pages++, false);
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   const start = () => host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!;
-  const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+  const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "对一下三月的账");
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -3647,14 +3648,14 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   await pickCli("Claude Code");
   expect(pages).toBeGreaterThan(0);
   expect(start().disabled).toBe(true);
-  expect(host.textContent).toContain("正在读取这个项目上次的设置…");
+  expect(host.textContent).toContain(message("new_session.reading_previous", {}, "zh-CN"));
   // Its settings are not offered for change meanwhile.
   await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
-  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain("正在读取这个项目上次的设置…");
+  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain(message("new_session.reading_previous", {}, "zh-CN"));
   // Every page is in and none was Claude Code's: it starts with the machine's defaults.
   r.moreSessions = false;
   act(() => (r as unknown as { changed(): void }).changed());
-  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain("正在读取这个项目上次的设置…");
+  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain(message("new_session.reading_previous", {}, "zh-CN"));
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
 });
 
@@ -3745,7 +3746,7 @@ it("shows failure and retry when resuming a paused message", async () => {
   mount(<Page />);
   await click(button("发送"));
   expect(host.textContent).toContain("发送没成功，仍已暂停");
-  expect(button("重试")).toBeTruthy();
+  expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy();
 });
 
 it("offers more ended matches while filtering titles", async () => {
@@ -3812,7 +3813,7 @@ it("offers a retained refusal reason for copying after another client resolves t
     root!.render(<SessionPage remote={r} session={r.sessions.get("s-appr")!} onBack={() => undefined} wide={false} />);
   });
   expect(host.textContent).toContain("retained reason");
-  await click(button("复制"));
+  await click(button(message("common.copy", {}, "zh-CN")));
   expect(writeText).toHaveBeenCalledWith("retained reason");
 });
 
@@ -3826,15 +3827,15 @@ it("shows the pending start and its original message when returning to the proje
   };
   const page = <ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />;
   mount(page);
-  await reviewType(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!, "task");
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!, "task");
   await act(async () => { await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false)); });
   await click(sendButton());
   await act(async () => { await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动")); });
   act(() => root!.render(null));
   act(() => root!.render(page));
-  expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!.value).toBe("task");
+  expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!.value).toBe("task");
   expect(host.textContent).toContain("不确定是否已经启动");
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   expect(slots).toHaveLength(2);
   expect(slots[1]).toBe(slots[0]);
 });
@@ -3843,7 +3844,7 @@ it("keeps unsent new-session text by project across navigation and layout change
   const r = demo();
   const a = "/Users/me/Code/foo";
   const b = "/Users/me/Code/shop";
-  const input = () => host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!;
+  const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   const page = (p: string) => <WideHome remote={r} go={() => undefined} project={p} />;
   mount(<ProjectPage remote={r} pkey={a} go={() => undefined} onBack={() => undefined} />);
   await reviewType(input(), "  尚未发送的需求 A  ");
@@ -3865,7 +3866,7 @@ it("consumes only the new-session text sent by a successful start while its page
   const path = "/Users/me/Code/foo";
   let ns!: ReturnType<typeof useNewSession>;
   function Box() { useRemote(r); ns = useNewSession(r, path, () => undefined); return <NewBox ns={ns} name="foo" />; }
-  const input = () => host.querySelector<HTMLTextAreaElement>('textarea[aria-label="新会话的第一句话"]')!;
+  const input = () => host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   let finish!: (result: CommandResult) => void;
   const original = r.machineCommand.bind(r);
   r.machineCommand = async (machine, cmd) => cmd?.case === "createSession"
@@ -3935,7 +3936,7 @@ it("puts a daemon-rejected image message back with its text, original option and
   });
   await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("图片不在电脑上"));
-  expect(host.querySelector(".me.fail")!.textContent).not.toContain("重试");
+  expect(host.querySelector(".me.fail")!.textContent).not.toContain(message("common.retry", {}, "zh-CN"));
   await click(button("放回输入框"));
   const tray = r.trays.get("s-idle")!;
   expect(r.drafts.get("s-idle")).toBe("看原图");
@@ -3971,7 +3972,7 @@ describe("adding devices on the current authority", () => {
     r.start();
     const go = vi.fn();
     mount(<Home remote={r} go={go} />);
-    expect(host.textContent).toContain("还没有电脑。在管理端（Android · Pixel 9）上打开「设置 › 添加设备」，把电脑加进来。");
+    expect(host.textContent).toContain(message("home.add_via_manager", {"name":"Android · Pixel 9"}, "zh-CN"));
     expect(button(/添加设备/)).toBeUndefined();
     expect(go).not.toHaveBeenCalledWith("add");
   });
@@ -4010,7 +4011,7 @@ describe("devices in settings", () => {
 it("keeps task-owned approvals in attention and counts while omitting idle task sessions", () => {
  const r=demo(); const s=r.sessions.get("s-plan")!;s.info!.taskOwned=true;
  expect(todoList(r).map(s=>s.id)).toContain(s.id);
- expect(sessionCounts(r,[s])).toBe("1 个待处理");
+ expect(sessionCounts(r,[s])).toBe(message("projects.pending_count", {"count":1}, "zh-CN"));
  expect(projects(r.sessions.values(),r.machines.values()).find(p=>p.key===s.info!.cwd)?.sessions.map(x=>x.id)).toContain(s.id);
  s.info!.planOpen=false;s.info!.pendingApprovals=0;s.info!.pendingQuestions=0;s.info!.status=SessionStatus.IDLE;
  expect(sessionCounts(r,[s])).toBe("");
@@ -4066,7 +4067,7 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   await vi.waitFor(() => expect(calls).toHaveLength(1));
   expect(calls[0].cmd).toMatchObject({ case: "createSession", value: { prompt: "", fileIds: ["file-first"] } });
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(button("重试"));
+  await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(calls).toHaveLength(2));
   expect(calls[1].slot?.requestId).toBe(calls[0].slot?.requestId);
   expect(calls[1].cmd).toEqual(calls[0].cmd);
@@ -4188,15 +4189,15 @@ it("shows 默认 for an unchosen effort, then sends the explicitly selected leve
     return { ...result, defaultModel: "gpt-6-sol", models: result.models.map(m => ({ ...m, defaultEffort: "low" })) };
   });
   mount(<ProjectPage remote={r} pkey={project} go={() => {}} onBack={() => {}} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Sol · 默认"));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toBe(`GPT-6-Sol · ${message("models.default", {}, "zh-CN")}`));
   await fromMenu("新会话设置");
-  expect(host.querySelector(".model-controls .fl")?.textContent).toBe("推理强度 · 默认");
-  expect(host.querySelector('[aria-label="推理强度"] button.on')).toBeNull();
+  expect(host.querySelector(".model-controls .fl")?.textContent).toBe(message("models.effort_default", {}, "zh-CN"));
+  expect(host.querySelector(`[aria-label="${message("models.effort", {}, "zh-CN")}"] button.on`)).toBeNull();
   await click(button("GPT-6-Astra"));
-  expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · 默认");
+  expect(host.querySelector(".project-summary")?.textContent).toBe(`GPT-6-Astra · ${message("models.default", {}, "zh-CN")}`);
   await click(button("high"));
   expect(host.querySelector(".project-summary")?.textContent).toBe("GPT-6-Astra · high");
-  await click(button("完成"));
+  await click(button(message("common.done", {}, "zh-CN")));
   const real = r.machineCommand.bind(r);
   const sent: unknown[] = [];
   vi.spyOn(r, "machineCommand").mockImplementation((m, cmd, ...rest) => {

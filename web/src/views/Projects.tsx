@@ -28,9 +28,9 @@ export function useProjectGroups(remote: Remote) {
 
 /** Whether the list can be changed now, and why not. */
 export function prefsBlocked(remote: Remote): string {
-  if (remote.prefs.status === "loading") return "正在读取项目列表…";
-  if (remote.prefs.status === "error" && !remote.prefs.snap) return "没能读取项目列表";
-  if (remote.conn !== "online") return "连上服务器后才能修改";
+  if (remote.prefs.status === "loading") return t("projects.loading");
+  if (remote.prefs.status === "error" && !remote.prefs.snap) return t("projects.load_failed");
+  if (remote.conn !== "online") return t("projects.connect_to_edit");
   return "";
 }
 
@@ -41,18 +41,18 @@ export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean
   if (p.failed)
     return (
       <Banner kind="err" action={t("common.retry")} onAction={() => remote.retryPrefs()}>
-        没能保存，列表保持原样：{p.failed.error}
+        {t("projects.save_failed", { reason: p.failed.error })}
       </Banner>
     );
-  if (p.pending.size > 0) return <Banner><LoaderCircle /> 正在同步项目列表…</Banner>;
+  if (p.pending.size > 0) return <Banner><LoaderCircle /> {t("projects.syncing")}</Banner>;
   if (quiet) return null;
   if (p.status === "error" && !p.snap)
     return (
       <Banner kind="err" action={t("common.retry")} onAction={() => void remote.loadPrefs()}>
-        没能读取项目列表
+        {t("projects.load_failed")}
       </Banner>
     );
-  if (p.changedAt && now - p.changedAt < 8000) return <Banner>项目列表已在另一客户端更新</Banner>;
+  if (p.changedAt && now - p.changedAt < 8000) return <Banner>{t("projects.changed_elsewhere")}</Banner>;
   return null;
 }
 
@@ -66,7 +66,7 @@ export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): 
     if (needsAttention(s, remote.presence.get(s.machineId))) todo++;
     else if (!s.info?.taskOwned && !exited(s)) live++;
   }
-  return [todo && `${todo} 个待处理`, live && `${live} 个进行中`].filter(Boolean).join(" · ");
+  return todo && live ? t("projects.pending_and_live", { count: todo, live }) : todo ? t("projects.pending_count", { count: todo }) : live ? t("projects.live_count", { count: live }) : "";
 }
 
 /** A project's second line, the same wherever it is listed: its folder,
@@ -78,7 +78,7 @@ export function projectSub(remote: Remote, p: P): ReactNode {
   return (
     <>
       <PathText path={shortPath(p.key)} />
-      {counts ? ` · ${counts}` : offline ? " · 电脑不在线" : ""}
+      {counts ? ` · ${counts}` : offline ? ` · ${t("projects.computer_offline")}` : ""}
     </>
   );
 }
@@ -126,7 +126,7 @@ export function ProjectItem({
       <button className="pm" onClick={onClick} aria-label={label}>
         {text}
       </button>
-      <button className="dots" onClick={onMore} disabled={busy} aria-label={`管理 ${p.name}`}>
+      <button className="dots" onClick={onMore} disabled={busy} aria-label={t("projects.manage_named", { name: p.name })}>
         {busy ? <LoaderCircle /> : <Ellipsis />}
       </button>
     </div>
@@ -151,9 +151,9 @@ export function ProjectList({ remote, item, first, onNew, children }: { remote: 
       {g.pinned.length + g.others.length > 8 && (
         <label className="find">
           <Search />
-          <input aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
+          <input aria-label={t("projects.search")} placeholder={t("projects.search")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
           {query && (
-            <button className="x" aria-label="清空搜索" onClick={() => setQuery("")}>
+            <button className="x" aria-label={t("common.clear_search")} onClick={() => setQuery("")}>
               <X />
             </button>
           )}
@@ -161,14 +161,14 @@ export function ProjectList({ remote, item, first, onNew, children }: { remote: 
       )}
       <div className="plist" role={first ? "menu" : undefined}>
         {!q && first && <div className="grp">{first}</div>}
-        {titled && <div className="fl">常用</div>}
+        {titled && <div className="fl">{t("projects.pinned")}</div>}
         {pinned.length > 0 && <div className="grp">{pinned.map(item)}</div>}
-        {titled && <div className="fl">其他</div>}
+        {titled && <div className="fl">{t("projects.others")}</div>}
         {others.length > 0 && <div className="grp">{others.map(item)}</div>}
-        {q && pinned.length + others.length === 0 && <div className="hint">没有名字或路径里有「{query.trim()}」的项目</div>}
+        {q && pinned.length + others.length === 0 && <div className="hint">{t("projects.search_empty", { query: query.trim() })}</div>}
         <div className="grp">
           <button className="pi add" onClick={onNew}>
-            <Plus /> 新项目…
+            <Plus /> {t("projects.new")}
           </button>
           {children}
         </div>
@@ -193,7 +193,7 @@ export function addProject(remote: Remote, machineId: string, path: string) {
 /** What 设为常用 is called for the project at path now, and what it does. */
 export function pinAction(remote: Remote, path: string): { label: string; run: () => void } {
   const pinned = isPinned(remote.projectPrefs(), path);
-  return { label: pinned ? "取消常用" : "设为常用", run: () => void remote.changePrefs(pinned ? "unpin" : "pin", path) };
+  return { label: pinned ? t("projects.unpin") : t("projects.pin"), run: () => void remote.changePrefs(pinned ? "unpin" : "pin", path) };
 }
 
 /** Asks before a project leaves the list: there is no undo, only adding
@@ -201,8 +201,8 @@ export function pinAction(remote: Remote, path: string): { label: string; run: (
 export function RemoveProjectAlert({ remote, path, onDone, onCancel }: { remote: Remote; path: string; onDone?: () => void; onCancel: () => void }) {
   return (
     <Alert
-      title={`移除 ${projectName(path)}？`}
-      text="只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。"
+      title={t("projects.remove_title", { name: projectName(path) })}
+      text={t("projects.remove_explanation")}
       ok={t("common.remove")}
       danger
       onCancel={onCancel}
@@ -227,7 +227,7 @@ export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onB
   const pin = menu && pinAction(remote, menu.key);
   return (
     <div className="page set">
-      <NavBar onBack={onBack} title="项目管理" />
+      <NavBar onBack={onBack} title={t("projects.manage")} />
       <div className="body">
         <div className="manage">
           <PrefsBanner remote={remote} />
@@ -240,7 +240,7 @@ export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onB
                 remote={remote}
                 p={p}
                 busy={pending.has(p.key)}
-                label={`看 ${p.name} 的会话`}
+                label={t("projects.view_sessions", { name: p.name })}
                 onClick={() => {
                   saveScope(p.key);
                   go("");
@@ -249,7 +249,7 @@ export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onB
               />
             )}
           />
-          <div className="gf">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div>
+          <div className="gf">{t("projects.remove_note")}</div>
         </div>
       </div>
       {menu && pin && (
@@ -262,7 +262,7 @@ export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onB
           }
           actions={[
             { label: pin.label, onClick: pin.run, disabled: !!blocked, note: blocked || undefined },
-            { label: "移除项目…", red: true, onClick: () => setRemoving(menu.key), disabled: !!blocked, group: 1 },
+            { label: t("projects.remove_action"), red: true, onClick: () => setRemoving(menu.key), disabled: !!blocked, group: 1 },
           ]}
           onClose={() => setMenu(undefined)}
         />
@@ -290,8 +290,8 @@ export function RemovedNotice({ remote, pkey }: { remote: Remote; pkey: string }
   return (
     <>
       {/* A rare state: a line with its action, not the page's main button. */}
-      <Banner action={busy ? "正在添加…" : "重新添加"} onAction={prefsBlocked(remote) || busy ? undefined : () => void remote.changePrefs("unhide", pkey)}>
-        这个项目已从列表移除
+      <Banner action={busy ? t("projects.adding") : t("projects.add_again")} onAction={prefsBlocked(remote) || busy ? undefined : () => void remote.changePrefs("unhide", pkey)}>
+        {t("projects.removed")}
       </Banner>
       <PrefsBanner remote={remote} quiet />
     </>

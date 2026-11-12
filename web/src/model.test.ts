@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
@@ -83,16 +84,16 @@ describe("state priority", () => {
   });
 
   it("writes a state word next to the colour", () => {
-    expect(stateOf(sess({ pendingQuestions: 1 }), online)).toEqual({ kind: "question", tone: "wait", text: "等你回答" });
-    expect(stateOf(sess({ status: SessionStatus.EXITED })).text).toBe("已结束");
-    expect(stateOf(sess(), offline)).toEqual({ kind: "offline", tone: "off", text: "电脑离线" });
+    expect(stateOf(sess({ pendingQuestions: 1 }), online)).toEqual({ kind: "question", tone: "wait", text: t("list_state.question", {}, "zh-CN") });
+    expect(stateOf(sess({ status: SessionStatus.EXITED })).text).toBe(t("list_state.ended", {}, "zh-CN"));
+    expect(stateOf(sess(), offline)).toEqual({ kind: "offline", tone: "off", text: t("list_state.offline", {}, "zh-CN") });
     expect(statePriority.slice(0, 2)).toEqual(["ended", "offline"]);
   });
 
   it("does not show the last state heard as if it held while the server is out of reach", () => {
-    expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, true)).toEqual({ kind: "unlinked", tone: "off", text: "未连接" });
+    expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, true)).toEqual({ kind: "unlinked", tone: "off", text: t("list_state.unlinked", {}, "zh-CN") });
     // Not the computer's fault either: that was heard before the connection went.
-    expect(shownStateOf(sess(), offline, true).text).toBe("未连接");
+    expect(shownStateOf(sess(), offline, true).text).toBe(t("list_state.unlinked", {}, "zh-CN"));
     expect(shownStateOf(sess({ status: SessionStatus.EXITED }), online, true).kind).toBe("ended");
     expect(shownStateOf(sess({ status: SessionStatus.RUNNING }), online, false).kind).toBe("running");
   });
@@ -100,15 +101,15 @@ describe("state priority", () => {
   it("previews by state", () => {
     const d = derive(events({ case: "approvalRequested", value: { approvalId: "a", command: "go test ./...\n-count=1" } }));
     const s = sess({ pendingApprovals: 1, preview: "✓ ls" });
-    expect(previewOf(s, stateOf(s, online), { approval: d.approvals.get("a") })).toBe("请求执行 go test ./... -count=1");
+    expect(previewOf(s, stateOf(s, online), { approval: d.approvals.get("a") })).toBe(t("list_state.request_command", {"command":"go test ./... -count=1"}, "zh-CN"));
     const q = sess({ pendingQuestions: 1 });
-    expect(previewOf(q, stateOf(q, online), { question: create(QuestionAskedSchema, {}) })).toBe("等你回答");
+    expect(previewOf(q, stateOf(q, online), { question: create(QuestionAskedSchema, {}) })).toBe(t("list_state.question", {}, "zh-CN"));
     const q2 = create(QuestionAskedSchema, { questions: [{ text: "大版本也一起升吗？" }] });
     expect(previewOf(q, stateOf(q, online), { question: q2 })).toBe("大版本也一起升吗？");
     const idle = sess({ preview: "改了 `a.go`，见 [文档](x)", title: "t" });
     expect(previewOf(idle, stateOf(idle, online))).toBe("改了 a.go，见 文档");
     const fresh = sess();
-    expect(previewOf(fresh, stateOf(fresh, online))).toBe("还没发消息");
+    expect(previewOf(fresh, stateOf(fresh, online))).toBe(t("list_state.no_message", {}, "zh-CN"));
   });
 });
 
@@ -379,8 +380,8 @@ describe("agents", () => {
   });
 
   it("names the CLI in the wording", () => {
-    expect(askTitle(Agent.CODEX)).toBe("Codex 在问你");
-    expect(askTitle(Agent.CLAUDE)).toBe("Claude Code 在问你");
+    expect(askTitle(Agent.CODEX)).toBe(t("list_state.agent_asking", {"agent":"Codex"}, "zh-CN"));
+    expect(askTitle(Agent.CLAUDE)).toBe(t("list_state.agent_asking", {"agent":"Claude Code"}, "zh-CN"));
   });
 
   it("offers only the CLIs a machine has", () => {
@@ -580,12 +581,12 @@ describe("text", () => {
 
   it("formats times like the mockup", () => {
     const now = new Date(2026, 8, 29, 9, 41).getTime();
-    expect(when(now - 20_000, now)).toBe("刚刚");
-    expect(when(now - 3 * 60_000, now)).toBe("3 分钟前");
+    expect(when(now - 20_000, now)).toBe(t("time.just_now", {}, "zh-CN"));
+    expect(when(now - 3 * 60_000, now)).toBe(t("time.minutes_ago", {"count":3}, "zh-CN"));
     expect(when(new Date(2026, 8, 29, 8, 12).getTime(), now)).toBe("8:12");
-    expect(when(new Date(2026, 8, 28, 20, 0).getTime(), now)).toBe("昨天");
+    expect(when(new Date(2026, 8, 28, 20, 0).getTime(), now)).toBe(t("time.yesterday", {}, "zh-CN"));
     expect(when(new Date(2026, 8, 27, 20, 0).getTime(), now)).toBe("9月27日");
-    expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe("2 小时前");
+    expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe(t("time.hours_ago", {"count":2}, "zh-CN"));
     expect(minutesLeft(now + 7.5 * 60_000, now)).toBe("剩 8 分钟");
     expect(minutesLeft(now - 1, now)).toBe("已超时");
   });
@@ -919,7 +920,7 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
   it("names the mode a start will really use", () => {
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：完全放行（项目设置可能不同）");
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe("默认：自动");
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe("跟随 CLI 设置");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe(t("new_session.follow_cli", {}, "zh-CN"));
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：Claude Code 自己的模式");
     expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("询问");
   });

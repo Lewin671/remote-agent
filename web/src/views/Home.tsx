@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // The home page: a timeline of sessions within a scope (one project, or
 // all of them), headed by one sentence of how things stand; its wide form
 // as the sidebar; the bottom row of tabs; and the list rows they share
@@ -50,6 +51,17 @@ import { Check, ChevronDown, ChevronRight, Clock, MessageCircle, Plus, Search, S
 
 export type { Go };
 
+function emphasizeCount(text: string, count: number) {
+  const at = text.indexOf(String(count));
+  return <>{text.slice(0, at)}<em>{count}</em>{text.slice(at + String(count).length)}</>;
+}
+
+function commandNote(text: string) {
+  const command = "remote-agent daemon";
+  const at = text.indexOf(command);
+  return <>{text.slice(0, at)}<code>{command}</code>{text.slice(at + command.length)}</>;
+}
+
 /** Which of a row's attributes differ within the list it is in. A row
  * names only those: what every row shares is noise. */
 export type Cols = { project?: boolean; agent?: boolean; machine?: boolean };
@@ -58,7 +70,7 @@ export type Cols = { project?: boolean; agent?: boolean; machine?: boolean };
  * CLI is not among the words: its mark leads the line. */
 function metaOf(remote: Remote, s: SessionView, cols: Cols): string {
   return [
-    s.info?.forkedFrom ? "分叉" : "",
+    s.info?.forkedFrom ? t("home.forked") : "",
     cols.project ? projectName(projectKey(s)) : "",
     cols.machine ? machineName(remote.machines.get(s.machineId)) : "",
   ]
@@ -206,7 +218,7 @@ export function SessionRow({
   const pv = previewOf(s, st, waiting ? pendingOf(remote, s.id) : undefined);
   const meta = metaOf(remote, s, cols);
   const timers = remote.sessionTasks(s.id);
-  const scheduleMeta = timers.length ? "定时 " + (timers.length > 1 ? `${timers.length} 个任务` : frequency(timers[0].task.spec.trigger)) : "";
+  const scheduleMeta = timers.length ? timers.length > 1 ? t("home.scheduled_tasks", { count: timers.length }) : t("home.scheduled_frequency", { frequency: frequency(timers[0].task.spec.trigger) }) : "";
   // A mark alone looks unfinished: with nothing else to say, the line names the CLI.
   const words = [meta, scheduleMeta].filter(Boolean).join(" · ");
   return <SessionLine tone={st.tone} title={titleOf(s)} right={when(s.updatedMs)}
@@ -339,14 +351,14 @@ function Timeline({
       <Search />
       <input
         ref={input}
-        aria-label="按标题筛选"
-        placeholder="按标题筛选"
+        aria-label={t("home.filter_title")}
+        placeholder={t("home.filter_title")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && setQuery("")}
       />
       {query ? (
-        <button className="x" aria-label="清空筛选" onClick={() => setQuery("")}>
+        <button className="x" aria-label={t("home.clear_filter")} onClick={() => setQuery("")}>
           <X />
         </button>
       ) : (
@@ -368,12 +380,12 @@ function Timeline({
               ))}
               {rows.length > rowsShown.length && (
                 <button className="pr all" onClick={() => setAllTodo(true)}>
-                  还有 {rows.length - rowsShown.length} 件
+                  {t("home.more_waiting", { count: rows.length - rowsShown.length })}
                 </button>
               )}
             </div>
           )}
-      {live.length > 0 && <div className="sec">进行中</div>}
+      {live.length > 0 && <div className="sec">{t("home.live")}</div>}
       {liveShown.map((s) => (
         <SessionRow
           key={s.id}
@@ -387,7 +399,7 @@ function Timeline({
       ))}
       {live.length > liveShown.length && (
         <button className="more-row" onClick={() => setAllLive(true)}>
-          还有 {live.length - liveShown.length} 个
+          {t("home.more_live", { count: live.length - liveShown.length })}
           <ChevronRight />
         </button>
       )}
@@ -405,24 +417,24 @@ function Timeline({
       {q ? (
         ended.length > endedShown.length ? (
           <More onMore={() => setShown((n) => n + PAGE)}>
-            {total} 个会话的标题里有「{query.trim()}」，继续加载
+            {t("home.matches_loading", { count: total, query: query.trim() })}
           </More>
         ) : (
           <div className="tail">
             {remote.sessionsOpen
-              ? "正在加载更早的会话…"
+              ? t("home.loading_earlier")
               : total
-                ? `${total} 个会话的标题里有「${query.trim()}」`
-                : `没有标题里有「${query.trim()}」的会话`}
+                ? t("home.matches", { count: total, query: query.trim() })
+                : t("home.no_matches", { query: query.trim() })}
           </div>
         )
       ) : totalEnded > endedShown.length ? (
         // Never further than one page past what is held: the rest waits for the server.
         <More onMore={() => setShown((n) => Math.min(n + PAGE, everEnded.length + PAGE))}>
-          共 {totalEnded} 个，滚到底加载更早的
+          {t("home.total_load_earlier", { count: totalEnded })}
         </More>
       ) : (
-        totalEnded > PAGE && <div className="tail">共 {totalEnded} 个</div>
+        totalEnded > PAGE && <div className="tail">{t("home.total", { count: totalEnded })}</div>
       )}
     </>
   );
@@ -478,14 +490,14 @@ function ScopeCapsule({
   const { scope, list, groups } = useScope(remote);
   const [open, setOpen] = useState<"" | "menu" | "new">("");
   if (!list.length) return null;
-  const name = scope === ALL ? "全部项目" : projectName(scope);
+  const name = scope === ALL ? t("home.all_projects") : projectName(scope);
   return (
     <>
       <button
         className={(wide ? "scp" : "gcap glass scope") + (open === "menu" ? " open" : "")}
         aria-haspopup="dialog"
         aria-expanded={open === "menu"}
-        aria-label={`范围：${name}`}
+        aria-label={t("home.scope_label", { name })}
         title={scope === ALL ? undefined : shortPath(scope)}
         onClick={() => setOpen(open ? "" : "menu")}
       >
@@ -547,10 +559,10 @@ function ScopeMenu({
       first={
         count > 1 && (
           <button className="pi" role="menuitemradio" aria-checked={scope === ALL} onClick={() => onPick(ALL)}>
-            <Avatar name="全部项目" size="sm" all />
+            <Avatar name={t("home.all_projects")} size="sm" all />
             <div>
-              <b>全部项目</b>
-              <small>{counts || `${count} 个项目`}</small>
+              <b>{t("home.all_projects")}</b>
+              <small>{counts || t("projects.count", { count })}</small>
             </div>
             <span className="ck">{scope === ALL && <Check />}</span>
           </button>
@@ -568,14 +580,14 @@ function ScopeMenu({
       )}
     >
       <button className="pi act" onClick={onManage}>
-        管理项目
+        {t("home.manage_projects")}
         <ChevronRight className="chev" />
       </button>
     </ProjectList>
   );
   if (!wide)
     return (
-      <Sheet onClose={onClose} title="看哪个项目">
+      <Sheet onClose={onClose} title={t("home.choose_scope")}>
         {body}
       </Sheet>
     );
@@ -605,30 +617,30 @@ function useHeadline(remote: Remote, scope: string): { title: ReactNode; sub?: R
   const { list } = useScope(remote);
   const link = remote.link;
   const kept = remote.listed || remote.sessions.size > 0;
-  if (link === "no-network") return { title: "本机网络不通", sub: kept ? "下面是上次的内容" : "联网后才能读取会话" };
-  if (link === "waiting" && remote.showWaiting) return { title: remote.everOnline ? "正在重连…" : "连接中…", sub: kept ? "下面是上次的内容" : undefined };
+  if (link === "no-network") return { title: t("connection.no_network"), sub: kept ? t("connection.previous_below") : t("connection.network_required") };
+  if (link === "waiting" && remote.showWaiting) return { title: remote.everOnline ? t("connection.reconnecting") : t("connection.connecting"), sub: kept ? t("connection.previous_below") : undefined };
   if (link === "no-server") {
-    const why = remote.connError || "没有回应";
+    const why = remote.connError || t("connection.no_response");
     // A browser only knows of no network at all: one that leads nowhere
     // looks the same as a server that is down.
     if (details)
       return {
-        title: "连不上服务器",
+        title: t("connection.no_server"),
         err: !kept,
         sub: (
           <>
-            连不上服务器：{why}。也可能是这台设备的网络不通，会一直自动重试
-            <button onClick={() => remote.reconnectNow(true)}>重试</button>
+            {t("connection.server_details", { reason: why })}
+            <button onClick={() => remote.reconnectNow(true)}>{t("common.retry")}</button>
           </>
         ),
       };
     return {
-      title: "连不上服务器",
+      title: t("connection.no_server"),
       err: !kept,
       sub: (
         <>
-          {kept ? "正在重试，下面是上次的内容" : why}
-          <button onClick={() => setDetails(true)}>详情</button>
+          {kept ? t("connection.retrying_previous") : why}
+          <button onClick={() => setDetails(true)}>{t("common.details")}</button>
         </>
       ),
     };
@@ -646,16 +658,16 @@ function useHeadline(remote: Remote, scope: string): { title: ReactNode; sub?: R
     return {
       title: (
         <>
-          <em>{waiting}</em> 件事等你
+          {emphasizeCount(t("home.waiting_count", { count: waiting }), waiting)}
         </>
       ),
-      sub: [running && `${running} 个会话在运行`, idle && (running ? `${idle} 个空闲` : `${idle} 个会话空闲`)].filter(Boolean).join("，") || undefined,
+      sub: running && idle ? t("home.running_and_idle", { count: running, idle }) : running ? t("home.running_count", { count: running }) : idle ? t("home.idle_count", { count: idle }) : undefined,
     };
-  if (running > 0) return { title: `${running} 个会话在运行`, sub: idle ? `另有 ${idle} 个空闲` : undefined };
-  if (remote.sessions.size === 0) return { title: remote.listed ? "还没有会话" : "暂时读不到会话" };
+  if (running > 0) return { title: t("home.running_count", { count: running }), sub: idle ? t("home.other_idle", { count: idle }) : undefined };
+  if (remote.sessions.size === 0) return { title: remote.listed ? t("home.no_sessions") : t("home.sessions_unavailable") };
   const project = scope !== ALL ? list.find((p) => p.key === scope) : undefined;
-  if (project && project.sessions.every((s) => s.info?.taskOwned) && project.ended === 0) return { title: "这个项目还没有会话", sub: shortPath(scope), path: true };
-  return { title: "没有等你的事", sub: idle ? `${idle} 个会话空闲` : undefined };
+  if (project && project.sessions.every((s) => s.info?.taskOwned) && project.ended === 0) return { title: t("home.project_no_sessions"), sub: shortPath(scope), path: true };
+  return { title: t("home.nothing_waiting"), sub: idle ? t("home.idle_count", { count: idle }) : undefined };
 }
 
 function Headline({ remote, scope, wide }: { remote: Remote; scope: string; wide?: boolean }) {
@@ -679,23 +691,23 @@ function Empty({ remote, onStart }: { remote: Remote; onStart?: () => void }) {
       {on ? (
         onStart ? (
           <>
-            {machineName(on)} 在线，可以开始第一个会话。
+            {t("home.online_start", { name: machineName(on) })}
             <div>
               <button className="link mid" onClick={onStart}>
-                开始第一个会话
+                {t("home.start_first")}
               </button>
             </div>
           </>
         ) : (
-          <>{machineName(on)} 在线，点右下角的「新任务」开始第一个会话。</>
+          <>{t("home.online_new_task", { name: machineName(on) })}</>
         )
       ) : machines.length ? (
         <>
-          没有在线的电脑。在电脑上运行 <code>remote-agent daemon</code>
+          {commandNote(t("home.no_online_computer", { command: "remote-agent daemon" }))}
         </>
       ) : remote.isAuthority ? (
         <>
-          电脑运行 CLI，客户端操作会话。
+          {t("home.computer_runs_cli")}
           <div>
             <button
               className="btn pri"
@@ -703,12 +715,12 @@ function Empty({ remote, onStart }: { remote: Remote; onStart?: () => void }) {
                 location.hash = "/settings/add-device";
               }}
             >
-              添加设备
+              {t("home.add_device")}
             </button>
           </div>
         </>
       ) : (
-        <>还没有电脑。在管理端（{authorityName(remote)}）上打开「设置 › 添加设备」，把电脑加进来。</>
+        <>{t("home.add_via_manager", { name: authorityName(remote) })}</>
       )}
     </div>
   );
@@ -725,8 +737,8 @@ function ClockWarning({ remote }: { remote: Remote }) {
 function UpdateBanner() {
   if (useUpdate() !== "ready") return null;
   return (
-    <Banner action="重新加载" onAction={applyUpdate}>
-      新版本已下载
+    <Banner action={t("common.reload")} onAction={applyUpdate}>
+      {t("home.update_ready")}
     </Banner>
   );
 }
@@ -736,8 +748,8 @@ function ListError({ remote }: { remote: Remote }) {
   if (!remote.listError) return null;
   return (
     <div className="listerr">
-      <Banner kind="err" action="重试" onAction={() => remote.retryList()}>
-        没能读取会话列表：{remote.listError}
+      <Banner kind="err" action={t("common.retry")} onAction={() => remote.retryList()}>
+        {t("home.list_failed", { reason: remote.listError })}
       </Banner>
     </div>
   );
@@ -786,16 +798,16 @@ export function BottomBar({
         <div className="tabs glass">
           <button className={active === "sessions" ? "on" : ""} aria-current={active === "sessions" ? "page" : undefined} onClick={() => go("")}>
             <MessageCircle />
-            会话
+            {t("home.sessions_tab")}
             {todo > 0 && (
-              <span className="count" aria-label={`${todo} 件等你处理`}>
+              <span className="count" aria-label={t("home.pending_label", { count: todo })}>
                 {unreadLabel(todo)}
               </span>
             )}
           </button>
           <button className={active === "tasks" ? "on" : ""} aria-current={active === "tasks" ? "page" : undefined} onClick={() => go("tasks")}>
             <Clock />
-            定时
+            {t("home.schedules_tab")}
             <ScheduleBadge remote={remote} />
           </button>
         </div>
@@ -828,7 +840,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         <div className="tbar">
           <ScopeCapsule remote={remote} go={go} />
           <span className="sp" />
-          <GlassButton label="设置" onClick={() => go("settings")}>
+          <GlassButton label={t("common.settings")} onClick={() => go("settings")}>
             <Settings />
           </GlassButton>
         </div>
@@ -850,7 +862,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
           </>
         )}
       </div>
-      <BottomBar remote={remote} go={go} active="sessions" action={{ label: "新任务", icon: <SquarePen />, onClick: start, disabled: !canStart(remote) }} />
+      <BottomBar remote={remote} go={go} active="sessions" action={{ label: t("home.new_task"), icon: <SquarePen />, onClick: start, disabled: !canStart(remote) }} />
       {picking && <NewFlow remote={remote} go={go} onClose={() => setPicking(false)} />}
     </>
   );
@@ -890,7 +902,7 @@ export function Sidebar({
         {tasks ? (
           <button className="mini" disabled={!supported || remote.unlinked} onClick={() => go("tasks/new")}>
             <Plus />
-            新定时
+            {t("home.new_schedule")}
           </button>
         ) : (
           <button
@@ -904,7 +916,7 @@ export function Sidebar({
             }}
           >
             <SquarePen />
-            新任务
+            {t("home.new_task")}
           </button>
         )}
       </div>
@@ -924,7 +936,7 @@ export function Sidebar({
           )}
         </>
       )}
-      <button className="conn" onClick={() => setChecking(true)} aria-label={conn.text ? `${conn.text}，连接检测` : "连接检测"} title="连接检测">
+      <button className="conn" onClick={() => setChecking(true)} aria-label={conn.text ? t("home.connection_label", { state: conn.text }) : t("home.connection_check")} title={t("home.connection_check")}>
         {conn.text && (
           <>
             <StateMark kind={conn.tone} />
@@ -934,15 +946,15 @@ export function Sidebar({
       </button>
       <div className="sfoot">
         <Segmented
-          label="会话或定时"
+          label={t("home.sessions_or_schedules")}
           value={tasks ? "tasks" : active === "sessions" ? "sessions" : undefined}
           onChange={(v) => go(v === "tasks" ? "tasks" : "")}
           options={[
-            { value: "sessions", label: <><MessageCircle />会话</> },
-            { value: "tasks", label: <><Clock />定时<ScheduleBadge remote={remote} /></> },
+            { value: "sessions", label: <><MessageCircle />{t("home.sessions_tab")}</> },
+            { value: "tasks", label: <><Clock />{t("home.schedules_tab")}<ScheduleBadge remote={remote} /></> },
           ]}
         />
-        <button className={"ib" + (active === "settings" ? " on" : "")} aria-label="设置" title="设置" onClick={() => go("settings")}>
+        <button className={"ib" + (active === "settings" ? " on" : "")} aria-label={t("common.settings")} title={t("common.settings")} onClick={() => go("settings")}>
           <Settings />
         </button>
       </div>
@@ -997,7 +1009,7 @@ export function WideHome({
         <div className="wstart">{remote.listError ? <ListError remote={remote} /> : <Skeleton />}</div>
       ) : !pkey ? (
         <div className="wstart">
-          <h3 className="et">还没有会话</h3>
+          <h3 className="et">{t("home.no_sessions")}</h3>
           <Empty remote={remote} onStart={() => setPicking("new")} />
         </div>
       ) : (

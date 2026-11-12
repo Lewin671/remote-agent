@@ -1,5 +1,21 @@
 [
   {
+    "key": "common.all_projects_avatar",
+    "zh-CN": "全",
+    "en": "All",
+    "notes": "全部项目头像里的短字；圆形头像空间约一字。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "en": "Back",
     "key": "common.back",
     "notes": "公共操作按钮或读屏标签：返回。紧凑空间，允许英文自然换行；关闭指关闭界面，不指禁用设置。移除指移除条目，具体后果由所在确认说明解释。无变量。",
@@ -32,6 +48,22 @@
       "zh-CN": "source"
     },
     "zh-CN": "取消"
+  },
+  {
+    "key": "common.clear_search",
+    "zh-CN": "清空搜索",
+    "en": "Clear search",
+    "notes": "搜索框尾部清空按钮的读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   },
   {
     "en": "Close",
@@ -119,6 +151,86 @@
     "zh-CN": "完成"
   },
   {
+    "key": "common.got_it",
+    "zh-CN": "知道了",
+    "en": "Got it",
+    "notes": "提示横幅的确认按钮，关闭当前提示。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.list_separator",
+    "zh-CN": "、",
+    "en": ", ",
+    "notes": "CLI 名称列表分隔符，保留英文逗号后空格 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.loading",
+    "zh-CN": "加载中",
+    "en": "Loading",
+    "notes": "骨架屏读屏标签，不显示在可视正文。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.machine",
+    "zh-CN": "机器",
+    "en": "Computer",
+    "notes": "机器选择器标题和分段控件读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.reload",
+    "zh-CN": "重新加载",
+    "en": "Reload",
+    "notes": "新版本横幅按钮，重新加载网页。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "en": "Remove",
     "key": "common.remove",
     "notes": "公共操作按钮或读屏标签：移除。紧凑空间，允许英文自然换行；关闭指关闭界面，不指禁用设置。移除指移除条目，具体后果由所在确认说明解释。无变量。",
@@ -168,5 +280,37 @@
       "zh-CN": "source"
     },
     "zh-CN": "保存"
+  },
+  {
+    "key": "common.settings",
+    "zh-CN": "设置",
+    "en": "Settings",
+    "notes": "首页齿轮按钮的读屏标签及悬浮提示。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.unknown_computer",
+    "zh-CN": "未知电脑",
+    "en": "Unknown computer",
+    "notes": "电脑资料尚未读取且没有 ID 时的名称回退。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

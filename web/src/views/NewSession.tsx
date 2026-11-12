@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Starting sessions. There is one way: type in a project's new-session
 // box and send. Project settings persist in the sealed account prefs.
 
@@ -128,7 +129,7 @@ export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: 
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
   const model = findModel(info.models?.models, slug);
   const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
-  const unset = info.loading ? "读取设置…" : "默认模型";
+  const unset = info.loading ? t("new_session.reading_settings") : t("new_session.default_model");
   const label = slug ? modelLabel(info.models?.models, slug, cfg.agent) : unset;
   const modelText = slug ? `${label}${effort ? " · " + effort : ""}` : unset;
   // Claude Code only: the window new sessions get, 1M unless the project
@@ -168,7 +169,7 @@ function setOf(c: NewConfig): AgentSet {
  * own settings when nobody could read them. */
 function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
   const dm = defaultModeOf(m, cfg.agent);
-  return cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : "跟随 CLI 设置";
+  return cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : t("new_session.follow_cli");
 }
 
 /** What the user chose on this page and the stored settings do not say
@@ -291,7 +292,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   const model = findModel(info.models?.models, configured.model || defaultsOf(info.settings, agent).model || info.models?.defaultModel || "");
   const unavailable = !pinned && !!info.models && ((!!configured.model && !model) || (!!configured.effort && !!model && !model.efforts.includes(configured.effort)));
   const cfg = unavailable ? { ...configured, model: "", effort: "" } : configured;
-  const configFallback = unavailable ? "所选模型或推理强度在这台机器上不可用，这次用机器的默认值" : "";
+  const configFallback = unavailable ? t("new_session.config_fallback") : "";
   // The request may have been sent from another page: this one is told
   // when it ends through the Remote, like the page that sent it.
   const busy = start.running;
@@ -299,7 +300,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   const [configError, setConfigError] = useState("");
   // The project's settings do not keep an approval mode: a scheduled task's choice lives in this page only.
   const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }, keepExisting = false) =>
-    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: settings.sets ? { ...settings, sets: settings.sets.map((x) => ({ ...x, mode: ApprovalMode.UNSPECIFIED })) } : settings, keepExisting }).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
+    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: settings.sets ? { ...settings, sets: settings.sets.map((x) => ({ ...x, mode: ApprovalMode.UNSPECIFIED })) } : settings, keepExisting }).then((ok) => setConfigError(ok ? "" : t("new_session.save_failed")));
   // Settings not stored yet begin with where and on which CLI it starts now.
   const whole = () => (saved ? {} : { machineId: baseMachine, agent });
   /** Changes one CLI's set, or the machine: config is configFor of a CLI
@@ -380,7 +381,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
       const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
       // Only this request's own answer settles it.
       current.settle(undefined, sent);
-      if (res.kind.case !== "createSession" || !res.kind.value.session) throw new Error("意外的回复");
+      if (res.kind.case !== "createSession" || !res.kind.value.session) throw new Error(t("new_session.unexpected_reply"));
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
@@ -427,7 +428,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   };
   // A project removed from the list (here or on another client) keeps its
   // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : remote.listed && !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : (configured.model || configured.effort) && info.loading ? "正在读取模型列表…" : "";
+  const blocked = isHidden(remote.projectPrefs(), key) ? t("new_session.removed_blocked") : remote.listed && !machine?.online ? t("new_session.machine_offline", { name: machineName(machine) }) : remote.conn !== "online" ? t("new_session.disconnected") : unread ? t("new_session.reading_previous") : (configured.model || configured.effort) && info.loading ? t("new_session.reading_models") : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     adopt();
@@ -462,7 +463,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // The model only once one is known: a CLI with none chosen yet says nothing of it.
   // The model's placeholder is written too, so the capsule is never empty.
   const currentModel = newTaskModel(cfg, info);
-  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label, effort: (currentModel.model?.efforts.length ?? 0) > 1 ? currentModel.effort || "默认" : "" };
+  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label, effort: (currentModel.model?.efforts.length ?? 0) > 1 ? currentModel.effort || t("models.default") : "" };
   return {
     remote,
     go,
@@ -495,7 +496,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     modeText,
     create,
     busy,
-    error: error || (current.frozen && !busy ? "上次的启动结果还没有确认" : ""),
+    error: error || (current.frozen && !busy ? t("new_session.unconfirmed_start") : ""),
     text,
     setText,
     key,
@@ -600,9 +601,9 @@ export function NewBox({
       remote={ns.remote}
       note={
         <>
-          {moved && tray.busy() && <Banner>已换到 {moved}，附件正在重新上传</Banner>}
+          {moved && tray.busy() && <Banner>{t("new_session.attachments_moved", { name: moved })}</Banner>}
           {toast && (
-            <Banner action="知道了" onAction={() => setToast("")}>
+            <Banner action={t("common.got_it")} onAction={() => setToast("")}>
               {toast}
             </Banner>
           )}
@@ -616,7 +617,7 @@ export function NewBox({
       className={"ask" + (text ? " typed" : "")}
       rows={1}
       value={text}
-      placeholder="要做什么？"
+      placeholder={t("new_session.prompt")}
       onChange={(e) => {
         // A draft begun holds its project and launch settings.
         if (!text && e.target.value) {
@@ -631,7 +632,7 @@ export function NewBox({
           void submit();
         }
       }}
-      aria-label="新会话的第一句话"
+      aria-label={t("new_session.first_message")}
     />
   );
   // Before the lists are in, no computer is known to be off.
@@ -639,41 +640,41 @@ export function NewBox({
   const error =
     ns.error &&
     (ns.expired ? (
-      <Banner kind="warn" action="放弃这次启动" onAction={ns.abandon}>
-        不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求
+      <Banner kind="warn" action={t("new_session.abandon_start")} onAction={ns.abandon}>
+        {t("new_session.expired_start")}
       </Banner>
     ) : (
-      <Banner kind={ns.frozen ? "warn" : "err"} action="重试" onAction={() => void submit()}>
-        {ns.frozen ? `不确定是否已经启动：${ns.error}。重试会发送同一个请求，不会重复启动` : `启动失败：${ns.error}`}
+      <Banner kind={ns.frozen ? "warn" : "err"} action={t("common.retry")} onAction={() => void submit()}>
+        {ns.frozen ? t("new_session.start_unknown", { reason: ns.error }) : t("new_session.start_failed", { reason: ns.error })}
       </Banner>
     ));
   const notes = (
     <>
       {offline && ns.machine && (
-        <Banner kind={text ? "warn" : ""} action="换机器" onAction={() => setConfig("machine")}>
-          {machineName(ns.machine)} {text ? "已离线，任务还没开始。草稿已保留，换一台在线的机器吧。" : "不在线"}
+        <Banner kind={text ? "warn" : ""} action={t("new_session.change_machine")} onAction={() => setConfig("machine")}>
+          {text ? t("new_session.offline_with_draft", { name: machineName(ns.machine) }) : t("new_session.machine_offline", { name: machineName(ns.machine) })}
         </Banner>
       )}
-      {ns.reading && !offline && <Banner>正在读取这个项目上次的设置…</Banner>}
+      {ns.reading && !offline && <Banner>{t("new_session.reading_previous")}</Banner>}
       {ns.missing !== undefined && !offline && (
-        <Banner action="换机器" onAction={() => setConfig("machine")}>
-          {machineName(ns.machine)} 没有 {agentName(ns.missing)}，这次用 {agentName(ns.cfg.agent)}
+        <Banner action={t("new_session.change_machine")} onAction={() => setConfig("machine")}>
+          {t("new_session.cli_fallback", { name: machineName(ns.machine), missing: agentName(ns.missing), agent: agentName(ns.cfg.agent) })}
         </Banner>
       )}
       {ns.configFallback && <Banner>{ns.configFallback}</Banner>}
       {ns.issueKind === "model" && (
         <div style={{ display: "contents" }} data-composer-picker={phone ? "model" : undefined} onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}>
-          <Banner kind="warn" action="换模型" onAction={() => { setChoosing(false); setConfig("model"); }}>
-            这个模型没有自动模式，而 {machineName(ns.machine)} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认
+          <Banner kind="warn" action={t("new_session.change_model")} onAction={() => { setChoosing(false); setConfig("model"); }}>
+            {t("new_session.model_no_auto", { name: machineName(ns.machine) })}
           </Banner>
         </div>
       )}
       {ns.issueKind === "account" && (
-        <Banner kind="warn" action="去改默认" onAction={() => ns.go("m/" + ns.cfg.machineId)}>
-          当前账户不支持自动模式，而 {machineName(ns.machine)} 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始
+        <Banner kind="warn" action={t("new_session.change_defaults")} onAction={() => ns.go("m/" + ns.cfg.machineId)}>
+          {t("new_session.account_no_auto", { name: machineName(ns.machine) })}
         </Banner>
       )}
-      {ns.configError && <Banner kind="warn" action="重试保存" onAction={() => ns.setCfg(ns.cfg)}>{ns.configError}</Banner>}
+      {ns.configError && <Banner kind="warn" action={t("new_session.retry_save")} onAction={() => ns.setCfg(ns.cfg)}>{ns.configError}</Banner>}
     </>
   );
   const banners = (notice || error || notes) && (
@@ -684,14 +685,14 @@ export function NewBox({
     </div>
   );
   const send = (
-    <button className={"snd" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
+    <button className={"snd" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label={t("new_session.start")}>
       <ArrowUp />
     </button>
   );
   // The draft stays when the CLI is switched.
   const many = ns.agents.length > 1;
   const cli = many && (
-    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} aria-expanded={choosing}
+    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={t("new_session.cli_label", { agent: agentName(ns.cfg.agent) })} aria-expanded={choosing}
       data-composer-picker={phone ? "cli" : undefined}
       onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}
       onClick={() => { if (phone) setConfig(""); setChoosing((v) => phone ? !v : true); }}>
@@ -701,7 +702,7 @@ export function NewBox({
     </button>
   );
   const mach = ns.summary.machine && (
-    <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={`机器：${ns.summary.machine}`} onClick={() => afterKeyboard(() => setConfig("machine"))}>
+    <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={t("new_session.machine_label", { name: ns.summary.machine })} onClick={() => afterKeyboard(() => setConfig("machine"))}>
       <span>{ns.summary.machine}</span>
       <ChevronDown />
     </button>
@@ -710,43 +711,30 @@ export function NewBox({
     fixed || !onPickProject ? (
       <b>{name}</b>
     ) : (
-      <button className="tok p" onClick={() => afterKeyboard(onPickProject)} aria-label={`项目：${name}`}>
+      <button className="tok p" onClick={() => afterKeyboard(onPickProject)} aria-label={t("new_session.project_label", { name })}>
         <Avatar name={name} size="sm" />
         <span>{name}</span>
         <ChevronDown />
       </button>
     );
-  const sentence = (
-    <div className="sent">
-      {/* Where it runs reads as one place: the machine, then the project on it. */}
-      {ns.summary.machine && (
-        <span className="g">
-          在
-          {mach}
-        </span>
-      )}
-      <span className="g">
-        {ns.summary.machine ? "的" : "在"}
-        {proj}
-      </span>
-      {many && (
-        <span className="g">
-          用
-          {cli}
-        </span>
-      )}
-    </div>
-  );
-  const busyNote = ns.busy && <div className="nt-note">正在 {machineName(ns.machine)} 上启动…</div>;
+  const locationText = ns.summary.machine
+    ? many ? t("new_session.location_machine_cli", { machine: "{machine}", project: "{project}", cli: "{cli}" }) : t("new_session.location_machine", { machine: "{machine}", project: "{project}" })
+    : many ? t("new_session.location_cli", { project: "{project}", cli: "{cli}" }) : t("new_session.location", { project: "{project}" });
+  const slots: Record<string, ReactNode> = { machine: mach, project: proj, cli };
+  const sentence = <div className="sent">{locationText.split(/(?<=\})/).filter(Boolean).map((part, i) => {
+    const pieces = part.split(/\{(machine|project|cli)\}/);
+    return <span className="g" key={i}>{pieces.map((piece, j) => j % 2 ? slots[piece] : piece)}</span>;
+  })}</div>;
+  const busyNote = ns.busy && <div className="nt-note">{t("new_session.starting_on", { name: machineName(ns.machine) })}</div>;
   const summary = <ConfigSummary summary={ns.summary} bare={many} onClick={toggleModels}
     data-composer-picker={phone ? "model" : undefined} aria-expanded={config === "main" || config === "model"}
     onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined} />;
   const attach = <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />;
   const body =
     variant === "sheet" ? (
-      <div ref={boundaryRef} className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
+      <div ref={boundaryRef} className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={t("new_session.project_session_label", { name })}>
         <header className="nt-hd">
-          <button className="fbtn" aria-label="关闭" onClick={onClose}>
+          <button className="fbtn" aria-label={t("common.close")} onClick={onClose}>
             <X />
           </button>
           {/* On a phone the title says where: the project, and under it the machine. */}
@@ -772,7 +760,7 @@ export function NewBox({
         </div>
       </div>
     ) : (
-      <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
+      <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={t("new_session.project_session_label", { name })}>
         {banners}
         {sentence}
         {/* In a wide window the task is written in a box of its own: on the bare page nothing showed where to type. */}
@@ -782,7 +770,7 @@ export function NewBox({
           <div className="acc">
             {attach}
             {summary}
-            {keys && <span className="kh">{keys} 开始</span>}
+            {keys && <span className="kh">{t("new_session.start_shortcut", { keys })}</span>}
             {send}
           </div>
         </div>
@@ -814,7 +802,7 @@ export function NewBox({
       {choosing && (phone ? (
         <ComposerPicker anchor={cliRef} boundary={boundaryRef} onClose={() => setChoosing(false)}>{cliChoices}</ComposerPicker>
       ) : (
-        <Sheet onClose={() => setChoosing(false)} title="用哪个 CLI" anchor={cliRef}>{cliChoices}</Sheet>
+        <Sheet onClose={() => setChoosing(false)} title={t("new_session.choose_cli")} anchor={cliRef}>{cliChoices}</Sheet>
       ))}
       {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")}
         composer={phone && config !== "machine" ? { anchor: composerRef, boundary: boundaryRef } : undefined} />}
@@ -866,7 +854,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
   if (!scheduled && pick === "model") {
     const panel = <NewTaskModelPanel key={cfg.machineId + "/" + cfg.agent} cfg={cfg} info={info} pending={open}
       enabled={!open} onChange={value => set(value)} onClose={onClose} />;
-    return composer ? <ComposerPicker {...composer} title="模型" onClose={onClose}>{panel}</ComposerPicker> :
+    return composer ? <ComposerPicker {...composer} title={t("models.title")} onClose={onClose}>{panel}</ComposerPicker> :
       <Sheet onClose={onClose} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head new-task-model-sheet">{panel}</Sheet>;
   }
   // Machines this project has used; a new project can use any.
@@ -887,15 +875,14 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
           >
             <StateMark kind={m.online ? "online" : "off"} />
             <div className="mt">
-              {m.id === cfg.machineId || !m.online ? machineName(m) : <b>改用 {machineName(m)}</b>}
+              {m.id === cfg.machineId || !m.online ? machineName(m) : <b>{t("new_session.use_machine", { name: machineName(m) })}</b>}
               {!m.online ? (
-                <div className="md">{m.lastSeenMs ? ago(m.lastSeenMs) + "在线，" : ""}现在不能新建</div>
+                <div className="md">{m.lastSeenMs ? t("new_session.offline_last_seen", { time: ago(m.lastSeenMs) }) : t("new_session.offline_no_start")}</div>
               ) : (
                 <div className="md">
-                  {`已装 ${machineAgents(m).map(agentName).join("、")}`}
-                  {m.id !== cfg.machineId && !machineAgents(m).includes(ns.cfg.agent) && (
-                    `；这台机器没有 ${agentName(ns.cfg.agent)}，会改用 ${agentName(switchMachine(cfg, m).agent)}`
-                  )}
+                  {m.id !== cfg.machineId && !machineAgents(m).includes(ns.cfg.agent)
+                    ? t("new_session.installed_fallback", { agents: machineAgents(m).map(agentName).join(t("common.list_separator")), missing: agentName(ns.cfg.agent), agent: agentName(switchMachine(cfg, m).agent) })
+                    : t("new_session.installed", { agents: machineAgents(m).map(agentName).join(t("common.list_separator")) })}
                 </div>
               )}
             </div>
@@ -1012,9 +999,9 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: "机器", model: "模型", mode: taskEditing ? "权限" : "审批模式" };
+  const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: t("common.machine"), model: t("models.title"), mode: taskEditing ? "权限" : "审批模式" };
   const many = ns.agents.length > 1;
-  if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
+  if (open && pick && pick !== "machine") body = <div className="hint top">{t("new_session.reading_previous")}</div>;
   const content = (
     <>
       {body ?? (
@@ -1096,7 +1083,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
     </>
   );
   return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">{content}</Sheet>
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: t("common.done"), onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">{content}</Sheet>
   );
 }
 
@@ -1163,15 +1150,15 @@ export function DirBrowser({
         )}
       </div>
       {error && (
-        <Banner kind="err" action="重试" onAction={() => void open(loading || dir?.path || start)}>
-          读不了这个目录：{error}
+        <Banner kind="err" action={t("common.retry")} onAction={() => void open(loading || dir?.path || start)}>
+          {t("projects.directory_failed", { reason: error })}
         </Banner>
       )}
       <div className={"list dirs" + (edges.up ? " fade-top" : "") + (edges.down ? " fade-bottom" : "")} ref={listRef} onScroll={measure}>
         {dir?.parent && (
           <button className="mi" disabled={!!loading} onClick={() => void open(dir.parent)}>
             <ChevronLeft className="lead" />
-            <div className="mt">上一级</div>
+            <div className="mt">{t("projects.parent_directory")}</div>
           </button>
         )}
         {dir?.dirs.map((d) => (
@@ -1180,8 +1167,8 @@ export function DirBrowser({
             <ChevronRight className="chev" />
           </button>
         ))}
-        {dir && dir.dirs.length === 0 && <div className="mi note">没有子目录</div>}
-        {!dir && !error && <div className="mi note">读取中…</div>}
+        {dir && dir.dirs.length === 0 && <div className="mi note">{t("projects.no_subdirectories")}</div>}
+        {!dir && !error && <div className="mi note">{t("projects.reading_directory")}</div>}
       </div>
       <div className="btns sheet-foot">
         <button className="btn pri" disabled={!dir || !!loading} onClick={() => dir && onPick(dir.path)}>
@@ -1193,9 +1180,9 @@ export function DirBrowser({
 }
 
 /** 选项目: the project list, each row ending in ›, 新项目… at the end. */
-export function ProjectPicker({ remote, onPick, onNew, onClose, title = "选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
+export function ProjectPicker({ remote, onPick, onNew, onClose, title = t("projects.choose") }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
   return (
-    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }} anchor={anchorOf(".wstart .sent .tok.p")}>
+    <Sheet onClose={onClose} title={title} action={{ label: t("common.cancel"), onClick: onClose }} anchor={anchorOf(".wstart .sent .tok.p")}>
       <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
     </Sheet>
   );
@@ -1207,10 +1194,10 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
   const [machineId, setMachineId] = useState(machines.find((m) => m.online)?.id ?? "");
   const m = remote.machines.get(machineId);
   return (
-    <Sheet onClose={onClose} title={fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"} back={onBack}>
+    <Sheet onClose={onClose} title={fixedMachine ? t("projects.choose_directory") : t("projects.new_choose_directory")} back={onBack}>
       {remote.machines.size > 1 && <Segmented
         className="full machines"
-        label="机器"
+        label={t("common.machine")}
         value={machineId || undefined}
         onChange={setMachineId}
         options={machines.map((x) => ({
@@ -1225,9 +1212,9 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
         }))}
       />}
       {!machineId ? (
-        <div className="hint">没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。</div>
+        <div className="hint">{t("projects.no_online_computers")}</div>
       ) : (
-        <DirBrowser key={machineId} remote={remote} machineId={machineId} start={m?.meta?.home ?? ""} label={(name) => `用 ${name} 这个目录`} onPick={(path) => onDone(machineId, path)} />
+        <DirBrowser key={machineId} remote={remote} machineId={machineId} start={m?.meta?.home ?? ""} label={(name) => t("projects.use_directory", { name })} onPick={(path) => onDone(machineId, path)} />
       )}
     </Sheet>
   );
@@ -1269,7 +1256,7 @@ export type Summary = { agent: string; machine: string; model: string; effort: s
 export function ConfigSummary({ summary, bare, ...button }: { summary: { agent: string; model: string; effort?: string }; bare?: boolean } & ComponentProps<"button">) {
   const { agent, model, effort } = summary;
   return (
-    <button className="tok project-summary" aria-label={`模型：${model}${effort ? `，推理强度：${effort}` : ""}`} {...button}>
+    <button className="tok project-summary" aria-label={effort ? t("models.summary_effort_label", { model, effort }) : t("models.summary_label", { model })} {...button}>
       {!bare && <span className="fx">{agent} · </span>}
       <span className="mdl">{model}</span>
       {effort && <span className="effort"> · {effort}</span>}

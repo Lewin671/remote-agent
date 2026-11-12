@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEscape } from "../ui";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -54,7 +55,7 @@ export function ComposerPicker({ anchor, boundary, title, onClose, children }: C
   useComposerMenuDismiss(true, root, onClose, boundary);
   if (!boundary.current) return null;
   return createPortal(
-    <div ref={root} className={"composer-picker" + (title ? " model-picker" : "")} role="dialog" aria-label={title ?? "CLI"}
+    <div ref={root} className={"composer-picker" + (title ? " model-picker" : "")} role="dialog" aria-label={title ?? t("new_session.cli_picker_label")}
       onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus}
       style={{ left: place.left, bottom: place.bottom, width: place.width, maxHeight: place.height, visibility: place.width ? undefined : "hidden" }}>
       {title ? children : <div className="composer-picker-scroll">{children}</div>}

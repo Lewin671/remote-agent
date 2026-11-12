@@ -1,0 +1,971 @@
+[
+  {
+    "key": "home.add_device",
+    "zh-CN": "添加设备",
+    "en": "Add device",
+    "notes": "无电脑时的主要按钮，打开添加设备。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.add_via_manager",
+    "zh-CN": "还没有电脑。在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
+    "en": "No computers yet. Open “Settings › Add device” on the managing client ({name}) to add one.",
+    "notes": "成员客户端首页空状态说明；name 为管理端名称 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Phone"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.all_projects",
+    "zh-CN": "全部项目",
+    "en": "All projects",
+    "notes": "范围按钮文字及项目菜单首行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.choose_scope",
+    "zh-CN": "看哪个项目",
+    "en": "Which project?",
+    "notes": "手机范围选择弹层标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.clear_filter",
+    "zh-CN": "清空筛选",
+    "en": "Clear filter",
+    "notes": "会话列表筛选框清空按钮的读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.computer_runs_cli",
+    "zh-CN": "电脑运行 CLI，客户端操作会话。",
+    "en": "Run the CLI on your computer and control sessions from a client.",
+    "notes": "首页无电脑时的说明段落。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.connection_check",
+    "zh-CN": "连接检测",
+    "en": "Check connection",
+    "notes": "侧栏连接按钮读屏标签及悬浮提示。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.connection_label",
+    "zh-CN": "{state}，连接检测",
+    "en": "{state}, check connection",
+    "notes": "侧栏连接按钮读屏标签，state 为连接状态 空间：短标签/列表行保持紧凑，正文可多行。 变量：state，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "state": {
+        "type": "string",
+        "example": "Connected"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.filter_title",
+    "zh-CN": "按标题筛选",
+    "en": "Filter by title",
+    "notes": "会话列表筛选输入框占位及读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.forked",
+    "zh-CN": "分叉",
+    "en": "Forked",
+    "notes": "对话列表第三行标记，空间紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.idle_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个会话空闲"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session idle",
+        "other": "{count} sessions idle"
+      }
+    },
+    "notes": "首页副标题空闲数量 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.list_failed",
+    "zh-CN": "没能读取会话列表：{reason}",
+    "en": "Could not load sessions: {reason}",
+    "notes": "首页列表读取失败横幅；reason 为错误原文 空间：短标签/列表行保持紧凑，正文可多行。 变量：reason，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Error"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.live",
+    "zh-CN": "进行中",
+    "en": "In progress",
+    "notes": "会话列表分区标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.loading_earlier",
+    "zh-CN": "正在加载更早的会话…",
+    "en": "Loading earlier sessions…",
+    "notes": "列表底部加载状态。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.manage_projects",
+    "zh-CN": "管理项目",
+    "en": "Manage projects",
+    "notes": "范围菜单底部操作，打开项目管理。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.matches",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个会话的标题里有「{query}」"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session has “{query}” in its title",
+        "other": "{count} sessions have “{query}” in their title"
+      }
+    },
+    "notes": "会话标题筛选完成后的列表底部结果说明；count 是匹配数，query 是用户输入的筛选词。允许换行。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "query": {
+        "type": "string",
+        "example": "example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.matches_loading",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个会话的标题里有「{query}」，继续加载"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session has “{query}” in its title. Loading more",
+        "other": "{count} sessions have “{query}” in their title. Loading more"
+      }
+    },
+    "notes": "会话标题筛选列表底部继续加载按钮；count 是已匹配的会话数，query 是用户输入的筛选词。允许换行。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "query": {
+        "type": "string",
+        "example": "example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.more_live",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "还有 {count} 个"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more session",
+        "other": "{count} more sessions"
+      }
+    },
+    "notes": "手机首页进行中列表底部展开按钮；count 是尚未显示的会话数。单行紧凑空间。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.more_waiting",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "还有 {count} 件"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more item",
+        "other": "{count} more items"
+      }
+    },
+    "notes": "手机首页待处理列表底部展开按钮；count 是尚未显示的待处理事项数。单行紧凑空间。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.new_schedule",
+    "zh-CN": "新定时",
+    "en": "New schedule",
+    "notes": "侧栏操作按钮，打开新定时任务。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.new_task",
+    "zh-CN": "新任务",
+    "en": "New task",
+    "notes": "首页和侧栏主要按钮，启动新会话。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.no_matches",
+    "zh-CN": "没有标题里有「{query}」的会话",
+    "en": "No sessions have “{query}” in their title",
+    "notes": "会话标题筛选空结果；query 是用户输入 空间：短标签/列表行保持紧凑，正文可多行。 变量：query，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "query": {
+        "type": "string",
+        "example": "example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.no_online_computer",
+    "zh-CN": "没有在线的电脑。在电脑上运行 {command}",
+    "en": "No computers are online. Run {command} on your computer",
+    "notes": "首页空状态说明；command 是应在电脑上运行的命令，渲染为代码 空间：短标签/列表行保持紧凑，正文可多行。 变量：command，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "remote-agent daemon"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.no_sessions",
+    "zh-CN": "还没有会话",
+    "en": "No sessions yet",
+    "notes": "首页空状态主标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.nothing_waiting",
+    "zh-CN": "没有等你的事",
+    "en": "Nothing needs your attention",
+    "notes": "首页没有待处理事项的主标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.online_new_task",
+    "zh-CN": "{name} 在线，点右下角的「新任务」开始第一个会话。",
+    "en": "{name} is online. Tap “New task” at the bottom right to start your first session.",
+    "notes": "手机首页空状态说明；name 为电脑名 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.online_start",
+    "zh-CN": "{name} 在线，可以开始第一个会话。",
+    "en": "{name} is online. Start your first session.",
+    "notes": "宽屏首页空状态说明；name 为电脑名 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example Computer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.other_idle",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "另有 {count} 个空闲"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} other idle",
+        "other": "{count} others idle"
+      }
+    },
+    "notes": "首页运行数量下副标题 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.pending_label",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 件等你处理"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} item needs your attention",
+        "other": "{count} items need your attention"
+      }
+    },
+    "notes": "底部会话标签数量读屏标签 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.project_no_sessions",
+    "zh-CN": "这个项目还没有会话",
+    "en": "No sessions in this project yet",
+    "notes": "项目范围首页空状态主标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.running_and_idle",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个会话在运行，{idle} 个空闲"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session running, {idle} idle",
+        "other": "{count} sessions running, {idle} idle"
+      }
+    },
+    "notes": "首页大标题下方会话数量摘要 空间：短标签/列表行保持紧凑，正文可多行。 变量：count, idle，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "idle": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.running_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个会话在运行"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session running",
+        "other": "{count} sessions running"
+      }
+    },
+    "notes": "首页主标题或副标题 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.scheduled_frequency",
+    "zh-CN": "定时 {frequency}",
+    "en": "Scheduled {frequency}",
+    "notes": "会话列表第三行单一定时任务频率；frequency 由后续定时任务批次负责本地化 空间：短标签/列表行保持紧凑，正文可多行。 变量：frequency，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "frequency": {
+        "type": "string",
+        "example": "Daily"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.scheduled_tasks",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "定时 {count} 个任务"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} scheduled task",
+        "other": "{count} scheduled tasks"
+      }
+    },
+    "notes": "会话列表第三行定时任务数量 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.schedules_tab",
+    "zh-CN": "定时",
+    "en": "Schedules",
+    "notes": "底部导航及侧栏分段标签，紧凑空间。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.scope_label",
+    "zh-CN": "范围：{name}",
+    "en": "Scope: {name}",
+    "notes": "首页范围按钮读屏标签；name 是项目名或全部项目 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.sessions_or_schedules",
+    "zh-CN": "会话或定时",
+    "en": "Sessions or schedules",
+    "notes": "侧栏分段导航读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.sessions_tab",
+    "zh-CN": "会话",
+    "en": "Sessions",
+    "notes": "底部导航及侧栏分段标签，紧凑空间。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.sessions_unavailable",
+    "zh-CN": "暂时读不到会话",
+    "en": "Sessions are unavailable",
+    "notes": "首页未获取会话时的主标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.start_first",
+    "zh-CN": "开始第一个会话",
+    "en": "Start your first session",
+    "notes": "空状态的主要操作按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.total",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "共 {count} 个"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session",
+        "other": "{count} sessions"
+      }
+    },
+    "notes": "会话列表底部已结束会话总数说明；count 是已结束会话总数。短行。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.total_load_earlier",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "共 {count} 个，滚到底加载更早的"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} session. Scroll to load earlier ones",
+        "other": "{count} sessions. Scroll to load earlier ones"
+      }
+    },
+    "notes": "会话列表底部加载更早记录的说明；count 是已结束会话总数。允许换行。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.update_ready",
+    "zh-CN": "新版本已下载",
+    "en": "A new version has been downloaded",
+    "notes": "首页更新横幅的说明。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.waiting_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 件事等你"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} item needs you",
+        "other": "{count} items need you"
+      }
+    },
+    "notes": "首页大标题；count 为待处理事项数，渲染时强调数量 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

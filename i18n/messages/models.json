@@ -1,0 +1,271 @@
+[
+  {
+    "key": "models.all",
+    "zh-CN": "全部模型",
+    "en": "All models",
+    "notes": "模型面板完整列表入口及返回按钮文字。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.back",
+    "zh-CN": "返回模型",
+    "en": "Back to models",
+    "notes": "全部模型页返回按钮读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.context_window",
+    "zh-CN": "上下文窗口",
+    "en": "Context window",
+    "notes": "模型面板字段标题与分段控件读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.default",
+    "zh-CN": "默认",
+    "en": "Default",
+    "notes": "默认模型按钮及默认推理强度摘要。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.default_named",
+    "zh-CN": "默认（{model}）",
+    "en": "Default ({model})",
+    "notes": "新任务模型选择首行按钮；model 为模型显示名 空间：短标签/列表行保持紧凑，正文可多行。 变量：model，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "Example Model"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.effort",
+    "zh-CN": "推理强度",
+    "en": "Reasoning effort",
+    "notes": "模型面板字段标题与分段控件读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.effort_default",
+    "zh-CN": "推理强度 · 默认",
+    "en": "Reasoning effort · Default",
+    "notes": "只有一种推理强度且未显式指定时的说明。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.extended_window",
+    "zh-CN": "1M",
+    "en": "1M",
+    "notes": "上下文窗口分段选项；1M 是窗口容量，保持简短。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.fixed_effort",
+    "zh-CN": "推理强度固定为 {effort}",
+    "en": "Reasoning effort is fixed at {effort}",
+    "notes": "模型面板固定强度说明；effort 是 CLI 原始级别 空间：短标签/列表行保持紧凑，正文可多行。 变量：effort，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "effort": {
+        "type": "string",
+        "example": "high"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.load_failed_default",
+    "zh-CN": "没能读取模型列表，会用 {agent} 自己的默认模型",
+    "en": "Could not load models. Using {agent}’s own default model",
+    "notes": "新任务模型列表失败横幅；agent 为 CLI 品牌 空间：短标签/列表行保持紧凑，正文可多行。 变量：agent，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.standard_only",
+    "zh-CN": "标准 200k · 这个模型只有标准窗口",
+    "en": "Standard 200k · This model only supports the standard window",
+    "notes": "模型面板上下文说明，允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.standard_window",
+    "zh-CN": "标准 200k",
+    "en": "Standard 200k",
+    "notes": "上下文窗口分段选项，空间紧凑；200k 是窗口容量。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.summary_effort_label",
+    "zh-CN": "模型：{model}，推理强度：{effort}",
+    "en": "Model: {model}, reasoning effort: {effort}",
+    "notes": "新任务配置摘要按钮读屏标签 空间：短标签/列表行保持紧凑，正文可多行。 变量：model, effort，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "Example Model"
+      },
+      "effort": {
+        "type": "string",
+        "example": "high"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.summary_label",
+    "zh-CN": "模型：{model}",
+    "en": "Model: {model}",
+    "notes": "新任务没有推理强度时配置摘要按钮读屏标签 空间：短标签/列表行保持紧凑，正文可多行。 变量：model，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "Example Model"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.title",
+    "zh-CN": "模型",
+    "en": "Model",
+    "notes": "新任务模型面板标题、选择器读屏标签及设置行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

@@ -1,0 +1,199 @@
+[
+  {
+    "key": "connection.connecting",
+    "zh-CN": "连接中…",
+    "en": "Connecting…",
+    "notes": "连接条及首页短状态。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.network_required",
+    "zh-CN": "联网后才能读取会话",
+    "en": "Connect to read sessions",
+    "notes": "断线首页与公共连接条的说明。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.no_network",
+    "zh-CN": "本机网络不通",
+    "en": "No network connection",
+    "notes": "首页主标题，当前客户端网络不可用。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.no_network_empty",
+    "zh-CN": "本机网络不通 · 联网后才能读取会话",
+    "en": "No network connection · Connect to read sessions",
+    "notes": "公共连接条，断网且无缓存时的说明 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.no_network_previous",
+    "zh-CN": "本机网络不通 · 显示的是上次的内容",
+    "en": "No network connection · Showing previous content",
+    "notes": "公共连接条，断网且有缓存时的说明 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.no_response",
+    "zh-CN": "没有回应",
+    "en": "No response",
+    "notes": "服务器无错误详情时的短原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.no_server",
+    "zh-CN": "连不上服务器",
+    "en": "Cannot connect to server",
+    "notes": "首页断线主标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.previous_below",
+    "zh-CN": "下面是上次的内容",
+    "en": "Showing previous content below",
+    "notes": "首页断线时的副标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.reconnecting",
+    "zh-CN": "正在重连…",
+    "en": "Reconnecting…",
+    "notes": "连接条及首页短状态。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.retrying_previous",
+    "zh-CN": "正在重试，下面是上次的内容",
+    "en": "Retrying, showing previous content below",
+    "notes": "首页断线副标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.server_details",
+    "zh-CN": "连不上服务器：{reason}。也可能是这台设备的网络不通，会一直自动重试",
+    "en": "Cannot connect to server: {reason}. This device’s network may also be unavailable. Retrying automatically.",
+    "notes": "首页/公共连接条展开详情，reason 是连接错误原文 空间：短标签/列表行保持紧凑，正文可多行。 变量：reason，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "No response"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.server_retrying",
+    "zh-CN": "连不上服务器 · 正在重试",
+    "en": "Cannot connect to server · Retrying",
+    "notes": "公共连接条简短断线状态 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

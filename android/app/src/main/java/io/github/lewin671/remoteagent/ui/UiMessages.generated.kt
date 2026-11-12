@@ -13,11 +13,17 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
     configuration.setLocale(java.util.Locale.forLanguageTag(MessageLocale.appleTags.getValue(language)))
     val resources = context.createConfigurationContext(configuration).resources
     return when (message.key) {
+        "common.all_projects_avatar" -> {
+            resources.getString(R.string.common_all_projects_avatar)
+        }
         "common.back" -> {
             resources.getString(R.string.common_back)
         }
         "common.cancel" -> {
             resources.getString(R.string.common_cancel)
+        }
+        "common.clear_search" -> {
+            resources.getString(R.string.common_clear_search)
         }
         "common.close" -> {
             resources.getString(R.string.common_close)
@@ -34,6 +40,21 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "common.done" -> {
             resources.getString(R.string.common_done)
         }
+        "common.got_it" -> {
+            resources.getString(R.string.common_got_it)
+        }
+        "common.list_separator" -> {
+            resources.getString(R.string.common_list_separator)
+        }
+        "common.loading" -> {
+            resources.getString(R.string.common_loading)
+        }
+        "common.machine" -> {
+            resources.getString(R.string.common_machine)
+        }
+        "common.reload" -> {
+            resources.getString(R.string.common_reload)
+        }
         "common.remove" -> {
             resources.getString(R.string.common_remove)
         }
@@ -43,9 +64,660 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "common.save" -> {
             resources.getString(R.string.common_save)
         }
+        "common.settings" -> {
+            resources.getString(R.string.common_settings)
+        }
+        "common.unknown_computer" -> {
+            resources.getString(R.string.common_unknown_computer)
+        }
+        "connection.connecting" -> {
+            resources.getString(R.string.connection_connecting)
+        }
+        "connection.network_required" -> {
+            resources.getString(R.string.connection_network_required)
+        }
+        "connection.no_network" -> {
+            resources.getString(R.string.connection_no_network)
+        }
+        "connection.no_network_empty" -> {
+            resources.getString(R.string.connection_no_network_empty)
+        }
+        "connection.no_network_previous" -> {
+            resources.getString(R.string.connection_no_network_previous)
+        }
+        "connection.no_response" -> {
+            resources.getString(R.string.connection_no_response)
+        }
+        "connection.no_server" -> {
+            resources.getString(R.string.connection_no_server)
+        }
+        "connection.previous_below" -> {
+            resources.getString(R.string.connection_previous_below)
+        }
+        "connection.reconnecting" -> {
+            resources.getString(R.string.connection_reconnecting)
+        }
+        "connection.retrying_previous" -> {
+            resources.getString(R.string.connection_retrying_previous)
+        }
+        "connection.server_details" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.connection_server_details, reason)
+        }
+        "connection.server_retrying" -> {
+            resources.getString(R.string.connection_server_retrying)
+        }
+        "home.add_device" -> {
+            resources.getString(R.string.home_add_device)
+        }
+        "home.add_via_manager" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.home_add_via_manager, name)
+        }
+        "home.all_projects" -> {
+            resources.getString(R.string.home_all_projects)
+        }
+        "home.choose_scope" -> {
+            resources.getString(R.string.home_choose_scope)
+        }
+        "home.clear_filter" -> {
+            resources.getString(R.string.home_clear_filter)
+        }
+        "home.computer_runs_cli" -> {
+            resources.getString(R.string.home_computer_runs_cli)
+        }
+        "home.connection_check" -> {
+            resources.getString(R.string.home_connection_check)
+        }
+        "home.connection_label" -> {
+            val state = message.args.getValue("state") as String
+            resources.getString(R.string.home_connection_label, state)
+        }
+        "home.filter_title" -> {
+            resources.getString(R.string.home_filter_title)
+        }
+        "home.forked" -> {
+            resources.getString(R.string.home_forked)
+        }
+        "home.idle_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_idle_count, count, count)
+        }
+        "home.list_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.home_list_failed, reason)
+        }
+        "home.live" -> {
+            resources.getString(R.string.home_live)
+        }
+        "home.loading_earlier" -> {
+            resources.getString(R.string.home_loading_earlier)
+        }
+        "home.manage_projects" -> {
+            resources.getString(R.string.home_manage_projects)
+        }
+        "home.matches" -> {
+            val count = message.args.getValue("count") as Int
+            val query = message.args.getValue("query") as String
+            resources.getQuantityString(R.plurals.home_matches, count, count, query)
+        }
+        "home.matches_loading" -> {
+            val count = message.args.getValue("count") as Int
+            val query = message.args.getValue("query") as String
+            resources.getQuantityString(R.plurals.home_matches_loading, count, count, query)
+        }
+        "home.more_live" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_more_live, count, count)
+        }
+        "home.more_waiting" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_more_waiting, count, count)
+        }
+        "home.new_schedule" -> {
+            resources.getString(R.string.home_new_schedule)
+        }
+        "home.new_task" -> {
+            resources.getString(R.string.home_new_task)
+        }
+        "home.no_matches" -> {
+            val query = message.args.getValue("query") as String
+            resources.getString(R.string.home_no_matches, query)
+        }
+        "home.no_online_computer" -> {
+            val command = message.args.getValue("command") as String
+            resources.getString(R.string.home_no_online_computer, command)
+        }
+        "home.no_sessions" -> {
+            resources.getString(R.string.home_no_sessions)
+        }
+        "home.nothing_waiting" -> {
+            resources.getString(R.string.home_nothing_waiting)
+        }
+        "home.online_new_task" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.home_online_new_task, name)
+        }
+        "home.online_start" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.home_online_start, name)
+        }
+        "home.other_idle" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_other_idle, count, count)
+        }
+        "home.pending_label" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_pending_label, count, count)
+        }
+        "home.project_no_sessions" -> {
+            resources.getString(R.string.home_project_no_sessions)
+        }
+        "home.running_and_idle" -> {
+            val count = message.args.getValue("count") as Int
+            val idle = message.args.getValue("idle") as Int
+            resources.getQuantityString(R.plurals.home_running_and_idle, count, count, idle)
+        }
+        "home.running_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_running_count, count, count)
+        }
+        "home.scheduled_frequency" -> {
+            val frequency = message.args.getValue("frequency") as String
+            resources.getString(R.string.home_scheduled_frequency, frequency)
+        }
+        "home.scheduled_tasks" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_scheduled_tasks, count, count)
+        }
+        "home.schedules_tab" -> {
+            resources.getString(R.string.home_schedules_tab)
+        }
+        "home.scope_label" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.home_scope_label, name)
+        }
+        "home.sessions_or_schedules" -> {
+            resources.getString(R.string.home_sessions_or_schedules)
+        }
+        "home.sessions_tab" -> {
+            resources.getString(R.string.home_sessions_tab)
+        }
+        "home.sessions_unavailable" -> {
+            resources.getString(R.string.home_sessions_unavailable)
+        }
+        "home.start_first" -> {
+            resources.getString(R.string.home_start_first)
+        }
+        "home.total" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_total, count, count)
+        }
+        "home.total_load_earlier" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_total_load_earlier, count, count)
+        }
+        "home.update_ready" -> {
+            resources.getString(R.string.home_update_ready)
+        }
+        "home.waiting_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.home_waiting_count, count, count)
+        }
         "image.attach_failed" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.image_attach_failed, count, count)
+        }
+        "list_state.agent_asking" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.list_state_agent_asking, agent)
+        }
+        "list_state.approval" -> {
+            resources.getString(R.string.list_state_approval)
+        }
+        "list_state.ended" -> {
+            resources.getString(R.string.list_state_ended)
+        }
+        "list_state.idle" -> {
+            resources.getString(R.string.list_state_idle)
+        }
+        "list_state.no_message" -> {
+            resources.getString(R.string.list_state_no_message)
+        }
+        "list_state.offline" -> {
+            resources.getString(R.string.list_state_offline)
+        }
+        "list_state.plan" -> {
+            resources.getString(R.string.list_state_plan)
+        }
+        "list_state.popup" -> {
+            resources.getString(R.string.list_state_popup)
+        }
+        "list_state.question" -> {
+            resources.getString(R.string.list_state_question)
+        }
+        "list_state.request_command" -> {
+            val command = message.args.getValue("command") as String
+            resources.getString(R.string.list_state_request_command, command)
+        }
+        "list_state.request_permission" -> {
+            val tool = message.args.getValue("tool") as String
+            resources.getString(R.string.list_state_request_permission, tool)
+        }
+        "list_state.running" -> {
+            resources.getString(R.string.list_state_running)
+        }
+        "list_state.starting" -> {
+            resources.getString(R.string.list_state_starting)
+        }
+        "list_state.unlinked" -> {
+            resources.getString(R.string.list_state_unlinked)
+        }
+        "markdown.collapse" -> {
+            resources.getString(R.string.markdown_collapse)
+        }
+        "markdown.copy_code" -> {
+            resources.getString(R.string.markdown_copy_code)
+        }
+        "markdown.copy_failed" -> {
+            resources.getString(R.string.markdown_copy_failed)
+        }
+        "markdown.expand" -> {
+            resources.getString(R.string.markdown_expand)
+        }
+        "markdown.line_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.markdown_line_count, count, count)
+        }
+        "models.all" -> {
+            resources.getString(R.string.models_all)
+        }
+        "models.back" -> {
+            resources.getString(R.string.models_back)
+        }
+        "models.context_window" -> {
+            resources.getString(R.string.models_context_window)
+        }
+        "models.default" -> {
+            resources.getString(R.string.models_default)
+        }
+        "models.default_named" -> {
+            val model = message.args.getValue("model") as String
+            resources.getString(R.string.models_default_named, model)
+        }
+        "models.effort" -> {
+            resources.getString(R.string.models_effort)
+        }
+        "models.effort_default" -> {
+            resources.getString(R.string.models_effort_default)
+        }
+        "models.extended_window" -> {
+            resources.getString(R.string.models_extended_window)
+        }
+        "models.fixed_effort" -> {
+            val effort = message.args.getValue("effort") as String
+            resources.getString(R.string.models_fixed_effort, effort)
+        }
+        "models.load_failed_default" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.models_load_failed_default, agent)
+        }
+        "models.standard_only" -> {
+            resources.getString(R.string.models_standard_only)
+        }
+        "models.standard_window" -> {
+            resources.getString(R.string.models_standard_window)
+        }
+        "models.summary_effort_label" -> {
+            val effort = message.args.getValue("effort") as String
+            val model = message.args.getValue("model") as String
+            resources.getString(R.string.models_summary_effort_label, effort, model)
+        }
+        "models.summary_label" -> {
+            val model = message.args.getValue("model") as String
+            resources.getString(R.string.models_summary_label, model)
+        }
+        "models.title" -> {
+            resources.getString(R.string.models_title)
+        }
+        "new_session.abandon_start" -> {
+            resources.getString(R.string.new_session_abandon_start)
+        }
+        "new_session.account_no_auto" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_account_no_auto, name)
+        }
+        "new_session.attachments_moved" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_attachments_moved, name)
+        }
+        "new_session.change_defaults" -> {
+            resources.getString(R.string.new_session_change_defaults)
+        }
+        "new_session.change_machine" -> {
+            resources.getString(R.string.new_session_change_machine)
+        }
+        "new_session.change_model" -> {
+            resources.getString(R.string.new_session_change_model)
+        }
+        "new_session.choose_cli" -> {
+            resources.getString(R.string.new_session_choose_cli)
+        }
+        "new_session.cli_fallback" -> {
+            val agent = message.args.getValue("agent") as String
+            val missing = message.args.getValue("missing") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_cli_fallback, agent, missing, name)
+        }
+        "new_session.cli_label" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.new_session_cli_label, agent)
+        }
+        "new_session.cli_picker_label" -> {
+            resources.getString(R.string.new_session_cli_picker_label)
+        }
+        "new_session.config_fallback" -> {
+            resources.getString(R.string.new_session_config_fallback)
+        }
+        "new_session.default_model" -> {
+            resources.getString(R.string.new_session_default_model)
+        }
+        "new_session.disconnected" -> {
+            resources.getString(R.string.new_session_disconnected)
+        }
+        "new_session.expired_start" -> {
+            resources.getString(R.string.new_session_expired_start)
+        }
+        "new_session.first_message" -> {
+            resources.getString(R.string.new_session_first_message)
+        }
+        "new_session.follow_cli" -> {
+            resources.getString(R.string.new_session_follow_cli)
+        }
+        "new_session.installed" -> {
+            val agents = message.args.getValue("agents") as String
+            resources.getString(R.string.new_session_installed, agents)
+        }
+        "new_session.installed_fallback" -> {
+            val agent = message.args.getValue("agent") as String
+            val agents = message.args.getValue("agents") as String
+            val missing = message.args.getValue("missing") as String
+            resources.getString(R.string.new_session_installed_fallback, agent, agents, missing)
+        }
+        "new_session.location" -> {
+            val project = message.args.getValue("project") as String
+            resources.getString(R.string.new_session_location, project)
+        }
+        "new_session.location_cli" -> {
+            val cli = message.args.getValue("cli") as String
+            val project = message.args.getValue("project") as String
+            resources.getString(R.string.new_session_location_cli, cli, project)
+        }
+        "new_session.location_machine" -> {
+            val machine = message.args.getValue("machine") as String
+            val project = message.args.getValue("project") as String
+            resources.getString(R.string.new_session_location_machine, machine, project)
+        }
+        "new_session.location_machine_cli" -> {
+            val cli = message.args.getValue("cli") as String
+            val machine = message.args.getValue("machine") as String
+            val project = message.args.getValue("project") as String
+            resources.getString(R.string.new_session_location_machine_cli, cli, machine, project)
+        }
+        "new_session.machine_label" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_machine_label, name)
+        }
+        "new_session.machine_offline" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_machine_offline, name)
+        }
+        "new_session.model_no_auto" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_model_no_auto, name)
+        }
+        "new_session.offline_last_seen" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.new_session_offline_last_seen, time)
+        }
+        "new_session.offline_no_start" -> {
+            resources.getString(R.string.new_session_offline_no_start)
+        }
+        "new_session.offline_with_draft" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_offline_with_draft, name)
+        }
+        "new_session.project_label" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_project_label, name)
+        }
+        "new_session.project_session_label" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_project_session_label, name)
+        }
+        "new_session.prompt" -> {
+            resources.getString(R.string.new_session_prompt)
+        }
+        "new_session.reading_models" -> {
+            resources.getString(R.string.new_session_reading_models)
+        }
+        "new_session.reading_previous" -> {
+            resources.getString(R.string.new_session_reading_previous)
+        }
+        "new_session.reading_settings" -> {
+            resources.getString(R.string.new_session_reading_settings)
+        }
+        "new_session.removed_blocked" -> {
+            resources.getString(R.string.new_session_removed_blocked)
+        }
+        "new_session.retry_save" -> {
+            resources.getString(R.string.new_session_retry_save)
+        }
+        "new_session.save_failed" -> {
+            resources.getString(R.string.new_session_save_failed)
+        }
+        "new_session.start" -> {
+            resources.getString(R.string.new_session_start)
+        }
+        "new_session.start_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.new_session_start_failed, reason)
+        }
+        "new_session.start_shortcut" -> {
+            val keys = message.args.getValue("keys") as String
+            resources.getString(R.string.new_session_start_shortcut, keys)
+        }
+        "new_session.start_unknown" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.new_session_start_unknown, reason)
+        }
+        "new_session.starting_on" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_starting_on, name)
+        }
+        "new_session.unconfirmed_start" -> {
+            resources.getString(R.string.new_session_unconfirmed_start)
+        }
+        "new_session.unexpected_reply" -> {
+            resources.getString(R.string.new_session_unexpected_reply)
+        }
+        "new_session.use_machine" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_use_machine, name)
+        }
+        "projects.add_again" -> {
+            resources.getString(R.string.projects_add_again)
+        }
+        "projects.adding" -> {
+            resources.getString(R.string.projects_adding)
+        }
+        "projects.changed_elsewhere" -> {
+            resources.getString(R.string.projects_changed_elsewhere)
+        }
+        "projects.choose" -> {
+            resources.getString(R.string.projects_choose)
+        }
+        "projects.choose_directory" -> {
+            resources.getString(R.string.projects_choose_directory)
+        }
+        "projects.computer_offline" -> {
+            resources.getString(R.string.projects_computer_offline)
+        }
+        "projects.connect_to_edit" -> {
+            resources.getString(R.string.projects_connect_to_edit)
+        }
+        "projects.count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.projects_count, count, count)
+        }
+        "projects.directory_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.projects_directory_failed, reason)
+        }
+        "projects.live_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.projects_live_count, count, count)
+        }
+        "projects.load_failed" -> {
+            resources.getString(R.string.projects_load_failed)
+        }
+        "projects.loading" -> {
+            resources.getString(R.string.projects_loading)
+        }
+        "projects.manage" -> {
+            resources.getString(R.string.projects_manage)
+        }
+        "projects.manage_named" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.projects_manage_named, name)
+        }
+        "projects.new" -> {
+            resources.getString(R.string.projects_new)
+        }
+        "projects.new_choose_directory" -> {
+            resources.getString(R.string.projects_new_choose_directory)
+        }
+        "projects.no_online_computers" -> {
+            resources.getString(R.string.projects_no_online_computers)
+        }
+        "projects.no_subdirectories" -> {
+            resources.getString(R.string.projects_no_subdirectories)
+        }
+        "projects.others" -> {
+            resources.getString(R.string.projects_others)
+        }
+        "projects.parent_directory" -> {
+            resources.getString(R.string.projects_parent_directory)
+        }
+        "projects.pending_and_live" -> {
+            val count = message.args.getValue("count") as Int
+            val live = message.args.getValue("live") as Int
+            resources.getQuantityString(R.plurals.projects_pending_and_live, count, count, live)
+        }
+        "projects.pending_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.projects_pending_count, count, count)
+        }
+        "projects.pin" -> {
+            resources.getString(R.string.projects_pin)
+        }
+        "projects.pinned" -> {
+            resources.getString(R.string.projects_pinned)
+        }
+        "projects.reading_directory" -> {
+            resources.getString(R.string.projects_reading_directory)
+        }
+        "projects.remove_action" -> {
+            resources.getString(R.string.projects_remove_action)
+        }
+        "projects.remove_explanation" -> {
+            resources.getString(R.string.projects_remove_explanation)
+        }
+        "projects.remove_note" -> {
+            resources.getString(R.string.projects_remove_note)
+        }
+        "projects.remove_title" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.projects_remove_title, name)
+        }
+        "projects.removed" -> {
+            resources.getString(R.string.projects_removed)
+        }
+        "projects.save_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.projects_save_failed, reason)
+        }
+        "projects.search" -> {
+            resources.getString(R.string.projects_search)
+        }
+        "projects.search_empty" -> {
+            val query = message.args.getValue("query") as String
+            resources.getString(R.string.projects_search_empty, query)
+        }
+        "projects.syncing" -> {
+            resources.getString(R.string.projects_syncing)
+        }
+        "projects.unknown" -> {
+            resources.getString(R.string.projects_unknown)
+        }
+        "projects.unpin" -> {
+            resources.getString(R.string.projects_unpin)
+        }
+        "projects.use_directory" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.projects_use_directory, name)
+        }
+        "projects.view_sessions" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.projects_view_sessions, name)
+        }
+        "time.hours_ago" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.time_hours_ago, count, count)
+        }
+        "time.just_now" -> {
+            resources.getString(R.string.time_just_now)
+        }
+        "time.last_week" -> {
+            resources.getString(R.string.time_last_week)
+        }
+        "time.minutes_ago" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.time_minutes_ago, count, count)
+        }
+        "time.month_day" -> {
+            val day = message.args.getValue("day") as Int
+            val month = message.args.getValue("month") as Int
+            resources.getString(R.string.time_month_day, day, month)
+        }
+        "time.month_group" -> {
+            val month = message.args.getValue("month") as Int
+            resources.getString(R.string.time_month_group, month)
+        }
+        "time.today" -> {
+            resources.getString(R.string.time_today)
+        }
+        "time.weekday" -> {
+            val day = message.args.getValue("day") as String
+            val id = when (day) {
+                "fri" -> R.string.time_weekday_fri
+                "mon" -> R.string.time_weekday_mon
+                "sat" -> R.string.time_weekday_sat
+                "sun" -> R.string.time_weekday_sun
+                "thu" -> R.string.time_weekday_thu
+                "tue" -> R.string.time_weekday_tue
+                "wed" -> R.string.time_weekday_wed
+                else -> R.string.time_weekday_other
+            }
+            resources.getString(id, day)
+        }
+        "time.year_month_group" -> {
+            val month = message.args.getValue("month") as Int
+            val year = message.args.getValue("year") as Int
+            resources.getString(R.string.time_year_month_group, month, year)
+        }
+        "time.yesterday" -> {
+            resources.getString(R.string.time_yesterday)
         }
         else -> error("Unknown UI message key")
     }

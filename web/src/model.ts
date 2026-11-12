@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { isSkeleton } from "./skeleton";
 import { approvalDisplay } from "./approval-display";
 import { agentInfo, agentName, DEFAULT_AGENT, isKnownAgent } from "./agents";
@@ -120,7 +121,7 @@ export function projectKey(s: SessionLike): string {
 
 /** A project's name: the last folder of its path. */
 export function projectName(key: string): string {
-  return key.split("/").filter(Boolean).pop() || "未知项目";
+  return key.split("/").filter(Boolean).pop() || t("projects.unknown");
 }
 
 export const compareProjects = (
@@ -228,7 +229,7 @@ export function projects<S extends SessionLike>(
 export function machineName(m?: MachineLike): string {
   return (
     m?.meta?.hostname?.replace(/\.local$/, "") ||
-    (m ? m.id.slice(0, 8) : "未知电脑")
+    (m ? m.id.slice(0, 8) : t("common.unknown_computer"))
   );
 }
 
@@ -268,17 +269,17 @@ export interface State {
   text: string;
 }
 
-const stateText: Record<StateKind, [Tone, string]> = {
-  ended: ["off", "已结束"],
-  offline: ["off", "电脑离线"],
-  unlinked: ["off", "未连接"],
-  approval: ["wait", "等待审批"],
-  question: ["wait", "等你回答"],
-  plan: ["wait", "计划待批准"],
-  popup: ["wait", "终端里有弹窗"],
-  starting: ["run", "启动中"],
-  running: ["run", "运行中"],
-  idle: ["idle", "空闲"],
+const stateText: Record<StateKind, [Tone, () => string]> = {
+  ended: ["off", () => t("list_state.ended")],
+  offline: ["off", () => t("list_state.offline")],
+  unlinked: ["off", () => t("list_state.unlinked")],
+  approval: ["wait", () => t("list_state.approval")],
+  question: ["wait", () => t("list_state.question")],
+  plan: ["wait", () => t("list_state.plan")],
+  popup: ["wait", () => t("list_state.popup")],
+  starting: ["run", () => t("list_state.starting")],
+  running: ["run", () => t("list_state.running")],
+  idle: ["idle", () => t("list_state.idle")],
 };
 
 export function exited(s: SessionLike): boolean {
@@ -301,7 +302,7 @@ export function stateOf(s: SessionLike, machine?: MachineLike): State {
   else if (i.status === SessionStatus.RUNNING) kind = "running";
   else kind = "idle";
   const [tone, text] = stateText[kind];
-  return { kind, tone, text };
+  return { kind, tone, text: text() };
 }
 
 /** The state to show for a session. Out of reach of the server, the last
@@ -315,7 +316,7 @@ export function shownStateOf(
   const st = stateOf(s, machine);
   if (!unlinked || st.kind === "ended") return st;
   const [tone, text] = stateText.unlinked;
-  return { kind: "unlinked", tone, text };
+  return { kind: "unlinked", tone, text: text() };
 }
 
 /** Why a session cannot be forked now, or "" when it can: the CLIs fork a
@@ -366,18 +367,18 @@ export function previewOf(
     case "approval":
       if (!pending?.approval) return st.text;
       return pending.approval.command
-        ? "请求执行 " + oneLine(approvalDisplay(pending.approval.command))
-        : "请求权限 · " + approvalDisplay(pending.approval.toolName);
+        ? t("list_state.request_command", { command: oneLine(approvalDisplay(pending.approval.command)) })
+        : t("list_state.request_permission", { tool: approvalDisplay(pending.approval.toolName) });
     case "question":
       return pending?.question?.questions[0]?.text || st.text;
     case "plan":
-      return "计划待批准";
+      return t("list_state.plan");
     case "popup":
       return s.info?.statusDetail || st.text;
   }
   const p = plain(s.info?.preview || "");
   if (p) return p;
-  return s.info?.title ? st.text : "还没发消息";
+  return s.info?.title ? st.text : t("list_state.no_message");
 }
 
 /** Strip table delimiters before flattening Markdown into a preview. Rows
@@ -419,30 +420,30 @@ function oneLine(s: string): string {
 
 /** Short time, like the mockup: 刚刚, 3 分钟前, 9:12, 昨天, 9月27日. */
 export function when(ms: number | bigint, now = Date.now()): string {
-  const t = Number(ms);
-  if (!t) return "";
-  const d = now - t;
-  if (d < 60_000) return "刚刚";
-  if (d < 3_600_000) return `${Math.floor(d / 60_000)} 分钟前`;
-  const then = new Date(t);
-  if (then.toDateString() === new Date(now).toDateString()) return hhmm(t);
+  const time = Number(ms);
+  if (!time) return "";
+  const d = now - time;
+  if (d < 60_000) return t("time.just_now");
+  if (d < 3_600_000) return t("time.minutes_ago", { count: Math.floor(d / 60_000) });
+  const then = new Date(time);
+  if (then.toDateString() === new Date(now).toDateString()) return hhmm(time);
   if (then.toDateString() === new Date(now - 86_400_000).toDateString())
-    return "昨天";
-  return `${then.getMonth() + 1}月${then.getDate()}日`;
+    return t("time.yesterday");
+  return t("time.month_day", { month: then.getMonth() + 1, day: then.getDate() });
 }
 
 /** How long ago, for projects and machines: 2 小时前 rather than 9:12. */
 export function ago(ms: number | bigint, now = Date.now()): string {
-  const t = Number(ms);
-  if (!t) return "";
-  const d = now - t;
+  const time = Number(ms);
+  if (!time) return "";
+  const d = now - time;
   if (
     d >= 3_600_000 &&
     d < 86_400_000 &&
-    new Date(t).toDateString() === new Date(now).toDateString()
+    new Date(time).toDateString() === new Date(now).toDateString()
   )
-    return `${Math.floor(d / 3_600_000)} 小时前`;
-  return when(t, now);
+    return t("time.hours_ago", { count: Math.floor(d / 3_600_000) });
+  return when(time, now);
 }
 
 /** Whole calendar days from a time to now, by local midnight. */
@@ -458,13 +459,13 @@ function daysAgo(ms: number, now: number): number {
 /** The date group an ended session is listed under on the home timeline. */
 export function dayGroup(ms: number, now = Date.now()): string {
   const n = daysAgo(ms, now);
-  if (n <= 0) return "今天";
-  if (n === 1) return "昨天";
-  if (n < 7) return "近 7 天";
+  if (n <= 0) return t("time.today");
+  if (n === 1) return t("time.yesterday");
+  if (n < 7) return t("time.last_week");
   const d = new Date(ms);
   return d.getFullYear() === new Date(now).getFullYear()
-    ? `${d.getMonth() + 1} 月`
-    : `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+    ? t("time.month_group", { month: d.getMonth() + 1 })
+    : t("time.year_month_group", { year: d.getFullYear(), month: d.getMonth() + 1 });
 }
 
 /** When a session ended, in the terms of its date group: the time under
@@ -475,8 +476,8 @@ export function endedTime(ms: number, now = Date.now()): string {
   if (n <= 1) return hhmm(ms);
   const d = new Date(ms);
   return n < 7
-    ? "周" + "日一二三四五六"[d.getDay()]
-    : `${d.getMonth() + 1}月${d.getDate()}日`;
+    ? t("time.weekday", { day: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][d.getDay()] })
+    : t("time.month_day", { month: d.getMonth() + 1, day: d.getDate() });
 }
 
 export function hhmm(ms: number): string {
@@ -1826,5 +1827,5 @@ export function exitReason(
 // --- wording that names the CLI ---
 
 export function askTitle(a: Agent): string {
-  return `${agentName(a)} 在问你`;
+  return t("list_state.agent_asking", { agent: agentName(a) });
 }

@@ -1,0 +1,713 @@
+[
+  {
+    "key": "projects.add_again",
+    "zh-CN": "重新添加",
+    "en": "Add again",
+    "notes": "已移除项目横幅操作，恢复列出。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.adding",
+    "zh-CN": "正在添加…",
+    "en": "Adding…",
+    "notes": "已移除项目横幅的忙碌按钮文字。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.changed_elsewhere",
+    "zh-CN": "项目列表已在另一客户端更新",
+    "en": "Projects were updated on another client",
+    "notes": "列表同步后的横幅。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.choose",
+    "zh-CN": "选项目",
+    "en": "Choose a project",
+    "notes": "新任务的项目选择弹层标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.choose_directory",
+    "zh-CN": "项目 · 选目录",
+    "en": "Project · Choose a folder",
+    "notes": "固定机器的新项目弹层标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.computer_offline",
+    "zh-CN": "电脑不在线",
+    "en": "Computer offline",
+    "notes": "项目行第二行离线说明 空间：短标签/列表行保持紧凑，正文可多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.connect_to_edit",
+    "zh-CN": "连上服务器后才能修改",
+    "en": "Connect to the server to make changes",
+    "notes": "项目操作禁用原因，菜单行下说明。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个项目"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} project",
+        "other": "{count} projects"
+      }
+    },
+    "notes": "项目范围菜单全部项目行下的项目数量说明；count 是已列出的项目数。单行紧凑空间。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.directory_failed",
+    "zh-CN": "读不了这个目录：{reason}",
+    "en": "Could not read this folder: {reason}",
+    "notes": "新项目目录选择弹层的读取失败横幅正文；reason 是电脑返回的目录读取错误原文。允许多行。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Error"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.live_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个进行中"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} in progress",
+        "other": "{count} in progress"
+      }
+    },
+    "notes": "项目行和范围菜单进行中会话数 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.load_failed",
+    "zh-CN": "没能读取项目列表",
+    "en": "Could not load projects",
+    "notes": "项目列表加载失败横幅及禁用原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.loading",
+    "zh-CN": "正在读取项目列表…",
+    "en": "Loading projects…",
+    "notes": "项目列表不可修改时的原因。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.manage",
+    "zh-CN": "项目管理",
+    "en": "Manage projects",
+    "notes": "项目管理页导航标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.manage_named",
+    "zh-CN": "管理 {name}",
+    "en": "Manage {name}",
+    "notes": "项目行尾省略按钮读屏标签；name 是项目名 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.new",
+    "zh-CN": "新项目…",
+    "en": "New project…",
+    "notes": "项目列表底部添加按钮，前有加号。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.new_choose_directory",
+    "zh-CN": "新项目 · 选目录",
+    "en": "New project · Choose a folder",
+    "notes": "新项目目录选择弹层标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.no_online_computers",
+    "zh-CN": "没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。",
+    "en": "No computers are online. Run remote-agent daemon on your computer, then try again.",
+    "notes": "新项目目录选择页空状态说明；命令保持原样。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.no_subdirectories",
+    "zh-CN": "没有子目录",
+    "en": "No subfolders",
+    "notes": "目录浏览器空列表说明。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.others",
+    "zh-CN": "其他",
+    "en": "Other",
+    "notes": "项目列表分组标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.parent_directory",
+    "zh-CN": "上一级",
+    "en": "Parent folder",
+    "notes": "目录浏览器返回上级目录按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.pending_and_live",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个待处理 · {live} 个进行中"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} pending · {live} in progress",
+        "other": "{count} pending · {live} in progress"
+      }
+    },
+    "notes": "项目行第二行与范围菜单的会话数量摘要 空间：短标签/列表行保持紧凑，正文可多行。 变量：count, live，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "live": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.pending_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个待处理"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} pending",
+        "other": "{count} pending"
+      }
+    },
+    "notes": "项目行和范围菜单待处理会话数 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.pin",
+    "zh-CN": "设为常用",
+    "en": "Pin",
+    "notes": "项目管理菜单按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.pinned",
+    "zh-CN": "常用",
+    "en": "Pinned",
+    "notes": "项目列表分组标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.reading_directory",
+    "zh-CN": "读取中…",
+    "en": "Loading…",
+    "notes": "目录浏览器加载状态。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.remove_action",
+    "zh-CN": "移除项目…",
+    "en": "Remove project…",
+    "notes": "项目菜单危险操作按钮，打开确认。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.remove_explanation",
+    "zh-CN": "只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。",
+    "en": "Only removes the project from the list. Sessions, history, and the folder on your computer stay in place. Add the folder with “New project” to use it again.",
+    "notes": "移除项目确认对话框正文，说明后果，允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.remove_note",
+    "zh-CN": "移除只是不再列出这个项目，会话和电脑上的目录都不动。",
+    "en": "Removing a project only hides it from the list. Sessions and the folder on your computer stay in place.",
+    "notes": "项目管理列表下方说明，允许换行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.remove_title",
+    "zh-CN": "移除 {name}？",
+    "en": "Remove {name}?",
+    "notes": "移除项目确认对话框标题；name 为项目名 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.removed",
+    "zh-CN": "这个项目已从列表移除",
+    "en": "This project was removed from the list",
+    "notes": "项目页横幅说明。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.save_failed",
+    "zh-CN": "没能保存，列表保持原样：{reason}",
+    "en": "Could not save. The list is unchanged: {reason}",
+    "notes": "项目同步失败横幅，reason 为错误原文 空间：短标签/列表行保持紧凑，正文可多行。 变量：reason，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Error"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.search",
+    "zh-CN": "搜索项目",
+    "en": "Search projects",
+    "notes": "项目选择/管理搜索输入框占位及读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.search_empty",
+    "zh-CN": "没有名字或路径里有「{query}」的项目",
+    "en": "No projects with “{query}” in their name or path",
+    "notes": "项目搜索空结果正文；query 是用户输入 空间：短标签/列表行保持紧凑，正文可多行。 变量：query，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "query": {
+        "type": "string",
+        "example": "example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.syncing",
+    "zh-CN": "正在同步项目列表…",
+    "en": "Syncing projects…",
+    "notes": "项目同步横幅，前有加载图标。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.unknown",
+    "zh-CN": "未知项目",
+    "en": "Unknown project",
+    "notes": "缺失项目路径时的名称回退。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.unpin",
+    "zh-CN": "取消常用",
+    "en": "Unpin",
+    "notes": "项目管理菜单按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.use_directory",
+    "zh-CN": "用 {name} 这个目录",
+    "en": "Use folder {name}",
+    "notes": "新项目目录选择弹层底部确认按钮；name 是当前目录最后一段（可为 ~ 或 /）。单行按钮。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "projects.view_sessions",
+    "zh-CN": "看 {name} 的会话",
+    "en": "View sessions in {name}",
+    "notes": "项目管理行的读屏标签；name 为项目名 空间：短标签/列表行保持紧凑，正文可多行。 变量：name，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

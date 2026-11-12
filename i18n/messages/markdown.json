@@ -1,0 +1,98 @@
+[
+  {
+    "key": "markdown.collapse",
+    "zh-CN": "收起",
+    "en": "Collapse",
+    "notes": "公共长文本块折叠按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "markdown.copy_code",
+    "zh-CN": "复制代码",
+    "en": "Copy code",
+    "notes": "公共代码块复制按钮读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "markdown.copy_failed",
+    "zh-CN": "复制失败",
+    "en": "Copy failed",
+    "notes": "代码块复制按钮失败后的读屏标签。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "markdown.expand",
+    "zh-CN": "展开全文",
+    "en": "Show full text",
+    "notes": "公共长文本块展开按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "markdown.line_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "共 {count} 行"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} line",
+        "other": "{count} lines"
+      }
+    },
+    "notes": "公共长文本块行数提示 空间：短标签/列表行保持紧凑，正文可多行。 变量：count，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

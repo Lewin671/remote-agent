@@ -37,55 +37,875 @@ export const localeData = {
 } as const;
 export type Locale = typeof localeData.locales[number]["id"];
 export interface MessageArgs {
+  "common.all_projects_avatar": { [name: string]: never };
   "common.back": { [name: string]: never };
   "common.cancel": { [name: string]: never };
+  "common.clear_search": { [name: string]: never };
   "common.close": { [name: string]: never };
   "common.copied": { [name: string]: never };
   "common.copy": { [name: string]: never };
   "common.details": { [name: string]: never };
   "common.done": { [name: string]: never };
+  "common.got_it": { [name: string]: never };
+  "common.list_separator": { [name: string]: never };
+  "common.loading": { [name: string]: never };
+  "common.machine": { [name: string]: never };
+  "common.reload": { [name: string]: never };
   "common.remove": { [name: string]: never };
   "common.retry": { [name: string]: never };
   "common.save": { [name: string]: never };
+  "common.settings": { [name: string]: never };
+  "common.unknown_computer": { [name: string]: never };
+  "connection.connecting": { [name: string]: never };
+  "connection.network_required": { [name: string]: never };
+  "connection.no_network": { [name: string]: never };
+  "connection.no_network_empty": { [name: string]: never };
+  "connection.no_network_previous": { [name: string]: never };
+  "connection.no_response": { [name: string]: never };
+  "connection.no_server": { [name: string]: never };
+  "connection.previous_below": { [name: string]: never };
+  "connection.reconnecting": { [name: string]: never };
+  "connection.retrying_previous": { [name: string]: never };
+  "connection.server_details": { reason: string };
+  "connection.server_retrying": { [name: string]: never };
+  "home.add_device": { [name: string]: never };
+  "home.add_via_manager": { name: string };
+  "home.all_projects": { [name: string]: never };
+  "home.choose_scope": { [name: string]: never };
+  "home.clear_filter": { [name: string]: never };
+  "home.computer_runs_cli": { [name: string]: never };
+  "home.connection_check": { [name: string]: never };
+  "home.connection_label": { state: string };
+  "home.filter_title": { [name: string]: never };
+  "home.forked": { [name: string]: never };
+  "home.idle_count": { count: number };
+  "home.list_failed": { reason: string };
+  "home.live": { [name: string]: never };
+  "home.loading_earlier": { [name: string]: never };
+  "home.manage_projects": { [name: string]: never };
+  "home.matches": { count: number; query: string };
+  "home.matches_loading": { count: number; query: string };
+  "home.more_live": { count: number };
+  "home.more_waiting": { count: number };
+  "home.new_schedule": { [name: string]: never };
+  "home.new_task": { [name: string]: never };
+  "home.no_matches": { query: string };
+  "home.no_online_computer": { command: string };
+  "home.no_sessions": { [name: string]: never };
+  "home.nothing_waiting": { [name: string]: never };
+  "home.online_new_task": { name: string };
+  "home.online_start": { name: string };
+  "home.other_idle": { count: number };
+  "home.pending_label": { count: number };
+  "home.project_no_sessions": { [name: string]: never };
+  "home.running_and_idle": { count: number; idle: number };
+  "home.running_count": { count: number };
+  "home.scheduled_frequency": { frequency: string };
+  "home.scheduled_tasks": { count: number };
+  "home.schedules_tab": { [name: string]: never };
+  "home.scope_label": { name: string };
+  "home.sessions_or_schedules": { [name: string]: never };
+  "home.sessions_tab": { [name: string]: never };
+  "home.sessions_unavailable": { [name: string]: never };
+  "home.start_first": { [name: string]: never };
+  "home.total": { count: number };
+  "home.total_load_earlier": { count: number };
+  "home.update_ready": { [name: string]: never };
+  "home.waiting_count": { count: number };
   "image.attach_failed": { count: number };
+  "list_state.agent_asking": { agent: string };
+  "list_state.approval": { [name: string]: never };
+  "list_state.ended": { [name: string]: never };
+  "list_state.idle": { [name: string]: never };
+  "list_state.no_message": { [name: string]: never };
+  "list_state.offline": { [name: string]: never };
+  "list_state.plan": { [name: string]: never };
+  "list_state.popup": { [name: string]: never };
+  "list_state.question": { [name: string]: never };
+  "list_state.request_command": { command: string };
+  "list_state.request_permission": { tool: string };
+  "list_state.running": { [name: string]: never };
+  "list_state.starting": { [name: string]: never };
+  "list_state.unlinked": { [name: string]: never };
+  "markdown.collapse": { [name: string]: never };
+  "markdown.copy_code": { [name: string]: never };
+  "markdown.copy_failed": { [name: string]: never };
+  "markdown.expand": { [name: string]: never };
+  "markdown.line_count": { count: number };
+  "models.all": { [name: string]: never };
+  "models.back": { [name: string]: never };
+  "models.context_window": { [name: string]: never };
+  "models.default": { [name: string]: never };
+  "models.default_named": { model: string };
+  "models.effort": { [name: string]: never };
+  "models.effort_default": { [name: string]: never };
+  "models.extended_window": { [name: string]: never };
+  "models.fixed_effort": { effort: string };
+  "models.load_failed_default": { agent: string };
+  "models.standard_only": { [name: string]: never };
+  "models.standard_window": { [name: string]: never };
+  "models.summary_effort_label": { effort: string; model: string };
+  "models.summary_label": { model: string };
+  "models.title": { [name: string]: never };
+  "new_session.abandon_start": { [name: string]: never };
+  "new_session.account_no_auto": { name: string };
+  "new_session.attachments_moved": { name: string };
+  "new_session.change_defaults": { [name: string]: never };
+  "new_session.change_machine": { [name: string]: never };
+  "new_session.change_model": { [name: string]: never };
+  "new_session.choose_cli": { [name: string]: never };
+  "new_session.cli_fallback": { agent: string; missing: string; name: string };
+  "new_session.cli_label": { agent: string };
+  "new_session.cli_picker_label": { [name: string]: never };
+  "new_session.config_fallback": { [name: string]: never };
+  "new_session.default_model": { [name: string]: never };
+  "new_session.disconnected": { [name: string]: never };
+  "new_session.expired_start": { [name: string]: never };
+  "new_session.first_message": { [name: string]: never };
+  "new_session.follow_cli": { [name: string]: never };
+  "new_session.installed": { agents: string };
+  "new_session.installed_fallback": { agent: string; agents: string; missing: string };
+  "new_session.location": { project: string };
+  "new_session.location_cli": { cli: string; project: string };
+  "new_session.location_machine": { machine: string; project: string };
+  "new_session.location_machine_cli": { cli: string; machine: string; project: string };
+  "new_session.machine_label": { name: string };
+  "new_session.machine_offline": { name: string };
+  "new_session.model_no_auto": { name: string };
+  "new_session.offline_last_seen": { time: string };
+  "new_session.offline_no_start": { [name: string]: never };
+  "new_session.offline_with_draft": { name: string };
+  "new_session.project_label": { name: string };
+  "new_session.project_session_label": { name: string };
+  "new_session.prompt": { [name: string]: never };
+  "new_session.reading_models": { [name: string]: never };
+  "new_session.reading_previous": { [name: string]: never };
+  "new_session.reading_settings": { [name: string]: never };
+  "new_session.removed_blocked": { [name: string]: never };
+  "new_session.retry_save": { [name: string]: never };
+  "new_session.save_failed": { [name: string]: never };
+  "new_session.start": { [name: string]: never };
+  "new_session.start_failed": { reason: string };
+  "new_session.start_shortcut": { keys: string };
+  "new_session.start_unknown": { reason: string };
+  "new_session.starting_on": { name: string };
+  "new_session.unconfirmed_start": { [name: string]: never };
+  "new_session.unexpected_reply": { [name: string]: never };
+  "new_session.use_machine": { name: string };
+  "projects.add_again": { [name: string]: never };
+  "projects.adding": { [name: string]: never };
+  "projects.changed_elsewhere": { [name: string]: never };
+  "projects.choose": { [name: string]: never };
+  "projects.choose_directory": { [name: string]: never };
+  "projects.computer_offline": { [name: string]: never };
+  "projects.connect_to_edit": { [name: string]: never };
+  "projects.count": { count: number };
+  "projects.directory_failed": { reason: string };
+  "projects.live_count": { count: number };
+  "projects.load_failed": { [name: string]: never };
+  "projects.loading": { [name: string]: never };
+  "projects.manage": { [name: string]: never };
+  "projects.manage_named": { name: string };
+  "projects.new": { [name: string]: never };
+  "projects.new_choose_directory": { [name: string]: never };
+  "projects.no_online_computers": { [name: string]: never };
+  "projects.no_subdirectories": { [name: string]: never };
+  "projects.others": { [name: string]: never };
+  "projects.parent_directory": { [name: string]: never };
+  "projects.pending_and_live": { count: number; live: number };
+  "projects.pending_count": { count: number };
+  "projects.pin": { [name: string]: never };
+  "projects.pinned": { [name: string]: never };
+  "projects.reading_directory": { [name: string]: never };
+  "projects.remove_action": { [name: string]: never };
+  "projects.remove_explanation": { [name: string]: never };
+  "projects.remove_note": { [name: string]: never };
+  "projects.remove_title": { name: string };
+  "projects.removed": { [name: string]: never };
+  "projects.save_failed": { reason: string };
+  "projects.search": { [name: string]: never };
+  "projects.search_empty": { query: string };
+  "projects.syncing": { [name: string]: never };
+  "projects.unknown": { [name: string]: never };
+  "projects.unpin": { [name: string]: never };
+  "projects.use_directory": { name: string };
+  "projects.view_sessions": { name: string };
+  "time.hours_ago": { count: number };
+  "time.just_now": { [name: string]: never };
+  "time.last_week": { [name: string]: never };
+  "time.minutes_ago": { count: number };
+  "time.month_day": { day: number; month: number };
+  "time.month_group": { month: number };
+  "time.today": { [name: string]: never };
+  "time.weekday": { day: string };
+  "time.year_month_group": { month: number; year: number };
+  "time.yesterday": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
   "en": {
+    "common.all_projects_avatar": "All",
     "common.back": "Back",
     "common.cancel": "Cancel",
+    "common.clear_search": "Clear search",
     "common.close": "Close",
     "common.copied": "Copied",
     "common.copy": "Copy",
     "common.details": "Details",
     "common.done": "Done",
+    "common.got_it": "Got it",
+    "common.list_separator": ", ",
+    "common.loading": "Loading",
+    "common.machine": "Computer",
+    "common.reload": "Reload",
     "common.remove": "Remove",
     "common.retry": "Retry",
     "common.save": "Save",
+    "common.settings": "Settings",
+    "common.unknown_computer": "Unknown computer",
+    "connection.connecting": "Connecting…",
+    "connection.network_required": "Connect to read sessions",
+    "connection.no_network": "No network connection",
+    "connection.no_network_empty": "No network connection · Connect to read sessions",
+    "connection.no_network_previous": "No network connection · Showing previous content",
+    "connection.no_response": "No response",
+    "connection.no_server": "Cannot connect to server",
+    "connection.previous_below": "Showing previous content below",
+    "connection.reconnecting": "Reconnecting…",
+    "connection.retrying_previous": "Retrying, showing previous content below",
+    "connection.server_details": "Cannot connect to server: {reason}. This device’s network may also be unavailable. Retrying automatically.",
+    "connection.server_retrying": "Cannot connect to server · Retrying",
+    "home.add_device": "Add device",
+    "home.add_via_manager": "No computers yet. Open “Settings › Add device” on the managing client ({name}) to add one.",
+    "home.all_projects": "All projects",
+    "home.choose_scope": "Which project?",
+    "home.clear_filter": "Clear filter",
+    "home.computer_runs_cli": "Run the CLI on your computer and control sessions from a client.",
+    "home.connection_check": "Check connection",
+    "home.connection_label": "{state}, check connection",
+    "home.filter_title": "Filter by title",
+    "home.forked": "Forked",
+    "home.idle_count": {
+      "forms": {
+        "one": "{count} session idle",
+        "other": "{count} sessions idle"
+      },
+      "plural": "count"
+    },
+    "home.list_failed": "Could not load sessions: {reason}",
+    "home.live": "In progress",
+    "home.loading_earlier": "Loading earlier sessions…",
+    "home.manage_projects": "Manage projects",
+    "home.matches": {
+      "forms": {
+        "one": "{count} session has “{query}” in its title",
+        "other": "{count} sessions have “{query}” in their title"
+      },
+      "plural": "count"
+    },
+    "home.matches_loading": {
+      "forms": {
+        "one": "{count} session has “{query}” in its title. Loading more",
+        "other": "{count} sessions have “{query}” in their title. Loading more"
+      },
+      "plural": "count"
+    },
+    "home.more_live": {
+      "forms": {
+        "one": "{count} more session",
+        "other": "{count} more sessions"
+      },
+      "plural": "count"
+    },
+    "home.more_waiting": {
+      "forms": {
+        "one": "{count} more item",
+        "other": "{count} more items"
+      },
+      "plural": "count"
+    },
+    "home.new_schedule": "New schedule",
+    "home.new_task": "New task",
+    "home.no_matches": "No sessions have “{query}” in their title",
+    "home.no_online_computer": "No computers are online. Run {command} on your computer",
+    "home.no_sessions": "No sessions yet",
+    "home.nothing_waiting": "Nothing needs your attention",
+    "home.online_new_task": "{name} is online. Tap “New task” at the bottom right to start your first session.",
+    "home.online_start": "{name} is online. Start your first session.",
+    "home.other_idle": {
+      "forms": {
+        "one": "{count} other idle",
+        "other": "{count} others idle"
+      },
+      "plural": "count"
+    },
+    "home.pending_label": {
+      "forms": {
+        "one": "{count} item needs your attention",
+        "other": "{count} items need your attention"
+      },
+      "plural": "count"
+    },
+    "home.project_no_sessions": "No sessions in this project yet",
+    "home.running_and_idle": {
+      "forms": {
+        "one": "{count} session running, {idle} idle",
+        "other": "{count} sessions running, {idle} idle"
+      },
+      "plural": "count"
+    },
+    "home.running_count": {
+      "forms": {
+        "one": "{count} session running",
+        "other": "{count} sessions running"
+      },
+      "plural": "count"
+    },
+    "home.scheduled_frequency": "Scheduled {frequency}",
+    "home.scheduled_tasks": {
+      "forms": {
+        "one": "{count} scheduled task",
+        "other": "{count} scheduled tasks"
+      },
+      "plural": "count"
+    },
+    "home.schedules_tab": "Schedules",
+    "home.scope_label": "Scope: {name}",
+    "home.sessions_or_schedules": "Sessions or schedules",
+    "home.sessions_tab": "Sessions",
+    "home.sessions_unavailable": "Sessions are unavailable",
+    "home.start_first": "Start your first session",
+    "home.total": {
+      "forms": {
+        "one": "{count} session",
+        "other": "{count} sessions"
+      },
+      "plural": "count"
+    },
+    "home.total_load_earlier": {
+      "forms": {
+        "one": "{count} session. Scroll to load earlier ones",
+        "other": "{count} sessions. Scroll to load earlier ones"
+      },
+      "plural": "count"
+    },
+    "home.update_ready": "A new version has been downloaded",
+    "home.waiting_count": {
+      "forms": {
+        "one": "{count} item needs you",
+        "other": "{count} items need you"
+      },
+      "plural": "count"
+    },
     "image.attach_failed": {
       "forms": {
         "one": "{count} image could not be attached. Tap it for details.",
         "other": "{count} images could not be attached. Tap an image for details."
       },
       "plural": "count"
-    }
+    },
+    "list_state.agent_asking": "{agent} is asking you",
+    "list_state.approval": "Awaiting approval",
+    "list_state.ended": "Ended",
+    "list_state.idle": "Idle",
+    "list_state.no_message": "No messages yet",
+    "list_state.offline": "Computer offline",
+    "list_state.plan": "Plan awaiting approval",
+    "list_state.popup": "Terminal popup",
+    "list_state.question": "Awaiting your answer",
+    "list_state.request_command": "Request to run {command}",
+    "list_state.request_permission": "Permission request · {tool}",
+    "list_state.running": "Running",
+    "list_state.starting": "Starting",
+    "list_state.unlinked": "Disconnected",
+    "markdown.collapse": "Collapse",
+    "markdown.copy_code": "Copy code",
+    "markdown.copy_failed": "Copy failed",
+    "markdown.expand": "Show full text",
+    "markdown.line_count": {
+      "forms": {
+        "one": "{count} line",
+        "other": "{count} lines"
+      },
+      "plural": "count"
+    },
+    "models.all": "All models",
+    "models.back": "Back to models",
+    "models.context_window": "Context window",
+    "models.default": "Default",
+    "models.default_named": "Default ({model})",
+    "models.effort": "Reasoning effort",
+    "models.effort_default": "Reasoning effort · Default",
+    "models.extended_window": "1M",
+    "models.fixed_effort": "Reasoning effort is fixed at {effort}",
+    "models.load_failed_default": "Could not load models. Using {agent}’s own default model",
+    "models.standard_only": "Standard 200k · This model only supports the standard window",
+    "models.standard_window": "Standard 200k",
+    "models.summary_effort_label": "Model: {model}, reasoning effort: {effort}",
+    "models.summary_label": "Model: {model}",
+    "models.title": "Model",
+    "new_session.abandon_start": "Abandon this start",
+    "new_session.account_no_auto": "This account does not support Auto mode, but {name} uses Auto by default for new projects. Change the default in “Settings › This computer” before starting.",
+    "new_session.attachments_moved": "Switched to {name}. Uploading attachments again",
+    "new_session.change_defaults": "Change defaults",
+    "new_session.change_machine": "Change computer",
+    "new_session.change_model": "Change model",
+    "new_session.choose_cli": "Which CLI?",
+    "new_session.cli_fallback": "{name} does not have {missing}. Using {agent} for this session",
+    "new_session.cli_label": "CLI: {agent}",
+    "new_session.cli_picker_label": "CLI",
+    "new_session.config_fallback": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
+    "new_session.default_model": "Default model",
+    "new_session.disconnected": "Disconnected from server",
+    "new_session.expired_start": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
+    "new_session.first_message": "First message of the new session",
+    "new_session.follow_cli": "Follow CLI settings",
+    "new_session.installed": "Installed: {agents}",
+    "new_session.installed_fallback": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
+    "new_session.location": "In {project}",
+    "new_session.location_cli": "In {project} using {cli}",
+    "new_session.location_machine": "On {machine} in {project}",
+    "new_session.location_machine_cli": "On {machine} in {project} using {cli}",
+    "new_session.machine_label": "Computer: {name}",
+    "new_session.machine_offline": "{name} is offline",
+    "new_session.model_no_auto": "This model has no Auto mode, but {name} uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.",
+    "new_session.offline_last_seen": "Last online {time}. Cannot start a session now",
+    "new_session.offline_no_start": "Cannot start a session now",
+    "new_session.offline_with_draft": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
+    "new_session.project_label": "Project: {name}",
+    "new_session.project_session_label": "{name} · New session",
+    "new_session.prompt": "What would you like to do?",
+    "new_session.reading_models": "Loading models…",
+    "new_session.reading_previous": "Loading this project’s previous settings…",
+    "new_session.reading_settings": "Loading settings…",
+    "new_session.removed_blocked": "This project was removed. Add it again first.",
+    "new_session.retry_save": "Retry saving",
+    "new_session.save_failed": "Project settings were not saved. Try again.",
+    "new_session.start": "Start new session",
+    "new_session.start_failed": "Could not start: {reason}",
+    "new_session.start_shortcut": "{keys} Start",
+    "new_session.start_unknown": "Start unconfirmed: {reason}. Retrying sends the same request and will not start another session.",
+    "new_session.starting_on": "Starting on {name}…",
+    "new_session.unconfirmed_start": "The previous start is still unconfirmed",
+    "new_session.unexpected_reply": "Unexpected response",
+    "new_session.use_machine": "Use {name}",
+    "projects.add_again": "Add again",
+    "projects.adding": "Adding…",
+    "projects.changed_elsewhere": "Projects were updated on another client",
+    "projects.choose": "Choose a project",
+    "projects.choose_directory": "Project · Choose a folder",
+    "projects.computer_offline": "Computer offline",
+    "projects.connect_to_edit": "Connect to the server to make changes",
+    "projects.count": {
+      "forms": {
+        "one": "{count} project",
+        "other": "{count} projects"
+      },
+      "plural": "count"
+    },
+    "projects.directory_failed": "Could not read this folder: {reason}",
+    "projects.live_count": {
+      "forms": {
+        "one": "{count} in progress",
+        "other": "{count} in progress"
+      },
+      "plural": "count"
+    },
+    "projects.load_failed": "Could not load projects",
+    "projects.loading": "Loading projects…",
+    "projects.manage": "Manage projects",
+    "projects.manage_named": "Manage {name}",
+    "projects.new": "New project…",
+    "projects.new_choose_directory": "New project · Choose a folder",
+    "projects.no_online_computers": "No computers are online. Run remote-agent daemon on your computer, then try again.",
+    "projects.no_subdirectories": "No subfolders",
+    "projects.others": "Other",
+    "projects.parent_directory": "Parent folder",
+    "projects.pending_and_live": {
+      "forms": {
+        "one": "{count} pending · {live} in progress",
+        "other": "{count} pending · {live} in progress"
+      },
+      "plural": "count"
+    },
+    "projects.pending_count": {
+      "forms": {
+        "one": "{count} pending",
+        "other": "{count} pending"
+      },
+      "plural": "count"
+    },
+    "projects.pin": "Pin",
+    "projects.pinned": "Pinned",
+    "projects.reading_directory": "Loading…",
+    "projects.remove_action": "Remove project…",
+    "projects.remove_explanation": "Only removes the project from the list. Sessions, history, and the folder on your computer stay in place. Add the folder with “New project” to use it again.",
+    "projects.remove_note": "Removing a project only hides it from the list. Sessions and the folder on your computer stay in place.",
+    "projects.remove_title": "Remove {name}?",
+    "projects.removed": "This project was removed from the list",
+    "projects.save_failed": "Could not save. The list is unchanged: {reason}",
+    "projects.search": "Search projects",
+    "projects.search_empty": "No projects with “{query}” in their name or path",
+    "projects.syncing": "Syncing projects…",
+    "projects.unknown": "Unknown project",
+    "projects.unpin": "Unpin",
+    "projects.use_directory": "Use folder {name}",
+    "projects.view_sessions": "View sessions in {name}",
+    "time.hours_ago": {
+      "forms": {
+        "one": "{count} hour ago",
+        "other": "{count} hours ago"
+      },
+      "plural": "count"
+    },
+    "time.just_now": "Just now",
+    "time.last_week": "Last 7 days",
+    "time.minutes_ago": {
+      "forms": {
+        "one": "{count} minute ago",
+        "other": "{count} minutes ago"
+      },
+      "plural": "count"
+    },
+    "time.month_day": "{month}/{day}",
+    "time.month_group": "Month {month}",
+    "time.today": "Today",
+    "time.weekday": {
+      "forms": {
+        "fri": "Fri",
+        "mon": "Mon",
+        "other": "Sun",
+        "sat": "Sat",
+        "sun": "Sun",
+        "thu": "Thu",
+        "tue": "Tue",
+        "wed": "Wed"
+      },
+      "select": "day"
+    },
+    "time.year_month_group": "{year}/{month}",
+    "time.yesterday": "Yesterday"
   },
   "zh-CN": {
+    "common.all_projects_avatar": "全",
     "common.back": "返回",
     "common.cancel": "取消",
+    "common.clear_search": "清空搜索",
     "common.close": "关闭",
     "common.copied": "已复制",
     "common.copy": "复制",
     "common.details": "详情",
     "common.done": "完成",
+    "common.got_it": "知道了",
+    "common.list_separator": "、",
+    "common.loading": "加载中",
+    "common.machine": "机器",
+    "common.reload": "重新加载",
     "common.remove": "移除",
     "common.retry": "重试",
     "common.save": "保存",
+    "common.settings": "设置",
+    "common.unknown_computer": "未知电脑",
+    "connection.connecting": "连接中…",
+    "connection.network_required": "联网后才能读取会话",
+    "connection.no_network": "本机网络不通",
+    "connection.no_network_empty": "本机网络不通 · 联网后才能读取会话",
+    "connection.no_network_previous": "本机网络不通 · 显示的是上次的内容",
+    "connection.no_response": "没有回应",
+    "connection.no_server": "连不上服务器",
+    "connection.previous_below": "下面是上次的内容",
+    "connection.reconnecting": "正在重连…",
+    "connection.retrying_previous": "正在重试，下面是上次的内容",
+    "connection.server_details": "连不上服务器：{reason}。也可能是这台设备的网络不通，会一直自动重试",
+    "connection.server_retrying": "连不上服务器 · 正在重试",
+    "home.add_device": "添加设备",
+    "home.add_via_manager": "还没有电脑。在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
+    "home.all_projects": "全部项目",
+    "home.choose_scope": "看哪个项目",
+    "home.clear_filter": "清空筛选",
+    "home.computer_runs_cli": "电脑运行 CLI，客户端操作会话。",
+    "home.connection_check": "连接检测",
+    "home.connection_label": "{state}，连接检测",
+    "home.filter_title": "按标题筛选",
+    "home.forked": "分叉",
+    "home.idle_count": {
+      "forms": {
+        "other": "{count} 个会话空闲"
+      },
+      "plural": "count"
+    },
+    "home.list_failed": "没能读取会话列表：{reason}",
+    "home.live": "进行中",
+    "home.loading_earlier": "正在加载更早的会话…",
+    "home.manage_projects": "管理项目",
+    "home.matches": {
+      "forms": {
+        "other": "{count} 个会话的标题里有「{query}」"
+      },
+      "plural": "count"
+    },
+    "home.matches_loading": {
+      "forms": {
+        "other": "{count} 个会话的标题里有「{query}」，继续加载"
+      },
+      "plural": "count"
+    },
+    "home.more_live": {
+      "forms": {
+        "other": "还有 {count} 个"
+      },
+      "plural": "count"
+    },
+    "home.more_waiting": {
+      "forms": {
+        "other": "还有 {count} 件"
+      },
+      "plural": "count"
+    },
+    "home.new_schedule": "新定时",
+    "home.new_task": "新任务",
+    "home.no_matches": "没有标题里有「{query}」的会话",
+    "home.no_online_computer": "没有在线的电脑。在电脑上运行 {command}",
+    "home.no_sessions": "还没有会话",
+    "home.nothing_waiting": "没有等你的事",
+    "home.online_new_task": "{name} 在线，点右下角的「新任务」开始第一个会话。",
+    "home.online_start": "{name} 在线，可以开始第一个会话。",
+    "home.other_idle": {
+      "forms": {
+        "other": "另有 {count} 个空闲"
+      },
+      "plural": "count"
+    },
+    "home.pending_label": {
+      "forms": {
+        "other": "{count} 件等你处理"
+      },
+      "plural": "count"
+    },
+    "home.project_no_sessions": "这个项目还没有会话",
+    "home.running_and_idle": {
+      "forms": {
+        "other": "{count} 个会话在运行，{idle} 个空闲"
+      },
+      "plural": "count"
+    },
+    "home.running_count": {
+      "forms": {
+        "other": "{count} 个会话在运行"
+      },
+      "plural": "count"
+    },
+    "home.scheduled_frequency": "定时 {frequency}",
+    "home.scheduled_tasks": {
+      "forms": {
+        "other": "定时 {count} 个任务"
+      },
+      "plural": "count"
+    },
+    "home.schedules_tab": "定时",
+    "home.scope_label": "范围：{name}",
+    "home.sessions_or_schedules": "会话或定时",
+    "home.sessions_tab": "会话",
+    "home.sessions_unavailable": "暂时读不到会话",
+    "home.start_first": "开始第一个会话",
+    "home.total": {
+      "forms": {
+        "other": "共 {count} 个"
+      },
+      "plural": "count"
+    },
+    "home.total_load_earlier": {
+      "forms": {
+        "other": "共 {count} 个，滚到底加载更早的"
+      },
+      "plural": "count"
+    },
+    "home.update_ready": "新版本已下载",
+    "home.waiting_count": {
+      "forms": {
+        "other": "{count} 件事等你"
+      },
+      "plural": "count"
+    },
     "image.attach_failed": {
       "forms": {
         "other": "{count} 张图没加上，点图片看原因"
       },
       "plural": "count"
-    }
+    },
+    "list_state.agent_asking": "{agent} 在问你",
+    "list_state.approval": "等待审批",
+    "list_state.ended": "已结束",
+    "list_state.idle": "空闲",
+    "list_state.no_message": "还没发消息",
+    "list_state.offline": "电脑离线",
+    "list_state.plan": "计划待批准",
+    "list_state.popup": "终端里有弹窗",
+    "list_state.question": "等你回答",
+    "list_state.request_command": "请求执行 {command}",
+    "list_state.request_permission": "请求权限 · {tool}",
+    "list_state.running": "运行中",
+    "list_state.starting": "启动中",
+    "list_state.unlinked": "未连接",
+    "markdown.collapse": "收起",
+    "markdown.copy_code": "复制代码",
+    "markdown.copy_failed": "复制失败",
+    "markdown.expand": "展开全文",
+    "markdown.line_count": {
+      "forms": {
+        "other": "共 {count} 行"
+      },
+      "plural": "count"
+    },
+    "models.all": "全部模型",
+    "models.back": "返回模型",
+    "models.context_window": "上下文窗口",
+    "models.default": "默认",
+    "models.default_named": "默认（{model}）",
+    "models.effort": "推理强度",
+    "models.effort_default": "推理强度 · 默认",
+    "models.extended_window": "1M",
+    "models.fixed_effort": "推理强度固定为 {effort}",
+    "models.load_failed_default": "没能读取模型列表，会用 {agent} 自己的默认模型",
+    "models.standard_only": "标准 200k · 这个模型只有标准窗口",
+    "models.standard_window": "标准 200k",
+    "models.summary_effort_label": "模型：{model}，推理强度：{effort}",
+    "models.summary_label": "模型：{model}",
+    "models.title": "模型",
+    "new_session.abandon_start": "放弃这次启动",
+    "new_session.account_no_auto": "当前账户不支持自动模式，而 {name} 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始",
+    "new_session.attachments_moved": "已换到 {name}，附件正在重新上传",
+    "new_session.change_defaults": "去改默认",
+    "new_session.change_machine": "换机器",
+    "new_session.change_model": "换模型",
+    "new_session.choose_cli": "用哪个 CLI",
+    "new_session.cli_fallback": "{name} 没有 {missing}，这次用 {agent}",
+    "new_session.cli_label": "CLI：{agent}",
+    "new_session.cli_picker_label": "CLI",
+    "new_session.config_fallback": "所选模型或推理强度在这台机器上不可用，这次用机器的默认值",
+    "new_session.default_model": "默认模型",
+    "new_session.disconnected": "和服务器断线了",
+    "new_session.expired_start": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
+    "new_session.first_message": "新会话的第一句话",
+    "new_session.follow_cli": "跟随 CLI 设置",
+    "new_session.installed": "已装 {agents}",
+    "new_session.installed_fallback": "已装 {agents}；这台机器没有 {missing}，会改用 {agent}",
+    "new_session.location": "在{project}",
+    "new_session.location_cli": "在{project}用{cli}",
+    "new_session.location_machine": "在{machine}的{project}",
+    "new_session.location_machine_cli": "在{machine}的{project}用{cli}",
+    "new_session.machine_label": "机器：{name}",
+    "new_session.machine_offline": "{name} 不在线",
+    "new_session.model_no_auto": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认",
+    "new_session.offline_last_seen": "{time}在线，现在不能新建",
+    "new_session.offline_no_start": "现在不能新建",
+    "new_session.offline_with_draft": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
+    "new_session.project_label": "项目：{name}",
+    "new_session.project_session_label": "{name} · 新会话",
+    "new_session.prompt": "要做什么？",
+    "new_session.reading_models": "正在读取模型列表…",
+    "new_session.reading_previous": "正在读取这个项目上次的设置…",
+    "new_session.reading_settings": "读取设置…",
+    "new_session.removed_blocked": "这个项目已从列表移除，先重新添加",
+    "new_session.retry_save": "重试保存",
+    "new_session.save_failed": "项目设置没有保存，请重试",
+    "new_session.start": "开始新会话",
+    "new_session.start_failed": "启动失败：{reason}",
+    "new_session.start_shortcut": "{keys} 开始",
+    "new_session.start_unknown": "不确定是否已经启动：{reason}。重试会发送同一个请求，不会重复启动",
+    "new_session.starting_on": "正在 {name} 上启动…",
+    "new_session.unconfirmed_start": "上次的启动结果还没有确认",
+    "new_session.unexpected_reply": "意外的回复",
+    "new_session.use_machine": "改用 {name}",
+    "projects.add_again": "重新添加",
+    "projects.adding": "正在添加…",
+    "projects.changed_elsewhere": "项目列表已在另一客户端更新",
+    "projects.choose": "选项目",
+    "projects.choose_directory": "项目 · 选目录",
+    "projects.computer_offline": "电脑不在线",
+    "projects.connect_to_edit": "连上服务器后才能修改",
+    "projects.count": {
+      "forms": {
+        "other": "{count} 个项目"
+      },
+      "plural": "count"
+    },
+    "projects.directory_failed": "读不了这个目录：{reason}",
+    "projects.live_count": {
+      "forms": {
+        "other": "{count} 个进行中"
+      },
+      "plural": "count"
+    },
+    "projects.load_failed": "没能读取项目列表",
+    "projects.loading": "正在读取项目列表…",
+    "projects.manage": "项目管理",
+    "projects.manage_named": "管理 {name}",
+    "projects.new": "新项目…",
+    "projects.new_choose_directory": "新项目 · 选目录",
+    "projects.no_online_computers": "没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。",
+    "projects.no_subdirectories": "没有子目录",
+    "projects.others": "其他",
+    "projects.parent_directory": "上一级",
+    "projects.pending_and_live": {
+      "forms": {
+        "other": "{count} 个待处理 · {live} 个进行中"
+      },
+      "plural": "count"
+    },
+    "projects.pending_count": {
+      "forms": {
+        "other": "{count} 个待处理"
+      },
+      "plural": "count"
+    },
+    "projects.pin": "设为常用",
+    "projects.pinned": "常用",
+    "projects.reading_directory": "读取中…",
+    "projects.remove_action": "移除项目…",
+    "projects.remove_explanation": "只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。",
+    "projects.remove_note": "移除只是不再列出这个项目，会话和电脑上的目录都不动。",
+    "projects.remove_title": "移除 {name}？",
+    "projects.removed": "这个项目已从列表移除",
+    "projects.save_failed": "没能保存，列表保持原样：{reason}",
+    "projects.search": "搜索项目",
+    "projects.search_empty": "没有名字或路径里有「{query}」的项目",
+    "projects.syncing": "正在同步项目列表…",
+    "projects.unknown": "未知项目",
+    "projects.unpin": "取消常用",
+    "projects.use_directory": "用 {name} 这个目录",
+    "projects.view_sessions": "看 {name} 的会话",
+    "time.hours_ago": {
+      "forms": {
+        "other": "{count} 小时前"
+      },
+      "plural": "count"
+    },
+    "time.just_now": "刚刚",
+    "time.last_week": "近 7 天",
+    "time.minutes_ago": {
+      "forms": {
+        "other": "{count} 分钟前"
+      },
+      "plural": "count"
+    },
+    "time.month_day": "{month}月{day}日",
+    "time.month_group": "{month} 月",
+    "time.today": "今天",
+    "time.weekday": {
+      "forms": {
+        "fri": "周五",
+        "mon": "周一",
+        "other": "周日",
+        "sat": "周六",
+        "sun": "周日",
+        "thu": "周四",
+        "tue": "周二",
+        "wed": "周三"
+      },
+      "select": "day"
+    },
+    "time.year_month_group": "{year} 年 {month} 月",
+    "time.yesterday": "昨天"
   }
 } as const;

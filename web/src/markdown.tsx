@@ -604,7 +604,7 @@ export function CopyButton({ text }: { text: string }) {
     );
   };
   return (
-    <button className="cp" onClick={copy} aria-label={state === "ok" ? t("common.copied") : state === "fail" ? "复制失败" : "复制代码"}>
+    <button className="cp" onClick={copy} aria-label={state === "ok" ? t("common.copied") : state === "fail" ? t("markdown.copy_failed") : t("markdown.copy_code")}>
       {state === "ok" ? <Check /> : state === "fail" ? <X /> : <Copy />}
     </button>
   );
@@ -643,10 +643,10 @@ function Code({ lang, text, name }: { lang: string; text: string; name: string }
       {long && (
         <button className="cbmore" onClick={() => setOpen(!open)} aria-expanded={open}>
           <span>
-            {open ? "收起" : "展开全文"}
+            {open ? t("markdown.collapse") : t("markdown.expand")}
             {open ? <ChevronUp /> : <ChevronDown />}
           </span>
-          <i>共 {lines.length} 行</i>
+          <i>{t("markdown.line_count", { count: lines.length })}</i>
         </button>
       )}
     </div>

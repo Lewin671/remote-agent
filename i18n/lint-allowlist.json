@@ -23,5 +23,15 @@
     "path": "web/src/views/NewTaskModels.tsx",
     "literal": "extended",
     "reason": "Internal context-window option value, never displayed; the adjacent label uses models.* messages."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "(\"\"); if (!list.length) return null; const name = scope === ALL ? t(\"home.all_projects\") : projectName(scope); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/NewSession.tsx",
+    "literal": "; const busyNote = ns.busy &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
   }
 ]

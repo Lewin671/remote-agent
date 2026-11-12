@@ -2,6 +2,188 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>home_idle_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个会话空闲</string>
+		</dict>
+	</dict>
+	<key>home_matches</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个会话的标题里有「%2$@」</string>
+		</dict>
+	</dict>
+	<key>home_matches_loading</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个会话的标题里有「%2$@」，继续加载</string>
+		</dict>
+	</dict>
+	<key>home_more_live</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>还有 %1$lld 个</string>
+		</dict>
+	</dict>
+	<key>home_more_waiting</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>还有 %1$lld 件</string>
+		</dict>
+	</dict>
+	<key>home_other_idle</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>另有 %1$lld 个空闲</string>
+		</dict>
+	</dict>
+	<key>home_pending_label</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 件等你处理</string>
+		</dict>
+	</dict>
+	<key>home_running_and_idle</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个会话在运行，%2$lld 个空闲</string>
+		</dict>
+	</dict>
+	<key>home_running_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个会话在运行</string>
+		</dict>
+	</dict>
+	<key>home_scheduled_tasks</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>定时 %1$lld 个任务</string>
+		</dict>
+	</dict>
+	<key>home_total</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>共 %1$lld 个</string>
+		</dict>
+	</dict>
+	<key>home_total_load_earlier</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>共 %1$lld 个，滚到底加载更早的</string>
+		</dict>
+	</dict>
+	<key>home_waiting_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 件事等你</string>
+		</dict>
+	</dict>
 	<key>image_attach_failed</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -14,6 +196,104 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>%1$lld 张图没加上，点图片看原因</string>
+		</dict>
+	</dict>
+	<key>markdown_line_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>共 %1$lld 行</string>
+		</dict>
+	</dict>
+	<key>projects_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个项目</string>
+		</dict>
+	</dict>
+	<key>projects_live_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个进行中</string>
+		</dict>
+	</dict>
+	<key>projects_pending_and_live</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个待处理 · %2$lld 个进行中</string>
+		</dict>
+	</dict>
+	<key>projects_pending_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 个待处理</string>
+		</dict>
+	</dict>
+	<key>time_hours_ago</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 小时前</string>
+		</dict>
+	</dict>
+	<key>time_minutes_ago</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 分钟前</string>
 		</dict>
 	</dict>
 </dict>

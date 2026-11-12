@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { agentInfo, defaultsFor } from "../agents";
 import { findModel, modelLabel, STANDARD_WINDOW, type NewConfig } from "../model";
@@ -66,35 +67,35 @@ export function NewTaskModelPanel({ cfg, info, enabled, pending, onChange, onClo
   const options = (values: string[]) => values.map(value => ({ value, label: value, disabled: !enabled }));
   return <div className="new-task-model-panel" data-page={all ? "all" : "main"}>
     <div className="sheet-head">
-      {all ? <button className="model-back" onClick={() => setAll(false)} aria-label="返回模型"><ChevronLeft />全部模型</button> : <b>模型</b>}
-      <button className="side-act" onClick={onClose}>完成</button>
+      {all ? <button className="model-back" onClick={() => setAll(false)} aria-label={t("models.back")}><ChevronLeft />{t("models.all")}</button> : <b>{t("models.title")}</b>}
+      <button className="side-act" onClick={onClose}>{t("common.done")}</button>
     </div>
-    {info.error && <Banner kind="warn" action="重试" onAction={info.retry}>没能读取模型列表，会用 {agentInfo(cfg.agent).name} 自己的默认模型</Banner>}
-    {pending || (!info.models && !info.error) ? <div className="model-loading hint">{pending ? "正在读取这个项目上次的设置…" : "读取设置…"}</div> : info.models && <ModelPanelBody key={all ? "all" : "main"}>
+    {info.error && <Banner kind="warn" action={t("common.retry")} onAction={info.retry}>{t("models.load_failed_default", { agent: agentInfo(cfg.agent).name })}</Banner>}
+    {pending || (!info.models && !info.error) ? <div className="model-loading hint">{pending ? t("new_session.reading_previous") : t("new_session.reading_settings")}</div> : info.models && <ModelPanelBody key={all ? "all" : "main"}>
       {!all && <div className="model-controls">
         {model && model.efforts.length > 1 && <>
-          <div className="fl">推理强度{!effort && " · 默认"}</div>
-          <Segmented className="full" label="推理强度" value={effort} onChange={effort => onChange({ ...cfg, effort })} options={options(model.efforts)} />
+          <div className="fl">{effort ? t("models.effort") : t("models.effort_default")}</div>
+          <Segmented className="full" label={t("models.effort")} value={effort} onChange={effort => onChange({ ...cfg, effort })} options={options(model.efforts)} />
         </>}
-        {model?.efforts.length === 1 && <div className="hint">{effort ? `推理强度固定为 ${effort}` : "推理强度 · 默认"}</div>}
+        {model?.efforts.length === 1 && <div className="hint">{effort ? t("models.fixed_effort", { effort }) : t("models.effort_default")}</div>}
         {agentInfo(cfg.agent).standardContextOption && (model && model.contextWindow > 0n && model.contextWindow <= STANDARD_WINDOW ?
-          <div className="hint">标准 200k · 这个模型只有标准窗口</div> : <>
-            <div className="fl">上下文窗口</div>
-            <Segmented className="full" label="上下文窗口" value={cfg.standardContext ? "standard" : "extended"}
-              onChange={value => onChange({ ...cfg, standardContext: value === "standard" })} options={[{ value: "extended", label: "1M", disabled: !enabled }, { value: "standard", label: "标准 200k", disabled: !enabled }]} />
+          <div className="hint">{t("models.standard_only")}</div> : <>
+            <div className="fl">{t("models.context_window")}</div>
+            <Segmented className="full" label={t("models.context_window")} value={cfg.standardContext ? "standard" : "extended"}
+              onChange={value => onChange({ ...cfg, standardContext: value === "standard" })} options={[{ value: "extended", label: t("models.extended_window"), disabled: !enabled }, { value: "standard", label: t("models.standard_window"), disabled: !enabled }]} />
           </>)}
       </div>}
       <div className="model-list-scroll">
-        <div className="list" role="group" aria-label="模型">
+        <div className="list" role="group" aria-label={t("models.title")}>
           <button className="mi" disabled={!enabled} aria-pressed={!cfg.model} onClick={() => pick("")}>
-            <span className="mt">默认{def ? `（${modelLabel(list, def, cfg.agent)}）` : ""}</span>
+            <span className="mt">{def ? t("models.default_named", { model: modelLabel(list, def, cfg.agent) }) : t("models.default")}</span>
             {!cfg.model && <span className="ck"><Check /></span>}
           </button>
           {shown.map(m => <button key={m.slug} className="mi" disabled={!enabled} aria-pressed={m === picked} onClick={() => pick(m.slug)}>
             <span className="mt">{m.displayName || m.slug}</span>
             {m === picked && <span className="ck"><Check /></span>}
           </button>)}
-          {!all && shown.length < list.length && <button className="mi link-row" onClick={() => setAll(true)}><span className="mt">全部模型</span><ChevronRight /></button>}
+          {!all && shown.length < list.length && <button className="mi link-row" onClick={() => setAll(true)}><span className="mt">{t("models.all")}</span><ChevronRight /></button>}
         </div>
       </div>
     </ModelPanelBody>}

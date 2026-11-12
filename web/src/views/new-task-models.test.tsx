@@ -1,3 +1,4 @@
+import { localeStore, t } from "../i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -56,14 +57,15 @@ it.each([
     </NewTaskTools>));
     expect(host.querySelector(".new-task-tools")?.getAttribute("data-compact")).toBe(compact);
     expect(host.querySelector(".effort")?.textContent).toBe(" · medium");
-    expect(host.querySelector(".project-summary")?.getAttribute("aria-label")).toBe("模型：A very long model，推理强度：medium");
+    expect(host.querySelector(".project-summary")?.getAttribute("aria-label")).toBe(t("models.summary_effort_label", {"model":"A very long model","effort":"medium"}, "zh-CN"));
   } finally {
     act(() => root.unmount()); host.remove(); rect.mockRestore(); client.mockRestore(); scroll.mockRestore();
   }
 });
 
 
-it("selects the context window by stable option values", () => {
+it.each(["zh-CN", "en"] as const)("selects the context window by stable option values in %s", (locale) => {
+  localeStore.overrideForTesting(locale);
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -80,6 +82,6 @@ it("selects the context window by stable option values", () => {
     act(() => host.querySelectorAll(".seg button")[0].dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(onChange).toHaveBeenLastCalledWith({ ...cfg, standardContext: false });
   } finally {
-    act(() => root.unmount()); host.remove();
+    act(() => root.unmount()); host.remove(); localeStore.overrideForTesting();
   }
 });

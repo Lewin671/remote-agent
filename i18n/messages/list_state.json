@@ -1,0 +1,241 @@
+[
+  {
+    "key": "list_state.agent_asking",
+    "zh-CN": "{agent} 在问你",
+    "en": "{agent} is asking you",
+    "notes": "首页待处理问答行标题；agent 为 CLI 品牌名 空间：短标签/列表行保持紧凑，正文可多行。 变量：agent，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.approval",
+    "zh-CN": "等待审批",
+    "en": "Awaiting approval",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.ended",
+    "zh-CN": "已结束",
+    "en": "Ended",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.idle",
+    "zh-CN": "空闲",
+    "en": "Idle",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.no_message",
+    "zh-CN": "还没发消息",
+    "en": "No messages yet",
+    "notes": "会话列表无首条消息时的预览。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.offline",
+    "zh-CN": "电脑离线",
+    "en": "Computer offline",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.plan",
+    "zh-CN": "计划待批准",
+    "en": "Plan awaiting approval",
+    "notes": "会话列表状态词及计划预览，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.popup",
+    "zh-CN": "终端里有弹窗",
+    "en": "Terminal popup",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.question",
+    "zh-CN": "等你回答",
+    "en": "Awaiting your answer",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.request_command",
+    "zh-CN": "请求执行 {command}",
+    "en": "Request to run {command}",
+    "notes": "首页会话列表审批预览；command 为 CLI 命令原文 空间：短标签/列表行保持紧凑，正文可多行。 变量：command，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "echo example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.request_permission",
+    "zh-CN": "请求权限 · {tool}",
+    "en": "Permission request · {tool}",
+    "notes": "首页会话列表审批预览；tool 为 CLI 工具名 空间：短标签/列表行保持紧凑，正文可多行。 变量：tool，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "tool": {
+        "type": "string",
+        "example": "Read"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.running",
+    "zh-CN": "运行中",
+    "en": "Running",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.starting",
+    "zh-CN": "启动中",
+    "en": "Starting",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.unlinked",
+    "zh-CN": "未连接",
+    "en": "Disconnected",
+    "notes": "会话列表状态词，紧凑一行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]
