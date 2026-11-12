@@ -753,19 +753,27 @@ it("retains a surviving pin after partial storage loss and refuses initializatio
   expect(await rawSecurity("readonly", (store) => store.get("pinned-identity"))).toEqual(record.pin);
 });
 
-it("continues an approved pairing from the account without its page", async () => {
+it("starts account delivery polling at approval handoff without its page", async () => {
   const { account } = await createAccount();
   const c = await clients(account);
-  await pairCandidate(c, DeviceKind.CLIENT, "", true);
-  expect((await readSecurityOperation())?.delivery).toBeDefined();
   class PairRemote extends Remote { constructor(a: StoredAccount) { super(a, undefined); } }
   const remote = new PairRemote(account);
-  (remote as unknown as { token: string }).token = c.token;
+  const state = remote as unknown as { token: string; connect(): Promise<void>; continuePairing(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
+  state.token = c.token;
+  vi.spyOn(state, "connect").mockResolvedValue();
   vi.stubGlobal("document", { visibilityState: "visible", hidden: false });
-  const resume = vi.spyOn(remote.authority, "renewLeaseIfNeeded");
+  const resume = vi.spyOn(remote.authority, "resumeSecurityOperation");
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
-    await (remote as unknown as { continuePairing(): Promise<void> }).continuePairing();
+    remote.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(state.pairingTimer).toBeUndefined();
+    await pairCandidate({ ...c, authority: remote.authority }, DeviceKind.CLIENT, "", true);
+    expect((await readSecurityOperation())?.delivery).toBeDefined();
+    expect(state.pairingTimer).toBeDefined();
+    resume.mockClear();
+    await state.continuePairing();
     expect(resume).toHaveBeenCalledOnce();
     expect((await readSecurityOperation())?.delivery).toBeDefined();
-  } finally { remote.stop(); }
+  } finally { remote.stop(); vi.useRealTimers(); }
 });

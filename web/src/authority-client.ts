@@ -27,6 +27,8 @@ interface StateDraft {
   recoveryEd?: B;
   pair?: PairingDelivery;
 }
+/** Delivery cannot complete; the candidate must be explicitly removed. */
+export class PairingDeliveryError extends Error {}
 export interface HandoffOffer { id: string; recoveryEd: B }
 /** Uses only verified member kinds and already verified, self-signed metadata. */
 export function handoffCandidates(record: SecurityRecord, offers: HandoffOffer[]): HandoffOffer[] {
@@ -45,6 +47,7 @@ export class AuthorityClient {
     private readonly pairing: Client<typeof PairingService>,
     private readonly writeOffer: (publicKey: B, check: () => void, persist: (request: B) => Promise<void>, request?: B) => Promise<boolean>,
     lifecycle = new AuthorityLifecycle(),
+    private readonly onPairingDelivery?: () => void,
   ) { this.lifecycle = lifecycle; }
   async isAuthority() { return isAuthority(await this.security.verifiedRecord()); }
   pending() { return readSecurityOperation(); }
@@ -224,7 +227,7 @@ export class AuthorityClient {
         const status = await this.pairing.getPairing({ pairingId: delivery.pairingId });
         check();
         if (status.state !== PairingState.DELIVERED) {
-          if (status.state === PairingState.CANCELED) throw new Error("配对已取消，请明确移除未完成候选后重新开始");
+          if (status.state === PairingState.CANCELED) throw new PairingDeliveryError("配对已取消，请明确移除未完成候选后重新开始");
           return;
         }
       } catch (e) {
@@ -236,7 +239,7 @@ export class AuthorityClient {
         const approval = fromBinary(PairApprovalSchema, delivery.approval);
         const candidate = await deviceID(approval.candidateDevicePublicKey);
         if (!devices.devices.some((d) => d.id === candidate))
-          throw new Error("配对交付已失效，请明确移除未完成候选后重新开始");
+          throw new PairingDeliveryError("配对交付已失效，请明确移除未完成候选后重新开始");
       }
     }
     op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
@@ -296,6 +299,7 @@ export class AuthorityClient {
     check();
     const saved = await saveSecurityOperation(op, { ...op, signed, delivery }, r.stateHash);
     check();
+    if (saved.delivery) this.onPairingDelivery?.();
     return saved;
   }
   async renewLeaseNow() { return this.renewLease(true); }

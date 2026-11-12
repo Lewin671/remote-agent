@@ -3,7 +3,7 @@ import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleS
 import { Attempt } from "./attempt";
 import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
 import { readSecurityOperation } from "./security-operation";
-import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
+import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
 import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
@@ -1133,7 +1133,8 @@ export class Remote {
       defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth],
     }));
     this.authority = new AuthorityClient(account, this.security, this.api, pairing,
-      (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request));
+      (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request),
+      undefined, () => void this.watchPairingDelivery());
     this.startPairing = async (web, replacesDeviceId = "") =>
       (await import("./authority-pairing")).AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
@@ -1582,22 +1583,55 @@ export class Remote {
     // Foreground state pull: a lease renewal or removal reaches this page
     // within a minute, and an unknown state is fetched at once.
     this.securityTimer = setInterval(() => void this.syncSecurity(), 60_000);
-    clearInterval(this.pairingTimer);
-    this.pairingTimer = setInterval(() => void this.continuePairing(), 1500);
+    void this.watchPairingDelivery();
     void this.connect();
   }
 
-  /** Delivery outlives its page. Resume only approved pairing operations;
-   * the authority lifecycle still gates work on foreground visibility. */
-  private async continuePairing() {
-    if (this.closed || (typeof document !== "undefined" && document.hidden)) return;
+  /** Read once on startup/reload, and when approval saves its delivery. */
+  private async watchPairingDelivery() {
     try {
-      if ((await this.authority.pending())?.delivery) {
-        this.maintainAuthority();
-        await this.maintaining;
-        if (!this.closed) await this.loadDevices(false);
+      const pending = await this.authority.pending();
+      if (this.closed || !this.begun || !pending?.delivery) {
+        this.stopPairingDelivery();
+        return;
       }
-    } catch (e) { this.authorityError = errorText(e); }
+      this.pairingTimer ??= setInterval(() => void this.continuePairing(), 1500);
+    } catch (e) {
+      this.stopPairingDelivery();
+      this.authorityError = errorText(e);
+    }
+  }
+
+  private stopPairingDelivery() {
+    clearInterval(this.pairingTimer);
+    this.pairingTimer = undefined;
+  }
+
+  private pairingBusy = false;
+  /** Delivery outlives its page. The authority lifecycle still gates every
+   * attempt on foreground visibility and the exclusive management lock. */
+  private async continuePairing() {
+    if (this.closed || this.pairingBusy || (typeof document !== "undefined" && document.hidden)) return;
+    this.pairingBusy = true;
+    try {
+      if (!(await this.authority.pending())?.delivery) {
+        this.stopPairingDelivery();
+        return;
+      }
+      await this.authority.resumeSecurityOperation();
+      if (!(await this.authority.pending())?.delivery) this.stopPairingDelivery();
+      this.authorityError = "";
+      if (!this.closed) await this.loadDevices(false);
+    } catch (e) {
+      this.authorityError = errorText(e);
+      if (e instanceof PairingDeliveryError ||
+          (e instanceof SecurityError && ["invalid", "untrusted", "conflict", "storage", "capacity"].includes(e.code)) ||
+          (e instanceof ConnectError && [Code.InvalidArgument, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated, Code.FailedPrecondition].includes(e.code)))
+        this.stopPairingDelivery();
+    } finally {
+      this.pairingBusy = false;
+      if (!this.closed) this.changed();
+    }
   }
 
   private maintaining?: Promise<void>;
@@ -1679,8 +1713,7 @@ export class Remote {
     this.unwatchSecurityPush = undefined;
     clearInterval(this.securityTimer);
     this.securityTimer = undefined;
-    clearInterval(this.pairingTimer);
-    this.pairingTimer = undefined;
+    this.stopPairingDelivery();
     clearTimeout(this.historyTrim);
     this.historyTrim = undefined;
     this.generation++;

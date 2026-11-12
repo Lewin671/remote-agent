@@ -3,6 +3,7 @@ import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { SyntheticRemote } from "./test/remote-fixture";
+import { PairingDeliveryError } from "./authority-client";
 const liveFixtures: SyntheticRemote[] = [];
 async function probe() {
   const r = await SyntheticRemote.create();
@@ -1021,3 +1022,49 @@ it.each(["send", "createSession"] as const)("allows text/image-only %s with file
   await (kind === "send" ? r.command("s", cmd) : r.machineCommand(r.machine, cmd)).catch(() => undefined);
   expect(forward).toHaveBeenCalledOnce();
 });
+
+it("does not poll pairing state after startup without a pending delivery", async () => {
+  const r = await probe();
+  const state = r as unknown as { connect(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
+  vi.spyOn(state, "connect").mockResolvedValue();
+  const pending = vi.spyOn(r.authority, "pending").mockResolvedValue(undefined);
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    r.start();
+    await vi.advanceTimersByTimeAsync(4500);
+    expect(state.pairingTimer).toBeUndefined();
+    expect(pending).toHaveBeenCalledOnce();
+  } finally { r.stop(); vi.useRealTimers(); }
+});
+
+it.each(["complete", "missing", "final", "transient", "close"])(
+  "resumes a pending delivery on startup and manages its timer on %s", async (outcome) => {
+    const r = await probe();
+    const state = r as unknown as { connect(): Promise<void>; pairingTimer?: ReturnType<typeof setInterval> };
+    vi.spyOn(state, "connect").mockResolvedValue();
+    let delivery = true;
+    const pending = vi.spyOn(r.authority, "pending").mockImplementation(async () => delivery ? { delivery: new Uint8Array([1]) } as never : undefined);
+    const resume = vi.spyOn(r.authority, "resumeSecurityOperation").mockImplementation(async () => {
+      if (outcome === "final") throw new PairingDeliveryError("candidate must be removed");
+      if (outcome === "transient") throw new ConnectError("offline", Code.Unavailable);
+      delivery = false;
+    });
+    vi.spyOn(r, "loadDevices").mockResolvedValue();
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      r.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(state.pairingTimer).toBeDefined();
+      if (outcome === "missing") delivery = false;
+      if (outcome === "close") r.stop();
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(state.pairingTimer !== undefined).toBe(outcome === "transient");
+      expect(resume).toHaveBeenCalledTimes(["missing", "close"].includes(outcome) ? 0 : 1);
+      const reads = pending.mock.calls.length;
+      if (outcome !== "transient") {
+        await vi.advanceTimersByTimeAsync(4500);
+        expect(pending).toHaveBeenCalledTimes(reads);
+      }
+    } finally { r.stop(); vi.useRealTimers(); }
+  },
+);
