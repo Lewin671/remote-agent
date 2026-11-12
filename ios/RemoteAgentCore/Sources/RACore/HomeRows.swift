@@ -241,7 +241,7 @@ public func sessionRowText(
     return SessionRowText(
         title: titleOf(s, zone: zone), time: whenText(s.updatedMs, now: now, zone: zone), status: st,
         // The status word already says a plan waits.
-        preview: pv == st.text ? "" : pv, meta: metaLine(state, s, meta: meta), agent: meta.agent ? s.agent : nil)
+        preview: st == .plan || (st == .popup && (s.info?.statusDetail.isEmpty ?? true)) ? "" : pv, meta: metaLine(state, s, meta: meta), agent: meta.agent ? s.agent : nil)
 }
 
 /// An ended session on its one line: the title, and at the right when it ended, after the project where the list spans projects.

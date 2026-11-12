@@ -442,7 +442,7 @@ public struct ApprovalModeChoice: Equatable, Sendable, Identifiable {
     public var enabled: Bool
     public var checked: Bool
 
-    public var id: String { mode?.text ?? "default" }
+    public var id: String { mode.map { String($0.proto.rawValue) } ?? "default" }
 
     public init(mode: Mode?, title: String, desc: String, enabled: Bool, checked: Bool) {
         self.mode = mode

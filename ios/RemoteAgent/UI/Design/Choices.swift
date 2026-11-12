@@ -64,14 +64,16 @@ struct SegPick: View {
 struct ChoiceGrid: View {
     private let items: [String]
     private let selected: String?
+    private let label: (String) -> String
     private let enabled: Bool
     private let onPick: (String) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.colorScheme) private var scheme
 
-    init(_ items: [String], selected: String?, enabled: Bool = true, onPick: @escaping (String) -> Void) {
+    init(_ items: [String], selected: String?, enabled: Bool = true, label: @escaping (String) -> String = { $0 }, onPick: @escaping (String) -> Void) {
         self.items = items
         self.selected = selected
+        self.label = label
         self.enabled = enabled
         self.onPick = onPick
     }
@@ -85,7 +87,7 @@ struct ChoiceGrid: View {
                 Button {
                     onPick(item)
                 } label: {
-                    Text(item).font(on ? .subheadline.weight(.semibold) : .subheadline).ink(enabled ? DS.ink : DS.ink2)
+                    Text(label(item)).font(on ? .subheadline.weight(.semibold) : .subheadline).ink(enabled ? DS.ink : DS.ink2)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 6)
                         .frame(maxWidth: .infinity, minHeight: DS.minHit)

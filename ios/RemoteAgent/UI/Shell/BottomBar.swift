@@ -11,14 +11,15 @@ struct TabBadge: Equatable, Sendable {
     /// New results (定时 only), when nothing waits.
     var dot = false
     /// What waits is 件 on 定时 and 个 on 会话.
-    var unit = "个"
+    enum Unit: Sendable { case sessions, tasks }
+    var unit = Unit.sessions
 
     /// The number as drawn: 99+ past 99.
     var text: String { count > 99 ? "99+" : String(count) }
 
     /// What VoiceOver says after the tab's name.
     var spoken: String {
-        if count > 0 { return "\(count) \(unit)需要处理" }
+        if count > 0 { return "\(count) \(unit == .tasks ? "件" : "个")需要处理" }
         return dot ? "有新结果" : ""
     }
 }

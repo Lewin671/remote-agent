@@ -654,8 +654,8 @@ import UIKit
     @Test func tabBadgeCapsCountsAndWholeBlocksFitWithoutClipping() {
         // Both tabs write 99+ past 99 (design-system §6 「底部」); VoiceOver hears the whole count.
         let conversation = TabBadge(count: 100)
-        let schedules = TabBadge(count: 100, unit: "件")
-        let newResult = TabBadge(dot: true, unit: "件")
+        let schedules = TabBadge(count: 100, unit: .tasks)
+        let newResult = TabBadge(dot: true, unit: .tasks)
         #expect(conversation.text == "99+" && conversation.spoken == "100 个需要处理")
         #expect(schedules.text == "99+" && schedules.spoken == "100 件需要处理")
         #expect(newResult.spoken == "有新结果" && TabBadge().spoken.isEmpty)

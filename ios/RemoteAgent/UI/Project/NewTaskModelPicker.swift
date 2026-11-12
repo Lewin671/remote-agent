@@ -222,8 +222,8 @@ struct NewTaskModelPanel: View {
                     Text(window.text).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
                 } else {
                     Text("上下文窗口").font(.caption).ink(DS.ink2)
-                    NewTaskModelSegments(items: ["1M", "标准 200k"], selected: c.standardContext ? "标准 200k" : "1M") {
-                        var next = c; next.standardContext = $0 == "标准 200k"; picker.edited = next
+                    NewTaskModelSegments(items: ["extended", "standard"], selected: c.standardContext ? "standard" : "extended", label: { $0 == "standard" ? "标准 200k" : "1M" }) {
+                        var next = c; next.standardContext = $0 == "standard"; picker.edited = next
                     }
                 }
             }
@@ -251,12 +251,13 @@ struct NewTaskModelPanel: View {
 private struct NewTaskModelSegments: View {
     let items: [String]
     let selected: String
+    var label: (String) -> String = { $0 }
     let onPick: (String) -> Void
     var body: some View {
         HStack(spacing: 0) {
             ForEach(items, id: \.self) { item in
                 Button { Haptics.selection(); onPick(item) } label: {
-                    Text(item).font(.footnote).lineLimit(1).minimumScaleFactor(0.75)
+                    Text(label(item)).font(.footnote).lineLimit(1).minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity, minHeight: 40)
                         .foregroundStyle(item == selected ? DS.blue : DS.ink2)
                         .background(item == selected ? DS.popover : .clear, in: RoundedRectangle(cornerRadius: 12))

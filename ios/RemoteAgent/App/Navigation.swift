@@ -384,7 +384,7 @@ private struct FirstLevel: View {
                     tab: $nav.tab,
                     badges: [
                         .home: TabBadge(count: waiting),
-                        .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: "件"),
+                        .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: .tasks),
                     ],
                     canCreate: !state.unlinked && !state.machines.isEmpty,
                     onCreate: { create(state) })

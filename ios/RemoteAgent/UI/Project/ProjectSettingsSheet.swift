@@ -260,8 +260,8 @@ struct ModelSettingsBody: View {
         if window.fixed {
             Hint(window.text)
         } else {
-            let options = ["1M", "标准 200k"]
-            ChoiceGrid(options, selected: c.standardContext ? options[1] : options[0]) { picked in
+            let options = ["extended", "standard"]
+            ChoiceGrid(options, selected: c.standardContext ? options[1] : options[0], label: { $0 == "standard" ? "标准 200k" : "1M" }) { picked in
                 Haptics.selection()
                 edit { $0.standardContext = picked == options[1] }
             }
