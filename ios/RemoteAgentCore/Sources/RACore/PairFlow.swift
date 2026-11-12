@@ -9,7 +9,7 @@ import RAProto
 import os
 
 public struct PairError: Error, LocalizedError, Equatable, Sendable, CustomStringConvertible {
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var message: String { localized.resolve() }
     public init(_ message: String) { localized = LocalizedMessage(raw: message) }
     public init(_ message: LocalizedMessage) { localized = message }

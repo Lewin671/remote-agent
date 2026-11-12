@@ -38,7 +38,7 @@ public func verifyEd25519(publicKey: Data, message: Data, signature: Data) -> Bo
 }
 
 public struct CryptoError: Error, CustomStringConvertible, Equatable {
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var description: String { localized.resolve() }
     public init(_ description: String) { localized = LocalizedMessage(raw: description) }
     public init(_ description: LocalizedMessage) { localized = description }
@@ -68,7 +68,7 @@ public func loginMessage(_ challenge: Data) -> Data { Data(loginContext.utf8) + 
 
 /// A message for the person using the app, in their language.
 public struct UserError: Error, LocalizedError, Equatable, CustomStringConvertible {
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var message: String { localized.resolve() }
     public init(_ message: String) { localized = LocalizedMessage(raw: message) }
     public init(_ message: LocalizedMessage) { localized = message }
@@ -142,7 +142,7 @@ extension Data {
 }
 
 public struct OpenError: Error, Equatable, CustomStringConvertible {
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var description: String { localized.resolve() }
     public init(_ description: String) { localized = LocalizedMessage(raw: description) }
     public init(_ description: LocalizedMessage) { localized = description }

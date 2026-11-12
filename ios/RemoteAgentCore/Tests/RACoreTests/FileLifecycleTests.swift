@@ -90,7 +90,7 @@ private struct FileMachineChannel: UploadChannel {
         try Data(repeating: 65, count: 8192).write(to: url)
         let img = PendingImage(id: "picked", uri: nil)
         img.file = try PickedFile(url: url)
-        img.state = .failed(error: "needs upload")
+        img.state = .failed(error: AttachmentFailure(kind: .offline))
         return (url, img)
     }
     private func driver(_ server: FileMachine, _ draft: ImageDraft) -> ImageUploads {

@@ -425,7 +425,7 @@ extension UploadFailure {
 /// An upload that ended without the daemon refusing it: its answer was not one to go on from.
 public struct UploadError: UploadFailure, LocalizedError, Equatable {
     public let code: String
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var message: String { localized.resolve() }
     public init(code: String, message: String) { self.code = code; localized = LocalizedMessage(raw: message) }
     public init(code: String, message: LocalizedMessage) { self.code = code; localized = message }

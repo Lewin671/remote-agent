@@ -92,12 +92,12 @@ enum ImageDebug {
         switch state {
         case "crowded":
             center.debugShow(
-                key, [ready(1), ready(2), sample(3, .uploading(progress: 0.4)), sample(4, .processing), sample(5, .failed(error: "电脑上传目录已满")), ready(6)],
+                key, [ready(1), ready(2), sample(3, .uploading(progress: 0.4)), sample(4, .processing), sample(5, .failed(error: AttachmentFailure(kind: .storage))), ready(6)],
                 notice: "一条消息最多 6 张，多选的 2 张没有加入")
         case "uploading":
             center.debugShow(key, [ready(1), sample(2, .uploading(progress: 0.6)), sample(3, .processing)])
         case "failed":
-            center.debugShow(key, [ready(1), sample(2, .failed(error: "MacBook 离线，指令没有发出"))])
+            center.debugShow(key, [ready(1), sample(2, .failed(error: AttachmentFailure(kind: .offline)))])
         case "original":
             center.debugShow(
                 key,

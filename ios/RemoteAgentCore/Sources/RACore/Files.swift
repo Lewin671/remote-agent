@@ -245,18 +245,20 @@ actor FileUploadGate {
     }
 }
 
-public func fileUploadError(_ error: Error) -> String {
+public func fileUploadError(_ error: Error) -> String { fileUploadMessage(error).resolve() }
+
+func fileUploadMessage(_ error: Error) -> LocalizedMessage {
     guard let failure = error as? any UploadFailure else {
-        return error is UserError ? errorText(error) : errorText(PickedFile.unreadable)
+        return (error as? UserError)?.localized ?? PickedFile.unreadable.localized
     }
     switch failure.code {
-    case "already_exists": return L10n.attachmentIosTheFileChangedAfterSelectionSelectItAgain()
-    case "not_found": return L10n.attachmentIosTheFileOnTheComputerExpiredRetryTheUpload()
-    case "resource_exhausted": return L10n.attachmentIosTheComputerSAttachmentStorageIsFullClearSpace()
-    case "unavailable", "network", CommandError.unknownOutcome: return L10n.attachmentIosCouldNotConnectToTheComputerRetryTheUpload()
-    case "invalid_argument", "data_loss": return L10n.attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect()
-    case "permission_denied", "unauthenticated": return L10n.attachmentIosFileUploadIsNotAuthorizedCheckDeviceAuthorization()
-    default: return L10n.attachmentIosFileUploadFailedRetryOrSelectTheFileAgain()
+    case "already_exists": return L10nMessage.attachmentIosTheFileChangedAfterSelectionSelectItAgain()
+    case "not_found": return L10nMessage.attachmentIosTheFileOnTheComputerExpiredRetryTheUpload()
+    case "resource_exhausted": return L10nMessage.attachmentIosTheComputerSAttachmentStorageIsFullClearSpace()
+    case "unavailable", "network", CommandError.unknownOutcome: return L10nMessage.attachmentIosCouldNotConnectToTheComputerRetryTheUpload()
+    case "invalid_argument", "data_loss": return L10nMessage.attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect()
+    case "permission_denied", "unauthenticated": return L10nMessage.attachmentIosFileUploadIsNotAuthorizedCheckDeviceAuthorization()
+    default: return L10nMessage.attachmentIosFileUploadFailedRetryOrSelectTheFileAgain()
     }
 }
 

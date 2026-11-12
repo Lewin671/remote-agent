@@ -301,7 +301,7 @@ import UIKit
         #expect(store.draft(sid) == "已经在写的\n看图")
         // The images are in the box again and go to the computer again; nothing of them was dropped.
         #expect(draft.images.map(\.id) == ["a", "b"])
-        #expect(draft.images.allSatisfy { $0.state == .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain()) && $0.processed != nil })
+        #expect(draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .offline)) && $0.processed != nil })
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
@@ -480,7 +480,7 @@ import UIKit
         let draft = c.draft(key)
         #expect(draft.images.count == 6)
         #expect(draft.notice == "一条消息最多 6 张，多选的 2 张没有加入")
-        await eventually("each says it could not be read") { draft.images.allSatisfy { $0.state == .failed(error: "解不出这张图片") } }
+        await eventually("each says it could not be read") { draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .unreadable)) } }
     }
 
     /// What the photo picker hands over is a file: it is read whole unless it is too large, and then not at all.

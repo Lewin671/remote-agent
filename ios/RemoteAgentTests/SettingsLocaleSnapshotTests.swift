@@ -32,7 +32,7 @@ import UIKit
                             Text(L10n.securityAccountSecurity())
                             Text(errorText(DeviceSecurity.Failure.lease))
                             ForEach(["20 MB", "pixels", "source missing", "decode", "storage full", "offline", "opaque"], id: \.self) { raw in
-                                Text(imageProblem(raw).message)
+                                Text(rawImageProblem(raw).message)
                             }
                         }.padding(16)
                     }))

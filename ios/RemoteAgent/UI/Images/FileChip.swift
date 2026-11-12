@@ -31,7 +31,7 @@ struct FileChip: View {
                         .accessibilityLabel(L10n.attachmentFileProgress())
                 }
                 if case .failed(let reason) = state {
-                    Text(reason).font(.footnote).ink(DS.red).fixedSize(horizontal: false, vertical: true)
+                    Text(reason.message).font(.footnote).ink(DS.red).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

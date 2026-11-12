@@ -442,32 +442,12 @@
   {
     "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
     "literal": "20\\\\s*(mb|mib)|原图超过",
-    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
-  },
-  {
-    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
-    "literal": "尺寸|像素|pixels|dimensions|canvas|too large|image exceeds|original exceeds|图片超过|图片太大",
-    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
-  },
-  {
-    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
-    "literal": "本机副本|重新选择|source.*missing|source.*read|local copy|select.*again",
-    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
-  },
-  {
-    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
-    "literal": "decode|解不出|读不出|读不到|格式|规范|png|jpeg|heic|webp|metadata|exif|corrupt|unsupported|cannot read|could not encode|not a readable|truncated|unrecognized block",
-    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
   },
   {
     "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
     "literal": "quota|空间|配额|storage.*full|disk.*full",
-    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
-  },
-  {
-    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
-    "literal": "network|offline|unavailable|fetch|timeout|deadline|expired|网络|连接|离线|断线|超时|过期|重新传|needs? uploading|upload.*again|could not reach|connect.*computer",
-    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
   },
   {
     "path": "ios/RemoteAgentCore/Sources/RACore/Agents.swift",
@@ -478,6 +458,26 @@
     "path": "ios/RemoteAgentCore/Sources/RACore/Agents.swift",
     "literal": "Gemini 4 Argon",
     "reason": "外部 CLI 模型品牌名称，作为额度窗口名称参数按原名显示，不翻译。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "尺寸|像素|pixels|dimensions|canvas|too large|图片超过|图片太大",
+    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "本机副本|重新选择|source.*missing|source.*read",
+    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "decode|解不出|读不出|读不到|格式|规范|png|jpeg|heic|webp|metadata|exif|corrupt|unsupported",
+    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "network|offline|unavailable|fetch|timeout|deadline|expired|网络|连接|离线|断线|超时|过期|重新传",
+    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
   },
   {
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",

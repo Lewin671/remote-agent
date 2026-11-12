@@ -63,7 +63,7 @@ private actor FileReceiver: UploadChannel {
     private func pending(_ source: PickedFile) -> PendingImage {
         let p = PendingImage(id: newRequestId(), uri: nil)
         p.file = source
-        p.state = .failed(error: "needs upload")
+        p.state = .failed(error: AttachmentFailure(kind: .offline))
         return p
     }
 

@@ -29,17 +29,17 @@ import Testing
             ("source missing", .sourceMissing, false), ("decode", .unreadable, false),
             ("storage full", .storage, true), ("offline", .offline, true), ("opaque", .failed, false)
         ]
-        let problems = cases.map { imageProblem($0.0) }
+        let problems = cases.map { rawImageProblem($0.0) }
         for locale in ["zh-CN", "en"] {
             MessageLocale.$overrideForTesting.withValue(locale) {
-                #expect(imageProblem(L10n.imageIosImageExceedsMb(count: 80)).kind == .dimensions)
-                #expect(imageProblem(L10n.imageIosOriginalExceedsMb(count: 20)).kind == .tooLarge)
-                #expect(imageProblem(L10n.imageThisImageHasNoLocalCopyRemoveItAnd()).kind == .sourceMissing)
+                #expect(imageProblem(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))).kind == .dimensions)
+                #expect(imageProblem(ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: 20))).kind == .tooLarge)
+                #expect(imageProblem(UserError(L10nMessage.imageThisImageHasNoLocalCopyRemoveItAnd())).kind == .sourceMissing)
                 for (problem, item) in zip(problems, cases) {
                     #expect(problem.kind == item.1 && problem.retryable == item.2)
-                    #expect(imageFailureLine([item.0], locale: locale) == problem.message)
+                    #expect(imageFailureLine([item.0].map(rawImageProblem), locale: locale) == problem.message)
                 }
-                #expect(imageFailureLine(["opaque"], locale: "en") == L10n.imageThisImageCouldNotBeProcessed(locale: "en"))
+                #expect(imageFailureLine(["opaque"].map(rawImageProblem), locale: "en") == L10n.imageThisImageCouldNotBeProcessed(locale: "en"))
             }
         }
     }

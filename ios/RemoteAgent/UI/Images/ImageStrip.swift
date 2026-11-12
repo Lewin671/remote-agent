@@ -48,8 +48,8 @@ struct ImageStrip: View {
             } else {
                 tray(draft)
                 meta(draft)
-                let failed = draft.photos.compactMap { img -> String? in
-                    if case .failed(let why) = img.state { return why }
+                let failed = draft.photos.compactMap { img -> ImageProblem? in
+                    if case .failed(let why) = img.state { return why.problem }
                     return nil
                 }
                 let failures = imageFailureLine(failed)

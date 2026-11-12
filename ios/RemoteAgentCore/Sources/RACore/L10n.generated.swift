@@ -15003,6 +15003,9 @@ public struct LocalizedMessage: Equatable, Sendable {
     private var raw: String = ""
     fileprivate init(key: String, arguments: [Argument]) { self.key = key; self.arguments = arguments }
     public init(raw: String) { self.raw = raw }
+    // Stable resource identity for local semantic error mapping; never rendered text.
+    var resourceKey: String? { key }
+    var rawText: String? { key == nil ? raw : nil }
     public func resolve(locale: String = MessageLocale.current) -> String {
         guard let key else { return raw }
         return L10n.format(key, locale: locale, args: arguments.map(\.value))

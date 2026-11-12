@@ -17,7 +17,7 @@ import Testing
             #expect(L10n.imageAttachFailed(count: count) == "\(count) 张图没加上，点图片看原因")
             #expect(L10n.imageAttachFailed(count: count, locale: "en") == "\(count) images could not be attached. Tap an image for details.")
         }
-        #expect(imageFailureLine(["pixels", "decode"], locale: "en") == "2 images could not be attached. Tap an image for details.")
+        #expect(imageFailureLine(["pixels", "decode"].map(rawImageProblem), locale: "en") == "2 images could not be attached. Tap an image for details.")
     }
     @Test func preferenceIsLocalAndDoesNotEnableEnglishInStageZero() {
         let defaults = UserDefaults(suiteName: "i18n-test-\(UUID())")!

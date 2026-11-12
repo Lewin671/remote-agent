@@ -26,7 +26,7 @@ struct DraftImageViewer: View {
                     .id(images[i].id)
             }, info: { i in
                 let img = images[i]
-                let failure: ImageProblem? = { if case .failed(let error) = img.state { return imageProblem(error) }; return nil }()
+                let failure: ImageProblem? = { if case .failed(let error) = img.state { return error.problem }; return nil }()
                 return VStack(alignment: .leading, spacing: 8) {
                     Text(L10n.imagePosition(count: Int(images.count), index: Int(i + 1))).font(.subheadline.weight(.semibold))
                     Text(failure?.message ?? draftImageState(img)).font(.body)
@@ -42,7 +42,7 @@ struct DraftImageViewer: View {
             .debugSignal("viewer.next") { if page + 1 < images.count { page += 1 } }
             .debugSignal("viewer.zoom") { pokes.zoom += 1 }
             .debugSignal("viewer.retry") {
-                guard images.indices.contains(page), case .failed(let why) = images[page].state, imageProblem(why).retryable else { return }
+                guard images.indices.contains(page), case .failed(let why) = images[page].state, why.problem.retryable else { return }
                 center.retry(key, images[page])
             }
             .onChange(of: images.count) { _, count in if count == 0 { onClose() } }
@@ -59,7 +59,7 @@ struct DraftImageViewer: View {
     case .processing: L10n.imagePreparing()
     case .uploading(let progress): L10n.imageIosUploadProgress(percent: Int(Int(progress * 100)))
     case .ready: L10n.imageUploaded()
-    case .failed(let error): L10n.attachmentFailure(reason: imageProblem(error).message)
+    case .failed(let error): L10n.attachmentFailure(reason: error.problem.message)
     }
 }
 

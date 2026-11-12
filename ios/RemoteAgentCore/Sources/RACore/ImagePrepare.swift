@@ -23,7 +23,7 @@ import UniformTypeIdentifiers
 
 /// A picked image that is too large to read or to send.
 public struct ImageTooLarge: Error, LocalizedError, Equatable {
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var message: String { localized.resolve() }
     public init(_ message: String) { localized = LocalizedMessage(raw: message) }
     public init(_ message: LocalizedMessage) { localized = message }

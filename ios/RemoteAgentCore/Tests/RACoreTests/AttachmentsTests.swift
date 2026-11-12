@@ -251,7 +251,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let transfer = i.transferId
         d.attach([i], max: 6)
         // Put back: the daemon may have used the old upload up.
-        #expect(i.state == .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain()))
+        #expect(i.state == .failed(error: AttachmentFailure(kind: .offline)))
         #expect(i.imageId == nil && i.machineId == nil)
         #expect(!d.ready(machineId: "mac"))
         #expect(d.toSend(machineId: "mac").map(\.id) == ["a"])

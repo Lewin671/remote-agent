@@ -48,7 +48,7 @@ public final class PendingImage: Identifiable {
         case processing
         case uploading(progress: Float)
         case ready
-        case failed(error: String)
+        case failed(error: AttachmentFailure)
     }
 
     public nonisolated let id: String
@@ -275,7 +275,7 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
         img.processed = s.processed
         img.needsProcessing = s.needsProcessing
         // Uploads are the daemon's for a while only: send them again.
-        img.state = .failed(error: img.isFile ? L10n.attachmentIosVerifyTheFileOnTheComputer() : L10n.imageIosNeedsUploadingToTheComputerAgain())
+        img.state = .failed(error: AttachmentFailure(kind: .offline, detail: img.isFile ? L10nMessage.attachmentIosVerifyTheFileOnTheComputer() : nil))
         return img
     }
 }
@@ -561,7 +561,7 @@ public final class ImageDraft {
         for img in back {
             if !img.isFile, let wereOriginal, wereOriginal != original { img.needsProcessing = true }
             img.invalidate(retiring: !img.isFile)
-            img.state = .failed(error: img.isFile && !img.hasSource ? L10n.attachmentFileMissing() : L10n.imageIosNeedsUploadingToTheComputerAgain())
+            img.state = .failed(error: AttachmentFailure(kind: img.isFile && !img.hasSource ? .sourceMissing : .offline, detail: img.isFile && !img.hasSource ? L10nMessage.attachmentFileMissing() : nil))
             images.append(img)
         }
         persist()

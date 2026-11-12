@@ -269,7 +269,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public let code: String
     /// Raw local cause for outbox captions, without the unknown-outcome heading.
     public let outcomeDetail: String?
-    private let localized: LocalizedMessage
+    let localized: LocalizedMessage
     public var message: String { localized.resolve() }
     /// The daemon's own answer for this request, the final word on it
     /// (except that it expired before reaching the daemon).

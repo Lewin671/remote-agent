@@ -166,7 +166,7 @@ final class ImageCenter {
         viewed.use(remote)
         uploads = ImageUploads(
             prepare: { [weak self] uri, original in
-                guard let data = try await self?.read(uri) else { throw UserError(L10nMessage.imageIosCannotReadThisImage()) }
+                guard let data = try await self?.read(uri) else { throw AttachmentFailure(kind: .sourceMissing) }
                 return try await prepareImage(data, original: original)
             },
             channel: { [remote] machine in
@@ -321,7 +321,7 @@ final class ImageCenter {
         if !allowed {
             for item in d.documents where item.hasSource {
                 item.invalidate()
-                item.state = .failed(error: fileSupported(machine) ? L10n.imageIosAttachmentsExceedThisComputerSFileCountOrSize() : L10n.imageIosThisComputerDoesNotSupportFileUploads())
+                item.state = .failed(error: AttachmentFailure(kind: .failed, detail: fileSupported(machine) ? L10nMessage.imageIosAttachmentsExceedThisComputerSFileCountOrSize() : L10nMessage.imageIosThisComputerDoesNotSupportFileUploads()))
             }
         }
         if let machineId, !blocked {
@@ -416,7 +416,7 @@ final class ImageCenter {
                         left.removeFirst()
                         let item = PendingImage(id: newRequestId(), uri: nil)
                         item.file = file
-                        item.state = .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain())
+                        item.state = .failed(error: AttachmentFailure(kind: .offline, detail: L10nMessage.imageIosNeedsUploadingToTheComputerAgain()))
                         d.append([item])
                         if let target = self.machine(key)(), d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
                     } catch {
@@ -467,12 +467,12 @@ final class ImageCenter {
     func retry(_ key: String, _ img: PendingImage) {
         if img.isFile && !img.hasSource {
             img.invalidate()
-            img.state = .failed(error: L10n.attachmentFileMissing())
+            img.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
             return
         }
         if img.isFile, !draft(key).filesAllowed(for: fileMachines[key]) {
             img.invalidate()
-            img.state = .failed(error: L10n.imageIosThisComputerDoesNotSupportTheseFilesCheckTheir())
+            img.state = .failed(error: AttachmentFailure(kind: .failed, detail: L10nMessage.imageIosThisComputerDoesNotSupportTheseFilesCheckTheir()))
             return
         }
         uploads.retry(draft(key), img, machine: machine(key))
@@ -515,16 +515,16 @@ final class ImageCenter {
         defer {
             if readers.isEmpty { reading = false } else { readers.removeFirst().resume() }
         }
-        let unreadable = UserError(L10nMessage.imageIosCannotReadThisImage())
-        guard let source = sources[uri] else { throw unreadable }
+        let unreadable = AttachmentFailure(kind: .unreadable)
+        guard let source = sources[uri] else { throw AttachmentFailure(kind: .sourceMissing) }
         let data: Data
         switch source {
         case .data(let d): return d
         case .item(let item):
-            guard let photo = try await item.loadTransferable(type: PickedPhoto.self) else {
-                throw unreadable
-            }
-            data = try photo.read.get()
+            do {
+                guard let photo = try await item.loadTransferable(type: PickedPhoto.self) else { throw unreadable }
+                data = try photo.read.get()
+            } catch { throw AttachmentFailure.reading(error) }
         case .provider(let provider):
             // The clipboard hands over bytes, not a file: there is no size to ask for first.
             data = try await withCheckedThrowingContinuation { done in
@@ -533,7 +533,7 @@ final class ImageCenter {
                     if let d {
                         done.resume(returning: d)
                     } else {
-                        done.resume(throwing: error ?? unreadable)
+                        done.resume(throwing: error.map(AttachmentFailure.reading) ?? unreadable)
                     }
                 }
             }
@@ -608,7 +608,7 @@ final class ImageCenter {
             // send, and logging out has taken what was written.
             if closed || forgottenSessions.contains(sid) {
                 try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
-                done(.failure(UserError(closed ? L10n.attachmentIosSignedOutOfTheAccount() : L10n.imageIosSessionRemoved())))
+                done(.failure(UserError(closed ? L10nMessage.attachmentIosSignedOutOfTheAccount() : L10nMessage.imageIosSessionRemoved())))
                 return
             }
             do { try remote.requireFileCapability(machineId: machineId, hasFiles: !o.fileIds.isEmpty) }
@@ -694,7 +694,7 @@ final class ImageCenter {
         let picked = files.map { file in
             let item = PendingImage(id: newRequestId(), uri: nil)
             item.file = PickedFile(remote: file)
-            item.state = .failed(error: L10n.attachmentFileMissing())
+            item.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
             return item
         }
         guard draft(Self.sessionKey(sid)).attach(picked, max: imageLimit(for: machine), maxFiles: fileLimit(for: machine)) else { return false }

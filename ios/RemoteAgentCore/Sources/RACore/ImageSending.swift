@@ -41,7 +41,7 @@ public final class ImageUploads {
         draft.invalidate(img)
         let token = img.generation
         let cleanup = abort(img.takeRetired())
-        guard let uri = img.uri else { img.state = .failed(error: L10n.imageIosCannotReadThisImage()); return }
+        guard let uri = img.uri else { img.state = .failed(error: AttachmentFailure(kind: .sourceMissing)); return }
         let original = draft.original, prepare = self.prepare
         img.job = Task { [weak self] in
             guard let self else { return }
@@ -55,10 +55,10 @@ public final class ImageUploads {
                 draft.prepared(img)
                 img.job = nil
                 if let m = machine() { upload(img, machineId: m) }
-                else { img.state = .failed(error: L10n.attachmentIosChooseMachine()) }
+                else { img.state = .failed(error: AttachmentFailure(kind: .failed, detail: img.isFile ? L10nMessage.attachmentIosChooseMachine() : nil)) }
             } catch {
                 if Task.isCancelled || !img.isCurrent(token) || error is CancellationError { return }
-                img.state = .failed(error: errorText(error))
+                img.state = .failed(error: AttachmentFailure(catching: error))
             }
         }
     }
@@ -72,7 +72,7 @@ public final class ImageUploads {
     public func upload(_ img: PendingImage, machineId: String) {
         guard img.hasSource else {
             img.invalidate()
-            img.state = .failed(error: img.isFile ? L10n.attachmentFileMissing() : L10n.imageIosCannotReadThisImage())
+            img.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: img.isFile ? L10nMessage.attachmentFileMissing() : nil))
             return
         }
         guard img.startUpload(to: machineId, now: clock()) else { return }
@@ -137,7 +137,7 @@ public final class ImageUploads {
             } catch {
                 if Task.isCancelled || !img.isCurrent(token) || error is CancellationError { return }
                 img.imageId = nil; img.machineId = nil; img.expiresMs = 0
-                img.state = .failed(error: img.isFile ? fileUploadError(error) : errorText(error))
+                img.state = .failed(error: AttachmentFailure(catching: error, isFile: img.isFile))
             }
         }
     }
@@ -187,13 +187,13 @@ public final class ImageUploads {
         img.invalidate(retiring: true)
         if img.isFile && !img.hasSource {
             _ = abort(img.takeRetired())
-            img.state = .failed(error: L10n.attachmentFileMissing())
+            img.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
         } else if !img.isFile && (img.needsProcessing || img.processed == nil) {
             process(draft, img, machine: machine)
         } else if let m = machine() { upload(img, machineId: m) }
         else {
             _ = abort(img.takeRetired())
-            img.state = .failed(error: L10n.attachmentIosChooseMachine())
+            img.state = .failed(error: AttachmentFailure(kind: .failed, detail: img.isFile ? L10nMessage.attachmentIosChooseMachine() : nil))
         }
     }
 

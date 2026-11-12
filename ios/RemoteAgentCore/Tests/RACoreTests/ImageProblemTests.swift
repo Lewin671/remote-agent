@@ -5,11 +5,11 @@ import Testing
 
 @Suite struct ImageProblemTests {
     @Test func permanentRefusalsAndRecoverableUploadsHaveSafeExplanations() {
-        #expect(imageProblem("原图超过20 MB").message == L10n.imageImageExceeds20MbTurnOffOriginalAndSend())
-        #expect(!imageProblem("the image does not decode").retryable)
-        #expect(imageProblem("unavailable: machine offline").retryable)
-        #expect(imageProblem("opaque internal exception").message == L10n.imageThisImageCouldNotBeProcessed())
-        #expect(imageFailureLine([L10n.imageImageDimensionsAreTooLarge(), "decode failed"]) == "2 张图没加上，点图片看原因")
+        #expect(rawImageProblem("原图超过20 MB").message == L10n.imageImageExceeds20MbTurnOffOriginalAndSend())
+        #expect(!rawImageProblem("the image does not decode").retryable)
+        #expect(rawImageProblem("unavailable: machine offline").retryable)
+        #expect(rawImageProblem("opaque internal exception").message == L10n.imageThisImageCouldNotBeProcessed())
+        #expect(imageFailureLine(["pixels", "decode failed"].map(rawImageProblem)) == "2 张图没加上，点图片看原因")
     }
 
     @MainActor @Test func uncertainImagesRemainRecoverableWhileTheSourceSurvives() {
