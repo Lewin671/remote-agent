@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
@@ -188,18 +189,20 @@ private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onCli
     val bg by animateColorAsState(if (interrupt || on) p.btn else p.fill2, fade, label = "send-bg")
     val fg by animateColorAsState(if (interrupt || on) p.btnFg else p.ink3, fade, label = "send-fg")
     Box(
-        Modifier.size(40.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape)
-            .background(bg)
-            .disabledAlpha(!interrupt || on)
-            .combinedClickable(interactionSource = source, indication = LocalIndication.current, enabled = on, role = Role.Button,
+        // Keep the touch target fixed while only the 40dp ink circle shrinks on press.
+        Modifier.size(44.dp).disabledAlpha(!interrupt || on)
+            .combinedClickable(interactionSource = source, indication = null, enabled = on, role = Role.Button,
                 onClickLabel = if (interrupt) "中断本轮" else sendLabel,
                 onClick = onClick,
                 onLongClick = onLongClick)
             .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
         contentAlignment = Alignment.Center,
     ) {
-        Crossfade(interrupt, animationSpec = Motion.fadeInSpec(Motion.FAST), label = "send-icon") { stop ->
-            if (stop) Ic(Lucide.Square, 14.dp, fg) else Ic(Lucide.ArrowUp, 20.dp, fg)
+        Box(Modifier.size(40.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape)
+            .background(bg).indication(source, LocalIndication.current), contentAlignment = Alignment.Center) {
+            Crossfade(interrupt, animationSpec = Motion.fadeInSpec(Motion.FAST), label = "send-icon") { stop ->
+                if (stop) Ic(Lucide.Square, 14.dp, fg) else Ic(Lucide.ArrowUp, 20.dp, fg)
+            }
         }
     }
 }
