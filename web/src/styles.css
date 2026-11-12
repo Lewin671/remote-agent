@@ -1896,6 +1896,11 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .tool-entry { min-width: 0; }
 .desk .tool-command code { font-size: 12px; }
 .desk .command-row:hover { background-color: var(--fill); }
+/* Open, the command block is the surface: a second highlight behind it
+   would show as a lighter strip around the mark. The mark sits on the
+   block's first line instead of the row's top edge. */
+.command-row.expanded, .command-row.expanded:active, .desk .command-row.expanded:hover { background-color: transparent; }
+.command-row.expanded > span:first-child:has(> svg) { margin-top: 12px; height: 20px; }
 
 /* New-task controls have their own compact layout; settings sheets keep theirs. */
 .new-task-tools { display: flex; align-items: center; flex: 1; min-width: 0; gap: 2px; }
