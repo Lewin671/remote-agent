@@ -228,7 +228,7 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
 const UNKNOWN_ENTRY: AgentEntry = {
   agent: -1 as Agent,
   id: "",
-  name: l10n.t("models.unknown_cli"),
+  get name() { return l10n.t("models.unknown_cli"); },
   quotaWindows: [],
   quotaWindow(name: string): QuotaWindowDescriptor {
     return { label: name, group: null };
