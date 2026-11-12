@@ -1909,8 +1909,10 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .new-task-model-panel .model-controls .fl { font-size: 12px; line-height: 16px; margin: 0 0 2px; }
 .new-task-model-panel .model-controls .seg + .fl { margin-top: 4px; }
 .new-task-model-panel .model-controls .hint { font-size: 13px; margin: 4px 0; }
-.new-task-model-panel .seg { display: flex; padding: 0; }
-.new-task-model-panel .seg button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 2px; font-size: 13px; white-space: nowrap; }
+/* The track keeps the shared inset so the knob sits inside it; the 44px
+   target comes from the segment's own ::before, not from a taller knob. */
+.new-task-model-panel .seg { display: flex; }
+.new-task-model-panel .seg button { flex: 1 1 0; min-width: 0; padding: 0 2px; font-size: 13px; white-space: nowrap; }
 .new-task-model-panel .model-panel-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; }
 .model-panel-body[data-pinned="true"] > .model-controls { position: sticky; top: 0; z-index: 1; background: var(--s3); }
 .new-task-model-panel .list { margin: 0; background: transparent; }
