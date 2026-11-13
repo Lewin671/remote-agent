@@ -264,5 +264,5 @@ class V58HomeGallery {
 
     @Test fun noNetworkNothingKept() = shoot("12-no-network-empty", RemoteState(link = Link.NO_NETWORK, conn = ConnState.OFFLINE))
 
-    @Test fun noServerNothingKept() = shoot("13-no-server-empty", RemoteState(link = Link.NO_SERVER, conn = ConnState.OFFLINE, error = "证书无效"))
+    @Test fun noServerNothingKept() = shoot("13-no-server-empty", RemoteState(link = Link.NO_SERVER, conn = ConnState.OFFLINE, error = io.github.lewin671.remoteagent.core.MessageText.Raw("证书无效")))
 }
