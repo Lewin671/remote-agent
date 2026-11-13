@@ -249,6 +249,25 @@ class MachineStatusShotsTest {
         assertEquals(StatusMetric.CPU, main)
     }
 
+    @Test fun reducedMotionDropsTheRollingDigitsAndSwapsAtOnce() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<Application>()
+        val resolver = context.contentResolver
+        android.provider.Settings.Global.putFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+        Motion.observe(context)
+        try {
+            assertTrue(Motion.reduced)
+            page(MachineFixtures.live(MachineFixtures.status().build()))
+            // Whole numbers, not a column of digits that roll.
+            ui.onNodeWithText("23").assertExists(); ui.onNodeWithText("11.2").assertExists()
+            ui.onNodeWithContentDescription("内存，11.2 GB 已用，压力正常，设为主图").performClick()
+            assertEquals(StatusMetric.MEMORY, main)
+        } finally {
+            android.provider.Settings.Global.putFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+            Motion.observe(context)
+        }
+        assertFalse(Motion.reduced)
+    }
+
     @Test fun holdingTheCurveLooksBack() {
         page(MachineFixtures.live(MachineFixtures.status().build()))
         val chart = ui.onNode(SemanticsMatcher("chart") { n -> n.config.getOrNull(SemanticsProperties.ContentDescription)?.any { it.startsWith("最近 2 分钟") } == true })
