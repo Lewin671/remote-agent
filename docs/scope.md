@@ -28,21 +28,23 @@
                                                                    └────────────────┘
 ```
 
-通信方式、部署和技术决策见 [architecture.md](architecture.md)。
+客户端与 daemon 可经中继或直接通信；与服务器的账户、历史、同步和推送通信继续保留。通信方式、部署和技术决策见 [architecture.md](architecture.md)，传输设计见 [transport.md](transport.md)，实现进度见 [plan.md](plan.md)。
 
 | 组件 | 负责 | 不负责 |
 |---|---|---|
 | `remote-agent`（每台电脑一个） | 在 tmux 里启动和托管 CLI；读取 transcript 并转成统一事件；接收 hook（审批、轮次边界）；排队并注入输入；转发终端字节流；加密、解密和签名；上报本机的项目 | 另存一份对话原文（transcript 本身就是本地的数据源，daemon 只保存由它派生的事件、待发消息和读取进度）；替 CLI 做决策 |
 | `remote-agent-server`（VPS） | 设备鉴权；按路由转发密文；存储会话事件的密文；存储公开签名的成员状态链并按修订号 CAS 可变对象；收到删除状态时吊销设备；发送推送 | 解密任何内容；理解消息语义；分组和搜索；替离线的 daemon 排队指令；提供网页代码（网页放在 Cloudflare Pages）或 App 安装包；签成员状态 |
-| `web`（PWA） | 配对设备；解密和渲染；按项目分组；聊天视图和终端视图；权限审批；作为当前管理 Client 时管理账户 | 直接连接 daemon（一律经 server 转发） |
-| `android`（原生 App） | 和 PWA 相同，另外在系统通知里显示审批并直接允许或拒绝；作为当前管理 Client 时管理账户 | 直接连接 daemon（一律经 server 转发） |
-| `ios`（原生 App） | 和 PWA 相同，终端用原生视图；可作为当前管理 Client | 直接连接 daemon（一律经 server 转发）；首版无后台安全提醒和通知审批，不以 APNs 为管理能力的前置条件 |
+| `web`（PWA） | 配对设备；解密和渲染；按项目分组；聊天视图和终端视图；权限审批；作为当前管理 Client 时管理账户；可与 daemon 直连 | 替代 server 的账户、历史同步和推送职责 |
+| `android`（原生 App） | 和 PWA 相同，另外在系统通知里显示审批并直接允许或拒绝；作为当前管理 Client 时管理账户；可与 daemon 直连 | 替代 server 的账户、历史同步和推送职责 |
+| `ios`（原生 App） | 和 PWA 相同，终端用原生视图；可作为当前管理 Client；可与 daemon 直连 | 首版无后台安全提醒和通知审批，不以 APNs 为管理能力的前置条件 |
 
 管理能力按 Client 角色定义，包含建账户、批准加入、移除、续租、交接和恢复；网页与 iOS 的管理流程仍在实现，当前进度见 [plan.md](plan.md)。
 
 ## 4. 信任边界
 
 **server 被视为不可信**：VPS 被攻破时，泄露的只能是元数据，不能是内容。
+
+直连不改变内容的端到端保密，但增加网络地址暴露：已配对对端设备互相看见实际 IP/端口，可能推断位置、运营商或网络拓扑；自建 STUN 看见映射源地址，不能用信令加密隐藏其连接来源。中继看到的直连数据面流量时间、长度和请求路由元数据减少，但账户、在线连接、加密信令、历史同步和交互热备仍经过它，并非元数据全部消失。用户可关闭本机直连以停止这类探测和对端地址暴露；具体策略见 [transport.md](transport.md)。
 
 | 数据 | server 能看到明文吗 |
 |---|---|
@@ -61,7 +63,7 @@
 
 硬性规则：
 - 任何明文内容不得出现在 server 的日志、数据库或推送 payload 中
-- daemon 和客户端的日志里也不得打印消息正文或密钥；调试时只打印 ID 和长度
+- daemon 和客户端的日志里也不得打印消息正文或密钥；调试时只打印 ID 和长度。直连/STUN 日志不保存 IP、候选地址、SDP 或 ICE 凭据；诊断边界见 [transport.md](transport.md#6-stun-与诊断)
 - 定时结果通知默认显示任务名和结果摘要，标题固定使用派发时的任务名，Agent 不能覆盖。Android 在解锁时显示，锁屏仍只发通用文案，已显示的详细通知从锁屏隐藏；网页 PWA 和桌面浏览器由 Service Worker 读取本机安全状态、验证解密后显示，锁屏也可能显示。网页缺密钥、状态未知、超限或验证失败时退回通用文案。通知交给操作系统后，可能留在通知历史里或被有通知读取权限的程序读到。
 - Android 的审批等其他通知默认仍只显示通用文案，点开再审批；打开「在通知里显示内容并直接审批」后，解锁时才把审批内容交给系统通知。定时结果不依赖此开关。
 - 加密只用标准原语：AES-256-GCM、X25519、Ed25519、HKDF，不自己发明密码算法或密码学构造（应用层的报文格式照常自己设计，见 [architecture.md](architecture.md)）
@@ -90,7 +92,7 @@
 - **daemon 重启后重新接上**仍在运行的 tmux 会话
 - **聊天视图**：文本、推理摘要、工具调用和结果、轮次开始和结束、token 用量
 - **会话设置**：切换模型和 reasoning effort；上下文占用提示和压缩
-- **终端视图**：通过 tmux control mode 获取实时字节流，加密后经 server 转发，**不落库**；进入终端时自动把 tmux 窗口适配到这块屏幕，可「还原」；手机上提供特殊按键栏
+- **终端视图**：通过 tmux control mode 获取实时字节流，加密后通过设备间传输送达（[设计](transport.md)），**不落库**；进入终端时自动把 tmux 窗口适配到这块屏幕，可「还原」；手机上提供特殊按键栏
 - **权限审批**：需要用户审批的请求经 Codex 的 `PermissionRequest` hook 转到客户端，**超时默认拒绝**；会话开着 `auto_review` 时由 Codex 自己判断（见 [architecture.md](architecture.md)）
 - **回答模型提问**：Codex 的 `request_user_input` 在客户端显示成选项卡片，点选即回答
 - **多端输入**：按到达顺序注入，不加锁
@@ -99,6 +101,8 @@
 - **部署**：server 部署在 VPS，TLS 必须开启
 
 ### MVP 之后要做
+
+- **设备直连**：客户端与 daemon 的指令/结果、终端流、分块传输和只读查询支持直连与中继自动选路，网络切换无感，手机可查看路径；不替代账户、历史和通知服务，实施状态见 [plan.md](plan.md)。无感的可用性边界见 [transport.md](transport.md#4-网络切换与第-0-期中继修复)
 
 - **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
 - **Antigravity**（`agy`）：同样以原生 TUI 跑在 tmux 里，`remote-agent agy` 是本地入口。当前远程操作的差异：会话中不换模型和推理强度，普通会话不远程改为完全放行，以完全放行启动时锁定远程模式切换，暂不提供分叉；其余操作和另外两个 CLI 一致。设计见 [architecture.md](architecture.md) 第 19 节，实测见 [antigravity-notes.md](antigravity-notes.md)
@@ -109,7 +113,7 @@
 ### 不做（MVP 之后再评估）
 
 - Codex、Claude Code、Antigravity 以外的 CLI
-- 显示 CLI 记录以外的文件：Agent 在回复里提到的本机文件，daemon 不去读
+- 任意浏览或读取电脑文件：Agent 在回复里提到的任意本机路径，daemon 不代读；直连的分块下载仅限经授权的共享对象（接口依赖见 [plan.md](plan.md#传输模块与直连)）
 - 接管不是由 `remote-agent` 启动的 CLI 进程
 - 桌面端原生 App
 - 语音、feed、artifacts、数据统计

@@ -4,7 +4,7 @@
 
 ## 传输与信任边界
 
-文件沿用图片命名的机器级 Begin / Put / Status / Complete / Abort 指令，端到端加密，经中继转发到电脑；中继不保存文件正文，不解析名字、哈希和路径。设备身份由命令签名证明，传输和完成 ID 都只允许原设备续传或发送。文件上传独立受 `file_upload` capability 控制；未声明能力时客户端不提供文件选择，不提升协议版本。网页、Android 和 iOS 均已接入；原生客户端自己的来源授权和缓存约束见 [Android](android-client.md#文件附件)、[iOS](ios-client.md#文件附件)。
+文件沿用图片命名的机器级 Begin / Put / Status / Complete / Abort 指令，端到端加密，通过设备间传输到电脑（当前实现为中继，选路设计见 [transport.md](transport.md)）；中继不保存文件正文，不解析名字、哈希和路径。设备身份由命令签名证明，传输和完成 ID 都只允许原设备续传或发送。文件上传独立受 `file_upload` capability 控制；未声明能力时客户端不提供文件选择，不提升协议版本。网页、Android 和 iOS 均已接入；原生客户端自己的来源授权和缓存约束见 [Android](android-client.md#文件附件)、[iOS](ios-client.md#文件附件)。
 
 所有客户端在每次发送 file_ids 前必须核对目标机器当前的 file_upload 能力；不是 true 时拒绝整条操作并提示更新电脑上的 remote-agent，不能删除附件字段后只发文字。这覆盖 Send、新建会话、失败消息重发、结果未知请求的原样重试和放回输入框；放回时先检查，再改草稿或移除失败记录。未知结果保持原始请求 ID、截止时间与附件 ID，能力恢复前不重发，也不能把本地能力拒绝当作原请求未执行的证明。封装／签名等异步处理后及每次网络重试前仍须复查当前能力。Android / iOS 的独立上传与发送实现同样遵循此规则。
 

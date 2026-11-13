@@ -25,6 +25,8 @@
 | [self-hosting.md](self-hosting.md)、[self-hosting.zh-CN.md](self-hosting.zh-CN.md) | 说明 | 给别人看的自部署指南（英文为主，附中文），从 Release 安装中继、网页和 daemon |
 | [scope.md](scope.md) | 边界 | 要解决的问题、组件职责、信任边界、MVP 做与不做 |
 | [architecture.md](architecture.md) | 设计 | 部署和发布、报文分层、通信方式、技术决策、接入 Codex、Claude Code 和 Antigravity（含多 CLI 的通用做法）、审批、项目、账户和密钥、同步和指令、终端、推送、daemon 设置、账户额度、定时任务 |
+| [transport.md](transport.md) | 设计 | 传输模块、直连与中继、热备和网络切换、安全信令及路径界面规则 |
+| [transport-notes.md](transport-notes.md) | 实测 | 传输可行性原型的吞吐、丢包、网络切换、NAT 采样与移动库证据边界 |
 | [android-client.md](android-client.md) | 设计 | Android 客户端自己的选型和约束：模块、生命周期、密钥保管、原生终端、更新、推送和在通知里审批 |
 | [ios-client.md](ios-client.md) | 设计 | iOS 客户端自己的选型和约束：工程和模块、和其他端保持一致的办法、生命周期、密钥保管、原生终端、还不能做的部分 |
 | [session-files.md](session-files.md) | 设计 | 从客户端发送任意文件：原样分块上传、CLI 路径引用、生命周期、网页交互与协议依赖 |
