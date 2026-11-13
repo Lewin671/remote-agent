@@ -1,0 +1,97 @@
+// Included only by this acceptance harness's build overlay. No product API.
+package main
+
+import (
+	"connectrpc.com/connect"
+	"context"
+	"encoding/hex"
+	"fmt"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/relay"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+type acceptanceBackend struct{ backend }
+
+func transportAcceptanceBackend(b backend) relay.Backend { return acceptanceBackend{b} }
+func (b acceptanceBackend) Local() remoteagentv1connect.LocalServiceHandler {
+	return acceptanceLocal{b.backend.Local()}
+}
+
+type acceptanceLocal struct {
+	remoteagentv1connect.LocalServiceHandler
+}
+
+func acceptanceEnter(ctx context.Context) (func(error), error) {
+	root := os.Getenv("RA_DEV_DIR")
+	home := os.Getenv("REMOTE_AGENT_HOME")
+	if root == "" || home != filepath.Join(root, "candidate", "machine") || !(strings.HasPrefix(root, "/tmp/") || strings.HasPrefix(root, "/private/tmp/")) {
+		return nil, fmt.Errorf("acceptance isolation mismatch")
+	}
+	id := agent.OriginFrom(ctx).GetRequestId()
+	raw, e := hex.DecodeString(id)
+	if e != nil || len(raw) != 16 {
+		return nil, fmt.Errorf("acceptance request identity invalid")
+	}
+	p := filepath.Join(root, "trace", id)
+	f, e := os.OpenFile(p+".count", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if e != nil {
+		return nil, e
+	}
+	_, e = f.Write([]byte{1})
+	f.Close()
+	if e != nil {
+		return nil, e
+	}
+	if e = os.WriteFile(p+".entered", []byte("entered"), 0600); e != nil {
+		return nil, e
+	}
+	done := func(e error) {
+		code := "ok"
+		if e != nil {
+			code = connect.CodeOf(e).String()
+		}
+		_ = os.WriteFile(p+".finished", []byte(code), 0600)
+	}
+	for {
+		if _, e = os.Stat(p + ".hold"); os.IsNotExist(e) {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			done(ctx.Err())
+			return nil, ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	return done, nil
+}
+func (l acceptanceLocal) Send(ctx context.Context, q *connect.Request[pb.SendRequest]) (r *connect.Response[pb.SendResponse], e error) {
+	done, e := acceptanceEnter(ctx)
+	if e != nil {
+		return nil, e
+	}
+	defer func() { done(e) }()
+	return l.LocalServiceHandler.Send(ctx, q)
+}
+func (l acceptanceLocal) SetModel(ctx context.Context, q *connect.Request[pb.SetModelRequest]) (r *connect.Response[pb.SetModelResponse], e error) {
+	done, e := acceptanceEnter(ctx)
+	if e != nil {
+		return nil, e
+	}
+	defer func() { done(e) }()
+	return l.LocalServiceHandler.SetModel(ctx, q)
+}
+func (l acceptanceLocal) ResolveApproval(ctx context.Context, q *connect.Request[pb.ResolveApprovalRequest]) (r *connect.Response[pb.ResolveApprovalResponse], e error) {
+	done, e := acceptanceEnter(ctx)
+	if e != nil {
+		return nil, e
+	}
+	defer func() { done(e) }()
+	return l.LocalServiceHandler.ResolveApproval(ctx, q)
+}
