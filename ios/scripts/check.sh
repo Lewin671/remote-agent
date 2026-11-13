@@ -74,11 +74,13 @@ if [ -z "$destination" ]; then
     fi
 fi
 # Component runs select tests explicitly; full keeps the complete scheme.
+# The test action builds its targets. A preceding build repeats the app build
+# action (including the always-run version stamp) without adding coverage.
 set --
 case "$mode" in
     std|app) set -- -only-testing:RemoteAgentTests ;;
     ui) set -- -only-testing:RemoteAgentUITests ;;
 esac
 [ -z "${IOS_DERIVED_DATA_PATH:-}" ] || set -- "$@" -derivedDataPath "$IOS_DERIVED_DATA_PATH"
-xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme RemoteAgent -destination "$destination" "$@" build test >"$out" 2>&1 \
+xcodebuild -quiet -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 180 -collect-test-diagnostics never -parallel-testing-enabled NO -jobs "${IOS_BUILD_JOBS:-4}" -project "$ios/RemoteAgent.xcodeproj" -scheme RemoteAgent -destination "$destination" "$@" test >"$out" 2>&1 \
     || fail "the app did not build or its tests failed (xcodebuild build test, $destination)"
