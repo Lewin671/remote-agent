@@ -1,4 +1,5 @@
 import XCTest
+import notify
 
 /// Simulator touches on isolated demo data; expected labels come from generated resources.
 @MainActor
@@ -22,33 +23,30 @@ final class BatchBLocaleTests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-        let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("i18n-batch-b")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try shot.pngRepresentation.write(to: directory.appendingPathComponent(name + ".png"))
     }
 
     func testComposerMenusInEnglish() throws {
         // Chinese menu gestures and keyboard geometry are exercised by
-        // ChatGestureTests.testComposerMenusKeepKeyboardAndPosition.
+        // ComposerHitTests.testShortDraftImageTouchesMenusAndSendHitArea.
         for locale in ["en"] {
             let app = XCUIApplication()
-            app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads", "-messageLocale", locale]
+            app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads", "-messageLocale", locale, "-debug.sessionText", "Menu fixture".debugDescription]
             app.launch()
             let field = app.textFields[try text("composer_message", locale: locale)]
-            XCTAssertTrue(field.waitForExistence(timeout: 15))
+            XCTAssertTrue(field.present(timeout: 15))
+            XCTAssertEqual(notify_post("io.github.lewin671.remoteagent.debug.session.draft"), 0)
             field.tap()
-            field.typeText("Menu fixture")
-            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+            XCTAssertEqual(field.value as? String, "Menu fixture")
+            XCTAssertTrue(app.keyboards.firstMatch.present(timeout: 5))
             app.buttons[try text("new_session_ios_attach", locale: locale)].tap()
-            XCTAssertTrue(app.buttons[try text("attachment_photos_videos", locale: locale)].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons[try text("attachment_photos_videos", locale: locale)].present(timeout: 5))
             try capture(app, name: "final-\(locale)-attach-menu")
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
             let send = app.buttons[try text("composer_send", locale: locale)].firstMatch
-            XCTAssertTrue(send.waitForExistence(timeout: 5))
+            XCTAssertTrue(send.present(timeout: 5))
             send.press(forDuration: 1)
             let afterTurn = try text("composer_after_turn", locale: locale)
-            XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", afterTurn)).firstMatch.waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", afterTurn)).firstMatch.present(timeout: 5))
             try capture(app, name: "final-\(locale)-send-menu")
             XCTAssertTrue(app.keyboards.firstMatch.exists)
             app.terminate()

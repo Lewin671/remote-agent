@@ -28,11 +28,11 @@ final class ComposerHitTests: XCTestCase {
     }
 
     private func present(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
-        element.exists || element.waitForExistence(timeout: timeout)
+        element.present(timeout: timeout)
     }
 
     private func absent(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
-        !element.exists || element.waitForNonExistence(timeout: timeout)
+        element.absent(timeout: timeout)
     }
 
     private func sameFrame(_ a: CGRect, _ b: CGRect) -> Bool {
@@ -41,16 +41,22 @@ final class ComposerHitTests: XCTestCase {
     }
 
     private func sendFrame(_ app: XCUIApplication, keyboardShown: Bool, expected: CGRect? = nil) throws -> CGRect {
-        let buttons = app.buttons.matching(identifier: "session-send")
-        let screen = app.frame
+        func flatten(_ node: any XCUIElementSnapshot) -> [any XCUIElementSnapshot] {
+            [node] + node.children.flatMap(flatten)
+        }
         func snapshot() -> CGRect? {
-            let keyboard = app.keyboards.firstMatch
-            guard keyboardShown == keyboard.exists else { return nil }
-            let frame = buttons.allElementsBoundByAccessibilityElement.map(\.frame)
+            // One AX snapshot keeps the keyboard and button geometry in the
+            // same frame and avoids a remote query for every attribute.
+            guard let tree = try? app.snapshot() else { return nil }
+            let nodes = flatten(tree), screen = tree.frame
+            let keyboard = nodes.first { $0.elementType == .keyboard }
+            guard keyboardShown == (keyboard != nil) else { return nil }
+            let frame = nodes.filter { $0.elementType == .button && $0.identifier == "session-send" }
+                .map(\.frame)
                 .filter { !$0.isEmpty && $0.minX.isFinite && $0.minY.isFinite && $0.midX > screen.width * 0.75 }
                 .max { $0.midX < $1.midX }
             guard let frame else { return nil }
-            if keyboardShown {
+            if let keyboard {
                 let key = keyboard.frame
                 guard !key.isEmpty, key.minY < screen.maxY, frame.maxY <= key.minY else { return nil }
             }
@@ -59,7 +65,9 @@ final class ComposerHitTests: XCTestCase {
         // Reuse only geometry just verified against a known settled frame and
         // the current keyboard. A changed frame still takes the stable path.
         if let expected, let frame = snapshot(), sameFrame(expected, frame) { return frame }
-        var previous: CGRect?
+        // Seed the first sample now; the predicate's next sample still has
+        // to match, so no initial one-second polling tick is wasted.
+        var previous = snapshot()
         var settled: CGRect?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             guard let frame = snapshot() else { previous = nil; return false }
@@ -100,58 +108,143 @@ final class ComposerHitTests: XCTestCase {
         XCTAssertEqual(field.value as? String, draft)
     }
 
-    func testRunningSendHitAreaWithShortDraft() throws { try running(.short) }
-    func testRunningSendHitAreaWithMultilineDraft() throws { try running(.multiline) }
-    func testRunningSendHitAreaAfterDismissingKeyboard() throws { try running(.dismissed) }
+    func testShortDraftImageTouchesMenusAndSendHitArea() throws { try running([.short]) }
+    func testRunningSendHitAreaWithMultilineDraftAndDismissedKeyboard() throws {
+        try running([.multiline, .dismissed])
+    }
 
-    private func running(_ scenario: Scenario, points: [HitPoint] = HitPoint.allCases) throws {
+    private func running(_ scenarios: [Scenario], points: [HitPoint] = HitPoint.allCases) throws {
         continueAfterFailure = false
-        let draft = scenario.draft
+        let draft = try XCTUnwrap(scenarios.first).draft
         let app = XCUIApplication()
-        app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-messageLocale", "zh-CN", "-debug.sessionText", draft.debugDescription]
+        app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads", "-messageLocale", "zh-CN", "-debug.sessionText", draft.debugDescription]
+        if scenarios.contains(.short) { app.launchArguments += ["-imageDraft", "ready"] }
         app.launch()
         defer { app.terminate() }
+        if scenarios.contains(.short) {
+            try XCTContext.runActivity(named: "Draft image geometry and touches") { _ in try checkDraftImageGeometryAndTouches(app) }
+        }
         let field = app.textFields["消息"]
-        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        XCTAssertTrue(field.present(timeout: 15))
+        var checkMenu: ((String) -> Void)?
+        if scenarios.contains(.short) { checkMenu = try checkAttachmentMenu(app, draft: draft) }
         let queue = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "这一轮结束后再发")).firstMatch
         let list = app.descendants(matching: .any).matching(identifier: "chat-list").firstMatch
-        var observations: [Observation] = []
-        defer { try? record(observations, name: "running-send-hit-\(scenario.rawValue)") }
-        var settledFrame: CGRect?
-        for hit in points {
-            fill(app, field, draft)
-            XCTAssertTrue(present(app.keyboards.firstMatch, timeout: 5))
-            if scenario == .dismissed {
-                let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
-                start.press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.97)))
-                XCTAssertTrue(absent(app.keyboards.firstMatch, timeout: 5))
-            }
-            let frame = try sendFrame(app, keyboardShown: scenario != .dismissed, expected: settledFrame)
-            settledFrame = frame
-            XCTAssertGreaterThanOrEqual(frame.width, 44)
-            XCTAssertGreaterThanOrEqual(frame.height, 44)
-            // 0.44 pt from an edge still lies outside a scaled 42.24 pt target.
-            point(app, frame, hit).press(forDuration: 1)
-            let opened = present(queue, timeout: 3)
-            if !opened {
+        // Both states use the same multiline fixture. Sending clears each
+        // draft before the next state; keyboard dismissal remains a real drag.
+        for scenario in scenarios {
+            var observations: [Observation] = []
+            defer { try? record(observations, name: "running-send-hit-\(scenario.rawValue)") }
+            var settledFrame: CGRect?
+            for hit in points {
+                fill(app, field, draft)
+                XCTAssertTrue(present(app.keyboards.firstMatch, timeout: 5))
+                if scenario == .dismissed {
+                    let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+                    start.press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.97)))
+                    XCTAssertTrue(absent(app.keyboards.firstMatch, timeout: 5))
+                }
+                let frame = try sendFrame(app, keyboardShown: scenario != .dismissed, expected: settledFrame)
+                settledFrame = frame
+                XCTAssertGreaterThanOrEqual(frame.width, 44)
+                XCTAssertGreaterThanOrEqual(frame.height, 44)
+                // 0.44 pt from an edge still lies outside a scaled 42.24 pt target.
+                point(app, frame, hit).press(forDuration: 1)
+                let opened = present(queue, timeout: 3)
+                if !opened {
+                    observations.append(Observation(scenario: scenario.rawValue, point: hit.rawValue,
+                        frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: false, tap: false))
+                }
+                XCTAssertTrue(opened, "\(scenario.rawValue) \(hit.rawValue) long press")
+                if hit == .center { checkMenu?("ios-send-open") }
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
+                XCTAssertTrue(absent(queue, timeout: 3))
+                if hit == .center { checkMenu?("ios-send-closed") }
+                point(app, try sendFrame(app, keyboardShown: scenario != .dismissed, expected: frame), hit).tap()
+                // Text-only sending clears synchronously before its RPC. The
+                // native tap has already waited for the application to settle.
+                let sent = draftIsCleared(field)
                 observations.append(Observation(scenario: scenario.rawValue, point: hit.rawValue,
-                    frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: false, tap: false))
+                    frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: opened, tap: sent))
+                XCTAssertTrue(sent, "\(scenario.rawValue) \(hit.rawValue) tap clears draft")
             }
-            XCTAssertTrue(opened, "\(scenario.rawValue) \(hit.rawValue) long press")
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
-            XCTAssertTrue(absent(queue, timeout: 3))
-            point(app, try sendFrame(app, keyboardShown: scenario != .dismissed, expected: frame), hit).tap()
-            // Text-only sending clears synchronously before its RPC. The
-            // native tap has already waited for the application to settle.
-            let sent = draftIsCleared(field)
-            observations.append(Observation(scenario: scenario.rawValue, point: hit.rawValue,
-                frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: opened, tap: sent))
-            XCTAssertTrue(sent, "\(scenario.rawValue) \(hit.rawValue) tap clears draft")
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "composer-\(scenario.rawValue)"
+            shot.lifetime = .keepAlways
+            add(shot)
         }
+    }
+
+    private func checkAttachmentMenu(_ app: XCUIApplication, draft: String) throws -> (String) -> Void {
+        let field = app.textFields["消息"]
+        XCTAssertTrue(field.present(timeout: 15))
+        XCTAssertEqual(notify_post("io.github.lewin671.remoteagent.debug.session.draft"), 0)
+        field.tap()
+        XCTAssertEqual(field.value as? String, draft)
+        XCTAssertTrue(app.keyboards.firstMatch.present(timeout: 5))
+        let top = field.frame.minY
+        func check(_ name: String) {
+            XCTAssertTrue(app.keyboards.firstMatch.exists, name)
+            XCTAssertEqual(field.frame.minY, top, accuracy: 0.5, name)
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name
+            shot.lifetime = .keepAlways
+            add(shot)
+            print("COMPOSER_MENU \(name) top=\(field.frame.minY) baseline=\(top)")
+        }
+        check("ios-baseline")
+        app.buttons["添加附件"].tap()
+        XCTAssertTrue(app.buttons["照片和视频"].present(timeout: 5))
+        check("ios-attach-open")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(app.buttons["照片和视频"].absent(timeout: 5))
+        check("ios-attach-closed")
+        // The first centre long press in the hit matrix checks the send
+        // menu's keyboard/position too, without opening it twice in a row.
+        return check
+    }
+
+    private func checkDraftImageGeometryAndTouches(_ app: XCUIApplication) throws {
+        let first = app.otherElements["第 1 张，共 3 张"]
+        XCTAssertTrue(first.present(timeout: 15))
+        let remove = app.buttons["移除图片 1"]
+        let body = first.frame, hit = remove.frame
+        let next = app.otherElements["第 2 张，共 3 张"].frame
+        XCTAssertEqual(body.width, 56, accuracy: 0.5)
+        XCTAssertEqual(hit.width, 44, accuracy: 0.5)
+        XCTAssertEqual(hit.height, 44, accuracy: 0.5)
+        XCTAssertEqual(hit.midX, body.maxX, accuracy: 0.5)
+        XCTAssertEqual(hit.midY, body.minY, accuracy: 0.5)
+        let overlap = body.intersection(hit)
+        XCTAssertLessThanOrEqual(overlap.width * overlap.height, 22 * 22 + 1)
+        XCTAssertFalse(hit.contains(CGPoint(x: body.midX, y: body.midY)))
+        XCTAssertLessThanOrEqual(hit.maxX, next.minX)
+        print("DRAFT_HIT body=\(body) remove=\(hit) next=\(next)")
         let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "composer-\(scenario.rawValue)"
+        shot.name = "ios-draft-images"
         shot.lifetime = .keepAlways
         add(shot)
+        first.tap()
+        let close = app.buttons["关闭"]
+        XCTAssertTrue(close.present(timeout: 5))
+        close.tap()
+        XCTAssertTrue(first.present(timeout: 5))
+        app.buttons["原图"].tap()
+        // Reacquire after the original-size hint changes the composer height.
+        first.tap()
+        XCTAssertTrue(close.present(timeout: 5))
+        close.tap()
+        XCTAssertTrue(first.present(timeout: 5))
+        // The upper-right part is outside the thumbnail and still removes it.
+        remove.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.25)).tap()
+        XCTAssertTrue(app.otherElements["第 1 张，共 2 张"].present(timeout: 5))
+        // The corner hit above is native. Clear the remaining fixture images
+        // through DEBUG events before the text-only menu and send checks.
+        XCTAssertEqual(notify_post("io.github.lewin671.remoteagent.debug.images.remove"), 0)
+        let last = app.otherElements["第 1 张，共 1 张"]
+        XCTAssertTrue(last.present(timeout: 5))
+        XCTAssertEqual(notify_post("io.github.lewin671.remoteagent.debug.images.remove"), 0)
+        XCTAssertTrue(last.absent(timeout: 5))
     }
 
     func testIdleSendHitAreaWithShortDraft() throws { try idle() }
@@ -164,7 +257,7 @@ final class ComposerHitTests: XCTestCase {
         app.launch()
         defer { app.terminate() }
         let field = app.textFields["消息"]
-        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        XCTAssertTrue(field.present(timeout: 15))
         var observations: [Observation] = []
         defer { try? record(observations, name: "idle-send-hit-results") }
         var settledFrame: CGRect?
@@ -180,5 +273,18 @@ final class ComposerHitTests: XCTestCase {
                 frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: nil, tap: sent))
             XCTAssertTrue(sent, "idle \(hit.rawValue) tap")
         }
+    }
+}
+
+/// Check the current accessibility state first. Native actions already wait
+/// for the app to settle; only a missing transition needs XCTest's polling.
+@MainActor
+extension XCUIElement {
+    func present(timeout: TimeInterval) -> Bool {
+        exists || waitForExistence(timeout: timeout)
+    }
+
+    func absent(timeout: TimeInterval) -> Bool {
+        !exists || waitForNonExistence(timeout: timeout)
     }
 }
