@@ -564,11 +564,11 @@ class SwitchTest {
         assertEquals("已装 Codex、Claude Code、Antigravity", machineSubtitle(allThree, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator())))
 
         assertEquals(
-            "已装 Codex；这台机器没有 Claude Code，会改用 Codex",
+            "已装 Codex；这台电脑没有 Claude Code，会改用 Codex",
             machineSubtitle(codexOnly, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator()), missing = Agent.AGENT_CLAUDE, fallback = Agent.AGENT_CODEX),
         )
         assertEquals(
-            "已装 Codex、Claude Code；这台机器没有 Antigravity，会改用 Codex",
+            "已装 Codex、Claude Code；这台电脑没有 Antigravity，会改用 Codex",
             machineSubtitle(codexClaude, messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.commonListSeparator()), missing = Agent.AGENT_ANTIGRAVITY, fallback = Agent.AGENT_CODEX),
         )
     }

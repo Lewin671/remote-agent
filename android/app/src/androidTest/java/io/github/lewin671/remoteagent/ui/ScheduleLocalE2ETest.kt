@@ -35,9 +35,9 @@ class ScheduleLocalE2ETest {
             ui.waitForIdle()
             File(output,"$name.png").outputStream().use { requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()).compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
         }
-        ui.waitUntil(30_000) { RaApp.instance.remote.value != null || ui.onAllNodesWithText("新建账户").fetchSemanticsNodes().isNotEmpty() }
+        ui.waitUntil(30_000) { RaApp.instance.remote.value != null || ui.onAllNodesWithText("创建账户").fetchSemanticsNodes().isNotEmpty() }
         if (RaApp.instance.remote.value == null) {
-            ui.onNodeWithText("新建账户").performClick()
+            ui.onNodeWithText("创建账户").performClick()
             ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(server)
             ui.onAllNodes(hasSetTextAction())[1].performTextReplacement(args.getString("scheduleSetupToken").orEmpty())
             ui.onNodeWithText("创建账户").performScrollTo().performClick()
@@ -60,7 +60,7 @@ class ScheduleLocalE2ETest {
         File(output,"pair-emoji").writeText(comparison.emoji.joinToString(" "))
         ui.waitUntil(120_000) { File(output,"host-confirmed").exists() }
         ui.onNodeWithText("允许加入").performClick()
-        waitText("新设备已加入",60_000)
+        waitText("设备已加入",60_000)
         ui.onNodeWithText("完成").performClick()
         }
         val remote = requireNotNull(RaApp.instance.remote.value)
@@ -78,7 +78,7 @@ class ScheduleLocalE2ETest {
         val message = "只回复 SCHEDULE_V52_OK，不调用工具。\n" + (1..10).joinToString("\n") { "$it. 这是本地端到端验证，检查消息保持原文换行。" }
         ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(message)
         ui.onAllNodes(hasSetTextAction())[1].performTextReplacement("本地定时验证")
-        ui.onNodeWithText("选择项目").performScrollTo().performClick()
+        ui.onNodeWithText("选项目").performScrollTo().performClick()
         waitText("schedule-fixture")
         ui.onNodeWithText("schedule-fixture",useUnmergedTree=true).performClick()
         capture("new-task")

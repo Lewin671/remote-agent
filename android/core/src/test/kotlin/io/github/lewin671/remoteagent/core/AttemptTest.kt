@@ -9,6 +9,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AttemptTest {
+    @Test fun signedUnknownAndReadOnlyInterruptionsAreFinal() {
+        for (fromDaemon in listOf(false, true)) {
+            for (code in listOf("unknown", "generation_conflict"))
+                assertFalse(uncertain(CommandException(code, "failure", fromDaemon)))
+            assertTrue(uncertain(CommandException(CommandException.UNKNOWN, "unverified", fromDaemon)))
+        }
+        for (code in listOf("canceled", "deadline_exceeded", "aborted"))
+            assertFalse(uncertain(CommandException(code, "read interrupted", fromDaemon = true, readOnly = true)))
+    }
+
+    @Test fun interruptedResultsRemainUnknown() {
+        for (code in listOf("canceled", "deadline_exceeded", "aborted")) {
+            val a = Attempt()
+            val first = a.next(::make)
+            val e = CommandException(code, "interrupted", fromDaemon = true)
+            assertTrue(code, uncertain(e))
+            a.settle(e)
+            assertTrue(a.frozen)
+            assertSame(first, a.next(::make))
+            assertFalse(uncertain(CommandException(code, "local refusal")))
+        }
+    }
+    @Test fun trustedRevisionConflictIsFinal() {
+        for (code in listOf("revision_conflict", "failed_precondition"))
+            for (fromDaemon in listOf(false, true))
+                assertFalse(uncertain(CommandException(code, "refused", fromDaemon)))
+    }
     private var n = 0
     private fun make() = PreparedCommand("m", "", "req-${++n}", 1000, Envelope.getDefaultInstance())
 
@@ -58,7 +85,7 @@ class AttemptTest {
         a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
         assertSame(first, a.next(::make))
         // The retry comes back expired: still unknown, and never sealed again.
-        val e = a.settle(CommandException("deadline_exceeded", "the command expired before it reached the machine", fromDaemon = true)) as CommandException
+        val e = a.settle(CommandException(CommandException.EXPIRED, "the command expired before it was sent", fromDaemon = true)) as CommandException
         assertEquals(CommandException.UNKNOWN, e.code)
         assertTrue(a.frozen && a.expired)
         repeat(2) {

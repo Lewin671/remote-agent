@@ -516,7 +516,7 @@
   },
   {
     "key": "session.context",
-    "zh-CN": "上下文",
+    "zh-CN": "上下文占用",
     "en": "Context",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -532,7 +532,7 @@
   },
   {
     "key": "session.context_tokens",
-    "zh-CN": "上下文 {used} / {total}",
+    "zh-CN": "上下文占用 {used} / {total}",
     "en": "Context {used} / {total}",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：total 为总 token 数（原有 k/M 格式）；used 为已用 token 数（原有 k/M 格式）。",
     "params": {
@@ -752,7 +752,7 @@
   },
   {
     "key": "session.ended_at",
-    "zh-CN": "{time}结束",
+    "zh-CN": "{time} 结束",
     "en": "{time}Ended",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
     "params": {
@@ -938,7 +938,7 @@
   },
   {
     "key": "session.forked_from",
-    "zh-CN": "{time}分叉自{source}",
+    "zh-CN": "{time} 分叉自{source}",
     "en": "{time}Forked from {source}",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。分叉历史行；time 为日期时间（无时间为空），source 为会话链接槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：source 为源会话链接的富文本槽位；time 为已按当前界面语言格式化的本地时间。",
     "params": {
@@ -1222,7 +1222,7 @@
   },
   {
     "key": "session.ios_collapsed",
-    "zh-CN": "已折叠",
+    "zh-CN": "已收起",
     "en": "Collapsed",
     "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
@@ -1287,7 +1287,7 @@
   },
   {
     "key": "session.ios_context_usage",
-    "zh-CN": "上下文 {used}k / {total}k",
+    "zh-CN": "上下文占用 {used}k / {total}k",
     "en": "Context {used}k / {total}k",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：used 为当前 UI 的整数数量/序号/进度（不改变取整规则）；total 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
     "params": {
@@ -1668,7 +1668,7 @@
   },
   {
     "key": "session.ios_title_field",
-    "zh-CN": "标题",
+    "zh-CN": "会话标题",
     "en": "Title",
     "notes": "SessionSheets.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
@@ -1742,7 +1742,7 @@
   },
   {
     "key": "session.ios_update_required",
-    "zh-CN": "需要更新 remote-agent",
+    "zh-CN": "请更新电脑上的 remote-agent",
     "en": "Update remote-agent",
     "notes": "SessionScreen.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
@@ -1770,7 +1770,7 @@
   },
   {
     "key": "session.latest",
-    "zh-CN": "回到最新",
+    "zh-CN": "回到最新消息",
     "en": "Back to latest",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -1786,7 +1786,7 @@
   },
   {
     "key": "session.loading_earlier",
-    "zh-CN": "正在加载更早的记录…",
+    "zh-CN": "正在读取更早的记录…",
     "en": "Loading earlier history…",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -1988,7 +1988,7 @@
   },
   {
     "key": "session.more_context",
-    "zh-CN": "更多，上下文 {percent}%",
+    "zh-CN": "更多，上下文占用 {percent}%",
     "en": "More, context {percent}%",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：percent 为整数百分比。",
     "params": {
@@ -2078,7 +2078,7 @@
   },
   {
     "key": "session.not_running",
-    "zh-CN": "现在没有在运行",
+    "zh-CN": "会话不在运行。",
     "en": "Nothing is running",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -2752,7 +2752,7 @@
   },
   {
     "key": "session.terminal_changes",
-    "zh-CN": "{name} 终端把{changes}",
+    "zh-CN": "{name} 终端里{changes}",
     "en": "{name} terminal {changes}",
     "notes": "会话页顶栏、菜单、历史行或恢复卡。历史终端变更行；changes 是结构化变更列表的富文本槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：changes 为结构化终端变更列表的富文本槽位；name 为电脑/文件/图片的显示名（按调用提供）。",
     "params": {
@@ -2819,7 +2819,7 @@
   },
   {
     "key": "session.thinking",
-    "zh-CN": "思考",
+    "zh-CN": "思考过程",
     "en": "Thinking",
     "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},

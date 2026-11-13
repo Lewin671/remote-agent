@@ -1,7 +1,7 @@
 [
   {
     "key": "terminal.android_closed",
-    "zh-CN": "终端已关闭",
+    "zh-CN": "终端连接已关闭",
     "en": "Terminal closed",
     "notes": "Android 批次 B：RemoteTerminal.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
@@ -15,7 +15,7 @@
   },
   {
     "key": "terminal.android_font_larger",
-    "zh-CN": "字号增大",
+    "zh-CN": "增大字号",
     "en": "Increase font size",
     "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
@@ -48,7 +48,7 @@
   },
   {
     "key": "terminal.android_font_smaller",
-    "zh-CN": "字号减小",
+    "zh-CN": "减小字号",
     "en": "Decrease font size",
     "notes": "Android 批次 B：TerminalPane.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},

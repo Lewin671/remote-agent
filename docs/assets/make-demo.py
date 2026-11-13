@@ -96,7 +96,7 @@ TEXT = {
         me2=["再开个 PR"],
         run="请求执行", left="剩 8 分钟", collapse="收起",
         desc="跑一遍全部测试，确认拆包没有破坏行为",
-        deny="不允许", allow="允许", message="消息",
+        deny="拒绝", allow="允许", message="消息",
         fitted="已适配这块屏幕 · 38×24", restore="还原", keyboard="键盘",
         p_pass=["测试全部通过，handler 现在在", "internal/handler 里。"],
     ),

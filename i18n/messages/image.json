@@ -575,7 +575,7 @@
   },
   {
     "key": "image.android_this_image_has_no_local_copy_remove_it_and_select",
-    "zh-CN": "这张图没有本机副本，请移除后重新选择",
+    "zh-CN": "这张图片没有本机副本，请移除后重新选择",
     "en": "This image has no local copy. Remove it and select it again",
     "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -692,7 +692,7 @@
   },
   {
     "key": "image.android_unsupported_image_format",
-    "zh-CN": "不支持的图片格式",
+    "zh-CN": "不支持这种图片格式",
     "en": "Unsupported image format",
     "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1848,7 +1848,7 @@
   },
   {
     "key": "image.ios_unsupported_image_format",
-    "zh-CN": "不支持的图片格式",
+    "zh-CN": "不支持这种图片格式",
     "en": "Unsupported image format",
     "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -2201,7 +2201,7 @@
     "zh-CN": {
       "plural": "count",
       "forms": {
-        "other": "图片 {index}，共 {count} 张"
+        "other": "第 {index} 张，共 {count} 张"
       }
     },
     "en": {
@@ -2444,7 +2444,7 @@
   },
   {
     "key": "image.tool_source",
-    "zh-CN": "{agent} 查看的图",
+    "zh-CN": "{agent} 查看的图片",
     "en": "Image viewed by {agent}",
     "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
     "params": {

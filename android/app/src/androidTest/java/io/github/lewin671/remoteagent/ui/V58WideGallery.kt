@@ -259,7 +259,7 @@ class V58WideGallery {
     @Test fun wideNewTask() = shootWide("wide-04-new-task") {
         ui.onNodeWithText("新任务").performClick()
         ui.onAllNodesWithText("blog").onLast().performClick()
-        ui.onNodeWithText("要做什么？").assertExists()
+        ui.onNodeWithText("要做什么").assertExists()
     }
 
     @Test fun wideSideBySide() = shootWide("wide-03-side-by-side") {

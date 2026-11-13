@@ -145,7 +145,7 @@ class ScheduleLayoutGallery {
         prepare();var clear:()->Unit={}
         content { val focus=LocalFocusManager.current;clear={focus.clearFocus(force=true)};NewScheduleScreen("") }
         ui.onAllNodes(hasSetTextAction())[0].performTextReplacement("每天检查项目的更新，有值得注意的变化再通知我。")
-        ui.runOnIdle { clear() };ui.onNodeWithText("选择项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick()
+        ui.runOnIdle { clear() };ui.onNodeWithText("选项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick()
         ui.onNodeWithText("留空会用：",substring=true).assertExists();ui.onNodeWithText("权限").assertExists();ui.onNodeWithText("模型").assertExists();both("new")
     }
     @Test fun timeSettings() {
@@ -224,7 +224,7 @@ class ScheduleLayoutGallery {
     @Test fun longNewTask() {
         prepare();var clear:()->Unit={}
         content { val focus=LocalFocusManager.current;clear={focus.clearFocus(force=true)};NewScheduleScreen("") }
-        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(longMessage);ui.onAllNodes(hasSetTextAction())[0].performTextInputSelection(androidx.compose.ui.text.TextRange.Zero);ui.runOnIdle { clear() };ui.onNodeWithText("选择项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick();both("new-long")
+        ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(longMessage);ui.onAllNodes(hasSetTextAction())[0].performTextInputSelection(androidx.compose.ui.text.TextRange.Zero);ui.runOnIdle { clear() };ui.onNodeWithText("选项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick();both("new-long")
     }
     @Test fun longChatMessage() {
         prepare();content { Column { PageBar("修复登录超时",{});MeBubble(longMessage,caption="定时任务 · 08:00",foldScheduled=true) } };both("chat-long-scheduled")

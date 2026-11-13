@@ -760,6 +760,36 @@
     "reason": "Stable quota-pool identity, separate from the translated section title; never rendered as product copy."
   },
   {
+    "path": "internal/deviceauth/codec.go",
+    "literal": "security: accepted operation has no trustworthy result",
+    "reason": "Internal accepted-log error sentinel, compared by identity. Relay command handling replaces it with the existing unknown-outcome response; never rendered as product copy."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "unknown_outcome",
+    "reason": "Internal command outcome/state code used for classification; displayed text comes from existing localized messages."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "expired",
+    "reason": "Internal command outcome/state code used for classification; displayed text comes from existing localized messages."
+  },
+  {
+    "path": "web/src/attempt.ts",
+    "literal": "expired",
+    "reason": "Internal command outcome/state code used for classification; displayed text comes from existing localized messages."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "unknown_outcome",
+    "reason": "Internal command outcome/state code used for classification; displayed text comes from existing localized messages."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Files.kt",
+    "literal": "generation_conflict",
+    "reason": "Internal command outcome/state code used for classification; displayed text comes from existing localized messages."
+  },
+  {
     "path": "internal/daemon/shared_files.go",
     "literal": "zh-CN",
     "reason": "Explicit stage-0 display locale code for generated messages; not rendered text."

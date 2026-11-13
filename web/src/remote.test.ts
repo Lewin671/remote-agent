@@ -18,6 +18,7 @@ afterEach(async () => {
 import {
   CommandError,
   COMMAND_TTL_MS,
+  COMMAND_EXPIRY_SKEW_MS,
   newSlot,
   Remote,
   uncertain,
@@ -28,8 +29,8 @@ import {
 it("reuses a request slot only when the outcome is unknown", () => {
   // Timed out or cut off: the command may have run; a retry must reuse
   // the slot so the daemon answers from its log.
-  expect(uncertain(new CommandError("unknown", "连接超时"))).toBe(true);
-  expect(uncertain(new CommandError("aborted", "outcome unknown"))).toBe(true);
+  expect(uncertain(new CommandError("unknown_outcome", "连接超时"))).toBe(true);
+  expect(uncertain(new CommandError("aborted", "outcome unknown", true))).toBe(true);
   expect(uncertain(new ConnectError("reset", Code.Internal))).toBe(true);
   // A definite answer: the next attempt starts afresh.
   expect(uncertain(new CommandError("unavailable", "电脑不在线"))).toBe(false);
@@ -85,7 +86,7 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     await vi.advanceTimersByTimeAsync(1000);
     const e = await result;
     expect(e).toBeInstanceOf(CommandError);
-    expect((e as CommandError).code).toBe("unknown");
+    expect((e as CommandError).code).toBe("unknown_outcome");
     expect((e as CommandError).message).toBe(message("errors.connection_dropped_midway"));
     expect(replies).toHaveLength(0);
   } finally {
@@ -98,7 +99,7 @@ it("keeps a message of unknown outcome on its request when the machine is then o
   const { DemoRemote } = await import("./dev/demo");
   const r = DemoRemote.create(new URLSearchParams());
   const replies = [
-    new CommandError("unknown", "连接超时"),
+    new CommandError("unknown_outcome", "连接超时"),
     new CommandError("unavailable", "电脑不在线，指令没有发出"),
   ];
   const seen: string[] = [];
@@ -353,7 +354,7 @@ it("uploads an image in chunks and resumes from what the machine has after a los
         // The reply to the second chunk is lost, though it was stored.
         if (persisted > 800_000n && lost) {
           lost = false;
-          throw new CommandError("unknown", "连接超时");
+          throw new CommandError("unknown_outcome", "连接超时");
         }
         return create(CommandResultSchema, {
           kind: { case: "putImageChunk", value: status() },
@@ -849,7 +850,7 @@ it("retries authorized actions with their original observation after completion"
           : { case: kind, value: { sessionId: "s", accept: true } };
     const slot = newSlot();
     await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
-      code: "unknown",
+      code: "unknown_outcome",
     });
     const first = await r.world.fixture.open(r.machine, sent.at(-1)!);
     internal.liveSnapshots.set("s", create(LiveSnapshotSchema));
@@ -858,7 +859,7 @@ it("retries authorized actions with their original observation after completion"
     await internal.security.sync();
     // Resealing uses the current security state and the original command, not this empty observation.
     await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
-      code: "unknown",
+      code: "unknown_outcome",
     });
     const retry = await r.world.fixture.open(r.machine, sent.at(-1)!);
     expect(retry.header.requestId).toBe(first.header.requestId);
@@ -905,7 +906,7 @@ it("retries Complete on the same transfer while hashing after a lost reply, with
     if (cmd.case === "beginImageUpload") transfer = cmd.value.transferId!;
     else expect(cmd.value).toMatchObject({ transferId: transfer });
     if (cmd.case === "putImageChunk") persisted = 4n;
-    if (cmd.case === "completeImageUpload" && ++complete === 1) throw new CommandError("unknown", "lost completion reply");
+    if (cmd.case === "completeImageUpload" && ++complete === 1) throw new CommandError("unknown_outcome", "lost completion reply");
     const done = cmd.case === "completeImageUpload";
     return create(CommandResultSchema, { kind: { case: cmd.case as "beginImageUpload", value: { status: { transferId: transfer, state: done ? 2 : 1, persistedBytes: persisted, totalBytes: 4n, maxChunkBytes: 786432, fileId: done ? "ready" : "", expiresMs: 123456789n } } } });
   } };
@@ -1006,7 +1007,7 @@ it("blocks an automatic file retry after metadata refresh and keeps its outcome 
     await retryScheduled;
     await vi.advanceTimersByTimeAsync(1000);
     const error = await done;
-    expect(error.code).toBe("unknown");
+    expect(error.code).toBe("unknown_outcome");
     expect(error.message).toContain(message("session.update_computer"));
     expect(forward).toHaveBeenCalledOnce();
   } finally { globalThis.setTimeout = timer; vi.useRealTimers(); }
@@ -1069,3 +1070,130 @@ it.each(["complete", "missing", "final", "transient", "close"])(
     } finally { r.stop(); vi.useRealTimers(); }
   },
 );
+
+// Same vectors as interruptedResultsRemainUnknown on Android/iOS/Go.
+it("interruptedResultsRemainUnknown", () => {
+  for (const code of ["canceled", "deadline_exceeded", "aborted"]) {
+    expect(uncertain(new CommandError(code, "interrupted", true)), code).toBe(true);
+    expect(uncertain(new CommandError(code, "local refusal", false)), code).toBe(false);
+  }
+  for (const code of ["revision_conflict", "failed_precondition"])
+    for (const fromDaemon of [false, true])
+      expect(uncertain(new CommandError(code, "refused", fromDaemon))).toBe(false);
+});
+
+it("does not renew an interrupted send at its deadline", async () => {
+  const r = await probe();
+  const error = new CommandError("deadline_exceeded", "interrupted", true);
+  const command = vi.spyOn(r, "command").mockRejectedValue(error);
+  const slot = { requestId: "original-request", deadline: Date.now() - 1 };
+  await expect(r.sendMessage("s1", "hello", "stable-send", slot)).rejects.toBe(error);
+  expect(command).toHaveBeenCalledTimes(1);
+});
+
+it("retries an unsigned in-flight abort with the same request slot", async () => {
+  const r = await probe();
+  const ids: string[] = [];
+  const forward = vi.fn(async ({ command }: { command: Envelope }) => {
+    ids.push(fromBinary(HeaderSchema, command.header).requestId);
+    throw new ConnectError("no final result", Code.Aborted);
+  });
+  (r as unknown as { api: object }).api = { forward };
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const slot = newSlot();
+    const result = r.machineCommand(r.machine, { case: "listModels", value: {} }, slot).catch(e => e);
+    // Let crypto and authorization settle before advancing the retry timers.
+    await vi.waitFor(() => expect(forward).toHaveBeenCalled());
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(uncertain(await result)).toBe(true);
+    expect(ids).toEqual(Array(4).fill(slot.requestId));
+  } finally { vi.useRealTimers(); }
+});
+
+it("signedUnknownAndReadOnlyInterruptionsAreFinal", () => {
+  for (const fromDaemon of [false, true]) {
+    for (const code of ["unknown", "generation_conflict"])
+      expect(uncertain(new CommandError(code, "failure", fromDaemon))).toBe(false);
+    expect(uncertain(new CommandError("unknown_outcome", "unverified", fromDaemon))).toBe(true);
+  }
+  for (const code of ["canceled", "deadline_exceeded", "aborted"])
+    expect(uncertain(new CommandError(code, "read interrupted", true, true))).toBe(false);
+});
+
+it.each(["createSession", "forkSession"] as const)("expires a frozen %s through real forward dispatch", async (kind) => {
+  const r = await probe();
+  const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
+  (r as unknown as { api: object }).api = { forward };
+  const { Attempt } = await import("./attempt");
+  const a = new Attempt<CommandKind>();
+  const first = a.next(kind === "createSession"
+    ? { case: "createSession", value: {} }
+    : { case: "forkSession", value: { sessionId: "s" } });
+  // Near enough to the deadline that the initial abort is not auto-retried.
+  const now = first.slot.deadline - 1;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+  const dispatch = () => kind === "createSession"
+    ? r.machineCommand(r.machine, first.payload, first.slot)
+    : r.command("s", first.payload, first.slot);
+  a.settle(await dispatch().catch(e => e), first);
+  expect(a.frozen).toBe(true);
+  expect(a.expired).toBe(false);
+  clock.mockReturnValue(first.slot.deadline + COMMAND_EXPIRY_SKEW_MS - 1);
+  const retry = a.next(first.payload);
+  a.settle(await dispatch().catch(e => e), retry);
+  expect(a.expired).toBe(false);
+  clock.mockReturnValue(first.slot.deadline + COMMAND_EXPIRY_SKEW_MS);
+  a.settle(await dispatch().catch(e => e), a.next(first.payload));
+  expect(a.frozen).toBe(true);
+  expect(a.expired).toBe(true);
+  expect(forward).toHaveBeenCalledTimes(2);
+  a.abandon();
+  expect(a.next(first.payload).slot.requestId).not.toBe(first.slot.requestId);
+});
+
+it("renews a locally expired unsent message slot but preserves an unknown send", async () => {
+  const r = await probe();
+  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const result = undefined;
+  const forward = vi.fn(async () => ({ result }));
+  (r as unknown as { api: object }).api = { forward };
+  // Only bypass result opening; exercise production command/forward/expiry.
+  vi.spyOn(r as unknown as {openSecureMessage(): Promise<unknown>}, "openSecureMessage").mockResolvedValue({ msg: create(CommandResultSchema) } as never);
+  const old = newSlot(Date.now() - COMMAND_TTL_MS - COMMAND_EXPIRY_SKEW_MS);
+  const fresh = await r.sendMessage("s", "hello", "same-send-id", old);
+  expect(fresh.requestId).not.toBe(old.requestId);
+  expect(forward).toHaveBeenCalledTimes(1);
+  await expect(r.sendMessage("s", "hello", "same-send-id", old, true)).rejects.toMatchObject({ code: "expired" });
+  expect(forward).toHaveBeenCalledTimes(1);
+});
+
+it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms", async remaining => {
+  const r = await probe();
+  let now = Date.now();
+  vi.spyOn(Date, "now").mockImplementation(() => now);
+  const slot = { requestId: newSlot().requestId, deadline: now + remaining };
+  const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
+  (r as unknown as { api: object }).api = { forward };
+  // Controlled backoff avoids advancing unrelated fixture timers.
+  const timeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void, ms: number) => { now += ms; fn(); return 0; }) as typeof setTimeout);
+  try {
+    await expect(r.machineCommand(r.machine, { case: "listModels", value: {} }, slot)).rejects.toMatchObject({ code: "unknown_outcome" });
+    expect(forward).toHaveBeenCalledTimes(remaining > 1000 ? 2 : 1);
+    for (const [req] of forward.mock.calls as unknown as [{command: Envelope}][])
+      expect(fromBinary(HeaderSchema, req.command.header).deadlineMs).toBe(BigInt(slot.deadline));
+  } finally { timeout.mockRestore(); }
+});
+
+it.each(["canceled", "deadline_exceeded", "unknown", "generation_conflict"])("ends a verified read-only %s without retry", async code => {
+  const r = await probe();
+  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const slot = newSlot();
+  const result = await r.seal({ kind: 6, requestId: slot.requestId }, CommandResultSchema, create(CommandResultSchema, { errorCode: code, errorMessage: "read stopped" }));
+  const forward = vi.fn(async () => ({result}));
+  (r as unknown as {api: object}).api = {forward};
+  const error = await r.machineCommand(r.machine, {case: "listModels", value: {}}, slot).catch(e => e);
+  expect(error).toMatchObject({code, fromDaemon: true, readOnly: true});
+  expect(uncertain(error)).toBe(false);
+  expect(forward).toHaveBeenCalledTimes(1);
+});

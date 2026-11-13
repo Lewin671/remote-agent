@@ -34,7 +34,7 @@ class ScheduleDetailEditsTest {
     private fun prepare() {
         repository=ScheduleRepository(scope,remote.state,send={_,r->
             requests+=r
-            if(conflict && r.operation=="update") throw CommandException("aborted","revision",fromDaemon=true)
+            if(conflict && r.operation=="update") throw CommandException("revision_conflict","revision",fromDaemon=true)
             if(r.operation=="cancel") latest=ScheduledTask(latest.machine,JsonObject(latest.json+mapOf("status" to JsonPrimitive("cancelled"),"reason" to JsonPrimitive("user_cancelled"))))
             (if(r.operation=="list") buildJsonObject { put("tasks",JsonArray(listOf(latest.json))) } else latest.json).toString().toByteArray()
         })
@@ -53,7 +53,7 @@ class ScheduleDetailEditsTest {
     }
     @Test fun existingTaskCannotSelectAnotherComputer() {
         prepare();render();ui.onNodeWithText("在哪运行").performScrollTo().performClick()
-        ui.onNodeWithText("机器").assertHasNoClickAction()
+        ui.onNodeWithText("电脑").assertHasNoClickAction()
         ui.onNodeWithText("任务设置").assertExists();ui.onNodeWithText("设为常用").assertDoesNotExist();ui.onNodeWithText("移除项目…").assertDoesNotExist()
     }
     @Test fun targetEditorSavesTheSelectedCliAndItsPermission() {

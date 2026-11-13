@@ -434,7 +434,7 @@ it("derives the final shared grouping, attention reason and state copy from task
   expect(scheduleEmpty()).toBe(shared.empty);expect(scheduleOffline()).toBe(shared.offline);
   const tasks = shared.tasks as ScheduleTask[];
   const groups = groupTasks(tasks.map(task => ({ machineId: shared.machine, task })));
-  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual({ "attention": shared.groups["需要你看一下"], "recent": ["conversation", "quiet", "paused"], "ended": shared.groups["已结束"] });
+  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual({ "attention": shared.groups["需要你处理"], "recent": ["conversation", "quiet", "paused"], "ended": shared.groups["已结束"] });
   const attention = tasks.find(t => t.id === "attention")!;
   expect(lastResult(attention, Date.parse(shared.now))).toBe(message("schedule.task_creation_permissions_changed_the_task_stopped"));
   expect(runResult(attention.runs![0])).toBe(message("schedule.no_notification"));

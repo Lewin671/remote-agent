@@ -392,3 +392,16 @@ func TestQuestionSettleWaitIsCancelable(t *testing.T) {
 		}
 	})
 }
+
+func TestUnconfirmedNativeApprovalIsNotFinal(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h, request := controlContextRequest(t, "approval")
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		h.term.onWrite = func(*fakeTerm, string) { cancel() }
+		err := request(ctx)
+		if connect.CodeOf(err) != connect.CodeAborted {
+			t.Fatalf("unconfirmed native key must be uncertain, got %v", err)
+		}
+	})
+}

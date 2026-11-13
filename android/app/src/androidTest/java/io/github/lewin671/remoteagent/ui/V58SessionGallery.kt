@@ -206,7 +206,7 @@ class V58SessionGallery {
     @Test fun approvalDock() = shoot("03-approval", state(session("重构 API 层", approvals = 1)), events(turn(), user("跑一遍全部测试"), approval()), large = true)
 
     @Test fun approvalDenying() = shoot("04-approval-deny", state(session("重构 API 层", approvals = 1)), events(turn(), user("跑一遍全部测试"), approval())) {
-        ui.onNodeWithText("不允许").performClick()
+        ui.onNodeWithText("拒绝").performClick()
     }
 
     @Test fun approvalFolded() = shoot("05-approval-folded", state(session("重构 API 层", approvals = 1)), events(turn(), user("跑一遍全部测试"), approval())) {

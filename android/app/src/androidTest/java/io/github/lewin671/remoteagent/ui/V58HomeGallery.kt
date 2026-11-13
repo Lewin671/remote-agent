@@ -236,7 +236,7 @@ class V58HomeGallery {
     }
 
     @Test fun denying() = shoot("03-denying", state(waiting(false) + running), history) {
-        ui.onNodeWithText("不允许").performClick()
+        ui.onNodeWithText("拒绝").performClick()
     }
 
     @Test fun quiet() = shoot("04-running", state(running + ended), large = true)

@@ -81,7 +81,7 @@ class PlansTest {
         val reply = Plans.Reply()
         val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1, Envelope.getDefaultInstance()) }
         runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw lost } }
-        runCatching { Plans.retry(reply) { _, _ -> throw CommandException("deadline_exceeded", "expired", fromDaemon = true) } }
+        runCatching { Plans.retry(reply) { _, _ -> throw CommandException(CommandException.EXPIRED, "expired before sending") } }
         assertTrue(reply.expired)
         assertTrue(runCatching {
             Plans.send(reply, PlanChoice.PLAN_CHOICE_KEEP_PLANNING, { error("new approval") }) { _, _ -> error("sent") }

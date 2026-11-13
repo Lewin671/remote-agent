@@ -118,7 +118,7 @@
   },
   {
     "key": "security.android_compare_the_4_patterns_on_the_managing_client_if_they",
-    "zh-CN": "核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。",
+    "zh-CN": "核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。",
     "en": "Compare the 4 patterns on the managing client. If they match, confirm here first, then allow on the managing client.",
     "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -413,7 +413,7 @@
   },
   {
     "key": "security.android_going_back_stops_this_wait_reject_the_old_request_on",
-    "zh-CN": "返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。",
+    "zh-CN": "返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。",
     "en": "Going back stops this wait. Reject the old request on the managing client, then generate a new pairing code.",
     "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -441,7 +441,7 @@
   },
   {
     "key": "security.android_i_saved_the_new_recovery_code_offline",
-    "zh-CN": "我已离线保存新恢复码",
+    "zh-CN": "我已离线保存新的恢复码",
     "en": "I saved the new recovery code offline",
     "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1071,7 +1071,7 @@
   },
   {
     "key": "security.android_recovery_eligible_at",
-    "zh-CN": "可以生效的时间：{time}",
+    "zh-CN": "可生效时间：{time}",
     "en": "Eligible at: {time}",
     "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
     "params": {
@@ -1403,7 +1403,7 @@
   },
   {
     "key": "security.android_the_managing_client_s_trust_information_does_not_match_its",
-    "zh-CN": "管理端信任信息与承诺不匹配",
+    "zh-CN": "管理端的信任信息与配对承诺不匹配",
     "en": "The managing client's trust information does not match its commitment",
     "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1445,7 +1445,7 @@
   },
   {
     "key": "security.android_the_original_device_identity_keys_and_history_are_kept_open",
-    "zh-CN": "原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。",
+    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。",
     "en": "The original device identity, keys, and history are kept. Open Settings › Add device on the managing client, scan or enter the pairing code, then compare 4 patterns on both devices to join.",
     "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1935,7 +1935,7 @@
   },
   {
     "key": "security.android_too_many_attempts_wait_a_minute_and_retry",
-    "zh-CN": "试得太频繁了，稍等一分钟再试",
+    "zh-CN": "试得太频繁了，等一分钟再试",
     "en": "Too many attempts. Wait a minute and retry",
     "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -2138,7 +2138,7 @@
   },
   {
     "key": "security.the_original_device_identity_keys_and_history_are_preserved",
-    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。",
+    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对 4 个图案完成加入。",
     "en": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, enter its 8-digit code here, then compare four patterns to finish binding.",
     "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -2218,7 +2218,7 @@
   },
   {
     "key": "security.too_many_attempts_wait_a_minute_and_retry",
-    "zh-CN": "试得太多了，等一分钟再试",
+    "zh-CN": "试得太频繁了，等一分钟再试",
     "en": "Too many attempts. Wait a minute and retry.",
     "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -3832,7 +3832,7 @@
   },
   {
     "key": "security.loading",
-    "zh-CN": "加载中…",
+    "zh-CN": "读取中…",
     "en": "Loading…",
     "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -3880,7 +3880,7 @@
   },
   {
     "key": "security.create_account",
-    "zh-CN": "新建账户",
+    "zh-CN": "创建账户",
     "en": "Create account",
     "notes": "AuthoritySetup 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -4040,7 +4040,7 @@
   },
   {
     "key": "security.continue_creation",
-    "zh-CN": "继续创建",
+    "zh-CN": "继续创建账户",
     "en": "Continue creation",
     "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -4152,7 +4152,7 @@
   },
   {
     "key": "security.recovery_request_pending_eligible_at",
-    "zh-CN": "恢复申请待处理。可生效时间：{value}",
+    "zh-CN": "恢复申请待处理 · 可生效时间：{value}",
     "en": "Recovery request pending. Eligible at: {value}",
     "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = futureTime(status.readyMs)；名称、日期和诊断原文不翻译。",
     "params": {
@@ -4349,7 +4349,7 @@
   },
   {
     "key": "security.delete_this_computer_s_records_device_management",
-    "zh-CN": "删除这台电脑的记录",
+    "zh-CN": "删除这台电脑的记录？",
     "en": "Delete this computer’s records",
     "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -4477,7 +4477,7 @@
   },
   {
     "key": "security.generating",
-    "zh-CN": "生成中…",
+    "zh-CN": "正在生成…",
     "en": "Generating…",
     "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -4749,7 +4749,7 @@
   },
   {
     "key": "security.the_public_key_may_already_be_published_abandoning_only",
-    "zh-CN": "公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
+    "zh-CN": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
     "en": "The public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control; keep the saved recovery code.",
     "notes": "Security 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -5058,7 +5058,7 @@
   },
   {
     "key": "security.open_to_renew",
-    "zh-CN": "请打开{value}续期。",
+    "zh-CN": "请打开{value}续期",
     "en": "Open {value} to renew.",
     "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = authorityName(remote)；名称、日期和诊断原文不翻译。",
     "params": {
@@ -5207,7 +5207,7 @@
   },
   {
     "key": "security.publishing",
-    "zh-CN": "发布中…",
+    "zh-CN": "正在发布…",
     "en": "Publishing…",
     "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -5548,7 +5548,7 @@
   },
   {
     "key": "security.transfer_result_unverified_continue_the_original_operation",
-    "zh-CN": "交接结果尚未核实，请继续原操作",
+    "zh-CN": "交接结果尚未核实，请继续原操作。",
     "en": "Transfer result unverified. Continue the original operation.",
     "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -5886,7 +5886,7 @@
   },
   {
     "key": "security.ios_compare_the_managing_client_s_4_patterns_if_they",
-    "zh-CN": "核对管理端的 4 个图案；一致后先在这里确认，再在管理端上允许。",
+    "zh-CN": "核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。",
     "en": "Compare the managing client’s 4 patterns. If they match, confirm here first, then allow on the managing client.",
     "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -6137,7 +6137,7 @@
   },
   {
     "key": "security.ios_device_joined",
-    "zh-CN": "设备已加入。",
+    "zh-CN": "设备已加入",
     "en": "Device joined.",
     "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -6810,7 +6810,7 @@
   },
   {
     "key": "security.ios_remote_control_renewed",
-    "zh-CN": "远程控制已续期。",
+    "zh-CN": "远程控制已续期",
     "en": "Remote control renewed.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -6894,7 +6894,7 @@
   },
   {
     "key": "security.ios_restore_account_public_key_information",
-    "zh-CN": "补齐账户公钥资料",
+    "zh-CN": "补齐账户公钥",
     "en": "Restore account public key information",
     "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -6908,7 +6908,7 @@
   },
   {
     "key": "security.ios_restore_information",
-    "zh-CN": "补齐资料",
+    "zh-CN": "补齐公开资料",
     "en": "Restore information",
     "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7090,7 +7090,7 @@
   },
   {
     "key": "security.ios_the_current_request_changed_review_it_again",
-    "zh-CN": "当前请求已变化，请重新核对",
+    "zh-CN": "电脑上的请求已变化，请重新核对",
     "en": "The current request changed. Review it again.",
     "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7118,7 +7118,7 @@
   },
   {
     "key": "security.ios_the_managing_client_s_trust_information_does_not_match",
-    "zh-CN": "管理端的信任信息与承诺不匹配",
+    "zh-CN": "管理端的信任信息与配对承诺不匹配",
     "en": "The managing client’s trust information does not match its commitment",
     "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7160,7 +7160,7 @@
   },
   {
     "key": "security.ios_the_old_recovery_code_is_immediately_invalidated_and_pending",
-    "zh-CN": "旧恢复码立即作废，正在等待的恢复申请会被否决。",
+    "zh-CN": "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。",
     "en": "The old recovery code is immediately invalidated and pending recovery requests will be vetoed.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7174,7 +7174,7 @@
   },
   {
     "key": "security.ios_the_original_device_identity_keys_and_history_are_preserved",
-    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。",
+    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对 4 个图案完成加入。日常使用不需要重复设置。",
     "en": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, scan or enter its code, then compare four patterns to finish binding. This is only needed once.",
     "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7258,7 +7258,7 @@
   },
   {
     "key": "security.ios_the_security_state_chain_is_too_long_to_join",
-    "zh-CN": "安全状态链太长，无法加入账户；请在管理端重建账户",
+    "zh-CN": "账户的状态链太长，无法加入；请在管理端重建账户。",
     "en": "The security state chain is too long to join. Rebuild the account on the managing client.",
     "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7300,7 +7300,7 @@
   },
   {
     "key": "security.ios_the_successor_s_public_key_may_already_be_published",
-    "zh-CN": "接任公钥可能已经发布；放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期，请保留已保存的恢复码。",
+    "zh-CN": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
     "en": "The successor’s public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control. Keep the saved recovery code.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -7468,7 +7468,7 @@
   },
   {
     "key": "security.ios_too_many_attempts_wait_a_minute_and_retry",
-    "zh-CN": "试得太频繁了，稍等一分钟再试",
+    "zh-CN": "试得太频繁了，等一分钟再试",
     "en": "Too many attempts. Wait a minute and retry.",
     "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},

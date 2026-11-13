@@ -191,9 +191,22 @@ func NewRequestID() string {
 // CommandError is an error the daemon reported for a command.
 type CommandError struct {
 	Code, Message string
+	FromDaemon    bool
+	ReadOnly      bool
 }
 
 func (e *CommandError) Error() string { return e.Code + ": " + e.Message }
+
+// Uncertain reports whether retrying must preserve the request ID and deadline.
+// Local errors before dispatch are definite; unsigned transport failures are
+// normalized to unknown by Forward. Authentication cannot settle interruption.
+func Uncertain(err error) bool {
+	var ce *CommandError
+	if !errors.As(err, &ce) {
+		return false
+	}
+	return ce.Code == "unknown_outcome" || (ce.FromDaemon && !ce.ReadOnly && (ce.Code == "canceled" || ce.Code == "deadline_exceeded" || ce.Code == "aborted"))
+}
 
 // Seal builds a sealed command for the given request ID and deadline.
 func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time, cmd *pb.Command) (*pb.Envelope, error) {
@@ -244,16 +257,23 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	}
 	res, err := c.api.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env}))
 	if err != nil {
-		return nil, &CommandError{Code: "unknown", Message: "the relay supplied no authenticated outcome; retry the same request"}
+		return nil, &CommandError{Code: "unknown_outcome", Message: "the relay supplied no authenticated outcome; retry the same request"}
 	}
 	out := &pb.CommandResult{}
 	if _, err := c.openMessage(ctx, nil, res.Msg.Result, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: machineID, SessionId: h.SessionId, RequestId: h.RequestId,
 	}, out); err != nil {
-		return nil, &CommandError{Code: "unknown", Message: "the command result failed authentication; retry the same request"}
+		return nil, &CommandError{Code: "unknown_outcome", Message: "the command result failed authentication; retry the same request"}
 	}
 	if out.ErrorCode != "" {
-		return out, &CommandError{Code: out.ErrorCode, Message: out.ErrorMessage}
+		// Recover the original authenticated command even for caller-held envelopes.
+		readOnly := false
+		if wire, err := deviceauth.FromEnvelope(env); err == nil {
+			if header, plain, err := c.endpoint.Open(wire, nil, false, uint64(time.Now().UnixMilli())); err == nil {
+				readOnly = deviceauth.ReadOnlyCommand(header, plain)
+			}
+		}
+		return out, &CommandError{Code: out.ErrorCode, Message: out.ErrorMessage, FromDaemon: true, ReadOnly: readOnly}
 	}
 	return out, nil
 }

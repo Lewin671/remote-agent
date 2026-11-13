@@ -234,7 +234,7 @@ suspend fun loginResponse(api: Api, account: Account): LoginResponse {
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
 enum class CommandFailureKind { RAW, CONNECTION_DROPPED, REPLY_UNVERIFIED, UNKNOWN, COMPUTER_OFFLINE, IMAGE_MISSING }
 
-class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW, override val imageKind: ImageFailureKind? = null) :
+class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW, override val imageKind: ImageFailureKind? = null, val readOnly: Boolean = false) :
     Exception(message), MessageFailure {
     override var display: MessageText = message.messageText()
         private set
@@ -243,11 +243,10 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
     // on it (except that it expired before reaching the daemon).
 
     /**
-     * The command may or may not have run; retrying with the same request ID is safe. A daemon that
-     * stopped halfway through it answers "aborted" ever after.
+     * The command may or may not have run; retrying with the same request ID is safe. Interrupted daemon execution does not supply a final result.
      */
     val unknown: Boolean
-        get() = code == UNKNOWN || (fromDaemon && code == "aborted")
+        get() = code == UNKNOWN || (fromDaemon && !readOnly && code in setOf("canceled", "deadline_exceeded", "aborted"))
 
     companion object {
         const val UNKNOWN = "unknown_outcome"

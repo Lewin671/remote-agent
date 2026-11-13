@@ -167,7 +167,7 @@ extension Remote {
                 if !msg.errorCode.isEmpty {
                     throw CommandError(
                         msg.errorCode, msg.errorMessage.isEmpty ? msg.errorCode : msg.errorMessage,
-                        fromDaemon: true)
+                        fromDaemon: true, readOnly: p.command.isReadOnlyCommand)
                 }
                 if case .schedule(let request) = p.command.kind, request.operation == "list",
                    (try? decodeScheduleList(msg)) != nil, let bytes = try? res.result.serializedData() {
@@ -306,5 +306,16 @@ extension Remote {
 extension Duration {
     var milliseconds: Int64 {
         components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000
+    }
+}
+
+// Keep in step with deviceauth.IsReadOnlyCommand; unknown kinds mutate.
+extension PBCommand {
+    var isReadOnlyCommand: Bool {
+        switch kind {
+        case .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus: true
+        case .schedule(let request): ["list", "get"].contains(request.operation)
+        default: false
+        }
     }
 }

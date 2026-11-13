@@ -566,7 +566,7 @@
   },
   {
     "key": "common.loading",
-    "zh-CN": "加载中",
+    "zh-CN": "读取中",
     "en": "Loading",
     "notes": "骨架屏读屏标签，不显示在可视正文。 无变量。",
     "params": {},
@@ -582,7 +582,7 @@
   },
   {
     "key": "common.machine",
-    "zh-CN": "机器",
+    "zh-CN": "电脑",
     "en": "Computer",
     "notes": "机器选择器标题和分段控件读屏标签。 无变量。",
     "params": {},

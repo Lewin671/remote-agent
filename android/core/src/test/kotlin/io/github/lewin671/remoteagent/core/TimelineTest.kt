@@ -349,7 +349,7 @@ class TimelineTest {
         val online = RemoteState(conn = ConnState.ONLINE, sessionsNext = SessionPlace(1, "a"))
         assertEquals(messageTextForTest(UiMessages.homeLoadingEarlier()), earlierTail(online))
         assertEquals(messageTextForTest(UiMessages.homeAndroidEarlierOffline()), earlierTail(online.copy(conn = ConnState.OFFLINE)))
-        assertEquals("没能加载更早的会话：超时 · 点这里重试", earlierTail(online.copy(sessionsError = "超时".messageText())))
+        assertEquals("没能读取更早的会话：超时 · 点这里重试", earlierTail(online.copy(sessionsError = "超时".messageText())))
         // The first page itself: there is no listing yet to have earlier pages.
         assertEquals("没能读取会话列表：超时 · 点这里重试", earlierTail(RemoteState(conn = ConnState.ONLINE, sessionsError = "超时".messageText(), sessionsListed = false)))
     }

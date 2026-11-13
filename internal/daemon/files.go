@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/imageproc"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -144,7 +145,7 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	// Check before the completed fast path: it may belong to a replacement
 	// Begin which another Complete already finished while this hash ran.
 	if current.Generation != t.Generation {
-		return nil, connect.NewError(connect.CodeAborted, errors.New("the transfer changed while its bytes were being checked"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, &protocol.GenerationConflictError{Message: "the transfer changed while its bytes were being checked"})
 	}
 	if current.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
 		return u.durableFileStatus(current)
@@ -154,7 +155,7 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 		return nil, err
 	}
 	if !os.SameFile(before, now) || current.FileName != t.FileName || current.Total != t.Total || !bytes.Equal(current.SHA256, t.SHA256) {
-		return nil, connect.NewError(connect.CodeAborted, errors.New("the transfer changed while its bytes were being checked"))
+		return nil, connect.NewError(connect.CodeFailedPrecondition, &protocol.GenerationConflictError{Message: "the transfer changed while its bytes were being checked"})
 	}
 	if hashErr != nil {
 		return nil, hashErr

@@ -30,7 +30,7 @@ class FilesLayoutTest {
                 CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                     Column(Modifier.width(320.dp)) {
                         FileChip(name, 1024, PendingImage.State.Uploading(.4f), onRemove = { removals++ })
-                        FileChip("data.csv", 0, PendingImage.State.Failed("无法读取源文件，请重新选择文件"), onRetry = {}, onRemove = {})
+                        FileChip("data.csv", 0, PendingImage.State.Failed("读不到源文件，请重新选择"), onRetry = {}, onRemove = {})
                         ComposeBox("", {}, "消息", false, {}, { picturePicks++ }, onFile = { filePicks++ })
                     }
                 }

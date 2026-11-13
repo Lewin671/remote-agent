@@ -615,7 +615,7 @@
   },
   {
     "key": "settings.android_new_device_joined",
-    "zh-CN": "新设备已加入",
+    "zh-CN": "设备已加入",
     "en": "New device joined",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -822,7 +822,7 @@
   },
   {
     "key": "settings.android_rejoin_this_computer_and_resume_sessions",
-    "zh-CN": "让这台电脑重新加入并接续会话",
+    "zh-CN": "重新加入并接续会话",
     "en": "Rejoin this computer and resume sessions",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -963,7 +963,7 @@
   },
   {
     "key": "settings.android_remove_this_machine",
-    "zh-CN": "移除这台机器…",
+    "zh-CN": "移除这台电脑…",
     "en": "Remove this machine…",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1019,7 +1019,7 @@
   },
   {
     "key": "settings.android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending",
-    "zh-CN": "会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
+    "zh-CN": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
     "en": "Sessions end automatically after prolonged inactivity (not running, no pending actions, and no terminal input). You can resume at any time; chat history is kept.",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1173,7 +1173,7 @@
   },
   {
     "key": "settings.android_this_machine_has_been_removed",
-    "zh-CN": "这台机器已经移除了",
+    "zh-CN": "这台电脑已经移除了",
     "en": "This machine has been removed",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -2160,7 +2160,7 @@
   },
   {
     "key": "settings.ios_unanswered_approvals_are_denied_after_this_time",
-    "zh-CN": "没人处理的审批过了这么久就按拒绝算。",
+    "zh-CN": "没人处理的审批过了这个时间就拒绝。",
     "en": "Unanswered approvals are denied after this time.",
     "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -2277,7 +2277,7 @@
   },
   {
     "key": "settings.no_computers_yet",
-    "zh-CN": "还没有电脑。",
+    "zh-CN": "还没有电脑",
     "en": "No computers yet.",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -2458,7 +2458,7 @@
   },
   {
     "key": "settings.checking",
-    "zh-CN": " 正在检查…",
+    "zh-CN": "正在检查更新…",
     "en": " Checking…",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -2474,7 +2474,7 @@
   },
   {
     "key": "settings.up_to_date",
-    "zh-CN": "已是最新",
+    "zh-CN": "已是最新版本",
     "en": "Up to date",
     "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -2538,7 +2538,7 @@
   },
   {
     "key": "settings.computer_offline_showing_the_last_reading",
-    "zh-CN": "机器离线，显示上次记录",
+    "zh-CN": "电脑不在线，显示上次记录",
     "en": "Computer offline. Showing the last reading.",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -3386,7 +3386,7 @@
   },
   {
     "key": "settings.unanswered_approvals_are_denied_after_this_time",
-    "zh-CN": "没人回复的审批过了这个时间就拒绝",
+    "zh-CN": "没人处理的审批过了这个时间就拒绝。",
     "en": "Unanswered approvals are denied after this time",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -3434,7 +3434,7 @@
   },
   {
     "key": "settings.sessions_end_automatically_after_this_much_inactivity_not_running",
-    "zh-CN": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在",
+    "zh-CN": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
     "en": "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},

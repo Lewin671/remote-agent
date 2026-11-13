@@ -34,9 +34,9 @@ class LibraryVideoStripTest {
         val draft = ImageDraft("session:geometry", MemoryFiles())
         assertTrue(draft.attach((1..3).map { PendingImage("image-$it", null) }, 9))
         ui.setContent { RaTheme(ThemeMode.LIGHT) { ImageStrip(draft, remote, null, 9) } }
-        val body = ui.onNodeWithContentDescription("图片 1，共 3 张").getUnclippedBoundsInRoot()
+        val body = ui.onNodeWithContentDescription("第 1 张，共 3 张").getUnclippedBoundsInRoot()
         val remove = ui.onNodeWithContentDescription("移除图片 1").getUnclippedBoundsInRoot()
-        val next = ui.onNodeWithContentDescription("图片 2，共 3 张").getUnclippedBoundsInRoot()
+        val next = ui.onNodeWithContentDescription("第 2 张，共 3 张").getUnclippedBoundsInRoot()
         assertEquals(64.dp, (body.right - body.left))
         assertEquals(64.dp, (body.bottom - body.top))
         assertEquals(44.dp, (remove.right - remove.left))

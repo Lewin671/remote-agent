@@ -71,7 +71,7 @@
   },
   {
     "key": "errors.android_cannot_read_the_source_file_remove_it_and_select_the",
-    "zh-CN": "无法读取源文件，请移除后重新选择文件",
+    "zh-CN": "读不到源文件，请移除后重新选择",
     "en": "Cannot read the source file. Remove it and select the file again",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -165,7 +165,7 @@
   },
   {
     "key": "errors.android_could_not_connect_to_the_server",
-    "zh-CN": "没有连上服务器",
+    "zh-CN": "连不上服务器",
     "en": "Could not connect to the server",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -207,7 +207,7 @@
   },
   {
     "key": "errors.android_file_too_large_maximum_size_per_file_value1",
-    "zh-CN": "文件过大，单个文件最多 {value1}",
+    "zh-CN": "文件太大，单个文件最多 {value1}",
     "en": "File too large. Maximum size per file: {value1}",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：已格式化的文件大小（MiB/GiB 等）。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {
@@ -630,7 +630,7 @@
   },
   {
     "key": "errors.android_the_computer_returned_invalid_file_progress",
-    "zh-CN": "电脑返回的文件进度无效",
+    "zh-CN": "电脑返回的文件上传进度无效",
     "en": "The computer returned invalid file progress",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -644,7 +644,7 @@
   },
   {
     "key": "errors.android_the_current_request_changed_review_it_again",
-    "zh-CN": "当前请求已变化，请重新核对",
+    "zh-CN": "电脑上的请求已变化，请重新核对",
     "en": "The current request changed. Review it again",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -761,7 +761,7 @@
   },
   {
     "key": "errors.android_this_request_can_no_longer_be_acted_on",
-    "zh-CN": "请求已不可操作",
+    "zh-CN": "当前请求已不可操作",
     "en": "This request can no longer be acted on",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1032,7 +1032,7 @@
   },
   {
     "key": "errors.update_remote_agent_on_this_computer_to_use_scheduled",
-    "zh-CN": "请先更新这台电脑上的 remote-agent，才能使用定时任务",
+    "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent on this computer to use scheduled tasks",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -1474,7 +1474,7 @@
   },
   {
     "key": "errors.history_has_a_gap_retry",
-    "zh-CN": "历史记录存在缺口，请重试",
+    "zh-CN": "历史记录不连续，请重试读取",
     "en": "History has a gap. Retry.",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -1799,7 +1799,7 @@
   },
   {
     "key": "errors.the_relay_did_not_provide_a_verifiable_execution_result",
-    "zh-CN": "中继未提供可验证的执行结果，请重试同一请求",
+    "zh-CN": "未收到可验证的执行结果，请重试同一请求",
     "en": "The relay did not provide a verifiable execution result. Retry the same request.",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -2215,7 +2215,7 @@
   },
   {
     "key": "errors.the_server_returned_an_unexpected_device_id",
-    "zh-CN": "server 返回了意外的设备 ID",
+    "zh-CN": "服务器返回了意外的设备 ID",
     "en": "The server returned an unexpected device ID",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -2700,7 +2700,7 @@
   },
   {
     "key": "errors.ios_not_connected_to_the_server",
-    "zh-CN": "没有连上服务器",
+    "zh-CN": "连不上服务器",
     "en": "Not connected to the server",
     "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -2714,7 +2714,7 @@
   },
   {
     "key": "errors.ios_not_connected_to_the_server_connect_to_make_changes",
-    "zh-CN": "没有连上服务器，连上后才能修改",
+    "zh-CN": "连上服务器后才能修改",
     "en": "Not connected to the server. Connect to make changes.",
     "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -2728,7 +2728,7 @@
   },
   {
     "key": "errors.ios_only_the_device_itself_can_change_its_name",
-    "zh-CN": "设备名称只能由该设备自己设置",
+    "zh-CN": "名称只能在那台设备上修改",
     "en": "Only the device itself can change its name",
     "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -2817,7 +2817,7 @@
   },
   {
     "key": "errors.ios_terminal_closed",
-    "zh-CN": "终端已关闭",
+    "zh-CN": "终端连接已关闭",
     "en": "Terminal closed",
     "notes": "iOS TerminalFrames.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},

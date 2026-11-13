@@ -17,7 +17,7 @@
   },
   {
     "key": "projects.adding",
-    "zh-CN": "正在添加…",
+    "zh-CN": "正在添加到项目列表…",
     "en": "Adding…",
     "notes": "已移除项目横幅的忙碌按钮文字。 无变量。",
     "params": {},
@@ -128,7 +128,7 @@
   },
   {
     "key": "projects.android_syncing",
-    "zh-CN": "正在同步…",
+    "zh-CN": "正在同步项目列表…",
     "en": "Syncing…",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
@@ -411,7 +411,7 @@
   },
   {
     "key": "projects.ios_machine_defaults",
-    "zh-CN": "换机器后，各 CLI 的模型从那台机器的默认设置开始。",
+    "zh-CN": "换电脑后，各 CLI 的模型从那台电脑的默认设置开始。",
     "en": "After switching computers, each CLI uses that computer’s default model settings.",
     "notes": "项目设置机器列表底部说明。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
@@ -439,7 +439,7 @@
   },
   {
     "key": "projects.ios_no_sessions",
-    "zh-CN": "这个项目还没有会话。",
+    "zh-CN": "这个项目还没有会话",
     "en": "This project has no sessions yet.",
     "notes": "项目页空提示；网页首页原句没有句号。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
@@ -533,7 +533,7 @@
   },
   {
     "key": "projects.ios_syncing",
-    "zh-CN": "正在同步…",
+    "zh-CN": "正在同步项目列表…",
     "en": "Syncing…",
     "notes": "项目行保存偏好中；网页是正在同步项目列表…。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},

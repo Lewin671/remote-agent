@@ -187,7 +187,7 @@
   },
   {
     "key": "attachment.android_source_unreadable",
-    "zh-CN": "无法读取源文件，请重新选择文件",
+    "zh-CN": "读不到源文件，请重新选择",
     "en": "Could not read the source file. Select it again",
     "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
@@ -1033,7 +1033,7 @@
   },
   {
     "key": "attachment.ios_the_computer_reported_invalid_upload_progress",
-    "zh-CN": "电脑报告的上传进度不对",
+    "zh-CN": "电脑返回的文件上传进度无效",
     "en": "The computer reported invalid upload progress",
     "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -1047,7 +1047,7 @@
   },
   {
     "key": "attachment.ios_the_computer_s_attachment_storage_is_full_clear_space",
-    "zh-CN": "电脑的附件存储空间不足，请清理后重试",
+    "zh-CN": "电脑附件空间不足，清理后重试",
     "en": "The computer’s attachment storage is full. Clear space and retry.",
     "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},

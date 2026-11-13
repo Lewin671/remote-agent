@@ -7,7 +7,7 @@ import Testing
     @Test func quantitiesAndDurationsKeepChineseAndUseEnglishPlurals() {
         for count in [0, 1, 2, 1000] {
             #expect(L10n.toolsCompletedCommands(count: count, locale: "zh-CN") == "运行了 \(count) 条命令")
-            #expect(L10n.imagePosition(count: count, index: 1, locale: "zh-CN") == "图片 1，共 \(count) 张")
+            #expect(L10n.imagePosition(count: count, index: 1, locale: "zh-CN") == "第 1 张，共 \(count) 张")
             #expect(L10n.toolsCompletedCommands(count: count, locale: "en") == (count == 1 ? "Ran 1 command" : "Ran \(count) commands"))
         }
         MessageLocale.$overrideForTesting.withValue("zh-CN") {

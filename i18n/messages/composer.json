@@ -31,7 +31,7 @@
   },
   {
     "key": "composer.android_not_sent",
-    "zh-CN": "这条没有发出：{reason}",
+    "zh-CN": "没发出去：{reason}",
     "en": "This message was not sent: {reason}",
     "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {
@@ -254,7 +254,7 @@
   },
   {
     "key": "composer.ios_not_sent",
-    "zh-CN": "这条没有发出：{reason}",
+    "zh-CN": "没发出去：{reason}",
     "en": "This message was not sent: {reason}",
     "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {

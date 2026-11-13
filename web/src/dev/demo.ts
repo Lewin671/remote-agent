@@ -2376,7 +2376,7 @@ export class DemoRemote extends Remote {
         const n = (this.attempts.get(requestId!) ?? 0) + 1;
         this.attempts.set(requestId!, n);
         if (text?.includes("失败") && n === 1)
-          throw new CommandError("unknown", "连接超时");
+          throw new CommandError("unknown_outcome", "连接超时");
         void slot;
         this.push(sid, {
           case: "inputState",
@@ -2417,7 +2417,7 @@ export class DemoRemote extends Remote {
       case "resolveApproval": {
         const v = cmd.value;
         if (v.message?.includes("失败"))
-          throw new CommandError("unknown", "连接超时");
+          throw new CommandError("unknown_outcome", "连接超时");
         this.push(sid, {
           case: "approvalResolved",
           value: {
@@ -2562,7 +2562,7 @@ export class DemoRemote extends Remote {
       }
       case "setModel":
         if (cmd.value.model === "gpt-6-nova")
-          throw new CommandError("unknown", "Codex 的菜单和预期不一样");
+          throw new CommandError("unknown_outcome", "Codex 的菜单和预期不一样");
         this.push(sid, {
           case: "settingsChanged",
           value: { model: cmd.value.model, effort: cmd.value.effort },
@@ -2625,7 +2625,7 @@ export class DemoRemote extends Remote {
     switch (cmd.case) {
       case "listModels":
         if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});
-        if (machineId === "vps") throw new CommandError("unknown", "连接超时");
+        if (machineId === "vps") throw new CommandError("unknown_outcome", "连接超时");
         return create(CommandResultSchema, {
           kind: {
             case: "listModels",

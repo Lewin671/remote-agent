@@ -236,7 +236,7 @@ func TestFileHashDoesNotHoldUploadsLockAndCannotCompleteReplacedPartial(t *testi
 		t.Fatal("file hashing blocked other upload operations")
 	}
 	close(resume)
-	if err := <-done; connect.CodeOf(err) != connect.CodeAborted {
+	if err := <-done; connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("stale hash completion: %v", err)
 	}
 	st, err := u.status(context.Background(), tid, "phone")

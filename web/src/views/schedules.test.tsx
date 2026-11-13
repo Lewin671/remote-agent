@@ -851,14 +851,14 @@ it("creates with the new computer's displayed defaults after switching without e
   const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
   await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
   await input(host.querySelector("textarea")!,"检查回复");
-  await click(/^机器和模型/);
+  await click(/^电脑和模型/);
   const machineRow=[...host.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.querySelector(".mt")?.textContent===message("common.machine"));
   expect(machineRow,host.textContent??"").toBeTruthy();await act(async()=>machineRow!.click());
   expect(button(/改用 新电脑/),host.textContent??"").toBeTruthy();await click(/改用 新电脑/);
   await click(message("common.done"));
-  expect(button(/^机器和模型/)?.textContent).toContain("新电脑");
+  expect(button(/^电脑和模型/)?.textContent).toContain("新电脑");
   expect(button(/^权限/)?.textContent).toContain(message("modes.ask"));
-  expect(button(/^机器和模型/)?.textContent).not.toContain("gpt-6-astra");
+  expect(button(/^电脑和模型/)?.textContent).not.toContain("gpt-6-astra");
   await click(message("schedule.create"));expect(send).toHaveBeenCalledTimes(1);
   const [machine,,request]=send.mock.calls[0];expect(machine).toBe("new");
   expect(request.spec?.target).toMatchObject({agent:"claude",model:"",effort:"",mode:"ask",cwd:path});

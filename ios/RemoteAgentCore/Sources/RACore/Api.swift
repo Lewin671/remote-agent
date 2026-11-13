@@ -274,27 +274,30 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     /// The daemon's own answer for this request, the final word on it
     /// (except that it expired before reaching the daemon).
     public let fromDaemon: Bool
+    public let readOnly: Bool
 
-    public init(_ code: String, _ message: String, fromDaemon: Bool = false, outcomeDetail: String? = nil) {
+    public init(_ code: String, _ message: String, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil) {
         self.code = code
         self.outcomeDetail = outcomeDetail
         self.localized = LocalizedMessage(raw: message)
         self.fromDaemon = fromDaemon
+        self.readOnly = readOnly
     }
 
-    public init(_ code: String, _ message: LocalizedMessage, fromDaemon: Bool = false, outcomeDetail: String? = nil) {
+    public init(_ code: String, _ message: LocalizedMessage, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil) {
         self.code = code
         self.localized = message
         self.fromDaemon = fromDaemon
+        self.readOnly = readOnly
         self.outcomeDetail = outcomeDetail
     }
 
     /// The command may or may not have run; retrying with the same request ID is safe.
-    /// A daemon that stopped halfway through it answers "aborted" ever after.
+    /// Authentication alone does not make an interrupted execution final.
     public var unknown: Bool {
-        code == CommandError.unknownOutcome || (fromDaemon && code == "aborted")
+        code == CommandError.unknownOutcome || (fromDaemon && !readOnly && ["canceled", "deadline_exceeded", "aborted"].contains(code))
     }
-    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.outcomeDetail == rhs.outcomeDetail }
+    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.readOnly == rhs.readOnly && lhs.outcomeDetail == rhs.outcomeDetail }
     public var errorDescription: String? { message }
     public var description: String { message }
 

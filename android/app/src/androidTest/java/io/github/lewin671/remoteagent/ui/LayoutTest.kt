@@ -242,7 +242,7 @@ class LayoutTest {
                 }
             }
         }
-        ui.onNodeWithText("机器").assertIsDisplayed()
+        ui.onNodeWithText("电脑").assertIsDisplayed()
         ui.onNodeWithText("权限").performScrollTo().assertIsDisplayed()
     }
     private fun approval(lines: Int) = ApprovalRequested.newBuilder().setApprovalId("A$lines")
@@ -361,8 +361,8 @@ class LayoutTest {
         showCard(approval(2), dark = true)
         ui.onNodeWithText("没显示", substring = true).assertDoesNotExist()
         ui.onNodeWithText("允许").assertIsDisplayed().assertIsEnabled()
-        ui.onNodeWithText("不允许").performClick()
-        ui.onNodeWithContentDescription("不允许的理由").assertIsDisplayed()
+        ui.onNodeWithText("拒绝").performClick()
+        ui.onNodeWithContentDescription("拒绝的理由").assertIsDisplayed()
         ui.onNodeWithText("取消").assertIsDisplayed()
         ui.onNodeWithText("允许").assertDoesNotExist()
         screenshot("card-deny-dark")
@@ -374,7 +374,7 @@ class LayoutTest {
         showCard(approval(2), unlinked = true)
         ui.onNodeWithText("未连接").assertIsDisplayed()
         ui.onNodeWithText("允许").assertIsNotEnabled()
-        ui.onNodeWithText("不允许").assertIsNotEnabled()
+        ui.onNodeWithText("拒绝").assertIsNotEnabled()
     }
 
     @Test fun theDockKeepsToTheChatWidthOnATablet() {

@@ -6,14 +6,14 @@
 
 import { CommandError, newSlot, uncertain, type RequestSlot } from "./remote";
 
-/** The daemon refused a command as past its deadline. */
+/** This device stopped dispatching a request past its deadline and clock allowance. */
 export function expiredError(e: unknown): boolean {
-  return e instanceof CommandError && e.code === "deadline_exceeded";
+  return e instanceof CommandError && e.code === "expired";
 }
 
 /** Whether an attempt's outcome stays unknown after error. Once a
  * request's outcome was unknown, no later failure says it did not run:
- * not an expired answer (the daemon forgets a request a minute after its
+ * not a locally expired request (the daemon may forget it after its
  * deadline), not an offline machine or a network error. Only the daemon's
  * own answer for the request settles it. */
 export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
@@ -36,8 +36,8 @@ export class Attempt<P> {
   };
 
   /** What to send: an earlier attempt whose outcome is unknown wins over
-   * payload, and is sent sealed as it was, even past its deadline: the
-   * daemon may still remember its result. */
+   * payload, and is sent sealed as it was while the local deadline allowance
+   * permits: the daemon may still remember its result. */
   next(payload: P): { payload: P; slot: RequestSlot } {
     this.pending ??= { payload, slot: newSlot(), tries: 0, expired: false };
     this.pending.tries++;
