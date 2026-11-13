@@ -812,7 +812,7 @@ private struct OutgoingBubble: View {
         let note = outgoingNote(
             state: message.state, error: message.error, input: input, failure: failure,
             agent: session.agent, hasImages: message.canPutBack,
-            missingImages: message.missingImages)
+            missingImages: message.missingImages, outcomeNotice: message.outcomeNotice)
         let ink: Color =
             switch note.tone {
             case .plain: DS.ink2

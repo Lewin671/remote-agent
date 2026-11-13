@@ -18,8 +18,11 @@ internal fun deliveryFailure(reason: String, uncertain: Boolean,
         io.github.lewin671.remoteagent.core.CommandFailureKind.UNKNOWN -> copy(UiMessages.approvalAndroidUnknownResult())
         io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE -> copy(UiMessages.projectsComputerOffline())
         io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING -> copy(UiMessages.composerAndroidImageNotOnComputer())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.EXECUTED_RESULT_UNAVAILABLE -> copy(UiMessages.errorsExecutedResultUnavailable())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.IDENTITY_CONFLICT -> copy(UiMessages.errorsRequestIdentityConflict())
         io.github.lewin671.remoteagent.core.CommandFailureKind.RAW -> reason.trim().ifEmpty { copy(UiMessages.composerAndroidUnknownReason()) }
     }
+    if (kind == io.github.lewin671.remoteagent.core.CommandFailureKind.EXECUTED_RESULT_UNAVAILABLE || kind == io.github.lewin671.remoteagent.core.CommandFailureKind.IDENTITY_CONFLICT) return SendFeedback(short, uncertain)
     return SendFeedback(copy(if (uncertain) UiMessages.composerMaybeFailure(short) else UiMessages.composerSendFailure(short)), uncertain)
 }
 

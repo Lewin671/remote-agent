@@ -930,6 +930,8 @@ public struct PBForwardRequest: Sendable {
   /// Clears the value of `command`. Subsequent reads from it will return its default value.
   public mutating func clearCommand() {self._command = nil}
 
+  public var attemptID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -952,11 +954,33 @@ public struct PBForwardResponse: Sendable {
   /// Clears the value of `result`. Subsequent reads from it will return its default value.
   public mutating func clearResult() {self._result = nil}
 
+  public var outcome: String = String()
+
+  public var reason: String = String()
+
+  public var attemptID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _result: PBEnvelope? = nil
+}
+
+/// Honest relay evidence for one attempt, emitted only before forwarding.
+/// It is not a daemon execution proof.
+public struct PBNotForwarded: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var attemptID: String = String()
+
+  public var reason: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public struct PBPutMachineRequest: Sendable {
@@ -1395,6 +1419,8 @@ public struct PBForwardCall: Sendable {
 
   public var senderRegistrationSignature: Data = Data()
 
+  public var attemptID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1418,9 +1444,16 @@ public struct PBForwardReply: Sendable {
   /// Clears the value of `result`. Subsequent reads from it will return its default value.
   public mutating func clearResult() {self._result = nil}
 
-  /// Set when the daemon could not produce a sealed result, e.g. the
-  /// envelope did not open. The text never contains content.
-  public var error: String = String()
+  /// Routing only. No error text or command content may appear here.
+  public var reason: String = String()
+
+  public var outcome: String = String()
+
+  public var attemptID: String = String()
+
+  /// A failed authentication/decoding entry may have no sealed result.
+  /// Such a reply cannot prove anything about an unauthenticated request ID.
+  public var entryFailure: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3685,7 +3718,7 @@ extension PBGetEventsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}command\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}command\0\u{3}attempt_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3695,6 +3728,7 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._command) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
       default: break
       }
     }
@@ -3711,12 +3745,16 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try { if let v = self._command {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
+    if !self.attemptID.isEmpty {
+      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBForwardRequest, rhs: PBForwardRequest) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs._command != rhs._command {return false}
+    if lhs.attemptID != rhs.attemptID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3724,7 +3762,7 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}result\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}result\0\u{1}outcome\0\u{1}reason\0\u{3}attempt_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3733,6 +3771,9 @@ extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularMessageField(value: &self._result) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.outcome) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
       default: break
       }
     }
@@ -3746,11 +3787,58 @@ extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     try { if let v = self._result {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
     } }()
+    if !self.outcome.isEmpty {
+      try visitor.visitSingularStringField(value: self.outcome, fieldNumber: 2)
+    }
+    if !self.reason.isEmpty {
+      try visitor.visitSingularStringField(value: self.reason, fieldNumber: 3)
+    }
+    if !self.attemptID.isEmpty {
+      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBForwardResponse, rhs: PBForwardResponse) -> Bool {
     if lhs._result != rhs._result {return false}
+    if lhs.outcome != rhs.outcome {return false}
+    if lhs.reason != rhs.reason {return false}
+    if lhs.attemptID != rhs.attemptID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBNotForwarded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".NotForwarded"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}attempt_id\0\u{1}reason\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.attemptID.isEmpty {
+      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 1)
+    }
+    if !self.reason.isEmpty {
+      try visitor.visitSingularStringField(value: self.reason, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBNotForwarded, rhs: PBNotForwarded) -> Bool {
+    if lhs.attemptID != rhs.attemptID {return false}
+    if lhs.reason != rhs.reason {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4535,7 +4623,7 @@ extension PBMachineRemoved: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardCall"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}command\0\u{3}sender_device_id\0\u{3}sender_registration\0\u{3}sender_registration_signature\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}command\0\u{3}sender_device_id\0\u{3}sender_registration\0\u{3}sender_registration_signature\0\u{3}attempt_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4548,6 +4636,7 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       case 3: try { try decoder.decodeSingularStringField(value: &self.senderDeviceID) }()
       case 4: try { try decoder.decodeSingularBytesField(value: &self.senderRegistration) }()
       case 5: try { try decoder.decodeSingularBytesField(value: &self.senderRegistrationSignature) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
       default: break
       }
     }
@@ -4573,6 +4662,9 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if !self.senderRegistrationSignature.isEmpty {
       try visitor.visitSingularBytesField(value: self.senderRegistrationSignature, fieldNumber: 5)
     }
+    if !self.attemptID.isEmpty {
+      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4582,6 +4674,7 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if lhs.senderDeviceID != rhs.senderDeviceID {return false}
     if lhs.senderRegistration != rhs.senderRegistration {return false}
     if lhs.senderRegistrationSignature != rhs.senderRegistrationSignature {return false}
+    if lhs.attemptID != rhs.attemptID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4589,7 +4682,7 @@ extension PBForwardCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardReply"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}result\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}result\0\u{1}reason\0\u{1}outcome\0\u{3}attempt_id\0\u{3}entry_failure\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4599,7 +4692,10 @@ extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.callID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._result) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.outcome) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.entryFailure) }()
       default: break
       }
     }
@@ -4616,8 +4712,17 @@ extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     try { if let v = self._result {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     } }()
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 3)
+    if !self.reason.isEmpty {
+      try visitor.visitSingularStringField(value: self.reason, fieldNumber: 3)
+    }
+    if !self.outcome.isEmpty {
+      try visitor.visitSingularStringField(value: self.outcome, fieldNumber: 4)
+    }
+    if !self.attemptID.isEmpty {
+      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 5)
+    }
+    if self.entryFailure != false {
+      try visitor.visitSingularBoolField(value: self.entryFailure, fieldNumber: 6)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4625,7 +4730,10 @@ extension PBForwardReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   public static func ==(lhs: PBForwardReply, rhs: PBForwardReply) -> Bool {
     if lhs.callID != rhs.callID {return false}
     if lhs._result != rhs._result {return false}
-    if lhs.error != rhs.error {return false}
+    if lhs.reason != rhs.reason {return false}
+    if lhs.outcome != rhs.outcome {return false}
+    if lhs.attemptID != rhs.attemptID {return false}
+    if lhs.entryFailure != rhs.entryFailure {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

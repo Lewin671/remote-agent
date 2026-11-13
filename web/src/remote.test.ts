@@ -29,7 +29,7 @@ import {
 it("reuses a request slot only when the outcome is unknown", () => {
   // Timed out or cut off: the command may have run; a retry must reuse
   // the slot so the daemon answers from its log.
-  expect(uncertain(new CommandError("unknown_outcome", "连接超时"))).toBe(true);
+  expect(uncertain(new CommandError("unknown_outcome", "连接超时", false, false, "unknown"))).toBe(true);
   expect(uncertain(new CommandError("aborted", "outcome unknown", true))).toBe(true);
   expect(uncertain(new ConnectError("reset", Code.Internal))).toBe(true);
   // A definite answer: the next attempt starts afresh.
@@ -99,7 +99,7 @@ it("keeps a message of unknown outcome on its request when the machine is then o
   const { DemoRemote } = await import("./dev/demo");
   const r = DemoRemote.create(new URLSearchParams());
   const replies = [
-    new CommandError("unknown_outcome", "连接超时"),
+    new CommandError("unknown_outcome", "连接超时", false, false, "unknown"),
     new CommandError("unavailable", "电脑不在线，指令没有发出"),
   ];
   const seen: string[] = [];
@@ -354,7 +354,7 @@ it("uploads an image in chunks and resumes from what the machine has after a los
         // The reply to the second chunk is lost, though it was stored.
         if (persisted > 800_000n && lost) {
           lost = false;
-          throw new CommandError("unknown_outcome", "连接超时");
+          throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
         }
         return create(CommandResultSchema, {
           kind: { case: "putImageChunk", value: status() },
@@ -906,7 +906,7 @@ it("retries Complete on the same transfer while hashing after a lost reply, with
     if (cmd.case === "beginImageUpload") transfer = cmd.value.transferId!;
     else expect(cmd.value).toMatchObject({ transferId: transfer });
     if (cmd.case === "putImageChunk") persisted = 4n;
-    if (cmd.case === "completeImageUpload" && ++complete === 1) throw new CommandError("unknown_outcome", "lost completion reply");
+    if (cmd.case === "completeImageUpload" && ++complete === 1) throw new CommandError("unknown_outcome", "lost completion reply", false, false, "unknown");
     const done = cmd.case === "completeImageUpload";
     return create(CommandResultSchema, { kind: { case: cmd.case as "beginImageUpload", value: { status: { transferId: transfer, state: done ? 2 : 1, persistedBytes: persisted, totalBytes: 4n, maxChunkBytes: 786432, fileId: done ? "ready" : "", expiresMs: 123456789n } } } });
   } };
@@ -1125,8 +1125,8 @@ it.each(["createSession", "forkSession"] as const)("expires a frozen %s through 
   clock.mockReturnValue(first.slot.deadline + COMMAND_EXPIRY_SKEW_MS);
   a.settle(await dispatch().catch(e => e), a.next(first.payload));
   expect(a.frozen).toBe(true);
-  expect(a.expired).toBe(true);
-  expect(forward).toHaveBeenCalledTimes(2);
+  expect(a.expired).toBe(false);
+  expect(forward).toHaveBeenCalledTimes(3);
   a.abandon();
   expect(a.next(first.payload).slot.requestId).not.toBe(first.slot.requestId);
 });
@@ -1134,17 +1134,17 @@ it.each(["createSession", "forkSession"] as const)("expires a frozen %s through 
 it("renews a locally expired unsent message slot but preserves an unknown send", async () => {
   const r = await probe();
   const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const result = undefined;
-  const forward = vi.fn(async () => ({ result }));
+  const forward = vi.fn(async ({command}:{command:Envelope}) => {
+    const h=fromBinary(HeaderSchema,command.header);
+    return {result:await r.seal({kind:6,sessionId:h.sessionId,requestId:h.requestId},CommandResultSchema,create(CommandResultSchema))};
+  });
   (r as unknown as { api: object }).api = { forward };
-  // Only bypass result opening; exercise production command/forward/expiry.
-  vi.spyOn(r as unknown as {openSecureMessage(): Promise<unknown>}, "openSecureMessage").mockResolvedValue({ msg: create(CommandResultSchema) } as never);
   const old = newSlot(Date.now() - COMMAND_TTL_MS - COMMAND_EXPIRY_SKEW_MS);
   const fresh = await r.sendMessage("s", "hello", "same-send-id", old);
   expect(fresh.requestId).not.toBe(old.requestId);
   expect(forward).toHaveBeenCalledTimes(1);
-  await expect(r.sendMessage("s", "hello", "same-send-id", old, true)).rejects.toMatchObject({ code: "expired" });
-  expect(forward).toHaveBeenCalledTimes(1);
+  expect(await r.sendMessage("s", "hello", "same-send-id", old, true)).toBe(old);
+  expect(forward).toHaveBeenCalledTimes(2);
 });
 
 it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms", async remaining => {

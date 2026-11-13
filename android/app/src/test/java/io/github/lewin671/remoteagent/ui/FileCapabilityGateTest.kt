@@ -133,7 +133,7 @@ class FileCapabilityGateTest {
                 assertNotEquals(old, p.requestId); assertTrue(p.deadlineMs > System.currentTimeMillis())
                 assertEquals("message", request.requestId)
                 records.save("capability", out, false)
-                throw CommandException(CommandException.UNKNOWN, "lost reply")
+                throw CommandException(CommandException.UNKNOWN, "lost reply", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN)
             }
             val frozenId = out.commandRequestId; val frozenDeadline = out.commandDeadlineMs
             out.deliver { throw CommandException("failed_precondition", "local capability rejected") }
@@ -143,7 +143,7 @@ class FileCapabilityGateTest {
             assertEquals(frozenId, back.commandRequestId); assertEquals(frozenDeadline, back.commandDeadlineMs)
             // The intent-only path also persists the renewed ID before another possible dispatch.
             back.state = Outgoing.State.FAILED
-            back.deliver { records.saveIntent("capability", back); throw CommandException(CommandException.UNKNOWN, "lost reply") }
+            back.deliver { records.saveIntent("capability", back); throw CommandException(CommandException.UNKNOWN, "lost reply", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
             assertEquals(back.commandRequestId, records.load("capability").single().commandRequestId)
         } finally { r.close(); AccountMemory.clear() }
     }

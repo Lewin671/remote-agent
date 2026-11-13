@@ -336,6 +336,7 @@
     <string name="errors_disconnected_from_server" formatted="false">"Disconnected from server"</string>
     <string name="errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" formatted="false">"Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery."</string>
     <string name="errors_establishing_push_connection" formatted="false">"Establishing push connection"</string>
+    <string name="errors_executed_result_unavailable" formatted="false">"Done on the computer, but the result couldn\'t be retrieved. Refresh to see the latest state."</string>
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"History could not continue loading. Retry."</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"History has a gap. Retry."</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"History keys unavailable: records from before recovery cannot be decrypted"</string>
@@ -359,6 +360,7 @@
     <string name="errors_remote_agent_on_is_out_of_date_update_it">"remote-agent on %1$s is out of date. Update it on the computer and retry."</string>
     <string name="errors_remote_control_expired_control_and_new_uploads_are_paused" formatted="false">"Remote control expired. Control and new uploads are paused; renew on the current managing client."</string>
     <string name="errors_remote_control_expired_saving_changes_session_control_and_new" formatted="false">"Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available."</string>
+    <string name="errors_request_identity_conflict" formatted="false">"This didn\'t match an earlier submission, so the computer didn\'t run it. Refresh and try again."</string>
     <string name="errors_security_body_type_or_direction_mismatch" formatted="false">"Security body type or direction mismatch"</string>
     <string name="errors_security_envelope_missing" formatted="false">"Security envelope missing"</string>
     <string name="errors_server_returned">"Server returned %1$s"</string>

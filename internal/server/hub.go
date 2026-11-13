@@ -5,13 +5,13 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -455,7 +455,7 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 	p := a.machineLocked(machineID)
 	if p == nil {
 		h.mu.Unlock()
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("machine is offline"))
+		return nil, notForwarded(connect.NewError(connect.CodeUnavailable, errors.New("machine is offline")), fc.AttemptId, "machine_offline")
 	}
 	h.nextCall++
 	id := h.nextCall
@@ -470,7 +470,7 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 	fc = proto.CloneOf(fc)
 	fc.CallId = id
 	if !h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: fc}}) {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("machine is not keeping up"))
+		return nil, notForwarded(connect.NewError(connect.CodeUnavailable, errors.New("machine is not keeping up")), fc.AttemptId, "queue_full")
 	}
 	timer := time.NewTimer(h.s.cfg.ForwardTimeout)
 	defer timer.Stop()
@@ -479,10 +479,13 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 		switch {
 		case r == nil:
 			return nil, errUnknown("the machine disconnected")
-		case r.Error != "":
-			return nil, connect.NewError(connect.CodeAborted, errors.New("machine: "+strings.TrimSpace(r.Error)))
+		case r.EntryFailure:
+			return nil, connect.NewError(connect.CodeAborted, deviceauth.ErrInvalid)
 		case r.Result == nil:
 			return nil, errUnknown("the machine sent no result")
+		}
+		if r.AttemptId != fc.AttemptId {
+			return nil, errUnknown("result attempt mismatch")
 		}
 		if _, err := checkEnvelope(r.Result, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: machineID}); err != nil {
 			return nil, errUnknown("the machine sent a malformed result")

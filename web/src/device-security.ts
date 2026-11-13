@@ -1366,3 +1366,10 @@ export async function validLease(
   requireOK(l.issuedAt <= now + BigInt(MAX_CLOCK_SKEW), "clock");
   requireOK(now < l.notAfter, "lease");
 }
+
+/** Hash the original unpacked authorization, independent of nonce/epoch. */
+export async function requestIdentity(h: SecurityHeader, plain: Uint8Array): Promise<{key: B; payload: B}> {
+ const key = await hash("ra4/request-key\0", new Writer().str(h.account).raw(h.domain).str(h.sender).u32(h.purpose).str(h.machine).str(h.session).str(h.request).u64(h.seq).bytes());
+ const payload = await hash("ra4/authorized-payload\0", new Writer().lp(key).u32(h.kind).u64(h.deadline).lp(plain).bytes());
+ return {key,payload};
+}

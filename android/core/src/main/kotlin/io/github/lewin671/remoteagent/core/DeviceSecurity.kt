@@ -574,6 +574,13 @@ object DeviceSecurity {
         val compression: UInt,
     )
 
+    /** Original unpacked authorization, independent of nonce/epoch. */
+    fun requestIdentity(h: Header, plain: ByteArray): Pair<ByteArray, ByteArray> {
+        val key = digest("ra4/request-key\u0000", Writer().str(h.account).raw(h.domain).str(h.sender).u32(h.purpose.value).str(h.machine).str(h.session).str(h.request).u64(h.seq).bytes())
+        val payload = digest("ra4/authorized-payload\u0000", Writer().lp(key).u32(h.kind).u64(h.deadline).lp(plain).bytes())
+        return key to payload
+    }
+
     private fun validate(h: Header) {
         check(
             id(h.account) &&

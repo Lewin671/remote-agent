@@ -28,7 +28,7 @@ class AttemptTest {
     fun anUnknownOutcomeIsRetriedAsItWas() {
         val a = Attempt()
         val first = a.next(::make)
-        a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
+        a.settle(CommandException(CommandException.UNKNOWN, "timeout", outcome = Outcome.UNKNOWN))
         assertTrue(a.frozen)
         assertSame(first, a.next(::make))
         a.settle()
@@ -47,7 +47,7 @@ class AttemptTest {
         assertTrue(a.frozen)
         assertSame(first, a.next(::make))
         // The same answer to the retry is still no answer.
-        a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
+        a.settle(CommandException(CommandException.UNKNOWN, "timeout", outcome = Outcome.UNKNOWN))
         a.settle(stopped)
         assertTrue(a.frozen)
         assertSame(first, a.next(::make))
@@ -67,10 +67,10 @@ class AttemptTest {
     fun anExpiredUnknownStaysUnknownAndIsNotRenewed() {
         val a = Attempt()
         val first = a.next(::make)
-        a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
+        a.settle(CommandException(CommandException.UNKNOWN, "timeout", outcome = Outcome.UNKNOWN))
         assertSame(first, a.next(::make))
         // The retry comes back expired: still unknown, and never sealed again.
-        val e = a.settle(CommandException(CommandException.EXPIRED, "the command expired before it was sent", fromDaemon = true)) as CommandException
+        val e = a.settle(CommandException(CommandException.EXPIRED, "the command expired before it was sent", outcome=Outcome.NOT_SENT)) as CommandException
         assertEquals(CommandException.UNKNOWN, e.code)
         assertTrue(a.frozen && a.expired)
         repeat(2) {
@@ -100,7 +100,7 @@ class AttemptTest {
     fun anyLaterFailureKeepsAnUnknownOutcome() {
         val a = Attempt()
         val first = a.next(::make)
-        a.settle(CommandException(CommandException.UNKNOWN, "timeout"))
+        a.settle(CommandException(CommandException.UNKNOWN, "timeout", outcome = Outcome.UNKNOWN))
         // A retry that fails to log in, or on the network, says nothing about the first try.
         for (e in listOf(RuntimeException("login failed"), CommandException("network", "网络不通"), CommandException(CommandException.UNAVAILABLE, "电脑不在线"))) {
             val shown = a.settle(e) as CommandException
@@ -109,7 +109,7 @@ class AttemptTest {
             assertSame(first, a.next(::make))
         }
         // The daemon's own answer for the request does settle it.
-        a.settle(CommandException("unimplemented", "no", fromDaemon = true))
+        a.settle(CommandException("unimplemented", "no", fromDaemon = true,outcome=Outcome.REJECTED))
         assertFalse(a.frozen)
         assertNotSame(first, a.next(::make))
     }

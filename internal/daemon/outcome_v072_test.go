@@ -63,7 +63,7 @@ func TestV072DeterministicFailuresStayFinal(t *testing.T) {
 				want = "invalid_argument"
 				cmd = &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid}}}
 			case "missing-session":
-				want = "not_found"
+				want = "invalid_argument"
 				cmd = &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "missing", Text: "test"}}}
 			case "input-capacity":
 				want = "resource_exhausted"
@@ -172,7 +172,7 @@ func TestV072DeterministicFailuresStayFinal(t *testing.T) {
 				want = "not_found"
 				cmd = &pb.Command{Kind: &pb.Command_CancelInput{CancelInput: &pb.CancelInputRequest{SessionId: sid, RequestId: "missing"}}}
 			case "missing-stop":
-				want = "not_found"
+				want = "invalid_argument"
 				cmd = &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: "missing"}}}
 			case "truncated-question":
 				cmd = &pb.Command{Kind: &pb.Command_AnswerQuestion{AnswerQuestion: &pb.AnswerQuestionRequest{SessionId: sid, QuestionId: "q" + eventview.SkeletonNote, Options: []int32{1}}}}

@@ -131,7 +131,7 @@ extension SharedFileDebug {
 
         func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
             try await Task.sleep(nanoseconds: 700_000_000)
-            guard let data = files[fileId] else { throw CommandError("not_found", "no such file", fromDaemon: true, readOnly: true) }
+            guard let data = files[fileId] else { throw CommandError("not_found", "no such file", fromDaemon: true, readOnly: true,outcome:.executed) }
             var block = Data(count: blockBytes)
             let from = Int(offset), take = max(0, min(blockBytes, data.count - from))
             if take > 0 { block.replaceSubrange(0..<take, with: data[from..<from + take]) }

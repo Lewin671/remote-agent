@@ -37,7 +37,7 @@ class SharedFilesTest {
             val retry=v.getValue("androidRetry").jsonPrimitive.boolean
             val root=tempRoot()
             val command=Command.newBuilder().setGetSharedFileChunk(GetSharedFileChunkRequest.getDefaultInstance()).build()
-            val error=CommandException(code,"fixture",fromDaemon=signed,readOnly=command.isReadOnlyCommand())
+            val error=CommandException(code,"fixture",fromDaemon=signed,readOnly=command.isReadOnlyCommand(),outcome=Outcome.valueOf(v.getValue("outcome").jsonPrimitive.content.uppercase()))
             assertEquals(v.getValue("outcome").jsonPrimitive.content=="unknown",error.unknown)
             var calls=0
             val file=sharedFile(id="policy",name="file.bin",sizeBytes=32L,sha256=ByteArray(32))

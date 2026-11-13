@@ -103,7 +103,7 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = a.client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
+		_, err = a.client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
 		return err
 	}
 	for range maxAccountForwardRequests {
@@ -119,7 +119,7 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 	bDone := make(chan error, 1)
 	go func() { bDone <- forward(b) }()
 	call := b.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil }).GetForwardCall()
-	b.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
+	b.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, EntryFailure: true, Reason: "authentication_failed"}}})
 	if err := <-bDone; connect.CodeOf(err) != connect.CodeAborted {
 		t.Fatalf("account B forward: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := func() error {
-		_, err := client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
+		_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
 		return err
 	}
 	done := make(chan error, maxAccountLargeRPCRequests)
@@ -205,7 +205,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	reply := func(call *pb.ForwardCall) {
-		a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Error: "test reply"}}})
+		a.machineFrame.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, EntryFailure: true, Reason: "authentication_failed"}}})
 	}
 	for _, call := range calls {
 		reply(call)

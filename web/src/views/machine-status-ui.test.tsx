@@ -570,7 +570,7 @@ describe("a start that fails for lack of space", () => {
     const r = demo();
     const real = r.machineCommand.bind(r);
     r.machineCommand = async (id, kind, ...rest) => {
-      if (kind?.case === "createSession") throw new CommandError("storage_exhausted", "raw", true);
+      if (kind?.case === "createSession") throw new CommandError("storage_exhausted", "raw", true,false,"executed");
       return real(id, kind, ...rest);
     };
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={none} onBack={none} />);

@@ -7,7 +7,7 @@ import Testing
     @Test func anExpiredUnknownAttemptKeepsItsKeyUntilBothErrorDisplays() throws {
         let attempt = Attempt()
         _ = try attempt.next { PreparedCommand(machineId: "fixture", sessionId: "", requestId: "same-request", deadlineMs: 1, command: PBCommand()) }
-        attempt.settle(CommandError(CommandError.unknownOutcome, "raw cause"))
+        attempt.settle(CommandError(CommandError.unknownOutcome, "raw cause", outcome: .unknown))
         let settled = try #require(attempt.settle(CommandError(CommandError.expired, "raw expiry")) as? CommandError)
         var thrown: CommandError?
         do {

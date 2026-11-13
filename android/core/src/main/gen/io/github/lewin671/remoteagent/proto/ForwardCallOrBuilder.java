@@ -70,4 +70,16 @@ public interface ForwardCallOrBuilder extends
    * @return The senderRegistrationSignature.
    */
   com.google.protobuf.ByteString getSenderRegistrationSignature();
+
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  java.lang.String getAttemptId();
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  com.google.protobuf.ByteString
+      getAttemptIdBytes();
 }

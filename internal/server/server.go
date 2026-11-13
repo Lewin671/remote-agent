@@ -292,7 +292,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 		allowed[strings.TrimRight(o, "/")] = true
 	}
 	methods := strings.Join(connectcors.AllowedMethods(), ", ")
-	headers := strings.Join(append(connectcors.AllowedHeaders(), "Authorization"), ", ")
+	headers := strings.Join(append(connectcors.AllowedHeaders(), "Authorization", attemptHeader), ", ")
 	exposed := strings.Join(connectcors.ExposedHeaders(), ", ")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -373,15 +373,15 @@ func (s *Server) authInterceptor() connect.UnaryInterceptorFunc {
 			token, _ := strings.CutPrefix(req.Header().Get("Authorization"), "Bearer ")
 			d, err := s.authenticate(ctx, token)
 			if err != nil {
-				return nil, err
+				return nil, entryRefusal(req, err)
 			}
 			if err := s.authorizeDevice(ctx, d, req.Spec().Procedure); err != nil {
-				return nil, err
+				return nil, entryRefusal(req, err)
 			}
 			if req.Spec().Procedure == remoteagentv1connect.ClientServiceForwardProcedure {
 				if admission, ok := ctx.Value(rpcAdmissionKey{}).(*rpcAdmission); ok {
 					if err := admission.forward(); err != nil {
-						return nil, err
+						return nil, entryRefusal(req, err)
 					}
 				}
 			}

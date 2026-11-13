@@ -94,7 +94,7 @@ fun uploadErrorText(e: Throwable): MessageText = when {
     e is FileSourceException || e is FileContentChanged -> errorText(e)
     isUploadHashMismatch(e) -> UiMessages.errorsAndroidFileVerificationFailedRetryOrSelectTheFileAgain().messageText()
     e is CommandException && e.code == "already_exists" -> UiMessages.errorsAndroidAttachmentTransferContentChangedRetry().messageText()
-    e is CommandException && e.code == "generation_conflict" -> UiMessages.errorsAndroidAttachmentTransferStoppedOrChangedRetry().messageText()
+    e is CommandException && e.outcome == Outcome.CONFLICT && e.conflictKind == "business" -> UiMessages.errorsAndroidAttachmentTransferStoppedOrChangedRetry().messageText()
     e is java.io.IOException -> UiMessages.errorsAndroidUploadConnectionInterruptedRetry().messageText()
     else -> errorText(e)
 }
@@ -139,8 +139,8 @@ suspend fun uploadFile(
     var tries = 0
     suspend fun <T> step(block: suspend () -> T, resync: suspend () -> Unit): T {
         while (true) try { return block().also { tries = 0 } } catch (e: CommandException) {
-            if (e.code == "generation_conflict") throw e
-            if ((!e.unknown && e.code != "network") || tries++ >= retries) throw e
+            if (e.outcome == Outcome.CONFLICT && e.conflictKind == "business") throw e
+            if (!e.canRetryUpload || tries++ >= retries) throw e
             resync()
         }
     }

@@ -225,7 +225,7 @@ class SchedulesTest {
         val requests = mutableListOf<ScheduleRequest>()
         val repo = ScheduleRepository(backgroundScope, remote, { _, req ->
             requests += req
-            if(req.operation == "update") throw CommandException("revision_conflict", "scheduled task changed", true)
+            if(req.operation == "update") throw CommandException("revision_conflict", "scheduled task changed", true,outcome=Outcome.CONFLICT,conflictKind="business")
             (if(req.operation == "list") """{"tasks":[${task().json}]}""" else task().json.toString()).toByteArray()
         })
         runCurrent()

@@ -275,29 +275,32 @@ func (c *clientService) GetEvents(ctx context.Context, req *connect.Request[pb.G
 
 func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.ForwardRequest]) (*connect.Response[pb.ForwardResponse], error) {
 	dev := deviceFrom(ctx)
+	if !validAttempt(req.Msg.AttemptId) || req.Header().Get(attemptHeader) != req.Msg.AttemptId {
+		return nil, connect.NewError(connect.CodeInvalidArgument, deviceauth.ErrInvalid)
+	}
 	// The sender in the sealed header must be the device that is logged
 	// in. The daemon checks the device's signature itself; this catches a
 	// client that claims to be another device early.
 	if _, err := checkEnvelope(req.Msg.Command, &pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: req.Msg.MachineId,
 	}); err != nil {
-		return nil, err
+		return nil, notForwarded(err, req.Msg.AttemptId, "invalid_envelope")
 	}
 	if h := headerOf(req.Msg.Command); h.Sender != dev.id {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the command's sender is not the logged-in device"))
+		return nil, notForwarded(connect.NewError(connect.CodePermissionDenied, errors.New("the command's sender is not the logged-in device")), req.Msg.AttemptId, "sender_mismatch")
 	}
 	t := c.s.tenantOf(dev)
 	reg, err := t.store.registration(ctx, dev.id)
 	if err != nil {
-		return nil, internal(err)
+		return nil, notForwarded(internal(err), req.Msg.AttemptId, "registration_unavailable")
 	}
 	res, err := t.hub.forward(ctx, req.Msg.MachineId, &pb.ForwardCall{
-		Command: req.Msg.Command, SenderDeviceId: dev.id, SenderRegistration: reg.raw, SenderRegistrationSignature: reg.sig,
+		AttemptId: req.Msg.AttemptId, Command: req.Msg.Command, SenderDeviceId: dev.id, SenderRegistration: reg.raw, SenderRegistrationSignature: reg.sig,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&pb.ForwardResponse{Result: res.Result}), nil
+	return connect.NewResponse(&pb.ForwardResponse{Result: res.Result, Outcome: res.Outcome, Reason: res.Reason, AttemptId: res.AttemptId}), nil
 }
 
 type machineService struct {

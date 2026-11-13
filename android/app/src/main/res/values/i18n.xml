@@ -321,6 +321,7 @@
     <string name="errors_disconnected_from_server" formatted="false">"与 server 的连接断开"</string>
     <string name="errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" formatted="false">"紧急恢复草稿已保留，请继续查询、等待或完成原恢复"</string>
     <string name="errors_establishing_push_connection" formatted="false">"建立推送连接"</string>
+    <string name="errors_executed_result_unavailable" formatted="false">"电脑已执行，但结果没能取回，请刷新查看最新状态"</string>
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"历史记录未能继续加载，请重试"</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
@@ -344,6 +345,7 @@
     <string name="errors_remote_agent_on_is_out_of_date_update_it">"%1$s 上的 remote-agent 版本较旧，请在电脑上更新后再试"</string>
     <string name="errors_remote_control_expired_control_and_new_uploads_are_paused" formatted="false">"远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期"</string>
     <string name="errors_remote_control_expired_saving_changes_session_control_and_new" formatted="false">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看"</string>
+    <string name="errors_request_identity_conflict" formatted="false">"这次提交和之前的一次不一致，电脑没有执行，请刷新后再操作"</string>
     <string name="errors_security_body_type_or_direction_mismatch" formatted="false">"安全正文类型或方向不匹配"</string>
     <string name="errors_security_envelope_missing" formatted="false">"缺少安全信封"</string>
     <string name="errors_server_returned">"服务器返回 %1$s"</string>

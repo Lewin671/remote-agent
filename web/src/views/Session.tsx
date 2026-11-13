@@ -1428,7 +1428,7 @@ function Pending({
       <small ref={tail}>
         {failed ? (
           <>
-            {o.unknown ? i18n.t("composer.maybe_failure", { reason: o.error ?? "" }) : i18n.t("composer.send_failure", { reason: o.error ?? "" })}
+            {o.outcomeNotice ? o.error : o.unknown ? i18n.t("composer.maybe_failure", { reason: o.error ?? "" }) : i18n.t("composer.send_failure", { reason: o.error ?? "" })}
             {remote.canRestoreAttachments(sid, o.sendId) && <button onClick={() => onRestore(o.text, o.sendId)}>{i18n.t("composer.restore")}</button>}
             {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>{t("common.retry")}</button>}
             <button onClick={() => remote.dismissSend(sid, o.sendId)}>{i18n.t("session.dismiss_notice")}</button>

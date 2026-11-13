@@ -254,6 +254,7 @@ final class SessionStore {
         let wasUnknown = o.state == .unknown
         o.state = .sending
         o.error = ""
+        o.outcomeNotice = false
         o.missingImages = false
         var cmd = PBCommand()
         cmd.send = .with {
@@ -273,11 +274,12 @@ final class SessionStore {
                 let ce = error as? CommandError
                 // A failure that came from the computer settles it; one from here leaves an already
                 // unknown message unknown, keeping the same request (Android's Outgoing.deliver).
-                let unknown = uncertain(error) || (wasUnknown && ce?.fromDaemon != true)
+                let unknown = uncertain(error) || (wasUnknown && (ce?.fromDaemon != true || ce?.outcome == .notSent))
                 o.state = unknown ? .unknown : .failed
                 o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && (!o.imageIds.isEmpty || !o.fileIds.isEmpty) &&
                     ce?.message.contains("is not on this machine; upload it again") == true
                 // Put back, the text and the images stay and the images go up again.
+                o.outcomeNotice = ce?.needsResultRefresh == true
                 o.error = ce?.outcomeDetail ?? errorText(error)
             }
             delivering.remove(o.requestId)

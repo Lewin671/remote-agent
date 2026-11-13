@@ -5,7 +5,7 @@ import { CommandError } from "./remote";
 it("repeats an attempt with an unknown outcome exactly", () => {
   const a = new Attempt<{ model: string }>();
   const first = a.next({ model: "" });
-  a.settle(new CommandError("unknown_outcome", "连接超时"));
+  a.settle(new CommandError("unknown_outcome", "连接超时", false, false, "unknown"));
   expect(a.frozen).toBe(true);
   // The created session's metadata arrived meanwhile and changed the
   // configuration; the retry must still send the first request.
@@ -29,7 +29,7 @@ it("starts afresh after success or a definite answer", () => {
 it("keeps an unknown start unknown when its retry comes back expired", () => {
   const a = new Attempt<string>();
   const first = a.next("x");
-  a.settle(new CommandError("unknown_outcome", "连接超时"));
+  a.settle(new CommandError("unknown_outcome", "连接超时", false, false, "unknown"));
   const retry = a.next("y");
   expect(retry.slot).toBe(first.slot);
   // The daemon forgot it: that says nothing about whether it ran.
@@ -58,7 +58,7 @@ it("takes a first send refused as expired as not run", () => {
 it("keeps an unknown start unknown when its retry finds the machine offline", () => {
   const a = new Attempt<string>();
   const first = a.next("x");
-  a.settle(new CommandError("unknown_outcome", "连接超时"));
+  a.settle(new CommandError("unknown_outcome", "连接超时", false, false, "unknown"));
   a.next("x");
   a.settle(new CommandError("unavailable", "电脑不在线，指令没有发出"));
   expect(a.frozen).toBe(true);
@@ -75,7 +75,7 @@ it("is settled only by the request that came back", () => {
   // x's answer says nothing about y.
   a.settle(undefined, x);
   expect(a.payload).toBe("y");
-  a.settle(new CommandError("unknown_outcome", "连接超时"), y);
+  a.settle(new CommandError("unknown_outcome", "连接超时", false, false, "unknown"), y);
   expect(a.frozen).toBe(true);
   expect(a.next("z").slot).toBe(y.slot);
   // Nor does a failure of x free y.
@@ -86,7 +86,7 @@ it("is settled only by the request that came back", () => {
 it("never replaces an unknown intent after security signing fails locally", () => {
   const a = new Attempt<string>();
   const first = a.next("x");
-  a.settle(new CommandError("unknown_outcome", "relay withheld result"));
+  a.settle(new CommandError("unknown_outcome", "relay withheld result", false, false, "unknown"));
   a.next("x");
   a.settle(new CommandError("security_unavailable", "security state unavailable"));
   expect(a.frozen).toBe(true);
@@ -95,7 +95,7 @@ it("never replaces an unknown intent after security signing fails locally", () =
     new CommandError(
       "failed_precondition",
       "authenticated executor refusal",
-      true,
+      true, false, "rejected",
     ),
   );
   expect(a.frozen).toBe(false);

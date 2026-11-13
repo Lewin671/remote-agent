@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
@@ -84,10 +85,11 @@ type migrationOps struct {
 	now     func() time.Time
 	publish func(string, string) error
 	syncDir func(string) error
+	rename  func(string, string) error
 }
 
 func defaultMigrationOps() migrationOps {
-	return migrationOps{time.Now, func(src, dst string) error { return publishFile(src, dst, os.Link) }, syncDir}
+	return migrationOps{time.Now, func(src, dst string) error { return publishFile(src, dst, os.Link) }, syncDir, os.Rename}
 }
 func migrate(home string, dry bool) error { return migrateWith(home, dry, defaultMigrationOps()) }
 func migrateWith(home string, dry bool, ops migrationOps) (err error) {
@@ -119,6 +121,17 @@ func migrateWith(home string, dry bool, ops migrationOps) (err error) {
 		return err
 	}
 	defer unlock()
+	marker := filepath.Join(home, "state-generation")
+	originalMarker, markerErr := os.ReadFile(marker)
+	if markerErr != nil && !os.IsNotExist(markerErr) {
+		return markerErr
+	}
+	if markerErr == nil {
+		info, err := os.Lstat(marker)
+		if err != nil || !info.Mode().IsRegular() || strings.TrimSpace(string(originalMarker)) != "3" {
+			return errMigration
+		}
+	}
 	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(source)}).String()+"?mode=ro&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return err
@@ -233,10 +246,33 @@ func migrateWith(home string, dry bool, ops migrationOps) (err error) {
 	}
 	// Roll back only files published by this invocation. A pre-existing file
 	// (including one that races publication) is never overwritten or removed.
-	backupPublished, targetPublished := false, false
+	markerTemp := filepath.Join(work, "state-generation")
+	if err = writeSynced(markerTemp, []byte("4\n")); err != nil {
+		return err
+	}
+	markerBefore := filepath.Join(work, "state-generation-before")
+	if markerErr == nil {
+		if err = writeSynced(markerBefore, originalMarker); err != nil {
+			return err
+		}
+	}
+	backupPublished, targetPublished, markerPublished := false, false, false
 	defer func() {
 		if err == nil {
 			return
+		}
+		if markerPublished {
+			var restoreErr error
+			if markerErr == nil {
+				restoreErr = ops.rename(markerBefore, marker)
+			} else {
+				restoreErr = os.Remove(marker)
+			}
+			if restoreErr != nil {
+				// Keep the validated v4 store if its generation marker cannot be restored.
+				err = errors.Join(err, restoreErr, ops.syncDir(home))
+				return
+			}
 		}
 		if targetPublished {
 			err = errors.Join(err, os.Remove(target))
@@ -259,7 +295,26 @@ func migrateWith(home string, dry bool, ops migrationOps) (err error) {
 		return err
 	}
 	targetPublished = true
+	if err = ops.syncDir(home); err != nil {
+		return err
+	}
+	if err = ops.rename(markerTemp, marker); err != nil {
+		return err
+	}
+	markerPublished = true
 	return ops.syncDir(home)
+}
+
+func writeSynced(path string, data []byte) (err error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, f.Close()) }()
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+	return f.Sync()
 }
 
 func migrationCutoff(db *sql.DB, now time.Time) (uint64, error) {

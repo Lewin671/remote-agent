@@ -28,4 +28,40 @@ public interface ForwardResponseOrBuilder extends
    * @return The result.
    */
   io.github.lewin671.remoteagent.proto.Envelope getResult();
+
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   * @return The outcome.
+   */
+  java.lang.String getOutcome();
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   * @return The bytes for outcome.
+   */
+  com.google.protobuf.ByteString
+      getOutcomeBytes();
+
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The reason.
+   */
+  java.lang.String getReason();
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The bytes for reason.
+   */
+  com.google.protobuf.ByteString
+      getReasonBytes();
+
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  java.lang.String getAttemptId();
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  com.google.protobuf.ByteString
+      getAttemptIdBytes();
 }

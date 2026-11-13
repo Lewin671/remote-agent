@@ -639,6 +639,7 @@ public final class Outgoing: Identifiable {
     public nonisolated let mode: PBSendMode
 
     public var state = State.sending
+    public var outcomeNotice = false
     private var rawError = ""
     public var error: String {
         get {

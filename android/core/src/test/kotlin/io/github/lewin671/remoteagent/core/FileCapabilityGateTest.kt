@@ -92,7 +92,7 @@ class FileCapabilityGateTest {
                 val a = Attempt(); val p = a.next { r.prepare(daemon.id, if (cmd.hasSend()) "s" else "", cmd) }
                 r.forward(p)
                 val first = daemon.commands.poll(5, TimeUnit.SECONDS)!!
-                a.settle(CommandException(CommandException.UNKNOWN, "lost reply"))
+                a.settle(CommandException(CommandException.UNKNOWN, "lost reply", outcome = Outcome.UNKNOWN))
                 r.showForTest(state(daemon.id, false))
                 val e = runCatching { r.forward(p, retryOfUnknown = true) }.exceptionOrNull()
                 a.settle(e)

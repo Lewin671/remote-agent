@@ -290,6 +290,16 @@ public actor DeviceSecurityClient {
             throw DeviceSecurity.Failure.unavailable
         }
     }
+    func commandIdentity(_ envelope: PBEnvelope) throws -> (key: Data, payload: Data) {
+        let wire = try DeviceSecurity.fromEnvelope(envelope)
+        let h = try DeviceSecurity.parseHeader(wire.formed.header)
+        try DeviceSecurity.check(h.sender == memberID && h.purpose == .command)
+        let r = try read()
+        guard let state = r.states[h.epoch] else { throw DeviceSecurity.Failure.stale }
+        let secret = try contentKey(r,h,wire,state,live:false)
+        let (opened, plain) = try DeviceSecurity.open(wire,state:state,head:nil,live:false,now:0,secret:secret,sessionSeed:nil)
+        return DeviceSecurity.requestIdentity(opened,try unpackSecurity(opened,plain))
+    }
     public func openCurrent(_ envelope: PBEnvelope, sessionSeed: Data? = nil) async throws -> (
         DeviceSecurity.Header, Data
     ) {

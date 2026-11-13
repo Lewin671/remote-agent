@@ -20,7 +20,7 @@ class AnswersTest {
         val lost = runCatching {
             Answers.send(a, listOf(1), ::prepare) { p, retry ->
                 sent += p.requestId to retry
-                throw CommandException(CommandException.UNKNOWN, "no answer")
+                throw CommandException(CommandException.UNKNOWN, "no answer", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN)
             }
         }
         assertTrue(lost.isFailure)

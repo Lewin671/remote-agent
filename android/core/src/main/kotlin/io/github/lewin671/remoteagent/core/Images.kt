@@ -385,7 +385,7 @@ suspend fun uploadImage(
             try {
                 return block().also { tries = 0 }
             } catch (e: CommandException) {
-                if (!e.unknown && e.code != "network" || tries >= retries) throw e
+                if (!e.canRetryUpload || tries >= retries) throw e
                 tries++
                 resync()
             }

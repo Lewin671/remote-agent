@@ -133,7 +133,7 @@ func TestAccountsAreIsolated(t *testing.T) {
 		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef",
 		DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: b.cid,
 	}, []byte("cmd"))
-	if _, err := b.client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: a.mid, Command: cmd})); connect.CodeOf(err) != connect.CodeUnavailable {
+	if _, err := b.client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: cmd})); connect.CodeOf(err) != connect.CodeUnavailable {
 		t.Fatalf("b reached a's machine: %v", err)
 	}
 

@@ -18,6 +18,7 @@ public  final class ForwardCall extends
     senderDeviceId_ = "";
     senderRegistration_ = com.google.protobuf.ByteString.EMPTY;
     senderRegistrationSignature_ = com.google.protobuf.ByteString.EMPTY;
+    attemptId_ = "";
   }
   private int bitField0_;
   public static final int CALL_ID_FIELD_NUMBER = 1;
@@ -246,6 +247,54 @@ public  final class ForwardCall extends
   private void clearSenderRegistrationSignature() {
 
     senderRegistrationSignature_ = getDefaultInstance().getSenderRegistrationSignature();
+  }
+
+  public static final int ATTEMPT_ID_FIELD_NUMBER = 6;
+  private java.lang.String attemptId_;
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  @java.lang.Override
+  public java.lang.String getAttemptId() {
+    return attemptId_;
+  }
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAttemptIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(attemptId_);
+  }
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   * @param value The attemptId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttemptId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    attemptId_ = value;
+  }
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   */
+  private void clearAttemptId() {
+
+    attemptId_ = getDefaultInstance().getAttemptId();
+  }
+  /**
+   * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+   * @param value The bytes for attemptId to set.
+   */
+  private void setAttemptIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    attemptId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.ForwardCall parseFrom(
@@ -577,6 +626,55 @@ public  final class ForwardCall extends
       return this;
     }
 
+    /**
+     * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+     * @return The attemptId.
+     */
+    @java.lang.Override
+    public java.lang.String getAttemptId() {
+      return instance.getAttemptId();
+    }
+    /**
+     * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+     * @return The bytes for attemptId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getAttemptIdBytes() {
+      return instance.getAttemptIdBytes();
+    }
+    /**
+     * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+     * @param value The attemptId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttemptId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setAttemptId(value);
+      return this;
+    }
+    /**
+     * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAttemptId() {
+      copyOnWrite();
+      instance.clearAttemptId();
+      return this;
+    }
+    /**
+     * <code>string attempt_id = 6 [json_name = "attemptId"];</code>
+     * @param value The bytes for attemptId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttemptIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAttemptIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ForwardCall)
   }
   @java.lang.Override
@@ -599,10 +697,11 @@ public  final class ForwardCall extends
             "senderDeviceId_",
             "senderRegistration_",
             "senderRegistrationSignature_",
+            "attemptId_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
-              "\u0000\u0003\u0208\u0004\n\u0005\n";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
+              "\u0000\u0003\u0208\u0004\n\u0005\n\u0006\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

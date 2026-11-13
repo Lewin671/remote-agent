@@ -17,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/paths"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -164,7 +165,36 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 	return s.acceptWith(ctx, w, seed, now, nil, fn)
 }
 func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, acquire func(context.Context) (func(), error), fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
-	options := deviceauth.AcceptOptions{AllowNew: func() bool { return !s.blocked.Load() }, Acquire: acquire}
+	_, _, machine := s.endpoint.Snapshot()
+	options := deviceauth.AcceptOptions{Evidence: true, AllowNew: func() bool { return !s.blocked.Load() }, Acquire: acquire, Validate: func(h deviceauth.Header, plain []byte) error {
+		if h.Purpose != deviceauth.Command {
+			return nil
+		}
+		if h.Machine != machine || len(h.Request) < minRequestID {
+			return deviceauth.RejectedEntry("invalid_scope", deviceauth.ErrInvalid)
+		}
+		plain, err := deviceauth.Unpack(h, plain)
+		cmd := &pb.Command{}
+		if err != nil || proto.Unmarshal(plain, cmd) != nil {
+			return deviceauth.RejectedEntry("invalid_body", deviceauth.ErrInvalid)
+		}
+		if cmd.ProtocolVersion != protocol.Version {
+			return deviceauth.RejectedEntry("protocol_mismatch", protocol.Mismatch("the client", cmd.ProtocolVersion))
+		}
+		kind := cmd.ProtoReflect().WhichOneof(cmd.ProtoReflect().Descriptor().Oneofs().ByName("kind"))
+		if kind == nil {
+			return deviceauth.RejectedEntry("invalid_body", deviceauth.ErrInvalid)
+		}
+		body := cmd.ProtoReflect().Get(kind).Message()
+		session := body.Descriptor().Fields().ByName("session_id")
+		if cmd.GetSchedule() != nil {
+			session = nil
+		}
+		if session == nil && h.Session != "" || session != nil && body.Get(session).String() != h.Session {
+			return deviceauth.RejectedEntry("invalid_scope", deviceauth.ErrInvalid)
+		}
+		return nil
+	}}
 	out, err := s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
 	if !errors.Is(err, deviceauth.ErrUnknown) {
 		return out, err

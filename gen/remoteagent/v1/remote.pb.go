@@ -1385,6 +1385,13 @@ type CommandResult struct {
 	// success. "unimplemented" means the daemon does not know the command.
 	ErrorCode    string `protobuf:"bytes,1,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	ErrorMessage string `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	// Authenticated execution evidence, independent of the diagnostic error code.
+	Outcome         string `protobuf:"bytes,3,opt,name=outcome,proto3" json:"outcome,omitempty"` // not_sent, rejected, executed, unknown, conflict
+	Reason          string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	ConflictKind    string `protobuf:"bytes,5,opt,name=conflict_kind,json=conflictKind,proto3" json:"conflict_kind,omitempty"` // identity or business, only for conflict
+	RequestKeyHash  []byte `protobuf:"bytes,6,opt,name=request_key_hash,json=requestKeyHash,proto3" json:"request_key_hash,omitempty"`
+	PayloadHash     []byte `protobuf:"bytes,7,opt,name=payload_hash,json=payloadHash,proto3" json:"payload_hash,omitempty"`
+	ResultAvailable bool   `protobuf:"varint,8,opt,name=result_available,json=resultAvailable,proto3" json:"result_available,omitempty"`
 	// Types that are valid to be assigned to Kind:
 	//
 	//	*CommandResult_Send
@@ -1463,6 +1470,48 @@ func (x *CommandResult) GetErrorMessage() string {
 		return x.ErrorMessage
 	}
 	return ""
+}
+
+func (x *CommandResult) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *CommandResult) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *CommandResult) GetConflictKind() string {
+	if x != nil {
+		return x.ConflictKind
+	}
+	return ""
+}
+
+func (x *CommandResult) GetRequestKeyHash() []byte {
+	if x != nil {
+		return x.RequestKeyHash
+	}
+	return nil
+}
+
+func (x *CommandResult) GetPayloadHash() []byte {
+	if x != nil {
+		return x.PayloadHash
+	}
+	return nil
+}
+
+func (x *CommandResult) GetResultAvailable() bool {
+	if x != nil {
+		return x.ResultAvailable
+	}
+	return false
 }
 
 func (x *CommandResult) GetKind() isCommandResult_Kind {
@@ -3413,11 +3462,17 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x15get_shared_file_chunk\x18  \x01(\v2).remoteagent.v1.GetSharedFileChunkRequestH\x00R\x12getSharedFileChunk\x12W\n" +
 	"\x12get_machine_status\x18! \x01(\v2'.remoteagent.v1.GetMachineStatusRequestH\x00R\x10getMachineStatus\x12)\n" +
 	"\x10protocol_version\x18d \x01(\rR\x0fprotocolVersionB\x06\n" +
-	"\x04kind\"\xb3\x12\n" +
+	"\x04kind\"\x82\x14\n" +
 	"\rCommandResult\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x01 \x01(\tR\terrorCode\x12#\n" +
-	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x122\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12\x18\n" +
+	"\aoutcome\x18\x03 \x01(\tR\aoutcome\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12#\n" +
+	"\rconflict_kind\x18\x05 \x01(\tR\fconflictKind\x12(\n" +
+	"\x10request_key_hash\x18\x06 \x01(\fR\x0erequestKeyHash\x12!\n" +
+	"\fpayload_hash\x18\a \x01(\fR\vpayloadHash\x12)\n" +
+	"\x10result_available\x18\b \x01(\bR\x0fresultAvailable\x122\n" +
 	"\x04send\x18\n" +
 	" \x01(\v2\x1c.remoteagent.v1.SendResponseH\x00R\x04send\x12A\n" +
 	"\tinterrupt\x18\v \x01(\v2!.remoteagent.v1.InterruptResponseH\x00R\tinterrupt\x12T\n" +

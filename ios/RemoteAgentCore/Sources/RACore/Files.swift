@@ -277,8 +277,7 @@ public func uploadFile(
         try Task.checkCancellation()
         var retries = 0
         func again(_ error: Error) -> Bool {
-            guard !Task.isCancelled, let failure = error as? any UploadFailure,
-                failure.unknown || failure.code == "network", retries < 3 else { return false }
+            guard !Task.isCancelled, uploadRetryAllowed(error), retries < 3 else { return false }
             retries += 1
             return true
         }

@@ -15,6 +15,9 @@ public  final class ForwardResponse extends
     // @@protoc_insertion_point(message_implements:remoteagent.v1.ForwardResponse)
     ForwardResponseOrBuilder {
   private ForwardResponse() {
+    outcome_ = "";
+    reason_ = "";
+    attemptId_ = "";
   }
   private int bitField0_;
   public static final int RESULT_FIELD_NUMBER = 1;
@@ -83,6 +86,150 @@ public  final class ForwardResponse extends
   private void clearResult() {
     result_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int OUTCOME_FIELD_NUMBER = 2;
+  private java.lang.String outcome_;
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   * @return The outcome.
+   */
+  @java.lang.Override
+  public java.lang.String getOutcome() {
+    return outcome_;
+  }
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   * @return The bytes for outcome.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getOutcomeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(outcome_);
+  }
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   * @param value The outcome to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOutcome(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    outcome_ = value;
+  }
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   */
+  private void clearOutcome() {
+
+    outcome_ = getDefaultInstance().getOutcome();
+  }
+  /**
+   * <code>string outcome = 2 [json_name = "outcome"];</code>
+   * @param value The bytes for outcome to set.
+   */
+  private void setOutcomeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    outcome_ = value.toStringUtf8();
+
+  }
+
+  public static final int REASON_FIELD_NUMBER = 3;
+  private java.lang.String reason_;
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The reason.
+   */
+  @java.lang.Override
+  public java.lang.String getReason() {
+    return reason_;
+  }
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The bytes for reason.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getReasonBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(reason_);
+  }
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @param value The reason to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReason(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    reason_ = value;
+  }
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   */
+  private void clearReason() {
+
+    reason_ = getDefaultInstance().getReason();
+  }
+  /**
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @param value The bytes for reason to set.
+   */
+  private void setReasonBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    reason_ = value.toStringUtf8();
+
+  }
+
+  public static final int ATTEMPT_ID_FIELD_NUMBER = 4;
+  private java.lang.String attemptId_;
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  @java.lang.Override
+  public java.lang.String getAttemptId() {
+    return attemptId_;
+  }
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAttemptIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(attemptId_);
+  }
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   * @param value The attemptId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttemptId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    attemptId_ = value;
+  }
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   */
+  private void clearAttemptId() {
+
+    attemptId_ = getDefaultInstance().getAttemptId();
+  }
+  /**
+   * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+   * @param value The bytes for attemptId to set.
+   */
+  private void setAttemptIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    attemptId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.ForwardResponse parseFrom(
@@ -253,6 +400,153 @@ public  final class ForwardResponse extends
       return this;
     }
 
+    /**
+     * <code>string outcome = 2 [json_name = "outcome"];</code>
+     * @return The outcome.
+     */
+    @java.lang.Override
+    public java.lang.String getOutcome() {
+      return instance.getOutcome();
+    }
+    /**
+     * <code>string outcome = 2 [json_name = "outcome"];</code>
+     * @return The bytes for outcome.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getOutcomeBytes() {
+      return instance.getOutcomeBytes();
+    }
+    /**
+     * <code>string outcome = 2 [json_name = "outcome"];</code>
+     * @param value The outcome to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOutcome(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setOutcome(value);
+      return this;
+    }
+    /**
+     * <code>string outcome = 2 [json_name = "outcome"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOutcome() {
+      copyOnWrite();
+      instance.clearOutcome();
+      return this;
+    }
+    /**
+     * <code>string outcome = 2 [json_name = "outcome"];</code>
+     * @param value The bytes for outcome to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOutcomeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setOutcomeBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string reason = 3 [json_name = "reason"];</code>
+     * @return The reason.
+     */
+    @java.lang.Override
+    public java.lang.String getReason() {
+      return instance.getReason();
+    }
+    /**
+     * <code>string reason = 3 [json_name = "reason"];</code>
+     * @return The bytes for reason.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getReasonBytes() {
+      return instance.getReasonBytes();
+    }
+    /**
+     * <code>string reason = 3 [json_name = "reason"];</code>
+     * @param value The reason to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReason(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setReason(value);
+      return this;
+    }
+    /**
+     * <code>string reason = 3 [json_name = "reason"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReason() {
+      copyOnWrite();
+      instance.clearReason();
+      return this;
+    }
+    /**
+     * <code>string reason = 3 [json_name = "reason"];</code>
+     * @param value The bytes for reason to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReasonBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setReasonBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+     * @return The attemptId.
+     */
+    @java.lang.Override
+    public java.lang.String getAttemptId() {
+      return instance.getAttemptId();
+    }
+    /**
+     * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+     * @return The bytes for attemptId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getAttemptIdBytes() {
+      return instance.getAttemptIdBytes();
+    }
+    /**
+     * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+     * @param value The attemptId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttemptId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setAttemptId(value);
+      return this;
+    }
+    /**
+     * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAttemptId() {
+      copyOnWrite();
+      instance.clearAttemptId();
+      return this;
+    }
+    /**
+     * <code>string attempt_id = 4 [json_name = "attemptId"];</code>
+     * @param value The bytes for attemptId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttemptIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAttemptIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ForwardResponse)
   }
   @java.lang.Override
@@ -271,9 +565,13 @@ public  final class ForwardResponse extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "result_",
+            "outcome_",
+            "reason_",
+            "attemptId_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0001\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u1009\u0000";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
+              "\u0208\u0003\u0208\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

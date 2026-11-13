@@ -121,11 +121,14 @@ class Outgoing(
             state = State.SENT
         } catch (e: Exception) {
             val ce = e as? CommandException
-            val unknown = ce?.unknown == true || (wasUnknown && ce?.fromDaemon != true)
+            val unknown = ce?.unknown == true || (wasUnknown && (ce?.fromDaemon != true || ce.outcome == io.github.lewin671.remoteagent.core.Outcome.NOT_SENT))
             state = if (unknown) State.UNKNOWN else State.FAILED
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
                 (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
-            failureKind = if (missingImages && fileIds.isEmpty()) io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING else ce?.failureKind ?: io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
+            failureKind = if (ce?.needsResultRefresh == true) {
+                if (ce.outcome == io.github.lewin671.remoteagent.core.Outcome.EXECUTED) io.github.lewin671.remoteagent.core.CommandFailureKind.EXECUTED_RESULT_UNAVAILABLE
+                else io.github.lewin671.remoteagent.core.CommandFailureKind.IDENTITY_CONFLICT
+            } else if (missingImages && fileIds.isEmpty()) io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING else ce?.failureKind ?: io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
             failureDisplay = if (missingImages) {
                 (if (fileIds.isNotEmpty()) UiMessages.attachmentAndroidMissingFiles() else UiMessages.imageAndroidMissingUploads()).messageText()
             } else io.github.lewin671.remoteagent.core.errorText(e)

@@ -313,13 +313,21 @@ func (r *run) rpc(ctx context.Context, q request) response {
 	if r.usingV3 {
 		ttl = 30 * time.Second
 	}
-	env, e := r.client.Seal(r.machine, q.Session, id, time.Now().Add(ttl), cmd)
+	deadline := time.Now().Add(ttl)
+	env, e := r.client.Seal(r.machine, q.Session, id, deadline, cmd)
 	if e != nil {
 		return response{Error: e.Error(), Code: "driver_seal"}
 	}
 	if r.usingV3 && !deviceauth.IsReadOnlyCommand(cmd) {
 		r.oldEnvelope = env
 	}
+	forward := func(ctx context.Context) (*pb.CommandResult, error) {
+		if r.hasWebClient() {
+			return r.webForward(ctx, id, q.Session, deadline, cmd)
+		}
+		return r.client.Forward(ctx, r.machine, env)
+	}
+
 	var result *pb.CommandResult
 	verified := false
 	if q.Cut {
@@ -327,7 +335,7 @@ func (r *run) rpc(ctx context.Context, q request) response {
 		write(prefix+".hold", []byte("hold"))
 		defer os.Remove(prefix + ".hold")
 		first := make(chan error, 1)
-		go func() { _, err := r.client.Forward(ctx, r.machine, env); first <- err }()
+		go func() { _, err := forward(ctx); first <- err }()
 		if e = poll(ctx, "admitted callback", func() bool { _, err := os.Stat(prefix + ".entered"); return err == nil }); e != nil {
 			return response{Error: e.Error(), Code: "driver_barrier"}
 		}
@@ -349,7 +357,7 @@ func (r *run) rpc(ctx context.Context, q request) response {
 			err    error
 		}
 		retried := make(chan retryReply, 1)
-		go func() { out, err := r.client.Forward(ctx, r.machine, env); retried <- retryReply{out, err} }()
+		go func() { out, err := forward(ctx); retried <- retryReply{out, err} }()
 		select {
 		case early := <-retried:
 			return response{Error: fmt.Sprint("running retry returned before release: ", early.err), Code: "driver_duplicate"}
@@ -364,14 +372,14 @@ func (r *run) rpc(ctx context.Context, q request) response {
 		}
 		if e == nil {
 			var err error
-			again, err := r.client.Forward(ctx, r.machine, env)
+			again, err := forward(ctx)
 			if err != nil || !proto.Equal(result, again) {
 				return response{Error: "cached result mismatch", Code: "driver_cache"}
 			}
 			verified = true
 		}
 	} else {
-		result, e = r.client.Forward(ctx, r.machine, env)
+		result, e = forward(ctx)
 	}
 	out := response{Code: "ok", Signed: e == nil, CutVerified: verified}
 	if e != nil {
@@ -553,7 +561,8 @@ func main() {
 	machine, e := auth.Enroll(ctx, ed, x, deviceauth.Machine)
 	must(e)
 	usingV3 := os.Getenv("RA_TRANSPORT_V3_BINARY") != ""
-	if usingV3 {
+	migrateV3 := os.Getenv("RA_TRANSPORT_INIT_V3") == "1"
+	if usingV3 || migrateV3 {
 		// The helper is compiled against the pristine v3 source, not v4 schema
 		// emulation. Only its own temporary identity material goes through stdin.
 		raw, err := json.Marshal(v3Identity{auth.Pin, auth.States, auth.Proofs, machine.ID, ed.Seed(), x, auth.Lease})
@@ -562,6 +571,7 @@ func main() {
 		init.Stdin = bytes.NewReader(raw)
 		guarded(init, env)
 		must(init.Run())
+		write(filepath.Join(env["REMOTE_AGENT_HOME"], "state-generation"), []byte("3\n"))
 	} else {
 		must(machine.Endpoint.Save(filepath.Join(env["REMOTE_AGENT_HOME"], "security-v4.db")))
 	}
@@ -569,10 +579,28 @@ func main() {
 	must(os.Setenv("REMOTE_AGENT_HOME", env["REMOTE_AGENT_HOME"]))
 	fmt.Println("ISOLATION verified before account save", env["REMOTE_AGENT_HOME"])
 	must((&relay.Account{Server: front.URL, Root: auth.Root, DeviceSeed: ed.Seed(), DeviceID: machine.ID, Security: &relay.SecurityConfig{Pin: auth.Pin, XPrivate: x}}).Save())
+	if migrateV3 {
+		before := mustRead(filepath.Join(env["REMOTE_AGENT_HOME"], "account.json"))
+		for _, dry := range []bool{true, false} {
+			args := []string{"--home", env["REMOTE_AGENT_HOME"]}
+			if dry {
+				args = append(args, "--dry-run")
+			}
+			cmd := exec.Command(filepath.Join(root, "bin/migrate-security-v4"), args...)
+			guarded(cmd, env)
+			must(cmd.Run())
+		}
+		if !bytes.Equal(before, mustRead(filepath.Join(env["REMOTE_AGENT_HOME"], "account.json"))) || string(mustRead(filepath.Join(env["REMOTE_AGENT_HOME"], "state-generation"))) != "4" {
+			panic("migration identity or marker changed incorrectly")
+		}
+		write(filepath.Join(root, "migration-verified"), []byte("original v3 implementation; dry run and migration; account unchanged; state generation 4"))
+	}
+
 	endpoint, e := deviceauth.InitEndpoint("", auth.Pin, auth.States, auth.Proofs, auth.Member.ID, auth.Ed.Seed(), auth.X, auth.Lease)
 	must(e)
 	defer endpoint.Close()
 	client := remoteclient.NewClient(front.URL, auth.Token, auth.Member.ID, endpoint)
+	saveWebBootstrap(root, auth, machine.ID)
 	defer client.Close()
 	delete(env, "RA_SETUP_TOKEN")
 	env["HOME"] = filepath.Join(root, "candidate/native-home")

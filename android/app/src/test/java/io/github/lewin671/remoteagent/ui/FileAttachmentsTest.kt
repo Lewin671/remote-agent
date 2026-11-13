@@ -71,7 +71,7 @@ class FileAttachmentsTest {
         assertEquals(listOf("first-id"), loaded.fileIds)
         assertEquals("content://documents/file", loaded.images.single().uri)
         val requests = mutableListOf<SendRequest>()
-        loaded.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost") }
+        loaded.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
         assertTrue(loaded.canPutBack) // Restoring local sources is explicit; retry still reuses the frozen request below.
         loaded.images.single().fileId = "new-upload"
         loaded.deliver { requests += it }
@@ -105,7 +105,7 @@ class FileAttachmentsTest {
 
     @Test fun definitiveMissingFilesOfferRestoration() = runBlocking {
         val out = Outgoing("r", "keep", images = listOf(file()), fileIds = listOf("missing"))
-        out.deliver { throw CommandException("not_found", "file missing is not on this machine; upload it again", fromDaemon = true) }
+        out.deliver { throw CommandException("not_found", "file missing is not on this machine; upload it again", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) }
         assertTrue(out.canPutBack)
         assertTrue(out.missingImages)
         assertTrue(out.error.contains("附件"))

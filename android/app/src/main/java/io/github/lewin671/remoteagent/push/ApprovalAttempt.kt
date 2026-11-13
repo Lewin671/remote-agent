@@ -48,7 +48,7 @@ suspend fun sendApproval(
     val wasUnknown = before == ApprovalRecord.SENT
     val attempt = Attempt()
     attempt.next { command }
-    if (wasUnknown) attempt.settle(CommandException(CommandException.UNKNOWN, sessionText(UiMessages.approvalAndroidUnknownResult())))
+    if (wasUnknown) attempt.settle(CommandException(CommandException.UNKNOWN, sessionText(UiMessages.approvalAndroidUnknownResult()), outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN))
     check(record(ApprovalRecord.SENT)) { sessionText(UiMessages.notificationsAndroidCouldNotSaveApprovalSubmissionStateNothingWasSent()) }
     try {
         forward(command, wasUnknown)

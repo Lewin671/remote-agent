@@ -287,7 +287,7 @@ private final class Ticker: @unchecked Sendable {
     @Test func theComputerSayingItHasNoSuchFileEndsItAsCleanedUp() async {
         let content = pattern(2500)
         let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 1, .error(CommandError("not_found", "no such file", fromDaemon: true, readOnly: true)))
+        computer.fault(at: 1, .error(CommandError("not_found", "no such file", fromDaemon: true, readOnly: true,outcome:.executed)))
         let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
         let s = store(dir, computer)
         let f = file(content)

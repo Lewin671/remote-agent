@@ -215,6 +215,13 @@ message CommandResult {
   // success. "unimplemented" means the daemon does not know the command.
   string error_code = 1;
   string error_message = 2;
+  // Authenticated execution evidence, independent of the diagnostic error code.
+  string outcome = 3; // not_sent, rejected, executed, unknown, conflict
+  string reason = 4;
+  string conflict_kind = 5; // identity or business, only for conflict
+  bytes request_key_hash = 6;
+  bytes payload_hash = 7;
+  bool result_available = 8;
 
   oneof kind {
     SendResponse send = 10;

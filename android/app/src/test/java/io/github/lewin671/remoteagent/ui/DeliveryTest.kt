@@ -40,7 +40,7 @@ class DeliveryTest {
 
     @Test fun retryingAnUnknownSendDoesNotTurnItIntoADefiniteFailure() = kotlinx.coroutines.runBlocking {
         val outgoing = Outgoing("r", "hello")
-        outgoing.deliver { throw CommandException(CommandException.UNKNOWN, "连接超时") }
+        outgoing.deliver { throw CommandException(CommandException.UNKNOWN, "连接超时", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
         assertEquals(SendFeedback("可能没发出去：连接超时", true), deliveryFailure(outgoing.error, outgoing.state == Outgoing.State.UNKNOWN))
         outgoing.deliver { throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE) }
         assertEquals(Outgoing.State.UNKNOWN, outgoing.state)

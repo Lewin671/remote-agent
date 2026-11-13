@@ -22,22 +22,22 @@ const minRequestID = 16
 // handleCall opens a forwarded command, runs it at most once, and replies
 // with the sealed result.
 func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
-	fail := func(msg string) {
-		c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, Error: msg})
+	fail := func(reason string) {
+		c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Outcome: "unknown", Reason: reason, EntryFailure: true})
 	}
 
 	if c.security == nil {
-		fail("remote security is not initialized")
+		fail("security_unavailable")
 		return
 	}
 	wire, err := deviceauth.FromEnvelope(call.Command)
 	if err != nil {
-		fail("the command is not a valid security envelope")
+		fail("invalid_envelope")
 		return
 	}
 	header, err := deviceauth.ParseHeader(wire.Header)
-	if err != nil || header.Purpose != deviceauth.Command || header.Machine != c.acct.DeviceID || len(header.Request) < minRequestID {
-		fail("invalid command scope")
+	if err != nil || header.Purpose != deviceauth.Command {
+		fail("invalid_scope")
 		return
 	}
 	// A shared file's block is sealed as is: compression would let the
@@ -53,35 +53,45 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	}
 	result, err := c.security.acceptWith(waiting, wire, nil, uint64(time.Now().UnixMilli()), c.acquireCall, func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
 		cmd := &pb.Command{}
+		original := plain
 		plain, err := deviceauth.Unpack(h, plain)
 		if err != nil || proto.Unmarshal(plain, cmd) != nil {
 			return deviceauth.Undetermined(), deviceauth.ErrInvalid
 		}
 		var res *pb.CommandResult
 		category := deviceauth.Executed
-		if cmd.ProtocolVersion != protocol.Version {
-			res = &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
-		} else {
-			origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: h.Sender, RequestId: h.Request}
-			switch k := cmd.Kind.(type) {
-			case *pb.Command_ResolveApproval:
-				origin.ObservedEventSeq = k.ResolveApproval.ObservedEventSeq
-			case *pb.Command_AnswerQuestion:
-				origin.ObservedEventSeq = k.AnswerQuestion.ObservedEventSeq
-			case *pb.Command_AnswerPlan:
-				origin.ObservedEventSeq = k.AnswerPlan.ObservedEventSeq
-				origin.ObservedScreenHash = k.AnswerPlan.ObservedScreenHash
-			}
-			_, raw = cmd.Kind.(*pb.Command_GetSharedFileChunk)
-			callCtx := agent.WithOrigin(ctx, origin)
-			cancel := func() {}
-			callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
-			defer cancel()
-			res, category = c.executeEvidence(callCtx, h.Session, cmd)
+
+		origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: h.Sender, RequestId: h.Request}
+		switch k := cmd.Kind.(type) {
+		case *pb.Command_ResolveApproval:
+			origin.ObservedEventSeq = k.ResolveApproval.ObservedEventSeq
+		case *pb.Command_AnswerQuestion:
+			origin.ObservedEventSeq = k.AnswerQuestion.ObservedEventSeq
+		case *pb.Command_AnswerPlan:
+			origin.ObservedEventSeq = k.AnswerPlan.ObservedEventSeq
+			origin.ObservedScreenHash = k.AnswerPlan.ObservedScreenHash
 		}
+		_, raw = cmd.Kind.(*pb.Command_GetSharedFileChunk)
+		callCtx := agent.WithOrigin(ctx, origin)
+		cancel := func() {}
+		callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
+		defer cancel()
+		res, category = c.executeEvidence(callCtx, h.Session, cmd)
 		if category == deviceauth.NoCategory {
 			return deviceauth.Undetermined(), deviceauth.ErrOutcomeUnknown
 		}
+		res.Outcome = "executed"
+		if category == deviceauth.BusinessConflict {
+			res.Outcome = "conflict"
+			res.ConflictKind = "business"
+		}
+		res.Reason = "completed"
+		res.ResultAvailable = true
+		key, payload, err := deviceauth.RequestIdentity(h, original)
+		if err != nil {
+			return deviceauth.Undetermined(), err
+		}
+		res.RequestKeyHash, res.PayloadHash = key[:], payload[:]
 		body, err := proto.Marshal(res)
 		if err != nil {
 			return deviceauth.Undetermined(), err
@@ -91,16 +101,48 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		}
 		return deviceauth.Final(body), nil
 	})
+	var proof *pb.CommandResult
 	if err != nil {
-		fail("the command was refused or its outcome is unknown; it was not repeated")
+		var ok bool
+		proof, ok = deviceauth.CommandResult(result, err)
+		if !ok {
+			fail("authentication_failed")
+			return
+		}
+		proof.ErrorMessage = err.Error()
+		if proof.Outcome == "unknown" {
+			proof.ErrorCode = "unknown_outcome"
+			proof.ErrorMessage = err.Error()
+		}
+		switch proof.Reason {
+		case "protocol_mismatch":
+			proof.ErrorCode = "failed_precondition"
+			proof.ErrorMessage = err.Error()
+		case "member_removed":
+			proof.ErrorCode = "permission_denied"
+			proof.ErrorMessage = err.Error()
+		case "invalid_body", "invalid_scope":
+			proof.ErrorCode = "invalid_argument"
+			proof.ErrorMessage = err.Error()
+		case "busy":
+			proof.ErrorCode = "resource_exhausted"
+		}
+		result, err = proto.Marshal(proof)
+	} else {
+		proof = &pb.CommandResult{}
+		err = proto.Unmarshal(result, proof)
+	}
+	if err != nil {
+		fail("result_encoding_failed")
 		return
 	}
+
 	env, err := c.security.sealResult(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, nil, result, raw)
 	if err != nil {
-		fail("cannot authorize the result")
+		fail("result_authorization_failed")
 		return
 	}
-	c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, Result: env})
+	c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Result: env, Outcome: proof.Outcome, Reason: proof.Reason})
 
 }
 

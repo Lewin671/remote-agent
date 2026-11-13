@@ -20,7 +20,7 @@ import Testing
         let m = Maker()
         let a = Attempt()
         let first = try a.next(m.make)
-        a.settle(CommandError(CommandError.unknownOutcome, "timeout"))
+        a.settle(CommandError(CommandError.unknownOutcome, "timeout", outcome: .unknown))
         #expect(a.frozen)
         #expect(try a.next(m.make) === first)
         a.settle()
@@ -40,13 +40,13 @@ import Testing
         let m = Maker()
         let a = Attempt()
         let first = try a.next(m.make)
-        a.settle(CommandError(CommandError.unknownOutcome, "timeout"))
+        a.settle(CommandError(CommandError.unknownOutcome, "timeout", outcome: .unknown))
         #expect(try a.next(m.make) === first)
         // The retry comes back expired: still unknown, and never sealed again.
         let e = a.settle(
             CommandError(
                 CommandError.expired, "the command expired before it was sent",
-                fromDaemon: true))
+                outcome: .notSent))
         #expect((e as? CommandError)?.code == CommandError.unknownOutcome)
         #expect(a.frozen && a.expired)
         for _ in 0..<2 {
@@ -76,7 +76,7 @@ import Testing
         let m = Maker()
         let a = Attempt()
         let first = try a.next(m.make)
-        a.settle(CommandError(CommandError.unknownOutcome, "timeout"))
+        a.settle(CommandError(CommandError.unknownOutcome, "timeout", outcome: .unknown))
         // A retry that fails to log in, or on the network, says nothing about the first try.
         let later: [Error] = [
             UserError("login failed"), CommandError("network", "网络不通"),
@@ -89,7 +89,7 @@ import Testing
             #expect(try a.next(m.make) === first)
         }
         // The daemon's own answer for the request does settle it.
-        a.settle(CommandError("unimplemented", "no", fromDaemon: true))
+        a.settle(CommandError("unimplemented", "no", fromDaemon: true,outcome:.rejected))
         #expect(!a.frozen)
         #expect(try a.next(m.make) !== first)
     }

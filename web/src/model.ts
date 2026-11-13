@@ -1439,6 +1439,8 @@ export interface Outgoing {
   error?: string;
   // A try may have reached the computer: retries keep this request.
   unknown?: boolean;
+  // A verified missing result or identity conflict supplies its complete caption.
+  outcomeNotice?: boolean;
 }
 
 export type Phase =

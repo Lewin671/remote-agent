@@ -53,7 +53,7 @@ type accepted struct {
 }
 
 // ResultUnavailable preserves a committed category when its body cannot be kept.
-// The current wire cannot encode it; callers must not invent a body or reexecute.
+// The relay seals the retained category without inventing a body or reexecuting.
 type ResultUnavailable struct{ Category Category }
 
 func (*ResultUnavailable) Error() string { return i18n.SecurityResultBodyUnavailable("en") }
@@ -72,6 +72,8 @@ type runningCall struct {
 type AcceptOptions struct {
 	AllowNew func() bool
 	Acquire  func(ctx context.Context) (release func(), err error)
+	Validate func(Header, []byte) error
+	Evidence bool
 }
 
 type acceptedExpiry struct {
@@ -402,7 +404,7 @@ func acceptedResult(a accepted) ([]byte, error) {
 	}
 	return bytes.Clone(a.Result), nil
 }
-func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint64, options AcceptOptions, fn func(Header, []byte) (Completion, error)) ([]byte, error) {
+func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint64, options AcceptOptions, fn func(Header, []byte) (Completion, error)) (result []byte, failure error) {
 	started := time.Now()
 	h, plain, err := e.openAuthenticated(w, seed, false, now)
 	if err != nil {
@@ -416,6 +418,30 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 		return nil, err
 	}
 	key := acceptedKey(h)
+	// Every decision below is authenticated and bound, including invalid Command bodies.
+	defer func() {
+		if failure == nil {
+			return
+		}
+		if !options.Evidence {
+			var d *EntryDecision
+			if errors.As(failure, &d) {
+				failure = d.cause
+			}
+			return
+		}
+		var decision *EntryDecision
+		if !errors.As(failure, &decision) {
+			decision = &EntryDecision{Outcome: "unknown", Reason: "outcome_unknown", cause: failure}
+			if errors.Is(failure, ErrIdentityConflict) {
+				decision.Outcome = "conflict"
+				decision.Reason = "identity_conflict"
+				decision.ConflictKind = "identity"
+			}
+		}
+		decision.Key, decision.Payload, _ = RequestIdentity(h, plain)
+		failure = decision
+	}()
 	var release func()
 	releaseSlot := func() {
 		if release != nil {
@@ -457,14 +483,7 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 			releaseSlot()
 			return e.waitLocked(ctx, key, run, observed)
 		}
-		if err := ValidateBody(h, plain); err != nil {
-			e.mu.Unlock()
-			return nil, err
-		}
-		if options.AllowNew != nil && !options.AllowNew() {
-			e.mu.Unlock()
-			return nil, ErrUntrusted
-		}
+		// An expired missing identity may have executed before pruning or migration.
 		clock = maxU64(maxU64(observed, e.data.Floor), e.data.AcceptedFloor)
 		if observed+MaxClockSkew < e.data.Floor {
 			e.mu.Unlock()
@@ -474,13 +493,31 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 			e.mu.Unlock()
 			return nil, ErrExpired
 		}
+		if err := ValidateBody(h, plain); err != nil {
+			e.mu.Unlock()
+			return nil, RejectedEntry("invalid_body", err)
+		}
+		if options.Validate != nil {
+			if err := options.Validate(h, plain); err != nil {
+				e.mu.Unlock()
+				return nil, err
+			}
+		}
+		if options.AllowNew != nil && !options.AllowNew() {
+			e.mu.Unlock()
+			return nil, notAdmitted("authorization_unavailable", ErrUntrusted)
+		}
 		if h.Deadline-clock > 10*60*1000 {
 			e.mu.Unlock()
-			return nil, ErrInvalid
+			return nil, notAdmitted("clock", ErrInvalid)
+		}
+		if _, member := chainHead(e.data).Core.Member(h.Sender); !member {
+			e.mu.Unlock()
+			return nil, RejectedEntry("member_removed", ErrUntrusted)
 		}
 		if err := leaseValid(e.data, clock); err != nil {
 			e.mu.Unlock()
-			return nil, err
+			return nil, notAdmitted("lease", err)
 		}
 		if _, err := w.VerifyOrigin(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
 			e.mu.Unlock()
@@ -518,6 +555,9 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 	if !readOnly {
 		if err = e.startAccepted(key, payload, h.Deadline, clock, h.Purpose == Command); err != nil {
 			e.mu.Unlock()
+			if errors.Is(err, ErrCapacity) {
+				return nil, notAdmitted("busy", err)
+			}
 			return nil, err
 		}
 	}

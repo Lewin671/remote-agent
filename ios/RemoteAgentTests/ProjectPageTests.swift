@@ -175,7 +175,7 @@ import Testing
         #expect(computer.sent.map(\.createSession.imageIds) == [["on-mac-a", "on-mac-b"]])
     }
 
-    private let lost = CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行")
+    private let lost = CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown)
 
     /// A start, awaited; what it reported when it made a session.
     private func start(_ draft: NewSessionDraft, _ cfg: NewConfig, _ images: ImageDraft? = nil) async -> NewConfig? {

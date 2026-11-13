@@ -45,7 +45,7 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
     }
 }
 
-private let unknown = CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行")
+private let unknown = CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown)
 private let offline = CommandError(CommandError.unavailable, "电脑不在线，指令没有发出")
 
 @MainActor
@@ -445,7 +445,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
     // MARK: Cancels
 
     @Test func aCancelIsInFlightUntilAnsweredAndAFailureStaysToBeRetried() async {
-        computer.answer(CommandError("failed_precondition", "已送达，不能取消", fromDaemon: true))
+        computer.answer(CommandError("failed_precondition", "已送达，不能取消", fromDaemon: true,outcome:.executed))
         let task = store.cancel(computer, sid: "s", requestId: "q1")
         #expect(store.cancels["q1"] == .canceling)
         await task.value
@@ -475,7 +475,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         let image = PendingImage(id: "picked", uri: "source")
         image.processed = Processed(bytes: Data([1]), format: .png, width: 1, height: 1)
         let o = Outgoing(requestId: "request", text: "看图", imageIds: ["old"], images: [image], original: true)
-        commands.answer(CommandError("not_found", "image old is not on this machine; upload it again", fromDaemon: true))
+        commands.answer(CommandError("not_found", "image old is not on this machine; upload it again", fromDaemon: true,outcome:.executed))
         store.add("s", o)
         await store.deliver(commands, sid: "s", o).value
         #expect(o.state == .failed && o.missingImages && o.canPutBack)
@@ -490,7 +490,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         let commands = FakeCommands()
         let image = PendingImage(id: "picked", uri: nil)
         let o = Outgoing(requestId: "request", text: "看图", imageIds: ["old"], images: [image])
-        commands.answer(CommandError(CommandError.unknownOutcome, "lost"), CommandError("unavailable", "offline"))
+        commands.answer(CommandError(CommandError.unknownOutcome, "lost", outcome: .unknown), CommandError("unavailable", "offline"))
         store.add("s", o)
         await store.deliver(commands, sid: "s", o).value
         image.imageId = "renewed"

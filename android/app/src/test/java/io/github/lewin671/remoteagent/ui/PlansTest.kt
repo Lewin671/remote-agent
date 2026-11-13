@@ -12,7 +12,7 @@ import org.junit.Test
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class PlansTest {
     @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
-    private val lost = CommandException(CommandException.UNKNOWN, "lost response")
+    private val lost = CommandException(CommandException.UNKNOWN, "lost response", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN)
 
     @Test fun aLostReplyKeepsItsChoiceEnvelopeAndDeadlineAcrossPages() = runBlocking {
         Plans.clear()
@@ -73,7 +73,7 @@ class PlansTest {
     @Test fun aDefiniteFailureOffersEveryChoiceAgain() = runBlocking {
         val reply = Plans.Reply()
         val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance()) }
-        runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw CommandException("failed_precondition", "no", fromDaemon = true) } }
+        runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw CommandException("failed_precondition", "no", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) } }
         assertEquals(PlanOffer(), planOffer(reply))
     }
 

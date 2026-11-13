@@ -105,14 +105,14 @@ func TestForwardChecksSenderAndPassesRegistration(t *testing.T) {
 		return env
 	}
 	// Claiming to be another device is refused before reaching the machine.
-	_, err := client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(mid)}))
+	_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(mid)}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("forged sender: %v", err)
 	}
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := client.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(cid)}))
+		_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(cid)}))
 		done <- err
 	}()
 	f := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil })
@@ -126,7 +126,7 @@ func TestForwardChecksSenderAndPassesRegistration(t *testing.T) {
 		t.Fatalf("registration does not check out: %v", err)
 	}
 	res, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: mid}, []byte("ok"))
-	ms.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Result: res}}})
+	ms.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Result: res}}})
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}

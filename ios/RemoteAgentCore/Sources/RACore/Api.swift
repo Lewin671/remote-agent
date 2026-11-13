@@ -271,33 +271,42 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public let outcomeDetail: String?
     let localized: LocalizedMessage
     public var message: String { localized.resolve() }
-    /// The daemon's own answer for this request, the final word on it
-    /// (except that it expired before reaching the daemon).
+    /// A verified daemon answer, including an explicit unknown result.
+    /// Certainty comes from outcome, not authentication alone.
     public let fromDaemon: Bool
     public let readOnly: Bool
+    public let outcome: Outcome
+    public let conflictKind: String
+    public let resultAvailable: Bool
 
-    public init(_ code: String, _ message: String, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil) {
+    public init(_ code: String, _ message: String, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil, outcome: Outcome? = nil, conflictKind: String = "", resultAvailable: Bool = true) {
         self.code = code
         self.outcomeDetail = outcomeDetail
-        self.localized = code == "disk_full" ? L10nMessage.machineStatusDiskFull() : code == "storage_exhausted" ? L10nMessage.machineStatusStorageExhausted() : LocalizedMessage(raw: message)
+        self.localized = (outcome == .executed && !resultAvailable) || conflictKind == "identity" ? LocalizedMessage(raw: message) : code == "disk_full" ? L10nMessage.machineStatusDiskFull() : code == "storage_exhausted" ? L10nMessage.machineStatusStorageExhausted() : LocalizedMessage(raw: message)
         self.fromDaemon = fromDaemon
         self.readOnly = readOnly
+        self.outcome = outcome ?? (fromDaemon ? .unknown : .notSent)
+        self.conflictKind = conflictKind
+        self.resultAvailable = resultAvailable
     }
 
-    public init(_ code: String, _ message: LocalizedMessage, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil) {
+    public init(_ code: String, _ message: LocalizedMessage, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil, outcome: Outcome? = nil, conflictKind: String = "", resultAvailable: Bool = true) {
         self.code = code
         self.localized = message
         self.fromDaemon = fromDaemon
         self.readOnly = readOnly
+        self.outcome = outcome ?? (fromDaemon ? .unknown : .notSent)
+        self.conflictKind = conflictKind
+        self.resultAvailable = resultAvailable
         self.outcomeDetail = outcomeDetail
     }
 
-    /// The command may or may not have run; retrying with the same request ID is safe.
-    /// Authentication alone does not make an interrupted execution final.
-    public var unknown: Bool {
-        classifyOutcome(source: fromDaemon ? "daemon" : "local", code: code, signed: fromDaemon, readOnly: readOnly) == .unknown
-    }
-    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.readOnly == rhs.readOnly && lhs.outcomeDetail == rhs.outcomeDetail }
+    /// Reconciliation retains the original request for unknown results, missing
+    /// bodies and identity conflicts. The explicit outcome remains authoritative.
+    public var needsResultRefresh: Bool { conflictKind == "identity" || (outcome == .executed && !resultAvailable) }
+    public var unknown: Bool { outcome == .unknown || needsResultRefresh }
+    public var canRetryUpload: Bool { outcome == .unknown || (outcome == .notSent && code == "network") }
+    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.readOnly == rhs.readOnly && lhs.outcomeDetail == rhs.outcomeDetail && lhs.outcome == rhs.outcome && lhs.conflictKind == rhs.conflictKind && lhs.resultAvailable == rhs.resultAvailable }
     public var errorDescription: String? { message }
     public var description: String { message }
 

@@ -422,6 +422,12 @@ extension UploadFailure {
     public var unknown: Bool { code == CommandError.unknownOutcome }
 }
 
+func uploadRetryAllowed(_ error: any Error) -> Bool {
+    if let command = error as? CommandError { return command.canRetryUpload }
+    guard let failure = error as? any UploadFailure else { return false }
+    return failure.unknown || failure.code == "network"
+}
+
 /// An upload that ended without the daemon refusing it: its answer was not one to go on from.
 public struct UploadError: UploadFailure, LocalizedError, Equatable {
     public let code: String
@@ -461,7 +467,7 @@ public func uploadImage(
     var tries = 0
     // Whether to go on after a failed step: only when its outcome is not known, and not forever.
     func again(_ error: any Error) -> Bool {
-        guard let e = error as? any UploadFailure, e.unknown || e.code == "network", tries < retries else { return false }
+        guard uploadRetryAllowed(error), tries < retries else { return false }
         tries += 1
         return true
     }

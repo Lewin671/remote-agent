@@ -29,23 +29,56 @@ public interface ForwardReplyOrBuilder extends
 
   /**
    * <pre>
-   * Set when the daemon could not produce a sealed result, e.g. the
-   * envelope did not open. The text never contains content.
+   * Routing only. No error text or command content may appear here.
    * </pre>
    *
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The error.
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The reason.
    */
-  java.lang.String getError();
+  java.lang.String getReason();
   /**
    * <pre>
-   * Set when the daemon could not produce a sealed result, e.g. the
-   * envelope did not open. The text never contains content.
+   * Routing only. No error text or command content may appear here.
    * </pre>
    *
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The bytes for error.
+   * <code>string reason = 3 [json_name = "reason"];</code>
+   * @return The bytes for reason.
    */
   com.google.protobuf.ByteString
-      getErrorBytes();
+      getReasonBytes();
+
+  /**
+   * <code>string outcome = 4 [json_name = "outcome"];</code>
+   * @return The outcome.
+   */
+  java.lang.String getOutcome();
+  /**
+   * <code>string outcome = 4 [json_name = "outcome"];</code>
+   * @return The bytes for outcome.
+   */
+  com.google.protobuf.ByteString
+      getOutcomeBytes();
+
+  /**
+   * <code>string attempt_id = 5 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  java.lang.String getAttemptId();
+  /**
+   * <code>string attempt_id = 5 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  com.google.protobuf.ByteString
+      getAttemptIdBytes();
+
+  /**
+   * <pre>
+   * A failed authentication/decoding entry may have no sealed result.
+   * Such a reply cannot prove anything about an unauthenticated request ID.
+   * </pre>
+   *
+   * <code>bool entry_failure = 6 [json_name = "entryFailure"];</code>
+   * @return The entryFailure.
+   */
+  boolean getEntryFailure();
 }

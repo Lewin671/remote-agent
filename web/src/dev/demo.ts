@@ -2403,7 +2403,7 @@ export class DemoRemote extends Remote {
         const n = (this.attempts.get(requestId!) ?? 0) + 1;
         this.attempts.set(requestId!, n);
         if (text?.includes("失败") && n === 1)
-          throw new CommandError("unknown_outcome", "连接超时");
+          throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
         void slot;
         this.push(sid, {
           case: "inputState",
@@ -2444,7 +2444,7 @@ export class DemoRemote extends Remote {
       case "resolveApproval": {
         const v = cmd.value;
         if (v.message?.includes("失败"))
-          throw new CommandError("unknown_outcome", "连接超时");
+          throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
         this.push(sid, {
           case: "approvalResolved",
           value: {
@@ -2589,7 +2589,7 @@ export class DemoRemote extends Remote {
       }
       case "setModel":
         if (cmd.value.model === "gpt-6-nova")
-          throw new CommandError("unknown_outcome", "Codex 的菜单和预期不一样");
+          throw new CommandError("unknown_outcome", "Codex 的菜单和预期不一样", false, false, "unknown");
         this.push(sid, {
           case: "settingsChanged",
           value: { model: cmd.value.model, effort: cmd.value.effort },
@@ -2652,7 +2652,7 @@ export class DemoRemote extends Remote {
     switch (cmd.case) {
       case "listModels":
         if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});
-        if (machineId === "vps") throw new CommandError("unknown_outcome", "连接超时");
+        if (machineId === "vps") throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
         return create(CommandResultSchema, {
           kind: {
             case: "listModels",
@@ -2717,7 +2717,7 @@ export class DemoRemote extends Remote {
         const v = cmd.value;
         if (v.prompt?.includes("失败"))
           throw new CommandError("failed_precondition", "tmux 没有安装");
-        if (this.opts.has("disk-full")) throw new CommandError("disk_full", "mkdir /Users/me/.remote-agent/sessions: no space left on device", true);
+        if (this.opts.has("disk-full")) throw new CommandError("disk_full", "mkdir /Users/me/.remote-agent/sessions: no space left on device", true,false,"executed");
         const id = "s-new-" + Math.random().toString(16).slice(2, 8);
         const info = create(SessionSchema, {
           id,

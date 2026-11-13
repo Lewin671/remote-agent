@@ -71,7 +71,7 @@ class FilesTest {
         override suspend fun put(transferId: String, offset: Long, data: ByteArray): ImageUploadStatus {
             maxSeen = maxOf(maxSeen, data.size)
             if (offset == bytes.size().toLong()) bytes.write(data)
-            if (lost && !lostOnce) { lostOnce = true; throw CommandException(CommandException.UNKNOWN, "reply lost") }
+            if (lost && !lostOnce) { lostOnce = true; throw CommandException(CommandException.UNKNOWN, "reply lost", outcome = Outcome.UNKNOWN) }
             return state()
         }
         override suspend fun status(transferId: String) = state()
@@ -109,11 +109,11 @@ class FilesTest {
         var completes = 0
         val ch = object : UploadChannel by daemon {
             override suspend fun put(transferId: String, offset: Long, data: ByteArray): ImageUploadStatus {
-                if (puts++ < 3) throw CommandException(CommandException.UNKNOWN, "chunk reply lost")
+                if (puts++ < 3) throw CommandException(CommandException.UNKNOWN, "chunk reply lost", outcome = Outcome.UNKNOWN)
                 return daemon.put(transferId, offset, data)
             }
             override suspend fun complete(transferId: String): ImageUploadStatus {
-                if (completes++ < 3) throw CommandException(CommandException.UNKNOWN, "complete reply lost")
+                if (completes++ < 3) throw CommandException(CommandException.UNKNOWN, "complete reply lost", outcome = Outcome.UNKNOWN)
                 return daemon.complete(transferId)
             }
         }

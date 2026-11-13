@@ -34,7 +34,7 @@ class ScheduleDetailEditsTest {
     private fun prepare() {
         repository=ScheduleRepository(scope,remote.state,send={_,r->
             requests+=r
-            if(conflict && r.operation=="update") throw CommandException("revision_conflict","revision",fromDaemon=true)
+            if(conflict && r.operation=="update") throw CommandException("revision_conflict","revision",fromDaemon=true,outcome=io.github.lewin671.remoteagent.core.Outcome.CONFLICT,conflictKind="business")
             if(r.operation=="cancel") latest=ScheduledTask(latest.machine,JsonObject(latest.json+mapOf("status" to JsonPrimitive("cancelled"),"reason" to JsonPrimitive("user_cancelled"))))
             (if(r.operation=="list") buildJsonObject { put("tasks",JsonArray(listOf(latest.json))) } else latest.json).toString().toByteArray()
         })

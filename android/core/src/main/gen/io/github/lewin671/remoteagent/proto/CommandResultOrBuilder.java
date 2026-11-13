@@ -45,6 +45,76 @@ public interface CommandResultOrBuilder extends
       getErrorMessageBytes();
 
   /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   * @return The outcome.
+   */
+  java.lang.String getOutcome();
+  /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   * @return The bytes for outcome.
+   */
+  com.google.protobuf.ByteString
+      getOutcomeBytes();
+
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   * @return The reason.
+   */
+  java.lang.String getReason();
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   * @return The bytes for reason.
+   */
+  com.google.protobuf.ByteString
+      getReasonBytes();
+
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   * @return The conflictKind.
+   */
+  java.lang.String getConflictKind();
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   * @return The bytes for conflictKind.
+   */
+  com.google.protobuf.ByteString
+      getConflictKindBytes();
+
+  /**
+   * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+   * @return The requestKeyHash.
+   */
+  com.google.protobuf.ByteString getRequestKeyHash();
+
+  /**
+   * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+   * @return The payloadHash.
+   */
+  com.google.protobuf.ByteString getPayloadHash();
+
+  /**
+   * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+   * @return The resultAvailable.
+   */
+  boolean getResultAvailable();
+
+  /**
    * <code>.remoteagent.v1.SendResponse send = 10 [json_name = "send"];</code>
    * @return Whether the send field is set.
    */

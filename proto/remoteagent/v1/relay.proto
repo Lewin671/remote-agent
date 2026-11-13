@@ -358,11 +358,22 @@ message ForwardRequest {
   // COMMAND envelope. Its header's sender must be the calling device, or
   // the server refuses it.
   Envelope command = 2;
+  string attempt_id = 3;
 }
 
 message ForwardResponse {
   // COMMAND_RESULT envelope.
   Envelope result = 1;
+  string outcome = 2;
+  string reason = 3;
+  string attempt_id = 4;
+}
+
+// Honest relay evidence for one attempt, emitted only before forwarding.
+// It is not a daemon execution proof.
+message NotForwarded {
+  string attempt_id = 1;
+  string reason = 2;
 }
 
 // MachineService is used by daemons.
@@ -501,14 +512,19 @@ message ForwardCall {
   string sender_device_id = 3;
   bytes sender_registration = 4;
   bytes sender_registration_signature = 5;
+  string attempt_id = 6;
 }
 
 message ForwardReply {
   uint64 call_id = 1;
   Envelope result = 2;
-  // Set when the daemon could not produce a sealed result, e.g. the
-  // envelope did not open. The text never contains content.
-  string error = 3;
+  // Routing only. No error text or command content may appear here.
+  string reason = 3;
+  string outcome = 4;
+  string attempt_id = 5;
+  // A failed authentication/decoding entry may have no sealed result.
+  // Such a reply cannot prove anything about an unauthenticated request ID.
+  bool entry_failure = 6;
 }
 
 // Terminal streams use a WebSocket at /v1/term. Each side first sends a

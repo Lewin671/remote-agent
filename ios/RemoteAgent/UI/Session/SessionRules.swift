@@ -122,7 +122,7 @@ struct OutgoingNote: Equatable, Sendable {
 /// nothing yet. A message that did not go says so in red, one that may not
 /// have gone in orange, each with a short reason.
 func outgoingNote(
-    state: Outgoing.State, error: String, input: PBInputStatus?, failure: String?, agent: PBAgent, hasImages: Bool = false, missingImages: Bool = false
+    state: Outgoing.State, error: String, input: PBInputStatus?, failure: String?, agent: PBAgent, hasImages: Bool = false, missingImages: Bool = false, outcomeNotice: Bool = false
 ) -> OutgoingNote {
     let failed = input == .failed || input == .needsTerminal || (input == nil && state != .sending && state != .sent)
     switch input {
@@ -148,8 +148,7 @@ func outgoingNote(
     // 「可能没发出去」 already says that it is not known whether the computer ran it.
     case .unknown:
         return OutgoingNote(
-            caption: maybeNotSentText(
-                error), tone: .warn, failed: failed,
+            caption: outcomeNotice ? error : maybeNotSentText(error), tone: .warn, failed: failed,
             actions: (hasImages ? [.putBack] : []) + [.retry, .remove])
     case .failed: return OutgoingNote(caption: notSentText(error), tone: .error, failed: failed, actions: (hasImages ? [.putBack] : []) + (missingImages ? [] : [.retry]) + [.remove])
     }

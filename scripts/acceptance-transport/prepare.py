@@ -27,7 +27,16 @@ if args.copy_auth:
 source=repo/'cmd/remote-agent/commands.go';code=source.read_text();needle='relay.New(backend{d}).Run(ctx)';assert code.count(needle)==1
 (root/'commands-overlay.go').write_text(code.replace(needle,'relay.New(transportAcceptanceBackend(backend{d})).Run(ctx)'))
 (root/'observer-overlay.go').write_text((repo/'scripts/acceptance-transport/observer.go.txt').read_text())
-(root/'overlay.json').write_text(json.dumps({'Replace':{str(source):str(root/'commands-overlay.go'),str(repo/'cmd/remote-agent/transport_acceptance_overlay.go'):str(root/'observer-overlay.go')}}))
+replacements={str(source):str(root/'commands-overlay.go'),str(repo/'cmd/remote-agent/transport_acceptance_overlay.go'):str(root/'observer-overlay.go')}
+# A test-only admission clock lets the real client query exact retention edges
+# without altering the host clock or native CLI time. Use only after normal flows.
+handle=repo/'internal/relay/handle.go';handle_code=handle.read_text()
+clock_needle='uint64(time.Now().UnixMilli())';assert handle_code.count(clock_needle)==1
+(root/'handle-overlay.go').write_text(handle_code.replace(clock_needle,'transportAcceptanceNow()'))
+(root/'clock-overlay.go').write_text((repo/'scripts/acceptance-transport/clock.go.txt').read_text())
+replacements[str(handle)]=str(root/'handle-overlay.go')
+replacements[str(repo/'internal/relay/transport_acceptance_clock.go')]=str(root/'clock-overlay.go')
+(root/'overlay.json').write_text(json.dumps({'Replace':replacements}))
 env=dict(os.environ,CGO_ENABLED='0')
 for output,package,extra in [('controller','./scripts/acceptance-transport',[]),('migrate-security-v4','./scripts/migrate-security-v4',[]),('remote-agent-server','./cmd/remote-agent-server',[]),('remote-agent','./cmd/remote-agent',['-overlay',str(root/'overlay.json')])]:
     free=shutil.disk_usage('/System/Volumes/Data').free;print('DISK_FREE_BYTES',free,flush=True)

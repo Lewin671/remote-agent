@@ -15,7 +15,7 @@ import (
 // falling back feature by feature. Raise it with any change an older peer
 // would misread, in step with PROTOCOL_VERSION in web/src and android/core.
 // Stored content uses deviceauth.Version; pairing uses e2e.Version.
-const Version = 14
+const Version = 15
 
 // GenerationConflictError rejects completion of a replaced upload before commit.
 // Its diagnostic remains owned by the upload handler.

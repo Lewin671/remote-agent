@@ -288,7 +288,7 @@ final class ScheduleMutation {
         }
     }
     func recordConflict(_ error: Error) -> Error? {
-        guard let command = error as? CommandError, command.fromDaemon, command.code == "revision_conflict" else { return nil }
+        guard let command = error as? CommandError, command.outcome == .conflict, command.conflictKind == "business" else { return nil }
         attempt.abandon(); frozen = false; expired = false
         conflicts += 1
         return UserError(L10nMessage.errorsTheTaskWasJustChangedUpdatedToTheLatest())

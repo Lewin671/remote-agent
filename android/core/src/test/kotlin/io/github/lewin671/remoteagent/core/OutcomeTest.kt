@@ -9,22 +9,22 @@ class OutcomeTest {
  @Test fun sharedVectors() {
   val fixture = Json.parseToJsonElement(File(System.getProperty("outcomeVectors")).readText()).jsonObject
   val vectors = fixture.getValue("vectors").jsonArray
-  assertEquals(14, fixture.getValue("protocol").jsonPrimitive.int)
-  assertEquals(552, vectors.size)
+  assertEquals(15, fixture.getValue("protocol").jsonPrimitive.int)
+  assertEquals(3432, vectors.size)
   for (row in vectors) {
    val v = row.jsonObject
    fun s(k: String) = v.getValue(k).jsonPrimitive.content
    fun b(k: String) = v.getValue(k).jsonPrimitive.boolean
-   assertEquals(row.toString(), s("outcome"), classifyOutcome(s("source"), s("code"), b("signed"), b("prior"), b("readOnly")).name.lowercase())
-   if (s("source") == "local" || (s("source") == "daemon" && b("signed"))) {
-    val error = CommandException(s("code"), "fixture", fromDaemon = s("source") == "daemon", readOnly = b("readOnly"))
-    if (!b("prior")) assertEquals(row.toString(), s("outcome") == "unknown", uncertain(error))
-    val attempt = Attempt()
-    attempt.next { PreparedCommand("machine", "", "fixture-request", 1000, Envelope.getDefaultInstance()) }
-    if (b("prior")) attempt.settle(CommandException(CommandException.UNKNOWN, "fixture"))
-    attempt.settle(error)
-    assertEquals(row.toString(), s("outcome") == "unknown", attempt.frozen)
-   }
+   assertEquals(row.toString(), s("outcome"), classifyOutcome(s("source"), s("code"), b("signed"), b("prior"), b("readOnly"),s("declared"),s("reason"),s("conflictKind"),b("dispatched"),b("notForwarded"),b("attemptBound"),b("admitted")).name.lowercase())
+   val category=Outcome.valueOf(s("outcome").uppercase())
+   val error=CommandException(s("code"),"fixture",fromDaemon=s("source")=="daemon"&&b("signed"),outcome=category,conflictKind=if(category==Outcome.CONFLICT)s("conflictKind") else "",resultAvailable=b("resultAvailable"))
+   val frozen=category==Outcome.UNKNOWN || category==Outcome.CONFLICT&&s("conflictKind")=="identity" || category==Outcome.EXECUTED&&!b("resultAvailable")
+   assertEquals(row.toString(),frozen,uncertain(error))
+   val attempt=Attempt();val first=attempt.next {PreparedCommand("machine","","fixture-request",1000,Envelope.getDefaultInstance())}
+   if(b("prior"))attempt.settle(CommandException(CommandException.UNKNOWN,"fixture",outcome=Outcome.UNKNOWN))
+   attempt.settle(error);assertEquals(row.toString(),frozen,attempt.frozen)
+   if(attempt.frozen&&!attempt.expired)org.junit.Assert.assertSame(first,attempt.next {error("unknown retry rebuilt")})
+
   }
  }
  @Test fun commandEvidence() {
@@ -47,7 +47,7 @@ class OutcomeTest {
    val readOnly=builder.build().isReadOnlyCommand()
    assertEquals(row.toString(),v.getValue("readOnly").jsonPrimitive.boolean,readOnly)
    for (code in listOf("canceled","deadline_exceeded","aborted"))
-    assertEquals(row.toString(),!readOnly,CommandException(code,"fixture",fromDaemon=true,readOnly=readOnly).unknown)
+    assertEquals(row.toString(),false,CommandException(code,"fixture",fromDaemon=true,readOnly=readOnly,outcome=Outcome.EXECUTED).unknown)
   }
   assertEquals(Command.KindCase.values().map {it.name}.filter {it!="KIND_NOT_SET"}.toSet(),seen)
  }

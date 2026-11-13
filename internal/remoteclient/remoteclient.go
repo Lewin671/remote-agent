@@ -4,6 +4,7 @@
 package remoteclient
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -36,6 +37,8 @@ type Client struct {
 	CommandTTL time.Duration
 	device     ed25519.PrivateKey
 	endpoint   *deviceauth.Endpoint
+	attemptsMu sync.Mutex
+	attempts   map[string]int
 }
 
 // Token is the bearer token, for tests that talk to the server directly.
@@ -191,9 +194,12 @@ func NewRequestID() string {
 
 // CommandError is an error the daemon reported for a command.
 type CommandError struct {
-	Code, Message string
-	FromDaemon    bool
-	ReadOnly      bool
+	Code, Message   string
+	FromDaemon      bool
+	ReadOnly        bool
+	Outcome         outcome.Category
+	ConflictKind    string
+	ResultAvailable bool
 }
 
 func (e *CommandError) Error() string { return e.Code + ": " + e.Message }
@@ -206,11 +212,7 @@ func Uncertain(err error) bool {
 	if !errors.As(err, &ce) {
 		return false
 	}
-	source := "local"
-	if ce.FromDaemon {
-		source = "daemon"
-	}
-	return outcome.Classify(outcome.Evidence{Source: source, Code: ce.Code, Signed: ce.FromDaemon, ReadOnly: ce.ReadOnly}) == outcome.Unknown
+	return ce.Outcome == outcome.Unknown || ce.ConflictKind == "identity" || ce.Outcome == outcome.Executed && !ce.ResultAvailable
 }
 
 // Seal builds a sealed command for the given request ID and deadline.
@@ -260,25 +262,66 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	res, err := c.api.Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env}))
+	wire, err := deviceauth.FromEnvelope(env)
 	if err != nil {
-		return nil, &CommandError{Code: "unknown_outcome", Message: "the relay supplied no authenticated outcome; retry the same request"}
+		return nil, err
 	}
-	out := &pb.CommandResult{}
-	if _, err := c.openMessage(ctx, nil, res.Msg.Result, &pb.Header{
-		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: machineID, SessionId: h.SessionId, RequestId: h.RequestId,
-	}, out); err != nil {
-		return nil, &CommandError{Code: "unknown_outcome", Message: "the command result failed authentication; retry the same request"}
+	header, plain, err := c.endpoint.Open(wire, nil, false, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		return nil, err
 	}
-	if out.ErrorCode != "" {
-		// Recover the original authenticated command even for caller-held envelopes.
-		readOnly := false
-		if wire, err := deviceauth.FromEnvelope(env); err == nil {
-			if header, plain, err := c.endpoint.Open(wire, nil, false, uint64(time.Now().UnixMilli())); err == nil {
-				readOnly = deviceauth.ReadOnlyCommand(header, plain)
+	key, payload, err := deviceauth.RequestIdentity(header, plain)
+	if err != nil {
+		return nil, err
+	}
+	identity := string(key[:]) + string(payload[:])
+	c.attemptsMu.Lock()
+	if c.attempts == nil {
+		c.attempts = map[string]int{}
+	}
+	c.attempts[identity]++
+	c.attemptsMu.Unlock()
+	attempt := NewRequestID()
+	req := connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env, AttemptId: attempt})
+	req.Header().Set("Remote-Agent-Attempt", attempt)
+	res, err := c.api.Forward(ctx, req)
+	if err != nil {
+		var ce *connect.Error
+		if errors.As(err, &ce) {
+			for _, detail := range ce.Details() {
+				value, e := detail.Value()
+				if d, ok := value.(*pb.NotForwarded); e == nil && ok && d.AttemptId == attempt {
+					c.attemptsMu.Lock()
+					c.attempts[identity]--
+					remaining := c.attempts[identity]
+					c.attemptsMu.Unlock()
+					category := outcome.NotSent
+					if remaining > 0 {
+						category = outcome.Unknown
+					}
+					return nil, &CommandError{Code: ce.Code().String(), Message: ce.Message(), Outcome: category}
+				}
 			}
 		}
-		return out, &CommandError{Code: out.ErrorCode, Message: out.ErrorMessage, FromDaemon: true, ReadOnly: readOnly}
+		return nil, &CommandError{Code: "unknown_outcome", Message: "the relay supplied no authenticated outcome; retry the same request", Outcome: outcome.Unknown}
+	}
+	out := &pb.CommandResult{}
+	if _, err := c.openMessage(ctx, nil, res.Msg.Result, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: machineID, SessionId: h.SessionId, RequestId: h.RequestId}, out); err != nil ||
+		!bytes.Equal(out.RequestKeyHash, key[:]) || !bytes.Equal(out.PayloadHash, payload[:]) || res.Msg.AttemptId != attempt || out.Outcome != res.Msg.Outcome || out.Reason != res.Msg.Reason {
+		return nil, &CommandError{Code: "unknown_outcome", Message: "the command result failed authentication; retry the same request", Outcome: outcome.Unknown}
+	}
+	category := outcome.Verify(out, key[:], payload[:], res.Msg.Outcome, res.Msg.Reason, false)
+	if category == outcome.NotSent {
+		c.attemptsMu.Lock()
+		c.attempts[identity]--
+		remaining := c.attempts[identity]
+		c.attemptsMu.Unlock()
+		if remaining > 0 {
+			category = outcome.Unknown
+		}
+	}
+	if category != outcome.Executed || !out.ResultAvailable || out.ErrorCode != "" {
+		return out, &CommandError{Code: out.ErrorCode, Message: out.ErrorMessage, FromDaemon: true, ReadOnly: deviceauth.ReadOnlyCommand(header, plain), Outcome: category, ConflictKind: out.ConflictKind, ResultAvailable: out.ResultAvailable}
 	}
 	return out, nil
 }

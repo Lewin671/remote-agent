@@ -24,7 +24,7 @@ public final class Attempt {
 
     /// What to send: an earlier command whose outcome is unknown wins over a new one.
     public func next(_ make: () throws -> PreparedCommand) throws -> PreparedCommand {
-        if expired { throw CommandError(CommandError.unknownOutcome, Attempt.expiredUnknown) }
+        if expired { throw CommandError(CommandError.unknownOutcome, Attempt.expiredUnknown, outcome: .unknown) }
         if let pending { return pending }
         let made = try make()
         pending = made
@@ -45,12 +45,12 @@ public final class Attempt {
             frozen = true
         } else if frozen, let command, Attempt.expiry(command) {
             expired = true
-            return CommandError(CommandError.unknownOutcome, Attempt.expiredUnknown)
-        } else if frozen, command?.fromDaemon != true {
+            return CommandError(CommandError.unknownOutcome, Attempt.expiredUnknown, outcome: .unknown)
+        } else if frozen, command?.fromDaemon != true || command?.outcome == .notSent {
             // Once unknown, only the daemon's own answer settles it; any
             // other failure (a network error, a failed login) leaves it
             // unknown, to be retried under the same request ID.
-            return CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertainRetryingSendsThe(value: String(describing: errorText(error))))
+            return CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertainRetryingSendsThe(value: String(describing: errorText(error))), outcome: .unknown)
         } else {
             abandon()
         }

@@ -29,7 +29,7 @@ func TestSharedOutcomeVectors(t *testing.T) {
 	if err := json.Unmarshal(b, &f); err != nil {
 		t.Fatal(err)
 	}
-	if f.Protocol != 14 || len(f.Vectors) != 552 {
+	if f.Protocol != 15 || len(f.Vectors) != 3432 {
 		t.Fatalf("unexpected vector coverage: %d/%d", f.Protocol, len(f.Vectors))
 	}
 	for i, v := range f.Vectors {
@@ -56,12 +56,6 @@ func TestSharedOutcomeVectors(t *testing.T) {
 		readOnly := deviceauth.IsReadOnlyCommand(cmd)
 		if readOnly != v.ReadOnly {
 			t.Fatalf("%s/%s readOnly=%v", v.Kind, v.Operation, readOnly)
-		}
-		for _, code := range []string{"canceled", "deadline_exceeded", "aborted"} {
-			got := outcome.Classify(outcome.Evidence{Source: "daemon", Signed: true, Code: code, ReadOnly: readOnly})
-			if (got == outcome.Executed) != v.ReadOnly {
-				t.Fatalf("%s/%s: %s", v.Kind, code, got)
-			}
 		}
 	}
 	fields := (&pb.Command{}).ProtoReflect().Descriptor().Oneofs().ByName("kind").Fields()

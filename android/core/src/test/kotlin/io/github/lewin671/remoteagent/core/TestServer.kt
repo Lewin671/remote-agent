@@ -438,13 +438,17 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                     )
                                     .build()
                             } else answer(h, cmd)
+                        val binding=DeviceSecurity.requestIdentity(DeviceSecurity.parseHeader(call.command.securityHeader.toByteArray()),pt)
+                        val proof=result.toBuilder().setRequestKeyHash(ByteString.copyFrom(binding.first)).setPayloadHash(ByteString.copyFrom(binding.second)).apply {
+                            if (result.outcome.isEmpty()) { setOutcome("executed"); setReason("completed"); setResultAvailable(true) }
+                        }.build()
                         var env =
                             seal(
                                 header(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT)
                                     .setSessionId(h.sessionId)
                                     .setRequestId(h.requestId)
                                     .build(),
-                                result.toByteArray(),
+                                proof.toByteArray(),
                             )
                         if (garbleResults)
                             env =
@@ -456,7 +460,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                         webSocket.send(
                             PeerFrame.newBuilder()
                                 .setForwardReply(
-                                    ForwardReply.newBuilder().setCallId(call.callId).setResult(env)
+                                    ForwardReply.newBuilder().setCallId(call.callId).setResult(env).setOutcome(proof.outcome).setReason(proof.reason).setAttemptId(call.attemptId)
                                 )
                                 .build()
                                 .toByteArray()

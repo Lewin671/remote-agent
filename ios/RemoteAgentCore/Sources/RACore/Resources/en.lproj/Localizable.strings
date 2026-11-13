@@ -235,6 +235,7 @@
 "errors_disconnected_from_server" = "Disconnected from server";
 "errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" = "Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery.";
 "errors_establishing_push_connection" = "Establishing push connection";
+"errors_executed_result_unavailable" = "Done on the computer, but the result couldn't be retrieved. Refresh to see the latest state.";
 "errors_history_could_not_continue_loading_retry" = "History could not continue loading. Retry.";
 "errors_history_has_a_gap_retry" = "History has a gap. Retry.";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
@@ -312,6 +313,7 @@
 "errors_remote_agent_on_is_out_of_date_update_it" = "remote-agent on %1$@ is out of date. Update it on the computer and retry.";
 "errors_remote_control_expired_control_and_new_uploads_are_paused" = "Remote control expired. Control and new uploads are paused; renew on the current managing client.";
 "errors_remote_control_expired_saving_changes_session_control_and_new" = "Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available.";
+"errors_request_identity_conflict" = "This didn't match an earlier submission, so the computer didn't run it. Refresh and try again.";
 "errors_security_body_type_or_direction_mismatch" = "Security body type or direction mismatch";
 "errors_security_envelope_missing" = "Security envelope missing";
 "errors_server_returned" = "Server returned %1$@";

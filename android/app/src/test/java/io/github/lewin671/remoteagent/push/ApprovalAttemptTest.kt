@@ -81,7 +81,7 @@ class ApprovalAttemptTest {
 
     @Test fun aDefiniteFailureForgetsTheReply() = runBlocking {
         val refused = runCatching {
-            sendApproval(command, ApprovalRecord.SENT, record) { _, _ -> throw CommandException("permission_denied", "refused", fromDaemon = true) }
+            sendApproval(command, ApprovalRecord.SENT, record) { _, _ -> throw CommandException("permission_denied", "refused", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) }
         }.exceptionOrNull() as CommandException
         assertFalse(refused.unknown)
         assertNull(durable)

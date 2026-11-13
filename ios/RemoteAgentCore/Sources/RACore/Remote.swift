@@ -35,6 +35,10 @@ public final class PreparedCommand: @unchecked Sendable {
     private var sealID: UUID?
     private var sealState: Data?
     private var everAuthorized = false
+    private var dispatchedAttempts = 0
+    var mayHaveRun: Bool { sealLock.withLock { dispatchedAttempts > 0 } }
+    func dispatched() { sealLock.withLock { dispatchedAttempts += 1 } }
+    func notSent() -> Bool { sealLock.withLock { dispatchedAttempts = max(0,dispatchedAttempts-1); return dispatchedAttempts > 0 } }
     private func clearAuthorization(_ id: UUID) {
         sealLock.lock()
         defer { sealLock.unlock() }

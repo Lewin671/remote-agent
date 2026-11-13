@@ -277,7 +277,7 @@ class RemoteTest {
                     .build()
             val original = attempt.next { r.prepare(daemon.id, "s1", cmd) }
             r.forward(original)
-            attempt.settle(CommandException(CommandException.UNKNOWN, "lost result"))
+            attempt.settle(CommandException(CommandException.UNKNOWN, "lost result", outcome = Outcome.UNKNOWN))
             daemon.disconnect()
             r.awaitState("offline hint") { it.machines[daemon.id]?.online == false }
             val error = runCatching { r.forward(original, retryOfUnknown = true) }.exceptionOrNull()
@@ -1270,7 +1270,7 @@ class RemoteTest {
             }
         }
 
-    private suspend fun refused(protocol: Int): CommandException {
+    private suspend fun refused(protocol: Int, prior: Boolean = false): CommandException {
         val r = client()
         r.start()
         r.awaitState("online machine") {
@@ -1283,15 +1283,8 @@ class RemoteTest {
             it.machines[daemon.id]?.meta?.protocolVersion == protocol
         }
         try {
-            r.command(
-                "s1",
-                Command.newBuilder()
-                    .setInterrupt(
-                        io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                            .setSessionId("s1"),
-                    )
-                    .build(),
-            )
+            val command=Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build()
+            r.forward(r.prepare(daemon.id,"s1",command),retryOfUnknown=prior)
             throw AssertionError("expected a version error")
         } catch (e: CommandException) {
             // Nothing was sent.
@@ -1299,6 +1292,12 @@ class RemoteTest {
             assertFalse(e.fromDaemon)
             return e
         }
+    }
+
+    @Test fun protocolRefusalCannotSettleAnEarlierAttempt() = runBlocking<Unit> {
+        val error=refused(PROTOCOL_VERSION-1,prior=true)
+        assertEquals(Outcome.UNKNOWN,error.outcome)
+        assertTrue(error.unknown)
     }
 
     @Test
@@ -1793,7 +1792,7 @@ class RemoteTest {
             val first = a.next { r.prepare(daemon.id, "s1", cmd) }
             r.forward(first)
             // Pretend the answer was lost: the retry carries the same request ID and deadline.
-            a.settle(CommandException(CommandException.UNKNOWN, "lost"))
+            a.settle(CommandException(CommandException.UNKNOWN, "lost", outcome = Outcome.UNKNOWN))
             approvedClient(daemon.phone, http) // New epoch, original intent/request/deadline.
             r.forward(a.next { r.prepare(daemon.id, "s1", cmd) })
             val (h1, _) = daemon.commands.poll(5, TimeUnit.SECONDS)!!

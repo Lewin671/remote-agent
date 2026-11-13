@@ -665,6 +665,16 @@ public enum DeviceSecurity {
         public var deadline: UInt64
         public var compression: UInt32
     }
+    /// Original unpacked authorization, independent of nonce/epoch.
+    static func requestIdentity(_ h: Header, _ plain: Data) -> (key: Data, payload: Data) {
+        var w = Writer()
+        w.str(h.account); w.raw(h.domain); w.str(h.sender); w.u32(h.purpose.rawValue)
+        w.str(h.machine); w.str(h.session); w.str(h.request); w.u64(h.seq)
+        let key = digest("ra4/request-key\0", w.data)
+        var p = Writer()
+        p.lp(key); p.u32(h.kind); p.u64(h.deadline); p.lp(plain)
+        return (key, digest("ra4/authorized-payload\0", p.data))
+    }
     static func validate(_ h: Header) throws {
         try check(
             identifier(h.account) && identifier(h.sender) && h.epoch > 0

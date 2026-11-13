@@ -205,7 +205,7 @@ class AttachmentInvalidationTest {
         var aborts = 0; entry.abortTransfer = { aborts++ }
         val outgoing = Outgoing("same-request", "text", images = listOf(entry), fileIds = listOf(entry.fileId!!))
         val requests = mutableListOf<SendRequest>()
-        outgoing.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost") }
+        outgoing.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost", outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
         val old = entry.generation
         d.detach(listOf(entry))
         assertFalse(d.ready("A")); assertFalse(entry.change(old, "A") { error("late progress after send") })

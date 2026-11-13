@@ -364,7 +364,7 @@ actor FakeDaemon {
         guard let (h, pt) = try? security.open(account, call.command),
             let cmd = try? PBCommand(serializedBytes: pt)
         else { return }
-        let result: PBCommandResult
+        var result: PBCommandResult
         if case .getLiveSnapshot(let ask)? = cmd.kind {
             let events = history[ask.sessionID] ?? []
             let derived = derive(events)
@@ -393,11 +393,18 @@ actor FakeDaemon {
             if case .openTerminal(let open)? = cmd.kind { serveTerminal(open) }
             result = await answer(h, cmd)
         }
+        guard let authHeader = try? DeviceSecurity.parseHeader(call.command.securityHeader) else { return }
+        let binding = DeviceSecurity.requestIdentity(authHeader,pt)
+        result.requestKeyHash=binding.key; result.payloadHash=binding.payload
+        if result.outcome.isEmpty { result.outcome="executed"; result.reason="completed"; result.resultAvailable=true }
         var rh = header(.commandResult)
         rh.sessionID = h.sessionID
         rh.requestID = h.requestID
         var reply = PBPeerFrame()
         reply.forwardReply.callID = call.callID
+        reply.forwardReply.attemptID=call.attemptID
+        reply.forwardReply.outcome=result.outcome
+        reply.forwardReply.reason=result.reason
         guard var env = try? security.seal(account, rh, result) else { return }
         if garbleResults { env.ciphertext = randomBytes(env.ciphertext.count) }
         reply.forwardReply.result = env

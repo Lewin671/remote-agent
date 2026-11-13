@@ -1,5 +1,5 @@
-// Package outcome classifies the evidence available on the current protocol.
-// It never treats an unsigned relay diagnostic as a daemon execution proof.
+// Package outcome classifies verified execution evidence. Diagnostic error codes
+// never decide whether a command ran.
 package outcome
 
 type Category string
@@ -13,34 +13,50 @@ const (
 )
 
 type Evidence struct {
-	Source   string `json:"source"` // local means proven not dispatched; server means dispatch may have happened
-	Code     string `json:"code"`
-	Signed   bool   `json:"signed"` // verified daemon signature AND original request binding
-	Prior    bool   `json:"prior"`  // an earlier attempt may have entered admission
-	ReadOnly bool   `json:"readOnly"`
+	Source       string   `json:"source"`
+	Code         string   `json:"code"`   // diagnostic only
+	Signed       bool     `json:"signed"` // signature, hashes, scope and inner/outer consistency verified
+	Prior        bool     `json:"prior"`
+	ReadOnly     bool     `json:"readOnly"` // diagnostic only; completion is explicit
+	Declared     Category `json:"declared"`
+	Reason       string   `json:"reason"`
+	ConflictKind string   `json:"conflictKind"`
+	Dispatched   bool     `json:"dispatched"`
+	NotForwarded bool     `json:"notForwarded"`
+	AttemptBound bool     `json:"attemptBound"`
+	Admitted     bool     `json:"admitted"`
 }
 
-// Classify is the protocol-14 adapter, not the future explicit-outcome wire.
-// No current diagnostic can establish a monotonic rejected outcome.
 func Classify(e Evidence) Category {
 	switch e.Source {
 	case "local":
-		if e.Prior || e.Code == "unknown_outcome" {
-			return Unknown
+		if !e.Prior && !e.Dispatched {
+			return NotSent
 		}
-		return NotSent
+	case "server":
+		if !e.Prior && e.NotForwarded && e.AttemptBound {
+			return NotSent
+		}
 	case "daemon":
-		if !e.Signed || e.Code == "unknown_outcome" || (e.Prior && e.Code == "expired") {
+		if !e.Signed {
 			return Unknown
 		}
-		if !e.ReadOnly && (e.Code == "canceled" || e.Code == "deadline_exceeded" || e.Code == "aborted") {
-			return Unknown
+		switch e.Declared {
+		case Executed:
+			return Executed
+		case Rejected:
+			if !e.Admitted && (e.Reason == "invalid_envelope" || e.Reason == "invalid_body" || e.Reason == "invalid_scope" || e.Reason == "protocol_mismatch" || e.Reason == "member_removed") {
+				return Rejected
+			}
+		case Conflict:
+			if e.ConflictKind == "identity" || e.ConflictKind == "business" {
+				return Conflict
+			}
+		case NotSent:
+			if !e.Prior && !e.Admitted {
+				return NotSent
+			}
 		}
-		if e.Code == "revision_conflict" || e.Code == "generation_conflict" {
-			return Conflict
-		}
-		return Executed
-	default:
-		return Unknown
 	}
+	return Unknown
 }

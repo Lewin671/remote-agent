@@ -222,6 +222,7 @@ export interface MessageArgs {
   "errors.disconnected_from_server": { [name: string]: never };
   "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": { [name: string]: never };
   "errors.establishing_push_connection": { [name: string]: never };
+  "errors.executed_result_unavailable": { [name: string]: never };
   "errors.history_could_not_continue_loading_retry": { [name: string]: never };
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
@@ -245,6 +246,7 @@ export interface MessageArgs {
   "errors.remote_agent_on_is_out_of_date_update_it": { value: string };
   "errors.remote_control_expired_control_and_new_uploads_are_paused": { [name: string]: never };
   "errors.remote_control_expired_saving_changes_session_control_and_new": { [name: string]: never };
+  "errors.request_identity_conflict": { [name: string]: never };
   "errors.security_body_type_or_direction_mismatch": { [name: string]: never };
   "errors.security_envelope_missing": { [name: string]: never };
   "errors.server_returned": { value: string };
@@ -1700,6 +1702,7 @@ export const messages = {
     "errors.disconnected_from_server": "Disconnected from server",
     "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": "Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery.",
     "errors.establishing_push_connection": "Establishing push connection",
+    "errors.executed_result_unavailable": "Done on the computer, but the result couldn't be retrieved. Refresh to see the latest state.",
     "errors.history_could_not_continue_loading_retry": "History could not continue loading. Retry.",
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
@@ -1723,6 +1726,7 @@ export const messages = {
     "errors.remote_agent_on_is_out_of_date_update_it": "remote-agent on {value} is out of date. Update it on the computer and retry.",
     "errors.remote_control_expired_control_and_new_uploads_are_paused": "Remote control expired. Control and new uploads are paused; renew on the current managing client.",
     "errors.remote_control_expired_saving_changes_session_control_and_new": "Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available.",
+    "errors.request_identity_conflict": "This didn't match an earlier submission, so the computer didn't run it. Refresh and try again.",
     "errors.security_body_type_or_direction_mismatch": "Security body type or direction mismatch",
     "errors.security_envelope_missing": "Security envelope missing",
     "errors.server_returned": "Server returned {value}",
@@ -3603,6 +3607,7 @@ export const messages = {
     "errors.disconnected_from_server": "与 server 的连接断开",
     "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": "紧急恢复草稿已保留，请继续查询、等待或完成原恢复",
     "errors.establishing_push_connection": "建立推送连接",
+    "errors.executed_result_unavailable": "电脑已执行，但结果没能取回，请刷新查看最新状态",
     "errors.history_could_not_continue_loading_retry": "历史记录未能继续加载，请重试",
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
@@ -3626,6 +3631,7 @@ export const messages = {
     "errors.remote_agent_on_is_out_of_date_update_it": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试",
     "errors.remote_control_expired_control_and_new_uploads_are_paused": "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
     "errors.remote_control_expired_saving_changes_session_control_and_new": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看",
+    "errors.request_identity_conflict": "这次提交和之前的一次不一致，电脑没有执行，请刷新后再操作",
     "errors.security_body_type_or_direction_mismatch": "安全正文类型或方向不匹配",
     "errors.security_envelope_missing": "缺少安全信封",
     "errors.server_returned": "服务器返回 {value}",

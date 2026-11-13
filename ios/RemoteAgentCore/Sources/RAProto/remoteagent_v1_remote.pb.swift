@@ -719,249 +719,290 @@ public struct PBCommand: Sendable {
 
 /// CommandResult is the daemon's reply to a Command. A retried request ID
 /// gets the original result instead of running the command again.
-public struct PBCommandResult: Sendable {
+public struct PBCommandResult: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// Connect error code name ("not_found", "unimplemented", ...); empty on
   /// success. "unimplemented" means the daemon does not know the command.
-  public var errorCode: String = String()
+  public var errorCode: String {
+    get {return _storage._errorCode}
+    set {_uniqueStorage()._errorCode = newValue}
+  }
 
-  public var errorMessage: String = String()
+  public var errorMessage: String {
+    get {return _storage._errorMessage}
+    set {_uniqueStorage()._errorMessage = newValue}
+  }
 
-  public var kind: PBCommandResult.OneOf_Kind? = nil
+  /// Authenticated execution evidence, independent of the diagnostic error code.
+  public var outcome: String {
+    get {return _storage._outcome}
+    set {_uniqueStorage()._outcome = newValue}
+  }
+
+  public var reason: String {
+    get {return _storage._reason}
+    set {_uniqueStorage()._reason = newValue}
+  }
+
+  /// identity or business, only for conflict
+  public var conflictKind: String {
+    get {return _storage._conflictKind}
+    set {_uniqueStorage()._conflictKind = newValue}
+  }
+
+  public var requestKeyHash: Data {
+    get {return _storage._requestKeyHash}
+    set {_uniqueStorage()._requestKeyHash = newValue}
+  }
+
+  public var payloadHash: Data {
+    get {return _storage._payloadHash}
+    set {_uniqueStorage()._payloadHash = newValue}
+  }
+
+  public var resultAvailable: Bool {
+    get {return _storage._resultAvailable}
+    set {_uniqueStorage()._resultAvailable = newValue}
+  }
+
+  public var kind: OneOf_Kind? {
+    get {return _storage._kind}
+    set {_uniqueStorage()._kind = newValue}
+  }
 
   public var send: PBSendResponse {
     get {
-      if case .send(let v)? = kind {return v}
+      if case .send(let v)? = _storage._kind {return v}
       return PBSendResponse()
     }
-    set {kind = .send(newValue)}
+    set {_uniqueStorage()._kind = .send(newValue)}
   }
 
   public var interrupt: PBInterruptResponse {
     get {
-      if case .interrupt(let v)? = kind {return v}
+      if case .interrupt(let v)? = _storage._kind {return v}
       return PBInterruptResponse()
     }
-    set {kind = .interrupt(newValue)}
+    set {_uniqueStorage()._kind = .interrupt(newValue)}
   }
 
   public var resolveApproval: PBResolveApprovalResponse {
     get {
-      if case .resolveApproval(let v)? = kind {return v}
+      if case .resolveApproval(let v)? = _storage._kind {return v}
       return PBResolveApprovalResponse()
     }
-    set {kind = .resolveApproval(newValue)}
+    set {_uniqueStorage()._kind = .resolveApproval(newValue)}
   }
 
   public var answerQuestion: PBAnswerQuestionResponse {
     get {
-      if case .answerQuestion(let v)? = kind {return v}
+      if case .answerQuestion(let v)? = _storage._kind {return v}
       return PBAnswerQuestionResponse()
     }
-    set {kind = .answerQuestion(newValue)}
+    set {_uniqueStorage()._kind = .answerQuestion(newValue)}
   }
 
   public var stopSession: PBStopSessionResponse {
     get {
-      if case .stopSession(let v)? = kind {return v}
+      if case .stopSession(let v)? = _storage._kind {return v}
       return PBStopSessionResponse()
     }
-    set {kind = .stopSession(newValue)}
+    set {_uniqueStorage()._kind = .stopSession(newValue)}
   }
 
   public var cancelInput: PBCancelInputResponse {
     get {
-      if case .cancelInput(let v)? = kind {return v}
+      if case .cancelInput(let v)? = _storage._kind {return v}
       return PBCancelInputResponse()
     }
-    set {kind = .cancelInput(newValue)}
+    set {_uniqueStorage()._kind = .cancelInput(newValue)}
   }
 
   public var setModel: PBSetModelResponse {
     get {
-      if case .setModel(let v)? = kind {return v}
+      if case .setModel(let v)? = _storage._kind {return v}
       return PBSetModelResponse()
     }
-    set {kind = .setModel(newValue)}
+    set {_uniqueStorage()._kind = .setModel(newValue)}
   }
 
   public var setApprovalMode: PBSetApprovalModeResponse {
     get {
-      if case .setApprovalMode(let v)? = kind {return v}
+      if case .setApprovalMode(let v)? = _storage._kind {return v}
       return PBSetApprovalModeResponse()
     }
-    set {kind = .setApprovalMode(newValue)}
+    set {_uniqueStorage()._kind = .setApprovalMode(newValue)}
   }
 
   public var compact: PBCompactResponse {
     get {
-      if case .compact(let v)? = kind {return v}
+      if case .compact(let v)? = _storage._kind {return v}
       return PBCompactResponse()
     }
-    set {kind = .compact(newValue)}
+    set {_uniqueStorage()._kind = .compact(newValue)}
   }
 
   public var answerPlan: PBAnswerPlanResponse {
     get {
-      if case .answerPlan(let v)? = kind {return v}
+      if case .answerPlan(let v)? = _storage._kind {return v}
       return PBAnswerPlanResponse()
     }
-    set {kind = .answerPlan(newValue)}
+    set {_uniqueStorage()._kind = .answerPlan(newValue)}
   }
 
   public var openTerminal: PBOpenTerminalResponse {
     get {
-      if case .openTerminal(let v)? = kind {return v}
+      if case .openTerminal(let v)? = _storage._kind {return v}
       return PBOpenTerminalResponse()
     }
-    set {kind = .openTerminal(newValue)}
+    set {_uniqueStorage()._kind = .openTerminal(newValue)}
   }
 
   public var resumeSession: PBResumeSessionResponse {
     get {
-      if case .resumeSession(let v)? = kind {return v}
+      if case .resumeSession(let v)? = _storage._kind {return v}
       return PBResumeSessionResponse()
     }
-    set {kind = .resumeSession(newValue)}
+    set {_uniqueStorage()._kind = .resumeSession(newValue)}
   }
 
   public var resumeInput: PBResumeInputResponse {
     get {
-      if case .resumeInput(let v)? = kind {return v}
+      if case .resumeInput(let v)? = _storage._kind {return v}
       return PBResumeInputResponse()
     }
-    set {kind = .resumeInput(newValue)}
+    set {_uniqueStorage()._kind = .resumeInput(newValue)}
   }
 
   public var renameSession: PBRenameSessionResponse {
     get {
-      if case .renameSession(let v)? = kind {return v}
+      if case .renameSession(let v)? = _storage._kind {return v}
       return PBRenameSessionResponse()
     }
-    set {kind = .renameSession(newValue)}
+    set {_uniqueStorage()._kind = .renameSession(newValue)}
   }
 
   public var forkSession: PBForkSessionResponse {
     get {
-      if case .forkSession(let v)? = kind {return v}
+      if case .forkSession(let v)? = _storage._kind {return v}
       return PBForkSessionResponse()
     }
-    set {kind = .forkSession(newValue)}
+    set {_uniqueStorage()._kind = .forkSession(newValue)}
   }
 
   public var createSession: PBCreateSessionResponse {
     get {
-      if case .createSession(let v)? = kind {return v}
+      if case .createSession(let v)? = _storage._kind {return v}
       return PBCreateSessionResponse()
     }
-    set {kind = .createSession(newValue)}
+    set {_uniqueStorage()._kind = .createSession(newValue)}
   }
 
   public var listModels: PBListModelsResponse {
     get {
-      if case .listModels(let v)? = kind {return v}
+      if case .listModels(let v)? = _storage._kind {return v}
       return PBListModelsResponse()
     }
-    set {kind = .listModels(newValue)}
+    set {_uniqueStorage()._kind = .listModels(newValue)}
   }
 
   public var listDirectories: PBListDirectoriesResponse {
     get {
-      if case .listDirectories(let v)? = kind {return v}
+      if case .listDirectories(let v)? = _storage._kind {return v}
       return PBListDirectoriesResponse()
     }
-    set {kind = .listDirectories(newValue)}
+    set {_uniqueStorage()._kind = .listDirectories(newValue)}
   }
 
   public var getSettings: PBGetSettingsResponse {
     get {
-      if case .getSettings(let v)? = kind {return v}
+      if case .getSettings(let v)? = _storage._kind {return v}
       return PBGetSettingsResponse()
     }
-    set {kind = .getSettings(newValue)}
+    set {_uniqueStorage()._kind = .getSettings(newValue)}
   }
 
   public var updateSettings: PBUpdateSettingsResponse {
     get {
-      if case .updateSettings(let v)? = kind {return v}
+      if case .updateSettings(let v)? = _storage._kind {return v}
       return PBUpdateSettingsResponse()
     }
-    set {kind = .updateSettings(newValue)}
+    set {_uniqueStorage()._kind = .updateSettings(newValue)}
   }
 
   public var beginImageUpload: PBBeginImageUploadResponse {
     get {
-      if case .beginImageUpload(let v)? = kind {return v}
+      if case .beginImageUpload(let v)? = _storage._kind {return v}
       return PBBeginImageUploadResponse()
     }
-    set {kind = .beginImageUpload(newValue)}
+    set {_uniqueStorage()._kind = .beginImageUpload(newValue)}
   }
 
   public var putImageChunk: PBPutImageChunkResponse {
     get {
-      if case .putImageChunk(let v)? = kind {return v}
+      if case .putImageChunk(let v)? = _storage._kind {return v}
       return PBPutImageChunkResponse()
     }
-    set {kind = .putImageChunk(newValue)}
+    set {_uniqueStorage()._kind = .putImageChunk(newValue)}
   }
 
   public var getImageUploadStatus: PBGetImageUploadStatusResponse {
     get {
-      if case .getImageUploadStatus(let v)? = kind {return v}
+      if case .getImageUploadStatus(let v)? = _storage._kind {return v}
       return PBGetImageUploadStatusResponse()
     }
-    set {kind = .getImageUploadStatus(newValue)}
+    set {_uniqueStorage()._kind = .getImageUploadStatus(newValue)}
   }
 
   public var completeImageUpload: PBCompleteImageUploadResponse {
     get {
-      if case .completeImageUpload(let v)? = kind {return v}
+      if case .completeImageUpload(let v)? = _storage._kind {return v}
       return PBCompleteImageUploadResponse()
     }
-    set {kind = .completeImageUpload(newValue)}
+    set {_uniqueStorage()._kind = .completeImageUpload(newValue)}
   }
 
   public var abortImageUpload: PBAbortImageUploadResponse {
     get {
-      if case .abortImageUpload(let v)? = kind {return v}
+      if case .abortImageUpload(let v)? = _storage._kind {return v}
       return PBAbortImageUploadResponse()
     }
-    set {kind = .abortImageUpload(newValue)}
+    set {_uniqueStorage()._kind = .abortImageUpload(newValue)}
   }
 
   public var schedule: PBScheduleResponse {
     get {
-      if case .schedule(let v)? = kind {return v}
+      if case .schedule(let v)? = _storage._kind {return v}
       return PBScheduleResponse()
     }
-    set {kind = .schedule(newValue)}
+    set {_uniqueStorage()._kind = .schedule(newValue)}
   }
 
   public var liveSnapshot: PBLiveSnapshot {
     get {
-      if case .liveSnapshot(let v)? = kind {return v}
+      if case .liveSnapshot(let v)? = _storage._kind {return v}
       return PBLiveSnapshot()
     }
-    set {kind = .liveSnapshot(newValue)}
+    set {_uniqueStorage()._kind = .liveSnapshot(newValue)}
   }
 
   public var getSharedFileChunk: PBGetSharedFileChunkResponse {
     get {
-      if case .getSharedFileChunk(let v)? = kind {return v}
+      if case .getSharedFileChunk(let v)? = _storage._kind {return v}
       return PBGetSharedFileChunkResponse()
     }
-    set {kind = .getSharedFileChunk(newValue)}
+    set {_uniqueStorage()._kind = .getSharedFileChunk(newValue)}
   }
 
   public var machineStatus: PBMachineStatus {
     get {
-      if case .machineStatus(let v)? = kind {return v}
+      if case .machineStatus(let v)? = _storage._kind {return v}
       return PBMachineStatus()
     }
-    set {kind = .machineStatus(newValue)}
+    set {_uniqueStorage()._kind = .machineStatus(newValue)}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1000,6 +1041,8 @@ public struct PBCommandResult: Sendable {
   }
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// OpenTerminalRequest asks the daemon to stream a session's terminal. The
@@ -2524,535 +2567,617 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
 
 extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CommandResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}machine_status\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{1}outcome\0\u{1}reason\0\u{3}conflict_kind\0\u{3}request_key_hash\0\u{3}payload_hash\0\u{3}result_available\0\u{2}\u{2}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}machine_status\0")
+
+  fileprivate class _StorageClass {
+    var _errorCode: String = String()
+    var _errorMessage: String = String()
+    var _outcome: String = String()
+    var _reason: String = String()
+    var _conflictKind: String = String()
+    var _requestKeyHash: Data = Data()
+    var _payloadHash: Data = Data()
+    var _resultAvailable: Bool = false
+    var _kind: PBCommandResult.OneOf_Kind?
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _errorCode = source._errorCode
+      _errorMessage = source._errorMessage
+      _outcome = source._outcome
+      _reason = source._reason
+      _conflictKind = source._conflictKind
+      _requestKeyHash = source._requestKeyHash
+      _payloadHash = source._payloadHash
+      _resultAvailable = source._resultAvailable
+      _kind = source._kind
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.errorMessage) }()
-      case 10: try {
-        var v: PBSendResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .send(let m) = current {v = m}
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._errorCode) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._errorMessage) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._outcome) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._reason) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._conflictKind) }()
+        case 6: try { try decoder.decodeSingularBytesField(value: &_storage._requestKeyHash) }()
+        case 7: try { try decoder.decodeSingularBytesField(value: &_storage._payloadHash) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._resultAvailable) }()
+        case 10: try {
+          var v: PBSendResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .send(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .send(v)
+          }
+        }()
+        case 11: try {
+          var v: PBInterruptResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .interrupt(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .interrupt(v)
+          }
+        }()
+        case 12: try {
+          var v: PBResolveApprovalResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .resolveApproval(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .resolveApproval(v)
+          }
+        }()
+        case 13: try {
+          var v: PBAnswerQuestionResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .answerQuestion(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .answerQuestion(v)
+          }
+        }()
+        case 14: try {
+          var v: PBStopSessionResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .stopSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .stopSession(v)
+          }
+        }()
+        case 15: try {
+          var v: PBCancelInputResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .cancelInput(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .cancelInput(v)
+          }
+        }()
+        case 16: try {
+          var v: PBSetModelResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .setModel(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .setModel(v)
+          }
+        }()
+        case 17: try {
+          var v: PBSetApprovalModeResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .setApprovalMode(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .setApprovalMode(v)
+          }
+        }()
+        case 18: try {
+          var v: PBCompactResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .compact(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .compact(v)
+          }
+        }()
+        case 19: try {
+          var v: PBAnswerPlanResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .answerPlan(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .answerPlan(v)
+          }
+        }()
+        case 20: try {
+          var v: PBOpenTerminalResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .openTerminal(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .openTerminal(v)
+          }
+        }()
+        case 21: try {
+          var v: PBResumeSessionResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .resumeSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .resumeSession(v)
+          }
+        }()
+        case 22: try {
+          var v: PBResumeInputResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .resumeInput(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .resumeInput(v)
+          }
+        }()
+        case 23: try {
+          var v: PBRenameSessionResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .renameSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .renameSession(v)
+          }
+        }()
+        case 24: try {
+          var v: PBForkSessionResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .forkSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .forkSession(v)
+          }
+        }()
+        case 30: try {
+          var v: PBCreateSessionResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .createSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .createSession(v)
+          }
+        }()
+        case 31: try {
+          var v: PBListModelsResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .listModels(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .listModels(v)
+          }
+        }()
+        case 32: try {
+          var v: PBListDirectoriesResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .listDirectories(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .listDirectories(v)
+          }
+        }()
+        case 33: try {
+          var v: PBGetSettingsResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .getSettings(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .getSettings(v)
+          }
+        }()
+        case 34: try {
+          var v: PBUpdateSettingsResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .updateSettings(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .updateSettings(v)
+          }
+        }()
+        case 35: try {
+          var v: PBBeginImageUploadResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .beginImageUpload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .beginImageUpload(v)
+          }
+        }()
+        case 36: try {
+          var v: PBPutImageChunkResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .putImageChunk(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .putImageChunk(v)
+          }
+        }()
+        case 37: try {
+          var v: PBGetImageUploadStatusResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .getImageUploadStatus(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .getImageUploadStatus(v)
+          }
+        }()
+        case 38: try {
+          var v: PBCompleteImageUploadResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .completeImageUpload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .completeImageUpload(v)
+          }
+        }()
+        case 39: try {
+          var v: PBAbortImageUploadResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .abortImageUpload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .abortImageUpload(v)
+          }
+        }()
+        case 40: try {
+          var v: PBScheduleResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .schedule(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .schedule(v)
+          }
+        }()
+        case 41: try {
+          var v: PBLiveSnapshot?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .liveSnapshot(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .liveSnapshot(v)
+          }
+        }()
+        case 42: try {
+          var v: PBGetSharedFileChunkResponse?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .getSharedFileChunk(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .getSharedFileChunk(v)
+          }
+        }()
+        case 43: try {
+          var v: PBMachineStatus?
+          var hadOneofValue = false
+          if let current = _storage._kind {
+            hadOneofValue = true
+            if case .machineStatus(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._kind = .machineStatus(v)
+          }
+        }()
+        default: break
         }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .send(v)
-        }
-      }()
-      case 11: try {
-        var v: PBInterruptResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .interrupt(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .interrupt(v)
-        }
-      }()
-      case 12: try {
-        var v: PBResolveApprovalResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .resolveApproval(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .resolveApproval(v)
-        }
-      }()
-      case 13: try {
-        var v: PBAnswerQuestionResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .answerQuestion(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .answerQuestion(v)
-        }
-      }()
-      case 14: try {
-        var v: PBStopSessionResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .stopSession(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .stopSession(v)
-        }
-      }()
-      case 15: try {
-        var v: PBCancelInputResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .cancelInput(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .cancelInput(v)
-        }
-      }()
-      case 16: try {
-        var v: PBSetModelResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .setModel(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .setModel(v)
-        }
-      }()
-      case 17: try {
-        var v: PBSetApprovalModeResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .setApprovalMode(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .setApprovalMode(v)
-        }
-      }()
-      case 18: try {
-        var v: PBCompactResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .compact(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .compact(v)
-        }
-      }()
-      case 19: try {
-        var v: PBAnswerPlanResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .answerPlan(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .answerPlan(v)
-        }
-      }()
-      case 20: try {
-        var v: PBOpenTerminalResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .openTerminal(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .openTerminal(v)
-        }
-      }()
-      case 21: try {
-        var v: PBResumeSessionResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .resumeSession(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .resumeSession(v)
-        }
-      }()
-      case 22: try {
-        var v: PBResumeInputResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .resumeInput(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .resumeInput(v)
-        }
-      }()
-      case 23: try {
-        var v: PBRenameSessionResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .renameSession(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .renameSession(v)
-        }
-      }()
-      case 24: try {
-        var v: PBForkSessionResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .forkSession(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .forkSession(v)
-        }
-      }()
-      case 30: try {
-        var v: PBCreateSessionResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .createSession(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .createSession(v)
-        }
-      }()
-      case 31: try {
-        var v: PBListModelsResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .listModels(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .listModels(v)
-        }
-      }()
-      case 32: try {
-        var v: PBListDirectoriesResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .listDirectories(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .listDirectories(v)
-        }
-      }()
-      case 33: try {
-        var v: PBGetSettingsResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .getSettings(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .getSettings(v)
-        }
-      }()
-      case 34: try {
-        var v: PBUpdateSettingsResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .updateSettings(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .updateSettings(v)
-        }
-      }()
-      case 35: try {
-        var v: PBBeginImageUploadResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .beginImageUpload(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .beginImageUpload(v)
-        }
-      }()
-      case 36: try {
-        var v: PBPutImageChunkResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .putImageChunk(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .putImageChunk(v)
-        }
-      }()
-      case 37: try {
-        var v: PBGetImageUploadStatusResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .getImageUploadStatus(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .getImageUploadStatus(v)
-        }
-      }()
-      case 38: try {
-        var v: PBCompleteImageUploadResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .completeImageUpload(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .completeImageUpload(v)
-        }
-      }()
-      case 39: try {
-        var v: PBAbortImageUploadResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .abortImageUpload(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .abortImageUpload(v)
-        }
-      }()
-      case 40: try {
-        var v: PBScheduleResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .schedule(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .schedule(v)
-        }
-      }()
-      case 41: try {
-        var v: PBLiveSnapshot?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .liveSnapshot(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .liveSnapshot(v)
-        }
-      }()
-      case 42: try {
-        var v: PBGetSharedFileChunkResponse?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .getSharedFileChunk(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .getSharedFileChunk(v)
-        }
-      }()
-      case 43: try {
-        var v: PBMachineStatus?
-        var hadOneofValue = false
-        if let current = self.kind {
-          hadOneofValue = true
-          if case .machineStatus(let m) = current {v = m}
-        }
-        try decoder.decodeSingularMessageField(value: &v)
-        if let v = v {
-          if hadOneofValue {try decoder.handleConflictingOneOf()}
-          self.kind = .machineStatus(v)
-        }
-      }()
-      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.errorCode.isEmpty {
-      try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 1)
-    }
-    if !self.errorMessage.isEmpty {
-      try visitor.visitSingularStringField(value: self.errorMessage, fieldNumber: 2)
-    }
-    switch self.kind {
-    case .send?: try {
-      guard case .send(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
-    }()
-    case .interrupt?: try {
-      guard case .interrupt(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
-    }()
-    case .resolveApproval?: try {
-      guard case .resolveApproval(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
-    }()
-    case .answerQuestion?: try {
-      guard case .answerQuestion(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
-    }()
-    case .stopSession?: try {
-      guard case .stopSession(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
-    }()
-    case .cancelInput?: try {
-      guard case .cancelInput(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
-    }()
-    case .setModel?: try {
-      guard case .setModel(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
-    }()
-    case .setApprovalMode?: try {
-      guard case .setApprovalMode(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
-    }()
-    case .compact?: try {
-      guard case .compact(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
-    }()
-    case .answerPlan?: try {
-      guard case .answerPlan(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
-    }()
-    case .openTerminal?: try {
-      guard case .openTerminal(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
-    }()
-    case .resumeSession?: try {
-      guard case .resumeSession(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
-    }()
-    case .resumeInput?: try {
-      guard case .resumeInput(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
-    }()
-    case .renameSession?: try {
-      guard case .renameSession(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
-    }()
-    case .forkSession?: try {
-      guard case .forkSession(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
-    }()
-    case .createSession?: try {
-      guard case .createSession(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
-    }()
-    case .listModels?: try {
-      guard case .listModels(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
-    }()
-    case .listDirectories?: try {
-      guard case .listDirectories(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
-    }()
-    case .getSettings?: try {
-      guard case .getSettings(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 33)
-    }()
-    case .updateSettings?: try {
-      guard case .updateSettings(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 34)
-    }()
-    case .beginImageUpload?: try {
-      guard case .beginImageUpload(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
-    }()
-    case .putImageChunk?: try {
-      guard case .putImageChunk(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 36)
-    }()
-    case .getImageUploadStatus?: try {
-      guard case .getImageUploadStatus(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 37)
-    }()
-    case .completeImageUpload?: try {
-      guard case .completeImageUpload(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
-    }()
-    case .abortImageUpload?: try {
-      guard case .abortImageUpload(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 39)
-    }()
-    case .schedule?: try {
-      guard case .schedule(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 40)
-    }()
-    case .liveSnapshot?: try {
-      guard case .liveSnapshot(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
-    }()
-    case .getSharedFileChunk?: try {
-      guard case .getSharedFileChunk(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 42)
-    }()
-    case .machineStatus?: try {
-      guard case .machineStatus(let v)? = self.kind else { preconditionFailure() }
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 43)
-    }()
-    case nil: break
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._errorCode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._errorCode, fieldNumber: 1)
+      }
+      if !_storage._errorMessage.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._errorMessage, fieldNumber: 2)
+      }
+      if !_storage._outcome.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._outcome, fieldNumber: 3)
+      }
+      if !_storage._reason.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._reason, fieldNumber: 4)
+      }
+      if !_storage._conflictKind.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._conflictKind, fieldNumber: 5)
+      }
+      if !_storage._requestKeyHash.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._requestKeyHash, fieldNumber: 6)
+      }
+      if !_storage._payloadHash.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._payloadHash, fieldNumber: 7)
+      }
+      if _storage._resultAvailable != false {
+        try visitor.visitSingularBoolField(value: _storage._resultAvailable, fieldNumber: 8)
+      }
+      switch _storage._kind {
+      case .send?: try {
+        guard case .send(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      }()
+      case .interrupt?: try {
+        guard case .interrupt(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      }()
+      case .resolveApproval?: try {
+        guard case .resolveApproval(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      }()
+      case .answerQuestion?: try {
+        guard case .answerQuestion(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      }()
+      case .stopSession?: try {
+        guard case .stopSession(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      }()
+      case .cancelInput?: try {
+        guard case .cancelInput(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      }()
+      case .setModel?: try {
+        guard case .setModel(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+      }()
+      case .setApprovalMode?: try {
+        guard case .setApprovalMode(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      }()
+      case .compact?: try {
+        guard case .compact(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+      }()
+      case .answerPlan?: try {
+        guard case .answerPlan(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+      }()
+      case .openTerminal?: try {
+        guard case .openTerminal(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      }()
+      case .resumeSession?: try {
+        guard case .resumeSession(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
+      }()
+      case .resumeInput?: try {
+        guard case .resumeInput(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+      }()
+      case .renameSession?: try {
+        guard case .renameSession(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      }()
+      case .forkSession?: try {
+        guard case .forkSession(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+      }()
+      case .createSession?: try {
+        guard case .createSession(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
+      }()
+      case .listModels?: try {
+        guard case .listModels(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
+      }()
+      case .listDirectories?: try {
+        guard case .listDirectories(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+      }()
+      case .getSettings?: try {
+        guard case .getSettings(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 33)
+      }()
+      case .updateSettings?: try {
+        guard case .updateSettings(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 34)
+      }()
+      case .beginImageUpload?: try {
+        guard case .beginImageUpload(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
+      }()
+      case .putImageChunk?: try {
+        guard case .putImageChunk(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 36)
+      }()
+      case .getImageUploadStatus?: try {
+        guard case .getImageUploadStatus(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 37)
+      }()
+      case .completeImageUpload?: try {
+        guard case .completeImageUpload(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
+      }()
+      case .abortImageUpload?: try {
+        guard case .abortImageUpload(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 39)
+      }()
+      case .schedule?: try {
+        guard case .schedule(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 40)
+      }()
+      case .liveSnapshot?: try {
+        guard case .liveSnapshot(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
+      }()
+      case .getSharedFileChunk?: try {
+        guard case .getSharedFileChunk(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 42)
+      }()
+      case .machineStatus?: try {
+        guard case .machineStatus(let v)? = _storage._kind else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 43)
+      }()
+      case nil: break
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCommandResult, rhs: PBCommandResult) -> Bool {
-    if lhs.errorCode != rhs.errorCode {return false}
-    if lhs.errorMessage != rhs.errorMessage {return false}
-    if lhs.kind != rhs.kind {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._errorCode != rhs_storage._errorCode {return false}
+        if _storage._errorMessage != rhs_storage._errorMessage {return false}
+        if _storage._outcome != rhs_storage._outcome {return false}
+        if _storage._reason != rhs_storage._reason {return false}
+        if _storage._conflictKind != rhs_storage._conflictKind {return false}
+        if _storage._requestKeyHash != rhs_storage._requestKeyHash {return false}
+        if _storage._payloadHash != rhs_storage._payloadHash {return false}
+        if _storage._resultAvailable != rhs_storage._resultAvailable {return false}
+        if _storage._kind != rhs_storage._kind {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

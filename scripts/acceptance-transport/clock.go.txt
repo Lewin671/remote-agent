@@ -1,0 +1,29 @@
+// Acceptance-only admission clock. Never part of a product build.
+package relay
+
+import (
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+)
+
+func transportAcceptanceNow() uint64 {
+	root := os.Getenv("RA_DEV_DIR")
+	if root == "" || os.Getenv("REMOTE_AGENT_HOME") != filepath.Join(root, "candidate", "machine") || !(strings.HasPrefix(root, "/tmp/") || strings.HasPrefix(root, "/private/tmp/")) {
+		panic("acceptance clock isolation mismatch")
+	}
+	raw, err := os.ReadFile(filepath.Join(root, "admission-clock"))
+	if os.IsNotExist(err) {
+		return uint64(time.Now().UnixMilli())
+	}
+	if err != nil {
+		panic("acceptance clock unreadable")
+	}
+	value, err := strconv.ParseUint(strings.TrimSpace(string(raw)), 10, 64)
+	if err != nil || value == 0 {
+		panic("acceptance clock invalid")
+	}
+	return value
+}

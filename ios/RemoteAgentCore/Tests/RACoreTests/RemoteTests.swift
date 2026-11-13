@@ -520,14 +520,14 @@ extension SyncServerTests {
                     try await r.command("s1", interrupt())
                     Issue.record("expected unavailable")
                 } catch let e as CommandError {
-                    // Sealing is local now: the envelope was handed to the relay,
-                    // so an offline machine leaves the outcome unknown.
-                    #expect(e.code == CommandError.unknownOutcome)
+                    // This attempt was refused before enqueueing, with its own bound relay detail.
+                    #expect(e.outcome == .notSent)
+                    #expect(!e.unknown)
                 }
             }
         }
 
-        private func refused(_ w: World, protocol version: UInt32) async throws -> CommandError {
+        private func refused(_ w: World, protocol version: UInt32, prior: Bool = false) async throws -> CommandError {
             let r = try await w.client()
             r.start()
             let id = w.daemon.id
@@ -540,7 +540,7 @@ extension SyncServerTests {
                 $0.machines[id]?.meta?.protocolVersion == version
             }
             do {
-                try await r.command("s1", interrupt())
+                try await r.forward(try r.prepare(machineId:id,sessionId:"s1",interrupt()),retryOfUnknown:prior)
             } catch let e as CommandError {
                 // Nothing was sent.
                 #expect(await w.daemon.commands.poll(300) == nil)
@@ -548,6 +548,14 @@ extension SyncServerTests {
                 return e
             }
             throw TestFailure("expected a version error")
+        }
+
+        @Test func protocolRefusalCannotSettleAnEarlierAttempt() async throws {
+            try await world { w in
+                let error=try await refused(w,protocol:protocolVersion-1,prior:true)
+                #expect(error.outcome == .unknown)
+                #expect(error.unknown)
+            }
         }
 
         @Test func sendsNothingToAMachineOfAnOlderProtocol() async throws {
@@ -1164,7 +1172,7 @@ extension SyncServerTests {
                 }
                 try await r.forward(first)
                 // Pretend the answer was lost: the retry carries the same request ID and deadline.
-                a.settle(CommandError(CommandError.unknownOutcome, "lost"))
+                a.settle(CommandError(CommandError.unknownOutcome, "lost", outcome: .unknown))
                 let security = try await r.securitySession()
                 await security.stopPolling()
                 await r.startSecurityPolling(everyMs: 20)

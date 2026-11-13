@@ -42,4 +42,16 @@ public interface ForwardRequestOrBuilder extends
    * @return The command.
    */
   io.github.lewin671.remoteagent.proto.Envelope getCommand();
+
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  java.lang.String getAttemptId();
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  com.google.protobuf.ByteString
+      getAttemptIdBytes();
 }

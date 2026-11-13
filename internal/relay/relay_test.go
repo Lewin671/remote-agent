@@ -723,7 +723,7 @@ func TestCommandsRunOnce(t *testing.T) {
 
 	// A command for another session than its header names is refused.
 	other := &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "sess2", Text: "x"}}}
-	if _, err := e.client.Do(ctx, s, other); !errors.As(err, &ce) || ce.Code != "not_found" {
+	if _, err := e.client.Do(ctx, s, other); !errors.As(err, &ce) || ce.Code != "invalid_argument" {
 		t.Fatalf("mismatched session: %v", err)
 	}
 }

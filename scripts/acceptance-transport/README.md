@@ -63,3 +63,29 @@ Use absolute `RA_REAL_CLAUDE` and `RA_REAL_CODEX` paths when installed launch
 wrappers resolve binaries relative to HOME. The native HOME is deliberately
 isolated. Initial native trust/onboarding can require `drive.onboard`; this is
 separate from tool approvals, which must use signed `resolveApproval` commands.
+
+Protocol-15 acceptance can use the actual Web `Remote` RPC path. After starting
+this controller, run `RA_TRANSPORT_WEB=1 pnpm --dir web exec vitest run
+src/test/transport-acceptance.test.ts` with the same explicit isolated environment.
+The helper reads only the disposable `web-bootstrap.json`, publishes a guarded
+loopback `web-client-url`, and forwards controller operations through the real
+Web signing, HTTP, result verification and presentation code. POST `/stop` to
+that helper with `X-Transport-Test` from `control-token` to stop it before stopping
+the controller. Neither helper is part of product builds.
+
+For an original v3 storage initialization followed by manual migration before
+starting the current daemon, build with `--v3-source` and start the controller
+with `RA_TRANSPORT_INIT_V3=1`. The original initializer creates the real v3
+schema; dry-run and migration must leave `account.json` unchanged and publish
+generation 4. This checks preserved pairing identity, not an old daemon's CLI
+execution before migration. It is distinct from the old-binary live migration
+exercise above, which also requires a matching old relay/client protocol.
+
+The acceptance overlay also supports an `admission-clock` file containing epoch
+milliseconds. This changes only the admission/retention clock, never the host or
+native CLI clock. Use it after all ordinary flows, query before the retained
+request's deadline plus ten minutes, then advance past that boundary and submit
+another fresh mutation to prune the expired summary. The original ID must stay
+unknown and must not execute again. Advancing the durable floor intentionally
+prevents returning that disposable environment to an earlier clock; finish and
+remove the environment afterwards. This is debug-triggered boundary coverage.

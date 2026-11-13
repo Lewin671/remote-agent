@@ -74,7 +74,7 @@ extension ServerTests {
                 try await advertise(w, r, fileUpload: true)
                 _ = try await r.forward(p)
                 let first = try #require(await w.daemon.commands.poll(1000))
-                a.settle(CommandError(CommandError.unknownOutcome, "lost"))
+                a.settle(CommandError(CommandError.unknownOutcome, "lost", outcome: .unknown))
                 try await advertise(w, r, fileUpload: false)
                 do { _ = try await r.forward(p, retryOfUnknown: true); Issue.record("unknown file request crossed the disabled capability") }
                 catch {

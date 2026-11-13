@@ -1476,6 +1476,7 @@ object Forks {
                         io.github.lewin671.remoteagent.core.CommandException(
                             io.github.lewin671.remoteagent.core.CommandException.UNKNOWN,
                             sessionText(UiMessages.sessionAndroidExecutionUnknown()),
+                            outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN,
                         )
                     ) ?: e
                 )

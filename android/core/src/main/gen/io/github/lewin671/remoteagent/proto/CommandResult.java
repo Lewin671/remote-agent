@@ -22,6 +22,11 @@ public  final class CommandResult extends
   private CommandResult() {
     errorCode_ = "";
     errorMessage_ = "";
+    outcome_ = "";
+    reason_ = "";
+    conflictKind_ = "";
+    requestKeyHash_ = com.google.protobuf.ByteString.EMPTY;
+    payloadHash_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int kindCase_ = 0;
   private java.lang.Object kind_;
@@ -239,6 +244,270 @@ public  final class CommandResult extends
     checkByteStringIsUtf8(value);
     errorMessage_ = value.toStringUtf8();
 
+  }
+
+  public static final int OUTCOME_FIELD_NUMBER = 3;
+  private java.lang.String outcome_;
+  /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   * @return The outcome.
+   */
+  @java.lang.Override
+  public java.lang.String getOutcome() {
+    return outcome_;
+  }
+  /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   * @return The bytes for outcome.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getOutcomeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(outcome_);
+  }
+  /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   * @param value The outcome to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOutcome(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    outcome_ = value;
+  }
+  /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   */
+  private void clearOutcome() {
+
+    outcome_ = getDefaultInstance().getOutcome();
+  }
+  /**
+   * <pre>
+   * Authenticated execution evidence, independent of the diagnostic error code.
+   * </pre>
+   *
+   * <code>string outcome = 3 [json_name = "outcome"];</code>
+   * @param value The bytes for outcome to set.
+   */
+  private void setOutcomeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    outcome_ = value.toStringUtf8();
+
+  }
+
+  public static final int REASON_FIELD_NUMBER = 4;
+  private java.lang.String reason_;
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   * @return The reason.
+   */
+  @java.lang.Override
+  public java.lang.String getReason() {
+    return reason_;
+  }
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   * @return The bytes for reason.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getReasonBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(reason_);
+  }
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   * @param value The reason to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReason(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    reason_ = value;
+  }
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   */
+  private void clearReason() {
+
+    reason_ = getDefaultInstance().getReason();
+  }
+  /**
+   * <code>string reason = 4 [json_name = "reason"];</code>
+   * @param value The bytes for reason to set.
+   */
+  private void setReasonBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    reason_ = value.toStringUtf8();
+
+  }
+
+  public static final int CONFLICT_KIND_FIELD_NUMBER = 5;
+  private java.lang.String conflictKind_;
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   * @return The conflictKind.
+   */
+  @java.lang.Override
+  public java.lang.String getConflictKind() {
+    return conflictKind_;
+  }
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   * @return The bytes for conflictKind.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getConflictKindBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(conflictKind_);
+  }
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   * @param value The conflictKind to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConflictKind(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    conflictKind_ = value;
+  }
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   */
+  private void clearConflictKind() {
+
+    conflictKind_ = getDefaultInstance().getConflictKind();
+  }
+  /**
+   * <pre>
+   * identity or business, only for conflict
+   * </pre>
+   *
+   * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+   * @param value The bytes for conflictKind to set.
+   */
+  private void setConflictKindBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    conflictKind_ = value.toStringUtf8();
+
+  }
+
+  public static final int REQUEST_KEY_HASH_FIELD_NUMBER = 6;
+  private com.google.protobuf.ByteString requestKeyHash_;
+  /**
+   * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+   * @return The requestKeyHash.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getRequestKeyHash() {
+    return requestKeyHash_;
+  }
+  /**
+   * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+   * @param value The requestKeyHash to set.
+   */
+  private void setRequestKeyHash(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    requestKeyHash_ = value;
+  }
+  /**
+   * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+   */
+  private void clearRequestKeyHash() {
+
+    requestKeyHash_ = getDefaultInstance().getRequestKeyHash();
+  }
+
+  public static final int PAYLOAD_HASH_FIELD_NUMBER = 7;
+  private com.google.protobuf.ByteString payloadHash_;
+  /**
+   * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+   * @return The payloadHash.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getPayloadHash() {
+    return payloadHash_;
+  }
+  /**
+   * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+   * @param value The payloadHash to set.
+   */
+  private void setPayloadHash(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    payloadHash_ = value;
+  }
+  /**
+   * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+   */
+  private void clearPayloadHash() {
+
+    payloadHash_ = getDefaultInstance().getPayloadHash();
+  }
+
+  public static final int RESULT_AVAILABLE_FIELD_NUMBER = 8;
+  private boolean resultAvailable_;
+  /**
+   * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+   * @return The resultAvailable.
+   */
+  @java.lang.Override
+  public boolean getResultAvailable() {
+    return resultAvailable_;
+  }
+  /**
+   * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+   * @param value The resultAvailable to set.
+   */
+  private void setResultAvailable(boolean value) {
+    
+    resultAvailable_ = value;
+  }
+  /**
+   * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+   */
+  private void clearResultAvailable() {
+
+    resultAvailable_ = false;
   }
 
   public static final int SEND_FIELD_NUMBER = 10;
@@ -1987,6 +2256,277 @@ public  final class CommandResult extends
     }
 
     /**
+     * <pre>
+     * Authenticated execution evidence, independent of the diagnostic error code.
+     * </pre>
+     *
+     * <code>string outcome = 3 [json_name = "outcome"];</code>
+     * @return The outcome.
+     */
+    @java.lang.Override
+    public java.lang.String getOutcome() {
+      return instance.getOutcome();
+    }
+    /**
+     * <pre>
+     * Authenticated execution evidence, independent of the diagnostic error code.
+     * </pre>
+     *
+     * <code>string outcome = 3 [json_name = "outcome"];</code>
+     * @return The bytes for outcome.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getOutcomeBytes() {
+      return instance.getOutcomeBytes();
+    }
+    /**
+     * <pre>
+     * Authenticated execution evidence, independent of the diagnostic error code.
+     * </pre>
+     *
+     * <code>string outcome = 3 [json_name = "outcome"];</code>
+     * @param value The outcome to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOutcome(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setOutcome(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Authenticated execution evidence, independent of the diagnostic error code.
+     * </pre>
+     *
+     * <code>string outcome = 3 [json_name = "outcome"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOutcome() {
+      copyOnWrite();
+      instance.clearOutcome();
+      return this;
+    }
+    /**
+     * <pre>
+     * Authenticated execution evidence, independent of the diagnostic error code.
+     * </pre>
+     *
+     * <code>string outcome = 3 [json_name = "outcome"];</code>
+     * @param value The bytes for outcome to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOutcomeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setOutcomeBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string reason = 4 [json_name = "reason"];</code>
+     * @return The reason.
+     */
+    @java.lang.Override
+    public java.lang.String getReason() {
+      return instance.getReason();
+    }
+    /**
+     * <code>string reason = 4 [json_name = "reason"];</code>
+     * @return The bytes for reason.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getReasonBytes() {
+      return instance.getReasonBytes();
+    }
+    /**
+     * <code>string reason = 4 [json_name = "reason"];</code>
+     * @param value The reason to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReason(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setReason(value);
+      return this;
+    }
+    /**
+     * <code>string reason = 4 [json_name = "reason"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReason() {
+      copyOnWrite();
+      instance.clearReason();
+      return this;
+    }
+    /**
+     * <code>string reason = 4 [json_name = "reason"];</code>
+     * @param value The bytes for reason to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReasonBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setReasonBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * identity or business, only for conflict
+     * </pre>
+     *
+     * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+     * @return The conflictKind.
+     */
+    @java.lang.Override
+    public java.lang.String getConflictKind() {
+      return instance.getConflictKind();
+    }
+    /**
+     * <pre>
+     * identity or business, only for conflict
+     * </pre>
+     *
+     * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+     * @return The bytes for conflictKind.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getConflictKindBytes() {
+      return instance.getConflictKindBytes();
+    }
+    /**
+     * <pre>
+     * identity or business, only for conflict
+     * </pre>
+     *
+     * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+     * @param value The conflictKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConflictKind(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setConflictKind(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * identity or business, only for conflict
+     * </pre>
+     *
+     * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConflictKind() {
+      copyOnWrite();
+      instance.clearConflictKind();
+      return this;
+    }
+    /**
+     * <pre>
+     * identity or business, only for conflict
+     * </pre>
+     *
+     * <code>string conflict_kind = 5 [json_name = "conflictKind"];</code>
+     * @param value The bytes for conflictKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConflictKindBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setConflictKindBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+     * @return The requestKeyHash.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getRequestKeyHash() {
+      return instance.getRequestKeyHash();
+    }
+    /**
+     * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+     * @param value The requestKeyHash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRequestKeyHash(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRequestKeyHash(value);
+      return this;
+    }
+    /**
+     * <code>bytes request_key_hash = 6 [json_name = "requestKeyHash"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRequestKeyHash() {
+      copyOnWrite();
+      instance.clearRequestKeyHash();
+      return this;
+    }
+
+    /**
+     * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+     * @return The payloadHash.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getPayloadHash() {
+      return instance.getPayloadHash();
+    }
+    /**
+     * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+     * @param value The payloadHash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPayloadHash(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPayloadHash(value);
+      return this;
+    }
+    /**
+     * <code>bytes payload_hash = 7 [json_name = "payloadHash"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPayloadHash() {
+      copyOnWrite();
+      instance.clearPayloadHash();
+      return this;
+    }
+
+    /**
+     * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+     * @return The resultAvailable.
+     */
+    @java.lang.Override
+    public boolean getResultAvailable() {
+      return instance.getResultAvailable();
+    }
+    /**
+     * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+     * @param value The resultAvailable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setResultAvailable(boolean value) {
+      copyOnWrite();
+      instance.setResultAvailable(value);
+      return this;
+    }
+    /**
+     * <code>bool result_available = 8 [json_name = "resultAvailable"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearResultAvailable() {
+      copyOnWrite();
+      instance.clearResultAvailable();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.v1.SendResponse send = 10 [json_name = "send"];</code>
      */
     @java.lang.Override
@@ -3398,6 +3938,12 @@ public  final class CommandResult extends
             "kindCase_",
             "errorCode_",
             "errorMessage_",
+            "outcome_",
+            "reason_",
+            "conflictKind_",
+            "requestKeyHash_",
+            "payloadHash_",
+            "resultAvailable_",
             io.github.lewin671.remoteagent.proto.SendResponse.class,
             io.github.lewin671.remoteagent.proto.InterruptResponse.class,
             io.github.lewin671.remoteagent.proto.ResolveApprovalResponse.class,
@@ -3429,11 +3975,12 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.MachineStatus.class,
           };
           java.lang.String info =
-              "\u0000\u001f\u0001\u0000\u0001+\u001f\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
-              "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
-              "\u0018<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000" +
-              "%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000*<\u0000+<\u0000";
+              "\u0000%\u0001\u0000\u0001+%\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\u0208\u0005\u0208\u0006\n\u0007\n\b\u0007\n<\u0000\u000b<\u0000\f<\u0000\r" +
+              "<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000" +
+              "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u001e<\u0000\u001f" +
+              "<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000" +
+              ")<\u0000*<\u0000+<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

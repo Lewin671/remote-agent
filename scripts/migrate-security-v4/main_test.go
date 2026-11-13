@@ -77,6 +77,9 @@ func fixture(t *testing.T) (string, []byte) {
 }
 func TestDryRunAndMigrationPreserveIdentity(t *testing.T) {
 	home, original := fixture(t)
+	if err := os.WriteFile(filepath.Join(home, "state-generation"), []byte("3\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	source := filepath.Join(home, "security-v3.db")
 	if err := migrate(home, true); err != nil {
 		t.Fatal(err)
@@ -85,8 +88,14 @@ func TestDryRunAndMigrationPreserveIdentity(t *testing.T) {
 	if !bytes.Equal(after, original) || !absent(filepath.Join(home, "security-v4.db")) || !absent(source+".backup") {
 		t.Fatal("dry run published or changed source")
 	}
+	if b, _ := os.ReadFile(filepath.Join(home, "state-generation")); string(b) != "3\n" {
+		t.Fatal("dry run changed marker")
+	}
 	if err := migrate(home, false); err != nil {
 		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, "state-generation")); string(b) != "4\n" {
+		t.Fatal("migration did not publish state generation")
 	}
 	ep, err := deviceauth.OpenEndpoint(filepath.Join(home, "security-v4.db"))
 	if err != nil {

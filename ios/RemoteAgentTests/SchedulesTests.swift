@@ -768,7 +768,7 @@ import UIKit
         #expect(mutation.recordConflict(CommandError("aborted","relay outcome unknown")) == nil)
         #expect(mutation.recordConflict(CommandError("aborted","interrupted",fromDaemon:true)) == nil)
         #expect(mutation.recordConflict(CommandError("revision_conflict","unsigned")) == nil)
-        let error=try #require(mutation.recordConflict(CommandError("revision_conflict","revision",fromDaemon:true)))
+        let error=try #require(mutation.recordConflict(CommandError("revision_conflict","revision",fromDaemon:true,outcome:.conflict,conflictKind:"business")))
         #expect(errorText(error)==L10n.errorsTheTaskWasJustChangedUpdatedToTheLatest())
         await eventually("conflict dismisses stale editor") { dismissed }
         #expect(dismissed && !mutation.frozen)

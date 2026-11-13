@@ -80,7 +80,7 @@ private struct TransitionChannel: UploadChannel {
     @Test(arguments: [true, false]) func aCreateOwnsItsSnapshotBeforeTheNextUIAction(outcomeUnknown: Bool) async throws {
         let (url, p) = try ready(); defer { try? FileManager.default.removeItem(at: url) }
         let aborts = TransitionAborts(), commands = FakeCommands()
-        commands.answer(outcomeUnknown ? CommandError(CommandError.unknownOutcome, "unknown") : UserError("refused"))
+        commands.answer(outcomeUnknown ? CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown) : UserError("refused"))
         let attachments = ImageDraft(key: "new", files: VolatileFiles(), saves: nil); attachments.append([p])
         let cfg = NewConfig(machineId: "a", cwd: "/work/example"), draft = NewSessionDraft(nil, settled: true)
         draft.start(commands, cfg, images: attachments) { _, _, _ in }

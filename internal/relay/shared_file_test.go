@@ -46,7 +46,7 @@ func TestSharedFileBlocksAreSealedWithoutCompression(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		raw, err := e.client.API().Forward(ctx, connect.NewRequest(&pb.ForwardRequest{MachineId: s.MachineID, Command: env}))
+		raw, err := e.client.API().Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: s.MachineID, Command: env}))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +70,7 @@ func TestSharedFileBlocksAreSealedWithoutCompression(t *testing.T) {
 	// The header binds the command to its session.
 	other := &pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: "sess2", FileId: "zeros"}}}
 	var ce *remoteclient.CommandError
-	if _, err := e.client.Do(ctx, s, other); err == nil || !asCommandError(err, &ce) || ce.Code != "not_found" {
+	if _, err := e.client.Do(ctx, s, other); err == nil || !asCommandError(err, &ce) || ce.Code != "invalid_argument" {
 		t.Fatalf("mismatched session: %v", err)
 	}
 }

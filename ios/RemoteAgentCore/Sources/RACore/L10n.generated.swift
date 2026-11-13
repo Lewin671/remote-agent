@@ -1017,6 +1017,10 @@ public enum L10n {
         let key = "errors_establishing_push_connection"
         return format(key, locale: locale, args: [])
     }
+    public static func errorsExecutedResultUnavailable(locale: String = MessageLocale.current) -> String {
+        let key = "errors_executed_result_unavailable"
+        return format(key, locale: locale, args: [])
+    }
     public static func errorsHistoryCouldNotContinueLoadingRetry(locale: String = MessageLocale.current) -> String {
         let key = "errors_history_could_not_continue_loading_retry"
         return format(key, locale: locale, args: [])
@@ -1323,6 +1327,10 @@ public enum L10n {
     }
     public static func errorsRemoteControlExpiredSavingChangesSessionControlAndNew(locale: String = MessageLocale.current) -> String {
         let key = "errors_remote_control_expired_saving_changes_session_control_and_new"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsRequestIdentityConflict(locale: String = MessageLocale.current) -> String {
+        let key = "errors_request_identity_conflict"
         return format(key, locale: locale, args: [])
     }
     public static func errorsSecurityBodyTypeOrDirectionMismatch(locale: String = MessageLocale.current) -> String {
@@ -8933,6 +8941,10 @@ public enum L10nMessage {
         let key = "errors_establishing_push_connection"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func errorsExecutedResultUnavailable() -> LocalizedMessage {
+        let key = "errors_executed_result_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func errorsHistoryCouldNotContinueLoadingRetry() -> LocalizedMessage {
         let key = "errors_history_could_not_continue_loading_retry"
         return LocalizedMessage(key: key, arguments: [])
@@ -9239,6 +9251,10 @@ public enum L10nMessage {
     }
     public static func errorsRemoteControlExpiredSavingChangesSessionControlAndNew() -> LocalizedMessage {
         let key = "errors_remote_control_expired_saving_changes_session_control_and_new"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsRequestIdentityConflict() -> LocalizedMessage {
+        let key = "errors_request_identity_conflict"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func errorsSecurityBodyTypeOrDirectionMismatch() -> LocalizedMessage {

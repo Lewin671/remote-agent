@@ -488,7 +488,7 @@ class ScheduleRepository(
             refresh(machine)
             result
         } catch (e: CommandException) {
-            if (e.fromDaemon && e.code == "revision_conflict") {
+            if (e.outcome == Outcome.CONFLICT && e.conflictKind == "business") {
                 refresh(machine)
                 throw ScheduleConflictException()
             }

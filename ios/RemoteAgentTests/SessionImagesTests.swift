@@ -87,7 +87,7 @@ import UIKit
         withObservationTracking {
             #expect(c.thumb(img) == nil)
         } onChange: { heard.yes = true }
-        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行"))
+        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown))
         _ = await send(c, "看图")
         let o = try #require(store.outgoing(sid).first)
         await eventually("unknown send keeps its picture") { o.state == .unknown && c.thumb(img) != nil }
@@ -232,7 +232,7 @@ import UIKit
     func itIsLetGoOfOnceSubmittedOrCanceled(_ status: PBInputStatus) async throws {
         let c = center()
         c.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
-        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有收到"))
+        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有收到", outcome: .unknown))
         _ = await send(c, "看图")
         let o = try #require(store.outgoing(sid).first)
         await eventually("answer lost") { o.state == .unknown }

@@ -1398,5 +1398,120 @@
     "path": "scripts/migrate-security-v4/main.go",
     "literal": "migration validation failed",
     "reason": "Internal sentinel handled by the localized migration_failed message; its text is never printed or returned as product copy."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "not_sent",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "executed",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "errors.executed_result_unavailable",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "errors.request_identity_conflict",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Files.kt",
+    "literal": "business",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/server/services.go",
+    "literal": "sender_mismatch",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/server/hub.go",
+    "literal": "machine_offline",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/server/hub.go",
+    "literal": "queue_full",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/deviceauth/accepted.go",
+    "literal": "authorization_unavailable",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "unknown",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "invalid_scope",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "unknown_outcome",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "protocol_mismatch",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "failed_precondition",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "member_removed",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "permission_denied",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "invalid_body",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "invalid_argument",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "busy",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "internal/relay/handle.go",
+    "literal": "resource_exhausted",
+    "reason": "Protocol-15 outcome/reason/diagnostic identifier or generated message key, never display copy; presentation uses the i18n wrapper."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "executed",
+    "reason": "Protocol outcome assigned by the synthetic demo backend, never display copy."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "disk_full",
+    "reason": "Machine diagnostic code selecting the existing localized disk message; explicit missing-result/identity notices take precedence. Not display copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Api.kt",
+    "literal": "disk_full",
+    "reason": "Machine diagnostic code selecting the existing localized disk message; explicit missing-result/identity notices take precedence. Not display copy."
   }
 ]

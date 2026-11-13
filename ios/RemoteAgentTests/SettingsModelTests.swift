@@ -132,7 +132,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
     }
 
     @Test func aSaveThatFailsIsSaidWhateverWasAskedForMeanwhile() async {
-        let (m, release) = held(.failure(CommandError("invalid_argument", "审批超时要在 30 秒以上", fromDaemon: true)))
+        let (m, release) = held(.failure(CommandError("invalid_argument", "审批超时要在 30 秒以上", fromDaemon: true,outcome:.executed)))
         reads.then(reply(settings(timeout: 300)))
         await m.read()
         let saving = Task { await m.save(settings(timeout: 1)) }
@@ -196,7 +196,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         let m = model()
         reads.then(reply(settings(timeout: 300)))
         await m.read()
-        updates.thenFail(CommandError("invalid_argument", "审批超时要在 30 秒以上", fromDaemon: true))
+        updates.thenFail(CommandError("invalid_argument", "审批超时要在 30 秒以上", fromDaemon: true,outcome:.executed))
         await m.save(settings(timeout: 1))
         #expect(m.settings?.approvalTimeoutSeconds == 300)
         #expect(m.saveError == "审批超时要在 30 秒以上")
@@ -210,7 +210,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         reads.then(reply(settings(timeout: 300)))
         await m.read()
         // The answer was lost, and the computer had applied the change.
-        updates.thenFail(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行"))
+        updates.thenFail(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown))
         reads.then(reply(settings(timeout: 600)))
         await m.save(settings(timeout: 600))
         #expect(m.settings?.approvalTimeoutSeconds == 600)
@@ -221,7 +221,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         let m = model()
         reads.then(reply(settings(timeout: 300)))
         await m.read()
-        updates.thenFail(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行"))
+        updates.thenFail(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown))
         reads.then(reply(settings(timeout: 300)))
         await m.save(settings(timeout: 600))
         #expect(m.settings?.approvalTimeoutSeconds == 300)
@@ -233,7 +233,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         let m = model()
         reads.then(reply(settings(timeout: 300)))
         await m.read()
-        updates.thenFail(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行"))
+        updates.thenFail(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行", outcome: .unknown))
         reads.thenFail(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
         await m.save(settings(timeout: 600))
         #expect(m.saveUnknown)

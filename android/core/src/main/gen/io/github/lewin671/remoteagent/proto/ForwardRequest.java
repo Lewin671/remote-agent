@@ -16,6 +16,7 @@ public  final class ForwardRequest extends
     ForwardRequestOrBuilder {
   private ForwardRequest() {
     machineId_ = "";
+    attemptId_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -137,6 +138,54 @@ public  final class ForwardRequest extends
   private void clearCommand() {
     command_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int ATTEMPT_ID_FIELD_NUMBER = 3;
+  private java.lang.String attemptId_;
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   * @return The attemptId.
+   */
+  @java.lang.Override
+  public java.lang.String getAttemptId() {
+    return attemptId_;
+  }
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   * @return The bytes for attemptId.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAttemptIdBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(attemptId_);
+  }
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   * @param value The attemptId to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttemptId(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    attemptId_ = value;
+  }
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   */
+  private void clearAttemptId() {
+
+    attemptId_ = getDefaultInstance().getAttemptId();
+  }
+  /**
+   * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+   * @param value The bytes for attemptId to set.
+   */
+  private void setAttemptIdBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    attemptId_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.ForwardRequest parseFrom(
@@ -362,6 +411,55 @@ public  final class ForwardRequest extends
       return this;
     }
 
+    /**
+     * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+     * @return The attemptId.
+     */
+    @java.lang.Override
+    public java.lang.String getAttemptId() {
+      return instance.getAttemptId();
+    }
+    /**
+     * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+     * @return The bytes for attemptId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getAttemptIdBytes() {
+      return instance.getAttemptIdBytes();
+    }
+    /**
+     * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+     * @param value The attemptId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttemptId(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setAttemptId(value);
+      return this;
+    }
+    /**
+     * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAttemptId() {
+      copyOnWrite();
+      instance.clearAttemptId();
+      return this;
+    }
+    /**
+     * <code>string attempt_id = 3 [json_name = "attemptId"];</code>
+     * @param value The bytes for attemptId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAttemptIdBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAttemptIdBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ForwardRequest)
   }
   @java.lang.Override
@@ -381,10 +479,11 @@ public  final class ForwardRequest extends
             "bitField0_",
             "machineId_",
             "command_",
+            "attemptId_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000";
+              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -1,14 +1,18 @@
 import {
   create,
+  fromBinary,
   toBinary,
   type DescMessage,
   type MessageShape,
 } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { unpackSecurity } from "../device-security-client";
+import { parseHeader, requestIdentity } from "../device-security";
+import { type Envelope } from "../gen/remoteagent/v1/envelope_pb";
 import { Remote } from "../remote";
 import { GoSecurityFixture, webMember } from "./security-fixture";
 import { type Header } from "../gen/remoteagent/v1/envelope_pb";
-import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { SessionSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "../gen/remoteagent/v1/event_pb";
 
@@ -51,7 +55,25 @@ export class SyntheticRemote extends Remote {
         forward: async (req: unknown) => {
           const forward = this.custom.forward as
             ((req: unknown) => Promise<unknown>) | undefined;
-          if (forward) return forward(req);
+          if (forward) {
+            const request = req as {command:Envelope;attemptId:string};
+            const res = await forward(req) as {result?:Envelope;outcome?:string;reason?:string;attemptId?:string};
+            try {
+              if (res.result) {
+                const original = await this.world.fixture.open(this.machine,request.command);
+                const opened = await this.world.fixture.open(this.member.account.deviceId,res.result);
+                const proof = fromBinary(CommandResultSchema,unpackSecurity(parseHeader(new Uint8Array(res.result.securityHeader)),opened.plaintext));
+                if (!proof.outcome) {
+                  const binding=await requestIdentity(parseHeader(new Uint8Array(request.command.securityHeader)),unpackSecurity(parseHeader(new Uint8Array(request.command.securityHeader)),original.plaintext));
+                  proof.outcome="executed"; proof.reason="completed"; proof.resultAvailable=true;
+                  proof.requestKeyHash=binding.key; proof.payloadHash=binding.payload;
+                  res.result=await this.seal({...opened.header,compression:0},CommandResultSchema,proof);
+                }
+                res.outcome ??= proof.outcome; res.reason ??= proof.reason; res.attemptId ??= request.attemptId;
+              }
+            } catch { /* Keep deliberate signature/ciphertext corruption. */ }
+            return res;
+          }
           throw new ConnectError(
             "synthetic endpoint offline",
             Code.Unavailable,

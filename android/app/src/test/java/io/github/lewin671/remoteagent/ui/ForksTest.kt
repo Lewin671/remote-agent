@@ -23,7 +23,7 @@ class ForksTest {
     private val sent = mutableListOf<Pair<String, Boolean>>()
     private fun lost(code: String): suspend (PreparedCommand, Boolean) -> CommandResult? = { p, retry ->
         sent += p.requestId to retry
-        throw CommandException(code, "原因")
+        throw CommandException(code, "原因",outcome=if(code==CommandException.UNKNOWN) io.github.lewin671.remoteagent.core.Outcome.UNKNOWN else io.github.lewin671.remoteagent.core.Outcome.NOT_SENT)
     }
     private val answered: suspend (PreparedCommand, Boolean) -> CommandResult? = { p, retry ->
         sent += p.requestId to retry

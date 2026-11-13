@@ -3101,5 +3101,37 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "errors.executed_result_unavailable",
+    "zh-CN": "电脑已执行，但结果没能取回，请刷新查看最新状态",
+    "en": "Done on the computer, but the result couldn't be retrieved. Refresh to see the latest state.",
+    "notes": "负责人确定的传输结果文案 A：可信 executed 且结果正文不可恢复；刷新最新状态，不自动重新执行。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.request_identity_conflict",
+    "zh-CN": "这次提交和之前的一次不一致，电脑没有执行，请刷新后再操作",
+    "en": "This didn't match an earlier submission, so the computer didn't run it. Refresh and try again.",
+    "notes": "负责人确定的传输结果文案 B：同一请求 ID 的载荷身份冲突，只说明当前不同的提交没有执行，不推断原提交结果；刷新，不自动重发。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

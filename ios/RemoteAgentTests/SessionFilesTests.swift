@@ -98,7 +98,7 @@ import Testing
         let (url, p) = try document()
         defer { try? FileManager.default.removeItem(at: url) }
         let commands = FakeCommands()
-        commands.answer(CommandError(CommandError.unknownOutcome, "unknown"))
+        commands.answer(CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown))
         let cfg = NewConfig(machineId: "mac", cwd: "/work/example")
         let draft = NewSessionDraft(cfg, settled: true)
         let attachments = ImageDraft(key: "new", files: VolatileFiles(), saves: nil)
@@ -109,7 +109,7 @@ import Testing
         #expect(commands.sent.first?.createSession.fileIds == ["uploaded-file"])
         #expect(commands.sent.first?.createSession.imageIds.isEmpty == true)
         p.imageId = "renewed-file"
-        commands.answer(CommandError(CommandError.unknownOutcome, "unknown"))
+        commands.answer(CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown))
         draft.start(commands, cfg, images: attachments) { _, _, _ in }
         await eventually { !draft.running }
         #expect(commands.sent.count == 1)
@@ -133,7 +133,7 @@ import Testing
         await center.restoredDraft(draft.key)
         draft.append([p])
         let commands = FakeCommands()
-        commands.answer(CommandError(CommandError.unknownOutcome, "unknown"))
+        commands.answer(CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown))
         let store = SessionStore()
         let taken = center.send(sid: "session", machineId: "mac", store: store, text: "", mode: .queue, commands: commands) { _ in }
         #expect(taken)

@@ -1,5 +1,5 @@
 import { machineNotificationKinds } from "./machine-notifications";
-import { classifyOutcome } from "./outcome";
+import { verifiedOutcome, type Outcome } from "./outcome";
 import * as l10n from "./i18n";
 import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
@@ -30,6 +30,8 @@ import {
 } from "./device-security-client";
 import {
   MAX_CLOCK_SKEW,
+  requestIdentity,
+  equal,
   parseHeader,
   Purpose,
   SecurityError,
@@ -39,6 +41,7 @@ import {
 } from "./device-security";
 import {
   PairApprovalSchema,
+  NotForwardedSchema,
   RegisterDeviceRequestSchema,
 } from "./gen/remoteagent/v1/relay_pb";
 // Remote keeps the page in sync with the server: it logs in, holds the
@@ -249,18 +252,23 @@ export class CommandError extends Error {
     message: string,
     readonly fromDaemon = false,
     readonly readOnly = false,
+    readonly outcome: Outcome = fromDaemon ? "unknown" : "not_sent",
+    readonly conflictKind = "",
+    readonly resultAvailable = true,
   ) {
-    super(code === "disk_full" ? l10n.t("machine_status.disk_full") : code === "storage_exhausted" ? l10n.t("machine_status.storage_exhausted") : message);
+    super((outcome === "executed" && !resultAvailable) || conflictKind === "identity" ? message : code === "disk_full" ? l10n.t("machine_status.disk_full") : code === "storage_exhausted" ? l10n.t("machine_status.storage_exhausted") : message);
+  }
+  get needsResultRefresh(): boolean {
+    return this.conflictKind === "identity" || (this.outcome === "executed" && !this.resultAvailable);
   }
 }
 
-/** Whether a command may or may not have run: a retry must then reuse
- * its request slot, so the daemon answers from its log rather than
- * running it again. A definite answer (done, refused, never sent) lets
- * the next attempt start afresh. */
+/** Whether reconciliation must keep the original request slot. Missing bodies
+ * and identity conflicts also use this flow while retaining their explicit
+ * outcome; upload retry policy must inspect that outcome separately. */
 export function uncertain(e: unknown): boolean {
   if (e instanceof CommandError)
-    return classifyOutcome({source: e.fromDaemon ? "daemon" : "local", code: e.code, signed: e.fromDaemon, prior: false, readOnly: e.readOnly}) === "unknown";
+    return e.outcome === "unknown" || e.needsResultRefresh;
   return e instanceof ConnectError;
 }
 
@@ -591,7 +599,7 @@ export class Remote {
   private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
     if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
     const issue = this.fileUploadIssue(machineId);
-    if (issue) throw new CommandError(mayHaveRun ? "unknown_outcome" : "failed_precondition", issue);
+    if (issue) throw new CommandError(mayHaveRun ? "unknown_outcome" : "failed_precondition", issue,false,false,mayHaveRun?"unknown":"not_sent");
   }
 
   supportsSchedules(id: string): boolean {
@@ -777,7 +785,7 @@ export class Remote {
       return task;
     } catch (error) {
       attempt.settle(error, sent);
-      if (error instanceof CommandError && error.fromDaemon && error.code === "revision_conflict") {
+      if (error instanceof CommandError && error.outcome === "conflict" && error.conflictKind === "business") {
         attempt.abandon(); // definite schedule revision conflict
         await this.refreshSchedules(machineId);
         throw new ScheduleRevisionError(l10n.t("errors.the_task_was_just_changed_updated_to_the_latest"));
@@ -3221,6 +3229,13 @@ export class Remote {
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
+  private readonly dispatchedCommands = new WeakMap<RequestSlot,number>();
+  private unsentAttempt(slot:RequestSlot):boolean {
+    const remaining=Math.max(0,(this.dispatchedCommands.get(slot)??1)-1);
+    if(remaining) this.dispatchedCommands.set(slot,remaining); else this.dispatchedCommands.delete(slot);
+    return remaining>0;
+  }
+
   private async forward(
     machineId: string,
     sid: string,
@@ -3236,7 +3251,8 @@ export class Remote {
         toBinary(CommandSchema, create(CommandSchema, { kind: cmd })),
       ).kind;
     const { requestId, deadline } = slot;
-    if (Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
+    const priorOutcome: Outcome = this.dispatchedCommands.has(slot) ? "unknown" : "not_sent";
+    if (!this.dispatchedCommands.has(slot) && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
       throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
     // A machine of another protocol version would refuse the command, in
     // words that do not say which side to update: say so here, unsent.
@@ -3248,8 +3264,9 @@ export class Remote {
         theirs < PROTOCOL_VERSION
           ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) })
           : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"),
+        false, false, priorOutcome,
       );
-    this.checkFileCapability(machineId, cmd);
+    this.checkFileCapability(machineId, cmd, priorOutcome === "unknown");
     // Signed by this device, so the daemon knows who sent it whatever the
     // server says (the server also checks the sender is the caller).
     let env: Envelope;
@@ -3271,27 +3288,28 @@ export class Remote {
       if (e instanceof SecurityError && e.code === "clock")
         throw new CommandError(
           "clock",
-          l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),
+          l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),false,false,priorOutcome,
         );
       if (e instanceof SecurityError && e.code === "lease")
         throw new CommandError(
           "failed_precondition",
-          l10n.t("errors.remote_control_expired_control_and_new_uploads_are_paused"),
+          l10n.t("errors.remote_control_expired_control_and_new_uploads_are_paused"),false,false,priorOutcome,
         );
       throw new CommandError(
         "security_unavailable",
-        l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),
+        l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),false,false,priorOutcome,
       );
     }
     this.authorizedCommands.set(slot, { machineId, sid, cmd });
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
-    let mayHaveRun = false;
+    let mayHaveRun = this.dispatchedCommands.has(slot);
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
+      const attemptId = newRequestID();
       try {
         if (attempt > 0 && Date.now() >= deadline)
-          throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"));
+          throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
         // Metadata may refresh while sealing, logging in or backing off.
         // Check the immutable authorized payload, including unknown retries.
         this.checkFileCapability(machineId, cmd, mayHaveRun);
@@ -3299,7 +3317,8 @@ export class Remote {
         // was not executed. Only an authenticated daemon result is final.
         mayHaveRun = true;
         signal?.throwIfAborted();
-        const res = await this.api.forward({ machineId, command: env },{signal});
+        this.dispatchedCommands.set(slot,(this.dispatchedCommands.get(slot)??0)+1);
+        const res = await this.api.forward({ machineId, command: env, attemptId },{signal, headers:{"Remote-Agent-Attempt":attemptId}});
         let msg: CommandResult;
         try {
           msg = (
@@ -3317,11 +3336,21 @@ export class Remote {
         } catch {
           throw new CommandError(
             "unknown_outcome",
-            l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),
-          );
+            l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
         }
-        if (msg.errorCode)
-          throw new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd));
+        const binding = await requestIdentity(parseHeader(new Uint8Array(env.securityHeader)), toBinary(CommandSchema, create(CommandSchema,{kind:cmd,protocolVersion:PROTOCOL_VERSION})));
+        const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && res.outcome===msg.outcome && res.reason===msg.reason && (msg.outcome==="conflict" || msg.conflictKind==="");
+        let category = verifiedOutcome(msg,binding.key,binding.payload,res.outcome,res.reason,false);
+        if(verified && category==="not_sent") {mayHaveRun=this.unsentAttempt(slot);if(mayHaveRun)category="unknown";}
+        if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
+
+        if (category === "executed" && !msg.resultAvailable || category === "conflict" && msg.conflictKind === "identity") {
+          void this.refresh();
+          if (sid) void this.refreshLiveSnapshot(sid);
+          throw new CommandError(msg.errorCode, l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"), true, false, category, msg.conflictKind, msg.resultAvailable);
+        }
+        if (category !== "executed" || msg.errorCode)
+          throw new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd), category, msg.conflictKind, msg.resultAvailable);
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
@@ -3331,14 +3360,18 @@ export class Remote {
         // daemon answers still freeze the caller's request slot.
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
+        const unsent = ce.findDetails(NotForwardedSchema).some(d=>d.attemptId===attemptId);
+        if (unsent) {
+          mayHaveRun=this.unsentAttempt(slot);
+          if (!mayHaveRun && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),ce.code===Code.Unavailable ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
+        }
         if (ce.code === Code.Unauthenticated && attempt < 3) {
           try {
             await this.login();
           } catch {
             throw new CommandError(
               "unknown_outcome",
-              l10n.t("errors.the_previous_request_s_outcome_is_still_unknown_cannot"),
-            );
+              l10n.t("errors.the_previous_request_s_outcome_is_still_unknown_cannot"), false, false, "unknown");
           }
           continue;
         }
@@ -3359,14 +3392,13 @@ export class Remote {
         }
         if (ce.code === Code.Unavailable)
           throw mayHaveRun
-            ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"))
+            ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"), false, false, "unknown")
             : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
-        if (unknown) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"));
+        if (unknown) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
         if (mayHaveRun)
           throw new CommandError(
             "unknown_outcome",
-            l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"),
-          );
+            l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
         throw e;
       }
     }
@@ -3387,6 +3419,7 @@ export class Remote {
     mode = SendMode.STEER,
     fileIds: string[] = [],
   ): Promise<RequestSlot> {
+    if (wasUnknown && !this.dispatchedCommands.has(slot)) this.dispatchedCommands.set(slot, 1);
     const cmd: CommandKind = {
       case: "send",
       value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
@@ -3395,6 +3428,8 @@ export class Remote {
       await this.command(sid, cmd, slot);
       return slot;
     } catch (e) {
+      if (wasUnknown && e instanceof CommandError && e.outcome === "not_sent")
+        throw new CommandError(e.code,e.message,e.fromDaemon,e.readOnly,"unknown",e.conflictKind,e.resultAvailable);
       // A send whose outcome was unknown is never sealed afresh.
       if (
         wasUnknown ||
@@ -3531,6 +3566,7 @@ export class Remote {
     this.patchOut(sid, o.sendId, {
       status: "sending",
       error: undefined,
+      outcomeNotice: false,
       missingImages: false,
     });
     try {
@@ -3562,6 +3598,7 @@ export class Remote {
           : errorText(e),
         missingImages,
         unknown: still,
+        outcomeNotice: e instanceof CommandError && e.needsResultRefresh,
         ...(still ? {} : newSlot()),
       });
     }
@@ -4354,7 +4391,7 @@ export class Remote {
           }
           return st;
         } catch (e) {
-          if (!uncertain(e) || i >= 2) throw e;
+          if (!uncertain(e) || (e instanceof CommandError && e.outcome !== "unknown") || i >= 2) throw e;
           try {
             const st = statusOf(
               await this.machineCommand(machineId, {
@@ -4367,7 +4404,7 @@ export class Remote {
             if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) continue;
             return st;
           } catch (e2) {
-            if (!uncertain(e2) || i >= 2) throw e2;
+            if (!uncertain(e2) || (e2 instanceof CommandError && e2.outcome !== "unknown") || i >= 2) throw e2;
           }
         }
       }

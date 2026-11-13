@@ -48,7 +48,7 @@ class SendImagesTest {
             processed = Processed(byteArrayOf(1, 2), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
         }
         val outgoing = Outgoing("same-request", "保留文字", listOf("expired"), listOf(image), original = true)
-        outgoing.deliver { throw io.github.lewin671.remoteagent.core.CommandException("not_found", "image expired is not on this machine; upload it again", fromDaemon = true) }
+        outgoing.deliver { throw io.github.lewin671.remoteagent.core.CommandException("not_found", "image expired is not on this machine; upload it again", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) }
         assertEquals(Outgoing.State.FAILED, outgoing.state)
         assertTrue(outgoing.missingImages)
         assertTrue(outgoing.canPutBack)
@@ -65,7 +65,7 @@ class SendImagesTest {
     fun unknownMessagesRetryTheSameRequestAndImagesWithoutOfferingANewSend() = kotlinx.coroutines.runBlocking {
         val outgoing = Outgoing("same-request", "看图", listOf("original-id"), listOf(PendingImage("picked", null)))
         val requests = mutableListOf<io.github.lewin671.remoteagent.proto.SendRequest>()
-        outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException(io.github.lewin671.remoteagent.core.CommandException.UNKNOWN, "reply lost") }
+        outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException(io.github.lewin671.remoteagent.core.CommandException.UNKNOWN, "reply lost", outcome=io.github.lewin671.remoteagent.core.Outcome.UNKNOWN) }
         assertEquals(Outgoing.State.UNKNOWN, outgoing.state)
         assertFalse(outgoing.canPutBack)
         outgoing.deliver { requests += it; throw io.github.lewin671.remoteagent.core.CommandException("unavailable", "offline") }

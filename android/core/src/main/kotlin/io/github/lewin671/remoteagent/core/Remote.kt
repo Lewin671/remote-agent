@@ -326,6 +326,10 @@ class PreparedCommand(
 ) {
     internal val sealMutex = kotlinx.coroutines.sync.Mutex()
     internal var authorizedEnvelope: Envelope? = null
+    private var dispatchedAttempts = 0
+    internal val mayHaveRun: Boolean get() = synchronized(this) { dispatchedAttempts > 0 }
+    internal fun dispatched() = synchronized(this) { dispatchedAttempts++ }
+    internal fun notSent(): Boolean = synchronized(this) { dispatchedAttempts=(dispatchedAttempts-1).coerceAtLeast(0); dispatchedAttempts>0 }
 
     override fun toString() = "PreparedCommand(request=$requestId)"
 }
@@ -3311,6 +3315,7 @@ class Remote(
             throw CommandException(
                 if (mayHaveRun) CommandException.UNKNOWN else "failed_precondition",
                 if (mayHaveRun) localized { copy -> copy(UiMessages.errorsAndroidValue1ThePreviousOutcomeIsStillUnknownRetryTheSame(FILE_UPLOAD_UPDATE_REQUIRED.resolve(copy))) } else FILE_UPLOAD_UPDATE_REQUIRED,
+                outcome=if(mayHaveRun) Outcome.UNKNOWN else Outcome.NOT_SENT,
             )
     }
 
@@ -3327,26 +3332,27 @@ class Remote(
         withContext(dispatcher) { forwardOnWorker(p, retryOfUnknown) }
 
     private suspend fun forwardOnWorker(p: PreparedCommand, retryOfUnknown: Boolean): CommandResult {
-        checkFileCapability(p, retryOfUnknown)
+        val prior = retryOfUnknown || p.mayHaveRun
+        checkFileCapability(p, prior)
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
         protocolMismatch(state.value.machines[p.machineId])?.let {
-            throw CommandException("failed_precondition", it)
+            throw CommandException("failed_precondition", it, outcome=if(prior) Outcome.UNKNOWN else Outcome.NOT_SENT)
         }
-        if (!retryOfUnknown && state.value.machines[p.machineId]?.online == false)
+        if (!retryOfUnknown && !p.mayHaveRun && state.value.machines[p.machineId]?.online == false)
             throw CommandException(CommandException.UNAVAILABLE, UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText(), failureKind = CommandFailureKind.COMPUTER_OFFLINE)
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
-        if (!retryOfUnknown && clock() >= p.deadlineMs)
+        if (!retryOfUnknown && !p.mayHaveRun && clock() >= p.deadlineMs)
             throw CommandException(CommandException.EXPIRED, UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText())
         var attempt = 0
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
-        var mayHaveRun = retryOfUnknown
+        var mayHaveRun = prior
         fun notSent(code: String, text: MessageText) =
             if (mayHaveRun)
-                CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED)
+                CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED, outcome = Outcome.UNKNOWN)
             else CommandException(code, text)
         var waiting = false
         // A previous try may have got the command to the daemon: a later
@@ -3355,6 +3361,7 @@ class Remote(
             while (true) {
                 waiting = false
                 var sentToken: String? = null
+                val attemptId = newRequestId()
                 try {
                     checkFileCapability(p, mayHaveRun)
                     sentToken = currentToken()
@@ -3362,16 +3369,19 @@ class Remote(
                     val authorized = authorize(p)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, mayHaveRun)
+                    val binding = security.commandIdentity(authorized)
                     waiting = true
                     mayHaveRun = true
+                    p.dispatched()
                     val res =
                         api.client
                             .forward(
                                 ForwardRequest.newBuilder()
                                     .setMachineId(p.machineId)
                                     .setCommand(authorized)
+                                    .setAttemptId(attemptId)
                                     .build(),
-                                Api.headers(sentToken),
+                                Api.headers(sentToken) + ("Remote-Agent-Attempt" to listOf(attemptId)),
                             )
                             .value()
                     val (_, msg) =
@@ -3389,15 +3399,20 @@ class Remote(
                         } catch (e: Exception) {
                             // A result that does not open says nothing about whether
                             // the command ran; retrying the same request asks again.
-                            throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED)
+                            throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
                         }
-                    if (msg.errorCode.isNotEmpty())
-                        throw CommandException(
-                            msg.errorCode,
-                            msg.errorMessage.ifEmpty { msg.errorCode },
-                            fromDaemon = true,
-                            readOnly = p.command?.isReadOnlyCommand() == true,
-                        )
+                    val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) && msg.payloadHash.toByteArray().contentEquals(binding.second) && res.attemptId==attemptId && res.outcome==msg.outcome && res.reason==msg.reason && (msg.outcome=="conflict" || msg.conflictKind.isEmpty())
+                    var category = verifiedOutcome(msg,binding.first,binding.second,res.outcome,res.reason)
+                    if(verified && category==Outcome.NOT_SENT) {mayHaveRun=p.notSent() || retryOfUnknown;if(mayHaveRun)category=Outcome.UNKNOWN}
+                    if (!verified || category==Outcome.UNKNOWN) throw CommandException(CommandException.UNKNOWN,UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),fromDaemon=true,outcome=Outcome.UNKNOWN)
+
+                    if ((category==Outcome.EXECUTED && !msg.resultAvailable) || (category==Outcome.CONFLICT && msg.conflictKind=="identity")) {
+                        refresh()
+                        if (p.sessionId.isNotEmpty()) refreshLiveSnapshot(p.sessionId)
+                        throw CommandException(msg.errorCode, (if (category==Outcome.EXECUTED) UiMessages.errorsExecutedResultUnavailable() else UiMessages.errorsRequestIdentityConflict()).messageText(),fromDaemon=true,outcome=category,conflictKind=msg.conflictKind,resultAvailable=msg.resultAvailable)
+                    }
+                    if (msg.errorCode.isNotEmpty() || category!=Outcome.EXECUTED)
+                        throw CommandException(msg.errorCode,msg.errorMessage.ifEmpty {msg.errorCode},fromDaemon=true,readOnly=p.command?.isReadOnlyCommand()==true,outcome=category,conflictKind=msg.conflictKind,resultAvailable=msg.resultAvailable)
                     if (p.command?.hasSchedule() == true && p.command.schedule.operation == "list" && msg.hasSchedule() && currentScheduleMember(p.machineId)) {
                         cache?.putBlob("schedule:${p.machineId}", scheduleSnapshot(p.requestId, res.result))
                         if (!currentScheduleMember(p.machineId)) cache?.removeBlob("schedule:${p.machineId}")
@@ -3405,10 +3420,18 @@ class Remote(
                     return msg
                 } catch (ce: ConnectException) {
                     waiting = false
+                    val unsent = ce.details.any { detail ->
+                        detail.type.endsWith("remoteagent.v1.NotForwarded") && runCatching { io.github.lewin671.remoteagent.proto.NotForwarded.parseFrom(detail.payload.toByteArray()).attemptId == attemptId }.getOrDefault(false)
+                    }
+                    if (unsent) {
+                        mayHaveRun=p.notSent() || retryOfUnknown
+                        if (!mayHaveRun && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (ce.code==Code.UNAVAILABLE) UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
+                    }
                     val cause = ce.exception
                     if (
                         cause is java.net.UnknownHostException || cause is java.net.ConnectException
                     ) {
+                        if (!unsent) mayHaveRun=p.notSent() || retryOfUnknown
                         throw notSent("network", UiMessages.errorsAndroidNetworkUnavailableCommandWasNotSent().messageText())
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
@@ -3442,20 +3465,19 @@ class Remote(
                             CommandException.UNKNOWN,
                             if (ce.code == Code.UNAVAILABLE) UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText()
                             else localized { copy -> copy(UiMessages.errorsAndroidComputerOutcomeUnknownValue1(errorText(ce, state.value).resolve(copy))) },
-                            failureKind = if (ce.code == Code.UNAVAILABLE) CommandFailureKind.CONNECTION_DROPPED else CommandFailureKind.UNKNOWN,
-                        )
+                            failureKind = if (ce.code == Code.UNAVAILABLE) CommandFailureKind.CONNECTION_DROPPED else CommandFailureKind.UNKNOWN, outcome = Outcome.UNKNOWN)
                     }
-                    throw CommandException(CommandException.UNKNOWN, UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED)
+                    throw CommandException(CommandException.UNKNOWN, UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
                 }
             }
         } catch (e: CancellationException) {
             if (waiting || mayHaveRun)
-                throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownStoppedWaitingForAReplyRetryingSends().messageText(), failureKind = CommandFailureKind.UNKNOWN)
+                throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownStoppedWaitingForAReplyRetryingSends().messageText(), failureKind = CommandFailureKind.UNKNOWN, outcome = Outcome.UNKNOWN)
             throw e
         } catch (e: Exception) {
             // Only an authenticated daemon answer settles a dispatched request.
             if (e is CommandException && (e.fromDaemon || e.unknown)) throw e
-            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidNoVerifiableExecutionResultReceivedRetryTheSameRequest().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED)
+            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidNoVerifiableExecutionResultReceivedRetryTheSameRequest().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
             throw e
         }
     }
@@ -3472,8 +3494,7 @@ class Remote(
             throw CommandException(
                 CommandException.UNKNOWN,
                 localized { copy -> copy(UiMessages.errorsAndroidComputerOutcomeUnknownTheRequestMayHaveArrivedBeforeLogin(errorText(e, state.value).resolve(copy))) },
-                failureKind = CommandFailureKind.UNKNOWN,
-            )
+                failureKind = CommandFailureKind.UNKNOWN, outcome = Outcome.UNKNOWN)
         }
 
     /** The models a machine's CLI offers, refreshed when a picker opens. */

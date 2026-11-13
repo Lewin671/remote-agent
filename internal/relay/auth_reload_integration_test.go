@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"net/http"
@@ -78,7 +79,7 @@ func TestAuthenticationLossReloadsAccountAndEndpoint(t *testing.T) {
 				}
 				e.srv.Handler().ServeHTTP(w, r)
 			}))
-			defer newer.Close()
+			defer func() { once.Do(func() { close(release) }); newer.Close() }()
 			updated := *e.acct
 			updated.Server = newer.URL
 			if err := updated.Save(); err != nil {
@@ -86,7 +87,8 @@ func TestAuthenticationLossReloadsAccountAndEndpoint(t *testing.T) {
 			}
 			waitFor(t, "saved account and new WS", func() bool { return newStates.Load() > 0 && newStreams.Load() > 0 && runningRelay.Connected() })
 			_, err = e.client.Do(ctx, session, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: session.ID, Text: "must not run"}}})
-			if !remoteclient.Uncertain(err) || e.backend.sendCount() != 0 {
+			var decision *remoteclient.CommandError
+			if !errors.As(err, &decision) || decision.Outcome != outcome.NotSent || e.backend.sendCount() != 0 {
 				t.Fatalf("paused admission: %v", err)
 			}
 			once.Do(func() { close(release) })
