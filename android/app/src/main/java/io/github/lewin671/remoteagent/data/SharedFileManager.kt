@@ -264,14 +264,14 @@ class SharedFileManager(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     insertMediaStoreFile(
                         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                        Environment.DIRECTORY_DOWNLOADS,
+                        Environment.DIRECTORY_DOWNLOADS + "/RemoteAgent",
                         safeName,
                         mime,
                         file,
                     )
                 } else {
                     @Suppress("DEPRECATION")
-                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    val downloadsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "RemoteAgent")
                     downloadsDir.mkdirs()
                     val dest = uniqueDest(downloadsDir, safeName)
                     file.inputStream().use { input ->
