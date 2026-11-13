@@ -415,7 +415,6 @@ extension Ref<LiveAnnouncer> {
 
     @Test func anApprovalsLastMinuteIsMarked() {
         let a = PBApprovalRequested.with { $0.deadline = .with { $0.seconds = 1_000 } }
-        #expect(ApprovalDeadline(a, now: 1_000_000 - 300_000) == ApprovalDeadline(a, now: 700_000))
         #expect(ApprovalDeadline(a, now: 700_000)?.text == "剩 5 分钟")
         #expect(ApprovalDeadline(a, now: 700_000)?.last == false)
         #expect(ApprovalDeadline(a, now: 950_000)?.last == true)
