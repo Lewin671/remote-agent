@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -17,7 +18,7 @@ var fileDiffHeaderRE = regexp.MustCompile(`^(/.+?)\s+[+-][0-9]+(?:\s+[+-][0-9]+)
 
 func permissionPosition(plain string) int {
 	pos := strings.LastIndex(plain, "Requesting permission for:")
-	for _, title := range []string{"Allow creation of this file?", "Allow access to this file?"} {
+	for _, title := range []string{"Allow creation of this file?", "Allow access to this file?", "Allow calling this tool?"} {
 		if at := strings.LastIndex(plain, title); at > pos {
 			pos = at
 		}
@@ -30,6 +31,10 @@ func permissionBody(plain string) (body, deny string, ok bool) {
 		return "", "", false
 	}
 	area := plain[pos:]
+	if strings.HasPrefix(area, "Allow calling this tool?") {
+		title, ok := mcpPermissionTitle(plain[:pos], area)
+		return title, "4", ok
+	}
 	if strings.HasPrefix(area, "Requesting permission for:") {
 		area = strings.TrimPrefix(area, "Requesting permission for:")
 		if j := strings.Index(area, "Run this command?"); j >= 0 {
@@ -76,16 +81,31 @@ func permissionBody(plain string) (body, deny string, ok bool) {
 }
 
 func (a *Adapter) MatchApproval(styled string, h *agent.Hook) (*pb.ApprovalRequested, bool) {
-	if h == nil {
+	if h == nil || !a.Analyze(styled).PermissionOpen {
 		return nil, false
 	}
-	body, _, ok := permissionBody(StripANSI(styled))
-	if !ok {
+	plain := StripANSI(styled)
+	body, _, ok := permissionBody(plain)
+	if !ok || (h.ToolName == "call_mcp_tool") != strings.HasPrefix(plain[permissionPosition(plain):], "Allow calling this tool?") {
 		return nil, false
 	}
 	var args map[string]json.RawMessage
 	if json.Unmarshal(h.ToolInput, &args) != nil {
 		return nil, false
+	}
+	if h.ToolName == "call_mcp_tool" {
+		var server, tool string
+		if json.Unmarshal(args["ServerName"], &server) != nil || json.Unmarshal(args["ToolName"], &tool) != nil || server == "" || tool == "" {
+			return nil, false
+		}
+		var arguments map[string]json.RawMessage
+		if json.Unmarshal(args["Arguments"], &arguments) != nil || arguments == nil || body != server+"/"+tool {
+			return nil, false
+		}
+		// The native MCP menu shows the qualified tool, but not its arguments.
+		// MatchApprovals requires one certain pending identity; all arguments
+		// shown to the client and its digest come from that bound native call.
+		return &pb.ApprovalRequested{ToolName: h.ToolName, ToolInputJson: string(h.ToolInput), InputDigest: agent.InputDigest(h.ToolName, h.ToolInput)}, true
 	}
 	key := "Path"
 	if h.ToolName == "run_command" {
@@ -217,4 +237,57 @@ func sameNativeFile(shown, requested string) bool {
 	}
 	b, err := canonical(requested)
 	return err == nil && a == b
+}
+
+// mcpPermissionTitle accepts only the complete native six-choice MCP panel.
+// Grant and deny always use the one-shot rows; no persistent rule is written.
+func mcpPermissionTitle(before, area string) (string, bool) {
+	if !strings.Contains(area, "Navigate · tab Amend") {
+		return "", false
+	}
+	lines := strings.Split(strings.TrimSpace(before), "\n")
+	if len(lines) < 3 {
+		return "", false
+	}
+	title := strings.TrimSpace(lines[len(lines)-1])
+	if !strings.Contains(title, "/") || strings.ContainsAny(title, " \t\r\n") {
+		return "", false
+	}
+	i := len(lines) - 2
+	for i >= 0 && strings.TrimSpace(lines[i]) == "" {
+		i--
+	}
+	if i < 1 || !dividerRE.MatchString(strings.TrimSpace(lines[i])) || strings.TrimSpace(lines[i-1]) != "MCP" {
+		return "", false
+	}
+	rows := questionRows(area)
+	numbered := 0
+	for _, line := range strings.Split(area, "\n") {
+		if strings.Contains(line, "Navigate") {
+			break
+		}
+		if row := numberedRowRE.FindStringSubmatch(line); row != nil {
+			numbered++
+			if row[1] != strconv.Itoa(numbered) {
+				return "", false
+			}
+		}
+	}
+	labels := []string{
+		"Yes, allow tool call",
+		"Yes, and always allow tool '" + title + "' in this conversation",
+		"Yes, and always allow tool '" + title + "' (Persist to settings.json)",
+		"No, deny tool call",
+		"No, and always deny tool '" + title + "' in this conversation",
+		"No, and always deny tool '" + title + "' (Persist to settings.json)",
+	}
+	if len(rows) != len(labels) {
+		return "", false
+	}
+	for i, label := range labels {
+		if rows[i+1].label != label {
+			return "", false
+		}
+	}
+	return title, true
 }
