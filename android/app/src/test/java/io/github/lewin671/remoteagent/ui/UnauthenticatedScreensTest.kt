@@ -49,7 +49,7 @@ class UnauthenticatedScreensTest {
         screen: @androidx.compose.runtime.Composable () -> Unit,
     ) {
         show { AppSafeArea(WindowInsets(top = 48.dp, bottom = 24.dp)) { screen() } }
-        val header = ui.onNodeWithText(title).getUnclippedBoundsInRoot()
+        val header = ui.onAllNodesWithText(title)[0].getUnclippedBoundsInRoot()
         assertTrue("$title overlaps the status bar: $header", header.top >= 48.dp)
         val back = ui.onNodeWithContentDescription("返回").getUnclippedBoundsInRoot()
         assertTrue("back target overlaps the status bar: $back", back.top >= 48.dp)
@@ -66,7 +66,7 @@ class UnauthenticatedScreensTest {
                 }
             }
         }
-        val top = ui.onNodeWithText("创建账户").getUnclippedBoundsInRoot().top
+        val top = ui.onAllNodesWithText("创建账户")[0].getUnclippedBoundsInRoot().top
         assertTrue("nested page applied system insets twice: $top", top >= 48.dp && top < 96.dp)
     }
 
