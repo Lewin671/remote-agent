@@ -1298,7 +1298,7 @@ export function ScheduleCreate({
         />
       </label>
       {new TextEncoder().encode(message).length > scheduleMessageLimit && <p className="gf red">{l10n.t("schedule.too_long_maximum_32_kb")}</p>}
-      <label className="field schedule-name">
+      <label className="field schedule-name" data-name-hint={message.trim() ? l10n.t("schedule.if_blank_uses", { value: String(taskName("", message)) }) : l10n.t("schedule.leave_blank_to_use_the_message_s_first_sentence")}>
         <small>{l10n.t("schedule.task_name")}</small>
         <input
           aria-label={l10n.t("schedule.task_name")}
