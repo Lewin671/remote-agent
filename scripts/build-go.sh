@@ -12,6 +12,9 @@ if [ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]; then
     version="$version-dirty"
 fi
 cd "$ROOT"
+# Neither command needs a C toolchain; build without one unless the caller asks,
+# so a machine whose C compiler has no usable SDK still builds.
+export CGO_ENABLED="${CGO_ENABLED:-0}"
 # The version and revision above are the build's identity. What Go would add
 # by itself comes from whichever repository encloses the directory, which
 # for a worktree inside another repository is not this one.
