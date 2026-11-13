@@ -122,6 +122,13 @@ func migrateWith(home string, dry bool, ops migrationOps) (err error) {
 	}
 	defer unlock()
 	marker := filepath.Join(home, "state-generation")
+	markerInfo, markerStatErr := os.Lstat(marker)
+	if markerStatErr != nil && !os.IsNotExist(markerStatErr) {
+		return markerStatErr
+	}
+	if markerStatErr == nil && !markerInfo.Mode().IsRegular() {
+		return errMigration
+	}
 	originalMarker, markerErr := os.ReadFile(marker)
 	if markerErr != nil && !os.IsNotExist(markerErr) {
 		return markerErr

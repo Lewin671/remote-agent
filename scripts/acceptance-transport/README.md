@@ -76,7 +76,7 @@ the controller. Neither helper is part of product builds.
 For an original v3 storage initialization followed by manual migration before
 starting the current daemon, build with `--v3-source` and start the controller
 with `RA_TRANSPORT_INIT_V3=1`. The original initializer creates the real v3
-schema; dry-run and migration must leave `account.json` unchanged and publish
+schema and an existing empty lock inode modeling a stopped daemon; dry-run and migration must leave `account.json` unchanged and publish
 generation 4. This checks preserved pairing identity, not an old daemon's CLI
 execution before migration. It is distinct from the old-binary live migration
 exercise above, which also requires a matching old relay/client protocol.

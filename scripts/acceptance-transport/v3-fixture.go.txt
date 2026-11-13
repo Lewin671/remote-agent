@@ -1,25 +1,44 @@
 // Compile only against the pristine generation-3 checkout for offline acceptance.
 package main
+
 import (
- "encoding/json"
- "os"
- "path/filepath"
- "strings"
- "github.com/Lewin671/remote-agent/internal/deviceauth"
+	"encoding/json"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"os"
+	"path/filepath"
+	"strings"
 )
+
 func main() {
- home:=os.Getenv("REMOTE_AGENT_HOME")
- if !strings.HasPrefix(home,"/tmp/") && !strings.HasPrefix(home,"/private/tmp/") { panic("isolated home required") }
- var d struct {
-  Pin deviceauth.Pin
-  States []deviceauth.State
-  Proofs []*deviceauth.RecoveryStatement
-  ID string
-  EdSeed,XPrivate []byte
-  Lease deviceauth.LeaseCertificate
- }
- if err:=json.NewDecoder(os.Stdin).Decode(&d);err!=nil{panic("invalid fixture")}
- ep,err:=deviceauth.InitEndpoint(filepath.Join(home,"security-v3.db"),d.Pin,d.States,d.Proofs,d.ID,d.EdSeed,d.XPrivate,d.Lease)
- if err!=nil{panic("fixture init failed")}
- if err:=ep.Close();err!=nil{panic("fixture close failed")}
+	home := os.Getenv("REMOTE_AGENT_HOME")
+	if !strings.HasPrefix(home, "/tmp/") && !strings.HasPrefix(home, "/private/tmp/") {
+		panic("isolated home required")
+	}
+	var d struct {
+		Pin              deviceauth.Pin
+		States           []deviceauth.State
+		Proofs           []*deviceauth.RecoveryStatement
+		ID               string
+		EdSeed, XPrivate []byte
+		Lease            deviceauth.LeaseCertificate
+	}
+	if err := json.NewDecoder(os.Stdin).Decode(&d); err != nil {
+		panic("invalid fixture")
+	}
+	ep, err := deviceauth.InitEndpoint(filepath.Join(home, "security-v3.db"), d.Pin, d.States, d.Proofs, d.ID, d.EdSeed, d.XPrivate, d.Lease)
+	if err != nil {
+		panic("fixture init failed")
+	}
+	if err := ep.Close(); err != nil {
+		panic("fixture close failed")
+	}
+	// Model the existing lock inode of a stopped daemon; the migration tool must
+	// never create one while validating an operator-supplied directory.
+	lock, err := os.OpenFile(filepath.Join(home, "daemon.lock"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		panic("fixture lock failed")
+	}
+	if err = lock.Close(); err != nil {
+		panic("fixture lock close failed")
+	}
 }

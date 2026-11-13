@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -40,7 +41,7 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 	}
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	body, _ := proto.Marshal(&pb.Command{Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
+	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
 	makeWire := func(id string) deviceauth.Wire {
 		w, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: id, Deadline: now + 60000}, nil, body)
 		if err != nil {
@@ -81,7 +82,7 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 		}, func(ctx context.Context, call *pb.ForwardCall) {
 			if call.CallId <= uint64(deviceauth.MaxWaiters) {
 				_, err := c.security.acceptWith(&registeredWaitContext{Context: ctx, registered: registered}, original, nil, now, c.acquireCall, nil)
-				if err != nil && err != deviceauth.ErrOutcomeUnknown {
+				if err != nil && !errors.Is(err, deviceauth.ErrOutcomeUnknown) {
 					t.Error(err)
 				}
 			} else if call.CallId == uint64(deviceauth.MaxWaiters+1) {

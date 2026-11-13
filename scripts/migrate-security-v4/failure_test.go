@@ -320,3 +320,82 @@ func TestMigrationReadsUncheckpointedWALAfterKill(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerationMarkerFailureRestoresPublication(t *testing.T) {
+	for _, step := range []string{"rename", "sync"} {
+		t.Run(step, func(t *testing.T) {
+			home, original := fixture(t)
+			marker := filepath.Join(home, "state-generation")
+			if err := os.WriteFile(marker, []byte("3\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			ops := defaultMigrationOps()
+			if step == "rename" {
+				ops.rename = func(string, string) error { return os.ErrPermission }
+			} else {
+				calls := 0
+				ops.syncDir = func(p string) error {
+					calls++
+					if calls == 3 {
+						return os.ErrPermission
+					}
+					return syncDir(p)
+				}
+			}
+			if migrateWith(home, false, ops) == nil {
+				t.Fatal("failure ignored")
+			}
+			raw, _ := os.ReadFile(marker)
+			if string(raw) != "3\n" {
+				t.Fatal("marker not restored")
+			}
+			if !absent(filepath.Join(home, "security-v4.db")) || !absent(filepath.Join(home, "security-v3.db.backup")) {
+				t.Fatal("owned publication leaked")
+			}
+			raw, _ = os.ReadFile(filepath.Join(home, "security-v3.db"))
+			if !bytes.Equal(raw, original) {
+				t.Fatal("source changed")
+			}
+			if err := migrate(home, false); err != nil {
+				t.Fatal("cannot retry", err)
+			}
+		})
+	}
+}
+
+func TestMarkerRollbackFailureRetainsValidatedV4(t *testing.T) {
+	home, _ := fixture(t)
+	marker := filepath.Join(home, "state-generation")
+	os.WriteFile(marker, []byte("3\n"), 0600)
+	ops := defaultMigrationOps()
+	syncs, renames := 0, 0
+	ops.syncDir = func(p string) error {
+		syncs++
+		if syncs == 3 {
+			return os.ErrPermission
+		}
+		return syncDir(p)
+	}
+	ops.rename = func(a, b string) error {
+		renames++
+		if renames == 2 {
+			return os.ErrPermission
+		}
+		return os.Rename(a, b)
+	}
+	if migrateWith(home, false, ops) == nil {
+		t.Fatal("rollback failure hidden")
+	}
+	raw, _ := os.ReadFile(marker)
+	if string(raw) != "4\n" {
+		t.Fatal("unexpected marker")
+	}
+	ep, err := deviceauth.OpenEndpoint(filepath.Join(home, "security-v4.db"))
+	if err != nil {
+		t.Fatal("marker has no validated database", err)
+	}
+	ep.Close()
+	if absent(filepath.Join(home, "security-v3.db.backup")) {
+		t.Fatal("missing backup for manual recovery")
+	}
+}
