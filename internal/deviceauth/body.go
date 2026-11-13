@@ -182,6 +182,13 @@ func ValidateBody(h Header, p []byte) error {
 		if v.MachineId != h.Machine || v.SessionId != h.Session || (v.Kind != pb.NotifyKind_NOTIFY_KIND_ATTENTION && v.Kind != pb.NotifyKind_NOTIFY_KIND_TURN_ENDED && v.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED && v.Kind != pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK) {
 			return ErrInvalid
 		}
+		if v.Kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK {
+			if h.Session != "" || v.DiskStatus == nil || v.MachineName == "" || v.Title != "" || v.Text != "" || v.Approval != nil {
+				return ErrInvalid
+			}
+		} else if h.Session == "" {
+			return ErrInvalid
+		}
 	case *pb.ProjectPrefs:
 		if v.Schema != 1 {
 			return ErrInvalid

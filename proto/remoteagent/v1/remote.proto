@@ -339,6 +339,8 @@ message NotifyContent {
   // Only set for TURN_ENDED; no names or paths are included.
   uint32 shared_file_count = 8;
   DiskStatus disk_status = 9;
+  // MachineMeta.hostname at the time of a machine-level notification.
+  string machine_name = 10;
 }
 
 message NotifyApproval {

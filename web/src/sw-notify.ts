@@ -1,3 +1,4 @@
+import { machineDiskNotice } from "./machine-notifications";
 import * as l10n from "./i18n";
 import { fromBinary } from "@bufbuild/protobuf";
 import { EnvelopeSchema } from "./gen/remoteagent/v1/envelope_pb";
@@ -9,16 +10,18 @@ import { equal, fromEnvelope, openGrant, openWire, parseHeader, Purpose, Securit
 import { unpackSecurity, validateSecurityBody } from "./device-security-client";
 
 const MAX_PAYLOAD = 3993;
-type PushData = { title?: string; body?: string; tag?: string; session?: string; content?: string };
+type PushData = { title?: string; body?: string; tag?: string; session?: string; machine?: string; content?: string };
 
 /** No network, management operations, signing keys or writes. Unknown local
  * state fails closed; the foreground page is responsible for security sync. */
-export async function pushContent(d: PushData): Promise<{ title: string; body: string }> {
+export async function pushContent(d: PushData): Promise<{ title: string; body: string; machineId?: string; tag?: string }> {
   const generic = { title: "remote-agent", body: typeof d.body === "string" ? d.body : "" };
   if (typeof d.tag !== "string") return generic;
   const scheduled = d.tag.endsWith("/NOTIFY_KIND_SCHEDULED");
   const turnEnded = d.tag.endsWith("/NOTIFY_KIND_TURN_ENDED");
-  if (!scheduled && !turnEnded) return generic;
+  const disk=d.tag.endsWith("/NOTIFY_KIND_MACHINE_DISK");
+  if (!scheduled && !turnEnded && !disk) return generic;
+  if(disk) generic.body=l10n.t("machine_status.home_warning");
   if (scheduled) generic.body = l10n.t("notifications.scheduled_tasks_have_new_results");
   try {
     if (typeof d.content !== "string" || !d.content.length ||
@@ -44,6 +47,11 @@ export async function pushContent(d: PushData): Promise<{ title: string; body: s
     validateSecurityBody(opened.header, NotifyContentSchema.typeName, c);
     // Do not release plaintext if another tab changed membership while decrypting.
     if (await loadSecurity() !== record) throw new SecurityError("stale");
+    if(disk) {
+      const notice=machineDiskNotice(c);
+      if(!notice || d.tag!==notice.tag || d.machine!==notice.machineId || h.session || h.request!==`disk:${c.diskStatus!.observedMs}:${c.diskStatus!.pressure}`) throw new SecurityError();
+      return notice;
+    }
     if (turnEnded) {
       if (c.kind !== NotifyKind.TURN_ENDED || c.approval || c.sourceEventSeq <= 0n ||
           h.request !== `notify:${NotifyKind.TURN_ENDED}:${c.sourceEventSeq}` ||

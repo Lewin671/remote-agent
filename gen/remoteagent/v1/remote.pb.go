@@ -2523,8 +2523,10 @@ type NotifyContent struct {
 	// Only set for TURN_ENDED; no names or paths are included.
 	SharedFileCount uint32      `protobuf:"varint,8,opt,name=shared_file_count,json=sharedFileCount,proto3" json:"shared_file_count,omitempty"`
 	DiskStatus      *DiskStatus `protobuf:"bytes,9,opt,name=disk_status,json=diskStatus,proto3" json:"disk_status,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// MachineMeta.hostname at the time of a machine-level notification.
+	MachineName   string `protobuf:"bytes,10,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NotifyContent) Reset() {
@@ -2618,6 +2620,13 @@ func (x *NotifyContent) GetDiskStatus() *DiskStatus {
 		return x.DiskStatus
 	}
 	return nil
+}
+
+func (x *NotifyContent) GetMachineName() string {
+	if x != nil {
+		return x.MachineName
+	}
+	return ""
 }
 
 type NotifyApproval struct {
@@ -3482,7 +3491,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x12approval_signature\x18\x04 \x01(\fR\x11approvalSignature\x12F\n" +
 	"\x0fsecurity_states\x18\x05 \x03(\v2\x1d.remoteagent.v1.SecurityStateR\x0esecurityStates\x12,\n" +
 	"\x12account_public_key\x18\x06 \x01(\fR\x10accountPublicKey\x12\x14\n" +
-	"\x05lease\x18\a \x01(\fR\x05leaseJ\x04\b\x01\x10\x02R\x04root\"\xf6\x02\n" +
+	"\x05lease\x18\a \x01(\fR\x05leaseJ\x04\b\x01\x10\x02R\x04root\"\x99\x03\n" +
 	"\rNotifyContent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -3495,7 +3504,9 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x10source_event_seq\x18\a \x01(\x04R\x0esourceEventSeq\x12*\n" +
 	"\x11shared_file_count\x18\b \x01(\rR\x0fsharedFileCount\x12;\n" +
 	"\vdisk_status\x18\t \x01(\v2\x1a.remoteagent.v1.DiskStatusR\n" +
-	"diskStatus\"\xe8\x01\n" +
+	"diskStatus\x12!\n" +
+	"\fmachine_name\x18\n" +
+	" \x01(\tR\vmachineName\"\xe8\x01\n" +
 	"\x0eNotifyApproval\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x1b\n" +

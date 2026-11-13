@@ -29,3 +29,13 @@ it("uses capability, online status, recent projects and an explicit error code",
  const meta=create(MachineMetaSchema,{capabilities:create(MachineCapabilitiesSchema,{machineStatus:true}),diskStatus:create(DiskStatusSchema,{availableBytes:9_000_000_000n}),projects:[create(ProjectSummarySchema,{path:"old",latestCreatedMs:1n}),create(ProjectSummarySchema,{path:"new",latestEndedMs:2n})]});
  expect(machineDiskReminder(false,meta)).toBeUndefined();expect(machineDiskReminder(true,meta)).toBeDefined();expect(recentMachineProject(meta)).toBe("new");expect(isDiskFull({code:"disk_full"})).toBe(true);expect(isDiskFull(Error("no space left on device"))).toBe(false);
 });
+it("keeps last values offline and bounds each request to fifteen seconds",async()=>{
+ vi.useFakeTimers();let hung=false,calls=0;
+ const p=new MachineStatusController(async(signal)=>{calls++;if(!hung)return create(MachineStatusSchema,{observedMs:1n});return await new Promise((_,reject)=>signal.addEventListener("abort",()=>reject(Error())));});
+ p.setActive(true,true,true);await vi.advanceTimersByTimeAsync(0);p.setActive(true,false,true);expect(p.state).toBe("stale");expect(p.last?.observedMs).toBe(1n);await vi.advanceTimersByTimeAsync(20000);expect(calls).toBe(1);
+ hung=true;p.setActive(true,true,true);await vi.advanceTimersByTimeAsync(45000);expect(p.failures).toBe(3);expect(p.state).toBe("stale");p.dispose();
+});
+it("moves challengers through multiple rows and drops missing identities",()=>{
+ const rows=[...["a","b","new","c"].map((id,i)=>create(ResourceUsageSchema,{id,cpuPercent:[5,10,30,25][i]}))];
+ expect(stableUsage(["gone","a","b","c"],rows).map(r=>r.id)).toEqual(["new","c","b","a"]);
+});

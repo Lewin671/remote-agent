@@ -13,7 +13,12 @@ import (
 
 var batteryPercent = regexp.MustCompile(`(\d+)%;`)
 
+var macBatteryCache = batteryCache{now: time.Now}
+
 func macBattery(ctx context.Context) *pb.MachineBattery {
+	return macBatteryCache.get(ctx, readMacBattery)
+}
+func readMacBattery(ctx context.Context) *pb.MachineBattery {
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	b, e := exec.CommandContext(ctx, "/usr/bin/pmset", "-g", "batt").Output()

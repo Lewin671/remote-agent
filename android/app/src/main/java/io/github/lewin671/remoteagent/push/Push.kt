@@ -21,6 +21,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.RaApp
+import io.github.lewin671.remoteagent.core.setMachinePushTarget
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.value
@@ -141,10 +142,8 @@ object Push {
                     return tokenFailure(e)
                 }
             }
-            val res = remote.api.client.setPushTarget(
-                SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).setTarget(if (kinds.isEmpty()) "" else fcm).addAllKinds(kinds).build(),
-                Api.headers(remote.currentToken()),
-            ).value()
+            val res = remote.api.setMachinePushTarget(remote.currentToken(),PushType.PUSH_TYPE_FCM,if(kinds.isEmpty()) "" else fcm,kinds)
+
             val status = if (res.enabled || kinds.isEmpty()) PushStatus() else PushStatus(sessionText(UiMessages.notificationsAndroidTheServerHasNotConfiguredFcmPushIsUnavailable()))
             // Only the length: the token identifies this phone to FCM.
             Log.i(TAG, "push registered, token length ${fcm.length}")

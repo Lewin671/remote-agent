@@ -126,7 +126,8 @@ func (st *imageStore) ensure() error {
 }
 
 // saveLocked writes the index.
-func (st *imageStore) saveLocked() error {
+func (st *imageStore) saveLocked() error { return st.saveIndexLocked(st.write) }
+func (st *imageStore) saveIndexLocked(write func(string, []byte) error) error {
 	list := make([]*storedImage, 0, len(st.byID))
 	for _, im := range st.byID {
 		list = append(list, im)
@@ -135,7 +136,7 @@ func (st *imageStore) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	return st.write(filepath.Join(st.dir, "index.json"), b)
+	return write(filepath.Join(st.dir, "index.json"), b)
 }
 
 func (st *imageStore) displayPath(id string) string { return filepath.Join(st.dir, id+".display") }
@@ -192,7 +193,7 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 	defer st.mu.Unlock()
 	if err := st.ensure(); err != nil {
 		ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
-		slog.Error("image store", "err", errClass(err))
+		st.logCacheError("image store", err)
 		return
 	}
 	mac := hmac.New(sha256.New, st.key)
@@ -227,12 +228,12 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 		}
 	}
 	if err != nil {
-		slog.Warn("no display copy for image", "image", im.ID, "err", errClass(err))
+		st.logCacheError("no display copy for image", err)
 	}
 	st.byID[im.ID] = im
 	st.byMAC[sum] = im
 	if err := st.saveLocked(); err != nil {
-		slog.Error("save image index", "err", errClass(err))
+		st.logCacheError("save image index", err)
 	}
 	st.fill(ref, im)
 }
@@ -310,11 +311,13 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 	} else {
 		im.State = imageFailed
 	}
-	if err := st.saveLocked(); err != nil {
-		slog.Error("save image index", "err", errClass(err))
-		return
-	}
 	_ = os.Remove(st.displayPath(id))
+	if err := st.saveIndexLocked(writeFileSync); err != nil {
+		if machinestatus.NoSpace(err) && st.writeFailed != nil {
+			st.writeFailed(err)
+		}
+		st.logCacheError("save image index", err)
+	}
 }
 
 // capabilities says what this daemon offers that depends on the machine.
@@ -352,4 +355,13 @@ func (st *imageStore) write(path string, b []byte) error {
 		st.writeFailed(err)
 	}
 	return err
+}
+
+// Space failures are already reported through the daemon's rate-limited raw
+// diagnostic callback. Deferred cache work is not a product error.
+func (st *imageStore) logCacheError(message string, err error) {
+	if machinestatus.NoSpace(err) || errors.Is(err, errDeferredImageWrite) {
+		return
+	}
+	slog.Error(message, "err", errClass(err))
 }

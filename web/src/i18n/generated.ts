@@ -422,6 +422,7 @@ export interface MessageArgs {
   "machine_status.notify_warning": { computer: string; size: string };
   "machine_status.notify_warning_body": { [name: string]: never };
   "machine_status.size_gb": { size: string };
+  "machine_status.storage_exhausted": { [name: string]: never };
   "machine_status.unavailable": { [name: string]: never };
   "markdown.collapse": { [name: string]: never };
   "markdown.copy_code": { [name: string]: never };
@@ -1968,6 +1969,7 @@ export const messages = {
     "machine_status.notify_warning": "{computer} has only {size} of disk space left",
     "machine_status.notify_warning_body": "Sessions will not start when disk space runs out.",
     "machine_status.size_gb": "{size} GB",
+    "machine_status.storage_exhausted": "The storage quota is exhausted, or the write destination is out of space",
     "machine_status.unavailable": "Could not read this computer’s status",
     "markdown.collapse": "Collapse",
     "markdown.copy_code": "Copy code",
@@ -3762,6 +3764,7 @@ export const messages = {
     "machine_status.notify_warning": "{computer} 磁盘只剩 {size}",
     "machine_status.notify_warning_body": "空间用完后会话会启动不了。",
     "machine_status.size_gb": "{size} GB",
+    "machine_status.storage_exhausted": "存储配额已用尽，或写入目标的空间不足",
     "machine_status.unavailable": "读不到这台电脑的状态",
     "markdown.collapse": "收起",
     "markdown.copy_code": "复制代码",

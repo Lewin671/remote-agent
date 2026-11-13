@@ -197,7 +197,7 @@ public interface MachineStatusOrBuilder extends
 
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -206,7 +206,7 @@ public interface MachineStatusOrBuilder extends
       getSamplesList();
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -214,7 +214,7 @@ public interface MachineStatusOrBuilder extends
   io.github.lewin671.remoteagent.proto.MachineSample getSamples(int index);
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>

@@ -8,6 +8,7 @@ import (
 )
 
 const DiskFull = "disk_full"
+const StorageExhausted = "storage_exhausted"
 
 func NewMachineError(code, message string) error {
 	e := connect.NewError(connect.CodeResourceExhausted, errors.New(message))

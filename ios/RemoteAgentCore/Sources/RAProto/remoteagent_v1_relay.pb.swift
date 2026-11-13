@@ -1467,6 +1467,9 @@ public struct PBGetPushKeyResponse: Sendable {
   /// VAPID public key, base64url.
   public var publicKey: String = String()
 
+  /// Only subscribe to MACHINE_DISK when explicitly advertised.
+  public var machineDiskNotifications: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4689,7 +4692,7 @@ extension PBGetPushKeyRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBGetPushKeyResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetPushKeyResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}public_key\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}public_key\0\u{3}machine_disk_notifications\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4698,6 +4701,7 @@ extension PBGetPushKeyResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.publicKey) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.machineDiskNotifications) }()
       default: break
       }
     }
@@ -4707,11 +4711,15 @@ extension PBGetPushKeyResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if !self.publicKey.isEmpty {
       try visitor.visitSingularStringField(value: self.publicKey, fieldNumber: 1)
     }
+    if self.machineDiskNotifications != false {
+      try visitor.visitSingularBoolField(value: self.machineDiskNotifications, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBGetPushKeyResponse, rhs: PBGetPushKeyResponse) -> Bool {
     if lhs.publicKey != rhs.publicKey {return false}
+    if lhs.machineDiskNotifications != rhs.machineDiskNotifications {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

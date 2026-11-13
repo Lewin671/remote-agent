@@ -526,6 +526,8 @@ message GetPushKeyRequest {}
 message GetPushKeyResponse {
   // VAPID public key, base64url.
   string public_key = 1;
+  // Only subscribe to MACHINE_DISK when explicitly advertised.
+  bool machine_disk_notifications = 2;
 }
 
 enum NotifyKind {

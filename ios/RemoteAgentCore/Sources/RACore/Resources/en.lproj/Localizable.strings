@@ -538,6 +538,7 @@
 "machine_status_notify_warning" = "%1$@ has only %2$@ of disk space left";
 "machine_status_notify_warning_body" = "Sessions will not start when disk space runs out.";
 "machine_status_size_gb" = "%1$@ GB";
+"machine_status_storage_exhausted" = "The storage quota is exhausted, or the write destination is out of space";
 "machine_status_unavailable" = "Could not read this computer’s status";
 "markdown_collapse" = "Collapse";
 "markdown_copy_code" = "Copy code";

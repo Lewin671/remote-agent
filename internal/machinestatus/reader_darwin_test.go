@@ -70,9 +70,15 @@ func BenchmarkCompleteSample(b *testing.B) {
 		return out
 	}
 	c := New(b.TempDir(), roots)
-	c.primeInterval = 0
+	// Measure the production cadence, not invalid tight-loop counter deltas.
+	// Exclude the initial baseline and timer waits from wall latency; CPU
+	// accounting still includes this process and its pmset/tmux children.
+	c.sample(context.Background())
 	before := cpuTime()
 	for b.Loop() {
+		b.StopTimer()
+		time.Sleep(Interval)
+		b.StartTimer()
 		c.sample(context.Background())
 		if c.failure != nil {
 			b.Fatal(c.failure)

@@ -7,6 +7,7 @@ import (
 	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/sha256"
+	"strings"
 )
 
 // Purpose is separate from the protobuf payload kind.
@@ -94,8 +95,12 @@ func (h Header) validate() error {
 		if h.Machine == "" || h.Session == "" || len(h.Request) < 16 || h.Seq == 0 {
 			return ErrInvalid
 		}
-	case Image, Notify:
+	case Image:
 		if h.Machine == "" || h.Session == "" || h.Request == "" {
+			return ErrInvalid
+		}
+	case Notify:
+		if h.Machine == "" || h.Request == "" || h.Session == "" && !strings.HasPrefix(h.Request, "disk:") {
 			return ErrInvalid
 		}
 	default:

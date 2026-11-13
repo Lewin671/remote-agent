@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/relay"
@@ -61,6 +62,30 @@ func main() {
 	defer cancel()
 	auth, err := remoteclient.NewAuthority(ctx, server, read(filepath.Join(dir, "setup-token")))
 	must(err)
+	if len(os.Args) > 1 && os.Args[1] == "--subscriptions-only" {
+		endpoint, e := deviceauth.InitEndpoint("", auth.Pin, auth.States, auth.Proofs, auth.Member.ID, auth.Ed.Seed(), auth.X, auth.Lease)
+		must(e)
+		defer endpoint.Close()
+		c := remoteclient.NewClient(server, auth.Token, auth.Member.ID, endpoint)
+		base := []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, pb.NotifyKind_NOTIFY_KIND_SECURITY, pb.NotifyKind_NOTIFY_KIND_SCHEDULED}
+		_, e = c.API().SetPushTarget(ctx, connect.NewRequest(&pb.SetPushTargetRequest{Type: pb.PushType_PUSH_TYPE_FCM, Target: "compatibility-fixture", Kinds: base}))
+		must(e)
+		cap, e := c.API().GetPushKey(ctx, connect.NewRequest(&pb.GetPushKeyRequest{}))
+		must(e)
+		requested := append(append([]pb.NotifyKind(nil), base...), pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK)
+		if !cap.Msg.MachineDiskNotifications {
+			_, e = c.API().SetPushTarget(ctx, connect.NewRequest(&pb.SetPushTargetRequest{Type: pb.PushType_PUSH_TYPE_FCM, Target: "compatibility-fixture", Kinds: requested}))
+			if connect.CodeOf(e) != connect.CodeInvalidArgument {
+				panic("legacy server did not exercise the unknown-kind rejection")
+			}
+		}
+		_, e = c.SetMachinePushTarget(ctx, pb.PushType_PUSH_TYPE_FCM, "compatibility-fixture", requested)
+		must(e)
+		_, e = c.SetMachinePushTarget(ctx, pb.PushType_PUSH_TYPE_FCM, "", nil)
+		must(e)
+		fmt.Println("PASS capability-gated subscription; advertised=", cap.Msg.MachineDiskNotifications)
+		return
+	}
 	_, ed, err := ed25519.GenerateKey(nil)
 	must(err)
 	x, _, err := deviceauth.NewXKey()

@@ -319,22 +319,23 @@ func (d *Daemon) trimImageCache(limit int64) (int64, error) {
 			f.store.mu.Unlock()
 			continue // touched after this LRU snapshot; reconsider next pass
 		}
+		err := os.Remove(f.path)
+		if err != nil && !os.IsNotExist(err) {
+			f.store.mu.Unlock()
+			return total, err
+		}
+		total -= f.size
 		if f.display {
 			if im := f.store.byID[f.id]; im != nil && im.State == imagePending {
 				im.State = imageFailed
-				if err := f.store.saveLocked(); err != nil {
-					f.store.mu.Unlock()
-					return total, err
+				// The blob has been reclaimed; a failed index refresh must not undo
+				// successful cleanup. A later pass safely recognizes a missing blob.
+				if err := f.store.saveIndexLocked(writeFileSync); err != nil {
+					_ = d.diskError(err)
 				}
 			}
 		}
-		err := os.Remove(f.path)
 		f.store.mu.Unlock()
-		if err == nil || os.IsNotExist(err) {
-			total -= f.size
-		} else {
-			return total, err
-		}
 	}
 	return total, nil
 }

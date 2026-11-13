@@ -19,6 +19,7 @@ fun stableUsage(previous: List<String>, rows: List<ResourceUsage>, memory: Boole
     }
     return ordered
 }
+const val MACHINE_STATUS_TIMEOUT_MS = 15_000L
 enum class MachinePollState { IDLE, LOADING, LIVE, STALE, UNAVAILABLE }
 /** Confine to the owner's dispatcher (normally Main); cancel owner scope on disposal.
  * The same coroutine owns fetch and delay, so a slow/cancelled request never overlaps. */
@@ -59,7 +60,7 @@ class MachineStatusController(
                 if (last == null && state == MachinePollState.IDLE) state = MachinePollState.LOADING
                 changed()
                 try {
-                    val value = fetch()
+                    val value = withTimeoutOrNull(MACHINE_STATUS_TIMEOUT_MS) { fetch() } ?: throw MachineStatusTimeout()
                     if (current == generation && active) {
                         if (state == MachinePollState.STALE || state == MachinePollState.UNAVAILABLE) curveSinceMs = value.observedMs
                         last = value; failures = 0; state = MachinePollState.LIVE
@@ -73,8 +74,11 @@ class MachineStatusController(
                     }
                 }
                 changed()
-                if (current == generation && active) withTimeoutOrNull((intervalMs - (nowMillis()-started)).coerceAtLeast(1)) { wake.receive() }
+                val remaining = intervalMs - (nowMillis()-started)
+                if (current == generation && active && remaining > 0) withTimeoutOrNull(remaining) { wake.receive() }
             }
         }
     }
 }
+
+private class MachineStatusTimeout : Exception()

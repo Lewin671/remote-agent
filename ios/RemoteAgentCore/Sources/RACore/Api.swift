@@ -279,7 +279,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public init(_ code: String, _ message: String, fromDaemon: Bool = false, readOnly: Bool = false, outcomeDetail: String? = nil) {
         self.code = code
         self.outcomeDetail = outcomeDetail
-        self.localized = code == "disk_full" ? L10nMessage.machineStatusDiskFull() : LocalizedMessage(raw: message)
+        self.localized = code == "disk_full" ? L10nMessage.machineStatusDiskFull() : code == "storage_exhausted" ? L10nMessage.machineStatusStorageExhausted() : LocalizedMessage(raw: message)
         self.fromDaemon = fromDaemon
         self.readOnly = readOnly
     }

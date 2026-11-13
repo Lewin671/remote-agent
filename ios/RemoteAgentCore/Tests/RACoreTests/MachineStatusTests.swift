@@ -76,3 +76,51 @@ private actor StatusReads {
         #expect(cmd.isReadOnlyCommand)
     }
 }
+
+private final class StatusTestClock: @unchecked Sendable {
+    private let lock=NSLock()
+    private var value: Duration = .zero
+    private var waits: [UUID:(Duration,CheckedContinuation<Void,Error>)] = [:]
+    var now: Duration { lock.lock();defer {lock.unlock()};return value }
+    func advance(_ duration: Duration) { lock.lock();value += duration;let due=waits.filter { $0.value.0 <= value };for (id,_) in due { waits.removeValue(forKey:id) };lock.unlock();for (_,item) in due { item.1.resume() } }
+    func sleep(_ duration: Duration) async throws {
+        if duration <= .zero { return }
+        let id=UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (c:CheckedContinuation<Void,Error>) in
+                lock.lock();if Task.isCancelled {lock.unlock();c.resume(throwing:CancellationError())} else { waits[id]=(value+duration,c);lock.unlock() }
+            }
+        } onCancel: { self.cancel(id) }
+    }
+    private func cancel(_ id:UUID){lock.lock();let c=waits.removeValue(forKey:id)?.1;lock.unlock();c?.resume(throwing:CancellationError())}
+    var pending: Int { lock.lock();defer{lock.unlock()};return waits.count }
+}
+private actor ReviewStatusSource {
+ var count=0;var hung=false
+ let clock:StatusTestClock
+ init(_ clock:StatusTestClock){self.clock=clock}
+ func hang(){hung=true}
+ func read()async throws -> PBMachineStatus {count+=1;if hung{try await clock.sleep(.seconds(100))};var s=PBMachineStatus();s.observedMs=Int64(count);return s}
+}
+@Suite struct MachineStatusReviewTests {
+ @MainActor @Test func actualCadenceOfflineAndTimeout() async {
+  let clock=StatusTestClock()
+  // Use the same injected clock for request deadlines and repeat ticks.
+  let live=ReviewStatusSource(clock)
+  let p=MachineStatusController(fetch:{try await live.read()},now:{clock.now},sleep:{try await clock.sleep($0)})
+  p.setActive(visible:true,online:true,supported:true)
+  #expect(await statusEventually {p.last?.observedMs == 1 && clock.pending == 1})
+  clock.advance(.milliseconds(1999));await Task.yield();#expect(await live.count == 1)
+  clock.advance(.milliseconds(1));#expect(await statusEventually {p.last?.observedMs == 2 && clock.pending == 1})
+  p.setActive(visible:true,online:false,supported:true);#expect(p.state == .stale && p.last?.observedMs == 2)
+  clock.advance(.seconds(20));await Task.yield();#expect(await live.count == 2)
+  await live.hang();p.setActive(visible:true,online:true,supported:true)
+  #expect(await statusEventually {clock.pending >= 2})
+  for failure in 1...3 {clock.advance(.seconds(15));#expect(await statusEventually {p.failures == failure && clock.pending >= 2})}
+  #expect(p.state == .stale);p.dispose()
+ }
+ @Test func rankingMembership() {
+  let rows=zip(["a","b","new","c"],[5.0,10,30,25]).map { id,cpu in var r=PBResourceUsage();r.id=id;r.cpuPercent=cpu;return r }
+  #expect(stableUsage(previous:["gone","a","b","c"],rows:rows).map(\.id) == ["new","c","b","a"])
+ }
+}

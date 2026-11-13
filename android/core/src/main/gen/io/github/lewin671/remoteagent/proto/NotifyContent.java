@@ -24,6 +24,7 @@ public  final class NotifyContent extends
     sessionId_ = "";
     title_ = "";
     text_ = "";
+    machineName_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -486,6 +487,74 @@ public  final class NotifyContent extends
   private void clearDiskStatus() {
     diskStatus_ = null;
     bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int MACHINE_NAME_FIELD_NUMBER = 10;
+  private java.lang.String machineName_;
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   * @return The machineName.
+   */
+  @java.lang.Override
+  public java.lang.String getMachineName() {
+    return machineName_;
+  }
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   * @return The bytes for machineName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getMachineNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(machineName_);
+  }
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   * @param value The machineName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    machineName_ = value;
+  }
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   */
+  private void clearMachineName() {
+
+    machineName_ = getDefaultInstance().getMachineName();
+  }
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   * @param value The bytes for machineName to set.
+   */
+  private void setMachineNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    machineName_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.NotifyContent parseFrom(
@@ -1067,6 +1136,75 @@ public  final class NotifyContent extends
       return this;
     }
 
+    /**
+     * <pre>
+     * MachineMeta.hostname at the time of a machine-level notification.
+     * </pre>
+     *
+     * <code>string machine_name = 10 [json_name = "machineName"];</code>
+     * @return The machineName.
+     */
+    @java.lang.Override
+    public java.lang.String getMachineName() {
+      return instance.getMachineName();
+    }
+    /**
+     * <pre>
+     * MachineMeta.hostname at the time of a machine-level notification.
+     * </pre>
+     *
+     * <code>string machine_name = 10 [json_name = "machineName"];</code>
+     * @return The bytes for machineName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMachineNameBytes() {
+      return instance.getMachineNameBytes();
+    }
+    /**
+     * <pre>
+     * MachineMeta.hostname at the time of a machine-level notification.
+     * </pre>
+     *
+     * <code>string machine_name = 10 [json_name = "machineName"];</code>
+     * @param value The machineName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachineName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setMachineName(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * MachineMeta.hostname at the time of a machine-level notification.
+     * </pre>
+     *
+     * <code>string machine_name = 10 [json_name = "machineName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachineName() {
+      copyOnWrite();
+      instance.clearMachineName();
+      return this;
+    }
+    /**
+     * <pre>
+     * MachineMeta.hostname at the time of a machine-level notification.
+     * </pre>
+     *
+     * <code>string machine_name = 10 [json_name = "machineName"];</code>
+     * @param value The bytes for machineName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachineNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setMachineNameBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotifyContent)
   }
   @java.lang.Override
@@ -1093,10 +1231,12 @@ public  final class NotifyContent extends
             "sourceEventSeq_",
             "sharedFileCount_",
             "diskStatus_",
+            "machineName_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\f" +
-              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003\b\u000b\t\u1009\u0001";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\f" +
+              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003\b\u000b\t\u1009\u0001\n\u0208" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

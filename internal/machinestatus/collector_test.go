@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"sync/atomic"
+	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -98,32 +99,85 @@ func TestRealRingAndLongPause(t *testing.T) {
 		t.Fatal("old points survived pause")
 	}
 }
+
+// A test clock controls both timestamps and timer delivery, with no real sleeps.
+type sampleClock struct {
+	mu     sync.Mutex
+	now    time.Time
+	timers []sampleTimer
+}
+type sampleTimer struct {
+	due time.Time
+	ch  chan time.Time
+}
+
+func (c *sampleClock) Now() time.Time { c.mu.Lock(); defer c.mu.Unlock(); return c.now }
+func (c *sampleClock) After(d time.Duration) <-chan time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ch := make(chan time.Time, 1)
+	if d <= 0 {
+		ch <- c.now
+	} else {
+		c.timers = append(c.timers, sampleTimer{c.now.Add(d), ch})
+	}
+	return ch
+}
+func (c *sampleClock) Advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+	remaining := c.timers[:0]
+	for _, t := range c.timers {
+		if !t.due.After(c.now) {
+			t.ch <- c.now
+		} else {
+			remaining = append(remaining, t)
+		}
+	}
+	c.timers = remaining
+}
 func TestLeaseStopsAndVisibilityReusesHistory(t *testing.T) {
-	var reads atomic.Int32
-	c := NewReader(t.TempDir(), nil, func(context.Context) (Raw, error) {
-		n := reads.Add(1)
-		return Raw{Total: uint64(n * 100), Status: &pb.MachineStatus{}}, nil
+	synctest.Test(t, func(t *testing.T) {
+		clock := &sampleClock{now: time.Unix(1000, 0)}
+		reads := 0
+		c := NewReader(t.TempDir(), nil, func(context.Context) (Raw, error) {
+			reads++
+			return Raw{Total: uint64(reads * 100), Status: &pb.MachineStatus{}}, nil
+		})
+		c.now = clock.Now
+		c.after = clock.After
+		c.primeInterval = 0
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		done := make(chan struct{})
+		go func() { c.Run(ctx); close(done) }()
+		synctest.Wait()
+		clock.Advance(time.Minute)
+		synctest.Wait()
+		if reads != 0 {
+			t.Fatal("idle sampled")
+		}
+		first, e := c.Get(ctx)
+		if e != nil || len(first.Samples) != 1 {
+			t.Fatal(first, e)
+		}
+		synctest.Wait()
+		for i := 0; i < 15; i++ {
+			clock.Advance(2 * time.Second)
+			synctest.Wait()
+		}
+		before := reads
+		clock.Advance(10 * time.Second)
+		synctest.Wait()
+		if reads != before {
+			t.Fatal("sampling after lease")
+		}
+		resumed, e := c.Get(ctx)
+		if e != nil || len(resumed.Samples) <= 1 || resumed.Samples[0].TimeMs != first.Samples[0].TimeMs {
+			t.Fatal("history not reused", resumed, e)
+		}
+		cancel()
+		<-done
 	})
-	c.sampleInterval = 5 * time.Millisecond
-	c.idleTimeout = 20 * time.Millisecond
-	c.primeInterval = 0
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	done := make(chan struct{})
-	go func() { c.Run(ctx); close(done) }()
-	time.Sleep(15 * time.Millisecond)
-	if reads.Load() != 0 {
-		t.Fatal("idle sampled")
-	}
-	if _, e := c.Get(ctx); e != nil {
-		t.Fatal(e)
-	}
-	time.Sleep(50 * time.Millisecond)
-	before := reads.Load()
-	time.Sleep(20 * time.Millisecond)
-	if reads.Load() != before {
-		t.Fatal("sampling after lease")
-	}
-	cancel()
-	<-done
 }

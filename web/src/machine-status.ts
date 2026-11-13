@@ -2,6 +2,7 @@ import { t } from "./i18n";
 import type { MachineStatus, ResourceUsage, DiskStatus } from "./gen/remoteagent/v1/local_pb";
 import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 export const machineCleanupPrompt = () => t("machine_status.cleanup_prompt");
+export const MACHINE_STATUS_TIMEOUT_MS = 15_000;
 export type MachinePollState = "idle" | "loading" | "live" | "stale" | "unavailable";
 export const isDiskFull = (error: unknown): boolean => typeof error === "object" && error !== null && "code" in error && error.code === "disk_full";
 export function recentMachineProject(meta: MachineMeta): string | undefined {
@@ -36,7 +37,7 @@ export class MachineStatusController {
   private generation = 0;
   private busy = false;
   private timer?: ReturnType<typeof setTimeout>;
-  constructor(private readonly fetch: () => Promise<MachineStatus>, private readonly changed: () => void = () => {}, private readonly intervalMs = 2000) {}
+  constructor(private readonly fetch: (signal: AbortSignal) => Promise<MachineStatus>, private readonly changed: () => void = () => {}, private readonly intervalMs = 2000) {}
   setActive(visible: boolean, online: boolean, supported: boolean) {
     const active=visible&&online&&supported;
     if(visible && supported && !online) { this.state=this.last?"stale":"unavailable"; this.changed(); }
@@ -53,8 +54,10 @@ export class MachineStatusController {
     const generation=this.generation; const started=Date.now(); this.busy=true;
     if(!this.last && this.state==="idle") this.state="loading";
     this.changed();
+    const abort=new AbortController();let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
-      const value=await this.fetch();
+      const timeout=new Promise<never>((_,reject)=>{deadline=setTimeout(()=>{abort.abort();reject(new Error());},MACHINE_STATUS_TIMEOUT_MS)});
+      const value=await Promise.race([this.fetch(abort.signal),timeout]);
       if(generation!==this.generation) return;
       if(this.state==="stale"||this.state==="unavailable") this.curveSinceMs=value.observedMs;
       this.last=value;this.failures=0;this.state="live";
@@ -64,8 +67,9 @@ export class MachineStatusController {
       if(!this.last) this.state="unavailable";
       if(this.failures===3) this.state=this.last?"stale":"unavailable";
     } finally {
+      clearTimeout(deadline);abort.abort();
       this.busy=false;
-      if(this.active) this.timer=setTimeout(()=>void this.poll(),generation!==this.generation?0:Math.max(0,this.intervalMs-(Date.now()-started)));
+      if(this.active) { const delay=generation!==this.generation?0:Math.max(0,this.intervalMs-(Date.now()-started)); if(delay===0) queueMicrotask(()=>void this.poll());else this.timer=setTimeout(()=>void this.poll(),delay); }
       this.changed();
     }
   }

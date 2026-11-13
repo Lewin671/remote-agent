@@ -48,7 +48,7 @@ async function notification(fields: Partial<NotifyContent> = {}, header: Partial
   const head = record.states.at(-1)!, machine = head.core.members.find((m) => m.kind === 1)!.id;
   let body = toBinary(NotifyContentSchema, create(NotifyContentSchema, {
     machineId: machine, sessionId: "session", kind: NotifyKind.SCHEDULED,
-    title: "每天的研究任务", text: "结果摘要", sourceEventSeq: 7n, sharedFileCount: 0, ...fields,
+    machineName:"", title: "每天的研究任务", text: "结果摘要", sourceEventSeq: 7n, sharedFileCount: 0, ...fields,
   }));
   if (compressed) body = deflateSync(body);
   const env = toEnvelope(await formCipher(wrongKey ? new Uint8Array(32) : record.secret, undefined, {
@@ -169,4 +169,15 @@ it.each([1, 2])("uses the English file plural for count %s", async (sharedFileCo
   localeStore.overrideForTesting("en");
   const { payload } = await notification({ kind: NotifyKind.TURN_ENDED, sharedFileCount });
   expect(await pushContent({ ...payload(), body: "" })).toEqual({ title: "remote-agent", body: sharedFileCount === 1 ? "1 file attached" : "2 files attached" });
+});
+
+it.each(["zh-CN","en"] as const)("receives verified machine-scoped data-only push in %s",async locale=>{
+ localeStore.overrideForTesting(locale);
+ const f=await storedSecurity(),record=await loadSecurity(),head=record.states.at(-1)!,machine=head.core.members.find(m=>m.kind===1)!.id;
+ const content=create(NotifyContentSchema,{kind:NotifyKind.MACHINE_DISK,machineId:machine,machineName:"电脑 A",diskStatus:{observedMs:1700000000000n,availableBytes:1_500_000_000n,pressure:3}});
+ const env=toEnvelope(await formCipher(record.secret,undefined,{account:record.pin.account,domain:record.pin.domain,epoch:head.core.epoch,state:await stateHash(head),contentEpoch:head.core.contentEpoch,sender:machine,kind:10,purpose:10,machine,session:"",request:"disk:1700000000000:3",seq:0n,deadline:0n,compression:0},toBinary(NotifyContentSchema,content),f.machineEd));
+ const payload={session:"",machine,tag:`${machine}/NOTIFY_KIND_MACHINE_DISK`,content:btoa(String.fromCharCode(...toBinary(EnvelopeSchema,env)))};
+ const result=await pushContent(payload);expect(result.machineId).toBe(machine);expect(result.body).toBe(locale==="en"?"Clean up now or sessions may not start.":"现在清理，否则会话可能启动不了。");
+ expect((await pushContent({...payload,machine:"other"})).machineId).toBeUndefined();
+ env.signature[0]^=1;expect((await pushContent({...payload,content:btoa(String.fromCharCode(...toBinary(EnvelopeSchema,env)))})).machineId).toBeUndefined();
 });

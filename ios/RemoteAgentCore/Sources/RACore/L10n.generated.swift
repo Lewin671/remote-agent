@@ -2333,6 +2333,10 @@ public enum L10n {
         let key = "machine_status_size_gb"
         return format(key, locale: locale, args: [size])
     }
+    public static func machineStatusStorageExhausted(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_storage_exhausted"
+        return format(key, locale: locale, args: [])
+    }
     public static func machineStatusUnavailable(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_unavailable"
         return format(key, locale: locale, args: [])
@@ -9856,6 +9860,10 @@ public enum L10nMessage {
     public static func machineStatusSizeGb(size: String) -> LocalizedMessage {
         let key = "machine_status_size_gb"
         return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusStorageExhausted() -> LocalizedMessage {
+        let key = "machine_status_storage_exhausted"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func machineStatusUnavailable() -> LocalizedMessage {
         let key = "machine_status_unavailable"

@@ -346,6 +346,7 @@ internal fun validateSecurityBody(h: DeviceSecurity.Header, m: MessageLite) {
                 m is NotifyContent &&
                     m.machineId == h.machine &&
                     m.sessionId == h.session &&
+                    (if(m.kind == NotifyKind.NOTIFY_KIND_MACHINE_DISK) h.session.isEmpty() && m.hasDiskStatus() && m.machineName.isNotEmpty() && m.title.isEmpty() && m.text.isEmpty() && !m.hasApproval() else h.session.isNotEmpty()) &&
                     (m.kind == NotifyKind.NOTIFY_KIND_ATTENTION ||
                         m.kind == NotifyKind.NOTIFY_KIND_TURN_ENDED ||
                         m.kind == NotifyKind.NOTIFY_KIND_SCHEDULED || m.kind == NotifyKind.NOTIFY_KIND_MACHINE_DISK)

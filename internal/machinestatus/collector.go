@@ -4,6 +4,7 @@ package machinestatus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
@@ -44,6 +45,9 @@ type Collector struct {
 	roots          func() map[int]string
 	stateDir       string
 	now            func() time.Time
+	after          func(time.Duration) <-chan time.Time
+	allocated      func(context.Context, string) (uint64, error)
+	agentAt        time.Time
 	sampleInterval time.Duration
 	idleTimeout    time.Duration
 	primeInterval  time.Duration
@@ -61,16 +65,12 @@ func New(dir string, roots func() map[int]string) *Collector {
 	return NewReader(dir, roots, readSystem)
 }
 func NewReader(dir string, roots func() map[int]string, read Reader) *Collector {
-	return &Collector{read: read, roots: roots, stateDir: dir, now: time.Now, sampleInterval: Interval, idleTimeout: IdleTimeout, primeInterval: 100 * time.Millisecond, wake: make(chan struct{}, 1), ready: make(chan struct{})}
+	return &Collector{read: read, roots: roots, stateDir: dir, now: time.Now, after: time.After, allocated: Allocated, sampleInterval: Interval, idleTimeout: IdleTimeout, primeInterval: 100 * time.Millisecond, wake: make(chan struct{}, 1), ready: make(chan struct{})}
 }
 
 // Run belongs to daemon lifetime. No system reads occur without a current lease.
 func (c *Collector) Run(ctx context.Context) {
-	timer := time.NewTimer(time.Hour)
-	if !timer.Stop() {
-		<-timer.C
-	}
-	defer timer.Stop()
+	var tick <-chan time.Time
 	active := false
 	for {
 		select {
@@ -80,18 +80,19 @@ func (c *Collector) Run(ctx context.Context) {
 			if !active {
 				c.sample(ctx)
 				active = true
-				timer.Reset(c.sampleInterval)
+				tick = c.after(c.sampleInterval)
 			}
-		case <-timer.C:
+		case <-tick:
 			c.mu.Lock()
 			viewing := c.now().Sub(c.lastRequest) < c.idleTimeout
 			c.mu.Unlock()
 			if viewing {
 				started := c.now()
 				c.sample(ctx)
-				timer.Reset(max(time.Millisecond, c.sampleInterval-c.now().Sub(started)))
+				tick = c.after(max(time.Millisecond, c.sampleInterval-c.now().Sub(started)))
 			} else {
 				active = false
+				tick = nil
 				c.mu.Lock()
 				c.previous = Raw{}
 				c.previousAt = time.Time{}
@@ -133,55 +134,74 @@ func (c *Collector) Get(ctx context.Context) (*pb.MachineStatus, error) {
 	}
 	return proto.Clone(c.latest).(*pb.MachineStatus), nil
 }
+
+var errCounterReset = errors.New("machine CPU counters reset")
+
 func (c *Collector) sample(ctx context.Context) {
-	raw, err := c.read(ctx)
+	// Capture only in-memory facts. System APIs, tmux and walks never own c.mu.
 	c.mu.Lock()
-	cold := c.previousAt.IsZero()
-	c.mu.Unlock()
-	if err == nil && cold { // A real short first interval, never a fabricated zero point.
-		c.mu.Lock()
-		c.previous = raw
-		c.previousAt = c.now()
-		c.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(c.primeInterval):
-		}
-		raw, err = c.read(ctx)
+	previous, previousAt := c.previous, c.previousAt
+	var agentBytes *uint64
+	if c.latest != nil && c.latest.AgentBytes != nil {
+		n := *c.latest.AgentBytes
+		agentBytes = &n
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.failure = err
-	if err == nil {
-		now := c.now()
+	walk := c.agentAt.IsZero() || c.now().Sub(c.agentAt) >= time.Minute
+	c.mu.Unlock()
+	raw, err := c.read(ctx)
+	if err == nil && previousAt.IsZero() {
+		previous = raw
+		previousAt = c.now()
+		// Some kernels cache host counters for several short intervals.
+		// Await a real delta on first entry; never manufacture a zero point.
+		for attempt := 0; attempt < 20; attempt++ {
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.after(c.primeInterval):
+			}
+			raw, err = c.read(ctx)
+			if err != nil || raw.Total != previous.Total || raw.Idle != previous.Idle {
+				break
+			}
+		}
+	}
+	now := c.now()
+	valid := err == nil
+	if valid && (raw.Total <= previous.Total || raw.Idle < previous.Idle || raw.Idle-previous.Idle > raw.Total-previous.Total) {
+		err = errCounterReset
+		valid = false
+	}
+	if valid {
 		s := raw.Status
 		s.ObservedMs = now.UnixMilli()
-		dt := raw.Total - c.previous.Total
-		idle := raw.Idle - c.previous.Idle
-		if dt > 0 && idle <= dt {
-			s.CpuPercent = 100 * float64(dt-idle) / float64(dt)
-		}
+		s.CpuPercent = 100 * float64((raw.Total-previous.Total)-(raw.Idle-previous.Idle)) / float64(raw.Total-previous.Total)
 		old := map[int]Process{}
-		for _, p := range c.previous.Processes {
+		for _, p := range previous.Processes {
 			old[p.PID] = p
 		}
 		roots := map[int]string{}
 		if c.roots != nil {
 			roots = c.roots()
 		}
-		s.Sessions, s.Processes = Attribute(raw.Processes, old, roots, now.Sub(c.previousAt).Seconds())
+		s.Sessions, s.Processes = Attribute(raw.Processes, old, roots, now.Sub(previousAt).Seconds())
 		if disk, e := Volume(c.stateDir); e == nil {
 			s.Disk = disk
 		}
-		// Tree walking is bounded to once per active minute, not every 2 seconds.
-		if c.latest != nil {
-			s.AgentBytes = c.latest.AgentBytes
-		}
-		if c.latest == nil || len(c.samples) == 0 || now.UnixMilli()/60000 != c.latest.ObservedMs/60000 {
-			if n, e := Allocated(ctx, c.stateDir); e == nil {
+		s.AgentBytes = agentBytes
+		if walk {
+			if n, e := c.allocated(ctx, c.stateDir); e == nil {
 				s.AgentBytes = &n
 			}
+		}
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.failure = err
+	if valid {
+		s := raw.Status
+		if walk {
+			c.agentAt = now
 		}
 		c.samples = append(c.samples, &pb.MachineSample{TimeMs: s.ObservedMs, CpuPercent: s.CpuPercent, MemoryUsedBytes: s.MemoryUsedBytes})
 		cut := now.Add(-2 * time.Minute).UnixMilli()
@@ -190,6 +210,9 @@ func (c *Collector) sample(ctx context.Context) {
 		}
 		s.Samples = append([]*pb.MachineSample(nil), c.samples...)
 		c.latest = s
+	}
+	// Counter regressions establish a new baseline but add no invented point.
+	if valid || errors.Is(err, errCounterReset) {
 		c.previous = raw
 		c.previousAt = now
 	}

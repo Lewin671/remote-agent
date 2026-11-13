@@ -229,6 +229,10 @@ func MachineStatusSizeGb(locale string, size string) string {
 	return render(locale, "machine_status.size_gb", map[string]any{"size": size})
 }
 
+func MachineStatusStorageExhausted(locale string) string {
+	return render(locale, "machine_status.storage_exhausted", map[string]any{})
+}
+
 func MachineStatusUnavailable(locale string) string {
 	return render(locale, "machine_status.unavailable", map[string]any{})
 }

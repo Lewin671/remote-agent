@@ -17,7 +17,7 @@ type fakeDisk struct {
 	creates, removes int
 }
 
-func (f *fakeDisk) Reserve(n uint64) error {
+func (f *fakeDisk) Reserve(_ context.Context, n uint64) error {
 	f.creates++
 	if f.fail != nil {
 		return f.fail
@@ -30,9 +30,11 @@ func (f *fakeDisk) Size() uint64  { return f.size }
 func TestDiskThresholdsRearmAndReserve(t *testing.T) {
 	fs := &fakeDisk{}
 	g := NewDiskGuardFS(fs, DefaultThresholds())
+	var sequence int64
 	check := func(a uint64) {
+		sequence++
 		t.Helper()
-		if e := g.Check(&pb.DiskStatus{ObservedMs: int64(a), AvailableBytes: a, TotalBytes: 100e9}); e != nil {
+		if e := g.Check(&pb.DiskStatus{ObservedMs: sequence, AvailableBytes: a, TotalBytes: 100e9}); e != nil {
 			t.Fatal(e)
 		}
 	}
@@ -93,7 +95,7 @@ func TestWriteFailureAndReserveFailure(t *testing.T) {
 	if e := g.WriteFailed(errors.New("other")); e != nil || fs.removes != 0 {
 		t.Fatal("non-space error released")
 	}
-	if e := g.WriteFailed(&os.PathError{Op: "write", Path: "fixture", Err: syscall.ENOSPC}); e != nil {
+	if e := g.WriteFailedAt(&os.PathError{Op: "write", Path: "fixture", Err: syscall.ENOSPC}, &pb.DiskStatus{AvailableBytes: 1}); e != nil {
 		t.Fatal(e)
 	}
 	if fs.size != 0 || !g.Paused() || len(g.Alerts()) != 1 {
@@ -103,14 +105,14 @@ func TestWriteFailureAndReserveFailure(t *testing.T) {
 	if e := g.Check(&pb.DiskStatus{AvailableBytes: 20e9}); !NoSpace(e) {
 		t.Fatal(e)
 	}
-	if fs.size != 0 || !g.Paused() {
-		t.Fatal("failed reserve claimed")
+	if fs.size != 0 || g.Paused() {
+		t.Fatal("reserve failure must not pause recovered storage")
 	}
 }
 func TestReservePhysicalFileLifecycle(t *testing.T) {
 	dir := t.TempDir()
-	f := reserveFile{filepath.Join(dir, "reserve")}
-	if e := f.Reserve(8192); e != nil {
+	f := reserveFile{path: filepath.Join(dir, "reserve")}
+	if e := f.Reserve(context.Background(), 8192); e != nil {
 		t.Fatal(e)
 	}
 	if f.Size() != 8192 {
@@ -120,7 +122,7 @@ func TestReservePhysicalFileLifecycle(t *testing.T) {
 	if e != nil || n < 8192 {
 		t.Fatalf("sparse reserve: %d %v", n, e)
 	}
-	if e = f.Reserve(8192); e != nil {
+	if e = f.Reserve(context.Background(), 8192); e != nil {
 		t.Fatal(e)
 	}
 	if e = f.Remove(); e != nil || f.Size() != 0 {

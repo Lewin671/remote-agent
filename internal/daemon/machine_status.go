@@ -59,9 +59,9 @@ func (d *Daemon) diskLoop(ctx context.Context) {
 	t := time.NewTicker(time.Minute)
 	defer t.Stop()
 	for {
-		if disk, e := machinestatus.Volume(d.dir); e == nil {
-			if e = d.diskGuard.Check(disk); e != nil {
-				slog.Error("emergency reserve", "err", e)
+		if disk, e := d.stateVolume(); e == nil {
+			if e = d.diskGuard.CheckContext(ctx, disk); e != nil {
+				d.logStorageFailure("reserve", e)
 			}
 		}
 		select {
@@ -81,23 +81,25 @@ func (d *Daemon) diskError(err error) error {
 	if !machinestatus.NoSpace(err) {
 		return nil
 	}
-	// The raw error stays local. Never send paths from a filesystem error.
-	slog.Error("machine write failed", "err", err)
-	if d.diskGuard != nil {
-		disk, _ := machinestatus.Volume(d.dir)
-		if e := d.diskGuard.WriteFailedAt(err, disk); e != nil {
-			slog.Error("release emergency reserve", "err", e)
+	disk, _ := d.stateVolume()
+	code, message := protocol.StorageExhausted, i18n.MachineStatusStorageExhausted("zh-CN")
+	if machinestatus.StateVolumeFull(disk) {
+		code, message = protocol.DiskFull, i18n.MachineStatusDiskFull("zh-CN")
+		if d.diskGuard != nil {
+			if e := d.diskGuard.WriteFailedAt(err, disk); e != nil {
+				d.logStorageFailure("reserve", e)
+			}
 		}
 	}
-	message := i18n.MachineStatusDiskFull("zh-CN")
+	d.logStorageFailure(code, err)
 	if queueAccepted(err) { // Preserve retry identity after durable queue admission.
 		e := connect.NewError(connect.CodeAborted, errors.New(message))
-		if detail, err := connect.NewErrorDetail(&pb.MachineError{Code: protocol.DiskFull}); err == nil {
+		if detail, err := connect.NewErrorDetail(&pb.MachineError{Code: code}); err == nil {
 			e.AddDetail(detail)
 		}
 		return e
 	}
-	return protocol.NewMachineError(protocol.DiskFull, message)
+	return protocol.NewMachineError(code, message)
 }
 func (d *Daemon) rpcErr(err error) error {
 	if e := d.diskError(err); e != nil {
@@ -121,4 +123,27 @@ func (d *Daemon) AckMachineDiskAlert(at int64, p pb.ResourcePressure) {
 	if d.diskGuard != nil {
 		d.diskGuard.Ack(at, p)
 	}
+}
+
+// Log raw local failures at most once per category per minute. Never log status.
+func (d *Daemon) logStorageFailure(code string, err error) {
+	d.diskLogMu.Lock()
+	if d.diskLogAt == nil {
+		d.diskLogAt = map[string]time.Time{}
+	}
+	now := time.Now()
+	if at := d.diskLogAt[code]; !at.IsZero() && now.Sub(at) < time.Minute {
+		d.diskLogMu.Unlock()
+		return
+	}
+	d.diskLogAt[code] = now
+	d.diskLogMu.Unlock()
+	slog.Error("machine write failed", "category", code, "err", err)
+}
+
+func (d *Daemon) stateVolume() (*pb.DiskStatus, error) {
+	if d.diskVolume != nil {
+		return d.diskVolume()
+	}
+	return machinestatus.Volume(d.dir)
 }

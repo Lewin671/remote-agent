@@ -1,6 +1,8 @@
 package machinestatus
 
 import (
+	"context"
+	"crypto/rand"
 	"errors"
 	"io"
 	"os"
@@ -24,11 +26,14 @@ const CriticalRearmAbove uint64 = 5_000_000_000
 func NoSpace(err error) bool { return errors.Is(err, syscall.ENOSPC) || errors.Is(err, syscall.EDQUOT) }
 
 type DiskFS interface {
-	Reserve(uint64) error
+	Reserve(context.Context, uint64) error
 	Remove() error
 	Size() uint64
 }
-type reserveFile struct{ path string }
+type reserveFile struct {
+	path    string
+	entropy io.Reader
+}
 
 func (f reserveFile) Size() uint64 {
 	s, e := os.Lstat(f.path)
@@ -44,7 +49,7 @@ func (f reserveFile) Remove() error {
 	}
 	return e
 }
-func (f reserveFile) Reserve(n uint64) error {
+func (f reserveFile) Reserve(ctx context.Context, n uint64) error {
 	// O_EXCL refuses symlinks. Never truncate user data at a reserved filename.
 	if f.Size() == n {
 		return nil
@@ -63,10 +68,21 @@ func (f reserveFile) Reserve(n uint64) error {
 			_ = f.Remove()
 		}
 	}()
+	// Fresh random bytes resist transparent compression AND block deduplication.
 	// Actual blocks, not truncate/sparse allocation. Bound transient memory.
+	entropy := f.entropy
+	if entropy == nil {
+		entropy = rand.Reader
+	}
 	buf := make([]byte, 1<<20)
 	for left := n; left > 0; {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		k := min(left, uint64(len(buf)))
+		if _, err := io.ReadFull(entropy, buf[:k]); err != nil {
+			return err
+		}
 		written, e := out.Write(buf[:k])
 		if e != nil {
 			return e
@@ -94,55 +110,101 @@ func DefaultThresholds() DiskThresholds {
 }
 
 type DiskGuard struct {
-	mu               sync.Mutex
-	fs               DiskFS
-	limits           DiskThresholds
-	status           *pb.DiskStatus
-	warned, critical bool
-	alerts           []*pb.DiskStatus
+	mu                  sync.Mutex
+	fs                  DiskFS
+	limits              DiskThresholds
+	status, published   *pb.DiskStatus
+	warned, critical    bool
+	alerts              []*pb.DiskStatus
+	reserveSize         uint64
+	building, releasing bool
+	generation          uint64
+	reserveCancel       context.CancelFunc
+	retryAt             time.Time
+	now                 func() time.Time
+	volume              func() (*pb.DiskStatus, error)
 }
 
 func NewDiskGuard(dir string) *DiskGuard {
-	return NewDiskGuardFS(reserveFile{filepath.Join(dir, "emergency-reserve")}, DefaultThresholds())
+	g := NewDiskGuardFS(reserveFile{path: filepath.Join(dir, "emergency-reserve")}, DefaultThresholds())
+	g.volume = func() (*pb.DiskStatus, error) { return Volume(dir) }
+	return g
 }
-func NewDiskGuardFS(fs DiskFS, t DiskThresholds) *DiskGuard { return &DiskGuard{fs: fs, limits: t} }
+func NewDiskGuardFS(fs DiskFS, t DiskThresholds) *DiskGuard {
+	return &DiskGuard{fs: fs, limits: t, reserveSize: fs.Size(), now: time.Now}
+}
+func cloneDisk(s *pb.DiskStatus) *pb.DiskStatus {
+	if s == nil {
+		return nil
+	}
+	return proto.Clone(s).(*pb.DiskStatus)
+}
 func (g *DiskGuard) Snapshot() *pb.DiskStatus {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return cloneDisk(g.status)
+}
+func (g *DiskGuard) Paused() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.status != nil && g.status.DeferredWritesPaused
+}
+func (g *DiskGuard) ReserveSize() uint64 { g.mu.Lock(); defer g.mu.Unlock(); return g.reserveSize }
+
+// Metadata is change driven, without a heartbeat timestamp. Bounds for the
+// displayed remaining-space drift: 250 MB normal, 100 MB warning, 50 MB critical.
+func (g *DiskGuard) Metadata() *pb.DiskStatus {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.status == nil {
 		return nil
 	}
-	return proto.Clone(g.status).(*pb.DiskStatus)
+	s := cloneDisk(g.status)
+	s.ObservedMs = 0
+	p := g.published
+	step := uint64(250_000_000)
+	if s.AvailableBytes < WarnBelow || s.Pressure == pb.ResourcePressure_RESOURCE_PRESSURE_WARNING {
+		step = 100_000_000
+	}
+	if s.AvailableBytes < CriticalBelow || s.Pressure == pb.ResourcePressure_RESOURCE_PRESSURE_CRITICAL {
+		step = 50_000_000
+	}
+	changed := p == nil
+	if p != nil {
+		delta := max(s.AvailableBytes, p.AvailableBytes) - min(s.AvailableBytes, p.AvailableBytes)
+		changed = delta >= step || s.TotalBytes != p.TotalBytes || s.Pressure != p.Pressure || s.EmergencyReserveBytes != p.EmergencyReserveBytes || s.DeferredWritesPaused != p.DeferredWritesPaused
+	}
+	if changed {
+		g.published = s
+	}
+	return cloneDisk(g.published)
 }
-func (g *DiskGuard) Paused() bool        { s := g.Snapshot(); return s != nil && s.DeferredWritesPaused }
-func (g *DiskGuard) ReserveSize() uint64 { g.mu.Lock(); defer g.mu.Unlock(); return g.fs.Size() }
-
-// Check is called independently of telemetry once per minute. Failed creation
-// never claims a reserve exists. Notifications stay in RAM until acknowledged.
-func (g *DiskGuard) Check(s *pb.DiskStatus) error {
+func (g *DiskGuard) Check(s *pb.DiskStatus) error { return g.CheckContext(context.Background(), s) }
+func (g *DiskGuard) CheckContext(parent context.Context, s *pb.DiskStatus) error {
+	observedSize := g.fs.Size() // filesystem observation never owns the state lock
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	if !g.building && !g.releasing {
+		g.reserveSize = observedSize
+	}
+	if g.status != nil && s.ObservedMs > 0 && s.ObservedMs < g.status.ObservedMs {
+		g.mu.Unlock()
+		return nil
+	}
 	paused := g.status != nil && g.status.DeferredWritesPaused
-	g.status = proto.Clone(s).(*pb.DiskStatus)
+	g.status = cloneDisk(s)
 	g.status.DeferredWritesPaused = paused
-	a := s.AvailableBytes
-	t := g.limits
+	g.status.EmergencyReserveBytes = g.reserveSize
+	a, t := s.AvailableBytes, g.limits
 	if a > t.WarnRearm {
 		g.warned = false
 	}
 	if a > t.CriticalRearm {
 		g.critical = false
 	}
-	var err error
-	if a < t.Release {
-		err = g.releaseLocked()
-	} else if a > t.Rebuild {
-		if g.fs.Size() != t.Reserve {
-			err = g.fs.Reserve(t.Reserve)
-		}
-		if err == nil {
-			g.status.DeferredWritesPaused = false
-		}
+	// Recovery and reserve creation are separate decisions: permission/quota
+	// failures creating the reserve must never permanently pause image writes.
+	if a > t.Rebuild {
+		g.status.DeferredWritesPaused = false
 	}
 	if a < t.Warn && !g.warned {
 		g.warned = true
@@ -152,59 +214,113 @@ func (g *DiskGuard) Check(s *pb.DiskStatus) error {
 		g.critical = true
 		g.alert(pb.ResourcePressure_RESOURCE_PRESSURE_CRITICAL)
 	}
-	if NoSpace(err) {
-		_ = g.releaseLocked()
+	if a < t.Release {
+		g.mu.Unlock()
+		return g.release()
 	}
-	g.status.EmergencyReserveBytes = g.fs.Size()
+	if a <= t.Rebuild || g.reserveSize == t.Reserve || g.building || g.releasing || g.now().Before(g.retryAt) {
+		g.mu.Unlock()
+		return nil
+	}
+	ctx, cancel := context.WithCancel(parent)
+	g.reserveCancel = cancel
+	g.building = true
+	gen := g.generation
+	g.mu.Unlock()
+	// No guard state mutex is held for allocation, random filling, fsync or stat.
+	err := g.fs.Reserve(ctx, t.Reserve)
+	size := g.fs.Size()
+	cancel()
+	g.mu.Lock()
+	g.building = false
+	g.reserveCancel = nil
+	if gen == g.generation {
+		g.reserveSize = size
+		g.status.EmergencyReserveBytes = size
+	}
+	if err != nil && !errors.Is(err, context.Canceled) {
+		g.retryAt = g.now().Add(15 * time.Minute)
+	} else if err == nil {
+		g.retryAt = time.Time{}
+	}
+	g.mu.Unlock()
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	if NoSpace(err) && g.volume != nil {
+		if current, e := g.volume(); e == nil {
+			_ = g.WriteFailedAt(err, current)
+		}
+	}
 	return err
 }
 func (g *DiskGuard) alert(p pb.ResourcePressure) {
-	s := proto.Clone(g.status).(*pb.DiskStatus)
+	s := cloneDisk(g.status)
 	s.Pressure = p
 	g.alerts = append(g.alerts, s)
 	if len(g.alerts) > 2 {
 		g.alerts = g.alerts[len(g.alerts)-2:]
 	}
 }
-func (g *DiskGuard) releaseLocked() error {
+func (g *DiskGuard) release() error {
+	g.mu.Lock()
+	g.generation++
+	if g.reserveCancel != nil {
+		g.reserveCancel()
+	}
 	g.status.DeferredWritesPaused = true
-	e := g.fs.Remove()
-	g.status.EmergencyReserveBytes = g.fs.Size()
 	if !g.critical {
 		g.critical = true
 		g.alert(pb.ResourcePressure_RESOURCE_PRESSURE_CRITICAL)
 	}
-	return e
+	if g.releasing {
+		g.mu.Unlock()
+		return nil
+	}
+	g.releasing = true
+	g.mu.Unlock()
+	err := g.fs.Remove()
+	size := g.fs.Size()
+	g.mu.Lock()
+	g.releasing = false
+	g.reserveSize = size
+	g.status.EmergencyReserveBytes = size
+	g.mu.Unlock()
+	return err
 }
-func (g *DiskGuard) WriteFailed(err error) error { return g.WriteFailedAt(err, nil) }
+
+// A space error is evidence about the failing destination, not automatically
+// about our state volume. Only verified emergency-low state space releases it.
+func StateVolumeFull(current *pb.DiskStatus) bool {
+	return current != nil && current.AvailableBytes < ReleaseBelow
+}
+func (g *DiskGuard) WriteFailed(err error) error { return g.WriteFailedAt(err, g.Snapshot()) }
 func (g *DiskGuard) WriteFailedAt(err error, current *pb.DiskStatus) error {
-	if !NoSpace(err) {
+	if !NoSpace(err) || !StateVolumeFull(current) {
 		return nil
 	}
 	g.mu.Lock()
-	defer g.mu.Unlock()
-	if current != nil {
-		g.status = proto.Clone(current).(*pb.DiskStatus)
-	}
-	if g.status == nil {
-		g.status = &pb.DiskStatus{ObservedMs: time.Now().UnixMilli()}
-	}
-	return g.releaseLocked()
+	paused := g.status != nil && g.status.DeferredWritesPaused
+	g.status = cloneDisk(current)
+	g.status.DeferredWritesPaused = paused
+	g.status.EmergencyReserveBytes = g.reserveSize
+	g.mu.Unlock()
+	return g.release()
 }
 func (g *DiskGuard) Alerts() []*pb.DiskStatus {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	out := make([]*pb.DiskStatus, len(g.alerts))
 	for i, s := range g.alerts {
-		out[i] = proto.Clone(s).(*pb.DiskStatus)
+		out[i] = cloneDisk(s)
 	}
 	return out
 }
-func (g *DiskGuard) Ack(observed int64, pressure pb.ResourcePressure) {
+func (g *DiskGuard) Ack(at int64, p pb.ResourcePressure) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for i, s := range g.alerts {
-		if s.ObservedMs == observed && s.Pressure == pressure {
+		if s.ObservedMs == at && s.Pressure == p {
 			g.alerts = append(g.alerts[:i], g.alerts[i+1:]...)
 			break
 		}

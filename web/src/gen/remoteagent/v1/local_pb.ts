@@ -2292,7 +2292,7 @@ export type MachineStatus = Message<"remoteagent.v1.MachineStatus"> & {
   battery?: MachineBattery | undefined;
 
   /**
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    *
    * @generated from field: repeated remoteagent.v1.MachineSample samples = 16;
    */

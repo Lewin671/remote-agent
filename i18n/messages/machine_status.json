@@ -174,5 +174,22 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "machine_status.storage_exhausted",
+    "zh-CN": "存储配额已用尽，或写入目标的空间不足",
+    "en": "The storage quota is exhausted, or the write destination is out of space",
+    "notes": "明确区别状态卷磁盘满与配额/其他目标耗尽；不显示系统原始路径。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

@@ -151,7 +151,7 @@ func (h *handler) Schedule(ctx context.Context, req *connect.Request[pb.Schedule
 	scope := req.Header().Get(schedule.MCPScopeHeader)
 	b, err := h.d.scheduleCommandScopedContext(ctx, req.Msg, origin, scope)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ScheduleResponse{ResultJson: b}), nil
 }

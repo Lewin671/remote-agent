@@ -85,6 +85,44 @@ public  final class GetPushKeyResponse extends
 
   }
 
+  public static final int MACHINE_DISK_NOTIFICATIONS_FIELD_NUMBER = 2;
+  private boolean machineDiskNotifications_;
+  /**
+   * <pre>
+   * Only subscribe to MACHINE_DISK when explicitly advertised.
+   * </pre>
+   *
+   * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+   * @return The machineDiskNotifications.
+   */
+  @java.lang.Override
+  public boolean getMachineDiskNotifications() {
+    return machineDiskNotifications_;
+  }
+  /**
+   * <pre>
+   * Only subscribe to MACHINE_DISK when explicitly advertised.
+   * </pre>
+   *
+   * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+   * @param value The machineDiskNotifications to set.
+   */
+  private void setMachineDiskNotifications(boolean value) {
+    
+    machineDiskNotifications_ = value;
+  }
+  /**
+   * <pre>
+   * Only subscribe to MACHINE_DISK when explicitly advertised.
+   * </pre>
+   *
+   * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+   */
+  private void clearMachineDiskNotifications() {
+
+    machineDiskNotifications_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.GetPushKeyResponse parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -251,6 +289,46 @@ public  final class GetPushKeyResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Only subscribe to MACHINE_DISK when explicitly advertised.
+     * </pre>
+     *
+     * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+     * @return The machineDiskNotifications.
+     */
+    @java.lang.Override
+    public boolean getMachineDiskNotifications() {
+      return instance.getMachineDiskNotifications();
+    }
+    /**
+     * <pre>
+     * Only subscribe to MACHINE_DISK when explicitly advertised.
+     * </pre>
+     *
+     * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+     * @param value The machineDiskNotifications to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachineDiskNotifications(boolean value) {
+      copyOnWrite();
+      instance.setMachineDiskNotifications(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Only subscribe to MACHINE_DISK when explicitly advertised.
+     * </pre>
+     *
+     * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachineDiskNotifications() {
+      copyOnWrite();
+      instance.clearMachineDiskNotifications();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetPushKeyResponse)
   }
   @java.lang.Override
@@ -268,9 +346,11 @@ public  final class GetPushKeyResponse extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "publicKey_",
+            "machineDiskNotifications_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u0208";
+              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

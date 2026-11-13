@@ -764,7 +764,7 @@ public  final class MachineStatus extends
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.MachineSample> samples_;
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -775,7 +775,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -786,7 +786,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -797,7 +797,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -808,7 +808,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -827,7 +827,7 @@ public  final class MachineStatus extends
 
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -841,7 +841,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -854,7 +854,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -868,7 +868,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -881,7 +881,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -891,7 +891,7 @@ public  final class MachineStatus extends
   }
   /**
    * <pre>
-   * At most 60 real points, 2s apart.
+   * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
    * </pre>
    *
    * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1780,7 +1780,7 @@ public  final class MachineStatus extends
 
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1792,7 +1792,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1802,7 +1802,7 @@ public  final class MachineStatus extends
       return instance.getSamplesCount();
     }/**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1813,7 +1813,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1826,7 +1826,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1840,7 +1840,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1852,7 +1852,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1865,7 +1865,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1878,7 +1878,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1892,7 +1892,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1905,7 +1905,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>
@@ -1917,7 +1917,7 @@ public  final class MachineStatus extends
     }
     /**
      * <pre>
-     * At most 60 real points, 2s apart.
+     * At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
      * </pre>
      *
      * <code>repeated .remoteagent.v1.MachineSample samples = 16 [json_name = "samples"];</code>

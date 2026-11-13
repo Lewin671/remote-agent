@@ -187,11 +187,11 @@ self.addEventListener("push", (e) => {
       const content = await pushContent(d);
       await self.registration.showNotification(content.title, {
         body: content.body,
-        tag: d.tag,
+        tag: content.tag || d.tag,
         renotify: true,
         icon: "/icon-192.png",
         badge: "/icon-192.png",
-        data: { session: d.session || "", security },
+        data: content.machineId ? { machineStatus: content.machineId } : { session: d.session || "", security },
       });
     })(),
   );
@@ -201,14 +201,15 @@ self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const session = e.notification.data && e.notification.data.session;
   const security = e.notification.data?.security === true;
-  const url = security ? "/#/settings/security" : "/" + (session ? "#/s/" + session : "");
+  const machine=e.notification.data?.machineStatus;
+  const url = machine ? "/#/machine-status/"+encodeURIComponent(machine) : security ? "/#/settings/security" : "/" + (session ? "#/s/" + session : "");
   e.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const w of windows) {
         if ("focus" in w) {
           await w.focus();
-          if ((security || session) && "navigate" in w) await w.navigate(url);
+          if ((machine || security || session) && "navigate" in w) await w.navigate(url);
           return;
         }
       }

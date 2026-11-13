@@ -150,6 +150,9 @@ type Daemon struct {
 
 	statusCollector *machinestatus.Collector
 	diskGuard       *machinestatus.DiskGuard
+	diskVolume      func() (*pb.DiskStatus, error)
+	diskLogMu       sync.Mutex
+	diskLogAt       map[string]time.Time
 
 	cacheMu sync.Mutex
 }
@@ -822,7 +825,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	m.Capabilities = d.capabilities()
 	m.ProtocolVersion = protocol.Version
 	if d.diskGuard != nil {
-		m.DiskStatus = d.diskGuard.Snapshot()
+		m.DiskStatus = d.diskGuard.Metadata()
 	}
 	d.mu.Lock()
 	m.Quotas = d.quotaEntriesLocked()

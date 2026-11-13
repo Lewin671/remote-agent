@@ -36,3 +36,17 @@ class MachineStatusTest {
   assertTrue(Command.newBuilder().setGetMachineStatus(GetMachineStatusRequest.getDefaultInstance()).build().isReadOnlyCommand())
  }
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class MachineStatusReviewTest {
+ @Test fun offlineAndTimeout()=runTest {
+  var calls=0;var hung=false
+  val p=MachineStatusController(backgroundScope,{calls++;if(hung) awaitCancellation();MachineStatus.newBuilder().setObservedMs(1).build()},nowMillis={testScheduler.currentTime})
+  p.setActive(true,true,true);runCurrent();p.setActive(true,false,true);assertEquals(MachinePollState.STALE,p.state);assertEquals(1L,p.last!!.observedMs);advanceTimeBy(20000);runCurrent();assertEquals(1,calls)
+  hung=true;p.setActive(true,true,true);runCurrent();advanceTimeBy(45000);runCurrent();assertEquals(3,p.failures);assertEquals(MachinePollState.STALE,p.state);p.dispose()
+ }
+ @Test fun rankingMembership() {
+  val rows=listOf("a","b","new","c").mapIndexed { i,id -> ResourceUsage.newBuilder().setId(id).setCpuPercent(listOf(5.0,10.0,30.0,25.0)[i]).build() }
+  assertEquals(listOf("new","c","b","a"),stableUsage(listOf("gone","a","b","c"),rows).map { it.id })
+ }
+}

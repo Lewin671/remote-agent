@@ -84,7 +84,10 @@ func pushRecentKey(acct, sessionID string, kind pb.NotifyKind, dedupeKey string)
 
 // Keep kind last for service-worker classification. Scheduled display identity
 // uses the same public event key as delivery deduplication, never a task/run ID.
-func pushNotificationTag(sessionID string, kind pb.NotifyKind, eventKey string) string {
+func pushNotificationTag(sessionID string, kind pb.NotifyKind, eventKey string, machineID ...string) string {
+	if kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK && len(machineID) > 0 {
+		return machineID[0] + "/" + kind.String()
+	}
 	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED {
 		return sessionID + "/" + eventKey + "/" + kind.String()
 	}
@@ -243,12 +246,16 @@ func (p *pusher) notifyDevice(ctx context.Context, st *tstore, deviceID, session
 	return p.notifyTo(ctx, st, deviceID, sessionID, kind, content, dedupeKey)
 }
 
-func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) error {
+func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string, machineID ...string) error {
 	_, ok := pushText[kind]
 	if !ok {
 		return invalid("unknown notification kind")
 	}
-	key := pushRecentKey(st.acct, sessionID, kind, dedupeKey)
+	scope := sessionID
+	if kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK && len(machineID) > 0 {
+		scope = "machine:" + machineID[0]
+	}
+	key := pushRecentKey(st.acct, scope, kind, dedupeKey)
 	window := pushCoalesce
 	if dedupeKey != "" {
 		window = pushDedupe
@@ -361,8 +368,12 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 		p.busy[st.acct] += len(targets)
 	}
 	p.recent[key] = pushRecent{acct: st.acct, at: time.Now()}
-	payload := webPushPayload(sessionID, kind, content, dedupeKey)
+	payload := webPushPayload(sessionID, kind, content, dedupeKey, machineID...)
 	data := map[string]string{"session": sessionID, "kind": strconv.Itoa(int(kind))}
+	if kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK && len(machineID) > 0 {
+		data["machine"] = machineID[0]
+		data["tag"] = pushNotificationTag(sessionID, kind, dedupeKey, machineID...)
+	}
 	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED {
 		data["event"] = dedupeKey
 	}
@@ -395,8 +406,11 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 // Count the entire JSON, including base64 expansion and routing metadata.
 const webPushMaxPayload = 3993
 
-func webPushPayload(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) []byte {
-	data := map[string]string{"title": "remote-agent", "body": pushText[kind], "tag": pushNotificationTag(sessionID, kind, dedupeKey), "session": sessionID}
+func webPushPayload(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string, machineID ...string) []byte {
+	data := map[string]string{"title": "remote-agent", "body": pushText[kind], "tag": pushNotificationTag(sessionID, kind, dedupeKey, machineID...), "session": sessionID}
+	if kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK && len(machineID) > 0 {
+		data["machine"] = machineID[0]
+	}
 	generic, _ := json.Marshal(data)
 	if (kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED || kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK) && len(content) > 0 && base64.StdEncoding.EncodedLen(len(content)) <= webPushMaxPayload {
 		data["content"] = base64.StdEncoding.EncodeToString(content)
@@ -449,7 +463,7 @@ func (p *pusher) sendFCM(st *tstore, deviceID, token string, data map[string]str
 // --- API ---
 
 func (c *clientService) GetPushKey(ctx context.Context, req *connect.Request[pb.GetPushKeyRequest]) (*connect.Response[pb.GetPushKeyResponse], error) {
-	return connect.NewResponse(&pb.GetPushKeyResponse{PublicKey: c.s.push.pub}), nil
+	return connect.NewResponse(&pb.GetPushKeyResponse{PublicKey: c.s.push.pub, MachineDiskNotifications: true}), nil
 }
 
 func (c *clientService) SetPushSubscription(ctx context.Context, req *connect.Request[pb.SetPushSubscriptionRequest]) (*connect.Response[pb.SetPushSubscriptionResponse], error) {
@@ -518,7 +532,11 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 	if len(req.Msg.DedupeKey) > 128 {
 		return nil, invalid("dedupe key too long")
 	}
-	if err := m.s.push.notify(ctx, t.store, req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey); err != nil {
+	machineID := ""
+	if req.Msg.Kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK {
+		machineID = id
+	}
+	if err := m.s.push.notifyTo(ctx, t.store, "", req.Msg.SessionId, req.Msg.Kind, content, req.Msg.DedupeKey, machineID); err != nil {
 		if errors.Is(err, errPushBusy) {
 			return nil, connect.NewError(connect.CodeResourceExhausted, err)
 		}

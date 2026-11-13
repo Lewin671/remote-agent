@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.push
 
 import io.github.lewin671.remoteagent.ui.sessionText
 
+import io.github.lewin671.remoteagent.core.machineDiskNotice
 import io.github.lewin671.remoteagent.core.UiMessages
 
 import io.github.lewin671.remoteagent.core.approvalDisplay
@@ -77,6 +78,8 @@ class RaMessagingService : FirebaseMessagingService() {
         val session = data["session"] ?: return
         val content = data["content"]?.let { open(session, it) }
         if (data["content"] != null && content == null) return
+        if(kind==NotifyKind.NOTIFY_KIND_MACHINE_DISK && (content==null || content.machineId!=data["machine"] || content.kind!=kind || !content.sessionId.isEmpty() || data["tag"]!="${content.machineId}/NOTIFY_KIND_MACHINE_DISK")) return
+        if(kind==NotifyKind.NOTIFY_KIND_MACHINE_DISK && machineDiskNotice(content ?: return,{ io.github.lewin671.remoteagent.ui.resolveUiMessage(this,it) })==null) return
         // Only the actual session page suppresses scheduled results in the foreground.
         // Other kinds retain their foreground rule.
         val foreground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
@@ -146,11 +149,13 @@ object Notifier {
         scheduleSeq: Long = 0,
         scheduleEvent: String? = null,
         scheduled: Boolean = false,
+        machineStatus: String? = null,
     ): PendingIntent {
         val i =
             Intent(context, MainActivity::class.java)
                 .putExtra(MainActivity.EXTRA_SESSION, session)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (machineStatus!=null) { i.putExtra("machine_status",machineStatus);i.action="io.github.lewin671.remoteagent.machine-status/$machineStatus" }
         if (scheduled) i.putExtra(EXTRA_SCHEDULED, true)
         if (approval != null) i.putExtra(EXTRA_APPROVAL, approval)
         if (scheduleSeq > 0) i.putExtra(EXTRA_SCHEDULE_SEQ, scheduleSeq)
@@ -248,6 +253,7 @@ object Notifier {
         val generic = when (kind) {
             NotifyKind.NOTIFY_KIND_SCHEDULED -> copy(UiMessages.notificationsScheduledTasksHaveNewResults())
             NotifyKind.NOTIFY_KIND_TURN_ENDED -> copy(UiMessages.notificationsAndroidAConversationTurnFinished())
+            NotifyKind.NOTIFY_KIND_MACHINE_DISK -> copy(UiMessages.machineStatusHomeWarning())
             else -> copy(UiMessages.notificationsAndroidASessionNeedsYourAttention())
         }
         val channel = when (kind) {
@@ -255,10 +261,11 @@ object Notifier {
             NotifyKind.NOTIFY_KIND_TURN_ENDED -> Push.CHANNEL_TURN
             else -> Push.CHANNEL_ATTENTION
         }
+        val diskNotice = c?.let { machineDiskNotice(it,copy) }
         val approval = c?.takeIf { it.hasApproval() }?.approval
-        val nid = id(session, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) eventKey else approval?.approvalId)
+        val nid = diskNotice?.machineId?.hashCode() ?: id(session, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) eventKey else approval?.approvalId)
         val locked = context.getSystemService(KeyguardManager::class.java).isDeviceLocked
-        val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT, scheduledContent(kind, c, eventKey))
+        val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT, scheduledContent(kind, c, eventKey) || diskNotice != null)
         val public =
             NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_notify)
@@ -278,12 +285,14 @@ object Notifier {
                 .setContentIntent(
                     openIntent(
                         context, session, approval?.approvalId, nid,
+                        machineStatus = diskNotice?.machineId,
                         scheduled = kind == NotifyKind.NOTIFY_KIND_SCHEDULED,
                         scheduleSeq = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) c?.sourceEventSeq ?: 0 else 0,
                         scheduleEvent = eventKey.takeIf { kind == NotifyKind.NOTIFY_KIND_SCHEDULED },
                     ),
                 )
-        if (!how.detailed || c == null) {
+        if(diskNotice!=null && !locked) { b.setContentTitle(diskNotice.title).setContentText(diskNotice.body)
+        } else if (!how.detailed || c == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
         } else if (approval != null) {
             val (title, what) = approvalText(approval, copy = copy)
@@ -335,7 +344,7 @@ object Notifier {
                 .setContentText(bodyText)
         }
         try {
-            val tag = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) "scheduled/$session/$eventKey" else null
+            val tag = diskNotice?.tag ?: if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) "scheduled/$session/$eventKey" else null
             nm.notify(tag, nid, b.build())
         } catch (e: SecurityException) {
             // Notifications are not allowed; Settings shows the banner.

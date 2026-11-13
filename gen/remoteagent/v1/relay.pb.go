@@ -3835,9 +3835,11 @@ func (*GetPushKeyRequest) Descriptor() ([]byte, []int) {
 type GetPushKeyResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// VAPID public key, base64url.
-	PublicKey     string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PublicKey string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	// Only subscribe to MACHINE_DISK when explicitly advertised.
+	MachineDiskNotifications bool `protobuf:"varint,2,opt,name=machine_disk_notifications,json=machineDiskNotifications,proto3" json:"machine_disk_notifications,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GetPushKeyResponse) Reset() {
@@ -3875,6 +3877,13 @@ func (x *GetPushKeyResponse) GetPublicKey() string {
 		return x.PublicKey
 	}
 	return ""
+}
+
+func (x *GetPushKeyResponse) GetMachineDiskNotifications() bool {
+	if x != nil {
+		return x.MachineDiskNotifications
+	}
+	return false
 }
 
 type SetPushSubscriptionRequest struct {
@@ -6368,10 +6377,11 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\tstream_id\x18\x02 \x01(\tR\bstreamId\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x03 \x01(\tR\tmachineId\"\x13\n" +
-	"\x11GetPushKeyRequest\"3\n" +
+	"\x11GetPushKeyRequest\"q\n" +
 	"\x12GetPushKeyResponse\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x01 \x01(\tR\tpublicKey\"{\n" +
+	"public_key\x18\x01 \x01(\tR\tpublicKey\x12<\n" +
+	"\x1amachine_disk_notifications\x18\x02 \x01(\bR\x18machineDiskNotifications\"{\n" +
 	"\x1aSetPushSubscriptionRequest\x12+\n" +
 	"\x11subscription_json\x18\x01 \x01(\tR\x10subscriptionJson\x120\n" +
 	"\x05kinds\x18\x02 \x03(\x0e2\x1a.remoteagent.v1.NotifyKindR\x05kinds\"\x1d\n" +

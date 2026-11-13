@@ -43,13 +43,16 @@ public enum MachinePollState: Sendable { case idle, loading, live, stale, unavai
     public private(set) var curveSinceMs: Int64 = 0
     private let fetch: @Sendable () async throws -> PBMachineStatus
     private let changed: @MainActor () -> Void
+    public static let requestTimeout: Duration = .seconds(15)
+    private let now: @Sendable () -> Duration
+    private let sleep: @Sendable (Duration) async throws -> Void
     private let interval: Duration
     private var active = false
     private var generation = 0
     private var busy = false
     private var timer: Task<Void, Never>?
-    public init(interval: Duration = .seconds(2), fetch: @escaping @Sendable () async throws -> PBMachineStatus, changed: @escaping @MainActor () -> Void = {}) {
-        self.interval = interval; self.fetch = fetch; self.changed = changed
+    public init(interval: Duration = .seconds(2), fetch: @escaping @Sendable () async throws -> PBMachineStatus, changed: @escaping @MainActor () -> Void = {}, now: @escaping @Sendable () -> Duration = { .nanoseconds(Int64(DispatchTime.now().uptimeNanoseconds)) }, sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for:$0) }) {
+        self.interval = interval; self.fetch = fetch; self.changed = changed; self.now=now; self.sleep=sleep
     }
     public func setActive(visible: Bool, online: Bool, supported: Bool) {
         let next = visible && online && supported
@@ -64,11 +67,11 @@ public enum MachinePollState: Sendable { case idle, loading, live, stale, unavai
         guard active && !busy else { return }
         busy = true
         let current = generation
-        let started = ContinuousClock.now
+        let started = now()
         if last == nil && state == .idle { state = .loading }; changed()
-        Task { [weak self, fetch] in
+        Task { [weak self, fetch, sleep] in
             let result: Result<PBMachineStatus, Error>
-            do { result = .success(try await fetch()) } catch { result = .failure(error) }
+            do { result = .success(try await statusRequest(fetch:fetch,sleep:sleep)) } catch { result = .failure(error) }
             guard let self else { return }
             self.busy = false
             if self.active && current == self.generation {
@@ -84,12 +87,23 @@ public enum MachinePollState: Sendable { case idle, loading, live, stale, unavai
             }
             self.changed()
             if self.active {
-                let wait = current == self.generation ? max(.zero,self.interval-started.duration(to: .now)) : .zero
+                let wait = current == self.generation ? max(.zero,self.interval-(self.now()-started)) : .zero
                 self.timer = Task { [weak self] in
-                    do { try await Task.sleep(for: wait) } catch { return }
+                    do { try await sleep(wait) } catch { return }
                     self?.poll()
                 }
             }
         }
     }
+}
+
+private struct MachineStatusTimeout: Error {}
+private func statusRequest(fetch: @escaping @Sendable () async throws -> PBMachineStatus, sleep: @escaping @Sendable (Duration) async throws -> Void) async throws -> PBMachineStatus {
+    let (stream,continuation)=AsyncStream<Result<PBMachineStatus,Error>>.makeStream()
+    let request=Task { do { continuation.yield(.success(try await fetch())) } catch { continuation.yield(.failure(error)) } }
+    let timeout=Task { do { try await sleep(.seconds(15));continuation.yield(.failure(MachineStatusTimeout())) } catch {} }
+    defer { request.cancel();timeout.cancel();continuation.finish() }
+    var iterator=stream.makeAsyncIterator()
+    guard let result=await iterator.next() else { throw CancellationError() }
+    return try result.get()
 }

@@ -1279,6 +1279,12 @@ public struct PBNotifyContent: @unchecked Sendable {
   /// Clears the value of `diskStatus`. Subsequent reads from it will return its default value.
   public mutating func clearDiskStatus() {_uniqueStorage()._diskStatus = nil}
 
+  /// MachineMeta.hostname at the time of a machine-level notification.
+  public var machineName: String {
+    get {return _storage._machineName}
+    set {_uniqueStorage()._machineName = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3460,7 +3466,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NotifyContent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0\u{3}shared_file_count\0\u{3}disk_status\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0\u{3}shared_file_count\0\u{3}disk_status\0\u{3}machine_name\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -3472,6 +3478,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     var _sourceEventSeq: UInt64 = 0
     var _sharedFileCount: UInt32 = 0
     var _diskStatus: PBDiskStatus? = nil
+    var _machineName: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3491,6 +3498,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       _sourceEventSeq = source._sourceEventSeq
       _sharedFileCount = source._sharedFileCount
       _diskStatus = source._diskStatus
+      _machineName = source._machineName
     }
   }
 
@@ -3518,6 +3526,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         case 7: try { try decoder.decodeSingularUInt64Field(value: &_storage._sourceEventSeq) }()
         case 8: try { try decoder.decodeSingularUInt32Field(value: &_storage._sharedFileCount) }()
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._diskStatus) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._machineName) }()
         default: break
         }
       }
@@ -3557,6 +3566,9 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       try { if let v = _storage._diskStatus {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
       } }()
+      if !_storage._machineName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machineName, fieldNumber: 10)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3575,6 +3587,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
         if _storage._sourceEventSeq != rhs_storage._sourceEventSeq {return false}
         if _storage._sharedFileCount != rhs_storage._sharedFileCount {return false}
         if _storage._diskStatus != rhs_storage._diskStatus {return false}
+        if _storage._machineName != rhs_storage._machineName {return false}
         return true
       }
       if !storagesAreEqual {return false}

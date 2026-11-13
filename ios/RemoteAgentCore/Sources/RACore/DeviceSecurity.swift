@@ -689,8 +689,10 @@ public enum DeviceSecurity {
         case .terminalInput, .terminalResize, .terminalHistory, .terminalOutput:
             try check(
                 !h.machine.isEmpty && !h.session.isEmpty && h.request.count >= 16 && h.seq > 0)
-        case .image, .notify:
+        case .image:
             try check(!h.machine.isEmpty && !h.session.isEmpty && !h.request.isEmpty)
+        case .notify:
+            try check(!h.machine.isEmpty && !h.request.isEmpty && (!h.session.isEmpty || h.request.hasPrefix("disk:")))
         }
         if h.purpose.control { try check(h.deadline > 0) }
     }

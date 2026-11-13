@@ -4678,7 +4678,7 @@ type MachineStatus struct {
 	Processes     []*ResourceUsage `protobuf:"bytes,13,rep,name=processes,proto3" json:"processes,omitempty"`
 	UptimeSeconds uint64           `protobuf:"varint,14,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
 	Battery       *MachineBattery  `protobuf:"bytes,15,opt,name=battery,proto3" json:"battery,omitempty"` // Absent when unavailable.
-	Samples       []*MachineSample `protobuf:"bytes,16,rep,name=samples,proto3" json:"samples,omitempty"` // At most 60 real points, 2s apart.
+	Samples       []*MachineSample `protobuf:"bytes,16,rep,name=samples,proto3" json:"samples,omitempty"` // At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

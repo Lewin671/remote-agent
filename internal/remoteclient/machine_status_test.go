@@ -116,3 +116,55 @@ func TestMachineRankingAndReminder(t *testing.T) {
 		t.Fatal("string matching")
 	}
 }
+
+func TestMachineOfflineAndRequestDeadline(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		calls := 0
+		hang := false
+		p := NewMachineStatusController(func(ctx context.Context) (*pb.MachineStatus, error) {
+			calls++
+			if hang {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			}
+			return &pb.MachineStatus{ObservedMs: int64(calls)}, nil
+		}, 2*time.Second)
+		done := make(chan struct{})
+		go func() { p.Run(ctx); close(done) }()
+		p.SetActive(true, true, true)
+		synctest.Wait()
+		p.SetActive(true, false, true)
+		synctest.Wait()
+		if p.Snapshot().State != MachineStale || p.Snapshot().Last.ObservedMs != 1 {
+			t.Fatal(p.Snapshot())
+		}
+		time.Sleep(20 * time.Second)
+		synctest.Wait()
+		if calls != 1 {
+			t.Fatal("offline request")
+		}
+		hang = true
+		p.SetActive(true, true, true)
+		synctest.Wait()
+		for i := 0; i < 3; i++ {
+			time.Sleep(MachineStatusRequestTimeout)
+			synctest.Wait()
+		}
+		if p.Snapshot().Failures != 3 || p.Snapshot().State != MachineStale {
+			t.Fatal(p.Snapshot())
+		}
+		cancel()
+		<-done
+	})
+}
+func TestStableUsageMultipleMovesAndMembership(t *testing.T) {
+	rows := []*pb.ResourceUsage{{Id: "a", CpuPercent: 5}, {Id: "b", CpuPercent: 10}, {Id: "new", CpuPercent: 30}, {Id: "c", CpuPercent: 25}}
+	s := StableUsage([]string{"gone", "a", "b", "c"}, rows, false)
+	for i, want := range []string{"new", "c", "b", "a"} {
+		if s[i].Id != want {
+			t.Fatal(s)
+		}
+	}
+}

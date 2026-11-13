@@ -1878,7 +1878,7 @@ public struct PBMachineStatus: @unchecked Sendable {
   /// Clears the value of `battery`. Subsequent reads from it will return its default value.
   public mutating func clearBattery() {_uniqueStorage()._battery = nil}
 
-  /// At most 60 real points, 2s apart.
+  /// At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
   public var samples: [PBMachineSample] {
     get {return _storage._samples}
     set {_uniqueStorage()._samples = newValue}

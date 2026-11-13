@@ -667,6 +667,7 @@
     <string name="machine_status_notify_warning">"%1$s has only %2$s of disk space left"</string>
     <string name="machine_status_notify_warning_body" formatted="false">"Sessions will not start when disk space runs out."</string>
     <string name="machine_status_size_gb">"%1$s GB"</string>
+    <string name="machine_status_storage_exhausted" formatted="false">"The storage quota is exhausted, or the write destination is out of space"</string>
     <string name="machine_status_unavailable" formatted="false">"Could not read this computer’s status"</string>
     <string name="markdown_collapse" formatted="false">"Collapse"</string>
     <string name="markdown_copy_code" formatted="false">"Copy code"</string>

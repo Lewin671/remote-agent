@@ -520,3 +520,18 @@ private final class PublicationClock: @unchecked Sendable {
     func now() -> UInt64 { lock.withLock { value } }
     func set(_ value: UInt64) { lock.withLock { self.value = value } }
 }
+
+extension DeviceSecurityTests {
+ @Test func receivesDataOnlyMachineDiskNotification() async throws {
+  let genesis=try state("genesis"),head=try state("added"),machine=head.core.members.first { $0.kind == 1 }!.id
+  let record=try S.Record(pin:pin(),states:[1:genesis,2:head],memberID:machine,xPrivate:hex("machine_x"),member:true,secret:hex("content_secret_2"),lease:signedLease(head))
+  let sdk=DeviceSecurityClient(store:MemorySecurityStore(record),memberID:machine,signingKey:try SigningKey(seed:hex("machine_seed")),clock:{head.core.issuedAt},fetchStates:{_ in PBGetSecurityStatesResponse()})
+  var c=PBNotifyContent();c.kind = .machineDisk;c.machineID=machine;c.machineName="电脑 A";c.diskStatus.observedMs=1700000000000;c.diskStatus.availableBytes=1_500_000_000;c.diskStatus.pressure = .critical
+  let env=try await sdk.seal(purpose:.notify,machine:machine,session:"",request:"disk:1700000000000:3",plaintext:c.serializedData())
+  let key=try S.NotifyRecord(record:record).bytes()
+  let notice=try receiveMachineDiskNotification(envelope:env.serializedData(),notifyRecord:key,locale:"en")
+  #expect(notice?.machineID == machine);#expect(notice?.body == "Clean up now or sessions may not start.")
+  var bad=env;bad.signature[0]^=1
+  #expect(throws:S.Failure.self){_ = try receiveMachineDiskNotification(envelope:bad.serializedData(),notifyRecord:key,locale:"en")}
+ }
+}

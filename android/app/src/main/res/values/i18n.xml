@@ -629,6 +629,7 @@
     <string name="machine_status_notify_warning">"%1$s 磁盘只剩 %2$s"</string>
     <string name="machine_status_notify_warning_body" formatted="false">"空间用完后会话会启动不了。"</string>
     <string name="machine_status_size_gb">"%1$s GB"</string>
+    <string name="machine_status_storage_exhausted" formatted="false">"存储配额已用尽，或写入目标的空间不足"</string>
     <string name="machine_status_unavailable" formatted="false">"读不到这台电脑的状态"</string>
     <string name="markdown_collapse" formatted="false">"收起"</string>
     <string name="markdown_copy_code" formatted="false">"复制代码"</string>

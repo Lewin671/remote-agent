@@ -29,4 +29,14 @@ public interface GetPushKeyResponseOrBuilder extends
    */
   com.google.protobuf.ByteString
       getPublicKeyBytes();
+
+  /**
+   * <pre>
+   * Only subscribe to MACHINE_DISK when explicitly advertised.
+   * </pre>
+   *
+   * <code>bool machine_disk_notifications = 2 [json_name = "machineDiskNotifications"];</code>
+   * @return The machineDiskNotifications.
+   */
+  boolean getMachineDiskNotifications();
 }

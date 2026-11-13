@@ -311,7 +311,7 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 		case errors.Is(err, context.DeadlineExceeded):
 			out.ErrorCode = connect.CodeDeadlineExceeded.String()
 		}
-		if _, schedule := cmd.Kind.(*pb.Command_Schedule); schedule && out.ErrorCode == connect.CodeAborted.String() {
+		if _, schedule := cmd.Kind.(*pb.Command_Schedule); schedule && out.ErrorCode == connect.CodeAborted.String() && protocol.MachineErrorCode(err) == "" {
 			// A rejected schedule CAS is a trustworthy, final conflict, not an
 			// interrupted execution. Keep that distinction on the wire.
 			out.ErrorCode = "revision_conflict"

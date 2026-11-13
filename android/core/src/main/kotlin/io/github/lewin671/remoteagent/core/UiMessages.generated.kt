@@ -556,6 +556,7 @@ object UiMessages {
     fun machineStatusNotifyWarning(computer: String, size: String): UiMessage = UiMessage("machine_status.notify_warning", mapOf("computer" to computer, "size" to size))
     fun machineStatusNotifyWarningBody(): UiMessage = UiMessage("machine_status.notify_warning_body", emptyMap())
     fun machineStatusSizeGb(size: String): UiMessage = UiMessage("machine_status.size_gb", mapOf("size" to size))
+    fun machineStatusStorageExhausted(): UiMessage = UiMessage("machine_status.storage_exhausted", emptyMap())
     fun machineStatusUnavailable(): UiMessage = UiMessage("machine_status.unavailable", emptyMap())
     fun markdownCollapse(): UiMessage = UiMessage("markdown.collapse", emptyMap())
     fun markdownCopyCode(): UiMessage = UiMessage("markdown.copy_code", emptyMap())

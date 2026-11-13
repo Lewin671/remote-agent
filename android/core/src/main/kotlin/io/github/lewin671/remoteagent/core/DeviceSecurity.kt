@@ -629,9 +629,8 @@ object DeviceSecurity {
                         h.request.length >= 16 &&
                         h.seq > 0uL,
                 )
-            Purpose.IMAGE,
-            Purpose.NOTIFY ->
-                check(h.machine.isNotEmpty() && h.session.isNotEmpty() && h.request.isNotEmpty())
+            Purpose.IMAGE -> check(h.machine.isNotEmpty() && h.session.isNotEmpty() && h.request.isNotEmpty())
+            Purpose.NOTIFY -> check(h.machine.isNotEmpty() && h.request.isNotEmpty() && (h.session.isNotEmpty() || h.request.startsWith("disk:")))
         }
         if (h.purpose.control) check(h.deadline > 0uL)
     }

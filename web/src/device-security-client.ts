@@ -499,6 +499,7 @@ export function validateSecurityBody(
   if (type !== "remoteagent.v1." + expected[h.purpose])
     throw new SecurityError();
   const m = msg as {
+    diskStatus?: unknown; machineName?: string; title?: string; text?: string; approval?: unknown;
     sessionId?: string;
     machineId?: string;
     seq?: bigint;
@@ -519,6 +520,7 @@ export function validateSecurityBody(
       ![1, 2, 4, 5].includes(m.kind as number))
   )
     throw new SecurityError();
+  if(h.purpose===10 && (m.kind===5 ? !!h.session || !m.diskStatus || !m.machineName || !!m.title || !!m.text || !!m.approval : !h.session)) throw new SecurityError();
   if (h.purpose === 12 && m.schema !== 1) throw new SecurityError();
   if (
     h.purpose === 5 &&

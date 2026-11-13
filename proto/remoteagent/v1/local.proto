@@ -678,7 +678,7 @@ message MachineStatus {
   repeated ResourceUsage processes = 13;
   uint64 uptime_seconds = 14;
   MachineBattery battery = 15; // Absent when unavailable.
-  repeated MachineSample samples = 16; // At most 60 real points, 2s apart.
+  repeated MachineSample samples = 16; // At most 60 real points. Nominal 2s cadence; lease pauses leave gaps. Use time_ms.
 }
 
 // Structured failure detail, independent of translated human text.

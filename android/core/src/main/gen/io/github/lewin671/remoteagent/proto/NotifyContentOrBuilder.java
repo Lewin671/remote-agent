@@ -133,4 +133,24 @@ public interface NotifyContentOrBuilder extends
    * @return The diskStatus.
    */
   io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus();
+
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   * @return The machineName.
+   */
+  java.lang.String getMachineName();
+  /**
+   * <pre>
+   * MachineMeta.hostname at the time of a machine-level notification.
+   * </pre>
+   *
+   * <code>string machine_name = 10 [json_name = "machineName"];</code>
+   * @return The bytes for machineName.
+   */
+  com.google.protobuf.ByteString
+      getMachineNameBytes();
 }

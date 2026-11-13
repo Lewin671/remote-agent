@@ -1,3 +1,4 @@
+import { machineNotificationKinds } from "./machine-notifications";
 import * as l10n from "./i18n";
 import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
@@ -248,7 +249,7 @@ export class CommandError extends Error {
     readonly fromDaemon = false,
     readonly readOnly = false,
   ) {
-    super(code === "disk_full" ? l10n.t("machine_status.disk_full") : message);
+    super(code === "disk_full" ? l10n.t("machine_status.disk_full") : code === "storage_exhausted" ? l10n.t("machine_status.storage_exhausted") : message);
   }
 }
 
@@ -3193,8 +3194,8 @@ export class Remote {
     return this.forward(s.machineId, sid, cmd, slot);
   }
 
-  async getMachineStatus(machineId: string) {
-    const r = await this.machineCommand(machineId, { case: "getMachineStatus", value: {} });
+  async getMachineStatus(machineId: string, signal?: AbortSignal) {
+    const r = await this.forward(machineId,"",{ case: "getMachineStatus", value: {} },undefined,signal);
     if (r.kind.case !== "machineStatus") throw new Error(l10n.t("machine_status.unavailable"));
     return r.kind.value;
   }
@@ -3223,6 +3224,7 @@ export class Remote {
     sid: string,
     cmd: CommandKind,
     slot = newSlot(),
+    signal?: AbortSignal,
   ): Promise<CommandResult> {
     const authorized = this.authorizedCommands.get(slot);
     if (authorized) ({ machineId, sid, cmd } = authorized);
@@ -3284,6 +3286,7 @@ export class Remote {
     // request can say it did not run.
     let mayHaveRun = false;
     for (let attempt = 0; ; attempt++) {
+      signal?.throwIfAborted();
       try {
         if (attempt > 0 && Date.now() >= deadline)
           throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"));
@@ -3293,7 +3296,8 @@ export class Remote {
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
         mayHaveRun = true;
-        const res = await this.api.forward({ machineId, command: env });
+        signal?.throwIfAborted();
+        const res = await this.api.forward({ machineId, command: env },{signal});
         let msg: CommandResult;
         try {
           msg = (
@@ -4501,7 +4505,9 @@ export class Remote {
     subscriptionJson: string,
     kinds: NotifyKind[],
   ): Promise<void> {
-    await this.api.setPushSubscription({ subscriptionJson, kinds });
+    const capability = subscriptionJson ? await this.api.getPushKey({}) : undefined;
+    const selected=subscriptionJson ? machineNotificationKinds(kinds,capability?.machineDiskNotifications===true) : [];
+    await this.api.setPushSubscription({ subscriptionJson, kinds:selected });
   }
 
   private models = new Map<string, Promise<ListModelsResponse>>();

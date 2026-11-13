@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
@@ -96,6 +97,8 @@ func StableUsage(previous []string, rows []*pb.ResourceUsage, memory bool) []*pb
 	return out
 }
 
+const MachineStatusRequestTimeout = 15 * time.Second
+
 type MachinePollState string
 
 const (
@@ -182,14 +185,19 @@ func (p *MachineStatusController) Run(ctx context.Context) {
 		<-timer.C
 	}
 	defer timer.Stop()
-	due := true
+	due := false
 	for {
 		p.mu.Lock()
 		active, gen := p.active, p.generation
 		p.mu.Unlock()
 		if active && due {
-			req, cancel := context.WithTimeout(ctx, 15*time.Second)
+			req, cancel := context.WithTimeout(ctx, MachineStatusRequestTimeout)
 			p.mu.Lock()
+			if gen != p.generation || !p.active {
+				p.mu.Unlock()
+				cancel()
+				continue
+			}
 			p.cancel = cancel
 			if p.snapshot.Last == nil && p.snapshot.State == MachineIdle {
 				p.snapshot.State = MachineLoading
@@ -234,4 +242,29 @@ func (p *MachineStatusController) Run(ctx context.Context) {
 			due = true
 		}
 	}
+}
+
+// SetMachinePushTarget gates the new kind by an explicit server capability;
+// absence never causes an old server to reject the existing subscription.
+func (c *Client) SetMachinePushTarget(ctx context.Context, kind pb.PushType, target string, kinds []pb.NotifyKind) (*pb.SetPushTargetResponse, error) {
+	selected := []pb.NotifyKind{}
+	if target != "" {
+		cap, e := c.api.GetPushKey(ctx, connect.NewRequest(&pb.GetPushKeyRequest{}))
+		if e != nil {
+			return nil, e
+		}
+		for _, k := range kinds {
+			if k != pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK {
+				selected = append(selected, k)
+			}
+		}
+		if cap.Msg.MachineDiskNotifications {
+			selected = append(selected, pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK)
+		}
+	}
+	r, e := c.api.SetPushTarget(ctx, connect.NewRequest(&pb.SetPushTargetRequest{Type: kind, Target: target, Kinds: selected}))
+	if e != nil {
+		return nil, e
+	}
+	return r.Msg, nil
 }

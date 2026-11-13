@@ -900,8 +900,10 @@ function validateHeader(h: SecurityHeader): void {
       requireOK(h.machine && h.session && h.request.length >= 16 && h.seq > 0n);
       break;
     case Purpose.Image:
-    case Purpose.Notify:
       requireOK(h.machine && h.session && h.request);
+      break;
+    case Purpose.Notify:
+      requireOK(h.machine && h.request && (h.session || h.request.startsWith("disk:")));
       break;
     default:
       throw new SecurityError();

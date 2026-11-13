@@ -1023,5 +1023,35 @@
     "path": "internal/machinestatus/reader_darwin.go",
     "literal": "mach timebase unavailable",
     "reason": "系统 Mach 计时基准读取的内部诊断，状态 RPC 对外统一使用 machine_status.unavailable，不展示此诊断。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt",
+    "literal": "remote-agent",
+    "reason": "电脑状态内部错误码/通知路由标识/本机日志字段，不展示为产品文案；状态和错误的显示文本使用 machine_status 文案源。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/push/Notifications.kt",
+    "literal": "io.github.lewin671.remoteagent.machine-status/$machineStatus",
+    "reason": "电脑状态内部错误码/通知路由标识/本机日志字段，不展示为产品文案；状态和错误的显示文本使用 machine_status 文案源。"
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Api.kt",
+    "literal": "storage_exhausted",
+    "reason": "电脑状态内部错误码/通知路由标识/本机日志字段，不展示为产品文案；状态和错误的显示文本使用 machine_status 文案源。"
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "category",
+    "reason": "电脑状态内部错误码/通知路由标识/本机日志字段，不展示为产品文案；状态和错误的显示文本使用 machine_status 文案源。"
+  },
+  {
+    "path": "internal/machinestatus/collector.go",
+    "literal": "machine CPU counters reset",
+    "reason": "电脑状态内部错误码/通知路由标识/本机日志字段，不展示为产品文案；状态和错误的显示文本使用 machine_status 文案源。"
+  },
+  {
+    "path": "internal/daemon/images.go",
+    "literal": "no display copy for image",
+    "reason": "图片缓存派生副本失败的既有本机诊断，空间不足错误交给限频日志，不是用户可见文案。"
   }
 ]
