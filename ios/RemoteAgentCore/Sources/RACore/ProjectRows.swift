@@ -184,6 +184,8 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
     case starting(String)
     /// The start failed for certain; 重试.
     case failed(String)
+    /// The start failed because the computer's disk is full (ui-spec B3): its own card, 查看占用 and 重试.
+    case diskFull(machine: String)
     /// Whether the last start ran is not known; 放弃.
     case unknown(String)
 
@@ -198,6 +200,7 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
         case .autoAccount: return "auto-account"
         case .starting: return "starting"
         case .failed: return "failed"
+        case .diskFull: return "disk-full"
         case .unknown: return "unknown"
         }
     }
@@ -207,15 +210,18 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
 public struct NewSessionProgress: Equatable, Sendable {
     public var running: Bool
     public var error: String
+    /// The error is the daemon's `disk_full`: the start has a card of its own instead of the error's words.
+    public var diskFull: Bool
     /// The last start's outcome is unknown (`Attempt.frozen`), and expired (`Attempt.expired`).
     public var frozen: Bool
     public var expired: Bool
     /// The first message of the start whose outcome is unknown.
     public var prompt: String
 
-    public init(running: Bool = false, error: String = "", frozen: Bool = false, expired: Bool = false, prompt: String = "") {
+    public init(running: Bool = false, error: String = "", diskFull: Bool = false, frozen: Bool = false, expired: Bool = false, prompt: String = "") {
         self.running = running
         self.error = error
+        self.diskFull = diskFull
         self.frozen = frozen
         self.expired = expired
         self.prompt = prompt
@@ -287,7 +293,9 @@ public func newSessionNotices(
         if start.running { out.append(.starting(L10n.newSessionStartingOn(name: label))) }
     }
     // An unknown start has its own notice below.
-    if !start.error.isEmpty && !start.frozen && !start.running { out.append(.failed(L10n.newSessionStartFailed(reason: start.error))) }
+    if !start.error.isEmpty && !start.frozen && !start.running {
+        if start.diskFull, let c { out.append(.diskFull(machine: c.machineId)) } else { out.append(.failed(L10n.newSessionStartFailed(reason: start.error))) }
+    }
     if !start.running && start.frozen {
         out.append(.unknown(
             start.expired
