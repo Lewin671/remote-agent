@@ -15,6 +15,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -171,6 +172,7 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 	}
 	var view remoteclient.Session
 	var offered *pb.SharedFile
+	var offeredTurn string
 	approved := map[string]bool{}
 	trusted := false
 	wait(ctx, name+": send_file tool call carries shared_files", func() bool {
@@ -187,6 +189,8 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 				// Claude Code 2.1.322 puts the cursor on "No, exit"; move to the trusting option.
 				if strings.Contains(raw, "❯ No, exit") {
 					_ = exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8]+":", "Down").Run()
+					// Observe the selection on the next poll before confirming it.
+					return false
 				}
 				_ = exec.Command("tmux", "-L", socket, "send-keys", "-t", "ra-"+sid[:8]+":", "Enter").Run()
 				trusted = true
@@ -214,10 +218,14 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 			if t := e.GetToolCall(); t != nil && len(t.SharedFiles) > 0 {
 				fmt.Printf("OBSERVED %s: tool call %q status %q with %d shared file(s)\n", name, t.Title, t.Status, len(t.SharedFiles))
 				offered = t.SharedFiles[0]
+				offeredTurn = e.TurnId
 			}
 		}
 		return offered != nil
 	})
+	if offeredTurn == "" {
+		panic("offered file has no turn identity")
+	}
 	sum := sha256.Sum256(want)
 	if offered.Name != file || offered.SizeBytes != int64(len(want)) || !bytes.Equal(offered.Sha256, sum[:]) || !strings.HasSuffix(offered.Path, "/"+file) {
 		panic(fmt.Sprintf("offer does not describe the file: %+v", offered))
@@ -249,7 +257,7 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 			return false
 		}
 		for _, e := range evs {
-			if e.GetTurnEnded() != nil {
+			if e.TurnId == offeredTurn && e.GetTurnEnded() != nil {
 				return true
 			}
 		}
@@ -263,8 +271,9 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 			cursor = e.Seq
 		}
 	}
+	summaryRequest := remoteclient.NewRequestID()
 	_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{
-		SessionId: sid, RequestId: remoteclient.NewRequestID(),
+		SessionId: sid, RequestId: summaryRequest,
 		Text: "Write a one-sentence completion summary mentioning " + file + ".",
 	}}})
 	must(err)
@@ -273,6 +282,15 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 		if err != nil {
 			return false
 		}
+		// Require this request's recorded user message and its own reply/end.
+		// A previous interrupted turn or a late positive reply is not evidence
+		// that the ordinary task completed without sending a file.
+		var summaryTurn string
+		for _, e := range evs {
+			if e.GetUserMessage().GetRequestId() == summaryRequest {
+				summaryTurn = e.TurnId
+			}
+		}
 		completed, replied := false, false
 		for _, e := range evs {
 			if t := e.GetToolCall(); t != nil && (strings.Contains(t.Title, "send_file") || len(t.SharedFiles) > 0) {
@@ -280,6 +298,9 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 			}
 			if a := e.GetApprovalRequested(); a != nil && strings.Contains(a.ToolName, "send_file") {
 				panic("ordinary task requested send_file approval")
+			}
+			if summaryTurn == "" || e.TurnId != summaryTurn {
+				continue
 			}
 			if e.GetAgentMessage().GetText() != "" {
 				replied = true
@@ -294,6 +315,7 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 	must(err)
 	wait(ctx, name+": copy removed with the session", func() bool {
 		_, err := c.Do(ctx, view, &pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: sid, FileId: offered.FileId}}})
-		return err != nil
+		var ce *remoteclient.CommandError
+		return errors.As(err, &ce) && ce.Code == "not_found"
 	})
 }
