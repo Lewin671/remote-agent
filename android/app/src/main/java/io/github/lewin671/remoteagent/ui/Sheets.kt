@@ -654,13 +654,14 @@ fun PageScaffold(
     readable: Boolean = false,
     action: (@Composable () -> Unit)? = null,
     onBack: (() -> Unit)? = null,
+    wrapTitle: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val back = onBack ?: LocalNav.current.back
     if (onBack != null) androidx.activity.compose.BackHandler(onBack = onBack)
     val p = pal
     Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
-        PageBar(title, back, subtitle = subtitle, right = action)
+        PageBar(title, back, subtitle = subtitle, right = action, wrapTitle = wrapTitle)
         if (readable) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
         else content()
     }

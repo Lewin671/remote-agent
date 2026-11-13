@@ -117,6 +117,7 @@ fun IconText(icon: ImageVector, text: String, color: Color, style: TextStyle = T
  * The top of a second-level page (design-system §6 顶部): the glass back
  * button, the title in the middle (17 / 600, one line) with an optional
  * line under it, and at the right the glass ⋯ ([more]) or [right].
+ * [wrapTitle] lets fixed copy grow without truncating it.
  */
 @Composable
 fun PageBar(
@@ -126,6 +127,7 @@ fun PageBar(
     more: (() -> Unit)? = null,
     right: (@Composable () -> Unit)? = null,
     subtitleColor: Color? = null,
+    wrapTitle: Boolean = false,
 ) {
     val p = pal
     Row(
@@ -135,7 +137,7 @@ fun PageBar(
     ) {
         Box(Modifier.widthIn(min = 44.dp)) { if (onBack != null) GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), onBack) }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (title.isNotEmpty()) Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (title.isNotEmpty()) Text(title, style = T.s17b, color = p.ink, maxLines = if (wrapTitle) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) Text(subtitle, style = T.s12, color = subtitleColor ?: p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(Modifier.widthIn(min = 44.dp), contentAlignment = Alignment.CenterEnd) {
@@ -287,7 +289,8 @@ fun SheetHead(title: String, action: String? = null, onAction: (() -> Unit)? = n
     val p = pal
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Ic(Lucide.ChevronLeft, 22.dp, p.blue, contentDescription = uiText(UiMessages.commonBack())) }
-        Text(title, style = T.s17b, color = p.ink, modifier = Modifier.weight(1f))
+        // Leave 24 dp between a potentially long title and its action.
+        Text(title, style = T.s17b, color = p.ink, modifier = Modifier.weight(1f).padding(end = if (action != null) 14.dp else 0.dp))
         // As wide as its words: 完成 and 取消 fit in 44 dp, 以后再说 does not.
         if (action != null) Box(Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.s15, color = p.blue, maxLines = 1) }
     }

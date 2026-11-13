@@ -173,7 +173,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
         }
     }
 
-    PageScaffold(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onBack = onBack) {
+    PageScaffold(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onBack = onBack, wrapTitle = true) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         FormColumn(
             Modifier.fillMaxWidth()

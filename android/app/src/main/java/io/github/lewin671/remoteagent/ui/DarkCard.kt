@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ApprovalCardText
@@ -90,23 +92,37 @@ fun DarkCardHead(kind: String, right: String = "", hot: Boolean = false, trailin
         Row(m, verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(CardColors.orange))
             Spacer(Modifier.width(7.dp))
-            Text(kind, style = T.s13b, color = CardColors.orange, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(kind, style = T.s13b, color = CardColors.orange)
         }
     }
     val rightText: @Composable () -> Unit = {
         if (right.isNotEmpty()) Text(right, style = T.s13, color = if (hot) CardColors.orange else CardColors.text2, textAlign = TextAlign.End)
     }
-    // At a large font size the two do not fit side by side: the time goes under the kind, at the right.
-    if (LocalDensity.current.fontScale >= 1.5f) Column(Modifier.fillMaxWidth()) {
-        kindRow(Modifier)
-        Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-            rightText()
-            trailing?.invoke()
+    // Keep the compact row when its actual contents fit. Otherwise give the
+    // title a full row; metadata and actions remain together below it.
+    val largeType = LocalDensity.current.fontScale >= 1.5f
+    androidx.compose.ui.layout.Layout(
+        content = {
+            kindRow(Modifier)
+            FlowRow(horizontalArrangement = Arrangement.End, itemVerticalAlignment = Alignment.CenterVertically) {
+                rightText()
+                trailing?.invoke()
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val kind = measurables[0].measure(loose)
+        val details = measurables[1].measure(loose)
+        val gap = 8.dp.roundToPx()
+        val stacked = largeType || kind.width + gap + details.width > constraints.maxWidth
+        val rowGap = if (stacked && !largeType && details.height > 0) 4.dp.roundToPx() else 0
+        val height = if (stacked) kind.height + rowGap + details.height else maxOf(kind.height, details.height)
+        layout(constraints.maxWidth, constraints.constrainHeight(height)) {
+            kind.placeRelative(0, if (stacked) 0 else (height - kind.height + 1) / 2)
+            details.placeRelative(constraints.maxWidth - details.width,
+                if (stacked) kind.height + rowGap else (height - details.height + 1) / 2)
         }
-    } else Row(verticalAlignment = Alignment.CenterVertically) {
-        kindRow(Modifier.weight(1f).padding(end = 8.dp))
-        rightText()
-        trailing?.invoke()
     }
 }
 
