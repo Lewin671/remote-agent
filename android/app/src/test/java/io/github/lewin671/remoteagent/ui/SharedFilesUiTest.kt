@@ -105,6 +105,20 @@ class SharedFilesUiTest {
     private lateinit var tempDir: File
     private lateinit var manager: SharedFileManager
 
+    @Test
+    fun autoOpenBelongsToThePageThatStartedTheDownload() {
+        val host = SharedFileHostState(manager, "s", "Test computer", true, false)
+        val file = sharedFile("f", "cover.png", 10)
+        host.startDownload(file)
+        assertTrue(host.consumeAutoOpen("f"))
+        assertEquals(false, host.consumeAutoOpen("f"))
+        host.startDownload(file)
+        host.leavePage()
+        assertEquals(false, host.consumeAutoOpen("f"))
+        val returned = SharedFileHostState(manager, "s", "Test computer", true, false)
+        assertEquals(false, returned.consumeAutoOpen("f"))
+    }
+
     private fun sharedFile(
         id: String,
         name: String,

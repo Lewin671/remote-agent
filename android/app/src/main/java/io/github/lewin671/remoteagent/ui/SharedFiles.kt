@@ -49,6 +49,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -196,6 +200,17 @@ internal class SharedFileHostState(
     initialMachineOnline: Boolean,
     initialSessionExited: Boolean,
 ) {
+    private val autoOpenFiles = mutableSetOf<String>()
+
+    fun startDownload(file: SharedFile) {
+        autoOpenFiles += file.fileId
+        manager.startOrResume(sessionId, file, userInitiated = true)
+    }
+
+    fun leavePage() { autoOpenFiles.clear() }
+
+    fun consumeAutoOpen(fileId: String): Boolean = autoOpenFiles.remove(fileId)
+
     var machineName by mutableStateOf(initialMachineName)
     var machineOnline by mutableStateOf(initialMachineOnline)
     var sessionExited by mutableStateOf(initialSessionExited)
@@ -244,12 +259,24 @@ internal fun SharedFileHost(
         permLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
     }
 
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(liveHost, lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) liveHost.leavePage()
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            liveHost.leavePage()
+        }
+    }
+
     LaunchedEffect(manager, sessionId) {
         manager.store.completions.collect { comp ->
             if (comp.sessionId != sessionId) return@collect
             Motion.tap(view)
             view.announceForAccessibility(copy(UiMessages.sharedFileA11YDownloadedAnnounce(name = comp.fileName)))
-            if (comp.userInitiated) {
+            if (comp.userInitiated && liveHost.consumeAutoOpen(comp.fileId)) {
                 val sf = SharedFile.newBuilder()
                     .setFileId(comp.fileId)
                     .setName(comp.fileName)
@@ -386,7 +413,7 @@ private fun handleMenuAction(
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
     when (action) {
-        SharedMenuAction.DOWNLOAD, SharedMenuAction.RESUME -> manager.startOrResume(sessionId, file, userInitiated = true)
+        SharedMenuAction.DOWNLOAD, SharedMenuAction.RESUME -> host.startDownload(file)
         SharedMenuAction.PAUSE -> manager.pause(sessionId, file)
         SharedMenuAction.CANCEL -> manager.cancel(sessionId, file)
         SharedMenuAction.SAVE_TO_ALBUM -> {
@@ -481,7 +508,8 @@ internal fun SharedFilesBlock(
             val handlePrimaryClick: () -> Unit = {
                 when (uiState.visual) {
                     CardVisualState.AVAILABLE, CardVisualState.PAUSED, CardVisualState.FAILED ->
-                        manager.startOrResume(sessionId, file, userInitiated = true)
+                        if (host != null) host.startDownload(file)
+                        else manager.startOrResume(sessionId, file, userInitiated = true)
                     CardVisualState.DOWNLOADING -> manager.pause(sessionId, file)
                     CardVisualState.DOWNLOADED -> uiState.localFile?.let { local ->
                         openSharedFile(context, file, local, host)
