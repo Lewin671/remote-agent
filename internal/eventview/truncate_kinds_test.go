@@ -46,6 +46,10 @@ func TestFitEventEveryKind(t *testing.T) {
 	if len(texts) != kinds.Len() {
 		t.Fatal("update kind coverage")
 	}
+	encoded, err := json.Marshal(huge)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for i := 0; i < kinds.Len(); i++ {
 		name := kinds.Get(i).JSONName()
 		t.Run(name, func(t *testing.T) {
@@ -53,7 +57,6 @@ func TestFitEventEveryKind(t *testing.T) {
 			if !ok {
 				t.Fatal("missing kind")
 			}
-			encoded, _ := json.Marshal(huge)
 			body = strings.ReplaceAll(body, "%s", string(encoded))
 			raw := `{"seq":"7","sessionId":"session","turnId":"turn","time":"2026-10-16T00:00:00Z","origin":{"kind":1,"deviceId":"device","requestId":"origin-request"},"` + name + `":` + body + `}`
 			e := &pb.Event{}
@@ -71,7 +74,7 @@ func TestFitEventEveryKind(t *testing.T) {
 					t.Fatal("oversized identity skeleton lost")
 				}
 			} else {
-				got := mustFitEvent(t, e)
+				got := fitEvent(e)
 				if reflect.TypeOf(got.Kind) != reflect.TypeOf(e.Kind) || proto.Size(got) > MaxBytes {
 					t.Fatal("kind lost or still oversized")
 				}
@@ -122,7 +125,7 @@ func TestFitEventRetainsAllOptionLabels(t *testing.T) {
 		q.Options = append(q.Options, &pb.QuestionOption{Label: fmt.Sprintf("option-%04d-%s", i, strings.Repeat("x", 80)), Description: strings.Repeat("长", 300)})
 	}
 	e := &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "call", Questions: []*pb.Question{q}}}}
-	got := mustFitEvent(t, e).GetQuestionAsked()
+	got := fitEvent(e).GetQuestionAsked()
 	if got == nil || got.QuestionId != "call" || len(got.Questions[0].Options) != 4000 {
 		t.Fatal("question shape lost")
 	}

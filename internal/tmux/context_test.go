@@ -27,6 +27,7 @@ func TestTmuxBlockedHelper(t *testing.T) {
 }
 
 func TestRunContextStopsBlockedTmux(t *testing.T) {
+	t.Parallel()
 	for _, manual := range []bool{true, false} {
 		name := "default bound"
 		if manual {
@@ -48,11 +49,9 @@ func TestRunContextStopsBlockedTmux(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Setenv("RA_TMUX_BLOCKED_HELPER", "1")
-			t.Setenv("RA_TMUX_HELPER_SOCKET", socket)
-			t.Setenv("RA_TMUX_HELPER_EXE", executable)
 			bin := filepath.Join(dir, "tmux")
-			if err := os.WriteFile(bin, []byte("#!/bin/sh\nexec \"$RA_TMUX_HELPER_EXE\" -test.run='^TestTmuxBlockedHelper$' -- \"$@\"\n"), 0700); err != nil {
+			script := "#!/bin/sh\nexport RA_TMUX_BLOCKED_HELPER=1\nexport RA_TMUX_HELPER_SOCKET=" + shellLiteral(socket) + "\nexec " + shellLiteral(executable) + " -test.run='^TestTmuxBlockedHelper$' -- \"$@\"\n"
+			if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
 				t.Fatal(err)
 			}
 			accepted := make(chan net.Conn, 1)

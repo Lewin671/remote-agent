@@ -11,6 +11,7 @@ import (
 )
 
 func TestPollUsesOneInvocationAndDistinguishesFailures(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name, stdout, stderr string
 		alive, fail          bool
@@ -25,12 +26,14 @@ func TestPollUsesOneInvocationAndDistinguishesFailures(t *testing.T) {
 		{name: "transient", stderr: "server exited unexpectedly", alive: true, fail: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			bin, calls := filepath.Join(dir, "tmux"), filepath.Join(dir, "calls")
-			t.Setenv("RA_POLL_STDOUT", tt.stdout)
-			t.Setenv("RA_POLL_STDERR", tt.stderr)
-			t.Setenv("RA_POLL_CALLS", calls)
-			script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$RA_POLL_CALLS\"\nprintf '%s' \"$RA_POLL_STDOUT\"\nprintf '%s' \"$RA_POLL_STDERR\" >&2\n[ -z \"$RA_POLL_STDERR\" ]\n"
+			// Each child gets literal fixture data, without changing the test
+			// process environment shared by parallel cases.
+			script := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + shellLiteral(calls) +
+				"\nprintf '%s' " + shellLiteral(tt.stdout) + "\nprintf '%s' " + shellLiteral(tt.stderr) +
+				" >&2\n[ -z " + shellLiteral(tt.stderr) + " ]\n"
 			if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -51,6 +54,7 @@ func TestPollUsesOneInvocationAndDistinguishesFailures(t *testing.T) {
 }
 
 func TestPollRealSessionAndExactMissingTarget(t *testing.T) {
+	t.Parallel()
 	c := &Client{Socket: "ra-poll-" + randSuffix()}
 	if _, err := c.CheckVersion(); err != nil {
 		t.Skip(err)
@@ -92,4 +96,9 @@ func TestRunContextAlreadyCanceled(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation: %v", err)
 	}
+}
+
+// shellLiteral quotes paths and fixture text for the fake executable scripts.
+func shellLiteral(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
 }

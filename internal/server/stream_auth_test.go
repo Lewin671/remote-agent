@@ -3,10 +3,8 @@ package server
 import (
 	"context"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -43,10 +41,6 @@ func TestRevocationClosesClientAndTerminalStreams(t *testing.T) {
 		}
 		time.Sleep(time.Millisecond)
 	}
-	// Use a second client as administrator.
-	ap, aid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
-	admin := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ap, aid)))
-	_ = admin
 	if err := ts.removeViaState(t, cid); err != nil {
 		t.Fatal(err)
 	}

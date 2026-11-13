@@ -31,6 +31,7 @@ func TestVersionAtLeast(t *testing.T) {
 
 // TestSessionCommands runs against a real tmux server on a private socket.
 func TestSessionCommands(t *testing.T) {
+	t.Parallel()
 	c := &Client{Socket: "ra-test-" + randSuffix()}
 	if _, err := c.CheckVersion(); err != nil {
 		t.Skip(err)

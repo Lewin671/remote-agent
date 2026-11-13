@@ -149,19 +149,7 @@ type fakeClaude struct {
 	background string // appended to the mode line
 }
 
-// menuLabels are the rows /model opens with: the catalog's models, or the
-// labels a test set.
 func (*fakeClaude) Context() context.Context { return context.Background() }
-
-func (f *fakeClaude) menuLabels() []string {
-	if f.models != nil {
-		return f.models
-	}
-	if f.cat != nil {
-		return menuOf(f.cat)
-	}
-	return []string{"Default (recommended)", "Opus 5.5", "Fable 5.1", "Sonnet 5.5", "Haiku 4.5"}
-}
 
 // modelOf is the catalog row a menu label is, if the fake has a catalog.
 func (f *fakeClaude) modelOf(label string) *Model {
