@@ -576,36 +576,47 @@ private struct HeroContent: View {
         return (text.gbNumber(bytes, oneDecimal: true, binary: true), Double(bytes) / gibibyte)
     }
 
+    /// The lines to the side of the figure: CPU's load and cores, memory's total and swap.
+    private func sideLines(_ alignment: HorizontalAlignment, ink: Color, ink2: Color) -> some View {
+        VStack(alignment: alignment, spacing: 0) {
+            if metric == .cpu {
+                if let load = cpu.load { loadText(L10n.machineStatusLoad(load: load), number: load, bold: ink, rest: ink2).monospacedDigit() }
+                if let cores = cpu.cores { Text(cores).font(.footnote).foregroundStyle(ink2) }
+            } else {
+                Text(L10n.machineStatusTotal(size: mem.total)).font(.footnote).foregroundStyle(ink2)
+                if let swap = mem.swap { Text(L10n.machineStatusSwap(size: swap)).font(.footnote).foregroundStyle(ink2) }
+            }
+        }
+    }
+
     var body: some View {
         let ink = stale ? DS.ink3 : DS.ink
         let ink2 = stale ? DS.ink3 : DS.ink2
         let (value, number) = figure
         let label = metric == .cpu ? L10n.machineStatusCpu() : L10n.machineStatusMemory()
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Kick(symbol: metric == .cpu ? .cpu : .memory, label: label, color: ink2)
-                    HStack(alignment: metric == .cpu ? .top : .lastTextBaseline, spacing: 4) {
-                        RollingText(text: value, number: number).figure(52, style: .largeTitle, limit: 1.7).foregroundStyle(ink).minimumScaleFactor(0.5)
-                        if metric == .cpu {
-                            Text(text.percentSymbol).figure(24, style: .title2, limit: 1.7).foregroundStyle(ink).padding(.top, 7)
-                        } else {
-                            Text(L10n.machineStatusGbUsed()).figure(24, style: .title2, limit: 1.4).foregroundStyle(ink2).lineLimit(1).minimumScaleFactor(0.6)
-                        }
-                    }
-                }
-                Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 0) {
+            // The side lines stand to the right of the figure while both fit; otherwise under it, whole, never cut.
+            let figureBlock = VStack(alignment: .leading, spacing: 4) {
+                Kick(symbol: metric == .cpu ? .cpu : .memory, label: label, color: ink2)
+                HStack(alignment: metric == .cpu ? .top : .lastTextBaseline, spacing: 4) {
+                    RollingText(text: value, number: number).figure(52, style: .largeTitle, limit: 1.7).foregroundStyle(ink).minimumScaleFactor(0.5)
                     if metric == .cpu {
-                        if let load = cpu.load { loadText(L10n.machineStatusLoad(load: load), number: load, bold: ink, rest: ink2).monospacedDigit() }
-                        if let cores = cpu.cores { Text(cores).font(.footnote).foregroundStyle(ink2) }
+                        Text(text.percentSymbol).figure(24, style: .title2, limit: 1.7).foregroundStyle(ink).padding(.top, 7)
                     } else {
-                        Text(L10n.machineStatusTotal(size: mem.total)).font(.footnote).foregroundStyle(ink2)
-                        if let swap = mem.swap { Text(L10n.machineStatusSwap(size: swap)).font(.footnote).foregroundStyle(ink2) }
+                        Text(L10n.machineStatusGbUsed()).figure(24, style: .title2, limit: 1.4).foregroundStyle(ink2).lineLimit(1).minimumScaleFactor(0.6)
                     }
                 }
-                .multilineTextAlignment(.trailing)
-                .padding(.bottom, 8)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .bottom, spacing: 12) {
+                    figureBlock
+                    Spacer(minLength: 0)
+                    sideLines(.trailing, ink: ink, ink2: ink2).multilineTextAlignment(.trailing).padding(.bottom, 8)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    figureBlock
+                    sideLines(.leading, ink: ink, ink2: ink2).multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .padding(.horizontal, 18)
             if stale || points.isEmpty {
