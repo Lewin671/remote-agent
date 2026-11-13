@@ -6,6 +6,8 @@ import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CancellationException
+import io.github.lewin671.remoteagent.core.Outcome
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -55,6 +57,33 @@ class ApprovalAttemptTest {
             }
         }.exceptionOrNull() as CommandException
         assertTrue(expired.unknown)
+        assertEquals(ApprovalRecord.SENT, durable)
+    }
+
+    @Test fun cancellationKeepsPriorEvidenceForAReopenedWorkerRefusedByTheRelay() = runBlocking {
+        val canceled = runCatching {
+            sendApproval(command, durable, record) { _, retry ->
+                assertFalse(retry)
+                assertEquals(ApprovalRecord.SENT, durable)
+                // The result can be lost during dispatcher handoff. Cancellation
+                // carries no proof that this authorization was never dispatched.
+                throw CancellationException("result handoff canceled")
+            }
+        }.exceptionOrNull()
+        assertTrue(canceled is CancellationException)
+        assertEquals(ApprovalRecord.SENT, durable)
+
+        val reopened = PreparedCommand(command.machineId, command.sessionId, command.requestId, command.deadlineMs, command.envelope)
+        val refused = runCatching {
+            sendApproval(reopened, durable, record) { p, retry ->
+                assertTrue(retry)
+                assertEquals(command.requestId, p.requestId)
+                // Even if a transport adapter returns only this retry's
+                // NotForwarded conclusion, the stored prior must survive it.
+                throw CommandException("unavailable", "relay did not forward this retry", outcome = Outcome.NOT_SENT)
+            }
+        }.exceptionOrNull() as CommandException
+        assertTrue(refused.unknown)
         assertEquals(ApprovalRecord.SENT, durable)
     }
 

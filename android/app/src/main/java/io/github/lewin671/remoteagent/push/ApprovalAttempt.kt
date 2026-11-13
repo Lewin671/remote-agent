@@ -9,6 +9,7 @@ import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.PreparedCommand
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.proto.NotifyKind
+import kotlinx.coroutines.CancellationException
 
 /** Local choices apply even before the server has received a subscription update. */
 fun acceptPush(hasAccount: Boolean, kind: NotifyKind, settings: Settings): Boolean = hasAccount && when (kind) {
@@ -53,6 +54,10 @@ suspend fun sendApproval(
     try {
         forward(command, wasUnknown)
         record(ApprovalRecord.DONE)
+    } catch (e: CancellationException) {
+        // Cancellation can lose the result during dispatcher handoff. Keep the
+        // durable SENT marker so a restarted worker retries with prior evidence.
+        throw e
     } catch (e: Exception) {
         val shown = attempt.settle(e) ?: e
         if (!attempt.frozen) record(null)
