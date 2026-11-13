@@ -33,10 +33,8 @@ object DeviceSecurity {
     const val MAX_PAIR_CHAIN_BYTES = 800 shl 10
 
     const val LEASE = 72L * 60 * 60 * 1000
-    const val MAX_LEASE = LEASE
     /** How far ahead of the local clock a state's IssuedAt may be. */
     const val MAX_CLOCK_SKEW = 300_000uL
-    const val MAX_LEASE_U = 259_200_000uL
     const val LEASE_U = 259_200_000uL
     const val MAX_STATES_U = 4096uL
     private const val MAX_STATES_UINT = 4096u

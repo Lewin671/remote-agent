@@ -20,8 +20,6 @@ object Authority {
         return seed to SigningKey(seed).publicKey
     }
 
-    fun renewAfter(now: Long): Long = now + DeviceSecurity.LEASE
-
     private val DAY_MS = 24uL * 60uL * 60uL * 1000uL
     private val HALF_DAY_MS = 12uL * 60uL * 60uL * 1000uL
 
@@ -48,11 +46,6 @@ object Authority {
         check(xPrivate.size == 32)
         val x = X25519.publicKey(xPrivate)
         return DeviceSecurity.Member(deviceId(ed.publicKey), ed.publicKey, x, kind)
-    }
-
-    fun memberWithX(edPublic: ByteArray, xPrivate: ByteArray, kind: UInt): DeviceSecurity.Member {
-        check(edPublic.size == 32 && xPrivate.size == 32)
-        return DeviceSecurity.Member(deviceId(edPublic), edPublic, X25519.publicKey(xPrivate), kind)
     }
 
     fun genesis(

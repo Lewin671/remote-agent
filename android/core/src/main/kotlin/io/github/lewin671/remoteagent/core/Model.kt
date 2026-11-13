@@ -22,8 +22,6 @@ import java.time.ZonedDateTime
 // --- CLIs ---
 
 /** The CLI a session runs; sessions from before Claude Code support are Codex. */
-fun effectiveAgent(a: Agent): Agent = agentInfo(a).agent
-
 fun SessionView.agent(): Agent = agentInfo(info?.agent).agent
 
 /** The CLIs a machine can start; Codex while it lists none. */
@@ -557,13 +555,6 @@ fun permissionMode(pm: String): Mode? =
         "bypassPermissions" -> Mode.FULL
         else -> null
     }
-
-/**
- * Claude Code's permission mode as the chat names it: one of the four, or its own name for a mode
- * outside them.
- */
-fun permissionModeName(pm: String, copy: MessageResolver): String =
-    permissionMode(pm)?.text?.let(copy) ?: if (pm == "acceptEdits") "accept edits" else pm
 
 /** A mode as shown: one of the four, or a CLI's own mode by its name. */
 data class ModeLabel(val text: String, val mode: Mode?)
@@ -1473,8 +1464,6 @@ private fun clientBase(d: DeviceView?): ClientBase {
         else -> ClientBase.Client
     }
 }
-
-internal fun clientBaseName(d: DeviceView?, copy: MessageResolver): String = clientBase(d).display(copy)
 
 /** Compare raw metadata / fallback identities, including clients with a user-supplied name. */
 fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String {

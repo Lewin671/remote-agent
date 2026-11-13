@@ -2295,16 +2295,6 @@ class Remote(
     fun chainProofs(): Map<ULong, ByteArray> = security.chainProofs()
 
     /**
-     * A pending recovery the authority client can veto. The relay tells the signed-in authority
-     * phone; an unauthenticated lookup no longer does.
-     */
-    suspend fun pendingRecovery(): PendingRecoveryInfo? {
-        if (authorityDeviceId != account.deviceId) return null
-        syncSecurity()
-        return if (security.recoveryPending) PendingRecoveryInfo(security.recoveryReadyMs) else null
-    }
-
-    /**
      * Signs a newer state with a fresh recovery key but does not publish it yet: the user must save
      * the new code first. The state goes out only in [publishRecovery], so a crash cannot leave the
      * account without a code the user knows.

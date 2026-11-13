@@ -140,9 +140,6 @@ data class RecoveryChain(
     }
 }
 
-/** A recovery awaiting the authority client's veto. */
-data class PendingRecoveryInfo(val readyMs: Long)
-
 /** A veto/rotation state signed locally; its new code is shown before this is published. */
 data class PreparedRecovery(
     val code: String,
