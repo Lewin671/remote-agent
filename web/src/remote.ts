@@ -17,6 +17,8 @@ import type { SecurityRecord } from "./device-security-store";
 import { derive, agentOf, type Derived } from "./model";
 import { DEFAULT_AGENT } from "./agents";
 import { isSkeleton } from "./skeleton";
+import { SharedFileManager, type SharedFileChunkResult } from "./shared-files";
+import { sharedFileStore } from "./shared-file-store";
 import {
   DeviceSecurityClient,
   RecoveryHistoryUnavailable,
@@ -494,6 +496,34 @@ export class Remote {
   /** Development fixture hooks; the real client never enables these. */
   demoFlag(_name: string): boolean {
     return false;
+  }
+  private sharedFilesState?: SharedFileManager;
+  get sharedFiles(): SharedFileManager {
+    return (this.sharedFilesState ??= new SharedFileManager({
+      getChunk: (sid, fileId, offset) => this.getSharedFileChunk(sid, fileId, offset),
+      isConnected: () => this.conn === "online",
+      isMachineOnline: (sid) => {
+        const s = this.sessions.get(sid);
+        return !!(s && this.machines.get(s.machineId)?.online);
+      },
+      isSessionEnded: (sid) => {
+        const s = this.sessions.get(sid);
+        return s?.info?.status === SessionStatus.EXITED || (s?.endedMs ?? 0n) > 0n;
+      },
+      maxSharedFileBytes: (sid) => {
+        const s = this.sessions.get(sid);
+        return (s && this.machines.get(s.machineId)?.meta?.capabilities?.maxSharedFileBytes) || 0n;
+      },
+      sharedFileChunkBytes: (sid) => {
+        const s = this.sessions.get(sid);
+        return (s && this.machines.get(s.machineId)?.meta?.capabilities?.sharedFileChunkBytes) || 0;
+      },
+      store: sharedFileStore,
+    }));
+  }
+  hasSharedFilesCapability(sid: string): boolean {
+    const s = this.sessions.get(sid);
+    return !!(s && this.machines.get(s.machineId)?.meta?.capabilities?.sharedFiles === true);
   }
   machines = new Map<string, MachineView>();
   schedules = new Map<
@@ -1419,6 +1449,7 @@ export class Remote {
       }, this.waitingNotice ? this.linkGraceMs - notice : notice);
     }
     this.version++;
+    this.sharedFilesState?.onConnectivityChange();
     // Connection state must reach React even while an older listing is
     // awaiting metadata. Batching that work must not hide recovery or loss.
     if (this.held && !immediate) this.dirty = true;
@@ -2179,6 +2210,7 @@ export class Remote {
     this.outboxWriteFailed.delete(id);
     this.localNotices.delete(id);
     void this.localDrafts?.removeSession(id).catch(() => undefined);
+    void this.sharedFilesState?.dropSession(id).catch(() => undefined);
   }
 
   private bump(pushes: Map<string, number>, id: string) {
@@ -4410,6 +4442,25 @@ export class Remote {
         this.imageCache.delete(this.imageCache.keys().next().value!);
     }
     return out;
+  }
+
+  /** Fetches one zero-padded chunk of an agent-shared file from the daemon. */
+  async getSharedFileChunk(
+    sid: string,
+    fileId: string,
+    offset: bigint,
+  ): Promise<SharedFileChunkResult> {
+    const res = await this.command(sid, {
+      case: "getSharedFileChunk",
+      value: { sessionId: sid, fileId, offset },
+    });
+    if (res.kind.case !== "getSharedFileChunk") {
+      throw new Error(l10n.t("new_session.unexpected_reply"));
+    }
+    return {
+      data: res.kind.value.data,
+      totalBytes: res.kind.value.totalBytes,
+    };
   }
 
   /** An image already opened this visit, without asking the server. */

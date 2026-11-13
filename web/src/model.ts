@@ -1625,7 +1625,8 @@ export function toolOk(t: ToolCall): boolean {
 
 /** The chat's rows: runs of two or more completed tool calls in a row
  * fold into one line; events that draw nothing are left out. */
-export function timeline(events: Event[], d: Derived): Item[] {
+export function timeline(events: Event[], d: Derived, opts?: { sharedFiles?: boolean }): Item[] {
+  const allowShared = opts?.sharedFiles ?? false;
   const out: Item[] = [];
   const merged = approvalsOnCalls(events, d);
   let run: { first: Event; calls: ToolCall[] } | undefined;
@@ -1670,6 +1671,11 @@ export function timeline(events: Event[], d: Derived): Item[] {
     if (k.case === "toolCall" && isBackground(k.value)) {
       flush();
       out.push({ kind: "background", key: "b" + e.seq, call: k.value });
+      return;
+    }
+    if (k.case === "toolCall" && allowShared && toolOk(k.value) && k.value.sharedFiles.length > 0) {
+      flush();
+      out.push({ kind: "event", key: "e" + e.seq, event: e });
       return;
     }
     if (k.case === "toolCall" && toolOk(k.value)) {

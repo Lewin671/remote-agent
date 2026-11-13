@@ -79,7 +79,7 @@ export function GlassButton({ label, onClick, children, disabled, className = ""
 }
 
 // Asked when a sheet opens, not when this module loads: it is also loaded where there is no window.
-const wideQuery = () => matchMedia("(min-width: 900px)");
+export const wideQuery = () => matchMedia("(min-width: 900px)");
 function subscribeWide(fn: () => void) {
   const q = wideQuery();
   q.addEventListener?.("change", fn);

@@ -3,6 +3,7 @@ import { forgetSecurity } from "./device-security-store";
 import { ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import { isKnownAgent } from "./agents";
 import { clearEventCache } from "./eventcache";
+import { sharedFileStore } from "./shared-file-store";
 import type { NewConfig } from "./model";
 import { checkServer, deviceID, hex } from "./crypto";
 import { equal, SecurityError, type Pin } from "./device-security";
@@ -155,6 +156,7 @@ export async function forgetAccount(): Promise<void> {
   channel.postMessage("logout");
   if (channel !== logoutChannel) channel.close();
   await clearEventCache();
+  await sharedFileStore.clearAll().catch(() => undefined);
 }
 
 // Project choices stay in this browser, scoped to its server and device.

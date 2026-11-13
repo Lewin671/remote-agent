@@ -42,6 +42,7 @@ import {
   SendMode,
   OriginKind,
   SessionStatus,
+  SharedFileSchema,
   ToolKind,
   TurnOutcome,
   type Event,
@@ -1605,8 +1606,188 @@ export class DemoRemote extends Remote {
       if (!delay) start();
     }
     if (q.has("scheduled-final")) r.seedSchedules();
+    if (q.has("shared-files")) r.seedSharedFiles();
     if (q.has("one-machine")) for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
     return r;
+  }
+
+  private seedSharedFiles() {
+    const mac = this.machines.get("mac");
+    if (mac?.meta?.capabilities) {
+      mac.meta.capabilities.sharedFiles = true;
+      mac.meta.capabilities.maxSharedFileBytes = 104_857_600n;
+      mac.meta.capabilities.sharedFileChunkBytes = 786432;
+    }
+    const mini = this.machines.get("mini");
+    if (mini) {
+      mini.meta ??= create(MachineMetaSchema, { hostname: "Mac mini", capabilities: {} });
+      mini.meta.capabilities ??= create(MachineMetaSchema, { capabilities: {} }).capabilities!;
+      mini.meta.capabilities.sharedFiles = true;
+      mini.meta.capabilities.maxSharedFileBytes = 104_857_600n;
+      mini.meta.capabilities.sharedFileChunkBytes = 786432;
+    }
+
+    const demoMp4B64 =
+      "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";
+    const mp4Raw = typeof atob === "function"
+      ? Uint8Array.from(atob(demoMp4B64), (c) => c.charCodeAt(0))
+      : new Uint8Array([0]);
+    const mp4Blob = new Blob([mp4Raw], { type: "video/mp4" });
+
+    const sf = (fileId: string, name: string, sizeBytes: bigint, path: string) =>
+      create(SharedFileSchema, { fileId, name, sizeBytes, path });
+
+    const addSession = (
+      id: string,
+      machineId: string,
+      title: string,
+      status: SessionStatus,
+      events: EventKind[],
+    ) => {
+      const info = create(SessionSchema, {
+        id,
+        title,
+        cwd: "/Users/me/Movies/daocheng",
+        agent: Agent.CLAUDE,
+        status,
+        mode: ApprovalMode.ASK,
+        createdAt: timestampFromMs(Date.now() - 15 * min),
+      });
+      this.sessions.set(id, {
+        id,
+        machineId,
+        info,
+        metaRev: 1n,
+        lastSeq: BigInt(events.length),
+        updatedMs: BigInt(Date.now()),
+        endedMs: status === SessionStatus.EXITED ? BigInt(Date.now() - 2 * min) : 0n,
+      });
+      this.evs.set(
+        id,
+        events.map((kind, i) =>
+          create(EventSchema, {
+            seq: BigInt(i + 1),
+            sessionId: id,
+            time: timestampFromMs(Date.now() - (events.length - i) * 30_000),
+            kind,
+          }),
+        ),
+      );
+    };
+
+    const sfToolName = "send_file";
+    const okStatus = "completed";
+    const cUser = "userMessage" as const;
+    const cAgent = "agentMessage" as const;
+    const cTool = "toolCall" as const;
+    const userMsg = (s: string) => ({ case: cUser, value: { text: s } });
+    const agentMsg = (s: string) => ({ case: cAgent, value: { text: s } });
+    const cmdOk = (callId: string, cmdLine: string) => ({
+      case: cTool,
+      value: { callId, kind: ToolKind.COMMAND, title: cmdLine, status: okStatus, exitCode: 0 },
+    });
+    const sendOk = (callId: string, sharedFiles: ReturnType<typeof sf>[]) => ({
+      case: cTool,
+      value: { callId, kind: ToolKind.OTHER, title: sfToolName, status: okStatus, exitCode: 0, sharedFiles },
+    });
+
+    const fChat = sf("sf-chat-1", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    addSession("s-sf-chat", "mac", "daocheng-edit", SessionStatus.IDLE, [
+      userMsg("Send the exported final cut to my phone."),
+      { case: "turnStarted", value: {} },
+      cmdOk("sf-ffmpeg", "ffmpeg -i cut.mov -c:v libx264 out/daocheng-final.mp4"),
+      agentMsg("Exported at 1080p (1m 42s)."),
+      sendOk("sf-send-1", [fChat]),
+      agentMsg("Need a vertical cut too?"),
+      { case: "turnEnded", value: { durationMs: 2200n, outcome: TurnOutcome.COMPLETED } },
+    ]);
+
+    const sAvail = sf("sf-avail", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    const sDl = sf("sf-dl", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    const sPaused = sf("sf-paused", "assets-backup.zip", 18_874_368n, "/Users/me/Movies/daocheng/assets-backup.zip");
+    const sDoneVid = sf("sf-done-vid", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    const sDoneImg = sf("sf-done-img", "cover.png", 1_887_437n, "/Users/me/Movies/daocheng/cover.png");
+    const sFail = sf("sf-fail", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    const sPdf = sf("sf-pdf", "2026-Q3-roadmap-final-v2.pdf", 4_404_019n, "/Users/me/Documents/2026-Q3-roadmap-final-v2.pdf");
+    const sLarge = sf("sf-large", "render-cache.tar.gz", 125_829_120n, "/Users/me/Movies/daocheng/render-cache.tar.gz");
+    addSession("s-sf-states", "mac", "shared-file-states", SessionStatus.IDLE, [
+      { case: "turnStarted", value: {} },
+      sendOk("sf-all-1", [sAvail, sDl, sPaused, sDoneVid, sDoneImg, sPdf, sFail, sLarge]),
+      { case: "turnEnded", value: { durationMs: 1200n, outcome: TurnOutcome.COMPLETED } },
+    ]);
+
+    const m1 = sf("sf-m-1", "cover.png", 1_887_437n, "/Users/me/Movies/daocheng/cover.png");
+    const m2 = sf("sf-m-2", "daocheng-final-vertical-1080-v3.mp4", 64_697_139n, "/Users/me/Movies/daocheng/daocheng-final-vertical-1080-v3.mp4");
+    const m3 = sf("sf-m-3", "project.zip", 92_694_118n, "/Users/me/Movies/daocheng/project.zip");
+    addSession("s-sf-multi", "mac", "multi-files", SessionStatus.IDLE, [
+      userMsg("Send the cover, final cut, and project archive."),
+      { case: "turnStarted", value: {} },
+      cmdOk("sf-pre-1", "ls -lh out/"),
+      cmdOk("sf-pre-2", "zip -r project.zip src/"),
+      sendOk("sf-multi", [m1, m2, m3]),
+      cmdOk("sf-post-1", "du -sh out/"),
+      cmdOk("sf-post-2", "echo done"),
+      agentMsg("Here are all three files."),
+      { case: "turnEnded", value: { durationMs: 1800n, outcome: TurnOutcome.COMPLETED } },
+    ]);
+
+    const fOff = sf("sf-off-1", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    addSession("s-sf-offline", "mini", "offline-files", SessionStatus.IDLE, [
+      { case: "turnStarted", value: {} },
+      sendOk("sf-off", [fOff]),
+      { case: "turnEnded", value: { durationMs: 900n, outcome: TurnOutcome.COMPLETED } },
+    ]);
+
+    const fGone = sf("sf-gone-1", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    addSession("s-sf-ended", "mac", "ended-files", SessionStatus.EXITED, [
+      { case: "turnStarted", value: {} },
+      sendOk("sf-gone", [fGone]),
+      { case: "turnEnded", value: { durationMs: 900n, outcome: TurnOutcome.COMPLETED } },
+    ]);
+
+    this.sharedFiles.seedState("s-sf-states", "sf-dl", {
+      status: "downloading",
+      downloadedBytes: 8_493_465,
+      etaSeconds: 12,
+    });
+    this.sharedFiles.seedState("s-sf-states", "sf-paused", {
+      status: "paused",
+      downloadedBytes: 6_291_456,
+    });
+    this.sharedFiles.seedDownloaded("s-sf-states", "sf-done-vid", mp4Blob);
+    this.sharedFiles.seedState("s-sf-states", "sf-fail", {
+      status: "failed",
+      failKind: "disconnected",
+    });
+    this.sharedFiles.seedState("s-sf-multi", "sf-m-2", {
+      status: "downloading",
+      downloadedBytes: 12_582_912,
+    });
+
+    void draw("gen", 240, 160).then((png) => {
+      if (!png) return;
+      const imgBlob = new Blob([png as Uint8Array<ArrayBuffer>], { type: "image/png" });
+      this.sharedFiles.seedDownloaded("s-sf-states", "sf-done-img", imgBlob);
+      this.sharedFiles.seedDownloaded("s-sf-multi", "sf-m-1", imgBlob);
+    });
+  }
+
+  override async getSharedFileChunk(sid: string, fileId: string, offset: bigint) {
+    await this.pause(240);
+    if (this.conn !== "online") {
+      const OfflineErr = CommandError;
+      throw new OfflineErr("unavailable", "offline");
+    }
+    const ev = this.evs.get(sid)?.find(
+      (e) => e.kind.case === "toolCall" && e.kind.value.sharedFiles.some((f) => f.fileId === fileId),
+    );
+    const file = ev?.kind.case === "toolCall" ? ev.kind.value.sharedFiles.find((f) => f.fileId === fileId) : undefined;
+    const total = file?.sizeBytes ?? 1024n;
+    const chunkBytes = 786432;
+    const data = new Uint8Array(chunkBytes);
+    const end = Math.min(Number(total), Number(offset) + chunkBytes);
+    for (let i = Number(offset); i < end; i++) data[i - Number(offset)] = i % 251;
+    return { data, totalBytes: total };
   }
 
   private seedSchedules() {

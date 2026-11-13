@@ -23,8 +23,19 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import type { Event, ImageRef } from "../gen/remoteagent/v1/event_pb";
+import type { Event, ImageRef, SharedFile } from "../gen/remoteagent/v1/event_pb";
 import { sessionImages, splitPlaceholders } from "../imageview";
+import {
+  DEFAULT_MAX_SHARED_FILE_BYTES,
+  previewBlobForFile,
+  saveBlobAsDownload,
+} from "../shared-files";
+import {
+  SharedFileCards,
+  SharedFilePreviewOverlay,
+  SharedFileViewContext,
+  type SharedFilePreviewTarget,
+} from "./SharedFiles";
 import {
   GenCard,
   ImageStrip,
@@ -334,7 +345,39 @@ export function SessionPage({
     () => sessionImages(events),
     [events, events.length],
   ); // eslint-disable-line react-hooks/exhaustive-deps
-  const [viewing, setViewing] = useState<number>();
+  const [viewing, setViewing] = useState(undefined as number | undefined);
+  const [viewingShared, setViewingShared] = useState(undefined as SharedFilePreviewTarget | undefined);
+  const openSharedFile = useCallback((file: SharedFile, blob: Blob) => {
+    const preview = previewBlobForFile(blob, file.name);
+    if (!preview) {
+      saveBlobAsDownload(blob, file.name);
+      return;
+    }
+    setViewingShared({
+      file,
+      blob,
+      kind: preview.kind,
+      previewBlob: preview.blob,
+      path: file.path,
+    });
+  }, []);
+  useEffect(() => {
+    remote.sharedFiles.setCurrentSession(sid);
+    remote.sharedFiles.setAutoOpenHandler((targetSid, file, blob) => {
+      if (targetSid === sid) openSharedFile(file, blob);
+    });
+    return () => {
+      remote.sharedFiles.setCurrentSession(undefined);
+      remote.sharedFiles.setAutoOpenHandler(undefined);
+    };
+  }, [remote, sid, openSharedFile]);
+  const sharedFileCtx = useMemo(
+    () => ({
+      openFile: openSharedFile,
+      onToast: (msg: string) => setToastRef.current(msg),
+    }),
+    [openSharedFile],
+  );
   const openImage = useCallback(
     (ref: ImageRef) => {
       const i = pictures.findIndex((p) => p.ref === ref);
@@ -635,6 +678,7 @@ export function SessionPage({
   );
 
   return (
+    <SharedFileViewContext.Provider value={sharedFileCtx}>
     <OpenImage.Provider value={openImage}>
       <div
         className={"session" + (tab === "term" && !wide ? " termmode" : "")}
@@ -832,8 +876,20 @@ export function SessionPage({
             }
           />
         )}
+        {viewingShared && (
+          <SharedFilePreviewOverlay
+            remote={remote}
+            sessionId={sid}
+            agentName={agentLabel}
+            machineHome={machine?.meta?.home}
+            wide={wide}
+            target={viewingShared}
+            onClose={() => setViewingShared(undefined)}
+          />
+        )}
       </div>
     </OpenImage.Provider>
+    </SharedFileViewContext.Provider>
   );
 }
 
@@ -876,7 +932,13 @@ function ChatBody({
   const hist = remote.history(sid);
   const restoringHistory = useRef(!hist.loaded);
   const [expandedQuiet, setExpandedQuiet] = useState(new Set<string>());
-  const rawItems = useMemo(() => timeline(events, d), [events, events.length, d]);
+  const hasSharedFiles = remote.hasSharedFilesCapability(sid);
+  const rawItems = useMemo(
+    () => timeline(events, d, { sharedFiles: hasSharedFiles }),
+    [events, events.length, d, hasSharedFiles],
+  );
+  const machineCaps = remote.machines.get(session.machineId)?.meta?.capabilities;
+  const maxSharedFileBytes = machineCaps?.maxSharedFileBytes || DEFAULT_MAX_SHARED_FILE_BYTES;
   const focusSeq = focus && (events.find(e => e.kind.case === "userMessage" && e.origin?.scheduledRunId === focus.runId)?.seq ?? focus.seq);
   const items = useMemo(() => foldScheduled(rawItems, events, expandedQuiet, focusSeq), [rawItems, events, events.length, expandedQuiet, focusSeq]);
   const focusKey = focus && (rawItems.find(it => it.kind === "event" && it.event.kind.case === "userMessage" && it.event.origin?.scheduledRunId === focus.runId) ?? rawItems.find(it => it.kind === "event" && it.event.seq >= focus.seq))?.key;
@@ -1228,6 +1290,9 @@ function ChatBody({
                 sid={sid}
                 settle={freshRow(it.key)}
                 sentHere={sentHere.current}
+                hasSharedFiles={hasSharedFiles}
+                machineHome={home}
+                maxSharedFileBytes={maxSharedFileBytes}
               />
             </RowState>
           )}
@@ -1425,6 +1490,9 @@ function Row({
   sid,
   settle,
   sentHere,
+  hasSharedFiles,
+  machineHome,
+  maxSharedFileBytes,
 }: {
   it: Item;
   d: Derived;
@@ -1441,6 +1509,9 @@ function Row({
   // The row has only now arrived; the ids of messages this page sent.
   settle: boolean;
   sentHere: Map<string, Sent>;
+  hasSharedFiles: boolean;
+  machineHome: string;
+  maxSharedFileBytes: bigint;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "background")
@@ -1530,7 +1601,20 @@ function Row({
           <div className="thinktext">{k.value.text}</div>
         </RememberDetails>
       );
-    case "toolCall":
+    case "toolCall": {
+      const ok = k.value.status !== "failed" && (k.value.exitCode === undefined || k.value.exitCode === 0);
+      if (hasSharedFiles && ok && k.value.sharedFiles.length > 0) {
+        return (
+          <SharedFileCards
+            remote={remote}
+            sessionId={sid}
+            files={k.value.sharedFiles}
+            machineName={machine}
+            machineHome={machineHome}
+            maxBytes={maxSharedFileBytes}
+          />
+        );
+      }
       return (
         <ToolRow
           t={k.value}
@@ -1548,6 +1632,7 @@ function Row({
           }
         />
       );
+    }
     case "turnEnded":
       return (
         <div className="sysline">

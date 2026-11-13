@@ -1,0 +1,748 @@
+[
+  {
+    "key": "shared_file.a11y_available",
+    "zh-CN": "未下载，点击下载",
+    "en": "Not downloaded, tap to download",
+    "notes": "Shared file card accessibility status suffix when the file is available to download.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_card",
+    "zh-CN": "{name}，{status}",
+    "en": "{name}, {status}",
+    "notes": "Accessible label for a shared file card combining filename and state.",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "daocheng-final.mp4"
+      },
+      "status": {
+        "type": "string",
+        "example": "未下载，点击下载"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_cleaned",
+    "zh-CN": "会话已结束，文件已清理",
+    "en": "Session ended, file cleaned",
+    "notes": "Accessible status when session has ended and local copy is not present.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_downloaded",
+    "zh-CN": "已下载，点击打开",
+    "en": "Downloaded, tap to open",
+    "notes": "Accessible status when file is downloaded locally.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_downloading",
+    "zh-CN": "下载中 {percent}%，点击暂停",
+    "en": "Downloading {percent}%, tap to pause",
+    "notes": "Accessible status while a shared file is downloading.",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 42
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_failed",
+    "zh-CN": "下载失败，点击重试",
+    "en": "Download failed, tap to retry",
+    "notes": "Accessible status when a shared file download has failed.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_offline",
+    "zh-CN": "电脑不在线",
+    "en": "Computer offline",
+    "notes": "Accessible status when the source machine is offline and no local copy exists.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_paused",
+    "zh-CN": "已暂停，点击继续下载",
+    "en": "Paused, tap to resume",
+    "notes": "Accessible status when a shared file download is paused.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.a11y_too_large",
+    "zh-CN": "文件超过 {limit}，请在电脑端直接查看",
+    "en": "File exceeds {limit}, view it on your computer",
+    "notes": "Accessible status when a shared file exceeds the transfer limit.",
+    "params": {
+      "limit": {
+        "type": "string",
+        "example": "100 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.cancel_download",
+    "zh-CN": "取消下载",
+    "en": "Cancel download",
+    "notes": "Context menu item to cancel an active or paused shared file download.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.cleaned",
+    "zh-CN": "会话已结束，文件已清理",
+    "en": "Session ended, file cleaned",
+    "notes": "Card status subtitle when the session has ended and local copy is gone.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.close_preview",
+    "zh-CN": "关闭预览",
+    "en": "Close preview",
+    "notes": "Accessible label for closing the media preview overlay.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.context_menu_label",
+    "zh-CN": "文件操作菜单",
+    "en": "File actions menu",
+    "notes": "Accessible dialog label for the shared file context menu.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.delete_local",
+    "zh-CN": "删除本机副本",
+    "en": "Delete local copy",
+    "notes": "Destructive menu action removing the locally cached file copy.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.download",
+    "zh-CN": "下载",
+    "en": "Download",
+    "notes": "Menu or button label to download a shared file.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.downloading_eta",
+    "zh-CN": "{done} / {total} · 剩 {eta}",
+    "en": "{done} / {total} · {eta} left",
+    "notes": "Progress subtitle while downloading after ETA is available.",
+    "params": {
+      "done": {
+        "type": "string",
+        "example": "26.4 MB"
+      },
+      "eta": {
+        "type": "string",
+        "example": "12 秒"
+      },
+      "total": {
+        "type": "string",
+        "example": "62.8 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.downloading_no_eta",
+    "zh-CN": "{done} / {total}",
+    "en": "{done} / {total}",
+    "notes": "Progress subtitle during initial seconds before ETA is estimated.",
+    "params": {
+      "done": {
+        "type": "string",
+        "example": "4.2 MB"
+      },
+      "total": {
+        "type": "string",
+        "example": "62.8 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.eta_hours",
+    "zh-CN": "{count} 小时",
+    "en": "{count}h",
+    "notes": "Short ETA unit in hours.",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.eta_minutes",
+    "zh-CN": "{count} 分",
+    "en": "{count}m",
+    "notes": "Short ETA unit in minutes.",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.eta_seconds",
+    "zh-CN": "{count} 秒",
+    "en": "{count}s",
+    "notes": "Short ETA unit in seconds.",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 12
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.fail_checksum",
+    "zh-CN": "没下载下来，文件校验不一致",
+    "en": "Download failed, checksum mismatch",
+    "notes": "Failure reason when SHA-256 or block size verification fails.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.fail_disconnected",
+    "zh-CN": "没下载下来，连接断了",
+    "en": "Download failed, connection lost",
+    "notes": "Failure reason when connection drops and 30s auto-resume does not recover.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.fail_other",
+    "zh-CN": "没下载下来，{reason}",
+    "en": "Download failed, {reason}",
+    "notes": "Failure reason showing verbatim error text returned from the computer.",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "文件不存在"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.fail_storage",
+    "zh-CN": "没下载下来，浏览器空间不足",
+    "en": "Download failed, browser storage is full",
+    "notes": "Failure reason when browser OPFS/storage quota is exceeded.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.from_machine",
+    "zh-CN": "来自 {name}",
+    "en": "From {name}",
+    "notes": "Context menu subheader showing the machine name the file comes from.",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook Pro"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.image_meta",
+    "zh-CN": "{width}×{height} · {size}",
+    "en": "{width}×{height} · {size}",
+    "notes": "Subtitle for a downloaded image file showing pixel dimensions and size.",
+    "params": {
+      "height": {
+        "type": "integer",
+        "example": 1600
+      },
+      "size": {
+        "type": "string",
+        "example": "2.4 MB"
+      },
+      "width": {
+        "type": "integer",
+        "example": 2400
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.kind_archive",
+    "zh-CN": "压缩包",
+    "en": "Archive",
+    "notes": "File type label for archive extensions (zip, tar, gz, 7z, rar, etc.).",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.kind_audio",
+    "zh-CN": "音频",
+    "en": "Audio",
+    "notes": "File type label for audio files.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.kind_file",
+    "zh-CN": "文件",
+    "en": "File",
+    "notes": "Generic file type label when extension is not video, image, audio, archive, or pdf.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.kind_image",
+    "zh-CN": "图片",
+    "en": "Image",
+    "notes": "File type label for image files.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.kind_pdf",
+    "zh-CN": "PDF",
+    "en": "PDF",
+    "notes": "File type label for PDF files.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.kind_video",
+    "zh-CN": "视频",
+    "en": "Video",
+    "notes": "File type label for video files.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.machine_offline",
+    "zh-CN": "电脑不在线",
+    "en": "Computer offline",
+    "notes": "Card subtitle when the machine is offline and file has not been downloaded.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.open",
+    "zh-CN": "打开",
+    "en": "Open",
+    "notes": "Pill button label on a downloaded shared file card.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.pause",
+    "zh-CN": "暂停",
+    "en": "Pause",
+    "notes": "Context menu or accessibility action label to pause a download.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.paused",
+    "zh-CN": "已暂停 · {done} / {total}",
+    "en": "Paused · {done} / {total}",
+    "notes": "Card subtitle when a download is paused, showing progress so far.",
+    "params": {
+      "done": {
+        "type": "string",
+        "example": "26.4 MB"
+      },
+      "total": {
+        "type": "string",
+        "example": "62.8 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.resume",
+    "zh-CN": "继续下载",
+    "en": "Resume download",
+    "notes": "Action label to resume a paused download.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.retry",
+    "zh-CN": "重试",
+    "en": "Retry",
+    "notes": "Pill button label on a failed shared file card.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.save_to_device",
+    "zh-CN": "保存到本机",
+    "en": "Save to device",
+    "notes": "Menu action to trigger browser file download to local disk.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.share",
+    "zh-CN": "分享",
+    "en": "Share",
+    "notes": "Menu action to invoke Web Share API when supported by the browser.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.share_failed",
+    "zh-CN": "没能分享：{reason}",
+    "en": "Couldn't share: {reason}",
+    "notes": "Error notice when navigator.share fails.",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Permission denied"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.too_large",
+    "zh-CN": "文件超过 {limit}，请在电脑端直接查看",
+    "en": "File exceeds {limit}, view it directly on your computer",
+    "notes": "Card subtitle when the file exceeds max_shared_file_bytes.",
+    "params": {
+      "limit": {
+        "type": "string",
+        "example": "100 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_and_size",
+    "zh-CN": "{kind} · {size}",
+    "en": "{kind} · {size}",
+    "notes": "Default card subtitle combining file kind and size.",
+    "params": {
+      "kind": {
+        "type": "string",
+        "example": "视频"
+      },
+      "size": {
+        "type": "string",
+        "example": "62.8 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.unknown_reason",
+    "zh-CN": "未知原因",
+    "en": "Unknown error",
+    "notes": "Fallback error text when the computer returned a failure without details.",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.video_and_size",
+    "zh-CN": "{duration} · {size}",
+    "en": "{duration} · {size}",
+    "notes": "Subtitle for a downloaded video or audio file showing formatted duration and size.",
+    "params": {
+      "duration": {
+        "type": "string",
+        "example": "1:24"
+      },
+      "size": {
+        "type": "string",
+        "example": "62.8 MB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

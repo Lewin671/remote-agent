@@ -1265,6 +1265,51 @@ export interface MessageArgs {
   "settings.when_a_turn_ends": { [name: string]: never };
   "settings.when_i_need_to_act": { [name: string]: never };
   "settings.when_unspecified_uses": { [name: string]: never };
+  "shared_file.a11y_available": { [name: string]: never };
+  "shared_file.a11y_card": { name: string; status: string };
+  "shared_file.a11y_cleaned": { [name: string]: never };
+  "shared_file.a11y_downloaded": { [name: string]: never };
+  "shared_file.a11y_downloading": { percent: number };
+  "shared_file.a11y_failed": { [name: string]: never };
+  "shared_file.a11y_offline": { [name: string]: never };
+  "shared_file.a11y_paused": { [name: string]: never };
+  "shared_file.a11y_too_large": { limit: string };
+  "shared_file.cancel_download": { [name: string]: never };
+  "shared_file.cleaned": { [name: string]: never };
+  "shared_file.close_preview": { [name: string]: never };
+  "shared_file.context_menu_label": { [name: string]: never };
+  "shared_file.delete_local": { [name: string]: never };
+  "shared_file.download": { [name: string]: never };
+  "shared_file.downloading_eta": { done: string; eta: string; total: string };
+  "shared_file.downloading_no_eta": { done: string; total: string };
+  "shared_file.eta_hours": { count: number };
+  "shared_file.eta_minutes": { count: number };
+  "shared_file.eta_seconds": { count: number };
+  "shared_file.fail_checksum": { [name: string]: never };
+  "shared_file.fail_disconnected": { [name: string]: never };
+  "shared_file.fail_other": { reason: string };
+  "shared_file.fail_storage": { [name: string]: never };
+  "shared_file.from_machine": { name: string };
+  "shared_file.image_meta": { height: number; size: string; width: number };
+  "shared_file.kind_archive": { [name: string]: never };
+  "shared_file.kind_audio": { [name: string]: never };
+  "shared_file.kind_file": { [name: string]: never };
+  "shared_file.kind_image": { [name: string]: never };
+  "shared_file.kind_pdf": { [name: string]: never };
+  "shared_file.kind_video": { [name: string]: never };
+  "shared_file.machine_offline": { [name: string]: never };
+  "shared_file.open": { [name: string]: never };
+  "shared_file.pause": { [name: string]: never };
+  "shared_file.paused": { done: string; total: string };
+  "shared_file.resume": { [name: string]: never };
+  "shared_file.retry": { [name: string]: never };
+  "shared_file.save_to_device": { [name: string]: never };
+  "shared_file.share": { [name: string]: never };
+  "shared_file.share_failed": { reason: string };
+  "shared_file.too_large": { limit: string };
+  "shared_file.type_and_size": { kind: string; size: string };
+  "shared_file.unknown_reason": { [name: string]: never };
+  "shared_file.video_and_size": { duration: string; size: string };
   "startup.install_description": { [name: string]: never };
   "startup.javascript_required": { [name: string]: never };
   "startup.opening": { [name: string]: never };
@@ -2972,6 +3017,51 @@ export const messages = {
     "settings.when_a_turn_ends": "When a turn ends",
     "settings.when_i_need_to_act": "When I need to act",
     "settings.when_unspecified_uses": "When unspecified, uses:",
+    "shared_file.a11y_available": "Not downloaded, tap to download",
+    "shared_file.a11y_card": "{name}, {status}",
+    "shared_file.a11y_cleaned": "Session ended, file cleaned",
+    "shared_file.a11y_downloaded": "Downloaded, tap to open",
+    "shared_file.a11y_downloading": "Downloading {percent}%, tap to pause",
+    "shared_file.a11y_failed": "Download failed, tap to retry",
+    "shared_file.a11y_offline": "Computer offline",
+    "shared_file.a11y_paused": "Paused, tap to resume",
+    "shared_file.a11y_too_large": "File exceeds {limit}, view it on your computer",
+    "shared_file.cancel_download": "Cancel download",
+    "shared_file.cleaned": "Session ended, file cleaned",
+    "shared_file.close_preview": "Close preview",
+    "shared_file.context_menu_label": "File actions menu",
+    "shared_file.delete_local": "Delete local copy",
+    "shared_file.download": "Download",
+    "shared_file.downloading_eta": "{done} / {total} · {eta} left",
+    "shared_file.downloading_no_eta": "{done} / {total}",
+    "shared_file.eta_hours": "{count}h",
+    "shared_file.eta_minutes": "{count}m",
+    "shared_file.eta_seconds": "{count}s",
+    "shared_file.fail_checksum": "Download failed, checksum mismatch",
+    "shared_file.fail_disconnected": "Download failed, connection lost",
+    "shared_file.fail_other": "Download failed, {reason}",
+    "shared_file.fail_storage": "Download failed, browser storage is full",
+    "shared_file.from_machine": "From {name}",
+    "shared_file.image_meta": "{width}×{height} · {size}",
+    "shared_file.kind_archive": "Archive",
+    "shared_file.kind_audio": "Audio",
+    "shared_file.kind_file": "File",
+    "shared_file.kind_image": "Image",
+    "shared_file.kind_pdf": "PDF",
+    "shared_file.kind_video": "Video",
+    "shared_file.machine_offline": "Computer offline",
+    "shared_file.open": "Open",
+    "shared_file.pause": "Pause",
+    "shared_file.paused": "Paused · {done} / {total}",
+    "shared_file.resume": "Resume download",
+    "shared_file.retry": "Retry",
+    "shared_file.save_to_device": "Save to device",
+    "shared_file.share": "Share",
+    "shared_file.share_failed": "Couldn't share: {reason}",
+    "shared_file.too_large": "File exceeds {limit}, view it directly on your computer",
+    "shared_file.type_and_size": "{kind} · {size}",
+    "shared_file.unknown_reason": "Unknown error",
+    "shared_file.video_and_size": "{duration} · {size}",
     "startup.install_description": "Control Codex on your own computer from any device",
     "startup.javascript_required": "Enable JavaScript and reload.",
     "startup.opening": "Opening…",
@@ -4658,6 +4748,51 @@ export const messages = {
     "settings.when_a_turn_ends": "一轮结束时",
     "settings.when_i_need_to_act": "等我处理时",
     "settings.when_unspecified_uses": "不指定时实际用：",
+    "shared_file.a11y_available": "未下载，点击下载",
+    "shared_file.a11y_card": "{name}，{status}",
+    "shared_file.a11y_cleaned": "会话已结束，文件已清理",
+    "shared_file.a11y_downloaded": "已下载，点击打开",
+    "shared_file.a11y_downloading": "下载中 {percent}%，点击暂停",
+    "shared_file.a11y_failed": "下载失败，点击重试",
+    "shared_file.a11y_offline": "电脑不在线",
+    "shared_file.a11y_paused": "已暂停，点击继续下载",
+    "shared_file.a11y_too_large": "文件超过 {limit}，请在电脑端直接查看",
+    "shared_file.cancel_download": "取消下载",
+    "shared_file.cleaned": "会话已结束，文件已清理",
+    "shared_file.close_preview": "关闭预览",
+    "shared_file.context_menu_label": "文件操作菜单",
+    "shared_file.delete_local": "删除本机副本",
+    "shared_file.download": "下载",
+    "shared_file.downloading_eta": "{done} / {total} · 剩 {eta}",
+    "shared_file.downloading_no_eta": "{done} / {total}",
+    "shared_file.eta_hours": "{count} 小时",
+    "shared_file.eta_minutes": "{count} 分",
+    "shared_file.eta_seconds": "{count} 秒",
+    "shared_file.fail_checksum": "没下载下来，文件校验不一致",
+    "shared_file.fail_disconnected": "没下载下来，连接断了",
+    "shared_file.fail_other": "没下载下来，{reason}",
+    "shared_file.fail_storage": "没下载下来，浏览器空间不足",
+    "shared_file.from_machine": "来自 {name}",
+    "shared_file.image_meta": "{width}×{height} · {size}",
+    "shared_file.kind_archive": "压缩包",
+    "shared_file.kind_audio": "音频",
+    "shared_file.kind_file": "文件",
+    "shared_file.kind_image": "图片",
+    "shared_file.kind_pdf": "PDF",
+    "shared_file.kind_video": "视频",
+    "shared_file.machine_offline": "电脑不在线",
+    "shared_file.open": "打开",
+    "shared_file.pause": "暂停",
+    "shared_file.paused": "已暂停 · {done} / {total}",
+    "shared_file.resume": "继续下载",
+    "shared_file.retry": "重试",
+    "shared_file.save_to_device": "保存到本机",
+    "shared_file.share": "分享",
+    "shared_file.share_failed": "没能分享：{reason}",
+    "shared_file.too_large": "文件超过 {limit}，请在电脑端直接查看",
+    "shared_file.type_and_size": "{kind} · {size}",
+    "shared_file.unknown_reason": "未知原因",
+    "shared_file.video_and_size": "{duration} · {size}",
     "startup.install_description": "在任何设备上操作自己电脑上的 Codex",
     "startup.javascript_required": "请启用 JavaScript 后重新加载。",
     "startup.opening": "正在打开…",

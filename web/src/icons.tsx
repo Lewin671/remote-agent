@@ -41,6 +41,14 @@ import {
   type LucideIcon,
   type LucideProps,
   WifiOff as LWifiOff,
+  Video as LVideo,
+  Music as LMusic,
+  FileArchive as LFileArchive,
+  FileText as LFileText,
+  Play as LPlay,
+  Share as LShare,
+  Download as LDownload,
+  Trash2 as LTrash2,
 } from "lucide-react";
 
 /** An icon as tall as the text around it and in that text's color, drawn
@@ -120,3 +128,13 @@ export const Maximize2 = icon(LMaximize2);
 
 /** Scheduled tasks. */
 export const Clock = icon(LClock);
+
+/** Agent-shared file types and menu actions. */
+export const VideoIcon = icon(LVideo);
+export const MusicIcon = icon(LMusic);
+export const FileArchiveIcon = icon(LFileArchive);
+export const FileTextIcon = icon(LFileText);
+export const PlayIcon = icon(LPlay, "ic", { fill: "currentColor", stroke: "none" });
+export const ShareIcon = icon(LShare);
+export const DownloadIcon = icon(LDownload);
+export const TrashIcon = icon(LTrash2);

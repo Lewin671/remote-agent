@@ -312,6 +312,7 @@ export function ImageViewer({
   onClose,
   showPath = (p) => p,
   draft,
+  sharedFile,
 }: {
   remote: Remote;
   sid: string;
@@ -324,15 +325,19 @@ export function ImageViewer({
   // Paths as the chat writes them: relative to the session's folder.
   showPath?: (path: string) => string;
   draft?: Tray;
+  sharedFile?: { blob: Blob; name: string; path: string; sizeText: string };
 }) {
   const [i, setI] = useState(start);
   const [attempt, setAttempt] = useState(0);
   const [note, setNote] = useState("");
-  const index = Math.min(i, images.length - 1);
+  const index = images.length > 0 ? Math.min(i, images.length - 1) : 0;
   const img = images[index];
   const local = draft?.images()[index];
   const problem = local?.state === "failed" ? imageProblem(local.error ?? "") : undefined;
-  const load = useDisplay(remote, sid, img, attempt, local);
+  const fetched = useDisplay(remote, sid, img, attempt, local);
+  const load: Load = sharedFile
+    ? { kind: "ok", blob: sharedFile.blob, width: 0, height: 0, format: ImageFormat.UNSPECIFIED }
+    : fetched;
   const full = useObjectUrl(load.kind === "ok" ? load.blob : undefined);
   const preview = usePreview(img?.ref ?? NO_REF);
   const go = (d: number) => {
@@ -356,10 +361,12 @@ export function ImageViewer({
   );
   const [zoom, setZoom] = useState(1);
   useEffect(() => setZoom(1), [i]);
-  if (!img) return null;
-  const name = img.ref.path
-    ? baseName(img.ref.path)
-    : `image-${i + 1}.${extOf(load.kind === "ok" ? load.format : img.ref.format)}`;
+  if (!img && !sharedFile) return null;
+  const name = sharedFile
+    ? sharedFile.name
+    : img.ref.path
+      ? baseName(img.ref.path)
+      : `image-${i + 1}.${extOf(load.kind === "ok" ? load.format : img.ref.format)}`;
   const blob = load.kind === "ok" ? load.blob : undefined;
   const save = () => {
     if (!full) return;
@@ -448,25 +455,47 @@ export function ImageViewer({
       )}
     </div>
   );
-  const info = local ? <>
-    <b>{i18n.t("image.position", { index: index + 1, count: images.length })}</b>
-    {local.file instanceof File && <div>{local.file.name}</div>}
-    <div>{problem?.message ?? (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
-  </> : (
-    <>
-      {sourceText(img, agent)}
-      {img.ref.path && (
-        <>
+  const info = (() => {
+    if (sharedFile) {
+      return (
+        <span>
+          {sharedFile.name}
+          {sharedFile.path && (
+            <>
+              {" · "}
+              <code>{showPath(sharedFile.path)}</code>
+            </>
+          )}
           {" · "}
-          <code>{showPath(img.ref.path)}</code>
+          {sharedFile.sizeText}
+        </span>
+      );
+    }
+    if (local) {
+      return (
+        <>
+          <b>{i18n.t("image.position", { index: index + 1, count: images.length })}</b>
+          {local.file instanceof File && <div>{local.file.name}</div>}
+          <div>{problem?.message ?? (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
         </>
-      )}
-      {" · "}
-      {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
-        .filter(Boolean)
-        .join(" · ")}
-    </>
-  );
+      );
+    }
+    return (
+      <>
+        {sourceText(img, agent)}
+        {img.ref.path && (
+          <>
+            {" · "}
+            <code>{showPath(img.ref.path)}</code>
+          </>
+        )}
+        {" · "}
+        {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
+          .filter(Boolean)
+          .join(" · ")}
+      </>
+    );
+  })();
   // Dark in both themes, its buttons dark glass (design-system §2, §4).
   if (wide)
     return (
@@ -479,20 +508,24 @@ export function ImageViewer({
       >
         <div className="lb-top">
           <span>
-            {index + 1} / {images.length} · {draft ? i18n.t("image.draft") : sourceText(img, agent)}
+            {sharedFile ? sharedFile.name : `${index + 1} / ${images.length} · ${draft ? i18n.t("image.draft") : sourceText(img, agent)}`}
           </span>
           <GlassButton label={i18n.t("common.close")} onClick={onClose}>
             <X />
           </GlassButton>
         </div>
         <div className="lb-mid">
+          {!sharedFile && (
           <GlassButton label={i18n.t("image.previous")} onClick={() => go(-1)} disabled={i === 0}>
             <ChevronLeft />
           </GlassButton>
+          )}
           <div className="lb-img">{picture}</div>
+          {!sharedFile && (
           <GlassButton label={i18n.t("image.next")} onClick={() => go(1)} disabled={i >= images.length - 1}>
             <ChevronRight />
           </GlassButton>
+          )}
         </div>
         <div className="lb-foot">
           <span className="lb-info">{info}</span>
@@ -526,22 +559,32 @@ export function ImageViewer({
           <X />
         </GlassButton>
         <b>
-          {index + 1} / {images.length}
+          {sharedFile ? sharedFile.name : `${index + 1} / ${images.length}`}
         </b>
         <span />
       </div>
       {picture}
       <div className="vinfo">
-        {local ? info : <>
-        <b>{sourceText(img, agent)}</b>
-        {img.ref.path && <code>{showPath(img.ref.path)}</code>}
-        <div>
-          {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
-            .filter(Boolean)
-            .join(" · ")}
-        </div>
-        {img.prompt && <div className="vprompt">{img.prompt}</div>}
-        </>}
+        {sharedFile && (
+          <div>
+            <b>{sharedFile.name}</b>
+            {sharedFile.path && <code>{showPath(sharedFile.path)}</code>}
+            <div>{sharedFile.sizeText}</div>
+          </div>
+        )}
+        {!sharedFile && local && info}
+        {!sharedFile && !local && (
+          <div>
+            <b>{sourceText(img, agent)}</b>
+            {img.ref.path && <code>{showPath(img.ref.path)}</code>}
+            <div>
+              {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+            {img.prompt && <div className="vprompt">{img.prompt}</div>}
+          </div>
+        )}
         {note && <div>{note}</div>}
       </div>
       <div className="vact">
