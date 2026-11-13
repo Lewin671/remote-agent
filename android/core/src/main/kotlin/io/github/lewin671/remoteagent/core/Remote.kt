@@ -3994,4 +3994,32 @@ class Remote(
             seed,
         )
     }
+
+    /** Fetches one fixed-size encrypted chunk of a file shared by the agent in [sessionId]. */
+    suspend fun getSharedFileChunk(
+        sessionId: String,
+        fileId: String,
+        offset: Long,
+    ): io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse {
+        val result =
+            command(
+                sessionId,
+                Command.newBuilder()
+                    .setGetSharedFileChunk(
+                        io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest
+                            .newBuilder()
+                            .setSessionId(sessionId)
+                            .setFileId(fileId)
+                            .setOffset(offset),
+                    )
+                    .build(),
+            )
+        if (!result.hasGetSharedFileChunk()) {
+            throw CommandException(
+                "invalid_response",
+                UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
+            )
+        }
+        return result.getSharedFileChunk
+    }
 }

@@ -1617,11 +1617,13 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
     var stamp by remember { mutableStateOf(0) }
     var used by remember { mutableStateOf(0L) }
     var cache by remember { mutableStateOf(0L) }
+    var received by remember { mutableStateOf(0L) }
     LaunchedEffect(stamp) {
         withContext(Dispatchers.IO) {
             app.pendingStore.expire()
             used = app.pendingStore.used
             cache = app.imageEnvelopes.used
+            received = app.sharedFiles.usedBytes()
         }
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
@@ -1641,6 +1643,7 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
                             )
                         },
                         { GRow(copy(UiMessages.settingsAndroidViewingCache()), "${imageBytes(cache)} / 150 MiB") },
+                        { GRow(copy(UiMessages.sharedFileStorageReceivedFiles()), imageBytes(received)) },
                         {
                             GRow(
                                 if (action.running) copy(UiMessages.settingsAndroidCleaning()) else copy(UiMessages.settingsAndroidClearViewingCache()),
@@ -1649,6 +1652,7 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
                                         {
                                             withContext(Dispatchers.IO) {
                                                 app.imageEnvelopes.clear()
+                                                app.sharedFiles.clearAll()
                                             }
                                             null
                                         },
