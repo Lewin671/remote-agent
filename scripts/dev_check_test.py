@@ -42,6 +42,8 @@ raise SystemExit(int(os.environ["RA_CHECK_EXIT"]))
                         self.assertIsNone(recorded[key])
 
 
+    # check.sh drives Xcode and uses the BSD tools of macOS; the release checks run on Linux.
+    @unittest.skipUnless(sys.platform == "darwin", "ios/scripts/check.sh runs on macOS only")
     def test_ios_modes_select_their_steps_and_the_default_skips_ui_automation(self):
         with tempfile.TemporaryDirectory(prefix="ra-ios-modes-", dir="/tmp") as temporary:
             root = Path(temporary)
