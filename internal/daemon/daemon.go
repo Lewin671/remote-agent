@@ -197,15 +197,6 @@ func (d *Daemon) byKind(k pb.Agent) (agent.Adapter, bool) {
 	return a, ok
 }
 
-func (d *Daemon) byID(id string) (agent.Adapter, bool) {
-	for _, a := range d.adapterList() {
-		if a.ID() == id {
-			return a, true
-		}
-	}
-	return nil, false
-}
-
 // knownAgent returns the adapter for a request's CLI, refusing ones this
 // daemon cannot run.
 func (d *Daemon) knownAgent(k pb.Agent) (agent.Adapter, error) {

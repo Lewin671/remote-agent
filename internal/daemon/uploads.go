@@ -771,20 +771,6 @@ func (u *uploads) room(add int64) error {
 	return nil
 }
 
-// gcLoop runs gc every ten minutes until stop is closed.
-func (u *uploads) gcLoop(stop <-chan struct{}) {
-	t := time.NewTicker(10 * time.Minute)
-	defer t.Stop()
-	for {
-		u.gc(time.Now())
-		select {
-		case <-stop:
-			return
-		case <-t.C:
-		}
-	}
-}
-
 // errClass describes an error for the log without the file paths that
 // os errors carry.
 func errClass(err error) string {

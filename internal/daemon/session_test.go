@@ -72,8 +72,7 @@ func (f *fakeTerm) HostAlive(context.Context) (bool, error) {
 func (f *fakeTerm) Control() (control, error) {
 	return &fakeControl{f}, nil
 }
-func (f *fakeTerm) setScreen(s string)      { f.mu.Lock(); f.screen = s; f.mu.Unlock() }
-func (f *fakeTerm) setHostAlive(alive bool) { f.mu.Lock(); f.hostAlive = alive; f.mu.Unlock() }
+func (f *fakeTerm) setScreen(s string) { f.mu.Lock(); f.screen = s; f.mu.Unlock() }
 func (f *fakeTerm) written() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -158,24 +158,3 @@ func defaultsFor(st *pb.DaemonSettings, k pb.Agent) *pb.AgentDefaults {
 		return &pb.AgentDefaults{}
 	}
 }
-
-// setDefaultsFor updates the AgentDefaults for kind k in st.
-// The switch here is the only place allowed to know DaemonSettings field layout.
-func setDefaultsFor(st *pb.DaemonSettings, k pb.Agent, d *pb.AgentDefaults) {
-	if st == nil {
-		return
-	}
-	if d == nil {
-		d = &pb.AgentDefaults{}
-	}
-	switch resolveKind(k) {
-	case pb.Agent_AGENT_CODEX:
-		st.DefaultModel = d.Model
-		st.DefaultEffort = d.Effort
-		st.DefaultMode = d.Mode
-	case pb.Agent_AGENT_CLAUDE:
-		st.Claude = d
-	case pb.Agent_AGENT_ANTIGRAVITY:
-		st.Antigravity = d
-	}
-}
