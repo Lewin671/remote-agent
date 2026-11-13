@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { contentSecurityPolicy } from "./src/content-security-policy.ts";
 import react from "@vitejs/plugin-react";
 import { serviceWorker } from "./service-worker.ts";
 import { defineConfig, type Plugin } from "vite";
@@ -13,17 +14,7 @@ import { defineConfig, type Plugin } from "vite";
 // exact bytes, in both policies, without allowing arbitrary inline scripts.
 const themeScript = readFileSync(new URL("./index.html", import.meta.url), "utf8").match(/<script>([\s\S]*?)<\/script>/)![1];
 const themeHash = createHash("sha256").update(themeScript).digest("base64");
-const policy = [
-  "default-src 'self'",
-  `script-src 'self' 'sha256-${themeHash}'`,
-  "style-src 'self' 'unsafe-inline'",
-  // Session images are shown from decrypted bytes as blob: URLs.
-  "img-src 'self' blob: data:",
-  "connect-src 'self' https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'none'",
-];
+const policy = contentSecurityPolicy(themeHash);
 
 function csp(): Plugin {
   return {
