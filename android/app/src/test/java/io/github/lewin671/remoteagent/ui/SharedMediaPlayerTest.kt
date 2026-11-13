@@ -73,13 +73,14 @@ internal class FakePlayerEngine(duration: Int = 102_000, video: Boolean = true) 
     override var videoHeight by mutableIntStateOf(if (video) 1080 else 0)
     var position = 0
     val seeks = mutableListOf<Int>()
+    val surfaces = mutableListOf<Surface?>()
     var plays = 0
     var pauses = 0
     override fun positionMs() = position
     override fun play() { plays++; playing = true }
     override fun pause() { pauses++; playing = false }
     override fun seekTo(ms: Int) { seeks += ms; position = ms }
-    override fun attachSurface(surface: Surface?) = Unit
+    override fun attachSurface(surface: Surface?) { surfaces += surface }
     override fun release() = Unit
 }
 
@@ -418,6 +419,59 @@ class SharedMediaPlayerTest {
         assertFalse(engine.playing)
         assertNotNull(shadowOf(context.getSystemService(AudioManager::class.java)).lastAbandonedAudioFocusRequest)
         engine.release()
+    }
+
+    @Test
+    fun returningWindowFocusReattachesTheRetainedTextureSurfaceAndDestructionDetachesIt() {
+        val engine = FakePlayerEngine()
+        val view = PlayerVideoTextureView(context, engine)
+        val texture = android.graphics.SurfaceTexture(0)
+        view.onSurfaceTextureAvailable(texture, 640, 360)
+        val surface = engine.surfaces.single()
+        assertNotNull(surface)
+        view.onWindowFocusChanged(false)
+        assertEquals(1, engine.surfaces.size)
+        view.onWindowFocusChanged(true)
+        assertEquals(listOf(surface, surface), engine.surfaces)
+        view.onSurfaceTextureDestroyed(texture)
+        assertNull(engine.surfaces.last())
+        texture.release()
+    }
+
+    @Test
+    @Config(shadows = [TrackPlayerShadow::class])
+    fun replacingAPausedVideoSurfaceRedrawsItsFrameWithoutPlayingOrLosingTheEndState() {
+        val file = audioFile("surface.mp4")
+        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(file.absolutePath), ShadowMediaPlayer.MediaInfo(5_000, 0))
+        lateinit var player: ShadowMediaPlayer
+        ShadowMediaPlayer.setCreateListener { _, shadow -> player = shadow }
+        val engine = MediaPlayerEngine(context, file, video = true)
+        shadowOf(Looper.getMainLooper()).idle()
+        player.setCurrentPosition(2_400)
+        engine.pause()
+        engine.attachSurface(null)
+        assertEquals(-1, player.pendingSeek)
+        val texture = android.graphics.SurfaceTexture(0)
+        val surface = Surface(texture)
+        try {
+            engine.attachSurface(surface)
+            assertEquals(2_400, player.pendingSeek)
+            assertFalse(engine.playing)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(2_400, engine.positionMs())
+
+            player.invokeCompletionListener()
+            assertEquals(5_000, engine.positionMs())
+            engine.attachSurface(null)
+            engine.attachSurface(surface)
+            assertEquals(4_900, player.pendingSeek)
+            assertEquals(5_000, engine.positionMs()) // The replay button still means start over.
+            assertFalse(engine.playing)
+        } finally {
+            surface.release()
+            texture.release()
+            engine.release()
+        }
     }
 
     @Test

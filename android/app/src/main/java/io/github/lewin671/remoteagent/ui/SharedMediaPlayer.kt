@@ -245,7 +245,18 @@ internal class MediaPlayerEngine(
     }
 
     override fun attachSurface(surface: Surface?) {
-        runCatching { player?.setSurface(surface) }
+        val mp = player ?: return
+        runCatching {
+            mp.setSurface(surface)
+            // A TextureView surface is recreated after Home/lock. A paused decoder does not
+            // submit its last frame to the new surface until a seek; never start it to redraw.
+            if (surface != null && prepared && !playing && !failed) {
+                // Seeking into the final encoded frame's duration can return EOS with no
+                // output. Keep the logical end state, but decode just before the stream end.
+                val framePosition = if (ended) (durationMs - 100).coerceAtLeast(0) else positionMs()
+                mp.seekTo(framePosition.toLong(), MediaPlayer.SEEK_CLOSEST)
+            }
+        }
     }
 
     override fun release() {
@@ -319,33 +330,37 @@ internal fun SharedMediaPlayerDialog(
     }
 }
 
+/** Keep the output surface alive, and redraw paused video after its window becomes visible. */
+internal class PlayerVideoTextureView(context: Context, private val engine: PlayerEngine) : TextureView(context), TextureView.SurfaceTextureListener {
+    private var outputSurface: Surface? = null
+
+    init { surfaceTextureListener = this }
+
+    override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
+        outputSurface = Surface(st).also { engine.attachSurface(it) }
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        // Home/lock may discard the displayed buffer without destroying the SurfaceTexture.
+        if (hasWindowFocus) outputSurface?.let { engine.attachSurface(it) }
+    }
+
+    override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) = Unit
+
+    override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+        engine.attachSurface(null)
+        outputSurface?.release()
+        outputSurface = null
+        return true
+    }
+
+    override fun onSurfaceTextureUpdated(st: SurfaceTexture) = Unit
+}
+
 @Composable
 private fun PlayerTextureView(engine: PlayerEngine, modifier: Modifier) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            TextureView(context).apply {
-                surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                    private var surface: Surface? = null
-
-                    override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
-                        surface = Surface(st).also { engine.attachSurface(it) }
-                    }
-
-                    override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) = Unit
-
-                    override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                        engine.attachSurface(null)
-                        surface?.release()
-                        surface = null
-                        return true
-                    }
-
-                    override fun onSurfaceTextureUpdated(st: SurfaceTexture) = Unit
-                }
-            }
-        },
-    )
+    AndroidView(modifier = modifier, factory = { context -> PlayerVideoTextureView(context, engine) })
 }
 
 /**
