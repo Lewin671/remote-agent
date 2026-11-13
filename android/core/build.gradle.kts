@@ -1,3 +1,5 @@
+import java.time.Duration
+
 // :core is plain Kotlin/JVM with no android.* dependency: protocol,
 // crypto, pairing, sync and event reduction, all testable on the JVM.
 plugins {
@@ -52,6 +54,7 @@ val buildTestFixtures by tasks.registering(Exec::class) {
     onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it, "go").canExecute() } }
 }
 tasks.test {
+    timeout.set(Duration.ofMinutes(5))
     inputs.dir(rootProject.file("../i18n/messages")).withPathSensitivity(PathSensitivity.RELATIVE)
     // Classes own isolated relay processes; keep each class ordered and overlap
     // two classes so real network/backoff waits do not serialize the whole JVM suite.

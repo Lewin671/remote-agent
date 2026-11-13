@@ -1,3 +1,5 @@
+import java.time.Duration
+
 import java.util.Properties
 
 plugins {
@@ -118,6 +120,10 @@ kotlin {
 
 // The Markdown and terminal history cases the clients read by live outside this build.
 tasks.withType<Test>().configureEach {
+    timeout.set(Duration.ofMinutes(5))
+    // Robolectric classes remain ordered within each JVM. Independent forks
+    // isolate Android statics while overlapping class startup and UI fixtures.
+    maxParallelForks = minOf(2, Runtime.getRuntime().availableProcessors())
     inputs.file(rootProject.file("../i18n/locale-vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.dir(file("schemas")).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("cacheSchemas", file("schemas").absolutePath)

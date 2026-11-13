@@ -77,28 +77,36 @@ class TestServer(
                 signupBits.toString(),
             )
         pb.environment()["RA_SETUP_TOKEN"] = setupToken
-        pb.redirectErrorStream(true).redirectOutput(log)
+        pb.redirectError(log)
         val started = pb.start()
         proc = started
-        // Only this child's post-bind record establishes readiness. An
-        // HTTP response on a proposed port may belong to another test.
-        val until = System.currentTimeMillis() + 10_000
-        while (System.currentTimeMillis() < until) {
-            if (!started.isAlive) error("test relay exited: " + log.readText().takeLast(500))
-            val ready = log.readLines().firstOrNull { it.startsWith("TEST_SERVER_URL=") }
-            if (ready != null) {
-                port = java.net.URI(ready.substringAfter('=')).port
-                check(port > 0)
-                return
-            }
-            Thread.sleep(10)
+        // Read this child's post-bind notification, not a polled log file or
+        // a guessed port. stderr remains in the per-test diagnostic log.
+        val reader = java.util.concurrent.Executors.newSingleThreadExecutor { work ->
+            Thread(work, "test-relay-ready").apply { isDaemon = true }
         }
-        error("server did not start")
+        try {
+            val ready = reader.submit<String> { started.inputStream.bufferedReader().readLine() }
+                .get(10, TimeUnit.SECONDS)
+            check(ready != null && ready.startsWith("TEST_SERVER_URL=")) { "test relay exited before readiness" }
+            port = java.net.URI(ready.substringAfter('=')).port
+            check(port > 0)
+        } catch (error: Exception) {
+            stop()
+            dbDir.deleteRecursively()
+            throw IllegalStateException("test relay did not become ready", error)
+        } finally {
+            reader.shutdownNow()
+        }
     }
 
     fun stop() {
-        proc?.destroy()
-        proc?.waitFor(5, TimeUnit.SECONDS)
+        val child = proc ?: return
+        child.destroy()
+        if (!child.waitFor(5, TimeUnit.SECONDS)) {
+            child.destroyForcibly()
+            check(child.waitFor(5, TimeUnit.SECONDS)) { "test relay did not stop" }
+        }
         proc = null
     }
 

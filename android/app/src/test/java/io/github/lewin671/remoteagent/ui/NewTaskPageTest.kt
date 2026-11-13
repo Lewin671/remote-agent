@@ -26,8 +26,11 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class NewTaskPageTest {
-    @get:Rule(order = 0) val appFixture = io.github.lewin671.remoteagent.RaAppTestRule()
+    @get:Rule(order = 0) val appFixture = io.github.lewin671.remoteagent.RaAppTestRule(preparePendingStore = true)
     @get:Rule(order = 1) val ui = createComposeRule()
+    @get:Rule(order = 2) val appJobs = appFixture.stopJobs { done ->
+        ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
+    }
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val path = "/example/demo"

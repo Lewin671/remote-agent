@@ -106,10 +106,13 @@ import org.robolectric.annotation.GraphicsMode
 class SharedFilesUiTest {
 
     @get:Rule(order = 0)
-    val appFixture = RaAppTestRule()
+    val appFixture = RaAppTestRule(preparePendingStore = true)
 
     @get:Rule(order = 1)
     val ui = createComposeRule()
+    @get:Rule(order = 2) val appJobs = appFixture.stopJobs { done ->
+        ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
+    }
 
     private val context: Application get() = ApplicationProvider.getApplicationContext()
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "c1"), Api.defaultHttp())
