@@ -29,7 +29,6 @@ import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { MachineRings } from "./MachineRings";
 import { DeviceActions, ManagementEntry } from "./DeviceManagement";
-import { sizeText } from "../machine-status-view";
 import { RejoinButton } from "../Rejoin";
 import { LeaveAlert, SecurityGroup } from "./Security";
 import { RecoveryNotice } from "./authority-notice";
@@ -1301,7 +1300,7 @@ function ImageStorageSettings({
     }
   };
   const free = usage ? usage.reclaimableBytes + usage.cacheBytes : 0n;
-  // The emergency file the daemon keeps back (B2): listed, and not for clearing.
+  // The emergency file the daemon keeps back (B2): listed in this group's own MiB/GiB, and not for clearing.
   const meta = remote.machines.get(id)?.meta;
   const reserve = meta?.capabilities?.machineStatus ? (meta.diskStatus?.emergencyReserveBytes ?? 0n) : 0n;
   // What is worth a line: sizes that are not zero.
@@ -1365,7 +1364,7 @@ function ImageStorageSettings({
           <div className="row col">
             <div className="line">
               <span>{l10n.t("machine_status.emergency_reserve")}</span>
-              <span className="v">{sizeText(reserve)}</span>
+              <span className="v">{storageSize(reserve)}</span>
             </div>
             <div className="hint">{l10n.t("machine_status.emergency_reserve_note")}</div>
           </div>

@@ -386,9 +386,10 @@ function Ranking({ remote, s, memory, kind, stale, go }: { remote: Remote; s: Ma
  * most recent project, with the prompt filled in. It sends nothing. */
 export function startCleanup(remote: Remote, machineId: string, go: Go, path: string) {
   remote.draftMachines.set(path, machineId);
-  // What is already typed stays, with the prompt after it (ruling 8).
+  // What is already typed stays, with the prompt after it unless it is there already (rulings 8, 14).
+  const prompt = machineCleanupPrompt();
   const draft = remote.drafts.get("new:" + path)?.trim();
-  remote.drafts.set("new:" + path, draft ? `${draft}\n\n${machineCleanupPrompt()}` : machineCleanupPrompt());
+  remote.drafts.set("new:" + path, !draft ? prompt : draft.includes(prompt) ? draft : `${draft}\n\n${prompt}`);
   remote.focusProject = path;
   remote.touch();
   go("p/" + encodeURIComponent(path));

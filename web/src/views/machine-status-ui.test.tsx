@@ -315,6 +315,19 @@ describe("a disk that is nearly full", () => {
     expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe(machineCleanupPrompt());
   });
 
+  it("adds the prompt after a draft already there, once: a draft that has it is left as it is", async () => {
+    const r = demo("ms-full&ms=tight");
+    const go = vi.fn();
+    r.drafts.set("new:/Users/me/Code/foo", "先看看 node_modules");
+    mount(<MachineStatusPage remote={r} id="mac" go={go} onBack={none} />);
+    await ready();
+    await click(button("让 Agent 帮我清理"));
+    const once = "先看看 node_modules\n\n" + machineCleanupPrompt();
+    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(once);
+    await click(button("让 Agent 帮我清理"));
+    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(once);
+  });
+
   it("asks for a folder on this computer when none has been used", async () => {
     const r = demo("ms-full&ms=tight");
     r.machines.get("mac")!.meta!.projects = [];
@@ -573,7 +586,7 @@ describe("the emergency reserve in the attachment storage", () => {
     mount(<MachinePage remote={r} id="mac" section="storage" go={none} onBack={none} />);
     await vi.waitFor(() => expect(host.textContent).toContain("应急预留"));
     const row = [...host.querySelectorAll(".row")].find((e) => e.textContent?.includes("应急预留"))!;
-    expect(row.textContent).toBe("应急预留256 MB磁盘写满时自动释放，让你还能开会话处理。");
+    expect(row.textContent).toBe("应急预留256.0 MiB磁盘写满时自动释放，让你还能开会话处理。");
     expect(row.querySelector("button")).toBeNull();
     // The rings are the top of the page.
     expect(host.querySelector(".body")!.firstElementChild!.classList.contains("ms-rings")).toBe(true);

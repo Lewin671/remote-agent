@@ -39,7 +39,7 @@ export function demoDisk(scenario: DemoScenario): DiskStatus {
       totalBytes: BigInt(460 * GB),
       availableBytes: BigInt(Math.round(available)),
       pressure: scenario === "tight" ? ResourcePressure.CRITICAL : scenario === "low" ? ResourcePressure.WARNING : ResourcePressure.NORMAL,
-      emergencyReserveBytes: 256_000_000n,
+      emergencyReserveBytes: 268_435_456n,
     },
   }).disk!;
 }
