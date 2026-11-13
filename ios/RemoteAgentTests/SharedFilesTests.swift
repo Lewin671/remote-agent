@@ -15,6 +15,8 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
     private var calls = 0
     private var gate: CheckedContinuation<Void, Never>?
     private var holdAt: Int?
+    private let held = AsyncStream<Bool>.makeStream()
+    func waitUntilHeld() async -> Bool { await nextEvent(held.stream) == true }
     init(_ content: Data) { self.content = content }
     var count: Int { lock.withLock { calls } }
     func hold(at call: Int) { lock.withLock { holdAt = call } }
@@ -22,11 +24,28 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
 
     func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
         let n = lock.withLock { () -> Int in calls += 1; return calls - 1 }
-        if lock.withLock({ holdAt }) == n { await withCheckedContinuation { c in lock.withLock { gate = c } } }
+        if lock.withLock({ holdAt }) == n {
+            await withCheckedContinuation { c in
+                lock.withLock { gate = c }
+                // Count only says fetchChunk started; release needs this
+                // continuation to be installed before the test can continue.
+                held.continuation.yield(true)
+            }
+        }
         var block = Data(count: 1000)
         let from = Int(offset), take = max(0, min(1000, content.count - from))
         if take > 0 { block.replaceSubrange(0..<take, with: content[from..<from + take]) }
         return .with { $0.data = block; $0.totalBytes = UInt64(content.count) }
+    }
+}
+
+/// Event readiness, bounded only to diagnose a missing callback.
+private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
+    await withTaskGroup(of: T?.self) { group in
+        group.addTask { var iterator = events.makeAsyncIterator(); return await iterator.next() }
+        group.addTask { try? await Task.sleep(for: .seconds(5)); return nil }
+        defer { group.cancelAll() }
+        return await group.next() ?? nil
     }
 }
 
@@ -51,13 +70,7 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
         private let signal = AsyncStream<URL>.makeStream()
         func record(_ url: URL) { urls.append(url); signal.continuation.yield(url) }
         func next() async -> URL? {
-            let events = signal.stream
-            return await withTaskGroup(of: URL?.self) { group in
-                group.addTask { var iterator = events.makeAsyncIterator(); return await iterator.next() }
-                group.addTask { try? await Task.sleep(for: .seconds(5)); return nil }
-                defer { group.cancelAll() }
-                return await group.next() ?? nil
-            }
+            await nextEvent(signal.stream)
         }
     }
 
@@ -105,33 +118,26 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
         #expect(opened.urls.count == 2)
     }
 
-    @Test func aDownloadFinishedAfterTheUserLeftIsNotOpenedByItself() async {
+    @Test(arguments: [String?.some("s1"), nil])
+    func leavingThePageOrAppTakesBackTheTicket(_ sessionId: String?) async throws {
         let computer = Computer(content)
         computer.hold(at: 1)
+        defer { computer.release() }
         let opened = Opened()
         let (c, root) = center(computer, opened: opened)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer { c.close(); try? FileManager.default.removeItem(at: root) }
         let f = file(content)
         c.tap(.available, key: key, file: f)
-        await eventually("second block asked") { computer.count >= 2 }
-        c.leftPage("s1")
+        try #require(await computer.waitUntilHeld())
+        c.leftPage(sessionId)
         computer.release()
         await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-        #expect(opened.urls.isEmpty)
-    }
-
-    @Test func leavingTheAppAlsoTakesBackTheTicket() async {
-        let computer = Computer(content)
-        computer.hold(at: 1)
-        let opened = Opened()
-        let (c, root) = center(computer, opened: opened)
-        defer { try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.tap(.available, key: key, file: f)
-        await eventually("second block asked") { computer.count >= 2 }
-        c.leftPage()
-        computer.release()
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
+        // The downloaded state precedes the completion event. Enqueue a
+        // distinct state after the store finishes, and wait for the centre to
+        // consume it: its FIFO follower has then processed that completion.
+        let barrier = SharedFileKey(sessionId: "barrier", fileId: "barrier")
+        await c.appeared(barrier, file: f)
+        await eventually("completion consumed") { c.states[barrier] != nil }
         #expect(opened.urls.isEmpty)
     }
 
@@ -143,7 +149,8 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
         defer { try? FileManager.default.removeItem(at: root) }
         let f = file(content)
         c.tap(.available, key: key, file: f)
-        await eventually("second block asked") { computer.count >= 2 }
+        defer { computer.release() }
+        try #require(await computer.waitUntilHeld())
         c.tap(.downloading(done: 1000, total: 2500, etaSeconds: nil), key: key, file: f)
         await eventually("paused") { if case .paused = c.transfer(key, file: f) { true } else { false } }
         computer.release()

@@ -648,27 +648,56 @@ extension SyncServerTests {
                 let api = try Api(server: w.server.url, http: w.http)
                 var hello = PBPeerFrame()
                 hello.hello.token = try await login(api: api, account: acct)
+                // Only this socket belongs to this HTTP stack. Advance the
+                // injected heartbeat clock after a pong, not every 100 ms of
+                // wall time while the rest of the suite competes for threads.
+                let http = HTTP(), ready = Signal(), answered = Signal()
+                let ticks = Counter()
+                let parked = AsyncStream<Void>.makeStream()
+                defer { parked.continuation.finish() }
                 let socket = Socket(
-                    http: w.http, url: api.socketURL("/v1/stream"),
-                    hello: try hello.serializedData(), pingMs: 100, sleep: realSleep)
-                #expect(await socket.opened())
+                    http: http, url: api.socketURL("/v1/stream"),
+                    hello: try hello.serializedData(), sleep: { ms in
+                        #expect(ms == streamPingMs)
+                        try #require(await ready.wait())
+                        let task = try #require(await http.session.allTasks.first as? URLSessionWebSocketTask)
+                        // Foundation guarantees pong handlers run in ping-send
+                        // order (NSURLSession.h). This extra ping is a barrier:
+                        // the preceding production ping's callback has run when
+                        // it returns, including clearing awaitingPong.
+                        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, Error>) in
+                            task.sendPing { error in
+                                if let error { done.resume(throwing: error) }
+                                else { done.resume() }
+                            }
+                        }
+                        if ticks.increment() == 11 {
+                            answered.set() // ten production heartbeats drained
+                            for await _ in parked.stream { break }
+                            throw CancellationError()
+                        }
+                    })
+                defer { socket.close() }
+                try #require(await socket.opened())
                 let first = try PBServerFrame(serializedBytes: try await socket.receive())
                 guard case .ready? = first.kind else {
                     Issue.record("expected Ready first")
                     return
                 }
-                // Ten pings later it is still there: each was answered before the next.
                 let ended = Signal()
-                Task {
-                    // Read on, as the engine does: URLSession only notices an answer while something is being read.
+                let reader = Task {
+                    // URLSession notices pong frames while a receive is active.
                     while (try? await socket.receive()) != nil {}
                     _ = await socket.ended()
                     ended.set()
                 }
-                await sleepMs(1_000)
+                defer { reader.cancel() }
+                ready.set()
+                #expect(await answered.wait(5_000))
                 #expect(!ended.isSet)
                 socket.close()
                 #expect(await ended.wait(5_000))
+                #expect(await socket.ended().error == nil)
             }
         }
 

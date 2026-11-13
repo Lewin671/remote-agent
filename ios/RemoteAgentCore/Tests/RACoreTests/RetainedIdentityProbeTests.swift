@@ -62,20 +62,23 @@ import Testing
 
     @Test func aTimedOutRealLoginIsCancelledInsteadOfWaitingForTheHTTPTimeout() async throws {
         let origin = "https://probe.example.com"
-        let requests = Counter()
+        let requests = Counter(), cancelled = Signal()
         // The deadline fires once the request is in flight, not after a fixed
         // 100 ms: a loaded machine can spend longer than that signing the login,
         // and then the request was never sent.
         let sent = AsyncStream<Void>.makeStream()
-        let http = Intercept.http(for: origin) { request in
+        let http = Intercept.http(for: origin) { _ in
             requests.increment()
             sent.continuation.yield()
-            try await Task.sleep(for: .seconds(30))
-            return request
+            try await withTaskCancellationHandler {
+                try await Task.sleep(for: .seconds(30))
+            } onCancel: {
+                cancelled.set()
+            }
+            throw TestFailure("the intercepted login was not cancelled")
         }
         let api = try Api(server: origin, http: http)
         let account = Account(server: origin, root: Data(), deviceSeed: Data(repeating: 1, count: 32), deviceId: "synthetic-device")
-        let start = ContinuousClock.now
         let denied = await probeRetainedIdentity(timeoutMs: 100, sleep: { _ in
             for await _ in sent.stream { break }
             try Task.checkCancellation()
@@ -84,6 +87,9 @@ import Testing
         }
         #expect(!denied)
         #expect(requests.value == 1)
-        #expect(start.duration(to: .now) < .seconds(2))
+        // Observe URLProtocol.stopLoading cancelling the in-flight request.
+        // Signing, URLSession startup and executor contention are not part of
+        // the cancellation boundary. An HTTP timeout cannot satisfy this signal.
+        #expect(await cancelled.wait(2_000))
     }
 }
