@@ -681,13 +681,14 @@
     </plurals>
     <string name="machine_status_cpu" formatted="false">"CPU"</string>
     <string name="machine_status_disk" formatted="false">"Disk"</string>
+    <string name="machine_status_disk_agent_share">"remote-agent uses %1$s"</string>
     <string name="machine_status_disk_available" formatted="false">"Disk free"</string>
     <string name="machine_status_disk_critical" formatted="false">"Almost full"</string>
     <string name="machine_status_disk_critical_hint" formatted="false">"New sessions may not start"</string>
     <string name="machine_status_disk_full" formatted="false">"This computer’s disk is full"</string>
     <string name="machine_status_disk_low" formatted="false">"Space is low"</string>
     <string name="machine_status_disk_ok" formatted="false">"Plenty of space"</string>
-    <string name="machine_status_disk_total_agent">"%1$s total, remote-agent uses %2$s"</string>
+    <string name="machine_status_disk_total">"%1$s total"</string>
     <string name="machine_status_duration_days_hours">"%1$d d %2$d hr"</string>
     <plurals name="machine_status_duration_minutes">
         <item quantity="one">"%1$d min"</item>
@@ -705,6 +706,7 @@
     <string name="machine_status_live" formatted="false">"Live"</string>
     <string name="machine_status_load">"%1$s load"</string>
     <string name="machine_status_load_line">"Load %1$s"</string>
+    <string name="machine_status_loading" formatted="false">"Loading"</string>
     <string name="machine_status_memory" formatted="false">"Memory"</string>
     <string name="machine_status_no_running_sessions" formatted="false">"No running sessions"</string>
     <string name="machine_status_notify_critical">"%1$s disk is almost full, only %2$s left"</string>

@@ -167,11 +167,10 @@ fun StatusRing(fraction: Float?, tone: MachineTone, icon: androidx.compose.ui.gr
 @Composable
 fun PressureScale(position: Float, modifier: Modifier = Modifier) {
     val p = pal
-    val yellow = if (p.dark) Color(0xFFFFD60A) else Color(0xFFF5B400)
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(12.dp)) {
         Box(
             Modifier.align(Alignment.CenterStart).fillMaxWidth().height(6.dp).clip(RoundedCornerShapeDp(3.dp)).background(
-                Brush.horizontalGradient(0f to p.green, .45f to p.green, .7f to yellow, 1f to p.red),
+                Brush.horizontalGradient(0f to p.green, .45f to p.green, .7f to p.yellow, 1f to p.red),
             ),
         )
         val x = (maxWidth - 12.dp) * position.coerceIn(0f, 1f)

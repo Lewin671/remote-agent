@@ -47,12 +47,12 @@ internal object MachineFixtures {
 
     fun status(
         busy: Boolean = false, cpu: Double = if (busy) 88.0 else 23.0, load: Double = if (busy) 11.4 else 3.2,
-        memUsed: Long = if (busy) 12_600_000_000 else 11_200_000_000, pressure: ResourcePressure = if (busy) ResourcePressure.RESOURCE_PRESSURE_WARNING else ResourcePressure.RESOURCE_PRESSURE_NORMAL,
-        position: Double = if (busy) 0.72 else 0.34, swap: Long = if (busy) 4_800_000_000 else 1_300_000_000,
+        memUsed: Long = if (busy) 13_529_146_982 else 12_025_908_428, pressure: ResourcePressure = if (busy) ResourcePressure.RESOURCE_PRESSURE_WARNING else ResourcePressure.RESOURCE_PRESSURE_NORMAL,
+        position: Double = if (busy) 0.72 else 0.34, swap: Long = if (busy) 5_153_960_755 else 1_395_864_371,
         avail: Long = if (busy) 1_200_000_000 else 42_000_000_000, diskPressure: ResourcePressure = if (busy) ResourcePressure.RESOURCE_PRESSURE_CRITICAL else ResourcePressure.RESOURCE_PRESSURE_NORMAL,
     ): MachineStatus.Builder {
         val b = MachineStatus.newBuilder().setObservedMs(T0 + 118_000).setCpuPercent(cpu).setCores(10).setLoadOne(load)
-            .setMemoryUsedBytes(memUsed).setMemoryTotalBytes(16_000_000_000).setMemoryPressure(pressure).setMemoryPressurePosition(position).setSwapUsedBytes(swap)
+            .setMemoryUsedBytes(memUsed).setMemoryTotalBytes(17_179_869_184).setMemoryPressure(pressure).setMemoryPressurePosition(position).setSwapUsedBytes(swap)
             .setDisk(DiskStatus.newBuilder().setTotalBytes(460_000_000_000).setAvailableBytes(avail).setPressure(diskPressure).setEmergencyReserveBytes(256_000_000))
             .setAgentBytes(3_100_000_000).setUptimeSeconds(3 * 86400L + 4 * 3600 + 120)
             .setBattery(MachineBattery.newBuilder().setPercent(81.0).setCharging(true))
@@ -62,11 +62,11 @@ internal object MachineFixtures {
                 .setMemoryUsedBytes((memUsed * (0.94 + 0.06 * i / 59.0)).toLong() + ((i * 13) % 7) * 12_000_000L))
         }
         if (busy) {
-            b.addSessions(usage("s1", 312.0, 2_100_000_000)).addSessions(usage("s2", 188.0, 1_200_000_000)).addSessions(usage("s3", 41.0, 600_000_000))
-            b.addProcesses(usage("p1", 312.0, 2_100_000_000, "java", "s1")).addProcesses(usage("p2", 188.0, 1_200_000_000, "xcodebuild", "s1")).addProcesses(usage("p3", 41.0, 1_600_000_000, "Google Chrome"))
+            b.addSessions(usage("s1", 312.0, 2_254_857_830)).addSessions(usage("s2", 188.0, 1_288_490_189)).addSessions(usage("s3", 41.0, 600L * 1048576))
+            b.addProcesses(usage("p1", 312.0, 2_254_857_830, "java", "s1")).addProcesses(usage("p2", 188.0, 1_288_490_189, "xcodebuild", "s1")).addProcesses(usage("p3", 41.0, 1_717_986_918, "Google Chrome"))
         } else {
-            b.addSessions(usage("s1", 141.0, 2_400_000_000)).addSessions(usage("s2", 62.0, 1_100_000_000)).addSessions(usage("s3", 3.0, 380_000_000))
-            b.addProcesses(usage("p1", 141.0, 2_400_000_000, "node", "s1")).addProcesses(usage("p2", 62.0, 1_100_000_000, "codex", "s2")).addProcesses(usage("p3", 3.0, 380_000_000, "Finder"))
+            b.addSessions(usage("s1", 141.0, 2_576_980_378)).addSessions(usage("s2", 62.0, 1_181_116_006)).addSessions(usage("s3", 3.0, 380L * 1048576))
+            b.addProcesses(usage("p1", 141.0, 2_576_980_378, "node", "s1")).addProcesses(usage("p2", 62.0, 1_181_116_006, "codex", "s2")).addProcesses(usage("p3", 3.0, 380L * 1048576, "Finder"))
         }
         return b
     }
@@ -163,7 +163,7 @@ class MachineStatusShotsTest {
     }
 
     @Test fun entranceNormal() {
-        entrance(MachineFixtures.status().setMemoryUsedBytes(11_360_000_000))
+        entrance(MachineFixtures.status().setMemoryUsedBytes(12_200_000_000))
         ui.onNodeWithContentDescription("CPU，23%", substring = true).assertExists()
         ui.onNodeWithContentDescription("内存，71%", substring = true).assertExists()
         ui.onNodeWithContentDescription("磁盘可用，42 GB", substring = true).assertExists()
@@ -216,7 +216,7 @@ class MachineStatusShotsTest {
     @Test fun pageNormal() {
         page(MachineFixtures.live(MachineFixtures.status().build()))
         ui.onNodeWithText("三端措辞统一").assertExists(); ui.onNodeWithText("实时").assertExists()
-        ui.onNodeWithText("共 460 GB，remote-agent 用了 3.1 GB").assertExists(); ui.onNodeWithText("压力正常").assertExists()
+        ui.onNodeWithText("共 460 GB").assertExists(); ui.onNodeWithText("remote-agent 占 3.1 GB").assertExists(); ui.onNodeWithText("压力正常").assertExists()
         ui.onNodeWithText("已开机 3 天 4 小时 · 电池 81%，充电中").assertExists()
         // The disk is fine: no disk lines.
         ui.onAllNodesWithText("让 Agent 帮我清理").assertCountEquals(0)
@@ -289,6 +289,17 @@ class MachineStatusShotsTest {
         ui.onNodeWithText("2 分钟前的数据").assertExists()
         ui.onAllNodesWithText("2 分钟前").assertCountEquals(0)
         save("08-status-stale", trim = true)
+    }
+
+    @Test fun pageBeforeTheFirstDataIsASkeletonWithoutASpinner() {
+        page(MachineFeed.Empty)
+        ui.onNodeWithText("正在读取").assertExists()
+        ui.onAllNodesWithText("—").assertCountEquals(3)
+        ui.onNodeWithText("CPU").assertExists(); ui.onNodeWithText("内存").assertExists(); ui.onNodeWithText("磁盘").assertExists()
+        // No ranking, no curve, no live word, nothing to tap.
+        ui.onAllNodesWithText("占用最多").assertCountEquals(0); ui.onAllNodesWithText("实时").assertCountEquals(0)
+        ui.onAllNodesWithContentDescription("最近 2 分钟", substring = true).assertCountEquals(0)
+        save("23-status-loading", trim = true)
     }
 
     @Test fun pageNothingToReadYet() {

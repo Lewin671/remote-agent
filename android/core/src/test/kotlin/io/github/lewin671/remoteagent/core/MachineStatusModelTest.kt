@@ -7,13 +7,13 @@ import org.junit.Test
 class MachineStatusModelTest {
     private fun text(locale: String = "zh-CN") = StatusText({ messageTextForTest(it, locale) }, locale)
     private fun status(
-        cpu: Double = 23.0, used: Long = 11_200_000_000, total: Long = 16_000_000_000, pressure: ResourcePressure = ResourcePressure.RESOURCE_PRESSURE_NORMAL,
+        cpu: Double = 23.0, used: Long = 12_025_908_428, total: Long = 17_179_869_184, pressure: ResourcePressure = ResourcePressure.RESOURCE_PRESSURE_NORMAL,
         avail: Long = 42_000_000_000, diskTotal: Long = 460_000_000_000, diskPressure: ResourcePressure = ResourcePressure.RESOURCE_PRESSURE_NORMAL,
     ): MachineStatus.Builder = MachineStatus.newBuilder().setCpuPercent(cpu).setMemoryUsedBytes(used).setMemoryTotalBytes(total).setMemoryPressure(pressure)
         .setDisk(DiskStatus.newBuilder().setTotalBytes(diskTotal).setAvailableBytes(avail).setPressure(diskPressure))
 
     @Test fun ringsSayWhatTheSpecSays() {
-        val rings = machineRings(status(cpu = 23.0, used = 11_360_000_000).build(), true, text())
+        val rings = machineRings(status(cpu = 23.0, used = 12_200_000_000).build(), true, text())
         assertEquals(listOf("23%", "71%", "42 GB"), rings.map { it.value })
         assertEquals(listOf("CPU，23%", "内存，71%", "磁盘可用，42 GB"), rings.map { it.spoken })
         // The disk ring draws what is used, the number says what is free.
@@ -38,6 +38,10 @@ class MachineStatusModelTest {
         val t = text()
         assertEquals("42 GB", t.size(42_000_000_000)); assertEquals("1.2 GB", t.size(1_200_000_000)); assertEquals("380 MB", t.size(380_000_000))
         assertEquals("11.2", t.gbNumber(11_200_000_000, oneDecimal = true)); assertEquals("8.0", t.gbNumber(8_000_000_000, oneDecimal = true))
+        // Memory is counted in 1024s and still called GB / MB (a 16 GiB computer says 16 GB); disk in 1000s.
+        assertEquals("16 GB", t.size(17_179_869_184, binary = true)); assertEquals("17 GB", t.size(17_179_869_184))
+        assertEquals("11.2", t.gbNumber(12_025_908_428, oneDecimal = true, binary = true)); assertEquals("380 MB", t.size(380L * 1048576, binary = true))
+        assertEquals("1 MB", t.size(1_000, binary = true))
         assertEquals("3 天 4 小时", t.duration(3 * 86400L + 4 * 3600 + 99)); assertEquals("5 小时 7 分", t.duration(5 * 3600L + 7 * 60))
         assertEquals("3 d 4 hr", text("en").duration(3 * 86400L + 4 * 3600))
         assertEquals("30 秒前的数据", t.stale(30_000)); assertEquals("2 分钟前的数据", t.stale(125_000))
@@ -47,7 +51,7 @@ class MachineStatusModelTest {
     }
 
     @Test fun memoryCardLines() {
-        val s = status(pressure = ResourcePressure.RESOURCE_PRESSURE_WARNING).setSwapUsedBytes(1_300_000_000).setMemoryPressurePosition(0.72).build()
+        val s = status(pressure = ResourcePressure.RESOURCE_PRESSURE_WARNING).setSwapUsedBytes(1_395_864_371).setMemoryPressurePosition(0.72).build()
         val c = memoryCard(s, text())
         assertEquals("11.2", c.used); assertEquals("共 16 GB，交换 1.3 GB", c.detail); assertEquals(0.72f, c.position!!, 0.0001f); assertEquals(MachineTone.WARN, c.tone)
         // No swap in use: only the total. No pressure: no scale and no word.
@@ -58,15 +62,17 @@ class MachineStatusModelTest {
 
     @Test fun diskCardLinesAndBar() {
         val ok = diskCard(status().setAgentBytes(3_100_000_000).build(), text())
-        assertEquals("42", ok.free); assertEquals("共 460 GB，remote-agent 用了 3.1 GB", ok.detail)
+        // Two lines of their own under the state word, never one that wraps into three.
+        assertEquals("42", ok.free); assertEquals("共 460 GB", ok.detail); assertEquals("remote-agent 占 3.1 GB", ok.detail2)
+        assertEquals("460 GB total", diskCard(status().setAgentBytes(3_100_000_000).build(), text("en")).detail); assertEquals("remote-agent uses 3.1 GB", diskCard(status().setAgentBytes(3_100_000_000).build(), text("en")).detail2)
         assertEquals(3.1f / 460f, ok.agentShare, 0.0001f); assertEquals((460f - 42f - 3.1f) / 460f, ok.otherShare, 0.0001f)
         assertEquals("空间充足", messageTextForTest(ok.word))
         val low = diskCard(status(avail = 8_000_000_000, diskPressure = ResourcePressure.RESOURCE_PRESSURE_WARNING).build(), text())
         assertEquals("空间不多了", messageTextForTest(low.word)); assertEquals(MachineTone.WARN, low.tone)
         val bad = diskCard(status(avail = 1_200_000_000, diskPressure = ResourcePressure.RESOURCE_PRESSURE_CRITICAL).setAgentBytes(1).build(), text())
-        assertEquals("快满了", messageTextForTest(bad.word)); assertEquals("新会话可能启动不了", bad.detail); assertEquals("1.2", bad.free)
+        assertEquals("快满了", messageTextForTest(bad.word)); assertEquals("新会话可能启动不了", bad.detail); assertNull(bad.detail2); assertEquals("1.2", bad.free)
         // No figure for remote-agent's share: the line does not claim one.
-        assertEquals("共 460 GB", diskCard(status().build(), text()).detail)
+        assertEquals("共 460 GB", diskCard(status().build(), text()).detail); assertNull(diskCard(status().build(), text()).detail2)
         assertFalse(showDiskActions(status().build())); assertTrue(showDiskActions(status(diskPressure = ResourcePressure.RESOURCE_PRESSURE_WARNING).build()))
     }
 
@@ -90,8 +96,8 @@ class MachineStatusModelTest {
         // Two holes (104 s to 160 s, 162 s to 200 s): three runs, the middle and last with a point or two.
         assertEquals(3, runs.size)
         assertEquals(listOf(3, 2, 1), runs.map { it.size })
-        // x is by time: 120 s window ending at 200 s begins at 80 s.
-        assertEquals((100_000 - 80_000) / 120_000.0, runs[0][0].x, 1e-9)
+        // x is by time within the window that ends at 200 s.
+        assertEquals((100_000 - (end - CHART_WINDOW_MS)).toDouble() / CHART_WINDOW_MS, runs[0][0].x, 1e-9)
         assertEquals(1.0, runs[2][0].x, 1e-9); assertEquals(0.7, runs[2][0].y, 1e-9)
     }
 
@@ -126,11 +132,21 @@ class MachineStatusModelTest {
         assertEquals(100_016.0, nextChartEnd(100_000.0, 16.0, 0, 102_000), 0.0)
     }
 
+    @Test fun theWindowAlwaysStartsOnDataOnceTheBufferIsFull() {
+        // 60 samples span 118 s; the edge trails the newest by 0..2 s; a 116 s window starts inside the data in every case.
+        val latest = 118_000L
+        for (lag in listOf(0L, 1_000L, 2_000L)) {
+            val end = latest - lag
+            assertTrue(end - CHART_WINDOW_MS >= 0)
+        }
+        assertEquals(116_000L, CHART_WINDOW_MS)
+    }
+
     @Test fun nearestSampleAndSummary() {
         val p = pts(0L to 10.0, 2_000L to 40.0, 4_000L to 20.0)
         assertEquals(1, nearestSample(p, 2_700.0)); assertEquals(-1, nearestSample(emptyList(), 1.0))
         assertEquals("最近 2 分钟，最高 40%，现在 20%", chartSummary(p, StatusMetric.CPU, text()))
-        assertEquals("最近 2 分钟，最高 40 MB，现在 20 MB", chartSummary(pts(0L to 1e6 * 10, 2L to 4e7, 4L to 2e7), StatusMetric.MEMORY, text()))
+        assertEquals("最近 2 分钟，最高 38 MB，现在 19 MB", chartSummary(pts(0L to 1e6 * 10, 2L to 4e7, 4L to 2e7), StatusMetric.MEMORY, text()))
     }
 
     @Test fun chartPointsFilterTheRecoveryPointAndPickTheMetric() {
@@ -139,7 +155,7 @@ class MachineStatusModelTest {
         assertEquals(listOf(1L, 3L), chartPoints(s, StatusMetric.CPU).map { it.timeMs })
         assertEquals(listOf(3L), chartPoints(s, StatusMetric.MEMORY, sinceMs = 2).map { it.timeMs })
         assertEquals(300.0, chartPoints(s, StatusMetric.MEMORY, 2)[0].value, 0.0)
-        assertEquals(100.0, chartCeiling(s, StatusMetric.CPU), 0.0); assertEquals(16e9, chartCeiling(s, StatusMetric.MEMORY), 0.0)
+        assertEquals(100.0, chartCeiling(s, StatusMetric.CPU), 0.0); assertEquals(17_179_869_184.0, chartCeiling(s, StatusMetric.MEMORY), 0.0)
     }
 
     private fun usage(id: String, cpu: Double, mem: Long, exe: String = id, session: String = "") =
@@ -147,7 +163,7 @@ class MachineStatusModelTest {
 
     @Test fun rankingRowsFollowTheMetricAndStayPut() {
         val order = UsageOrder()
-        val s1 = status().addSessions(usage("a", 141.0, 2_400_000_000)).addSessions(usage("b", 62.0, 1_100_000_000)).addSessions(usage("c", 3.0, 380_000_000)).build()
+        val s1 = status().addSessions(usage("a", 141.0, 2_576_980_378)).addSessions(usage("b", 62.0, 1_181_116_006)).addSessions(usage("c", 3.0, 380L * 1048576)).build()
         val rows = usageRows(s1, true, StatusMetric.CPU, order, text(), { mapOf("a" to "三端措辞统一")[it] }, { Agent.AGENT_CLAUDE })
         assertEquals(listOf("a", "b", "c"), rows.map { it.id })
         assertEquals(listOf("141%", "62%", "3%"), rows.map { it.primary }); assertEquals(listOf("2.4 GB", "1.1 GB", "380 MB"), rows.map { it.secondary })

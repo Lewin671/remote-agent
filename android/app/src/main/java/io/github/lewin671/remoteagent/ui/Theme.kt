@@ -58,6 +58,8 @@ data class Palette(
     val orangeInk: Color,
     val orangeSoft: Color,
     val green: Color,
+    /** The middle of the memory pressure scale; nothing else. */
+    val yellow: Color,
     val red: Color,
     /** The dark card, dark in both themes, and its thin edge in the dark one. */
     val tc: Color,
@@ -76,7 +78,7 @@ val LightPalette = Palette(
     faint = Color(0xFFD2D2D7), sep = Color(0x17000000), fill = Color(0x0D000000), fill2 = Color(0x17000000),
     btn = Color(0xFF1D1D1F), btnFg = Color(0xFFFFFFFF), bubble = Color(0xFFF0F0F3),
     blue = Color(0xFF0066CC), orange = Color(0xFFE06C00), orangeInk = Color(0xFFB55A00), orangeSoft = Color(0xFFFFF4E6),
-    green = Color(0xFF248A3D), red = Color(0xFFD70015),
+    green = Color(0xFF248A3D), yellow = Color(0xFFFFCC00), red = Color(0xFFD70015),
     tc = Color(0xFF1D1D1F), tcLine = Color.Transparent, term = Color(0xFF131315),
     glass = Color(0xB8FFFFFF), glassLine = Color(0x12000000), glassShadow = Color(0x1F000000), float = Color(0x2E000000),
     raised = Color(0xFFFFFFFF), dark = false,
@@ -87,7 +89,7 @@ val DarkPalette = Palette(
     faint = Color(0xFF48484A), sep = Color(0x1FFFFFFF), fill = Color(0x17FFFFFF), fill2 = Color(0x26FFFFFF),
     btn = Color(0xFFF5F5F7), btnFg = Color(0xFF000000), bubble = Color(0xFF2C2C2E),
     blue = Color(0xFF4DA3FF), orange = Color(0xFFFF9F2E), orangeInk = Color(0xFFFFB25C), orangeSoft = Color(0x24FF9F2E),
-    green = Color(0xFF32D15D), red = Color(0xFFFF5A50),
+    green = Color(0xFF32D15D), yellow = Color(0xFFFFD60A), red = Color(0xFFFF5A50),
     tc = Color(0xFF242426), tcLine = Color(0x24FFFFFF), term = Color(0xFF0D0D0F),
     glass = Color(0xA8323236), glassLine = Color(0x21FFFFFF), glassShadow = Color(0x80000000), float = Color(0x99000000),
     raised = Color(0xFF2C2C2E), dark = true,

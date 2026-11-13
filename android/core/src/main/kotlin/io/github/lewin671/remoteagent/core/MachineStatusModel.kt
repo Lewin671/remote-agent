@@ -26,7 +26,9 @@ fun tone(pressure: ResourcePressure): MachineTone = when (pressure) {
 
 enum class StatusMetric { CPU, MEMORY }
 
-/** Decimal bytes, as the protocol says ("Bytes are decimal units at display time"). */
+const val GIB = 1073741824.0
+
+/** Sizes for display: disk in decimal bytes, memory in binary ones (both written GB / MB). */
 class StatusText(val copy: MessageResolver, val locale: String) {
     private fun nf(decimals: Int) = NumberFormat.getNumberInstance(Locale.forLanguageTag(locale)).apply {
         minimumFractionDigits = decimals; maximumFractionDigits = decimals; isGroupingUsed = false
@@ -35,16 +37,19 @@ class StatusText(val copy: MessageResolver, val locale: String) {
     fun number(v: Double, decimals: Int): String = nf(decimals).format(v)
     fun percent(v: Double): String = "${v.coerceIn(0.0, 100_000.0).roundToInt()}%"
 
-    /** The number alone of a size in GB: one decimal under 10, none from 10 (the rings' and cards' style). */
-    fun gbNumber(bytes: Long, oneDecimal: Boolean = false): String {
-        val gb = bytes / 1e9
+    /**
+     * The number alone of a size in GB: one decimal under 10, none from 10 (the rings' and cards' style).
+     * [binary]: memory is counted in 1024s and still called GB, as the system's own monitor does; disk is decimal, as the Finder.
+     */
+    fun gbNumber(bytes: Long, oneDecimal: Boolean = false, binary: Boolean = false): String {
+        val gb = bytes / (if (binary) GIB else 1e9)
         return number(gb, if (oneDecimal || gb < 10) 1 else 0)
     }
 
     /** "42 GB", "1.2 GB", "380 MB". */
-    fun size(bytes: Long): String =
-        if (bytes >= 1_000_000_000L) copy(UiMessages.machineStatusSizeGb(gbNumber(bytes)))
-        else copy(UiMessages.machineStatusSizeMb(number(max(1.0, bytes / 1e6).let { Math.round(it).toDouble() }, 0)))
+    fun size(bytes: Long, binary: Boolean = false): String =
+        if (bytes >= (if (binary) GIB.toLong() else 1_000_000_000L)) copy(UiMessages.machineStatusSizeGb(gbNumber(bytes, binary = binary)))
+        else copy(UiMessages.machineStatusSizeMb(number(Math.round(max(1.0, bytes / (if (binary) 1048576.0 else 1e6))).toDouble(), 0)))
 
     fun load(v: Double): String = number(v, 1)
 
@@ -125,10 +130,10 @@ fun memoryCard(s: MachineStatus, text: StatusText): MemoryCard {
         ResourcePressure.RESOURCE_PRESSURE_CRITICAL -> UiMessages.machineStatusPressureCritical()
         else -> null
     }
-    val total = text.size(s.memoryTotalBytes)
-    val swap = if (s.hasSwapUsedBytes() && s.swapUsedBytes > 0) text.size(s.swapUsedBytes) else null
+    val total = text.size(s.memoryTotalBytes, binary = true)
+    val swap = if (s.hasSwapUsedBytes() && s.swapUsedBytes > 0) text.size(s.swapUsedBytes, binary = true) else null
     return MemoryCard(
-        used = text.gbNumber(s.memoryUsedBytes, oneDecimal = true), usedNumber = s.memoryUsedBytes / 1e9, pressureWord = word,
+        used = text.gbNumber(s.memoryUsedBytes, oneDecimal = true, binary = true), usedNumber = s.memoryUsedBytes / GIB, pressureWord = word,
         position = if (hasPressure) pressurePosition(s) else null, tone = tone(s.memoryPressure), total = total, swap = swap,
         detail = if (swap == null) text.copy(UiMessages.machineStatusTotal(total)) else text.copy(UiMessages.machineStatusTotalSwap(total, swap)),
     )
@@ -148,7 +153,8 @@ fun pressurePosition(s: MachineStatus): Float? {
 /** The disk card: the free amount, the bar's segments (shares of the volume) and its two lines. */
 data class DiskCard(
     val free: String, val tone: MachineTone, val word: UiMessage, val agentShare: Float, val otherShare: Float,
-    val detail: String, val agent: String?,
+    /** The first line under the state word, and the second (remote-agent's share); each its own line. */
+    val detail: String, val detail2: String?, val agent: String?,
 )
 
 fun diskCard(s: MachineStatus, text: StatusText): DiskCard {
@@ -164,14 +170,11 @@ fun diskCard(s: MachineStatus, text: StatusText): DiskCard {
     val agentBytes = if (s.hasAgentBytes()) min(s.agentBytes, used) else 0L
     val totalText = text.size(d.totalBytes)
     val agent = if (s.hasAgentBytes()) text.size(s.agentBytes) else null
-    val detail = when {
-        t == MachineTone.CRITICAL -> text.copy(UiMessages.machineStatusDiskCriticalHint())
-        agent != null -> text.copy(UiMessages.machineStatusDiskTotalAgent(totalText, agent))
-        else -> text.copy(UiMessages.machineStatusTotal(totalText))
-    }
+    val detail = if (t == MachineTone.CRITICAL) text.copy(UiMessages.machineStatusDiskCriticalHint()) else text.copy(UiMessages.machineStatusDiskTotal(totalText))
+    val detail2 = if (t != MachineTone.CRITICAL && agent != null) text.copy(UiMessages.machineStatusDiskAgentShare(agent)) else null
     return DiskCard(
         free = text.gbNumber(d.availableBytes), tone = t, word = word,
-        agentShare = (agentBytes / total).toFloat(), otherShare = ((used - agentBytes) / total).toFloat(), detail = detail, agent = agent,
+        agentShare = (agentBytes / total).toFloat(), otherShare = ((used - agentBytes) / total).toFloat(), detail = detail, detail2 = detail2, agent = agent,
     )
 }
 
@@ -198,7 +201,11 @@ fun footerParts(s: MachineStatus, text: StatusText): List<String> = listOfNotNul
 
 // ---- the chart (A3 ①, A4) ---------------------------------------------------------------------
 
-const val CHART_WINDOW_MS = 120_000L
+/**
+ * The window drawn: 116 s. The newest sample is 118 s from the oldest the daemon keeps, and the right edge trails the newest by up
+ * to one sampling interval so that the curve slides evenly; a window of 116 s then always starts on data, never on a blank.
+ */
+const val CHART_WINDOW_MS = 116_000L
 const val SAMPLE_INTERVAL_MS = 2_000L
 /** A hole longer than this between two samples is not drawn across (the page was away; no fake points). */
 const val CHART_GAP_MS = 6_000L
@@ -291,7 +298,7 @@ fun nearestSample(points: List<ChartPoint>, t: Double): Int {
 /** The text a screen reader says for the curve (A7). */
 fun chartSummary(points: List<ChartPoint>, metric: StatusMetric, text: StatusText): String {
     if (points.isEmpty()) return ""
-    fun fmt(v: Double) = if (metric == StatusMetric.CPU) text.percent(v) else text.size(v.toLong())
+    fun fmt(v: Double) = if (metric == StatusMetric.CPU) text.percent(v) else text.size(v.toLong(), binary = true)
     return text.copy(UiMessages.machineStatusA11YChart(fmt(points.maxOf { it.value }), fmt(points.last().value)))
 }
 
@@ -337,8 +344,8 @@ fun usageRows(
             title = if (showSessions) sessionTitle ?: r.executable.ifEmpty { r.id } else r.executable,
             isSession = showSessions,
             agent = if (showSessions) agentOf(r.id) else null,
-            primary = if (memory) text.size(r.memoryBytes) else text.percent(r.cpuPercent),
-            secondary = (if (memory) text.percent(r.cpuPercent) else text.size(r.memoryBytes)) +
+            primary = if (memory) text.size(r.memoryBytes, binary = true) else text.percent(r.cpuPercent),
+            secondary = (if (memory) text.percent(r.cpuPercent) else text.size(r.memoryBytes, binary = true)) +
                 if (!showSessions && sessionTitle != null) " · $sessionTitle" else "",
             bar = if (head <= 0) 0f else (main(r) / head).toFloat().coerceIn(0f, 1f),
             top = i == 0,

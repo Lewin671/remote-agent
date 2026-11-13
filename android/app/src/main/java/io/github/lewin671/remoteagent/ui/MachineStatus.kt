@@ -78,6 +78,7 @@ import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.lewin671.remoteagent.core.ChartPoint
 import io.github.lewin671.remoteagent.core.MachinePollState
+import io.github.lewin671.remoteagent.core.NO_VALUE
 import io.github.lewin671.remoteagent.core.MachineStatusController
 import io.github.lewin671.remoteagent.core.MachineTone
 import io.github.lewin671.remoteagent.core.RingSpec
@@ -188,25 +189,25 @@ fun MachineRingsCard(rings: List<RingSpec>, online: Boolean, onOpen: () -> Unit,
 
 /** The little dot under the title: green and breathing while live, orange and still when the data is old. */
 @Composable
-private fun LiveDot(stale: Boolean) {
+private fun LiveDot(stale: Boolean, idle: Boolean = false) {
     val p = pal
     val breathe = rememberInfiniteTransition()
     val phase by breathe.animateFloat(0f, 1f, infiniteRepeatable(tween(1200, easing = androidx.compose.animation.core.FastOutSlowInEasing), RepeatMode.Reverse))
     val t = if (Motion.reduced || LocalChartFrozen.current) 0f else phase
-    val color = if (stale) p.orange else p.green
+    val color = if (idle) p.ink3 else if (stale) p.orange else p.green
     Canvas(Modifier.size(13.dp)) {
         val c = center
-        if (!stale) drawCircle(color.copy(alpha = .22f * (1f - t)), (3.5.dp + (3 + 2 * t).dp).toPx(), c)
+        if (!stale && !idle) drawCircle(color.copy(alpha = .22f * (1f - t)), (3.5.dp + (3 + 2 * t).dp).toPx(), c)
         drawCircle(color, 3.5.dp.toPx(), c)
     }
 }
 
 @Composable
-private fun StatusHeader(name: String, liveText: String?, stale: Boolean, p: Palette) {
+private fun StatusHeader(name: String, liveText: String?, stale: Boolean, p: Palette, idle: Boolean = false) {
     Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 6.dp)) {
         Text(name, style = T.title.copy(letterSpacing = (-0.6).sp), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         if (liveText != null) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-            LiveDot(stale)
+            LiveDot(stale, idle)
             Spacer(Modifier.width(3.dp))
             Text(liveText, style = T.s15, color = p.ink2)
         }
@@ -290,7 +291,7 @@ private fun HeroCard(
         value = v.toString(); number = v.toDouble()
     } else {
         val bytes = scrub?.value?.toLong() ?: s.memoryUsedBytes
-        value = text.gbNumber(bytes, oneDecimal = true); number = bytes / 1e9
+        value = text.gbNumber(bytes, oneDecimal = true, binary = true); number = bytes / io.github.lewin671.remoteagent.core.GIB
     }
     Column(modifier.fillMaxWidth().statusCard(p).padding(top = 16.dp)) {
         Row(Modifier.padding(horizontal = 18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
@@ -356,11 +357,38 @@ private fun LargeFigure(value: String, number: Double, unit: String, color: Colo
 }
 
 @Composable
-private fun SayLines(first: String, firstColor: Color, second: String?, secondColor: Color) {
+private fun SayLines(first: String, firstColor: Color, second: String?, secondColor: Color, third: String? = null, breakSecondAtComma: Boolean = false, oneLineEach: Boolean = false) {
     Column(Modifier.padding(top = 10.dp)) {
         Text(first, style = T.s13b, color = firstColor)
-        if (second != null) Text(second, style = T.s13, color = secondColor)
+        if (oneLineEach && second != null) OneLine(second, secondColor)
+        else if (second != null) {
+            val i = if (breakSecondAtComma) second.indexOfFirst { it == '，' || it == ',' } else -1
+            if (i < 0) Text(second, style = T.s13, color = secondColor)
+            else {
+                // Too narrow for one line: it breaks at the comma, not inside a figure.
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                androidx.compose.foundation.layout.FlowRow {
+                    Text(second.substring(0, i + 1) + if (second[i] == ',') " " else "", style = T.s13, color = secondColor)
+                    Text(second.substring(i + 1).trimStart(), style = T.s13, color = secondColor)
+                }
+            }
+        }
+        if (third != null) { if (oneLineEach) OneLine(third, secondColor) else Text(third, style = T.s13, color = secondColor) }
     }
+}
+
+/**
+ * A line that stays one line: the type steps down from 13 to 10 to fit the card's width. At large text sizes it wraps as any text
+ * does, so that nothing is cut.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun OneLine(text: String, color: Color) {
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f) { Text(text, style = T.s13, color = color); return }
+    androidx.compose.foundation.text.BasicText(
+        text, style = T.s13.copy(color = color), maxLines = 1,
+        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 13.sp),
+    )
 }
 
 @Composable
@@ -377,7 +405,7 @@ private fun MemoryTile(s: MachineStatus, text: StatusText, stale: Boolean, modif
         val position = c.position
         if (position != null) { Spacer(Modifier.height(14.dp)); PressureScale(position, Modifier.alpha(if (stale) .5f else 1f)) }
         Spacer(Modifier.weight(1f, fill = true).heightIn(min = 0.dp))
-        SayLines(word.orEmpty().takeIf { it.isNotEmpty() } ?: c.detail, if (stale) p.ink3 else p.toneInk(c.tone, p.ink), if (word != null) c.detail else null, if (stale) p.ink3 else p.ink2)
+        SayLines(word.orEmpty().takeIf { it.isNotEmpty() } ?: c.detail, if (stale) p.ink3 else p.toneInk(c.tone, p.ink), if (word != null) c.detail else null, if (stale) p.ink3 else p.ink2, breakSecondAtComma = true)
     }
 }
 
@@ -408,7 +436,7 @@ private fun DiskTile(s: MachineStatus, text: StatusText, stale: Boolean, modifie
         Spacer(Modifier.height(12.dp))
         Box(Modifier.alpha(if (stale) .5f else 1f)) { DiskBar(c.agentShare, c.otherShare, c.tone) }
         Spacer(Modifier.weight(1f, fill = true))
-        SayLines(word, ink, c.detail, if (stale) p.ink3 else if (bad) p.red else p.ink2)
+        SayLines(word, ink, c.detail, if (stale) p.ink3 else if (bad) p.red else p.ink2, third = c.detail2, oneLineEach = true)
     }
 }
 
@@ -481,6 +509,33 @@ private fun UsageList(rows: List<UsageRow>, showSessions: Boolean, dim: Boolean,
 
 private fun Modifier.bottomLine(color: Color): Modifier = this.drawBehind {
     drawLine(color, Offset(0f, size.height - 0.25.dp.toPx()), Offset(size.width, size.height - 0.25.dp.toPx()), strokeWidth = 0.5.dp.toPx())
+}
+
+/** The main card before any data: its title, a dash, the empty room of the curve and the axis. */
+@Composable
+private fun HeroSkeleton(metric: StatusMetric, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String, modifier: Modifier) {
+    val p = pal
+    Column(modifier.fillMaxWidth().statusCard(p).padding(top = 16.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp)) {
+            Kick(if (metric == StatusMetric.CPU) Lucide.Cpu else Lucide.Memory, copy(if (metric == StatusMetric.CPU) UiMessages.machineStatusCpu() else UiMessages.machineStatusMemory()), p.ink2)
+            Spacer(Modifier.height(4.dp))
+            Text(NO_VALUE, style = ts(52.sp, FontWeight.SemiBold, 1.05f).copy(letterSpacing = (-1.2).sp), color = p.ink3)
+        }
+        Spacer(Modifier.height(8.dp + 104.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 6.dp, bottom = 13.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            for (key in listOf(UiMessages.machineStatusAxis2Min(), UiMessages.machineStatusAxis1Min(), UiMessages.machineStatusAxisNow()))
+                Text(copy(key), style = ts(11.sp), color = p.ink3)
+        }
+    }
+}
+
+@Composable
+private fun TileSkeleton(icon: ImageVector, label: String, modifier: Modifier) {
+    val p = pal
+    TileCard(modifier, null, label) {
+        Kick(icon, label, p.ink2)
+        Text(NO_VALUE, style = ts(34.sp, FontWeight.SemiBold, 1.1f).copy(letterSpacing = (-0.6).sp), color = p.ink3, modifier = Modifier.padding(top = 6.dp))
+    }
 }
 
 /**
@@ -563,11 +618,21 @@ fun MachineStatusContent(
         Column(Modifier.fillMaxSize().background(p.statusPage)) {
             BackRow(onBack)
             when (view) {
-                StatusView.LOADING, StatusView.UNAVAILABLE -> Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                StatusView.LOADING -> Column(Modifier.weight(1f).verticalScrollFaded(p.statusPage).padding(start = 16.dp, end = 16.dp, bottom = 30.dp)) {
+                    // Nothing read yet: the page's frame, dashes for the figures, no curve and no ranking.
+                    StatusHeader(name, copy(UiMessages.machineStatusLoading()), false, p, idle = true)
+                    val other = if (main == StatusMetric.CPU) StatusMetric.MEMORY else StatusMetric.CPU
+                    HeroSkeleton(main, copy, Modifier.padding(top = 18.dp))
+                    Row(Modifier.padding(top = 12.dp).height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val tile = Modifier.weight(1f).fillMaxHeight()
+                        TileSkeleton(if (other == StatusMetric.MEMORY) Lucide.Memory else Lucide.Cpu, copy(if (other == StatusMetric.MEMORY) UiMessages.machineStatusMemory() else UiMessages.machineStatusCpu()), tile)
+                        TileSkeleton(Lucide.HardDrive, copy(UiMessages.machineStatusDisk()), tile)
+                    }
+                }
+                StatusView.UNAVAILABLE -> Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
                     StatusHeader(name, null, false, p)
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        if (view == StatusView.LOADING) Spinner(p.ink2, size = 24.dp)
-                        else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(copy(UiMessages.machineStatusUnavailable()), style = T.s17, color = p.ink2, textAlign = TextAlign.Center)
                             TextLink(copy(UiMessages.commonRetry()), onRetry, Modifier.padding(horizontal = 12.dp))
                         }

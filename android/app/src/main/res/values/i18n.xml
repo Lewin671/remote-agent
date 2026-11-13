@@ -642,13 +642,14 @@
     </plurals>
     <string name="machine_status_cpu" formatted="false">"CPU"</string>
     <string name="machine_status_disk" formatted="false">"磁盘"</string>
+    <string name="machine_status_disk_agent_share">"remote-agent 占 %1$s"</string>
     <string name="machine_status_disk_available" formatted="false">"磁盘可用"</string>
     <string name="machine_status_disk_critical" formatted="false">"快满了"</string>
     <string name="machine_status_disk_critical_hint" formatted="false">"新会话可能启动不了"</string>
     <string name="machine_status_disk_full" formatted="false">"这台电脑磁盘满了"</string>
     <string name="machine_status_disk_low" formatted="false">"空间不多了"</string>
     <string name="machine_status_disk_ok" formatted="false">"空间充足"</string>
-    <string name="machine_status_disk_total_agent">"共 %1$s，remote-agent 用了 %2$s"</string>
+    <string name="machine_status_disk_total">"共 %1$s"</string>
     <string name="machine_status_duration_days_hours">"%1$d 天 %2$d 小时"</string>
     <plurals name="machine_status_duration_minutes">
         <item quantity="other">"%1$d 分钟"</item>
@@ -665,6 +666,7 @@
     <string name="machine_status_live" formatted="false">"实时"</string>
     <string name="machine_status_load">"%1$s 负载"</string>
     <string name="machine_status_load_line">"负载 %1$s"</string>
+    <string name="machine_status_loading" formatted="false">"正在读取"</string>
     <string name="machine_status_memory" formatted="false">"内存"</string>
     <string name="machine_status_no_running_sessions" formatted="false">"没有正在运行的会话"</string>
     <string name="machine_status_notify_critical">"%1$s 磁盘快满了，只剩 %2$s"</string>

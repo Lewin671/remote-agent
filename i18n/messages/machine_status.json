@@ -1216,7 +1216,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -1235,7 +1236,8 @@
       }
     },
     "platforms": [
-      "web"
+      "web",
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -1249,29 +1251,7 @@
     "notes": "电脑状态规范与负责人裁定第 1 批；英文初稿待审。参数为已经本地化的大小；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
     "params": {},
     "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "machine_status.disk_total_agent",
-    "zh-CN": "共 {size}，remote-agent 用了 {used}",
-    "en": "{size} total, remote-agent uses {used}",
-    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
-    "params": {
-      "size": {
-        "type": "string",
-        "example": "460 GB"
-      },
-      "used": {
-        "type": "string",
-        "example": "3.1 GB"
-      }
-    },
-    "platforms": [
+      "web",
       "android"
     ],
     "status": {
