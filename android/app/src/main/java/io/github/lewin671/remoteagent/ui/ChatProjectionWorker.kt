@@ -42,9 +42,10 @@ class ChatProjectionWorker(private val dispatcher: CoroutineDispatcher = Dispatc
         copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
         textOf: (String) -> String? = { null },
         who: (Origin?) -> ChatSource? = { null },
+        sharedFilesSupported: Boolean = false,
     ): List<ChatItem> = withContext(dispatcher) {
         lock.withLock {
-            projection.update(events, derived, machine, cwd, home, agent, copy, textOf, who).also {
+            projection.update(events, derived, machine, cwd, home, agent, copy, textOf, who, sharedFilesSupported).also {
                 raw = it
                 source = events
                 updated = true

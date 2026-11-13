@@ -1961,6 +1961,55 @@
     <string name="settings_when_a_turn_ends" formatted="false">"一轮结束时"</string>
     <string name="settings_when_i_need_to_act" formatted="false">"等我处理时"</string>
     <string name="settings_when_unspecified_uses" formatted="false">"不指定时实际用："</string>
+    <string name="shared_file_a11y_card">"%2$s，%1$s，%3$s，%4$s"</string>
+    <string name="shared_file_a11y_downloaded_announce">"%1$s 下载完成"</string>
+    <string name="shared_file_a11y_state_available" formatted="false">"可下载"</string>
+    <string name="shared_file_a11y_state_downloaded" formatted="false">"已下载"</string>
+    <string name="shared_file_a11y_state_downloading" formatted="false">"下载中"</string>
+    <string name="shared_file_a11y_state_paused" formatted="false">"已暂停"</string>
+    <string name="shared_file_action_cancel_download" formatted="false">"取消下载"</string>
+    <string name="shared_file_action_download" formatted="false">"下载"</string>
+    <string name="shared_file_action_open" formatted="false">"打开"</string>
+    <string name="shared_file_action_pause" formatted="false">"暂停"</string>
+    <string name="shared_file_action_resume" formatted="false">"继续下载"</string>
+    <string name="shared_file_action_retry" formatted="false">"重试"</string>
+    <string name="shared_file_action_save_to_phone" formatted="false">"存到手机"</string>
+    <plurals name="shared_file_eta_minutes">
+        <item quantity="other">"%1$d 分钟"</item>
+    </plurals>
+    <plurals name="shared_file_eta_seconds">
+        <item quantity="other">"%1$d 秒"</item>
+    </plurals>
+    <string name="shared_file_menu_delete_local" formatted="false">"删除本机副本"</string>
+    <string name="shared_file_menu_from_machine">"来自 %1$s"</string>
+    <string name="shared_file_menu_save_to_album" formatted="false">"存到相册"</string>
+    <string name="shared_file_menu_save_to_downloads" formatted="false">"存到「下载」"</string>
+    <string name="shared_file_menu_share" formatted="false">"分享…"</string>
+    <plurals name="shared_file_notification_files">
+        <item quantity="other">"附 %1$d 个文件"</item>
+    </plurals>
+    <string name="shared_file_open_no_app" formatted="false">"手机上没有能打开这个文件的应用"</string>
+    <string name="shared_file_reason_checksum_mismatch" formatted="false">"文件校验不一致"</string>
+    <string name="shared_file_reason_disconnected" formatted="false">"连接断了"</string>
+    <string name="shared_file_reason_disk_full" formatted="false">"手机空间不足"</string>
+    <string name="shared_file_storage_received_files" formatted="false">"收到的文件"</string>
+    <string name="shared_file_subtitle_cleaned" formatted="false">"会话已结束，文件已清理"</string>
+    <string name="shared_file_subtitle_downloading">"%1$s / %2$s"</string>
+    <string name="shared_file_subtitle_downloading_eta">"%1$s / %3$s · 约 %2$s"</string>
+    <string name="shared_file_subtitle_failed">"没下载下来，%1$s"</string>
+    <string name="shared_file_subtitle_kind_size">"%1$s · %2$s"</string>
+    <string name="shared_file_subtitle_media_size">"%1$s · %2$s"</string>
+    <string name="shared_file_subtitle_offline" formatted="false">"电脑不在线"</string>
+    <string name="shared_file_subtitle_paused">"已暂停 · %1$s / %2$s"</string>
+    <string name="shared_file_toast_cleaned" formatted="false">"文件已清理"</string>
+    <string name="shared_file_toast_saved_to_album" formatted="false">"已存到相册"</string>
+    <string name="shared_file_toast_saved_to_downloads" formatted="false">"已存到「下载」"</string>
+    <string name="shared_file_type_archive" formatted="false">"压缩包"</string>
+    <string name="shared_file_type_audio" formatted="false">"音频"</string>
+    <string name="shared_file_type_image" formatted="false">"图片"</string>
+    <string name="shared_file_type_other" formatted="false">"文件"</string>
+    <string name="shared_file_type_pdf" formatted="false">"PDF"</string>
+    <string name="shared_file_type_video" formatted="false">"视频"</string>
     <string name="startup_install_description" formatted="false">"在任何设备上操作自己电脑上的 Codex"</string>
     <string name="startup_javascript_required" formatted="false">"请启用 JavaScript 后重新加载。"</string>
     <string name="startup_opening" formatted="false">"正在打开…"</string>

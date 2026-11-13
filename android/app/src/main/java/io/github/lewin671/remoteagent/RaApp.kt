@@ -77,6 +77,7 @@ class RaApp : Application() {
     val http: OkHttpClient by lazy { Api.defaultHttp() }
     val pendingStore by lazy { io.github.lewin671.remoteagent.data.PendingStore(this) }
     val imageEnvelopes by lazy { io.github.lewin671.remoteagent.data.ImageEnvelopes(this) }
+    val sharedFiles by lazy { io.github.lewin671.remoteagent.data.SharedFileManager(this) { _remote.value } }
 
     private val _remote = MutableStateFlow<Remote?>(null)
     val remote: StateFlow<Remote?> = _remote.asStateFlow()
@@ -336,6 +337,7 @@ class RaApp : Application() {
                     withContext(Dispatchers.IO) {
                         localFiles.clearFolder("session:$sid")
                         io.github.lewin671.remoteagent.ui.OutgoingRecords(localFiles).removeSession(sid)
+                        sharedFiles.removeSession(sid)
                     }
                 },
                 securityStorage = vault,
@@ -466,6 +468,7 @@ class RaApp : Application() {
                             { eventAccess.clear() },
                             { imageEnvelopes.clear() },
                             { pendingStore.clearAll() },
+                            { sharedFiles.clearAll() },
                             { contentResolver.persistedUriPermissions.forEach { permission ->
                                 runCatching { contentResolver.releasePersistableUriPermission(permission.uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
                             } },

@@ -123,6 +123,13 @@ sealed interface ChatItem {
      */
     data class Tool(override val key: String, val call: ToolCall, val decision: String = "", val decisionOk: Boolean = true, val background: Boolean = false, val seq: Long = 0) : ChatItem
 
+    /** One or more files sent by the agent in a single tool call, replacing that tool call row. */
+    data class SharedFiles(
+        override val key: String,
+        val seq: Long,
+        val files: List<io.github.lewin671.remoteagent.proto.SharedFile>,
+    ) : ChatItem
+
     /**
      * A tool that started and has no result yet, where it started. With
      * [unfinished] its turn ended first: it may still run in the background.
@@ -265,6 +272,7 @@ fun buildChat(
     /** Names who caused an event (Event.origin); see originLabel. */
     who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null },
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
+    sharedFilesSupported: Boolean = false,
 ): List<ChatItem> {
     val out = mutableListOf<ChatItem>()
     val run = mutableListOf<ToolCall>()
@@ -301,6 +309,11 @@ fun buildChat(
     }
     fun addCall(k: String, callEvent: Event, background: Boolean) {
         val t = callEvent.toolCall
+        if (sharedFilesSupported && t.sharedFilesCount > 0) {
+            flushRun()
+            out += ChatItem.SharedFiles(k, callEvent.seq, t.sharedFilesList)
+            return
+        }
         val decided = decisions.onCall[callEvent.seq]
         if (decided != null) {
             // Kept out of a fold so that its decision stays in sight.
@@ -650,6 +663,15 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             // A tool's images sit right under it, e.g. the file Claude Code read.
             if (item.call.imagesCount > 0) ImageRow(item.call.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
         }
+        is ChatItem.SharedFiles -> if (chat != null) {
+            SharedFilesBlock(
+                files = item.files,
+                sessionId = chat.sid,
+                machineName = chat.machineName,
+                machineOnline = chat.machineOnline,
+                sessionExited = chat.sessionExited,
+            )
+        }
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = ChatSide).animateContentSize(Motion.enter(Motion.BASE))) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
@@ -767,8 +789,8 @@ class ChatProjection {
     private var previous: List<Event> = emptyList()
     private var items: List<ChatItem> = emptyList()
     private var context: List<Any>? = null
-    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null }): List<ChatItem> {
-        val nextContext = listOf(machine, cwd, home, agent, copy)
+    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> ChatSource? = { null }, sharedFilesSupported: Boolean = false): List<ChatItem> {
+        val nextContext = listOf(machine, cwd, home, agent, copy, sharedFilesSupported)
         val append = context == nextContext && previous.isNotEmpty() && events.size > previous.size && io.github.lewin671.remoteagent.core.unchangedPrefix(events, previous)
         val tail = if (append) events.subList(previous.size, events.size) else emptyList()
         val messages = append && tail.all { it.kindCase == Event.KindCase.USER_MESSAGE || it.kindCase == Event.KindCase.AGENT_MESSAGE || it.kindCase == Event.KindCase.REASONING }
@@ -783,7 +805,7 @@ class ChatProjection {
                 }
             }
             if (added.isEmpty()) items else (items as io.github.lewin671.remoteagent.core.PagedList<ChatItem>).append(added)
-        } else io.github.lewin671.remoteagent.core.PagedList.from(buildChat(events, d, machine, cwd, home, textOf, who, copy = copy))
+        } else io.github.lewin671.remoteagent.core.PagedList.from(buildChat(events, d, machine, cwd, home, textOf, who, copy = copy, sharedFilesSupported = sharedFilesSupported))
         previous = events
         context = nextContext
         return items

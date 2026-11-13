@@ -116,6 +116,9 @@ class ChatContext(
     val sessions: Map<String, io.github.lewin671.remoteagent.core.SessionView> = emptyMap(),
     /** Opens another session. */
     val onSession: (String) -> Unit = {},
+    val machineName: String = "",
+    val machineOnline: Boolean = true,
+    val sessionExited: Boolean = false,
 )
 
 val LocalChat = compositionLocalOf<ChatContext?> { null }

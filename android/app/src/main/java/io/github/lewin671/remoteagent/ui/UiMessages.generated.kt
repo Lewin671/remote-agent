@@ -5946,6 +5946,156 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "shared_file.a11y_card" -> {
+            val kind = message.args.getValue("kind") as String
+            val name = message.args.getValue("name") as String
+            val size = message.args.getValue("size") as String
+            val state = message.args.getValue("state") as String
+            resources.getString(R.string.shared_file_a11y_card, kind, name, size, state)
+        }
+        "shared_file.a11y_downloaded_announce" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.shared_file_a11y_downloaded_announce, name)
+        }
+        "shared_file.a11y_state_available" -> {
+            resources.getString(R.string.shared_file_a11y_state_available)
+        }
+        "shared_file.a11y_state_downloaded" -> {
+            resources.getString(R.string.shared_file_a11y_state_downloaded)
+        }
+        "shared_file.a11y_state_downloading" -> {
+            resources.getString(R.string.shared_file_a11y_state_downloading)
+        }
+        "shared_file.a11y_state_paused" -> {
+            resources.getString(R.string.shared_file_a11y_state_paused)
+        }
+        "shared_file.action_cancel_download" -> {
+            resources.getString(R.string.shared_file_action_cancel_download)
+        }
+        "shared_file.action_download" -> {
+            resources.getString(R.string.shared_file_action_download)
+        }
+        "shared_file.action_open" -> {
+            resources.getString(R.string.shared_file_action_open)
+        }
+        "shared_file.action_pause" -> {
+            resources.getString(R.string.shared_file_action_pause)
+        }
+        "shared_file.action_resume" -> {
+            resources.getString(R.string.shared_file_action_resume)
+        }
+        "shared_file.action_retry" -> {
+            resources.getString(R.string.shared_file_action_retry)
+        }
+        "shared_file.action_save_to_phone" -> {
+            resources.getString(R.string.shared_file_action_save_to_phone)
+        }
+        "shared_file.eta_minutes" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.shared_file_eta_minutes, count, count)
+        }
+        "shared_file.eta_seconds" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.shared_file_eta_seconds, count, count)
+        }
+        "shared_file.menu_delete_local" -> {
+            resources.getString(R.string.shared_file_menu_delete_local)
+        }
+        "shared_file.menu_from_machine" -> {
+            val machine = message.args.getValue("machine") as String
+            resources.getString(R.string.shared_file_menu_from_machine, machine)
+        }
+        "shared_file.menu_save_to_album" -> {
+            resources.getString(R.string.shared_file_menu_save_to_album)
+        }
+        "shared_file.menu_save_to_downloads" -> {
+            resources.getString(R.string.shared_file_menu_save_to_downloads)
+        }
+        "shared_file.menu_share" -> {
+            resources.getString(R.string.shared_file_menu_share)
+        }
+        "shared_file.notification_files" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.shared_file_notification_files, count, count)
+        }
+        "shared_file.open_no_app" -> {
+            resources.getString(R.string.shared_file_open_no_app)
+        }
+        "shared_file.reason_checksum_mismatch" -> {
+            resources.getString(R.string.shared_file_reason_checksum_mismatch)
+        }
+        "shared_file.reason_disconnected" -> {
+            resources.getString(R.string.shared_file_reason_disconnected)
+        }
+        "shared_file.reason_disk_full" -> {
+            resources.getString(R.string.shared_file_reason_disk_full)
+        }
+        "shared_file.storage_received_files" -> {
+            resources.getString(R.string.shared_file_storage_received_files)
+        }
+        "shared_file.subtitle_cleaned" -> {
+            resources.getString(R.string.shared_file_subtitle_cleaned)
+        }
+        "shared_file.subtitle_downloading" -> {
+            val downloaded = message.args.getValue("downloaded") as String
+            val total = message.args.getValue("total") as String
+            resources.getString(R.string.shared_file_subtitle_downloading, downloaded, total)
+        }
+        "shared_file.subtitle_downloading_eta" -> {
+            val downloaded = message.args.getValue("downloaded") as String
+            val eta = message.args.getValue("eta") as String
+            val total = message.args.getValue("total") as String
+            resources.getString(R.string.shared_file_subtitle_downloading_eta, downloaded, eta, total)
+        }
+        "shared_file.subtitle_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.shared_file_subtitle_failed, reason)
+        }
+        "shared_file.subtitle_kind_size" -> {
+            val kind = message.args.getValue("kind") as String
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.shared_file_subtitle_kind_size, kind, size)
+        }
+        "shared_file.subtitle_media_size" -> {
+            val duration = message.args.getValue("duration") as String
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.shared_file_subtitle_media_size, duration, size)
+        }
+        "shared_file.subtitle_offline" -> {
+            resources.getString(R.string.shared_file_subtitle_offline)
+        }
+        "shared_file.subtitle_paused" -> {
+            val downloaded = message.args.getValue("downloaded") as String
+            val total = message.args.getValue("total") as String
+            resources.getString(R.string.shared_file_subtitle_paused, downloaded, total)
+        }
+        "shared_file.toast_cleaned" -> {
+            resources.getString(R.string.shared_file_toast_cleaned)
+        }
+        "shared_file.toast_saved_to_album" -> {
+            resources.getString(R.string.shared_file_toast_saved_to_album)
+        }
+        "shared_file.toast_saved_to_downloads" -> {
+            resources.getString(R.string.shared_file_toast_saved_to_downloads)
+        }
+        "shared_file.type_archive" -> {
+            resources.getString(R.string.shared_file_type_archive)
+        }
+        "shared_file.type_audio" -> {
+            resources.getString(R.string.shared_file_type_audio)
+        }
+        "shared_file.type_image" -> {
+            resources.getString(R.string.shared_file_type_image)
+        }
+        "shared_file.type_other" -> {
+            resources.getString(R.string.shared_file_type_other)
+        }
+        "shared_file.type_pdf" -> {
+            resources.getString(R.string.shared_file_type_pdf)
+        }
+        "shared_file.type_video" -> {
+            resources.getString(R.string.shared_file_type_video)
+        }
         "startup.install_description" -> {
             resources.getString(R.string.startup_install_description)
         }

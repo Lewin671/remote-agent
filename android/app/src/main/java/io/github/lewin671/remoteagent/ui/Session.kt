@@ -596,7 +596,10 @@ internal fun ChatPane(
     }
     // Capture UI-owned outbox state before handing the immutable inputs to the worker.
     val texts = outbox.associate { it.requestId to it.text }
-    LaunchedEffect(events, d, projection, texts, copy) {
+    val sharedFilesSupported = io.github.lewin671.remoteagent.core.sharedFilesSupported(state.machines[s.machineId])
+    val machineOnline = state.machines[s.machineId]?.online == true
+    val sessionExited = status == Status.EXITED
+    LaunchedEffect(events, d, projection, texts, copy, sharedFilesSupported) {
         projection.update(
             events,
             d,
@@ -606,15 +609,17 @@ internal fun ChatPane(
             s.agent(),
             copy,
             { texts[it] ?: initialPrompt?.takeIf { _ -> it == initialId } },
-        ) { o ->
-            chatSource(
-                o,
-                state,
-                remote.account.deviceId,
-                machine,
-                copy = copy,
-            )
-        }
+            { o ->
+                chatSource(
+                    o,
+                    state,
+                    remote.account.deviceId,
+                    machine,
+                    copy = copy,
+                )
+            },
+            sharedFilesSupported = sharedFilesSupported,
+        )
         show(projection.rows { currentReveal })
     }
     LaunchedEffect(projection, reveal) { show(projection.rows { currentReveal }) }
@@ -690,17 +695,27 @@ internal fun ChatPane(
     // A bottom-following history can place rows above its viewport while pages join.
     // Keep those rows inside the chat, below the history notices.
     Column(modifier.clipToBounds().onSizeChanged { shownHeight = it.height }) {
-        Box(Modifier.weight(1f)) {
-            val chatCtx =
-                ChatContext(
-                    s.id,
-                    s.agent(),
-                    d,
-                    frozenAt = if (state.conn == ConnState.ONLINE) 0 else state.offlineSinceMs,
-                    onImage = { seq, i -> nav.image(s.id, seq, i) },
-                    sessions = state.sessions,
-                    onSession = { nav.session(it) },
-                )
+        SharedFileHost(
+            sessionId = s.id,
+            machineName = machine,
+            machineOnline = machineOnline,
+            sessionExited = sessionExited,
+            modifier = Modifier.weight(1f),
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                val chatCtx =
+                    ChatContext(
+                        s.id,
+                        s.agent(),
+                        d,
+                        frozenAt = if (state.conn == ConnState.ONLINE) 0 else state.offlineSinceMs,
+                        onImage = { seq, i -> nav.image(s.id, seq, i) },
+                        sessions = state.sessions,
+                        onSession = { nav.session(it) },
+                        machineName = machine,
+                        machineOnline = machineOnline,
+                        sessionExited = sessionExited,
+                    )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
                 // Padding, not a leading item without a key: the list keeps its place by the
                 // key of the first row in view, which history joining in front must not move.
@@ -800,6 +815,7 @@ internal fun ChatPane(
                     IconText(Lucide.ArrowDown, copy(UiMessages.sessionNewMessages(count = shownFresh)), p.ink, T.s13)
                 }
             }
+        }
         }
         androidx.compose.runtime.CompositionLocalProvider(LocalDockMax provides dockMax) {
             if (s.info?.taskOwned == true) Hint(copy(UiMessages.sessionReplyMoves()), Modifier.padding(horizontal = ChatSide), inset = 0.dp)
