@@ -359,12 +359,13 @@ func call[Q, R any](ctx context.Context, fn func(context.Context, *connect.Reque
 	return nil
 }
 
-// Duplicate lookups and waiters never acquire an execution slot.
-func (c *conn) acquireCall() (func(), error) {
+// New work waits for a slot outside endpoint locks until its signed deadline
+// or path cancellation. Already accepted duplicates do not acquire a slot.
+func (c *conn) acquireCall(ctx context.Context) (func(), error) {
 	select {
 	case c.r.calls <- struct{}{}:
 		return func() { <-c.r.calls }, nil
-	default:
-		return nil, deviceauth.ErrCapacity
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }

@@ -279,10 +279,10 @@ func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := bytes.Repeat([]byte{0x6b}, 400)
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
-		return Final(result), nil
-	}); err == nil {
-		t.Fatalf("finish over the byte cap must retain category without body: %v", err)
+	_, err = machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) { return Final(result), nil })
+	var missing *ResultUnavailable
+	if !errors.As(err, &missing) || missing.Category != Executed {
+		t.Fatalf("finish over byte cap lost Executed category: %v", err)
 	}
 	if _, ok := machine.data.Accepted["filler"]; !ok {
 		t.Fatal("an unexpired accepted entry was evicted")

@@ -17,13 +17,21 @@ import (
 
 func checkAcceptedIndex(t *testing.T, e *Endpoint) {
 	t.Helper()
-	size := 0
+	size, volatile, bodies := 0, 0, 0
 	for k, a := range e.data.Accepted {
-		size += acceptedEntrySize(k, a)
+		if a.Persisted {
+			size += acceptedEntrySize(k, a)
+			if a.Available {
+				bodies++
+			}
+		} else {
+			volatile += acceptedEntrySize(k, a)
+		}
 	}
-	if size != e.acceptedBytes || len(e.data.Accepted) != len(e.volatileExpiry)+len(e.durableExpiry) {
+	if size != e.acceptedBytes || bodies != e.acceptedBodies || volatile != e.volatileBytes || len(e.data.Accepted) != len(e.volatileExpiry)+len(e.durableExpiry) {
 		t.Fatal("invalid acceptance indexes")
 	}
+
 }
 func testKey(s string) string { h := digest("test/key", []byte(s)); return string(h[:]) }
 
@@ -212,8 +220,7 @@ func TestAcceptedHotPathAllocationsIndependentOfTableSize(t *testing.T) {
 			if err := e.finishAccepted(k, Final(nil), 2); err != nil {
 				t.Fatal(err)
 			}
-			e.acceptedBytes -= acceptedEntrySize(k, e.data.Accepted[k])
-			e.acceptedBodies--
+			e.accountAcceptedBody(k, e.data.Accepted[k], -1)
 			delete(e.data.Accepted, k)
 			e.volatileExpiry = e.volatileExpiry[:n]
 		})
@@ -277,7 +284,10 @@ func TestConcurrentDuplicateWaitsWithoutAcquiring(t *testing.T) {
 	}
 	entered, release := make(chan struct{}), make(chan struct{})
 	var callbacks, slots atomic.Int32
-	options := AcceptOptions{Acquire: func() (func(), error) { slots.Add(1); return func() {}, nil }}
+	var unblock sync.Once
+	defer unblock.Do(func() { close(release) })
+	waiting := make(chan struct{}, 16)
+	options := AcceptOptions{Acquire: func(context.Context) (func(), error) { slots.Add(1); return func() {}, nil }}
 	fn := func(Header, []byte) (Completion, error) {
 		callbacks.Add(1)
 		close(entered)
@@ -293,14 +303,32 @@ func TestConcurrentDuplicateWaitsWithoutAcquiring(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		go func() {
 			defer wg.Done()
-			out, err := m.AcceptWith(context.Background(), w, nil, now, options, fn)
+			out, err := m.AcceptWith(&observedWaitContext{Context: context.Background(), entered: waiting}, w, nil, now, options, fn)
 			if err == nil && string(out) != "done" {
 				err = fmt.Errorf("wrong result")
 			}
 			results <- err
 		}()
 	}
-	close(release)
+	for range 16 {
+		select {
+		case <-waiting:
+		case <-time.After(5 * time.Second):
+			t.Fatal("duplicates did not enter wait table")
+		}
+	}
+	m.mu.Lock()
+	n := m.waiters
+	m.mu.Unlock()
+	if n != 16 {
+		t.Fatalf("waiting=%d", n)
+	}
+	select {
+	case <-results:
+		t.Fatal("duplicate returned before original finished")
+	default:
+	}
+	unblock.Do(func() { close(release) })
 	wg.Wait()
 	close(results)
 	for err := range results {
@@ -334,7 +362,7 @@ func TestWaitFullTimeoutAndEndedUnknown(t *testing.T) {
 	}()
 	<-entered
 	m.mu.Lock()
-	m.waiters = maxWaiters
+	m.waiters = MaxWaiters
 	m.mu.Unlock()
 	start := time.Now()
 	_, err = m.Accept(w, nil, now, nil)
@@ -370,7 +398,7 @@ func TestCallbackPastRetentionNeverRebuilds(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "late-request-0001", Deadline: now + 1}
+	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "late-request-0001", Deadline: now + 1000}
 	w, err := cl.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
@@ -403,7 +431,9 @@ func TestCallbackPastRetentionNeverRebuilds(t *testing.T) {
 		t.Fatal("late callback resurrected entry")
 	}
 }
-func TestKilledRunningRecovery(t *testing.T) {
+func TestKilledRunningRecovery(t *testing.T) { testKilledAcceptedRecovery(t, false) }
+func TestKilledFinalRecovery(t *testing.T)   { testKilledAcceptedRecovery(t, true) }
+func testKilledAcceptedRecovery(t *testing.T, completed bool) {
 	if path := os.Getenv("RA_KILL_STORAGE_PATH"); path != "" {
 		e, err := OpenEndpoint(path)
 		if err != nil {
@@ -411,6 +441,11 @@ func TestKilledRunningRecovery(t *testing.T) {
 		}
 		if err = e.startAccepted(testKey("killed"), Hash{1}, 100, 10, true); err != nil {
 			panic(err)
+		}
+		if os.Getenv("RA_KILL_COMPLETED") == "1" {
+			if err = e.finishAccepted(testKey("killed"), Final([]byte("committed result")), 20); err != nil {
+				panic(err)
+			}
 		}
 		fmt.Fprintln(os.Stdout, "ready")
 		select {} // parent deliberately kills this process after durable admission.
@@ -422,6 +457,9 @@ func TestKilledRunningRecovery(t *testing.T) {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestKilledRunningRecovery$")
 	cmd.Env = append(os.Environ(), "RA_KILL_STORAGE_PATH="+path)
+	if completed {
+		cmd.Env = append(cmd.Env, "RA_KILL_COMPLETED=1")
+	}
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -453,13 +491,22 @@ func TestKilledRunningRecovery(t *testing.T) {
 	}
 	defer e.Close()
 	a := e.data.Accepted[testKey("killed")]
-	if a.State != running || len(e.running) != 0 {
-		t.Fatalf("restart state: %+v", a)
+	wantState := running
+	if completed {
+		wantState = final
 	}
-	_, err = acceptedResult(a)
-	if err != ErrOutcomeUnknown {
+	if a.State != wantState || len(e.running) != 0 {
+		t.Fatalf("restart state=%v", a.State)
+	}
+	out, err := acceptedResult(a)
+	if completed {
+		if err != nil || string(out) != "committed result" || a.Category != Executed {
+			t.Fatalf("committed final lost: %q %v", out, err)
+		}
+	} else if err != ErrOutcomeUnknown {
 		t.Fatal(err)
 	}
+
 }
 func TestAcceptedAdmissionFailureLeavesOriginalHistory(t *testing.T) {
 	e := newCurrentChain(t).machineEndpoint(t, "")

@@ -163,7 +163,7 @@ func (s *securitySession) open(ctx context.Context, w deviceauth.Wire, seed []by
 func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
 	return s.acceptWith(ctx, w, seed, now, nil, fn)
 }
-func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, acquire func() (func(), error), fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
+func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, acquire func(context.Context) (func(), error), fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
 	options := deviceauth.AcceptOptions{AllowNew: func() bool { return !s.blocked.Load() }, Acquire: acquire}
 	out, err := s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
 	if !errors.Is(err, deviceauth.ErrUnknown) {

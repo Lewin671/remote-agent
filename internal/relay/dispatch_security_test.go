@@ -17,12 +17,13 @@ import (
 func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	slots := make(chan struct{}, maxConcurrentCalls)
+	slots := New(nil).admissions
+	limit := cap(slots)
 	var owned sync.WaitGroup
 	defer func() { cancel(); owned.Wait() }()
 	var reads, starts atomic.Int32
 	done := make(chan error, 1)
-	workers := make(chan struct{}, maxConcurrentCalls)
+	workers := make(chan struct{}, limit)
 	go func() {
 		done <- readForwardCalls(ctx, ctx, slots, &owned, func() (*pb.ServerFrame, error) {
 			reads.Add(1)
@@ -34,14 +35,14 @@ func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 		})
 	}()
 	deadline := time.After(3 * time.Second)
-	for starts.Load() < maxConcurrentCalls || reads.Load() < maxConcurrentCalls+1 {
+	for starts.Load() < int32(limit) || reads.Load() < int32(limit+1) {
 		select {
 		case <-deadline:
 			t.Fatal("workers did not fill")
 		case <-time.After(time.Millisecond):
 		}
 	}
-	if n := reads.Load(); n != maxConcurrentCalls+1 {
+	if n := reads.Load(); n != int32(limit+1) {
 		t.Fatalf("unbounded retained requests: %d", n)
 	}
 	cancel()
@@ -53,14 +54,14 @@ func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("reader remained blocked after cancellation")
 	}
-	for range maxConcurrentCalls {
+	for range limit {
 		select {
 		case <-workers:
 		case <-time.After(time.Second):
 			t.Fatal("worker did not cancel")
 		}
 	}
-	if n := starts.Load(); n != maxConcurrentCalls {
+	if n := starts.Load(); n != int32(limit) {
 		t.Fatalf("started %d workers", n)
 	}
 }

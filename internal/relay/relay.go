@@ -97,7 +97,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), admissions: make(chan struct{}, 128), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 60 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
+	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), admissions: make(chan struct{}, maxConcurrentAdmissions), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 60 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -453,6 +453,12 @@ func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 // server floods the stream with large commands or repeats an inflight one.
 const maxConcurrentCalls = 8
 
+// Even with every execution and duplicate-wait slot occupied, leave 16
+// admission workers for fresh slot queues and immediate excess-wait replies.
+// Thus duplicate waiters alone cannot backpressure the stream reader. Fresh
+// work remains bounded and can backpressure it, as before this refactor.
+const maxConcurrentAdmissions = maxConcurrentCalls + deviceauth.MaxWaiters + 16
+
 func (c *conn) readLoop(ctx context.Context) error {
 	return readForwardCalls(ctx, c.dispatcher.ctx, c.r.admissions, &c.dispatcher.executions, func() (*pb.ServerFrame, error) {
 		return readFrame(ctx, c.ws)
@@ -469,8 +475,9 @@ func readForwardCalls(ctx, execution context.Context, slots chan struct{}, calls
 			return err
 		}
 		if call := f.GetForwardCall(); call != nil {
-			// Backpressure retains at most one extra frame. A disconnected
-			// session must not wait indefinitely for a previous command.
+			// At most cap(slots) handlers plus this one unread-dispatched frame
+			// are retained. The production cap exceeds execution + waiter caps;
+			// fresh work can still fill it. Path cancellation unblocks the reader.
 			select {
 			case slots <- struct{}{}:
 			case <-ctx.Done():

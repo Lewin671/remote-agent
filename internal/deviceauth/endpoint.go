@@ -102,6 +102,7 @@ type Endpoint struct {
 	data           record
 	acceptedBytes  int
 	acceptedBodies int
+	volatileBytes  int
 	volatileExpiry acceptedHeap
 	durableExpiry  acceptedHeap
 	running        map[string]*runningCall

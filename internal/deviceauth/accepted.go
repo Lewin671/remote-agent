@@ -13,13 +13,15 @@ import (
 )
 
 const (
-	maxAccepted        = 65536 // 256 logical bytes per summary, independent of bodies.
-	maxAcceptedBytes   = 16 << 20
-	maxAcceptedBodies  = 8192
-	bodyOverhead       = 32 + 128 // key hash and logical entry/index overhead
-	acceptedGrace      = uint64(10 * time.Minute / time.Millisecond)
-	maxWaiters         = 128
-	defaultWaitTimeout = 30 * time.Second
+	maxAccepted         = 65536 // 256 logical bytes per summary, independent of bodies.
+	maxAcceptedBytes    = 16 << 20
+	maxAcceptedBodies   = 8192
+	maxVolatileAccepted = 8192
+	maxVolatileBytes    = 16 << 20
+	bodyOverhead        = 32 + 128 // key hash and logical entry/index overhead
+	acceptedGrace       = uint64(10 * time.Minute / time.Millisecond)
+	MaxWaiters          = 128 // Max simultaneous duplicate waiters across all paths.
+	defaultWaitTimeout  = 25 * time.Second
 )
 
 type acceptanceState uint32
@@ -64,11 +66,12 @@ type runningCall struct {
 }
 
 // AcceptOptions separates authentication of old results from new admission.
-// Acquire must be nonblocking; it runs only for fresh, authenticated work.
+// Acquire waits outside endpoint locks, only for fresh, authenticated work.
+// It must obey ctx; its returned release function must be nonblocking.
 // AllowNew is checked under the admission lock, including after slot acquisition.
 type AcceptOptions struct {
 	AllowNew func() bool
-	Acquire  func() (release func(), err error)
+	Acquire  func(ctx context.Context) (release func(), err error)
 }
 
 type acceptedExpiry struct {
@@ -96,16 +99,29 @@ func acceptedEntrySize(_ string, a accepted) int {
 	}
 	return bodyOverhead + len(a.Result)
 }
+
+// Volatile terminal frames have a separate bounded cache. They cannot consume
+// the command body budget, even when their successful result is empty.
+func (e *Endpoint) accountAcceptedBody(key string, a accepted, delta int) {
+	if !a.Available {
+		return
+	}
+	size := acceptedEntrySize(key, a) * delta
+	if a.Persisted {
+		e.acceptedBytes += size
+		e.acceptedBodies += delta
+	} else {
+		e.volatileBytes += size
+	}
+}
 func (e *Endpoint) indexAccepted() {
 	e.acceptedBytes = 0
 	e.acceptedBodies = 0
+	e.volatileBytes = 0
 	e.volatileExpiry = nil
 	e.durableExpiry = nil
 	for k, a := range e.data.Accepted {
-		e.acceptedBytes += acceptedEntrySize(k, a)
-		if a.Available {
-			e.acceptedBodies++
-		}
+		e.accountAcceptedBody(k, a, 1)
 		h := &e.volatileExpiry
 		if a.Persisted {
 			h = &e.durableExpiry
@@ -118,10 +134,7 @@ func (e *Endpoint) indexAccepted() {
 func (e *Endpoint) pruneAccepted(h *acceptedHeap, now uint64) {
 	for h.Len() > 0 && (*h)[0].deadline <= now {
 		k := heap.Pop(h).(acceptedExpiry).key
-		e.acceptedBytes -= acceptedEntrySize(k, e.data.Accepted[k])
-		if e.data.Accepted[k].Available {
-			e.acceptedBodies--
-		}
+		e.accountAcceptedBody(k, e.data.Accepted[k], -1)
 		delete(e.data.Accepted, k)
 	}
 }
@@ -269,7 +282,7 @@ func (e *Endpoint) startAccepted(key string, payload Hash, deadline, now uint64,
 		h = &e.durableExpiry
 	}
 	h.expired(0, now, func(k string) { pruned = append(pruned, k) })
-	limit := 8192
+	limit := maxVolatileAccepted
 	if persist {
 		limit = maxAccepted
 	}
@@ -328,7 +341,12 @@ func (e *Endpoint) finishAccepted(key string, c Completion, now uint64) error {
 		a.Category = c.category
 		a.BodyHash = digest("ra4/result\x00", c.result)
 	}
-	if c.final && len(c.result) <= MaxCipherBytes-16 && e.acceptedBodies < maxAcceptedBodies && e.acceptedBytes+bodyOverhead+len(c.result) <= maxAcceptedBytes {
+	size := bodyOverhead + len(c.result)
+	fits := e.volatileBytes+size <= maxVolatileBytes
+	if a.Persisted {
+		fits = e.acceptedBodies < maxAcceptedBodies && e.acceptedBytes+size <= maxAcceptedBytes
+	}
+	if c.final && len(c.result) <= MaxCipherBytes-16 && fits {
 		a.Available = true
 		a.Result = bytes.Clone(c.result)
 	}
@@ -346,10 +364,7 @@ func (e *Endpoint) finishAccepted(key string, c Completion, now uint64) error {
 			return ErrOutcomeUnknown
 		}
 	}
-	e.acceptedBytes += acceptedEntrySize(key, a)
-	if a.Available {
-		e.acceptedBodies++
-	}
+	e.accountAcceptedBody(key, a, 1)
 	e.data.Accepted[key] = a
 	return nil
 }
@@ -401,76 +416,96 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 		return nil, err
 	}
 	key := acceptedKey(h)
-	e.mu.Lock()
-	if e.closed {
-		e.mu.Unlock()
-		return nil, ErrStorage
+	var release func()
+	releaseSlot := func() {
+		if release != nil {
+			release()
+			release = nil
+		}
 	}
-	if a, ok := e.data.Accepted[key]; ok {
-		if a.PayloadHash != payload {
+	defer releaseSlot()
+	var clock uint64
+	var clockAt time.Time
+	acquired := false
+	for {
+		e.mu.Lock()
+		observedAt := time.Now()
+		observed := now + uint64(observedAt.Sub(started)/time.Millisecond)
+		if e.closed {
 			e.mu.Unlock()
-			return nil, ErrIdentityConflict
+			return nil, ErrStorage
 		}
-		if run := e.running[key]; a.State == running && run != nil {
-			return e.waitLocked(ctx, key, run, now)
-		}
-		out, err := acceptedResult(a)
-		e.mu.Unlock()
-		return out, err
-	}
-	// A callback may outlive pruning. Its in-memory identity is never evicted.
-	if run := e.running[key]; run != nil {
-		if run.payload != payload {
+		if a, ok := e.data.Accepted[key]; ok {
+			if a.PayloadHash != payload {
+				e.mu.Unlock()
+				return nil, ErrIdentityConflict
+			}
+			if run := e.running[key]; a.State == running && run != nil {
+				releaseSlot()
+				return e.waitLocked(ctx, key, run, observed)
+			}
+			out, err := acceptedResult(a)
 			e.mu.Unlock()
-			return nil, ErrIdentityConflict
+			return out, err
 		}
-		return e.waitLocked(ctx, key, run, now)
-	}
-	if err := ValidateBody(h, plain); err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	if options.AllowNew != nil && !options.AllowNew() {
-		e.mu.Unlock()
-		return nil, ErrUntrusted
-	}
-	clock := maxU64(maxU64(now, e.data.Floor), e.data.AcceptedFloor)
-	if now+MaxClockSkew < e.data.Floor {
-		e.mu.Unlock()
-		return nil, ErrStale
-	}
-	if h.Deadline <= clock {
-		e.mu.Unlock()
-		return nil, ErrExpired
-	}
-	if h.Deadline-clock > 10*60*1000 {
-		e.mu.Unlock()
-		return nil, ErrInvalid
-	}
-	if err := leaseValid(e.data, clock); err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	if _, err := w.VerifyOrigin(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	if ctx.Err() != nil {
-		e.mu.Unlock()
-		return nil, ErrOutcomeUnknown
-	}
-	release := func() {}
-	if options.Acquire != nil {
-		release, err = options.Acquire()
-		if err != nil {
+		// A callback may outlive pruning. Its in-memory identity is never evicted.
+		if run := e.running[key]; run != nil {
+			if run.payload != payload {
+				e.mu.Unlock()
+				return nil, ErrIdentityConflict
+			}
+			releaseSlot()
+			return e.waitLocked(ctx, key, run, observed)
+		}
+		if err := ValidateBody(h, plain); err != nil {
 			e.mu.Unlock()
 			return nil, err
 		}
-	}
-	defer release()
-	if options.AllowNew != nil && !options.AllowNew() {
+		if options.AllowNew != nil && !options.AllowNew() {
+			e.mu.Unlock()
+			return nil, ErrUntrusted
+		}
+		clock = maxU64(maxU64(observed, e.data.Floor), e.data.AcceptedFloor)
+		if observed+MaxClockSkew < e.data.Floor {
+			e.mu.Unlock()
+			return nil, ErrStale
+		}
+		if h.Deadline <= clock {
+			e.mu.Unlock()
+			return nil, ErrExpired
+		}
+		if h.Deadline-clock > 10*60*1000 {
+			e.mu.Unlock()
+			return nil, ErrInvalid
+		}
+		if err := leaseValid(e.data, clock); err != nil {
+			e.mu.Unlock()
+			return nil, err
+		}
+		if _, err := w.VerifyOrigin(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
+			e.mu.Unlock()
+			return nil, err
+		}
+		if ctx.Err() != nil {
+			e.mu.Unlock()
+			return nil, ErrOutcomeUnknown
+		}
+
+		if options.Acquire == nil || acquired {
+			clockAt = observedAt
+			break
+		}
+		// No durable acceptance yet. A duplicate may be admitted while we wait;
+		// recheck key/hash, membership, lease, pause and deadline after acquiring.
+		remaining := time.Duration(h.Deadline-clock) * time.Millisecond
 		e.mu.Unlock()
-		return nil, ErrUntrusted
+		waiting, cancel := context.WithTimeout(ctx, remaining)
+		release, err = options.Acquire(waiting)
+		cancel()
+		if err != nil {
+			return nil, err
+		}
+		acquired = true
 	}
 	e.data.Floor = clock
 	if clock-e.data.FloorSaved >= floorWriteInterval {
@@ -505,7 +540,7 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 	c, _ := fn(h, plain)
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	finished := maxU64(clock+uint64(time.Since(started)/time.Millisecond), e.data.Floor)
+	finished := maxU64(clock+uint64(time.Since(clockAt)/time.Millisecond), e.data.Floor)
 	if e.closed {
 		return nil, ErrOutcomeUnknown
 	}
@@ -516,7 +551,7 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 }
 func (e *Endpoint) waitLocked(ctx context.Context, key string, run *runningCall, now uint64) ([]byte, error) {
 	now = maxU64(maxU64(now, e.data.Floor), e.data.AcceptedFloor)
-	if e.waiters >= maxWaiters || now >= run.retainUntil {
+	if e.waiters >= MaxWaiters || now >= run.retainUntil {
 		e.mu.Unlock()
 		return nil, ErrOutcomeUnknown
 	}
