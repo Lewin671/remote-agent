@@ -301,8 +301,8 @@ export type ConnState = "connecting" | "online" | "offline";
 export type Link = "online" | "waiting" | "no-network" | "no-server";
 
 export const COMMAND_TTL_MS = 60_000;
-// Match the security protocol's five-minute maximum clock skew. Waiting this
-// long avoids offering abandonment while a slower daemon could still admit it.
+// Match the security protocol's five-minute maximum clock skew when deciding
+// whether a command can still be retried as the same request.
 export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
 
 function readOnlyCommand(cmd: CommandKind): boolean {

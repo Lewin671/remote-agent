@@ -849,7 +849,7 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
   });
   await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(button(message("common.retry", {}, "zh-CN")));
+  await click(sendButton());
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   // Retried as the same request; then the daemon no longer knew it.
   expect(sent[1]).toBe(sent[0]);
@@ -861,6 +861,28 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
   await click(sendButton());
   await vi.waitFor(() => expect(sent).toHaveLength(3));
   expect(sent[2]).not.toBe(sent[0]);
+});
+
+it("abandons a frozen unexpired start and gives the next request a new ID", async () => {
+  const r = demo();
+  const sent: string[] = [];
+  r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") sent.push(slot!.requestId);
+    throw new CommandError("unknown_outcome", "连接超时");
+  };
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  await vi.waitFor(() => expect(button(message("new_session.abandon_start", {}, "zh-CN"))).toBeTruthy());
+  expect(sendButton()?.disabled).toBe(false);
+  await click(button(message("new_session.abandon_start", {}, "zh-CN")));
+  await click(sendButton());
+  await vi.waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1]).not.toBe(sent[0]);
 });
 
 it("keeps an answer of unknown outcome unknown when its retry comes back expired", async () => {
@@ -1077,7 +1099,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await act(async () => { tray.items[0].expiresMs = 0; tray.refreshExpired(); });
     expect(uploads).toEqual(["imac", "imac"]);
     expect(tray.imageIds()).toEqual(["imac-image-2"]);
-    await click(button(message("common.retry", {}, "zh-CN")));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual(sent[0]);
   });
@@ -1118,7 +1140,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     // That one's reply is lost too: it is retried as itself.
     await act(async () => answers[1]());
     await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-    await click(button(message("common.retry", {}, "zh-CN")));
+    await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(3));
     expect(sent[2]).toEqual(sent[1]);
   });
@@ -2865,7 +2887,7 @@ it("retries a start with a launch override whose reply was lost as the same requ
   });
   await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(button(message("common.retry", {}, "zh-CN")));
+  await click(sendButton());
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual(sent[0]);
   expect(sent[0].model).toBeTruthy();
@@ -3294,39 +3316,27 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "" } });
 });
 
-it("sends a fork whose answer was lost again as the same request, and gives it up only once it expired", async () => {
+it("abandons an unexpired unknown fork and starts with a new ID", async () => {
   const r = demo();
   const row = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].find((b) => /分叉/.test(b.textContent ?? ""))!;
   const s = r.sessions.get("s-idle")!;
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
-
-  // The computer may have forked: the row says so and promises no second fork.
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unknown_outcome", "不确定电脑有没有执行"));
   await click(row());
-  await vi.waitFor(() => expect(row().textContent).toBe("分叉会话上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"));
+  await vi.waitFor(() => expect(row().textContent).toMatch(/^放弃上次的分叉/));
   const slot = command.mock.calls[0][2];
   expect(slot).toBeTruthy();
-
-  // Closing the menu and opening it again does not forget it.
   await click(host.querySelector<HTMLElement>(".overlay .dim")!);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
-  expect(row().textContent).toContain("上次的分叉结果不确定");
-
-  // The retry is the same request; one that comes back expired is not sent again.
-  command.mockRejectedValueOnce(new CommandError("expired", "过期了"));
+  expect(row().textContent).toMatch(/^放弃上次的分叉/);
   await click(row());
-  await vi.waitFor(() => expect(row().textContent).toMatch(/^放弃上次的分叉/));
-  expect(command.mock.calls[1][2]).toBe(slot);
-  await click(row());
-  expect(command).toHaveBeenCalledTimes(2);
+  expect(command).toHaveBeenCalledTimes(1);
   expect(row().textContent).toBe(message("session.fork"));
-
-  // Given up: the next fork is a new request.
   location.hash = "";
   await click(row());
-  expect(command.mock.calls[2][2]).not.toBe(slot);
+  expect(command.mock.calls[1][2]?.requestId).not.toBe(slot?.requestId);
   await vi.waitFor(() => expect(location.hash).toMatch(/^#\/s\/s-fork-/), { timeout: 3000 });
 });
 
@@ -3835,7 +3845,7 @@ it("shows the pending start and its original message when returning to the proje
   act(() => root!.render(page));
   expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!.value).toBe("task");
   expect(host.textContent).toContain("不确定是否已经启动");
-  await click(button(message("common.retry", {}, "zh-CN")));
+  await click(sendButton());
   expect(slots).toHaveLength(2);
   expect(slots[1]).toBe(slots[0]);
 });
@@ -4067,7 +4077,7 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   await vi.waitFor(() => expect(calls).toHaveLength(1));
   expect(calls[0].cmd).toMatchObject({ case: "createSession", value: { prompt: "", fileIds: ["file-first"] } });
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-  await click(button(message("common.retry", {}, "zh-CN")));
+  await click(sendButton());
   await vi.waitFor(() => expect(calls).toHaveLength(2));
   expect(calls[1].slot?.requestId).toBe(calls[0].slot?.requestId);
   expect(calls[1].cmd).toEqual(calls[0].cmd);

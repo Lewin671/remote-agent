@@ -636,13 +636,14 @@ export function NewBox({
       aria-label={t("new_session.first_message")}
     />
   );
+  const { frozen } = ns;
   // Before the lists are in, no computer is known to be off.
   const offline = ns.remote.listed && !ns.machine?.online;
   const error =
     ns.error &&
-    (ns.expired ? (
+    (frozen ? (
       <Banner kind="warn" action={t("new_session.abandon_start")} onAction={ns.abandon}>
-        {t("new_session.expired_start")}
+        {ns.expired ? t("new_session.expired_start") : t("new_session.start_unknown", { reason: ns.error })}
       </Banner>
     ) : (
       <Banner kind={ns.frozen ? "warn" : "err"} action={t("common.retry")} onAction={() => void submit()}>

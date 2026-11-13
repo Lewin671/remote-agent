@@ -532,7 +532,7 @@ export function SessionPage({
       setForking(false);
     }
   };
-  /** Gives up a fork that expired with its outcome unknown: the next one
+  /** Gives up a fork with its outcome unknown: the next one
    * is a new request. */
   const abandonFork = () => {
     forkTry.abandon();
@@ -540,6 +540,9 @@ export function SessionPage({
     setForkError("");
   };
   const forkWhy = forkBlocked(session, machine, d.running);
+  const forkUnknownNote = forkUnknown === "expired"
+    ? i18n.t("session.fork_expired")
+    : i18n.t("session.fork_unknown");
   const more = (
     <button
       className={"more" + (high ? " context-high" : "")}
@@ -774,11 +777,11 @@ export function SessionPage({
                             group: 1,
                             onClick: () => undefined,
                           }
-                        : forkUnknown === "expired"
+                        : forkUnknown
                           ? {
                               label: i18n.t("session.abandon_fork"),
                               keep: true,
-                              note: i18n.t("session.fork_expired"),
+                              note: forkUnknownNote,
                               noteRed: true,
                               group: 1,
                               onClick: abandonFork,
