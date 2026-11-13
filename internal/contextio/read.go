@@ -43,9 +43,6 @@ func Read[T any](ctx context.Context, fn func() (T, error)) (T, error) {
 		return zero, ctx.Err()
 	}
 }
-func ReadDir(ctx context.Context, path string) ([]os.DirEntry, error) {
-	return Read(ctx, func() ([]os.DirEntry, error) { return os.ReadDir(path) })
-}
 func ReadFile(ctx context.Context, path string) ([]byte, error) {
 	return Read(ctx, func() ([]byte, error) { return os.ReadFile(path) })
 }

@@ -69,21 +69,6 @@ func Sniff(b []byte) pb.ImageFormat {
 	return pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED
 }
 
-// FormatOfMediaType maps a MIME type such as "image/png".
-func FormatOfMediaType(mt string) pb.ImageFormat {
-	switch mt {
-	case "image/png":
-		return pb.ImageFormat_IMAGE_FORMAT_PNG
-	case "image/jpeg", "image/jpg":
-		return pb.ImageFormat_IMAGE_FORMAT_JPEG
-	case "image/webp":
-		return pb.ImageFormat_IMAGE_FORMAT_WEBP
-	case "image/gif":
-		return pb.ImageFormat_IMAGE_FORMAT_GIF
-	}
-	return pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED
-}
-
 // Ext is a file extension for the format, without the dot.
 func Ext(f pb.ImageFormat) string {
 	switch f {

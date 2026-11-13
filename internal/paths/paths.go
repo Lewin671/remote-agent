@@ -21,26 +21,14 @@ func Dir() string {
 // Socket is the daemon's unix socket.
 func Socket() string { return filepath.Join(Dir(), "daemon.sock") }
 
-// Lock is held by the running daemon.
-func Lock() string { return filepath.Join(Dir(), "daemon.lock") }
-
 // Account is the machine's account membership, including the root key.
 func Account() string { return filepath.Join(Dir(), "account.json") }
-
-// Commands remembers remote commands for deduplication.
-func Commands() string { return filepath.Join(Dir(), "commands.json") }
 
 // SessionsDir holds one directory per session.
 func SessionsDir() string { return filepath.Join(Dir(), "sessions") }
 
 // SessionDir is the directory of one session.
 func SessionDir(id string) string { return filepath.Join(SessionsDir(), id) }
-
-// PTYSocket is the control socket of a session's PTY host. Unix socket
-// paths are limited to about 104 bytes on macOS, so it uses a short name.
-func PTYSocket(id string) string {
-	return filepath.Join(Dir(), "run", id[:min(len(id), 12)]+".sock")
-}
 
 // TmuxSocketName is the tmux -L socket name used for all sessions.
 func TmuxSocketName() string {

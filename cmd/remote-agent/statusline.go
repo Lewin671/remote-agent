@@ -47,13 +47,8 @@ func runStatusLine(args []string) int {
 	return code
 }
 
-// runUserStatusLine runs the user's own status line command saved for the
-// session, as Claude Code would have: through the shell, in the current
-// folder, with the input on stdin.
-func runUserStatusLine(sessionID string, input []byte) int {
-	return runUserStatusLineFor(sessionID, input, "claude")
-}
-
+// runUserStatusLineFor runs the user's saved status line through the shell,
+// in the current folder, with the native CLI's input on stdin.
 func runUserStatusLineFor(sessionID string, input []byte, id string) int {
 	fallback := func() int {
 		if spec, ok := daemon.FindAgent(id); ok {

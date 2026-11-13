@@ -733,17 +733,6 @@ func (t *tstore) machines(ctx context.Context) ([]*pb.Machine, error) {
 	return out, rows.Err()
 }
 
-func (t *tstore) machine(ctx context.Context, id string) (*pb.Machine, error) {
-	m := &pb.Machine{Id: id}
-	var meta []byte
-	err := t.db.QueryRowContext(ctx, `SELECT meta, last_seen_ms FROM machines WHERE account_id = ? AND id = ?`, t.acct, id).Scan(&meta, &m.LastSeenMs)
-	if err != nil {
-		return nil, err
-	}
-	m.Meta = unmarshalEnv(meta)
-	return m, nil
-}
-
 var errOtherMachine = errors.New("session belongs to another machine")
 var errNoMachine = errors.New("the machine has been removed")
 

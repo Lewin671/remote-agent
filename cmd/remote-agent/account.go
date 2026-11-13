@@ -12,8 +12,6 @@ import (
 
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/relay"
-	"golang.org/x/term"
-	"rsc.io/qr"
 )
 
 const accountUsage = `Usage:
@@ -128,36 +126,6 @@ func readVisibleLine(prompt string) (string, error) {
 	return strings.TrimSpace(line), nil
 }
 
-// printQR draws a QR code with half-block characters.
-func printQR(text string) {
-	code, err := qr.Encode(text, qr.M)
-	if err != nil {
-		return
-	}
-	n := code.Size
-	const quiet = 2
-	var b strings.Builder
-	for y := -quiet; y < n+quiet; y += 2 {
-		b.WriteString("  ")
-		for x := -quiet; x < n+quiet; x++ {
-			top := code.Black(x, y)
-			bottom := code.Black(x, y+1)
-			switch {
-			case top && bottom:
-				b.WriteString(" ")
-			case top:
-				b.WriteString("▄")
-			case bottom:
-				b.WriteString("▀")
-			default:
-				b.WriteString("█")
-			}
-		}
-		b.WriteString("\n")
-	}
-	fmt.Println(b.String())
-}
-
 func explainJoin(err error) error {
 	return fmt.Errorf("could not register with the server: %w", explain(err))
 }
@@ -188,23 +156,6 @@ func runAccountStatus() error {
 	fmt.Printf("server:     %s\nkind:       %s\ndevice:     %s\naccount-id: %s\nauthority:  %s\nhead epoch: %d\nlease until: %s\nfile:       %s\n",
 		st.Server, st.Kind, st.DeviceID, st.AccountID, st.Authority, st.HeadEpoch, formatLeaseExpiration(st.NotAfter), paths.Account())
 	return nil
-}
-
-// readLine prompts on stderr and reads one line without echo when stdin
-// is a terminal, so secrets stay out of shell history and scrollback.
-func readLine(prompt string) (string, error) {
-	fd := int(os.Stdin.Fd())
-	if term.IsTerminal(fd) {
-		fmt.Fprint(os.Stderr, prompt)
-		b, err := term.ReadPassword(fd)
-		fmt.Fprintln(os.Stderr)
-		return strings.TrimSpace(string(b)), err
-	}
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil && line == "" {
-		return "", err
-	}
-	return strings.TrimSpace(line), nil
 }
 
 func formatLeaseExpiration(notAfter uint64) string {

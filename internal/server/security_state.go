@@ -99,18 +99,6 @@ func (t *tstore) securityStates(ctx context.Context, after uint64, limit int) ([
 	return out, head, nil
 }
 
-func (t *tstore) securityMember(ctx context.Context, id string) (bool, error) {
-	head, _, err := t.securityHead(ctx)
-	if errors.Is(err, errNoRows) {
-		return false, errNoSecurityChain
-	}
-	if err != nil {
-		return false, err
-	}
-	_, ok := head.Core.Member(id)
-	return ok, nil
-}
-
 // pinSecurityDomain is called by the new authority client while it creates
 // the account. It verifies the genesis fully and stores the exact bytes.
 func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Request[pb.PinSecurityDomainRequest]) (*connect.Response[pb.PinSecurityDomainResponse], error) {

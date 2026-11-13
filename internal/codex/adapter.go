@@ -389,9 +389,6 @@ func (a *Adapter) Submitted(line []byte, match func(recorded string) bool, sessi
 	return match(e.Text)
 }
 
-// NormalizeText collapses white space for comparing submitted text.
-func NormalizeText(s string) string { return strings.Join(strings.Fields(s), " ") }
-
 // HookEvents: Codex writes what remote-agent needs to the rollout in time.
 func (a *Adapter) HookEvents(*agent.Hook) []*pb.Event { return nil }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,8 +8,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 )
-
-func jsonUnmarshal(b []byte, v any) error { return json.Unmarshal(b, v) }
 
 // formatEvent renders an event as one or more human-readable lines.
 func formatEvent(e *pb.Event) string {
