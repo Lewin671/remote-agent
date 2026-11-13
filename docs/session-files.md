@@ -95,7 +95,7 @@ daemon 在每个解析出的用户消息里识别精确的 `File: @"<path>" (fil
 
 ### 发起
 
-托管会话的 `remote_agent` MCP 提供 `send_file(path)`，三种 CLI 共用同一个 MCP 进程（接入见 [architecture §18](architecture.md#托管会话的工具入口)）。MCP 只把路径交给 daemon 本机专用的 `LocalService.SendFile`：请求带 MCP scope 头，必须和请求里的会话一致；来源是远程客户端的调用一律拒绝，加密指令里也没有对应的 Command。不改提示词，能力只靠工具描述。工具不声明 `readOnlyHint`，免得 CLI 因此在询问模式下跳过确认；daemon 不另加确认（理由见 scope）。
+托管会话的 `remote_agent` MCP 提供 `send_file(path)`，三种 CLI 共用同一个 MCP 进程（接入见 [architecture §18](architecture.md#托管会话的工具入口)）。MCP 只把路径交给 daemon 本机专用的 `LocalService.SendFile`：请求带 MCP scope 头，必须和请求里的会话一致；来源是远程客户端的调用一律拒绝，加密指令里也没有对应的 Command。不改提示词，能力只靠工具描述：只有用户明确要求发送某个文件或要在手机上查看它时才调用，不主动发送产物，也不为了汇报而发送。工具不声明 `readOnlyHint`，免得 CLI 因此在询问模式下跳过确认；daemon 不另加确认（理由见 scope）。
 
 成功时工具返回 `status: "offered"`、`file_id`、名字、大小、SHA-256 和一句说明：文件已放进对话，用户在客户端里下载，成功不代表用户已经下载。失败以工具错误返回原因：路径不在范围内（提示先复制进项目目录）、在拒绝名单里、是目录（提示先打 zip）、不是普通文件、超过 100 MiB、本轮已满 6 个、附件存储已满、复制时文件在变。每次调用一个文件。
 
@@ -122,7 +122,7 @@ daemon 当场复制一份，之后原文件被改或被删都不影响。副本�
 
 ### 在对话里出现
 
-文件引用挂在这次 MCP 调用的工具调用事件上（`ToolCall.shared_files`），不新增事件类型：旧的 Android 和 iOS 会把不认识的事件类型当成坏密文，加字段则三端都忽略，所以不提升协议版本。daemon 在解析出的工具调用里认出 `remote_agent.send_file`（Claude Code、Codex 的写法）和 `remote_agent/send_file`（Antigravity 的写法，按现有解析推测，未实测，见 [plan.md](plan.md) 的「待确认」），从 CLI 记录的工具输出里找出 32 位十六进制的 `file_id`，确认是本会话已提交的副本才挂上（Claude Code 2.1.322 已实测，见[实测](claude-code-notes.md#send_file-mcp-工具实测)）；名字、大小、哈希和真实路径都取自副本记录，不取输出里的文字。识别和用户消息的文件识别一样无状态，历史重放和重启后结果相同。
+文件引用挂在这次 MCP 调用的工具调用事件上（`ToolCall.shared_files`），不新增事件类型：旧的 Android 和 iOS 会把不认识的事件类型当成坏密文，加字段则三端都忽略，所以不提升协议版本。daemon 在解析出的工具调用里认出 `remote_agent.send_file`（Claude Code、Codex 的写法）和 `remote_agent/send_file`（Antigravity 的写法，1.5.7 已实测，见 [实测 §14](antigravity-notes.md#14-send_file-mcp-工具1572026-11-12)），从 CLI 记录的工具输出里找出 32 位十六进制的 `file_id`，确认是本会话已提交的副本才挂上（Claude Code 2.1.322、Codex 0.166.0 和 Antigravity 1.5.7 已实测，见[验收](acceptance-notes.md#agent-发文件电脑端整合2026-11-12未发布分支)）；名字、大小、哈希和真实路径都取自副本记录，不取输出里的文字。识别和用户消息的文件识别一样无状态，历史重放和重启后结果相同。
 
 已接受的缺口：一轮在工具返回之前被中断，或者 CLI 没把结果写进记录时，副本已经在电脑上，对话里却没有条目，用户无从下载，它随会话一起清理。
 

@@ -69,7 +69,7 @@ func main() {
 	if u.Scheme != "http" || u.Hostname() != "127.0.0.1" {
 		panic("refusing a non-local dev relay")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 	auth, err := remoteclient.NewAuthority(ctx, server, read(filepath.Join(dir, "setup-token")))
 	must(err)
@@ -159,6 +159,8 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 	model := ""
 	if kind == pb.Agent_AGENT_CLAUDE {
 		model = "claude-haiku-5-5"
+	} else if kind == pb.Agent_AGENT_ANTIGRAVITY {
+		model = "gemini-3.8-flash"
 	}
 	prompt := "Use the send_file tool of the remote_agent MCP server to send the file " + file + " in the current directory to me. Call it exactly once with that relative path, do nothing else, then reply with the word DONE."
 	res, err := c.DoMachine(ctx, machine, &pb.Command{Kind: &pb.Command_CreateSession{CreateSession: &pb.CreateSessionRequest{Cwd: project, Agent: kind, Model: model, Prompt: prompt, Mode: pb.ApprovalMode_APPROVAL_MODE_ASK}}})
@@ -224,7 +226,11 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 	for off := int64(0); off < offered.SizeBytes; off += block {
 		res, err := c.Do(ctx, view, &pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: sid, FileId: offered.FileId, Offset: off}}})
 		must(err)
-		data := res.GetGetSharedFileChunk().GetData()
+		chunk := res.GetGetSharedFileChunk()
+		if chunk == nil || chunk.TotalBytes == nil || chunk.GetTotalBytes() != uint64(offered.SizeBytes) {
+			panic("block response has missing or inconsistent total_bytes")
+		}
+		data := chunk.GetData()
 		if int64(len(data)) != block {
 			panic(fmt.Sprintf("block at %d has %d bytes", off, len(data)))
 		}
@@ -235,6 +241,55 @@ func runAgent(ctx context.Context, c *remoteclient.Client, machine, project, soc
 		panic("downloaded bytes differ")
 	}
 	fmt.Printf("PASS %s: %d bytes downloaded in %d encrypted blocks, SHA-256 matches\n", name, len(got), (len(got)+int(block)-1)/int(block))
+	// A normal reporting task must not offer the same artifact again. Wait for
+	// the positive turn to end before choosing the event cursor.
+	wait(ctx, name+": positive turn completed", func() bool {
+		evs, err := c.Events(ctx, view, 0)
+		if err != nil {
+			return false
+		}
+		for _, e := range evs {
+			if e.GetTurnEnded() != nil {
+				return true
+			}
+		}
+		return false
+	})
+	evs, err := c.Events(ctx, view, 0)
+	must(err)
+	var cursor uint64
+	for _, e := range evs {
+		if e.Seq > cursor {
+			cursor = e.Seq
+		}
+	}
+	_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{
+		SessionId: sid, RequestId: remoteclient.NewRequestID(),
+		Text: "Write a one-sentence completion summary mentioning " + file + ".",
+	}}})
+	must(err)
+	wait(ctx, name+": ordinary summary does not call send_file", func() bool {
+		evs, err := c.Events(ctx, view, cursor)
+		if err != nil {
+			return false
+		}
+		completed, replied := false, false
+		for _, e := range evs {
+			if t := e.GetToolCall(); t != nil && (strings.Contains(t.Title, "send_file") || len(t.SharedFiles) > 0) {
+				panic("ordinary task called send_file")
+			}
+			if a := e.GetApprovalRequested(); a != nil && strings.Contains(a.ToolName, "send_file") {
+				panic("ordinary task requested send_file approval")
+			}
+			if e.GetAgentMessage().GetText() != "" {
+				replied = true
+			}
+			if e.GetTurnEnded() != nil {
+				completed = true
+			}
+		}
+		return completed && replied
+	})
 	_, err = c.Do(ctx, view, &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: sid}}})
 	must(err)
 	wait(ctx, name+": copy removed with the session", func() bool {

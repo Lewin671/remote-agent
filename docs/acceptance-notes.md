@@ -2305,13 +2305,25 @@ daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 
 - 最终通过：`pnpm test`（108 个文件、1,601 项）、`pnpm run build`、`go test ./...`。没有改协议、daemon、Android 或 iOS。
 
 边界：没有完成手机真机浏览器验收；未验证 Android 原生应用、Safari、真实手指惯性滚动及持续流式追加。合成截图、录屏和详细数据只保存在任务临时目录；本轮未发布、未部署。
+
 ## Agent 发文件：电脑端（2026-11-10，未发布分支）
 
 环境：本机 `ios/scripts/dev-env.sh start --no-account` 起的隔离中继，`scripts/acceptance-send-file` 建账户、加入一台电脑并在独立状态目录和 tmux socket 上起 daemon，项目目录在状态目录之外；客户端是加密的 Go 测试客户端，没有界面。操作经客户端 → 中继 → daemon → 真实 CLI，再回到客户端。
 
 - **Claude Code 2.1.322 / Haiku 5.5，询问模式**：新建会话的首条消息要求调用 `send_file` 发项目里 1.5 块（1,179,648 字节）随机数据。工具审批经 hook 到达客户端并由客户端允许；对话里的工具调用事件带 `shared_files`，名字、大小、SHA-256 与原文件一致；按 768 KiB 偏移取 2 块，每块正好一整块，截断后哈希一致；停止会话后取块失败（副本随会话清理）。工作区信任框在隔离终端上手动选了「信任」。
 - **Codex 0.166.0**：账户用量已到上限，模型没有回复，未验证。
-- **Antigravity 1.5.5**：模型没有调用 `send_file`（见 [antigravity-notes §14](antigravity-notes.md#14-send_file-mcp-工具1552026-11-10)），未验证。
+- **Antigravity 1.5.5**：模型没有调用 `send_file`（见 [antigravity-notes §14](antigravity-notes.md#14-send_file-mcp-工具1572026-11-12)），未验证。
 - 自动测试：路径校验各类拒绝、软链接、大小和每轮上限、配额与占用统计、取块边界与补零、共享向量、崩溃后暂存清理和重启后计数、会话结束清理、事件注解、发送方只能是 Client、结果不压缩且密文等长，`go test ./...` 通过。
 
 没有覆盖：任何客户端界面（还没做）；旧 Android / iOS 实际收到带 `shared_files` 的事件（只靠协议层面的推断：新字段被忽略）；100 MiB 文件经中继下载的耗时；电脑离线时的表现。
+
+## Agent 发文件：电脑端整合（2026-11-12，未发布分支）
+
+基于 main 的 v0.71.21，协议仍为 13。每个 CLI 使用独立 `RA_DEV_DIR`：从当前 checkout 构建本地中继和 daemon，临时账户、状态目录、自动端口及独立 tmux socket；`scripts/acceptance-send-file` 的加密 Go 客户端经过 server → daemon → 原生 CLI，再读回事件和文件。没有客户端界面操作，没有连接日常 daemon、账户或手机。
+
+- Claude Code 2.1.322 / Haiku 5.5、Codex 0.166.0 / GPT-6.1-Sol medium：询问模式下的真实 `send_file` 审批经客户端签名允许，工具调用事件带 `shared_files`。Claude 的启动信任框由隔离终端调试操作接受。
+- Antigravity 1.5.7 / Gemini 3.8 Flash Medium：首条自然指令没有触发原生 MCP 调用。中断后在隔离终端补充指定 `call_mcp_tool` 的指令，并在仅出现在终端的 MCP 审批中单次允许，才完成真实调用。标题为 `remote_agent/send_file`，结果的 `file_id` 正常识别。此结果证明解析和下载，不能作为自然工具发现或远程审批验收通过，见[实测 §14](antigravity-notes.md#14-send_file-mcp-工具1572026-11-12)。
+- 三者均取回 1,179,648 字节随机文件：两块各 786,432 字节，`total_bytes` 存在且一致，截掉末块补零后 SHA-256 与源文件及事件一致。随后由加密客户端发送普通完成摘要请求，三者均完成回复，没有 `send_file` 调用或审批。停止会话后均不能再取副本。三个临时环境已清理。
+- Go build、vet 和全部测试通过：27 个测试包，1,215 个顶层测试通过（含子测试 3,216 项），8 项按既有条件跳过；i18n 生成检查、lint 通过，Python 72 项通过；网页构建、120 个文件 / 1,741 项测试通过；Android 82 个 core 测试套件 / 495 项通过、debug APK 构建通过；Swift build 和 109 个套件 / 685 项测试通过。
+
+没有覆盖：三端下载界面和旧客户端收事件；Codex 自动/完全放行、Claude 自动/完全放行；Antigravity 的自然发现及全程远程审批；100 MiB 下载性能、电脑离线、真实网络断连恢复和真机。反向样例只证明本次普通汇报任务没有发送文件，不能代替对所有模型行为的保证。

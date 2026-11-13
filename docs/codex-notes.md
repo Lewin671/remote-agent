@@ -252,4 +252,4 @@ File: <uploads>/<session>/files/<file1>/as-file.png
 
 ## send_file MCP 工具
 
-**未实测（2026-11-10，Codex CLI 0.166.0）**：隔离环境里 Codex 已启动并收到消息，但账户用量已到上限，模型没有回复，`send_file` 在询问模式下会不会弹原生审批、rollout 里 MCP 结果的格式都没有验证到。待测项见 [plan.md](plan.md) 的「待确认」。
+**实测（2026-11-12，Codex CLI 0.166.0、GPT-6.1-Sol medium，询问模式）**：隔离状态目录、tmux socket 和本地中继，加密客户端收到 `mcp__remote_agent__send_file` 的审批请求并签名允许；rollout 解析出的工具调用标题为 `remote_agent.send_file`，结果保留 `file_id`，daemon 据此挂上 `shared_files`，客户端下载的 SHA-256 一致。随后只要求一句完成摘要，模型没有调用 `send_file`。自动和完全放行模式仍未实测，见 [plan.md](plan.md) 的「待确认」。

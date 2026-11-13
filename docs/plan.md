@@ -19,7 +19,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | iOS App | 界面稿 v58 的手机和 iPad 画面，界面层用系统组件；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 0.55.0 已于 2026-11-06 在美区 App Store 上架；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
 | 客户端文件附件 | 协议、daemon 与网页、Android、iOS 三端已整合：文件选择、原样上传、文件条目、草稿恢复和逐请求能力检查；尚未发布 | [网页](acceptance-notes.md#文件附件phase-a2026-10-28)、[Android](acceptance-notes.md#文件附件androidphase-b2026-10-28)、[iOS](acceptance-notes.md#文件附件iosphase-b2026-10-28) 的自动测试与隔离真实 CLI；原生模拟器的系统文件选择器已操作 | 真机、云文件提供器、大文件内存与故障恢复的联合验收，见「待确认 › 文件附件」 |
-| Agent 发文件 | 协议、daemon 和 `send_file` 工具：路径校验、副本与配额、工具调用事件上的 `shared_files`、只读取块指令（不压缩、末块补齐）；客户端界面没有 | 自动测试；真实 CLI：Claude Code 询问模式下经加密客户端取回并核对哈希（[记录](acceptance-notes.md#agent-发文件电脑端2026-11-10未发布分支)）；Codex、Antigravity 未验证 | 三端条目和下载；Antigravity 真实调用；发布前的 Codex 协议评审 |
+| Agent 发文件 | 协议、daemon 和 `send_file` 工具：路径校验、副本与配额、工具调用事件上的 `shared_files`、只读取块指令（不压缩、末块补齐）；客户端界面没有 | 自动测试；真实 CLI：Claude Code、Codex 询问模式；Antigravity 经终端补充指令及单次审批后，三者均经加密客户端下载并核对哈希、通过不主动发送的反向样例（[记录](acceptance-notes.md#agent-发文件电脑端整合2026-11-12未发布分支)） | 三端条目和下载；Antigravity 自然工具发现及远程审批；发布前的 Codex 协议评审 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；任务级完成通知与接管说明已实现；网页按运行显示未读，打开详情或对应对话已读，界面按 client-v54 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)和 v52 改版记录 | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
@@ -68,8 +68,8 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 **Agent 发文件**
 
-- Codex 在询问 / 自动 / 完全放行下调用 `send_file` 会不会弹原生审批，rollout 里 MCP 结果是否保留 `file_id`：0.166.0 因用量上限没测到（[codex-notes](codex-notes.md#send_file-mcp-工具)）。
-- Antigravity 的 `call_mcp_tool` 调 `send_file` 时的标题、结果格式和审批：1.5.5 的一次运行里模型没有调用工具（[antigravity-notes §14](antigravity-notes.md#14-send_file-mcp-工具1552026-11-10)）。识别里的 `remote_agent/send_file` 标题和输出里 `file_id` 的写法是按现有解析推测的。
+- Codex 在自动 / 完全放行下调用 `send_file` 的审批表现仍未实测；询问模式及 rollout 结果识别已验证（[codex-notes](codex-notes.md#send_file-mcp-工具)）。
+- Antigravity 的自然工具发现和 MCP 远程审批：1.5.7 仍需在终端补充指定原生工具的指令并单次允许；解析与下载已验证，全程远程流程未通过（[antigravity-notes §14](antigravity-notes.md#14-send_file-mcp-工具1572026-11-12)）。
 - 工具声明 `readOnlyHint` 会不会让各 CLI 跳过询问（现在不声明）；Claude Code 自动和完全放行模式下的表现。
 - 旧 Android / iOS 实际收到带 `shared_files` 的工具调用事件时照常显示：按 protobuf 规则会忽略新字段，未在真实客户端上验证。
 - 100 MiB 文件经中继逐块下载的耗时、连续大块 Forward 在每账户并发和 WebSocket 发送预算下的表现。

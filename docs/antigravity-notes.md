@@ -583,6 +583,8 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 - 同一审计的计划呈现后，空闲输入框上方为 `1 artifact · /artifact to review`；Ctrl-R 才出现绑定文件的 `Action required` 面板。`plan-terminal-before.txt`、`plan-terminal-after.txt` 是同一待审工件的前后画面。
 - API 计费信号仅做只读调查：实际 statusLine 字段、当前 settings 的字段名及 `strings` 中的状态栏/认证/内嵌帮助文字。binary 包含 API key 后端和认证类型字样，但未找到它们与当前会话 statusLine 的可靠对应；当前 settings 没有认证来源字段。没有更改登录、注入 API key 或发送 `/model`，也没有实测 API 登录。是否接入仍见 [plan.md](plan.md)。
 
-## 14. send_file MCP 工具（1.5.5，2026-11-10）
+## 14. send_file MCP 工具（1.5.7，2026-11-12）
 
-隔离环境、询问模式、Gemini 3.8 Flash：`remote_agent` MCP 握手成功，`~/.gemini/antigravity-cli/mcp/remote_agent/` 下写入了 `send_file.json`（说明工具已发现）。但模型在这一次运行里没有调用它：思考摘要写着没有声明这样的工具，转而用 `ls`、`cat`、`find` 查找 MCP 配置，并请求读 `~/.gemini/config/mcp_config.json`（被拒绝后停止测试）。所以 `call_mcp_tool` 调 `send_file` 的标题、结果格式和询问模式下的审批都还没有实测。另见：第一条 `run_command` 的审批经 hook 到了客户端，紧接着的第二条只在终端里弹出、没有产生审批事件，在隔离终端里手动允许；这一点没有进一步排查。
+隔离状态目录、tmux socket、本地中继、询问模式，Gemini 3.8 Flash Medium。首条消息要求用 `remote_agent` 的 `send_file` 发文件时，模型没有直接调用 MCP，而是尝试用 shell 查找配置和自行启动 MCP；这条自然发现路线没有成功。中断后在隔离终端补充明确要求使用原生 `call_mcp_tool`，指定服务器、工具和路径，模型才调用它。
+
+实测原生工具调用标题为 `remote_agent/send_file`，参数为 `ServerName`、`ToolName`、`Arguments`，结果中的 `file_id` 能被 daemon 识别并挂上 `shared_files`。加密客户端逐块取回后 SHA-256 一致；随后只要求一句完成摘要，没有调用 `send_file`。MCP 审批只在终端出现，客户端未收到审批事件；在终端单次允许后调用完成，没有持久放行。因此这次验证证明工具调用解析与下载成立，不能证明自然工具发现或全程远程审批成立，后续项见 [plan.md](plan.md) 的「待确认」。下载与清理细节见[本轮验收](acceptance-notes.md#agent-发文件电脑端整合2026-11-12未发布分支)。
