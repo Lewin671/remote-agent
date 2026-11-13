@@ -44,6 +44,7 @@ func closedOwnedSession(t *testing.T) *harness {
 }
 
 func TestImplicitResumeWaitsForDurableInputOwnership(t *testing.T) {
+	t.Parallel()
 	for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {
 		for _, fault := range []string{"image", "quota", "queue", "accepted", "event", "directory-sync"} {
 			t.Run(origin.Kind.String()+"/"+fault, func(t *testing.T) {
@@ -142,6 +143,7 @@ func TestImplicitResumeWaitsForDurableInputOwnership(t *testing.T) {
 }
 
 func TestExplicitResumeStillClaimsTaskSession(t *testing.T) {
+	t.Parallel()
 	h := closedOwnedSession(t)
 	if _, err := h.d.resumeContextBy(context.Background(), h.s.meta.ID, originLocal); err != nil {
 		t.Fatal(err)
@@ -155,6 +157,7 @@ func TestExplicitResumeStillClaimsTaskSession(t *testing.T) {
 // production resume-to-admission boundary against a real isolated tmux too;
 // cat stands in for the CLI/PTY host, with no model or daily account involved.
 func TestImplicitResumeLaunchesTmuxBeforeAdmission(t *testing.T) {
+	t.Parallel()
 	for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {
 		for _, accepted := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/accepted=%t", origin.Kind, accepted), func(t *testing.T) {

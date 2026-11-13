@@ -12,6 +12,7 @@ import (
 )
 
 func TestScheduledNotifyTitleUsesExecutionSource(t *testing.T) {
+	t.Parallel()
 	for _, target := range []string{"new_session", "resume_session"} {
 		for _, manual := range []bool{false, true} {
 			for _, phase := range []string{"active", "edited", "restarted"} {
@@ -112,6 +113,7 @@ func TestNotifyUserRejectsTitle(t *testing.T) {
 }
 
 func TestFinishNotificationTitleIsTaskNameForBothTargets(t *testing.T) {
+	t.Parallel()
 	for _, target := range []string{"new_session", "resume_session"} {
 		t.Run(target, func(t *testing.T) {
 			h := scheduleHarness(t)

@@ -24,6 +24,7 @@ import (
 // A real pane, not a canned snapshot: opening and resizing must recover
 // output produced before any terminal client connected.
 func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
+	t.Parallel()
 	tc := &tmux.Client{Socket: fmt.Sprintf("ra-history-%d-%d", os.Getpid(), time.Now().UnixNano())}
 	if _, err := tc.CheckVersion(); err != nil {
 		t.Skip(err)

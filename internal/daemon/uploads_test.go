@@ -94,6 +94,7 @@ func TestUploads(t *testing.T) {
 }
 
 func TestUploadChecks(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	// Not what the hash says.

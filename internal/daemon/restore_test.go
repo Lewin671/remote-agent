@@ -103,6 +103,7 @@ func (r *restoreHarness) session(id string) *session {
 }
 
 func TestRestoreStopsWhenTmuxListingFails(t *testing.T) {
+	t.Parallel()
 	r := newRestoreHarness(t)
 	r.save(meta{ID: "00000000000000aa"}, true)
 	want := errors.New("tmux listing unavailable")
@@ -118,6 +119,7 @@ func TestRestoreStopsWhenTmuxListingFails(t *testing.T) {
 // Sessions restored first already run their loops, which look at the
 // session list (to trim the image cache) while later ones are added to it.
 func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
+	t.Parallel()
 	r := newRestoreHarness(t)
 	image := `{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c%d","output":[{"type":"input_image","image_url":"data:image/png;base64,AAAA"}]}}`
 	for i := range 64 {
@@ -182,6 +184,7 @@ func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
 // its transcript meanwhile is read before the session is marked exited, as
 // nothing reads an exited session's transcript later.
 func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
+	t.Parallel()
 	r := newRestoreHarness(t)
 	id := "00000000000000aa"
 	rollout := filepath.Join(r.d.sessionDir(id), "rollout.jsonl")
@@ -222,6 +225,7 @@ func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
 }
 
 func TestRestoreMultipleHistoryBatchesAndLiveSession(t *testing.T) {
+	t.Parallel()
 	r := newRestoreHarness(t)
 	// More than two recovery batches; an exited flag on the live tmux session
 	// must be corrected before storage cleanup, just like a single restore.

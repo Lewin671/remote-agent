@@ -10,6 +10,7 @@ import (
 )
 
 func TestUntakePersistsReturnIntentAndRecoversIOFailures(t *testing.T) {
+	t.Parallel()
 	for _, release := range []bool{false, true} {
 		for _, image := range []bool{false, true} {
 			prepare := completedUpload(t, image, "rejected.bin", []byte("rejected upload"))

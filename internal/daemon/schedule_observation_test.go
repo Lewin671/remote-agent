@@ -19,6 +19,7 @@ type scheduleStatusTerm struct {
 func (t scheduleStatusTerm) RefreshView(ctx context.Context) error { return t.refresh(ctx) }
 
 func TestNativeScheduledDispatchRefreshesEvidenceWithoutBroadeningPermissions(t *testing.T) {
+	t.Parallel()
 	for _, outcome := range []string{"unchanged", "changed", "unavailable"} {
 		t.Run(outcome, func(t *testing.T) {
 			h := agyHarness(t)
@@ -77,6 +78,7 @@ func TestNativeScheduledDispatchRefreshesEvidenceWithoutBroadeningPermissions(t 
 }
 
 func TestNativeManualRequestWaitsForFreshEvidence(t *testing.T) {
+	t.Parallel()
 	h := agyHarness(t)
 	now := time.Now().UTC()
 	report := &agent.StatusLine{CycleMode: "default", IdleKnown: true, Context: &pb.TurnContext{ApprovalPolicy: "request-review", PermissionMode: "default", Sandbox: "disabled"}}

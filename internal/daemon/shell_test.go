@@ -220,6 +220,7 @@ func TestClientSessionStartsThroughTheLoginShell(t *testing.T) {
 // A session started from a terminal keeps the caller's environment, as
 // before: the blocking of the new login-shell path must not touch it.
 func TestTerminalSessionKeepsItsEnvironment(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	calls := fakeTmux(t, h)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -253,6 +254,7 @@ func TestTerminalSessionKeepsItsEnvironment(t *testing.T) {
 // its environment computed again; one started from a terminal resumes
 // from its saved environment, as before.
 func TestResumeFollowsTheLaunchStyle(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []bool{true, false} {
 		t.Run(map[bool]string{true: "shell", false: "direct"}[shell], func(t *testing.T) {
 			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
@@ -297,6 +299,7 @@ func TestResumeFollowsTheLaunchStyle(t *testing.T) {
 
 // A fork of a session started through the login shell starts that way too.
 func TestForkFollowsTheSourceLaunchStyle(t *testing.T) {
+	t.Parallel()
 	for _, shell := range []bool{true, false} {
 		t.Run(map[bool]string{true: "shell", false: "direct"}[shell], func(t *testing.T) {
 			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
@@ -355,6 +358,7 @@ func TestForkFollowsTheSourceLaunchStyle(t *testing.T) {
 // The script is run by a real login shell here: it starts the command it
 // is given, hands its arguments over whole, and reports what it resolved.
 func TestShellLaunchScriptRunsInARealShell(t *testing.T) {
+	t.Parallel()
 	shell := loginShell()
 	dir := t.TempDir()
 	argv := shellLaunchArgv(shell, dir, "ra-no-such-cli", nil)

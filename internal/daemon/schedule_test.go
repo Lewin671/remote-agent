@@ -345,6 +345,7 @@ func TestScheduleLateConfirmationResumesRun(t *testing.T) {
 // stays paused, and the execution is still followed to its end: resuming
 // does not run a one-shot task a second time.
 func TestScheduleLateConfirmationWhilePaused(t *testing.T) {
+	t.Parallel()
 	for _, pauseFirst := range []bool{true, false} {
 		h := scheduleHarness(t)
 		task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")

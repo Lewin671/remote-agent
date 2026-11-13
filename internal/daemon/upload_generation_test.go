@@ -17,6 +17,7 @@ import (
 )
 
 func TestFileHashCannotCompleteAnotherBeginGeneration(t *testing.T) {
+	t.Parallel()
 	for _, completed := range []bool{false, true} {
 		name := "receiving-with-identical-inode"
 		if completed {

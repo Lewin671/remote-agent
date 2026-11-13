@@ -11,6 +11,7 @@ import (
 )
 
 func TestInflightCommitFailureRetainsUnwrittenMessageAcrossRestart(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
 	if _, err := h.s.send("one", "r1"); err != nil {
 		t.Fatal(err)

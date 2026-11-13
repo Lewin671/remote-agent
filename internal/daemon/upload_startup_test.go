@@ -12,6 +12,7 @@ import (
 )
 
 func TestStartupPreservesUploadsUntilSessionLivenessIsRestored(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		for _, state := range []string{"alive", "gone", "list-error"} {
 			kind := "file"
@@ -110,6 +111,7 @@ func TestStartupPreservesUploadsUntilSessionLivenessIsRestored(t *testing.T) {
 }
 
 func TestLiveUploadProtectionDoesNotDependOnReadableHistory(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		for _, failure := range []string{"history", "metadata"} {
 			kind := "file"

@@ -287,6 +287,7 @@ func (a serializedControlAdapter) SetMode(agent.Term, pb.ApprovalMode, bool, age
 }
 
 func TestControlCommitRetainsTerminalLockUntilEventRecorded(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []bool{false, true} {
 		t.Run(map[bool]string{false: "model", true: "mode"}[mode], func(t *testing.T) {
 			h, _ := controlHarness(t)

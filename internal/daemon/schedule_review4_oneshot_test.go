@@ -11,6 +11,7 @@ import (
 )
 
 func TestFailedOneShotResumeRequiresExplicitRetry(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"at", "after_turn"} {
 		t.Run(typ, func(t *testing.T) {
 			h := scheduleHarness(t)

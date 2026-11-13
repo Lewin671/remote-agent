@@ -17,6 +17,7 @@ import (
 )
 
 func TestFilePasteAlwaysHasTextPrefix(t *testing.T) {
+	t.Parallel()
 	f := queuedFile{ID: strings.Repeat("a", 32), Name: "x.png", Path: "/uploads/s/files/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/x.png"}
 	for _, kind := range []pb.Agent{pb.Agent_AGENT_CODEX, pb.Agent_AGENT_CLAUDE} {
 		want := "File: " + f.Path
@@ -48,6 +49,7 @@ func TestFilePasteAlwaysHasTextPrefix(t *testing.T) {
 	}
 }
 func TestSafeFileNamePreservesCombiningMarks(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"नमस्ते.txt", "สวัสดี.log", "عَرَبِيّ.csv"} {
 		if got := safeFileName(name); got != name {
 			t.Errorf("%q became %q", name, got)
@@ -55,6 +57,7 @@ func TestSafeFileNamePreservesCombiningMarks(t *testing.T) {
 	}
 }
 func TestFailedReuseDoesNotReturnAcceptedFileToPending(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	id := uploadFile(t, u, "old.txt", []byte("read later"))
@@ -91,6 +94,7 @@ func TestFailedReuseDoesNotReturnAcceptedFileToPending(t *testing.T) {
 	}
 }
 func TestTakeRollbackRemovesRefsFromPreviouslyOwnedTransfers(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	a := uploadFile(t, u, "old.txt", []byte("old"))
@@ -123,6 +127,7 @@ func TestTakeRollbackRemovesRefsFromPreviouslyOwnedTransfers(t *testing.T) {
 	}
 }
 func TestFileCompletionSyncsDirectoryAncestryAndKeepsPartialOnSyncFailure(t *testing.T) {
+	t.Parallel()
 	for _, failAt := range []string{"", "pending", "uploads"} {
 		t.Run(failAt, func(t *testing.T) {
 			root := t.TempDir()
@@ -171,6 +176,7 @@ func TestFileCompletionSyncsDirectoryAncestryAndKeepsPartialOnSyncFailure(t *tes
 	}
 }
 func TestFileMoveSyncFailureRollsBackBeforeAcceptance(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := uploadFile(t, u, "a.bin", []byte("a"))
@@ -197,6 +203,7 @@ func TestFileMoveSyncFailureRollsBackBeforeAcceptance(t *testing.T) {
 	}
 }
 func TestFileHashDoesNotHoldUploadsLockAndCannotCompleteReplacedPartial(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	data := []byte("same")
@@ -245,6 +252,7 @@ func TestFileHashDoesNotHoldUploadsLockAndCannotCompleteReplacedPartial(t *testi
 	}
 }
 func TestRemoveAndReleaseCleanNestedEmptyFileDirectories(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := uploadFile(t, u, "a.bin", []byte("a"))
@@ -268,6 +276,7 @@ func TestRemoveAndReleaseCleanNestedEmptyFileDirectories(t *testing.T) {
 	}
 }
 func TestRestoreHeldRefsMatchesRuntimeForFilesAndImages(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	imageID := storageUpload(t, u)
@@ -305,6 +314,7 @@ func TestRestoreHeldRefsMatchesRuntimeForFilesAndImages(t *testing.T) {
 }
 
 func TestImageAndFileOnlyQueueSeparatesFileLinesFromPlaceholder(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	files := []queuedFile{{ID: strings.Repeat("f", 32), Name: "x.png", Path: "/uploads/s/files/ffffffffffffffffffffffffffffffff/x.png"}}
 	images := []queuedImage{{ID: "image", Path: "/image.png"}}
@@ -326,6 +336,7 @@ func TestImageAndFileOnlyQueueSeparatesFileLinesFromPlaceholder(t *testing.T) {
 	}
 }
 func TestUntakeReusedUnexposedImageKeepsAcceptedPath(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := storageUpload(t, u)
@@ -350,6 +361,7 @@ func TestUntakeReusedUnexposedImageKeepsAcceptedPath(t *testing.T) {
 }
 
 func TestFileCompletionRecordSyncFailureKeepsBothDurableCopies(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	data := []byte("durable")
@@ -392,6 +404,7 @@ func TestFileCompletionRecordSyncFailureKeepsBothDurableCopies(t *testing.T) {
 }
 
 func TestFailedReplayAfterDedupWindowKeepsAcceptedFile(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	id := uploadFile(t, u, "accepted.txt", []byte("keep"))

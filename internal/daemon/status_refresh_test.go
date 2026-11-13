@@ -11,6 +11,7 @@ import (
 )
 
 func TestStatusRefreshRestoresViewportAndSizingPolicy(t *testing.T) {
+	t.Parallel()
 	tc := &tmux.Client{Socket: fmt.Sprintf("ra-refresh-%d-%d", os.Getpid(), time.Now().UnixNano())}
 	if _, err := tc.CheckVersion(); err != nil {
 		t.Skip(err)

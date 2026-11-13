@@ -11,6 +11,7 @@ import (
 )
 
 func TestIntervalDefinitionRoundTripDoesNotRedispatch(t *testing.T) {
+	t.Parallel()
 	for _, explicit := range []bool{false, true} {
 		for _, scoped := range []bool{false, true} {
 			for _, tail := range []string{"none", "manual", "skipped"} {

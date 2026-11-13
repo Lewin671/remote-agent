@@ -13,6 +13,7 @@ import (
 )
 
 func TestExplicitResumeClaimsRejectedImplicitLifetime(t *testing.T) {
+	t.Parallel()
 	for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {
 		for _, fault := range []string{"image", "quota", "queue"} {
 			t.Run(origin.Kind.String()+"/"+fault, func(t *testing.T) {
@@ -80,6 +81,7 @@ func TestExplicitResumeClaimsRejectedImplicitLifetime(t *testing.T) {
 }
 
 func TestRunningResumeTakeoverRequiresHumanOwnedTask(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		origin *pb.Origin

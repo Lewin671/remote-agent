@@ -80,6 +80,7 @@ func writeTranscriptEnd(h *harness, turn string, claude bool) {
 }
 
 func TestNotifyUserReadsTranscriptBeforeAdmission(t *testing.T) {
+	t.Parallel()
 	for _, claude := range []bool{false, true} {
 		for _, previous := range []bool{false, true} {
 			t.Run(map[bool]string{false: "codex", true: "claude"}[claude]+map[bool]string{false: "/first", true: "/next"}[previous], func(t *testing.T) {
@@ -132,6 +133,7 @@ func TestNotifyUserReadsTranscriptBeforeAdmission(t *testing.T) {
 }
 
 func TestNotifyUserRequiresCommittedTranscript(t *testing.T) {
+	t.Parallel()
 	for _, fault := range []string{"read", "commit"} {
 		t.Run(fault, func(t *testing.T) {
 			h := scheduleTranscriptHarness(t, false)

@@ -40,6 +40,7 @@ func claudePermission(tool, input string) *agent.Hook {
 // Claude Code shows its own prompt while the hook waits. Answered there
 // first, the client's card is withdrawn and the hook prints nothing.
 func TestClaudeApprovalAnsweredInTerminal(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -87,6 +88,7 @@ func TestClaudeApprovalAnsweredInTerminal(t *testing.T) {
 
 // A request still waiting when the turn ends was settled in the terminal.
 func TestClaudeApprovalWithdrawnAtTurnEnd(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"go"}}`)
@@ -112,6 +114,7 @@ func TestClaudeApprovalWithdrawnAtTurnEnd(t *testing.T) {
 // AskUserQuestion and ExitPlanMode ask for permission too; they are a
 // question and a plan, not approvals.
 func TestClaudeQuestionIsNotAnApproval(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	for _, tool := range []string{"AskUserQuestion", "ExitPlanMode"} {
 		out, err := h.s.hook(context.Background(), claudePermission(tool, `{}`))
@@ -132,6 +135,7 @@ func TestClaudeQuestionIsNotAnApproval(t *testing.T) {
 
 // A mode switched in the terminal is recorded from the screen.
 func TestClaudeModeFromScreen(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -152,6 +156,7 @@ func TestClaudeModeFromScreen(t *testing.T) {
 // Machines list the CLIs installed, and Claude Code's settings defaults
 // apply to its sessions.
 func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/nonexistent/codex"}}})
 	if a := h.d.MachineMeta().Agents; len(a) != 1 || a[0].Agent != pb.Agent_AGENT_CODEX {
 		t.Fatalf("agents %v", a)
@@ -190,6 +195,7 @@ func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
 // A question the transcript already had is not reported again by the
 // PreToolUse hook, nor the other way round.
 func TestClaudeQuestionReportedOnce(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"ask"}}`,
@@ -219,6 +225,7 @@ func TestClaudeQuestionReportedOnce(t *testing.T) {
 // Allowed in the terminal before the status check saw the prompt: the
 // completed call withdraws the card (review C8).
 func TestClaudeApprovalWithdrawnWhenCallCompletes(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
@@ -248,6 +255,7 @@ func TestClaudeApprovalWithdrawnWhenCallCompletes(t *testing.T) {
 // A model switched through remote-agent is not undone by the transcript
 // when Plan mode starts (review V1).
 func TestClaudeSelectedModelKept(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
@@ -267,6 +275,7 @@ func TestClaudeSelectedModelKept(t *testing.T) {
 // for another file with the same name, or two identical requests, stay
 // (review V2).
 func TestClaudeApprovalMatchesWholeInput(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
@@ -308,6 +317,7 @@ func TestClaudeApprovalMatchesWholeInput(t *testing.T) {
 // no context after the switch may carry the old model, which a client
 // would show as a switch back.
 func TestClaudeContextsAfterModelThenModeSwitch(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
@@ -374,6 +384,7 @@ func (p *pausedContextParser) Parse(line []byte) ([]*pb.Event, error) {
 }
 
 func TestClaudeModelSwitchRacesTranscript(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"permissionMode":"default","message":{"role":"user","content":"hi"}}`,
@@ -430,6 +441,7 @@ func assertClaudeModelAfterSwitch(t *testing.T, h *harness) {
 // A write longer than the shown input still withdraws its card once it
 // has run: calls are tied to requests by a digest of the whole input.
 func TestClaudeApprovalLargeInputWithdrawn(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	big := strings.Repeat("x", 40*1024)
@@ -461,6 +473,7 @@ func TestClaudeApprovalLargeInputWithdrawn(t *testing.T) {
 // screen's context must not carry the model from before the switch
 // (review V1, checkScreen).
 func TestClaudeScreenModeRacesModelSwitch(t *testing.T) {
+	t.Parallel()
 	for _, order := range []string{"model first", "screen first", "concurrent"} {
 		t.Run(order, func(t *testing.T) {
 			h := claudeHarness(t, Config{})
@@ -501,6 +514,7 @@ func TestClaudeScreenModeRacesModelSwitch(t *testing.T) {
 // A call completed before its request was registered: the request still
 // gets a card, which goes when the turn ends (architecture §16).
 func TestClaudeApprovalAfterItsCallCompleted(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
@@ -517,6 +531,7 @@ func TestClaudeApprovalAfterItsCallCompleted(t *testing.T) {
 // Modes seen on the screen count for the model in use then (review
 // verify3 P2).
 func TestClaudeSeenModesPerModel(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	auto := strings.Replace(ccIdle, "⏸ manual mode on", "⏵⏵ auto mode on (shift+tab to cycle)", 1)
 	h.s.emit(&pb.Event{Kind: &pb.Event_TurnContext{TurnContext: &pb.TurnContext{Model: "claude-sonnet-5-5"}}})
@@ -575,6 +590,7 @@ func (h *harness) askBash(cmd string) bool {
 // it, while a new identical call runs, is no evidence for the new call's
 // request (review verify4 P1).
 func TestClaudeRanBeforeAfterRestart(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
@@ -606,6 +622,7 @@ func TestClaudeRanBeforeAfterRestart(t *testing.T) {
 // Two identical calls in parallel, one done: its request cannot be told
 // from the other's, so it gets a card.
 func TestClaudeRanBeforeParallel(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
@@ -621,6 +638,7 @@ func TestClaudeRanBeforeParallel(t *testing.T) {
 
 // The approval event carries the same digest as the call it is for.
 func TestClaudeApprovalCarriesInputDigest(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	input := `{"file_path":"/w/a.txt","content":"x\u00e9"}`
@@ -649,6 +667,7 @@ func TestClaudeApprovalCarriesInputDigest(t *testing.T) {
 // Two requests with the same input and one completion: both got cards,
 // one is withdrawn, the other stays for its own call.
 func TestClaudeIdenticalRequestsOneCompletion(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{ApprovalTimeout: time.Minute})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
@@ -672,6 +691,7 @@ func TestClaudeIdenticalRequestsOneCompletion(t *testing.T) {
 // injection holds it) is seen once the switch has the terminal: the
 // running rules apply, not the idle ones it read before (review final P1).
 func TestClaudeModeSwitchRechecksRunningUnderLock(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	path := filepath.Join(h.dir, "rollout.jsonl")
 	h.writeRollout(`{"type":"user","promptId":"p0","origin":{"kind":"human"},"permissionMode":"plan","message":{"role":"user","content":"hi"}}`,
@@ -699,6 +719,7 @@ func TestClaudeModeSwitchRechecksRunningUnderLock(t *testing.T) {
 // Nor does a model switch or compaction go ahead once a turn has started
 // while it waited.
 func TestClaudeModelAndCompactRecheckRunningUnderLock(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"model", "compact"} {
 		h := claudeHarness(t, Config{})
 		path := filepath.Join(h.dir, "rollout.jsonl")
@@ -728,6 +749,7 @@ func TestClaudeModelAndCompactRecheckRunningUnderLock(t *testing.T) {
 // parser would read the turn's end again as nothing and leave the session
 // running forever.
 func TestFailedLogWriteDoesNotSwallowTheTurnEnd(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`)
 	h.s.bindRollout("cc-1", filepath.Join(h.dir, "rollout.jsonl"))

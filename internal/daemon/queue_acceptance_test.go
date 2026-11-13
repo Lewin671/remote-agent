@@ -49,6 +49,7 @@ func TestQueueAcceptanceClassification(t *testing.T) {
 }
 
 func TestCancelHeldReportsAlreadyRequeuedMessages(t *testing.T) {
+	t.Parallel()
 	h, _, _ := heldPair(t)
 	// Only the other message's release event fails encoding. Cancellation
 	// of a and the canonical queue save both succeed before that failure.
@@ -192,6 +193,7 @@ func TestCreateKeepsSessionAfterFirstPromptAccepted(t *testing.T) {
 }
 
 func TestScheduleRetainsAcceptedRunThroughRestartAndCompletion(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600}), "")
 	h.s.log.Close()

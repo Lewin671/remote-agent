@@ -238,6 +238,7 @@ func TestResumeAndForkFindTheCLIInTheSavedPATH(t *testing.T) {
 // Resuming or forking starts the CLI the session's saved PATH holds, and
 // fails when it holds none rather than running the daemon's.
 func TestResumeAndForkFailWithoutTheCLIInTheSavedPATH(t *testing.T) {
+	t.Parallel()
 	missing := t.TempDir()
 	for _, tc := range []struct {
 		name string

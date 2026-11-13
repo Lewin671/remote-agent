@@ -10,6 +10,7 @@ import (
 )
 
 func TestDurableAcceptanceWakesInjectorDespiteEventFailure(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.s.log.Close()
 	if _, err := h.s.send("one", "r1"); !errors.Is(err, errQueueAccepted) {
@@ -36,6 +37,7 @@ func TestDurableAcceptanceWakesInjectorDespiteEventFailure(t *testing.T) {
 }
 
 func TestRPCDuplicateAcceptedInputWakesInjector(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.d.sessions[h.s.meta.ID] = h.s
 	if _, err := h.s.send("one", "r1"); err != nil {

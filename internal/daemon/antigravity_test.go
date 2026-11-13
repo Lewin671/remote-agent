@@ -59,6 +59,7 @@ func nativeCard(t *testing.T, h *harness) *pb.Event {
 	return nil
 }
 func TestAgyNativeApprovalIsMatchedAndDeliveredSynchronously(t *testing.T) {
+	t.Parallel()
 	h := agyHarness(t)
 	card := nativeCard(t, h)
 	h.term.mu.Lock()
@@ -98,6 +99,7 @@ func TestAgyNativeApprovalDoesNotAnswerChangedScreen(t *testing.T) {
 	}
 }
 func TestAgyNativeApprovalTimeoutDenies(t *testing.T) {
+	t.Parallel()
 	h := agyHarness(t)
 	h.term.onWrite = func(f *fakeTerm, b string) {
 		if b == "4" {
@@ -189,6 +191,7 @@ func TestAgyStopHookClosesRunningTurn(t *testing.T) {
 }
 
 func TestAgyImagesRecognizedBeforeSubmittingText(t *testing.T) {
+	t.Parallel()
 	h := agyHarness(t)
 	h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
 	h.term.setScreen(agyScreen(t, "image-cleared-1.5.0.txt"))
@@ -214,6 +217,7 @@ func TestAgyImagesRecognizedBeforeSubmittingText(t *testing.T) {
 }
 
 func TestAgyImagesRecognizedInPhoneWidthTerminal(t *testing.T) {
+	t.Parallel()
 	for _, rows := range [][]string{
 		{"▸ 📎 1 media attached (file, 103 B, image/png)", "▸ 📎 2 media attached  (ctrl+o to expand)"},
 		{"▸ 📎 1 media attached (file, 1", "▸ 📎 2 media attached  (ctrl+o"},
@@ -276,6 +280,7 @@ func TestAgyImageCleanupVerifiesMediaDisappears(t *testing.T) {
 }
 
 func TestAgyExistingMediaAndMenusBlockInjection(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"image-terminal.txt", "mcp-terminal.txt"} {
 		t.Run(name, func(t *testing.T) {
 			h := agyHarness(t)
@@ -417,6 +422,7 @@ func TestAgyImagesWaitForIdleSoCleanupCannotInterrupt(t *testing.T) {
 }
 
 func TestAgyPendingPlanDoesNotInventPopupOverOrdinaryInput(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []string{"ignored", "draft", "wrapped footer", "changed then ignored"} {
 		t.Run(scenario, func(t *testing.T) {
 			h := agyHarness(t)

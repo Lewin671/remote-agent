@@ -21,6 +21,7 @@ func repairEventLog(t *testing.T, h *harness) {
 }
 
 func TestFirstImageStageCommitFailurePreservesUnwrittenInput(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png")
 	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true})
@@ -53,6 +54,7 @@ func TestFirstImageStageCommitFailurePreservesUnwrittenInput(t *testing.T) {
 }
 
 func TestPersistedReadyTransitionsWakeDespiteEventFailure(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"resume", "release"} {
 		t.Run(op, func(t *testing.T) {
 			h := newHarness(t, Config{})

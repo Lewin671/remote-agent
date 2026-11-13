@@ -60,6 +60,7 @@ func heldPair(t *testing.T) (h *harness, clears *int, stuck *bool) {
 // Up pulls the CLI's queue into the input box; the canceled message is
 // dropped and the other one goes through the daemon's queue again.
 func TestCancelHeldMessage(t *testing.T) {
+	t.Parallel()
 	h, _, _ := heldPair(t)
 	if err := h.s.cancelInputBy("a", originLocal); err != nil {
 		t.Fatal(err)
@@ -91,6 +92,7 @@ func TestCancelHeldMessage(t *testing.T) {
 // box, which holds the CLI's queue by then, is emptied: a daemon that
 // stops in between comes back with them paused, not gone.
 func TestCancelHeldSavesTheOthersBeforeClearing(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, testCancelHeldSavesTheOthersBeforeClearing)
 }
 
@@ -148,6 +150,7 @@ func testCancelHeldSavesTheOthersBeforeClearing(t *testing.T) {
 // The input box could not be emptied: the other messages wait paused and
 // are not written into what the box still holds.
 func TestCancelHeldLeavesTheOthersPausedWhenTheBoxStays(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, testCancelHeldLeavesTheOthersPausedWhenTheBoxStays)
 }
 
@@ -175,6 +178,7 @@ func testCancelHeldLeavesTheOthersPausedWhenTheBoxStays(t *testing.T) {
 
 // Something else in the CLI's queue: nothing is cleared.
 func TestCancelHeldMismatch(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	h.s.mu.Lock()
 	h.s.queue.Held = []input{{RequestID: "a", Text: "first"}}
@@ -196,6 +200,7 @@ func TestCancelHeldMismatch(t *testing.T) {
 // and the move to the held list: it is not held, or it would be reported
 // withdrawn in the terminal once the turn ends.
 func TestHoldAfterTheModelGotTheMessage(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	if _, err := h.s.send("steer", "r1"); err != nil {
 		t.Fatal(err)
@@ -229,6 +234,7 @@ func TestHoldAfterTheModelGotTheMessage(t *testing.T) {
 // A held message with images comes back into the input box with its
 // "[Image #N]" placeholders, which are part of what the box must hold.
 func TestCancelHeldMessageWithImages(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png", "b.png")
 	h.s.mu.Lock()
@@ -270,6 +276,7 @@ func TestCancelHeldMessageWithImages(t *testing.T) {
 // After a restart, the CLI handing a held message to the model is still
 // recognized as that message.
 func TestHeldMessageIsReceivedAfterRestart(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	h.s.emit(&pb.Event{Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}})
 	h.s.mu.Lock()
@@ -325,6 +332,7 @@ func heldReceivedUnlogged(t *testing.T) *harness {
 // not be logged at once: it is not taken for withdrawn in the terminal
 // when the turn ends.
 func TestReceivedHeldMessageIsNotSweptAsWithdrawn(t *testing.T) {
+	t.Parallel()
 	h := heldReceivedUnlogged(t)
 	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
 	h.s.sweepHeld()
@@ -339,6 +347,7 @@ func TestReceivedHeldMessageIsNotSweptAsWithdrawn(t *testing.T) {
 // The outcome is logged as soon as the log takes the transcript's events
 // again, without waiting for the turn to end.
 func TestReceivedHeldMessageIsSettledWhenTheLogComesBack(t *testing.T) {
+	t.Parallel()
 	h := heldReceivedUnlogged(t)
 	h.writeRollout(`{"type":"assistant","uuid":"u1","message":{"role":"assistant","content":[{"type":"text","text":"on it"}]}}`)
 	h.s.bindRollout("", filepath.Join(h.dir, "rollout.jsonl"))
@@ -352,6 +361,7 @@ func TestReceivedHeldMessageIsSettledWhenTheLogComesBack(t *testing.T) {
 // And after a restart: the log has the user message tied to the held
 // message, so it was delivered.
 func TestReceivedHeldMessageIsSettledAfterRestart(t *testing.T) {
+	t.Parallel()
 	h := heldReceivedUnlogged(t)
 	h.reopen()
 	st := inputStates(h, "a")
@@ -368,6 +378,7 @@ func TestReceivedHeldMessageIsSettledAfterRestart(t *testing.T) {
 // An old turn's delayed sweep must not race final transcript recovery on
 // an exited session: only settleExited knows the final delivery outcome.
 func TestExitedHeldSweepWaitsForFinalSettlement(t *testing.T) {
+	t.Parallel()
 	h, _, _ := heldPair(t)
 	h.s.emit(turnEnd(pb.TurnOutcome_TURN_OUTCOME_COMPLETED))
 	h.s.log.Close()

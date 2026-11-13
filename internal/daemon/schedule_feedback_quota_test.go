@@ -32,6 +32,7 @@ func unpublishedRun(t *testing.T, manual bool) (*harness, *schedule.Task, *sched
 	return h, task, snapshot, before
 }
 func TestPublicationRefusalUsesScheduledClosure(t *testing.T) {
+	t.Parallel()
 	for _, manual := range []bool{false, true} {
 		for _, order := range []string{"before", "restarted-before", "queued", "running", "finished"} {
 			t.Run(map[bool]string{false: "automatic", true: "manual"}[manual]+order, func(t *testing.T) {
@@ -101,6 +102,7 @@ func TestPublicationRefusalUsesScheduledClosure(t *testing.T) {
 }
 
 func TestRelayQuotaIgnoresResumeSession(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	task := startScheduledTurn(t, h)
@@ -117,6 +119,7 @@ func TestRelayQuotaIgnoresResumeSession(t *testing.T) {
 }
 
 func TestQuotaClosureReusesReadAndTakeoverSafety(t *testing.T) {
+	t.Parallel()
 	for _, human := range []bool{false, true} {
 		t.Run(map[bool]string{false: "unread", true: "takeover"}[human], func(t *testing.T) {
 			h, _, snapshot, _ := unpublishedRun(t, false)
@@ -150,6 +153,8 @@ func TestQuotaClosureReusesReadAndTakeoverSafety(t *testing.T) {
 }
 
 func TestQuotaClosureDoesNotBlockScheduleLoop(t *testing.T) {
+	t.Parallel()
+
 	h, _, snapshot, _ := unpublishedRun(t, false)
 	defer h.s.log.Close()
 	h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)
@@ -169,6 +174,13 @@ func TestQuotaClosureDoesNotBlockScheduleLoop(t *testing.T) {
 		t.Fatal("quota report waited for terminal control")
 	}
 	other := createTask(t, h, taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600, DelaySeconds: 2}), "")
+	// The interval calculation is covered separately. Make this task due now:
+	// this test checks that a blocked closer cannot stop the real loop, not
+	// that two seconds pass. Keep the actual loop and blocked terminal mutex.
+	due := time.Now().Add(-time.Second)
+	h.d.scheduleMu.Lock()
+	h.d.tasks[other.ID].NextRunAt = &due
+	h.d.scheduleMu.Unlock()
 	stop := h.d.startScheduleLoop(context.Background())
 	defer func() { release(); stop() }()
 	eventually(t, "scheduler advances while quota closer waits for ctlMu", func() bool { return readTask(t, h.d, other.ID).Dispatches == 1 })

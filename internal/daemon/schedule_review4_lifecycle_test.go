@@ -9,6 +9,7 @@ import (
 )
 
 func TestScheduledResumeRechecksAfterAutomaticClose(t *testing.T) {
+	t.Parallel()
 	for _, waiting := range []bool{false, true} {
 		t.Run(map[bool]string{false: "already closed", true: "close owns lifecycle"}[waiting], func(t *testing.T) {
 			h := resumableHarness(t)

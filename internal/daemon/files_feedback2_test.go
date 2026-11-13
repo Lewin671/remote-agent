@@ -14,6 +14,7 @@ import (
 )
 
 func TestFailedReverseMoveRetainsOwnerUntilRestartRecovery(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		for _, afterRename := range []bool{false, true} {
 			name := "file"
@@ -116,6 +117,7 @@ func TestFailedReverseMoveRetainsOwnerUntilRestartRecovery(t *testing.T) {
 }
 
 func TestGCResyncsCompletionRecordBeforeDeletingRetainedPart(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	data := []byte("durable")
@@ -167,6 +169,7 @@ func TestGCResyncsCompletionRecordBeforeDeletingRetainedPart(t *testing.T) {
 }
 
 func TestReleaseVanishedFileDoesNotLeavePermanentSessionOwnership(t *testing.T) {
+	t.Parallel()
 	for _, returning := range []bool{false, true} {
 		t.Run(map[bool]string{false: "claimed", true: "returning"}[returning], func(t *testing.T) {
 			root := t.TempDir()
@@ -199,6 +202,7 @@ func TestReleaseVanishedFileDoesNotLeavePermanentSessionOwnership(t *testing.T) 
 	}
 }
 func TestPendingReturnKeepsExactFilename(t *testing.T) {
+	t.Parallel()
 	// Exercise the directory path form as well as the image filename form.
 	root := t.TempDir()
 	u := newUploads(root)
@@ -224,6 +228,7 @@ func TestPendingReturnKeepsExactFilename(t *testing.T) {
 }
 
 func TestRetryCannotAcceptWhileRejectedClaimIsStillReturning(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := uploadFile(t, u, "retry.bin", []byte("retry"))

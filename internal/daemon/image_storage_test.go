@@ -34,6 +34,7 @@ func storageUpload(t *testing.T, u *uploads) string {
 }
 
 func TestCancelReleasesOnlyTheLastImageReference(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := storageUpload(t, u)
@@ -56,6 +57,7 @@ func TestCancelReleasesOnlyTheLastImageReference(t *testing.T) {
 }
 
 func TestOriginalLRUProtectsExecutionAndUnconfirmedImages(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	var images [][]queuedImage
@@ -119,6 +121,7 @@ func TestOriginalLRUProtectsExecutionAndUnconfirmedImages(t *testing.T) {
 }
 
 func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := storageUpload(t, u)
@@ -168,6 +171,7 @@ func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
 }
 
 func TestImageCacheLRUAndPreviewRegeneration(t *testing.T) {
+	t.Parallel()
 	d := New(t.TempDir(), Config{})
 	dir := d.sessionDir("s")
 	st := openImageStore(dir)
@@ -209,6 +213,7 @@ func imageFound(t *testing.T, w, h int) agent.FoundImage {
 }
 
 func TestImageQuotaSurvivesRestart(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	chosen := int64(5 << 30)
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{ImageUploadQuotaBytes: chosen}); err != nil {
@@ -232,6 +237,7 @@ func restoreImageRefs(t *testing.T, u *uploads, s *session) {
 }
 
 func TestRestoreRefsSkipsHistoryWithoutImageRecords(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	// A nil log makes any unnecessary witness scan fail immediately.
@@ -240,6 +246,7 @@ func TestRestoreRefsSkipsHistoryWithoutImageRecords(t *testing.T) {
 }
 
 func TestRestoreRefsIndexesSessionsWithoutRecreatingRemovedRecords(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	for _, sessionID := range []string{"first", "second"} {

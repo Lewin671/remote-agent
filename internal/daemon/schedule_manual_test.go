@@ -47,6 +47,7 @@ func manualFixture(t *testing.T, typ string) (*harness, *schedule.Task) {
 	return h, h.d.tasks[task.ID]
 }
 func TestManualExecutionLifecycleMatrix(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
 		for _, ending := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled", "skipped", "dispatch_rejected", "restart_dispatching", "restart_requested", "restart_queued", "input_paused"} {
 			t.Run(typ+"/"+ending, func(t *testing.T) {
@@ -126,6 +127,7 @@ func TestManualExecutionLifecycleMatrix(t *testing.T) {
 }
 
 func TestManualPendingControlsAndAdmission(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
 		for _, op := range []string{"pause", "cancel"} {
 			t.Run(typ+op, func(t *testing.T) {
@@ -173,6 +175,7 @@ func TestManualPendingControlsAndAdmission(t *testing.T) {
 }
 
 func TestManualAndAutomaticSerialize(t *testing.T) {
+	t.Parallel()
 	for _, manualFirst := range []bool{true, false} {
 		for _, late := range []bool{true, false} {
 			t.Run(map[bool]string{true: "manual-first", false: "automatic-first"}[manualFirst]+map[bool]string{true: "skip", false: "catchup"}[late], func(t *testing.T) {
@@ -242,6 +245,7 @@ func TestManualAndAutomaticSerialize(t *testing.T) {
 }
 
 func TestManualPauseResumeDoesNotReplayTrial(t *testing.T) {
+	t.Parallel()
 	h, task := manualFixture(t, "calendar")
 	defer h.s.log.Close()
 	requestManual(t, h, task.ID)
@@ -265,6 +269,7 @@ func TestManualPauseResumeDoesNotReplayTrial(t *testing.T) {
 }
 
 func TestManualPermissionRejectionDoesNotPausePlan(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"interval", "calendar", "at", "after_turn"} {
 		h := scopedHarness(t, "ask")
 		tr := schedule.Trigger{Type: typ, DelaySeconds: 3600}
@@ -299,6 +304,7 @@ func TestManualPermissionRejectionDoesNotPausePlan(t *testing.T) {
 }
 
 func TestManualControlMatrix(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
 		for _, started := range []bool{false, true} {
 			for _, control := range []string{"pause", "pause_resume", "cancel"} {
@@ -348,6 +354,7 @@ func TestManualControlMatrix(t *testing.T) {
 }
 
 func TestManualAdmissionDoesNotReconfirmAutomaticRun(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	now := time.Now().Add(time.Second)

@@ -30,6 +30,7 @@ type scheduledKillBarrier struct {
 
 func (b *scheduledKillBarrier) Kill() error { close(b.entered); <-b.release; return nil }
 func TestScheduledCloseAndHumanAdmissionHaveOneOrder(t *testing.T) {
+	t.Parallel()
 	t.Run("input first", func(t *testing.T) {
 		h := resumableHarness(t)
 		defer h.s.log.Close()

@@ -18,6 +18,7 @@ import (
 // or panic immediately after it to simulate losing the caller/undo on a crash.
 // Restart/GC then uses a fresh uploads instance, with no in-memory intent.
 func TestUploadTransitionFaultMatrix(t *testing.T) {
+	t.Parallel()
 	move := []string{"move-intent", "move-directory", "move-rename", "move-destination", "move-source"}
 	returning := append(append([]string{}, move...), "move-clear")
 	deletion := []string{"delete-intent", "delete-bytes", "delete-directory", "delete-part", "delete-source", "delete-record", "delete-index"}
@@ -320,6 +321,7 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 }
 
 func TestUnstartedKeepsMetadataUntilReturnsFinish(t *testing.T) {
+	t.Parallel()
 	for _, stage := range []string{"move-intent", "move-destination", "move-source", "move-clear"} {
 		t.Run(stage, func(t *testing.T) {
 			root := t.TempDir()
@@ -365,6 +367,7 @@ func TestUnstartedKeepsMetadataUntilReturnsFinish(t *testing.T) {
 }
 
 func TestSessionCleanupDoesNotDeleteUnresolvedReturns(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		t.Run(map[bool]string{false: "file", true: "image"}[image], func(t *testing.T) {
 			root := t.TempDir()
@@ -412,6 +415,7 @@ func firstID(ids []string) string {
 }
 
 func TestImageCompletionRetainsOriginalAfterRecordSyncFailure(t *testing.T) {
+	t.Parallel()
 	for _, gc := range []bool{false, true} {
 		t.Run(map[bool]string{false: "restart", true: "gc"}[gc], func(t *testing.T) {
 			root := t.TempDir()

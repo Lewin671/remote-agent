@@ -27,6 +27,7 @@ func markUnconfirmed(t *testing.T, h *harness, run *schedule.Run) {
 	h.d.tickSchedules(time.Now().Add(time.Second))
 }
 func TestPendingManualWaitsForAutomaticConfirmation(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"uncertain", "paused", "scheduled", "uncertain-without-cursor"} {
 		t.Run(status, func(t *testing.T) {
 			h, task, run := queuedManualBehindAutomatic(t)
@@ -54,6 +55,7 @@ func TestPendingManualWaitsForAutomaticConfirmation(t *testing.T) {
 	}
 }
 func TestPendingManualSkipsWhenAutomaticStops(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"failed", "completed", "cancelled"} {
 		t.Run(status, func(t *testing.T) {
 			h, task, _ := queuedManualBehindAutomatic(t)
@@ -78,6 +80,7 @@ func TestPendingManualSkipsWhenAutomaticStops(t *testing.T) {
 	}
 }
 func TestLateConfirmationFindsRunByID(t *testing.T) {
+	t.Parallel()
 	for _, tail := range []string{"manual", "skipped"} {
 		t.Run(tail, func(t *testing.T) {
 			h, task, run := queuedManualBehindAutomatic(t)

@@ -21,6 +21,7 @@ import (
 
 // Accepted input and request IDs survive a daemon restart.
 func TestQueueSurvivesRestart(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.term.setScreen(draftScreen)
 	if _, err := h.s.send("hello", "r1"); err != nil {
@@ -49,6 +50,7 @@ func TestQueueSurvivesRestart(t *testing.T) {
 // A message that was being written when the daemon died is settled from
 // history after the restart and never written again.
 func TestInflightIsSettledNotReplayed(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, testInflightIsSettledNotReplayed)
 }
 
@@ -145,6 +147,7 @@ func TestSendSaveFailureRollsBack(t *testing.T) {
 // answer checks, after taking the hold, that the question is still open
 // and is the one on screen.
 func TestAnswerRevalidates(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{
 		QuestionId: "q1", Questions: []*pb.Question{{Text: "Which language should the script use?"}},
@@ -167,6 +170,7 @@ func TestAnswerRevalidates(t *testing.T) {
 // With a question index, the option is only entered while that question
 // of a multi-question call is showing.
 func TestAnswerChecksQuestionIndex(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{
 		QuestionId: "q1", Questions: []*pb.Question{{Text: "Which language should the script use?"}, {Text: "Which database should we pick?"}},
@@ -375,6 +379,7 @@ func (c *heldControlBarrier) Hold(d time.Duration) error {
 // Pause an injection while it holds local input, then start an interrupt.
 // Holding ctlMu across the entire operation keeps Esc outside that hold.
 func TestControlOperationsAreSerialized(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.s.checkScreen()
 	h.s.checkScreen()
@@ -411,6 +416,7 @@ func TestControlOperationsAreSerialized(t *testing.T) {
 
 // If the inflight mark cannot be saved, the message stays queued unwritten.
 func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	if _, err := h.s.send("x", "r1"); err != nil {
 		t.Fatal(err)
@@ -518,6 +524,7 @@ func testAmbiguousWriteIsNotRetried(t *testing.T) {
 
 // A queued message can be canceled until it is being written.
 func TestCancelInput(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.term.setScreen(draftScreen)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -846,6 +853,7 @@ func TestResumeWaitsForPreviousPTYHost(t *testing.T) {
 }
 
 func TestLateRecordIsMatchedAfterRestart(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.s.bindRollout("", filepath.Join(h.dir, "rollout.jsonl"))
 	origin := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev", RequestId: "r1"}
@@ -887,6 +895,7 @@ func TestLateRecordIsMatchedAfterRestart(t *testing.T) {
 // daemon restarts in between: the restart remembers it as written, and as
 // unconfirmed.
 func TestLateRecordConfirmsUnconfirmedMessageAfterRestart(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{SubmitTimeout: 100 * time.Millisecond})
 	h.term.history = filepath.Join(h.dir, "elsewhere.jsonl") // Codex writes no history
 	h.s.bindRollout("codex-1", filepath.Join(h.dir, "rollout.jsonl"))
@@ -971,6 +980,7 @@ func testUnreadableQueueIsKeptAndBlocksInput(t *testing.T) {
 // their text as it takes: an answer meant for one is not entered while the
 // other is showing.
 func TestAnswerTellsApartQuestionsThatBeginAlike(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{
 		QuestionId: "q1", Questions: []*pb.Question{

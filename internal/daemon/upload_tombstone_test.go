@@ -16,6 +16,7 @@ import (
 // The first Complete pauses outside u.mu. A concurrent Complete may finish
 // before Abort, exercising both the receiving and already-complete reloads.
 func TestHashReloadRejectsDeletionTombstone(t *testing.T) {
+	t.Parallel()
 	for _, completed := range []bool{false, true} {
 		for _, syncFailure := range []bool{false, true} {
 			for _, gc := range []bool{false, true} {
@@ -127,6 +128,7 @@ func TestHashReloadRejectsDeletionTombstone(t *testing.T) {
 }
 
 func TestRestoreRefsReloadsSnapshotBeforeWriting(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		for _, changed := range []string{"deleting", "returning", "removed"} {
 			kind := "file"

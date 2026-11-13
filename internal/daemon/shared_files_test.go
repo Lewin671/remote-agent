@@ -90,6 +90,7 @@ func download(t *testing.T, u *uploads, session string, f *pb.SharedFile) []byte
 }
 
 func TestSendFileCopiesAndServesBlocks(t *testing.T) {
+	t.Parallel()
 	h := newSendHarness(t)
 	want := randomBytes(t, 2*sharedChunkBytes+100)
 	writeTestFile(t, filepath.Join(h.cwd, "out", "chart data.bin"), want)

@@ -9,6 +9,7 @@ import (
 )
 
 func TestScheduleRevisionIgnoresProgressCursors(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	task := startScheduledTurn(t, h)

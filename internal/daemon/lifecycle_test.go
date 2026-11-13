@@ -15,6 +15,7 @@ import (
 )
 
 func TestResumeAfterMissingTurnEndAllowsScheduledInput(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/bin/true"}}})
 	h.d.sessions[h.s.meta.ID] = h.s
 	bin := filepath.Join(h.dir, "fake-tmux")
@@ -343,6 +344,7 @@ func TestClaudeRestoredPromptKeepsOutputTurnAndRetriesFailedEnd(t *testing.T) {
 }
 
 func TestClaudeRestoredWrappedPromptEndsTurn(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct{ name, prompt, display string }{
 		{"Chinese", "请仔细思考这个问题然后用中文完整回答不要调用任何工具", "请仔细思考这个问题\n然后用中文完整回答\n不要调用任何工具"},
 		{"long token", "https://example.com/averylongpath/withoutspaces", "https://example.com/aver\nylongpath/withoutspaces"},

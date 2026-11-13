@@ -12,6 +12,7 @@ import (
 )
 
 func TestCommitFailureDoesNotProjectSettings(t *testing.T) {
+	t.Parallel()
 	h, footer := controlHarness(t)
 	h.s.log.Close()
 	err := h.s.setModel("gpt-6-luna", "high")
@@ -30,6 +31,7 @@ func TestCommitFailureDoesNotProjectSettings(t *testing.T) {
 }
 
 func TestCommitFailureModeAndPlanReportSideEffect(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"mode", "plan"} {
 		t.Run(op, func(t *testing.T) {
 			h, _ := controlHarness(t)

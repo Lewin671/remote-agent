@@ -127,6 +127,7 @@ func lastSettings(h *harness) *pb.SettingsChanged {
 }
 
 func TestSetModel(t *testing.T) {
+	t.Parallel()
 	h, footer := controlHarness(t)
 	if err := h.s.setModel("gpt-6-luna", "high"); err != nil {
 		t.Fatal(err)
@@ -148,6 +149,7 @@ func TestSetModel(t *testing.T) {
 }
 
 func TestSetModelRefusesUnknownScreens(t *testing.T) {
+	t.Parallel()
 	h, _ := controlHarness(t)
 	if err := h.s.setModel("gpt-9", "high"); err == nil {
 		t.Fatal("picked a model the menu does not list")
@@ -170,6 +172,7 @@ func TestSetModelRefusesUnknownScreens(t *testing.T) {
 }
 
 func TestSetApprovalMode(t *testing.T) {
+	t.Parallel()
 	h, footer := controlHarness(t)
 	if err := h.s.setApprovalMode(pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS); err != nil {
 		t.Fatal(err)
@@ -201,6 +204,7 @@ func TestSetApprovalMode(t *testing.T) {
 }
 
 func TestAnswerPlan(t *testing.T) {
+	t.Parallel()
 	h, _ := controlHarness(t)
 	if err := h.s.answerPlan(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); !errors.Is(err, errNoPlan) {
 		t.Fatalf("no plan showing: %v", err)
@@ -215,6 +219,7 @@ func TestAnswerPlan(t *testing.T) {
 }
 
 func TestListModelsAndDirectories(t *testing.T) {
+	t.Parallel()
 	home := t.TempDir()
 	os.WriteFile(filepath.Join(home, "models_cache.json"), []byte(`{"models":[
 		{"slug":"b","display_name":"B","visibility":"list","priority":5,"default_reasoning_level":"low","supported_reasoning_levels":[{"effort":"low"}]},
@@ -248,6 +253,7 @@ func TestListModelsAndDirectories(t *testing.T) {
 }
 
 func TestSettingsAndSessionArgs(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	d := h.d
 	if _, err := d.updateSettings(&pb.DaemonSettings{ApprovalTimeoutSeconds: 5}); err == nil {
@@ -281,6 +287,7 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 // The busy state found by drive is passed to Codex, and a rejected mode
 // transition must neither type keys nor record a SettingsChanged event.
 func TestCodexRunningPlanTransitionDoesNotRecordSettings(t *testing.T) {
+	t.Parallel()
 	for _, plan := range []bool{false, true} {
 		t.Run(fmt.Sprintf("from-plan-%t", plan), func(t *testing.T) {
 			h, _ := controlHarness(t)

@@ -30,6 +30,7 @@ func resolvedOf(h *harness, id string) *pb.ApprovalResolved {
 }
 
 func TestCodexApprovalOutlivesTurn(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{ApprovalTimeout: time.Minute})
 	h.writeRollout(turnContextLine("user"), taskStarted)
 	h.s.bindRollout("codex-1", h.dir+"/rollout.jsonl")
@@ -57,6 +58,7 @@ func TestCodexApprovalOutlivesTurn(t *testing.T) {
 // which native prompt receives a permanent grant. Reject clients that ask,
 // keep the original approval pending and never type a key or grant once.
 func TestPermanentApprovalFailsClosed(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ name, input, screen string }{
 		{"same command prefix", `{"command":"touch /tmp/shared-prefix-safe-file"}`, strings.ReplaceAll(codexApproval, "touch ~/x", "touch /tmp/shared-prefix-dangerous-file")},
 		{"same basename", `{"file_path":"/safe/config.json"}`, strings.ReplaceAll(ccPrompt, "touch /w/x", "Edit /dangerous/config.json")},

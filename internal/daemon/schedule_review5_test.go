@@ -10,6 +10,7 @@ import (
 )
 
 func TestFailedAtDefinitionUpdateRetriesSameOccurrence(t *testing.T) {
+	t.Parallel()
 	for _, changed := range []bool{false, true} {
 		t.Run(map[bool]string{false: "unchanged", true: "message"}[changed], func(t *testing.T) {
 			h := scheduleHarness(t)
@@ -47,6 +48,7 @@ func TestFailedAtDefinitionUpdateRetriesSameOccurrence(t *testing.T) {
 }
 
 func TestFailedOneShotRetryOutcome(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"at", "after_turn"} {
 		for _, outcome := range []string{"completed", "failed", "interrupted"} {
 			for _, control := range []string{"none", "pause", "cancel"} {
@@ -120,6 +122,7 @@ func TestFailedOneShotRetryOutcome(t *testing.T) {
 }
 
 func TestNonCompletedScheduledFollowups(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"interrupted", "failed"} {
 		for _, terminal := range []bool{false, true} {
 			for _, boundary := range []string{"client", "local", "resume", "exit", "scheduled"} {

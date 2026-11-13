@@ -31,6 +31,7 @@ func testPNG(t *testing.T, w, h int, c color.Color) []byte {
 }
 
 func TestImageStore(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	st := openImageStore(dir)
 	red := testPNG(t, 800, 400, color.RGBA{255, 0, 0, 255})

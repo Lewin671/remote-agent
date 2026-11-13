@@ -26,6 +26,7 @@ func answerRaceOrigin(s *session, kind remoteAnswerKind, id, request string) *pb
 }
 
 func TestConcurrentPlanAnswersConsumePromptBeforeReleasingControl(t *testing.T) {
+	t.Parallel()
 	for _, recordFails := range []bool{false, true} {
 		t.Run(map[bool]string{false: "record-success", true: "record-failure"}[recordFails], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -126,6 +127,7 @@ func (t *blockedQuestionControl) Control() (control, error) {
 }
 
 func TestQueuedQuestionAnswerRechecksPendingAfterTerminalLock(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	if err := h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}}}); err != nil {
 		t.Fatal(err)
@@ -176,6 +178,7 @@ func (a *blockedQuestionAnswer) Answer(term agent.Term, q *pb.QuestionAsked, ind
 }
 
 func TestConcurrentQuestionAnswersRespectPendingAndRollback(t *testing.T) {
+	t.Parallel()
 	for _, fails := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "failure-rollback"}[fails], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -245,6 +248,7 @@ func TestConcurrentQuestionAnswersRespectPendingAndRollback(t *testing.T) {
 }
 
 func TestConcurrentApprovalAnswersDeliverOnceAndRefuseStale(t *testing.T) {
+	t.Parallel()
 	for _, recordFails := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "denial-recording-failure"}[recordFails], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -282,6 +286,7 @@ func TestConcurrentApprovalAnswersDeliverOnceAndRefuseStale(t *testing.T) {
 }
 
 func TestFailedPlanKeysAndUndeliveredApprovalCanRetry(t *testing.T) {
+	t.Parallel()
 	t.Run("plan-key-failure", func(t *testing.T) {
 		h := newHarness(t, Config{})
 		h.term.setScreen(answerRacePlanScreen)
@@ -327,6 +332,7 @@ func TestFailedPlanKeysAndUndeliveredApprovalCanRetry(t *testing.T) {
 // answer stays pending until the transcript records the whole call, which
 // must not block the next index, while repeating an entered index stays stale.
 func TestRemoteMultiQuestionAnswersEachIndex(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	if err := h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{
 		QuestionId: "q", Questions: []*pb.Question{{Text: "Which time zone?"}, {Text: "Which model?"}},

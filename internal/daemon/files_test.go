@@ -22,6 +22,7 @@ import (
 )
 
 func TestSafeFileName(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct{ in, want string }{
 		{"报告 一.csv", "报告_一.csv"}, {"../x.txt", "x.txt"}, {"../", "file"}, {"a\x00\n\tb.log", "a_b.log"},
 		{"---.secret", "secret"}, {"...", "file"}, {"e\u0301.txt", "é.txt"}, {"a___  b+=,.txt", "a_b+=,.txt"},
@@ -68,6 +69,7 @@ func uploadFile(t *testing.T, u *uploads, name string, data []byte) string {
 	return st.FileId
 }
 func TestFileTransferValidationAndOwnership(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	sum := sha256.Sum256([]byte("raw"))
@@ -133,6 +135,7 @@ func TestFileTransferValidationAndOwnership(t *testing.T) {
 	}
 }
 func TestFilesAcceptanceLifetimeQuotaAndRecovery(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	data := []byte("EXIF\x00unchanged\r\n中文")
@@ -217,6 +220,7 @@ func TestFilesAcceptanceLifetimeQuotaAndRecovery(t *testing.T) {
 	}
 }
 func TestFileCompositionConfirmationAndParsedRecognition(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []pb.Agent{pb.Agent_AGENT_CODEX, pb.Agent_AGENT_CLAUDE} {
 		t.Run(kind.String(), func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -294,6 +298,7 @@ func TestFileCompositionConfirmationAndParsedRecognition(t *testing.T) {
 	}
 }
 func TestInjectTextWithFilesAndImage(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		t.Run(map[bool]string{false: "files-only", true: "mixed"}[image], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -328,6 +333,7 @@ func TestInjectTextWithFilesAndImage(t *testing.T) {
 	}
 }
 func TestFileReconcileInterruptedMove(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	id := uploadFile(t, u, "a.zip", []byte("ZIP"))
@@ -349,6 +355,7 @@ func TestFileReconcileInterruptedMove(t *testing.T) {
 
 // Keep image decoding helpers exercised with a real image alongside raw files.
 func TestFileCapabilityWhitespace(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	if !h.d.capabilities().FileUpload {
 		t.Fatal("file capability missing")
@@ -361,6 +368,7 @@ func TestFileCapabilityWhitespace(t *testing.T) {
 }
 
 func TestFileExpiryAndMixedAcceptanceRollback(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	u := newUploads(root)
 	fileID := uploadFile(t, u, "unused.csv", []byte("hello"))
@@ -420,6 +428,7 @@ func TestFileExpiryAndMixedAcceptanceRollback(t *testing.T) {
 }
 
 func TestQueuedFileRestoresThroughDaemonStartup(t *testing.T) {
+	t.Parallel()
 	r := newRestoreHarness(t)
 	sid := "00000000000000bb"
 	dir := r.save(meta{ID: sid}, true)
@@ -454,6 +463,7 @@ func TestQueuedFileRestoresThroughDaemonStartup(t *testing.T) {
 }
 
 func TestHeldFilesRequeueAndLateRecoveryKeepComposedText(t *testing.T) {
+	t.Parallel()
 	h := claudeHarness(t, Config{})
 	files := []queuedFile{{ID: strings.Repeat("f", 32), Name: "a.csv", Size: 3, Path: "/uploads/s/files/ffffffffffffffffffffffffffffffff/a.csv"}}
 	in := input{RequestID: "r", Text: "original", Files: files, Composed: composeFiles("original", files, pb.Agent_AGENT_CLAUDE)}

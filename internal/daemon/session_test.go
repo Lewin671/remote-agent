@@ -622,6 +622,7 @@ func TestTitleFromFirstClause(t *testing.T) {
 // A transcript that grew by more than one batch while nobody read it is
 // read to its end in one go.
 func TestRolloutBacklogIsReadToTheEnd(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	var lines []string
 	for i := range 10 {

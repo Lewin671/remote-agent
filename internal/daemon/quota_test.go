@@ -16,6 +16,7 @@ import (
 )
 
 func TestClaudeQuotaSessionFreshness(t *testing.T) {
+	t.Parallel()
 	type step struct {
 		session      string
 		five, seven  float64

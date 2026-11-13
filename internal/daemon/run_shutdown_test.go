@@ -31,6 +31,7 @@ func newRunHarness(t *testing.T) *restoreHarness {
 }
 
 func TestRunWaitsForStartedBeforeUnlock(t *testing.T) {
+	t.Parallel()
 	r := newRunHarness(t)
 	ready, canceled, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	r.d.cfg.Started = func(ctx context.Context) {
@@ -75,6 +76,7 @@ func TestRunWaitsForStartedBeforeUnlock(t *testing.T) {
 }
 
 func TestRunStartupFailureCancelsRestoredWorkers(t *testing.T) {
+	t.Parallel()
 	r := newRunHarness(t)
 	r.save(meta{ID: "00000000000000ab"}, true)
 	if err := os.WriteFile(filepath.Join(r.d.dir, "schedules.json"), []byte("broken"), 0600); err != nil {
@@ -111,6 +113,7 @@ func (f *shutdownPollTerm) Poll(ctx context.Context) (string, bool, error) {
 }
 
 func TestRunWaitsForSessionWorkers(t *testing.T) {
+	t.Parallel()
 	r := newRunHarness(t)
 	h := newHarness(t, Config{})
 	h.s.d = r.d
@@ -144,6 +147,7 @@ func TestRunWaitsForSessionWorkers(t *testing.T) {
 }
 
 func TestServeLocalWaitsForHTTPDrain(t *testing.T) {
+	t.Parallel()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

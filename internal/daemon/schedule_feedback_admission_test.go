@@ -11,6 +11,7 @@ import (
 )
 
 func TestHumanAdmissionBoundsRunningResumeRetry(t *testing.T) {
+	t.Parallel()
 	h := resumableHarness(t)
 	defer h.s.log.Close()
 	calls := fakeTmux(t, h)

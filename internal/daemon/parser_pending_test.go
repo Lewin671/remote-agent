@@ -11,6 +11,7 @@ import (
 )
 
 func TestParseErrorsKeepPendingImages(t *testing.T) {
+	t.Parallel()
 	for _, bad := range []string{
 		`{"type":"future_record"}`,
 		`{"type":"event_msg","payload":{"type":"task_complete","duration_ms":"bad"}}`,

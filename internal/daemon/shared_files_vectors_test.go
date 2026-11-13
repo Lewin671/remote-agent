@@ -38,6 +38,7 @@ func atoi64(t *testing.T, s string) int64 {
 // The daemon serves exactly what testdata/shared-files/blocks.json tells
 // clients to expect.
 func TestSharedFileBlockVectors(t *testing.T) {
+	t.Parallel()
 	b, err := os.ReadFile("../../testdata/shared-files/blocks.json")
 	if err != nil {
 		t.Fatal(err)

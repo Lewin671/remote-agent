@@ -11,6 +11,7 @@ import (
 )
 
 func TestAgyMCPApprovalUsesExistingCardAndDecision(t *testing.T) {
+	t.Parallel()
 	for _, allow := range []bool{true, false} {
 		name := "deny"
 		if allow {

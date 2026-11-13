@@ -184,6 +184,7 @@ func TestMCPScheduledDispatchRechecksNarrowedPermissions(t *testing.T) {
 // waits for the user once they differ, wider or narrower. A task with no
 // record of them, made before they were recorded, waits for the user too.
 func TestMCPResumeTaskIsBoundToTheModeItWasCreatedUnder(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		change func(h *harness, id string)

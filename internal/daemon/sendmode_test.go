@@ -95,6 +95,7 @@ func testQueueWaitsForTurnEnd(t *testing.T) {
 
 // An interrupted turn pauses what was not written; ResumeInput sends it.
 func TestInterruptPausesWaitingInput(t *testing.T) {
+	t.Parallel()
 	synctest.Test(t, testInterruptPausesWaitingInput)
 }
 

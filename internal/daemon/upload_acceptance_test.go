@@ -19,6 +19,7 @@ import (
 // Extend the transfer fault matrix through actual send/create acceptance.
 // Each panic skips caller rollback; recovery reloads only durable state.
 func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
+	t.Parallel()
 	stages := []string{"move-intent", "move-directory", "move-rename", "move-destination", "move-source", "claim-reference", "queue-commit", "queue-visible", "acceptance-record"}
 	for _, image := range []bool{false, true} {
 		prepare := completedUpload(t, image, "claim.bin", []byte("original"))
@@ -180,6 +181,7 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 }
 
 func TestAcceptanceWitnessSurvivesMarkerFailureAndCancellation(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		t.Run(map[bool]string{false: "file", true: "image"}[image], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -285,6 +287,7 @@ func TestAcceptanceWitnessSurvivesMarkerFailureAndCancellation(t *testing.T) {
 }
 
 func TestUncertainQueueRenameDoesNotPromoteUploadAcceptance(t *testing.T) {
+	t.Parallel()
 	for _, image := range []bool{false, true} {
 		t.Run(map[bool]string{false: "file", true: "image"}[image], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -340,6 +343,7 @@ func TestUncertainQueueRenameDoesNotPromoteUploadAcceptance(t *testing.T) {
 }
 
 func TestAcceptedFileSurvivesWithoutCurrentQueueReference(t *testing.T) {
+	t.Parallel()
 	for _, proof := range []string{"marker", "queued-history", "user-history", "held", "reused-request", "unreadable-queue"} {
 		t.Run(proof, func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -392,6 +396,7 @@ func TestAcceptedFileSurvivesWithoutCurrentQueueReference(t *testing.T) {
 }
 
 func TestAcceptanceWitnessSurvivesUnreadableUploadRecord(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	id := uploadFile(t, u, "accepted.bin", []byte("keep"))
@@ -448,6 +453,7 @@ func TestAcceptanceWitnessSurvivesUnreadableUploadRecord(t *testing.T) {
 }
 
 func TestDurableAcceptanceDoesNotKeepRewritingMarkers(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	u := h.d.uploads
 	id := uploadFile(t, u, "kept.bin", []byte("keep"))

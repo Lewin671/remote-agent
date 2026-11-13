@@ -92,6 +92,7 @@ func runInjector(t *testing.T, h *harness) {
 }
 
 func TestSendWithImages(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png", "b.png")
 	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true, imgs[1].Path: true})
@@ -159,6 +160,7 @@ func testSendWithImagesStopsWhenOneIsNotTaken(t *testing.T) {
 // When the input box holds something that is not ours, nothing is deleted
 // and the message needs the terminal.
 func TestSendWithImagesLeavesForeignText(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png", "b.png")
 	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true, imgs[1].Path: true})
@@ -233,6 +235,7 @@ func (c *countingControl) Hold(d time.Duration) error { c.holds++; return c.fake
 // queue has settled the message already: the injector does not settle it
 // again from the copy it took before the message was marked as written.
 func TestExitWhileWritingDoesNotSettleTwice(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{SubmitTimeout: 50 * time.Millisecond})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -296,6 +299,7 @@ func testSendWithImagesAfterTerminalResize(t *testing.T) {
 // delays first input only up to a bound; confirmation disables it for this
 // CLI lifetime, even if its header and footer never change.
 func TestInputWaitsForCodexStartup(t *testing.T) {
+	t.Parallel()
 	for _, withImages := range []bool{false, true} {
 		for _, footer := range []string{"", "? for shortcuts"} {
 			t.Run(fmt.Sprintf("images=%t/footer=%q", withImages, footer), func(t *testing.T) {
@@ -485,6 +489,7 @@ func testImageNotTakenWrappedIsCleared(t *testing.T) {
 // composer holds a draft during a task, including startup. All image
 // ownership checks (recognition, final check, cleanup) must read it alike.
 func TestImagesWithChangingNativeFooter(t *testing.T) {
+	t.Parallel()
 	for _, accepted := range []bool{false, true} {
 		t.Run(map[bool]string{false: "unrecognized", true: "recognized"}[accepted], func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 )
 
 func TestScheduledBackgroundFollowupKeepsContext(t *testing.T) {
+	t.Parallel()
 	h := scopedHarness(t, "ask")
 	spec := taskSpec(schedule.Trigger{Type: "after_turn", DelaySeconds: 60})
 	raw, err := scopedSchedule(t, h, "create", "", &spec)
@@ -41,6 +42,7 @@ func TestScheduledBackgroundFollowupKeepsContext(t *testing.T) {
 	}
 }
 func TestHumanInterjectionMakesScheduledTurnOrdinary(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []pb.OriginKind{pb.OriginKind_ORIGIN_KIND_CLIENT, pb.OriginKind_ORIGIN_KIND_LOCAL} {
 		h := scheduleHarness(t)
 		startScheduledTurn(t, h)
@@ -60,6 +62,7 @@ func TestHumanInterjectionMakesScheduledTurnOrdinary(t *testing.T) {
 }
 
 func TestTakeoverNeedsVerifiedHumanOrExplicitResume(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []pb.OriginKind{pb.OriginKind_ORIGIN_KIND_UNSPECIFIED, pb.OriginKind_ORIGIN_KIND_SYSTEM, pb.OriginKind_ORIGIN_KIND_LOCAL, pb.OriginKind_ORIGIN_KIND_CLIENT} {
 		t.Run(kind.String(), func(t *testing.T) {
 			h := scheduleHarness(t)
@@ -91,6 +94,7 @@ func TestTakeoverNeedsVerifiedHumanOrExplicitResume(t *testing.T) {
 }
 
 func TestMCPRunAndResumeRecheckMinimumIntervals(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"interval", "after_turn"} {
 		for _, op := range []string{"run", "resume"} {
 			t.Run(typ+op, func(t *testing.T) {
@@ -123,6 +127,7 @@ func TestMCPRunAndResumeRecheckMinimumIntervals(t *testing.T) {
 }
 
 func TestHumanInterjectionEndsMCPRestrictionAndFollowupNoticesRemainRecorded(t *testing.T) {
+	t.Parallel()
 	h := scopedHarness(t, "ask")
 	task := startScheduledTurn(t, h)
 	endTimed(t, h, pb.TurnOutcome_TURN_OUTCOME_COMPLETED)
@@ -143,6 +148,7 @@ func TestHumanInterjectionEndsMCPRestrictionAndFollowupNoticesRemainRecorded(t *
 }
 
 func TestOrdinaryHumanReplayDoesNotWriteMetadata(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer func() { h.s.log.Close() }()
 	for i := 0; i < 300; i++ {
@@ -178,6 +184,7 @@ func TestOrdinaryHumanReplayDoesNotWriteMetadata(t *testing.T) {
 }
 
 func TestMCPRestrictionUsesCurrentTurnNotQueue(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"create", "update", "run"} {
 		for _, scheduled := range []bool{false, true} {
 			t.Run(op+map[bool]string{false: "human", true: "scheduled"}[scheduled], func(t *testing.T) {
@@ -215,6 +222,7 @@ func TestMCPRestrictionUsesCurrentTurnNotQueue(t *testing.T) {
 }
 
 func TestMCPDispatchReportsMinimumIntervalReason(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"interval", "after_turn"} {
 		h := scopedHarness(t, "ask")
 		tr := schedule.Trigger{Type: typ, IntervalSeconds: 300}
@@ -244,6 +252,7 @@ func TestMCPDispatchReportsMinimumIntervalReason(t *testing.T) {
 }
 
 func TestFollowupSurvivesLaterSkippedRun(t *testing.T) {
+	t.Parallel()
 	for _, terminal := range []bool{false, true} {
 		h := scheduleHarness(t)
 		defer func() { h.s.log.Close() }()

@@ -28,6 +28,7 @@ func resumableHarness(t *testing.T) *harness {
 }
 
 func TestNaturalExitFinalizesBeforeResume(t *testing.T) {
+	t.Parallel()
 	h := resumableHarness(t)
 	h.term.alive = false
 	// The poller publishes Exited, then stops at its final transcript read.
@@ -89,6 +90,7 @@ func TestNaturalExitFinalizesBeforeResume(t *testing.T) {
 }
 
 func TestResumeDrainsOldLoopsWithoutHoldingWorkerLocks(t *testing.T) {
+	t.Parallel()
 	h := resumableHarness(t)
 	h.s.meta.Exited = true
 	ctx, cancel := context.WithCancel(context.Background())
@@ -256,6 +258,7 @@ func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 }
 
 func TestConcurrentResumesStartOneGeneration(t *testing.T) {
+	t.Parallel()
 	h := resumableHarness(t)
 	h.s.meta.Exited = true
 	adapter := &blockedLaunchAdapter{Adapter: h.s.ag, entered: make(chan struct{}), release: make(chan struct{}), continueLaunch: true}

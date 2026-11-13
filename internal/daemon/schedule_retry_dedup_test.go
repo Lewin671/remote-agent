@@ -12,6 +12,7 @@ import (
 )
 
 func TestAcceptedInputRetryHasNoLifecycleSideEffects(t *testing.T) {
+	t.Parallel()
 	for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}, {Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM}} {
 		for _, owned := range []bool{true, false} {
 			t.Run(origin.Kind.String()+"/owned="+map[bool]string{true: "yes", false: "no"}[owned], func(t *testing.T) {

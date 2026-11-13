@@ -11,6 +11,7 @@ import (
 )
 
 func TestTitleNotifyOnlyUpdatePreservesPlanAndTakesOver(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"scheduled", "running", "paused", "failed", "uncertain"} {
 		for _, withTitle := range []bool{false, true} {
 			for _, via := range []string{"local", "client", "MCP"} {
@@ -99,6 +100,7 @@ func TestLightNotifyUpdateRejectsInvalidPolicy(t *testing.T) {
 }
 
 func TestDefaultNotifySpellingsPreserveDelegation(t *testing.T) {
+	t.Parallel()
 	for _, stored := range []string{"", "finish"} {
 		for _, rename := range []bool{false, true} {
 			for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {

@@ -64,6 +64,7 @@ func closeRejectedCreation(t *testing.T, h *harness) {
 }
 
 func TestRejectedCreationSurvivesTargetEdit(t *testing.T) {
+	t.Parallel()
 	for _, manual := range []bool{false, true} {
 		for _, running := range []bool{false, true} {
 			for _, restart := range []bool{false, true} {
@@ -99,6 +100,7 @@ func TestRejectedCreationSurvivesTargetEdit(t *testing.T) {
 }
 
 func TestLatePublicationRefusalAfterTargetEdit(t *testing.T) {
+	t.Parallel()
 	for _, manual := range []bool{false, true} {
 		for _, restart := range []bool{false, true} {
 			t.Run(map[bool]string{false: "automatic", true: "manual"}[manual]+map[bool]string{false: "/live", true: "/restart"}[restart], func(t *testing.T) {
@@ -138,6 +140,7 @@ func TestLatePublicationRefusalAfterTargetEdit(t *testing.T) {
 }
 
 func TestClosureUsesCreationRunIdentity(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, creation, later string
 		busy, close           bool
@@ -170,6 +173,7 @@ func TestClosureUsesCreationRunIdentity(t *testing.T) {
 }
 
 func TestPreDeliveryRestrictionUsesCreationIdentity(t *testing.T) {
+	t.Parallel()
 	h, task, snapshot, _ := unpublishedRun(t, false)
 	defer h.s.log.Close()
 	h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)

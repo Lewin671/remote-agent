@@ -87,6 +87,7 @@ func TestScheduleBlockedLaunchAllowsRPCsAndOtherDispatches(t *testing.T) {
 }
 
 func TestScheduleDispatchPreservesPauseAndCancel(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"pause", "cancel"} {
 		t.Run(op, func(t *testing.T) {
 			h := scheduleHarness(t)

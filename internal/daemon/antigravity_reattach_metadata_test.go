@@ -13,6 +13,7 @@ import (
 )
 
 func TestAgyReattachCatalogPrecedesFirstNativeModelObservation(t *testing.T) {
+	t.Parallel()
 	r := newRestoreHarness(t)
 	bin := filepath.Join(t.TempDir(), "agy")
 	script := "#!/bin/sh\n[ \"$1\" = models ] || exit 1\nprintf '%s\\n' 'gemini-3.8-flash-low Gemini 3.8 Flash (Low)' 'claude-sonnet-5-5-low Claude Sonnet 5.5 (Low)'\n"

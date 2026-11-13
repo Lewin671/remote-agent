@@ -19,6 +19,7 @@ func calendarTime(t *testing.T, stamp string) time.Time {
 }
 
 func TestCalendarCatchupOccupiesOccurrenceDateOnly(t *testing.T) {
+	t.Parallel()
 	for _, late := range []int64{86400, 60} {
 		for _, restart := range []bool{false, true} {
 			t.Run(time.Duration(late).String()+map[bool]string{true: "restart", false: "live"}[restart], func(t *testing.T) {
@@ -60,6 +61,7 @@ func TestCalendarCatchupOccupiesOccurrenceDateOnly(t *testing.T) {
 }
 
 func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "Asia/Shanghai", MaxRuns: 1}), "")
@@ -95,6 +97,7 @@ func TestCalendarManualRunPreservesAutomaticOccurrence(t *testing.T) {
 }
 
 func TestCalendarDeadlineAndEditBoundaries(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	now := time.Now()
@@ -131,6 +134,7 @@ func TestCalendarDeadlineAndEditBoundaries(t *testing.T) {
 }
 
 func TestRecurringResumeAndManualFailures(t *testing.T) {
+	t.Parallel()
 	for _, typ := range []string{"interval", "calendar"} {
 		for _, limit := range []int64{0, 1} {
 			h := scheduleHarness(t)
@@ -189,6 +193,7 @@ func TestRecurringResumeAndManualFailures(t *testing.T) {
 }
 
 func TestSkippedManualTrialRestoresAutomaticDispatch(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	spec := taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "UTC", MaxRuns: 1})
@@ -220,6 +225,7 @@ func TestSkippedManualTrialRestoresAutomaticDispatch(t *testing.T) {
 }
 
 func TestManualTrialFailureBoundaries(t *testing.T) {
+	t.Parallel()
 	for _, ending := range []string{"dispatch_failed", "input_cancelled", "unconfirmed", "interrupted", "user_paused", "user_cancelled"} {
 		t.Run(ending, func(t *testing.T) {
 			h := scheduleHarness(t)

@@ -56,6 +56,7 @@ func requireTruncatedAnswer(t *testing.T, err error) {
 // without any client-side suffix checks. The real permission-hook output is
 // the authority for whether an allow escaped to the CLI.
 func TestOldClientCannotAllowTruncatedApproval(t *testing.T) {
+	t.Parallel()
 	for _, restart := range []bool{false, true} {
 		t.Run(map[bool]string{false: "live", true: "restarted"}[restart], func(t *testing.T) {
 			h := newHarness(t, Config{ApprovalTimeout: time.Minute})
@@ -109,6 +110,7 @@ func TestOldClientCannotAllowTruncatedApproval(t *testing.T) {
 }
 
 func TestRemoteApprovalSafetyFromOriginalHistory(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"description", "command", "tool_input", "skeleton", "rewritten_id", "normal"} {
 		for _, restart := range []bool{false, true} {
 			t.Run(field+map[bool]string{false: "/live", true: "/replay"}[restart], func(t *testing.T) {
@@ -193,6 +195,7 @@ func TestRemoteApprovalSafetyFromOriginalHistory(t *testing.T) {
 }
 
 func TestRemoteQuestionSafetySurvivesRestart(t *testing.T) {
+	t.Parallel()
 	for _, kind := range []string{"normal", "labels", "rewritten_id"} {
 		for _, restart := range []bool{false, true} {
 			t.Run(kind+map[bool]string{false: "/live", true: "/replay"}[restart], func(t *testing.T) {
@@ -243,6 +246,7 @@ func TestRemoteQuestionSafetySurvivesRestart(t *testing.T) {
 }
 
 func TestRemoteSkeletonPlanCannotWriteKeys(t *testing.T) {
+	t.Parallel()
 	for _, restart := range []bool{false, true} {
 		t.Run(map[bool]string{false: "live", true: "replay"}[restart], func(t *testing.T) {
 			h, _ := controlHarness(t)
@@ -278,6 +282,7 @@ func TestRemoteSkeletonPlanCannotWriteKeys(t *testing.T) {
 // question RPC) must still work from the pending projection. This is a unit
 // proof that history length does not add request-time log work, not a benchmark.
 func TestRemoteAnswerChecksDoNotReadHistory(t *testing.T) {
+	t.Parallel()
 	for _, restart := range []bool{false, true} {
 		t.Run(map[bool]string{false: "live", true: "replay"}[restart], func(t *testing.T) {
 			h := newHarness(t, Config{})
@@ -337,6 +342,7 @@ func TestRemoteAnswerChecksDoNotReadHistory(t *testing.T) {
 }
 
 func TestAnswerSafetyFollowsCommittedPendingState(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	approval := &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "a", Command: strings.Repeat("x", 1<<20)}}}
 	question := &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Options: []*pb.QuestionOption{{Label: strings.Repeat("x", 1<<20)}}}}}}}
@@ -381,6 +387,7 @@ func TestAnswerSafetyFollowsCommittedPendingState(t *testing.T) {
 }
 
 func TestCurrentObservationCannotAnswerAReusedApprovalID(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	event := func() *pb.Event {
 		return &pb.Event{Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "same-id", Command: "true"}}}
@@ -411,6 +418,7 @@ func TestCurrentObservationCannotAnswerAReusedApprovalID(t *testing.T) {
 	}
 }
 func TestPendingPromptBodiesDoNotLeakAcrossReplacementOrAsyncQuestions(t *testing.T) {
+	t.Parallel()
 	var pending pendingAnswerSafety
 	for seq := uint64(1); seq <= 256; seq++ {
 		pending.observe(&pb.Event{Seq: seq, Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "async-id", Async: true}}})
@@ -424,6 +432,7 @@ func TestPendingPromptBodiesDoNotLeakAcrossReplacementOrAsyncQuestions(t *testin
 }
 
 func TestOwnerSnapshotAttestsCurrentQueueAndBoundsPrivatePreview(t *testing.T) {
+	t.Parallel()
 	h := newHarness(t, Config{})
 	h.d.sessions[h.s.meta.ID] = h.s
 	h.s.mu.Lock()

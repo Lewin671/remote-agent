@@ -10,6 +10,7 @@ import (
 )
 
 func TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent(t *testing.T) {
+	t.Parallel()
 	origins := []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}, originSystem, {Kind: pb.OriginKind_ORIGIN_KIND_UNSPECIFIED}, nil}
 	for _, origin := range origins {
 		for _, fault := range []string{"event", "directory-sync", "none"} {

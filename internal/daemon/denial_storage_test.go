@@ -13,6 +13,7 @@ import (
 )
 
 func TestHookDenialSurvivesRecordingFailure(t *testing.T) {
+	t.Parallel()
 	for _, scenario := range []string{"request", "timeout", "exit", "deny"} {
 		t.Run(scenario, func(t *testing.T) {
 			h := newHarness(t, Config{ApprovalTimeout: time.Second})

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNativeUnconfirmedApprovalStaysWithdrawnAcrossHookAndRestart(t *testing.T) {
+	t.Parallel()
 	h := agyHarness(t)
 	h.d.cfg.ApprovalTimeout = time.Hour
 	card := nativeCard(t, h)
@@ -49,6 +50,7 @@ func TestNativeUnconfirmedApprovalStaysWithdrawnAcrossHookAndRestart(t *testing.
 }
 
 func TestNativeDenialFeedbackReleasesControlBeforeQueueing(t *testing.T) {
+	t.Parallel()
 	h := agyHarness(t)
 	h.d.cfg.ApprovalTimeout = time.Hour
 	card := nativeCard(t, h)

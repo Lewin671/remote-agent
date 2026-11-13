@@ -14,6 +14,7 @@ import (
 )
 
 func TestScheduledFinishNotification(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, policy, status, body string
 		agent, manual              bool
@@ -131,6 +132,7 @@ func TestScheduledFinishRetryUsesDurableEventAsAuthority(t *testing.T) {
 }
 
 func TestScheduledNotificationPolicySnapshot(t *testing.T) {
+	t.Parallel()
 	for _, policy := range []string{"", "finish", "agent_only", "invalid"} {
 		t.Run(policy, func(t *testing.T) {
 			h := scheduleHarness(t)
@@ -279,6 +281,7 @@ func TestAgentNoticeAfterUndeliverableIsNotDaemonNotice(t *testing.T) {
 }
 
 func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"no-source", "source", "rejected-source"} {
 		t.Run(name, func(t *testing.T) {
 			sourceAvailable := name == "source"

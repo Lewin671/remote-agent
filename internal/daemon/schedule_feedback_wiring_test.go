@@ -10,6 +10,7 @@ import (
 )
 
 func TestScheduledCreationWritesOwnership(t *testing.T) {
+	t.Parallel()
 	h, task := newScheduledLaunch(t)
 	defer h.s.log.Close()
 	h.d.agents[pb.Agent_AGENT_CODEX] = &scheduleArgvBarrier{Adapter: h.d.agents[pb.Agent_AGENT_CODEX]}
@@ -30,6 +31,7 @@ func TestScheduledCreationWritesOwnership(t *testing.T) {
 	}
 }
 func TestRealScheduleLoopClosesCompletedCLI(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	task := createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn"}), "")
@@ -45,6 +47,7 @@ func TestRealScheduleLoopClosesCompletedCLI(t *testing.T) {
 	eventually(t, "actual scheduler closed finished CLI", func() bool { return !h.term.Alive() })
 }
 func TestExplicitResumeRPCClaimsScheduledSession(t *testing.T) {
+	t.Parallel()
 	h := resumableHarness(t)
 	defer h.s.log.Close()
 	h.s.meta.TaskOwned = true

@@ -48,6 +48,7 @@ func scheduleSpecJSON(t *testing.T, spec schedule.Spec) []byte {
 }
 
 func TestScheduleAdmissionCapsKeepBookkeepingAvailable(t *testing.T) {
+	t.Parallel()
 	for _, total := range []int{1000, 1001} {
 		t.Run(fmt.Sprint(total), func(t *testing.T) {
 			h := scheduleHarness(t)
@@ -137,6 +138,7 @@ func TestScheduleAdmissionCapsKeepBookkeepingAvailable(t *testing.T) {
 }
 
 func TestScheduleCreationBelowCountCapIgnoresFileSize(t *testing.T) {
+	t.Parallel()
 	for _, total := range []int{200, 999} {
 		t.Run(fmt.Sprint(total), func(t *testing.T) {
 			h := scheduleHarness(t)
@@ -164,6 +166,7 @@ func TestScheduleCreationBelowCountCapIgnoresFileSize(t *testing.T) {
 }
 
 func TestScheduleDefinitionGrowthAdmission(t *testing.T) {
+	t.Parallel()
 	for _, mcp := range []bool{false, true} {
 		t.Run(fmt.Sprintf("mcp=%t", mcp), func(t *testing.T) {
 			h := scopedHarness(t, "ask")
@@ -231,6 +234,7 @@ func TestScheduleDefinitionGrowthAdmission(t *testing.T) {
 // Measurement only: list still returns the complete set. Neither pagination
 // nor a new wire error/truncation policy is introduced by admission quotas.
 func TestScheduleListPayloadSizes(t *testing.T) {
+	t.Parallel()
 	h := scheduleHarness(t)
 	var exceedsFrame, exceedsPlain bool
 	for _, count := range []int{190, 400, 600, 1000} {

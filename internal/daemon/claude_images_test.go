@@ -14,6 +14,7 @@ import (
 // "Image" and "#11". It has accepted the image; the injector must still
 // recognize it, paste the fifth path, and pass its final ownership check.
 func TestClaudeInjectWrappedImages(t *testing.T) {
+	t.Parallel()
 	for _, count := range []int{1, 5} {
 		t.Run(fmt.Sprint(count), func(t *testing.T) {
 			h := claudeHarness(t, Config{})

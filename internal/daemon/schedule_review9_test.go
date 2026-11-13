@@ -55,6 +55,7 @@ func admissionRequest(t *testing.T, h *harness, own *schedule.Task, op string) e
 }
 
 func TestMCPAdmissionReadsTranscriptBeforeEveryMutation(t *testing.T) {
+	t.Parallel()
 	for _, claude := range []bool{false, true} {
 		for _, op := range []string{"create", "update", "resume", "run"} {
 			t.Run(map[bool]string{false: "codex", true: "claude"}[claude]+"/"+op, func(t *testing.T) {
@@ -81,6 +82,7 @@ func TestMCPAdmissionReadsTranscriptBeforeEveryMutation(t *testing.T) {
 }
 
 func TestContextDependentScheduleOperationsRequireCommittedAdmission(t *testing.T) {
+	t.Parallel()
 	for _, fault := range []string{"read", "commit"} {
 		for _, op := range []string{"create", "update", "resume", "run", "notify_user"} {
 			t.Run(fault+"/"+op, func(t *testing.T) {
@@ -131,6 +133,7 @@ func TestContextDependentScheduleOperationsRequireCommittedAdmission(t *testing.
 }
 
 func TestContextRequestPathsShareAdmission(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"interrupt", "hook", "settlement"} {
 		t.Run(op+"/fresh", func(t *testing.T) {
 			h := scheduleTranscriptHarness(t, true)
@@ -198,6 +201,7 @@ func TestContextRequestPathsShareAdmission(t *testing.T) {
 }
 
 func TestOwnerScheduleKeepsAuthorityAfterFreshAdmission(t *testing.T) {
+	t.Parallel()
 	h, _ := admissionFixture(t, false)
 	defer h.s.log.Close()
 	native := writeScheduledTranscriptInput(t, h, "scheduled", false)
@@ -222,6 +226,7 @@ func TestOwnerScheduleKeepsAuthorityAfterFreshAdmission(t *testing.T) {
 }
 
 func TestScheduledContextKeepsInspectionAndStoppingAvailable(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"list", "get", "pause", "cancel"} {
 		t.Run(op, func(t *testing.T) {
 			h, own := admissionFixture(t, false)
@@ -235,6 +240,7 @@ func TestScheduledContextKeepsInspectionAndStoppingAvailable(t *testing.T) {
 }
 
 func TestHooksRefreshOrUseCachedContext(t *testing.T) {
+	t.Parallel()
 	for _, event := range []string{"SessionStart", "PermissionRequest"} {
 		for _, fault := range []bool{false, true} {
 			t.Run(event+map[bool]string{false: "/fresh", true: "/fault"}[fault], func(t *testing.T) {

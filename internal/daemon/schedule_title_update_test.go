@@ -24,6 +24,7 @@ func titleUpdateRequest(t *testing.T, h *harness, before *schedule.Task, spec sc
 }
 
 func TestTitleOnlyUpdatePreservesExecutionState(t *testing.T) {
+	t.Parallel()
 	for _, status := range []string{"paused", "failed", "failed-at", "uncertain", "running"} {
 		for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {
 			t.Run(status+"/"+origin.Kind.String(), func(t *testing.T) {
@@ -182,6 +183,7 @@ func TestTitleOnlyUpdateValidatesAndPersists(t *testing.T) {
 }
 
 func TestOtherDefinitionChangesKeepUpdateSemantics(t *testing.T) {
+	t.Parallel()
 	for _, field := range []string{"message", "trigger", "target", "late_seconds", "active"} {
 		t.Run(field, func(t *testing.T) {
 			h, own := admissionFixture(t, false)

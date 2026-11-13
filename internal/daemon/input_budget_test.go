@@ -28,6 +28,7 @@ func pendingFixture(s *session, queued, held int) {
 }
 
 func TestPendingInputCountAdmissionForAllProducers(t *testing.T) {
+	t.Parallel()
 	for _, producer := range []string{"local", "remote", "scheduled"} {
 		t.Run(producer, func(t *testing.T) {
 			h := scheduleHarness(t)

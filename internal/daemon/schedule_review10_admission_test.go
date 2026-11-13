@@ -12,6 +12,7 @@ import (
 )
 
 func TestScheduleSafetyOperationsBypassTranscript(t *testing.T) {
+	t.Parallel()
 	for _, scoped := range []bool{false, true} {
 		for _, op := range []string{"list", "get", "pause", "cancel"} {
 			t.Run(map[bool]string{false: "local", true: "mcp"}[scoped]+"/"+op, func(t *testing.T) {
