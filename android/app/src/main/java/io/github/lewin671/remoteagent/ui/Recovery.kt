@@ -25,7 +25,6 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.CreatedAccount
 import io.github.lewin671.remoteagent.core.DeviceSecurity
-import io.github.lewin671.remoteagent.core.PendingRecoveryInfo
 import io.github.lewin671.remoteagent.core.PreparedRecovery
 import io.github.lewin671.remoteagent.core.Recovery
 import io.github.lewin671.remoteagent.core.RecoveryChain
