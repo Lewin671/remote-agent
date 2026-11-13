@@ -27,7 +27,7 @@ func TestSharedFileChunkOnlyFromClients(t *testing.T) {
 	now := uint64(time.Now().UnixMilli())
 	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Session: "session", Request: "0123456789abcdef", Deadline: now + 60_000}
 	calls := 0
-	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("block"), nil }
+	fn := func(Header, []byte) (Completion, error) { calls++; return Final([]byte("block")), nil }
 	for i := 0; i < 2; i++ {
 		w, err := client.Prepare(h, nil, body)
 		if err != nil {

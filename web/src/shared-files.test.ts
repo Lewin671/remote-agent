@@ -15,7 +15,9 @@ import {
   splitFileName,
 } from "./shared-files";
 import { MemorySharedFileStore } from "./shared-file-store";
-import { CommandError } from "./remote";
+import outcomes from "../../testdata/transport/outcomes.json";
+import { classifyOutcome } from "./outcome";
+import { uncertain, CommandError } from "./remote";
 
 function hexToBytes(hex?: string): Uint8Array {
   if (!hex) return new Uint8Array();
@@ -509,4 +511,26 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
     expect(mgr2.stateOf("s1", small2).status).toBe("downloaded");
     expect(mgr2.stateOf("s1", makeFile({ fileId: "unfetched", name: "x.txt", sizeBytes: 12n })).status).toBe("cleaned");
   });
+});
+
+// Outcome certainty and the existing read-only download retry policy are
+// separate: preserve v0.72's single recovery attempt and saved offset.
+describe("download outcome policy", () => {
+ afterEach(() => vi.useRealTimers());
+it.each(outcomes.downloads)("download outcome $code signed=$signed", async v => {
+ vi.useFakeTimers();
+ const error=new CommandError(v.code,"fixture",v.signed,true);
+ const result=classifyOutcome({source:v.signed ? "daemon":"local",code:v.code,signed:v.signed,prior:false,readOnly:true});
+ expect(result).toBe(v.outcome);expect(uncertain(error)).toBe(result==="unknown");
+ let calls=0;
+ const mgr=new SharedFileManager({store:new MemorySharedFileStore(),isConnected:()=>true,isMachineOnline:()=>true,isSessionEnded:()=>false,sharedFileChunkBytes:()=>16,
+  getChunk:async (_sid,_id,offset)=>{calls++;if(offset>0n)throw error;return {data:new Uint8Array(16),totalBytes:32n};}});
+ const file=makeFile({fileId:"policy",name:"file.bin",sizeBytes:32n,sha256:new Uint8Array(32)});
+ const run=mgr.startDownload("s",file);await vi.advanceTimersByTimeAsync(30_001);await run;
+ expect(calls).toBe(v.webRetry ? 3:2);
+ expect(mgr.stateOf("s",file).status).toBe("failed");
+ expect(mgr.stateOf("s",file).failKind).toBe(v.webRetry ? "disconnected":"other");
+ expect(mgr.stateOf("s",file).downloadedBytes).toBe(16);
+});
+
 });

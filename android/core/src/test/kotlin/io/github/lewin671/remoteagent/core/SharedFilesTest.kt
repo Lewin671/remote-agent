@@ -3,6 +3,9 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse
 import io.github.lewin671.remoteagent.proto.SharedFile
+import io.github.lewin671.remoteagent.proto.Command
+import io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest
+import kotlinx.serialization.json.boolean
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -23,6 +26,37 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SharedFilesTest {
+
+
+    @Test fun outcomeVectorsPreserveSingleDownloadRetry() = runTest {
+        val fixture=Json.parseToJsonElement(File(System.getProperty("outcomeVectors")).readText()).jsonObject
+        for (row in fixture.getValue("downloads").jsonArray) {
+            val v=row.jsonObject
+            val code=v.getValue("code").jsonPrimitive.content
+            val signed=v.getValue("signed").jsonPrimitive.boolean
+            val retry=v.getValue("androidRetry").jsonPrimitive.boolean
+            val root=tempRoot()
+            val command=Command.newBuilder().setGetSharedFileChunk(GetSharedFileChunkRequest.getDefaultInstance()).build()
+            val error=CommandException(code,"fixture",fromDaemon=signed,readOnly=command.isReadOnlyCommand())
+            assertEquals(v.getValue("outcome").jsonPrimitive.content=="unknown",error.unknown)
+            var calls=0
+            val file=sharedFile(id="policy",name="file.bin",sizeBytes=32L,sha256=ByteArray(32))
+            val store=SharedFileStore(rootDir=root,fetcher=SharedFileChunkFetcher {_,_,offset->
+                calls++;if(offset>0)throw error
+                GetSharedFileChunkResponse.newBuilder().setData(ByteString.copyFrom(ByteArray(16))).setTotalBytes(32L).build()
+            },isMachineOnline={true},blockBytesProvider={16},clock={testScheduler.currentTime},sleeper={kotlinx.coroutines.delay(it)},ioDispatcher=StandardTestDispatcher(testScheduler))
+            try {
+                store.startOrResume("s",file);testScheduler.advanceUntilIdle()
+                assertEquals(row.toString(),if(retry)3 else 2,calls)
+                val state=store.states.value["s:policy"]
+                if(code=="not_found") assertEquals(SharedFileTransferState.CleanedUp,state)
+                else {
+                    assertTrue(row.toString(),state is SharedFileTransferState.Failed)
+                    assertEquals(if(retry)SharedFileFailureKind.DISCONNECTED else SharedFileFailureKind.OTHER,(state as SharedFileTransferState.Failed).kind)
+                }
+            } finally {store.close();root.deleteRecursively()}
+        }
+    }
 
     private data class VectorCase(
         val name: String,

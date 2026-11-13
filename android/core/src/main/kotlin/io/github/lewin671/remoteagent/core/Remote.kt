@@ -4033,5 +4033,6 @@ class Remote(
 
 /** Keep in step with deviceauth.IsReadOnlyCommand; unrecognized kinds mutate. */
 internal fun io.github.lewin671.remoteagent.proto.Command.isReadOnlyCommand(): Boolean =
-    hasGetMachineStatus() || hasGetSettings() || hasListModels() || hasListDirectories() || hasGetLiveSnapshot() || hasGetImageUploadStatus() ||
+    hasGetMachineStatus() || hasGetSettings() || hasListModels() || hasListDirectories() || hasGetLiveSnapshot() || hasGetImageUploadStatus() || hasGetSharedFileChunk() ||
+
         hasSchedule() && schedule.operation in setOf("list", "get")

@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -78,4 +81,48 @@ func asCommandError(err error, target **remoteclient.CommandError) bool {
 		*target = ce
 	}
 	return ok
+}
+
+type failedChunkBackend struct {
+	*fakeBackend
+	code  connect.Code
+	reads atomic.Int32
+}
+type failedChunkLocal struct {
+	remoteagentv1connect.LocalServiceHandler
+	owner *failedChunkBackend
+}
+
+func (b *failedChunkBackend) Local() remoteagentv1connect.LocalServiceHandler {
+	return failedChunkLocal{b.fakeBackend.Local(), b}
+}
+func (l failedChunkLocal) GetSharedFileChunk(context.Context, *connect.Request[pb.GetSharedFileChunkRequest]) (*connect.Response[pb.GetSharedFileChunkResponse], error) {
+	l.owner.reads.Add(1)
+	return nil, connect.NewError(l.owner.code, errors.New("read did not complete"))
+}
+func TestSharedFileReadFailuresAreAuthenticatedAndNotCached(t *testing.T) {
+	for _, code := range []connect.Code{connect.CodeCanceled, connect.CodeDeadlineExceeded, connect.CodeAborted, connect.CodeNotFound, connect.CodePermissionDenied} {
+		t.Run(code.String(), func(t *testing.T) {
+			e := setup(t)
+			e.backend.add(t, "sess1")
+			b := &failedChunkBackend{fakeBackend: e.backend, code: code}
+			e.startRelayBackend(b)
+			s := e.session(t, "sess1", 0)
+			e.online(t, true)
+			env, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: s.ID, FileId: "file"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				_, err = e.client.Forward(context.Background(), s.MachineID, env)
+				var ce *remoteclient.CommandError
+				if !errors.As(err, &ce) || !ce.FromDaemon || !ce.ReadOnly || ce.Code != code.String() || remoteclient.Uncertain(err) {
+					t.Fatal(err)
+				}
+			}
+			if b.reads.Load() != 2 {
+				t.Fatalf("read failure was cached: %d", b.reads.Load())
+			}
+		})
+	}
 }

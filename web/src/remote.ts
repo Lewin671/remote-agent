@@ -307,8 +307,9 @@ export const COMMAND_TTL_MS = 60_000;
 // whether a command can still be retried as the same request.
 export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
 
-function readOnlyCommand(cmd: CommandKind): boolean {
-  return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getImageUploadStatus"].includes(cmd.case ?? "") ||
+export function readOnlyCommand(cmd: CommandKind): boolean {
+  return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getImageUploadStatus", "getSharedFileChunk"].includes(cmd.case ?? "") ||
+
     cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""));
 }
 

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import RACore
 import RAProto
+import SwiftProtobuf
 struct OutcomeTests {
  @Test func sharedVectors() throws {
   let fixture = try loadJSON("testdata/transport/outcomes.json")
@@ -21,4 +22,19 @@ struct OutcomeTests {
    }
   }
  }
+ @Test func commandEvidence() throws {
+  let fixture=try loadJSON("testdata/transport/outcomes.json")
+  for v in fixture["commands"] as! [[String:Any]] {
+   let kind=v.s("kind")
+   let body:[String:Any] = kind == "schedule" ? ["operation":v.s("operation")] : [:]
+   let object:[String:Any] = kind.isEmpty ? [:] : [kind:body]
+   let cmd=try PBCommand(jsonUTF8Data:JSONSerialization.data(withJSONObject:object))
+   let readOnly=cmd.isReadOnlyCommand
+   #expect(readOnly == v["readOnly"] as! Bool)
+   for code in ["canceled","deadline_exceeded","aborted"] {
+    #expect(CommandError(code,"fixture",fromDaemon:true,readOnly:readOnly).unknown == !readOnly)
+   }
+  }
+ }
+
 }

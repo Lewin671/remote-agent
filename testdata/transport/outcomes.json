@@ -4033,5 +4033,238 @@
       "readOnly": true,
       "outcome": "unknown"
     }
+  ],
+  "commands": [
+    {
+      "kind": "send",
+      "readOnly": false
+    },
+    {
+      "kind": "interrupt",
+      "readOnly": false
+    },
+    {
+      "kind": "resolveApproval",
+      "readOnly": false
+    },
+    {
+      "kind": "answerQuestion",
+      "readOnly": false
+    },
+    {
+      "kind": "stopSession",
+      "readOnly": false
+    },
+    {
+      "kind": "cancelInput",
+      "readOnly": false
+    },
+    {
+      "kind": "setModel",
+      "readOnly": false
+    },
+    {
+      "kind": "setApprovalMode",
+      "readOnly": false
+    },
+    {
+      "kind": "compact",
+      "readOnly": false
+    },
+    {
+      "kind": "answerPlan",
+      "readOnly": false
+    },
+    {
+      "kind": "openTerminal",
+      "readOnly": false
+    },
+    {
+      "kind": "resumeSession",
+      "readOnly": false
+    },
+    {
+      "kind": "resumeInput",
+      "readOnly": false
+    },
+    {
+      "kind": "renameSession",
+      "readOnly": false
+    },
+    {
+      "kind": "forkSession",
+      "readOnly": false
+    },
+    {
+      "kind": "createSession",
+      "readOnly": false
+    },
+    {
+      "kind": "listModels",
+      "readOnly": true
+    },
+    {
+      "kind": "listDirectories",
+      "readOnly": true
+    },
+    {
+      "kind": "getSettings",
+      "readOnly": true
+    },
+    {
+      "kind": "updateSettings",
+      "readOnly": false
+    },
+    {
+      "kind": "beginImageUpload",
+      "readOnly": false
+    },
+    {
+      "kind": "putImageChunk",
+      "readOnly": false
+    },
+    {
+      "kind": "getImageUploadStatus",
+      "readOnly": true
+    },
+    {
+      "kind": "completeImageUpload",
+      "readOnly": false
+    },
+    {
+      "kind": "abortImageUpload",
+      "readOnly": false
+    },
+    {
+      "kind": "schedule",
+      "operation": "list",
+      "readOnly": true
+    },
+    {
+      "kind": "schedule",
+      "operation": "get",
+      "readOnly": true
+    },
+    {
+      "kind": "schedule",
+      "operation": "create",
+      "readOnly": false
+    },
+    {
+      "kind": "schedule",
+      "operation": "update",
+      "readOnly": false
+    },
+    {
+      "kind": "schedule",
+      "operation": "pause",
+      "readOnly": false
+    },
+    {
+      "kind": "schedule",
+      "operation": "run",
+      "readOnly": false
+    },
+    {
+      "kind": "schedule",
+      "operation": "notify_user",
+      "readOnly": false
+    },
+    {
+      "kind": "schedule",
+      "operation": "unknown",
+      "readOnly": false
+    },
+    {
+      "kind": "getLiveSnapshot",
+      "readOnly": true
+    },
+    {
+      "kind": "getSharedFileChunk",
+      "readOnly": true
+    },
+    {
+      "kind": "",
+      "readOnly": false
+    }
+  ],
+  "downloads": [
+    {
+      "code": "unknown_outcome",
+      "signed": false,
+      "outcome": "unknown",
+      "webRetry": true,
+      "androidRetry": true
+    },
+    {
+      "code": "unavailable",
+      "signed": false,
+      "outcome": "not_sent",
+      "webRetry": true,
+      "androidRetry": true
+    },
+    {
+      "code": "unavailable",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": true,
+      "androidRetry": true
+    },
+    {
+      "code": "unknown",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": true,
+      "androidRetry": false
+    },
+    {
+      "code": "canceled",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    },
+    {
+      "code": "deadline_exceeded",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    },
+    {
+      "code": "aborted",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    },
+    {
+      "code": "not_found",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    },
+    {
+      "code": "permission_denied",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    },
+    {
+      "code": "invalid_argument",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    },
+    {
+      "code": "internal",
+      "signed": true,
+      "outcome": "executed",
+      "webRetry": false,
+      "androidRetry": false
+    }
   ]
 }
