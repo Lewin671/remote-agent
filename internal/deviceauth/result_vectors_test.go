@@ -56,6 +56,7 @@ func TestSharedProofVectors(t *testing.T) {
 			switch kind {
 			case "not_sent":
 				r.Reason = "busy"
+				expected = "unknown"
 			case "rejected":
 				r.Reason = "invalid_body"
 			case "unknown":

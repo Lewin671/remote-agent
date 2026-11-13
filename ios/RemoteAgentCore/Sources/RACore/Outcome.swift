@@ -10,7 +10,8 @@ func classifyOutcome(source: String, code: String, signed: Bool, prior: Bool = f
     case "executed": return .executed
     case "rejected": return !admitted && ["invalid_envelope", "invalid_body", "invalid_scope", "protocol_mismatch", "member_removed"].contains(reason) ? .rejected : .unknown
     case "conflict": return ["identity", "business"].contains(conflictKind) ? .conflict : .unknown
-    case "not_sent": return !prior && !admitted ? .notSent : .unknown
+    // No current daemon proof durably retires a refused authorization.
+    case "not_sent": return .unknown
     default: return .unknown
     }
 }

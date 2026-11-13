@@ -13,7 +13,8 @@ export function classifyOutcome(e: Evidence): Outcome {
     case "executed": return "executed";
     case "rejected": return !e.admitted && ["invalid_envelope", "invalid_body", "invalid_scope", "protocol_mismatch", "member_removed"].includes(e.reason ?? "") ? "rejected" : "unknown";
     case "conflict": return ["identity", "business"].includes(e.conflictKind ?? "") ? "conflict" : "unknown";
-    case "not_sent": return !e.prior && !e.admitted ? "not_sent" : "unknown";
+    // No current daemon proof durably retires a refused authorization.
+    case "not_sent": return "unknown";
     default: return "unknown";
   }
 }

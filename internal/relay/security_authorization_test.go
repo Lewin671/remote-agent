@@ -146,7 +146,7 @@ func TestTransientAdmissionRefusalDoesNotBecomeRejected(t *testing.T) {
 	c.security.setAuthorized(false)
 	_, err = c.security.accept(context.Background(), wire, nil, now, fn)
 	var decision *deviceauth.EntryDecision
-	if !errors.As(err, &decision) || decision.Outcome != "not_sent" || calls != 0 {
+	if !errors.As(err, &decision) || decision.Outcome != "unknown" || calls != 0 {
 		t.Fatal(err)
 	}
 	c.security.setAuthorized(true)

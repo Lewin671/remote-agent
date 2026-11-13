@@ -12,7 +12,8 @@ internal fun classifyOutcome(source: String, code: String, signed: Boolean, prio
         "executed" -> Outcome.EXECUTED
         "rejected" -> if (!admitted && reason in setOf("invalid_envelope", "invalid_body", "invalid_scope", "protocol_mismatch", "member_removed")) Outcome.REJECTED else Outcome.UNKNOWN
         "conflict" -> if (conflictKind in setOf("identity", "business")) Outcome.CONFLICT else Outcome.UNKNOWN
-        "not_sent" -> if (!prior && !admitted) Outcome.NOT_SENT else Outcome.UNKNOWN
+        // No current daemon proof durably retires a refused authorization.
+        "not_sent" -> Outcome.UNKNOWN
         else -> Outcome.UNKNOWN
     }
 }

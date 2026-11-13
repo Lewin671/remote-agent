@@ -19,7 +19,9 @@ func RejectedEntry(reason string, err error) error {
 	return &EntryDecision{Outcome: "rejected", Reason: reason, cause: err}
 }
 func notAdmitted(reason string, err error) error {
-	return &EntryDecision{Outcome: "not_sent", Reason: reason, cause: err}
+	// No terminal rejection was persisted. Recovery may still admit this exact
+	// authorization, so callers must retain its ID even on their first attempt.
+	return &EntryDecision{Outcome: "unknown", Reason: reason, cause: err}
 }
 
 // RequestIdentity uses the original unpacked bytes, never a reserialized Command.

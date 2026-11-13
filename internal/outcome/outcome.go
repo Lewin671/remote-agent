@@ -53,9 +53,9 @@ func Classify(e Evidence) Category {
 				return Conflict
 			}
 		case NotSent:
-			if !e.Prior && !e.Admitted {
-				return NotSent
-			}
+			// The current daemon has no durable terminal-rejection proof. A
+			// pre-admission refusal alone cannot retire a replayable request.
+			return Unknown
 		}
 	}
 	return Unknown

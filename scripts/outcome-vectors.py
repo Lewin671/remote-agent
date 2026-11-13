@@ -24,7 +24,8 @@ row('signed-unknown','daemon','unknown',declared='unknown',signed=True)
 for kind in ['business','identity']:
  row('conflict-'+kind,'daemon','conflict',declared='conflict',conflictKind=kind,signed=True)
 row('conflict-missing-kind','daemon','unknown',declared='conflict',signed=True)
-row('daemon-busy','daemon','not_sent',declared='not_sent',reason='busy',signed=True)
+# A transient refusal has no durable terminal rejection; the old payload remains executable.
+row('daemon-uncommitted-busy','daemon','unknown',declared='not_sent',reason='busy',signed=True)
 row('daemon-busy-contradiction','daemon','unknown',declared='not_sent',reason='busy',signed=True,admitted=True)
 for bad in ['signature','request-hash','payload-hash','outer-category','outer-reason','unauthenticated-id']:
  row('invalid-'+bad,'daemon','unknown',declared='executed',reason=bad)
