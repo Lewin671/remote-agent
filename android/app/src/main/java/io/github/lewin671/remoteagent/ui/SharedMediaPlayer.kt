@@ -25,7 +25,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -34,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +52,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -67,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -82,6 +89,10 @@ internal const val SharedPlayerPageTag = "shared-player-page"
 
 /** Sizes, colours and timings of the in-app player; the card's own are in [SharedFileSpec]. */
 internal object SharedPlayerSpec {
+    val TopShadeHeight = 96.dp
+    val BottomShadeHeight = 140.dp
+    val TopShadeColor = Color.Black.copy(alpha = 0.35f)
+    val BottomShadeColor = Color.Black.copy(alpha = 0.45f)
     val SideMargin = 16.dp
     val TrackHeight = 3.dp
     val ThumbRest = 12.dp
@@ -261,8 +272,28 @@ internal fun SharedMediaPlayerDialog(
     DisposableEffect(engine) { onDispose { engine.release() } }
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.let { window ->
+                // Draw the black page and video shades through the system-bar areas too.
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                if (android.os.Build.VERSION.SDK_INT >= 29) {
+                    window.isStatusBarContrastEnforced = false
+                    window.isNavigationBarContrastEnforced = false
+                }
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
+                }
+            }
+        }
         SharedMediaPlayerPage(
             engine = engine,
             fileName = sanitizeSharedFileName(file.name),
@@ -410,6 +441,16 @@ internal fun SharedMediaPlayerPage(
 
         if (video && !failed && chromeAlpha > 0f) {
             Box(Modifier.fillMaxSize().alpha(chromeAlpha)) {
+                Box(
+                    Modifier.fillMaxWidth().height(SharedPlayerSpec.TopShadeHeight)
+                        .align(Alignment.TopCenter).testTag("player-top-shade")
+                        .background(Brush.verticalGradient(listOf(SharedPlayerSpec.TopShadeColor, Color.Transparent))),
+                )
+                Box(
+                    Modifier.fillMaxWidth().height(SharedPlayerSpec.BottomShadeHeight)
+                        .align(Alignment.BottomCenter).testTag("player-bottom-shade")
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, SharedPlayerSpec.BottomShadeColor))),
+                )
                 PlayerPlayButton(playing, ::togglePlay, Modifier.align(Alignment.Center))
                 PlayerScrubber(
                     positionMs = position,
@@ -418,7 +459,7 @@ internal fun SharedMediaPlayerPage(
                     onScrubbing = { scrubbing = it },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
                         .padding(start = SharedPlayerSpec.SideMargin, end = SharedPlayerSpec.SideMargin, bottom = SharedPlayerSpec.ControlsBottomPad),
                 )
             }
@@ -426,7 +467,9 @@ internal fun SharedMediaPlayerPage(
 
         if (chromeAlpha > 0f) {
             Row(
-                Modifier.fillMaxWidth().padding(8.dp).alpha(chromeAlpha),
+                Modifier.fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
+                    .padding(8.dp).alpha(chromeAlpha),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 GlassButton(Lucide.X, copy(UiMessages.commonClose()), onClose, dark = true)
@@ -448,6 +491,7 @@ internal fun SharedMediaPlayerPage(
                 copy = copy,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
                     .padding(top = SharedPlayerSpec.MenuTopPad, end = 8.dp),
             )
         }

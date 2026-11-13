@@ -18,6 +18,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -37,6 +39,8 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
 import io.github.lewin671.remoteagent.data.ThemeMode
+import io.github.lewin671.remoteagent.proto.SharedFile
+import org.robolectric.shadows.ShadowDialog
 import java.io.File
 import java.nio.file.Files
 import org.junit.After
@@ -124,6 +128,46 @@ class SharedMediaPlayerTest {
     }
 
     @Test
+    fun playerWindowDoesNotCoverThePageWithSystemBarScrims() {
+        val file = File(tempDir, "clip.mp4").apply { writeBytes(byteArrayOf(0)) }
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                SharedMediaPlayerDialog(
+                    SharedFile.newBuilder().setName(file.name).build(), file, video = true,
+                    onDismiss = {}, onAction = {},
+                )
+            }
+        }
+        ui.waitForIdle()
+        val window = ShadowDialog.getLatestDialog().window!!
+        assertEquals(android.graphics.Color.TRANSPARENT, window.statusBarColor)
+        assertEquals(android.graphics.Color.TRANSPARENT, window.navigationBarColor)
+        assertFalse(window.isStatusBarContrastEnforced)
+        assertFalse(window.isNavigationBarContrastEnforced)
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        assertFalse(controller.isAppearanceLightStatusBars)
+        assertFalse(controller.isAppearanceLightNavigationBars)
+    }
+
+    @Test
+    fun videoShadesHaveSpecifiedHeightsAndFollowControlVisibility() {
+        ui.mainClock.autoAdvance = false
+        val engine = FakePlayerEngine().apply { playing = true }
+        page(engine, "bright.mp4", video = true)
+        ui.onNodeWithTag("player-top-shade").assertHeightIsEqualTo(96.dp)
+        ui.onNodeWithTag("player-bottom-shade").assertHeightIsEqualTo(140.dp)
+        assertEquals(0.35f, SharedPlayerSpec.TopShadeColor.alpha, 0.005f)
+        assertEquals(0.45f, SharedPlayerSpec.BottomShadeColor.alpha, 0.005f)
+        ui.mainClock.advanceTimeBy(3_500)
+        ui.onNodeWithTag("player-top-shade").assertDoesNotExist()
+        ui.onNodeWithTag("player-bottom-shade").assertDoesNotExist()
+        ui.runOnUiThread { engine.pause() }
+        ui.mainClock.advanceTimeBy(300)
+        ui.onNodeWithTag("player-top-shade").assertExists()
+        ui.onNodeWithTag("player-bottom-shade").assertExists()
+    }
+
+    @Test
     fun videoControlsLeaveThreeSecondsAfterPlaybackStartsAndStayWhilePaused() {
         ui.mainClock.autoAdvance = false
         val engine = FakePlayerEngine().apply { playing = true }
@@ -173,6 +217,8 @@ class SharedMediaPlayerTest {
         val engine = FakePlayerEngine(duration = 12_000, video = false).apply { playing = true }
         page(engine, "voice-memo.mp3", video = false)
         ui.mainClock.advanceTimeBy(30_000)
+        ui.onNodeWithTag("player-top-shade").assertDoesNotExist()
+        ui.onNodeWithTag("player-bottom-shade").assertDoesNotExist()
         ui.onNodeWithText("voice-memo.mp3").assertExists()
         ui.onNodeWithContentDescription("暂停").assertExists()
         ui.onNodeWithContentDescription("关闭").assertExists()
