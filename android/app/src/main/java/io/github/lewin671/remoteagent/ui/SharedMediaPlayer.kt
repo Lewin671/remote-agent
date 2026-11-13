@@ -172,6 +172,12 @@ internal class MediaPlayerEngine(
         val mp = player!!
         mp.setAudioAttributes(attributes)
         mp.setOnPreparedListener {
+            // Extractors can silently drop an unsupported video track and prepare audio only.
+            // A video page must not turn that into a black screen that appears to be playing.
+            if (video && it.trackInfo.none { track -> track.trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_VIDEO }) {
+                failPlayback()
+                return@setOnPreparedListener
+            }
             prepared = true
             durationMs = it.duration.coerceAtLeast(0)
             videoWidth = it.videoWidth
@@ -187,10 +193,14 @@ internal class MediaPlayerEngine(
             playing = false
             abandonFocus()
         }
+        mp.setOnInfoListener { _, what, _ ->
+            if (video && what == MediaPlayer.MEDIA_INFO_VIDEO_NOT_PLAYING) {
+                failPlayback()
+                true
+            } else false
+        }
         mp.setOnErrorListener { _, _, _ ->
-            failed = true
-            playing = false
-            abandonFocus()
+            failPlayback()
             true
         }
         try {
@@ -243,6 +253,11 @@ internal class MediaPlayerEngine(
         playing = false
         player?.let { runCatching { it.release() } }
         player = null
+    }
+
+    private fun failPlayback() {
+        failed = true
+        pause()
     }
 
     private fun requestFocus(): Boolean {

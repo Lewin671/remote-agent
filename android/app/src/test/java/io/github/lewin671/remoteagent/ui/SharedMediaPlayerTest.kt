@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.ui
 import android.app.Application
 import android.content.Context
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.os.Looper
 import android.view.Surface
 import androidx.compose.foundation.background
@@ -46,6 +47,7 @@ import java.nio.file.Files
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -54,6 +56,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.Implements
+import org.robolectric.util.ReflectionHelpers
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowMediaPlayer
@@ -76,6 +81,20 @@ internal class FakePlayerEngine(duration: Int = 102_000, video: Boolean = true) 
     override fun seekTo(ms: Int) { seeks += ms; position = ms }
     override fun attachSurface(surface: Surface?) = Unit
     override fun release() = Unit
+}
+
+/** Model the extractor omitting an unsupported video track while retaining its audio. */
+@Implements(MediaPlayer::class)
+class TrackPlayerShadow : ShadowMediaPlayer() {
+    var videoTrack = true
+
+    @Implementation
+    fun getTrackInfo(): Array<MediaPlayer.TrackInfo> {
+        val type = if (videoTrack) MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_VIDEO else MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO
+        return arrayOf(ReflectionHelpers.newInstance(MediaPlayer.TrackInfo::class.java).also {
+            ReflectionHelpers.setField(it, "mTrackType", type)
+        })
+    }
 }
 
 private class TestLifecycleOwner : LifecycleOwner {
@@ -365,6 +384,39 @@ class SharedMediaPlayerTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertFalse(engine.playing)
         assertEquals(5_000, engine.durationMs)
+        engine.release()
+    }
+
+    @Test
+    @Config(shadows = [TrackPlayerShadow::class])
+    fun videoWithOnlyADecodableAudioTrackFailsBeforePlayingOrTakingFocus() {
+        val file = audioFile("unsupported.mkv")
+        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(file.absolutePath), ShadowMediaPlayer.MediaInfo(7_000, 0))
+        ShadowMediaPlayer.setCreateListener { _, shadow -> (shadow as TrackPlayerShadow).videoTrack = false }
+        val engine = MediaPlayerEngine(context, file, video = true)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(engine.failed)
+        assertFalse(engine.playing)
+        assertNull(shadowOf(context.getSystemService(AudioManager::class.java)).lastAudioFocusRequest)
+        engine.release()
+    }
+
+    @Test
+    @Config(shadows = [TrackPlayerShadow::class])
+    fun aVideoTrackMayPrepareBeforeItsSizeIsKnownButFailureToPlayItStopsAudio() {
+        val file = audioFile("video.mkv")
+        ShadowMediaPlayer.addMediaInfo(DataSource.toDataSource(file.absolutePath), ShadowMediaPlayer.MediaInfo(7_000, 0))
+        lateinit var player: ShadowMediaPlayer
+        ShadowMediaPlayer.setCreateListener { _, shadow -> player = shadow }
+        val engine = MediaPlayerEngine(context, file, video = true)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(engine.failed)
+        assertTrue(engine.playing)
+        assertEquals(0, engine.videoWidth) // Unknown size alone is not a failure.
+        player.invokeInfoListener(MediaPlayer.MEDIA_INFO_VIDEO_NOT_PLAYING, 0)
+        assertTrue(engine.failed)
+        assertFalse(engine.playing)
+        assertNotNull(shadowOf(context.getSystemService(AudioManager::class.java)).lastAbandonedAudioFocusRequest)
         engine.release()
     }
 
