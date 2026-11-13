@@ -102,7 +102,7 @@
 
 ### MVP 之后要做
 
-- **设备直连**：客户端与 daemon 的指令/结果、终端流、分块传输和只读查询支持直连与中继自动选路，网络切换无感，手机可查看路径；不替代账户、历史和通知服务，实施状态见 [plan.md](plan.md)。无感的可用性边界见 [transport.md](transport.md#4-网络切换与第-0-期中继修复)
+- **设备直连**：客户端与 daemon 的指令/结果、终端流、分块传输和只读查询支持直连与中继自动选路，手机可查看路径，切换时保留操作状态，单路故障与双路换网分别按可测恢复目标验收；不替代账户、历史和通知服务，实施状态见 [plan.md](plan.md)。恢复目标与适用边界见 [transport.md](transport.md#4-网络切换与第-0-期中继修复)
 
 - **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
 - **Antigravity**（`agy`）：同样以原生 TUI 跑在 tmux 里，`remote-agent agy` 是本地入口。当前远程操作的差异：会话中不换模型和推理强度，普通会话不远程改为完全放行，以完全放行启动时锁定远程模式切换，暂不提供分叉；其余操作和另外两个 CLI 一致。设计见 [architecture.md](architecture.md) 第 19 节，实测见 [antigravity-notes.md](antigravity-notes.md)

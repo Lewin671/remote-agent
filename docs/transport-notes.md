@@ -26,7 +26,7 @@
 
 Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与缓存重试，不证明操作被取消。新 HTTP 调用约 2 ms 可用不表示旧主 WS/终端已恢复（`net-relay-*.jsonl`、`net-relay-browser-*.json`）。
 
-**源码结论（同基线，原生端未经真机测量）**：网页无 `navigator.connection.change` 监听，静默 watchdog 60 秒，独立 Forward HTTP 约 45 秒不被主连接换代加速；Android 有默认网络 available/lost 回调、20 秒 ping 和 45 秒 API readTimeout，但终端不是可迁移逻辑流；iOS 只比较 available 与接口名，同接口换 Wi-Fi/DHCP 不触发重连，20 秒一次 ping 且等下一次检查前次 pong，静默故障可能等 20–40 秒；daemon 每 25 秒 ping、等 20 秒，没有本机接口变化订阅。这些都是恢复设计要处理的缺陷，不是既有“无感”能力。
+**源码结论（同基线，原生端未经真机测量）**：网页无 `navigator.connection.change` 监听，静默 watchdog 60 秒，独立 Forward HTTP 约 45 秒不被主连接换代加速；Android 有默认网络 available/lost 回调、20 秒 ping 和 45 秒 API readTimeout，但终端不是可迁移逻辑流；iOS 只比较 available 与接口名，同接口换 Wi-Fi/DHCP 不触发重连，20 秒一次 ping 且等下一次检查前次 pong，静默故障可能等 20–40 秒；daemon 每 25 秒 ping、等 20 秒，没有本机接口变化订阅。这些都是恢复设计要处理的缺陷，不是既有恢复保证。
 
 ## 2. 吞吐与排队
 
@@ -69,3 +69,18 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 **依赖归档检查（2026-11-12，不是 App 运行）**：Android `io.github.webrtc-sdk:android:150.7871.04` 标准 AAR 49.07 MB，四 ABI 的 `.so` 合计 48.00 MB，arm64 12.27 MB；当前通用 APK 暂估增量 49–51 MB，arm64 包 13–14 MB，stripped 版本接入及压缩方式未验。iOS `stasel/WebRTC 157.0.0` 的真机 arm64 二进制 12.59 MB，ZIP 成员 5.82 MB，安装/下载暂估 +13–16/+6–9 MB。均为依赖成员推算，不能当实际 APK/IPA/App Store 结果；渠道是社区分发，不声称 Google 官方维护保证（`library-evidence.json`）。
 
 **平台资料推断，未经手机实测**：Android 后台调度/Doze 与 iOS 挂起不能由 DataChannel 保活保证；NWPathMonitor/Android NetworkMonitor 不会替应用恢复业务。资料见 [Android 网络状态](https://developer.android.com/develop/connectivity/network-ops/reading-network-state)、[Doze](https://developer.android.com/training/monitoring-device-state/doze-standby)、[Apple data-only WebRTC 后台答复](https://developer.apple.com/forums/thread/799259)、[NWPathMonitor](https://developer.apple.com/documentation/network/nwpathmonitor)。本次没有操作真机、真实 Wi-Fi/蜂窝、Safari/PWA，也没有原生 SDK 运行、商店归档、30 分钟耗电/内存或生产身份绑定验证；这些项目统一列入 [待确认](plan.md#传输模块与直连)。
+
+## 5. 当前设计 checkout 的源码核对
+
+**源码证据，未运行行为测试（2026-11-12，提交 `3dd329d5`、协议 13）**：本次只核对代码，不将旧原型数据当新基线复验。
+
+- `internal/daemon/rpc.go:rpcErr` 将 context 错误映射成 canceled/deadline_exceeded；`internal/relay/handle.go:handleCall/execute` 把它装进 CommandResult，回调 marshal 返回 nil error；`internal/deviceauth/endpoint.go:Accept/finishAccepted` 因此可能记录 Done。代码足以支持取消被当最终答复的风险；是否已发生重复副作用及各后端取消行为未经本任务测试，由独立正确性任务验证。
+- 同 ID in-progress 的 `lookupAccepted` 返回 ErrUnknown，`securitySession.accept` 把它和未知 epoch 一起触发同步；`hub.forward` 把 ForwardReply.Error 统一映射 Aborted。Android/iOS 的网络重试集合包含 Aborted，网页网络集合没有；网页 `uncertain()` 又承认 aborted，不能把“没有自动网络重试”写成“网页所有调用都会当确定失败”。
+- `finishAccepted` 结果超限保留 in-progress；其他新准入触发的到期剪枝可删除尚在运行的条目，此后完成返回 ErrInvalid。不是无限保存 unknown：过期后缺少记录的原请求不能再获准执行，但也没有过去未执行的证据。
+- `session()` 打开安全 endpoint，其 defer 等 workers/terminals 再关闭；执行和终端挂在 conn 上。四端终端重复序号会关流，但只检查递增，未保证连续（跳过缺口仍能被接受）。计数器初始化为 0，发送前自增，首帧为 1。终端 Input 按 256 字节送 tmux，5 秒命令超时结束流，不能推导整帧原子性。
+- `ParseHeader → Header.validate` 已检查 Purpose/kind、ID 格式、请求 ID 最短 16 字节；`codec.validID` 已限最长 128 字节。`Header.Scope` 也已核对角色与目标 Machine 成员。缺的是本机 Machine 等值及特定流 Session/Request/绑定 Sender 的上下文检查，不是所有范围检查都在 Accept 外。共享入口要保留这些已有检查并补齐上下文。
+- `internal/deviceauth/codec.go` 的 MaxClockSkew 是 **5 分钟**；Accept 允许的最大未来截止时间是 **10 分钟**，二者不是同一参数。接受日志开销为 key 长度 + 结果长度 + 128 字节；16 MiB 不全是结果空间。
+- agent 发文件任务分支 `wt/send-file`（核对提交 `7766a145`）已有 `Command_GetSharedFileChunk`：`readOnlyCommand` 白名单、relay handler 和共享副本设计。它不缓存块结果；“约 21 块填满日志”只适用于错误地将下载接成普通持久指令的假设，不能当成该分支的实际瓶颈。当前设计 checkout 没有该接口，不能说产品已经具备。
+- 上传 `uploads.put` 在 RECEIVING 状态核对归属、重叠字节并 fsync 后保存进度；完成后的晚到块在范围内直接回状态，不重新比较每个字节。因此“所有重叠重复都比较”过宽；已完成对象的最终哈希及不再写入仍保护内容。Put 仍持全局锁，fsync 对交互公平性的影响未测。
+
+上述是 [transport.md](transport.md) 前提与改造位置的依据；新目标和决策仅在那里维护，阶段验收结果仍需另行取得。
