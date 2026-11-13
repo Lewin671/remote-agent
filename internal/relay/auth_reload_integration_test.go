@@ -32,7 +32,7 @@ func TestAuthenticationLossReloadsAccountAndEndpoint(t *testing.T) {
 				})
 			})
 			e.backend.add(t, "sess1")
-			e.startRelayBackend(e.backend, func(r *relay.Relay) { relay.SetSecurityIntervalForTest(r, 20*time.Millisecond) })
+			runningRelay := e.startRelayBackend(e.backend, func(r *relay.Relay) { relay.SetSecurityIntervalForTest(r, 20*time.Millisecond) })
 			session := e.session(t, "sess1", 0)
 			e.online(t, true)
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -84,7 +84,7 @@ func TestAuthenticationLossReloadsAccountAndEndpoint(t *testing.T) {
 			if err := updated.Save(); err != nil {
 				t.Fatal(err)
 			}
-			waitFor(t, "saved account and new WS", func() bool { return newStates.Load() > 0 && newStreams.Load() > 0 })
+			waitFor(t, "saved account and new WS", func() bool { return newStates.Load() > 0 && newStreams.Load() > 0 && runningRelay.Connected() })
 			_, err = e.client.Do(ctx, session, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: session.ID, Text: "must not run"}}})
 			if !remoteclient.Uncertain(err) || e.backend.sendCount() != 0 {
 				t.Fatalf("paused admission: %v", err)
