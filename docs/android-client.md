@@ -71,6 +71,18 @@ HELD_BY_CLI 快照即使没有先前 QUEUED 事件，也恢复正文、附件、
 
 运行记录没有通知时按天合并，可展开逐次查看；点记录按 ID 取会话，并定位到该次运行的事件。对话只折叠同一天连续、已明确正常结束且没有通知的定时轮，失败、人工插话、审批、提问、计划、内容过大占位、自主后续回复或尚未结束的轮次保持可见，原文可展开。任务开出的未接手会话返回任务详情；回复前沿用已有恢复流程，接手与列表归属仍以 daemon 元数据为准。
 
+## 电脑状态与磁盘保护
+
+界面规范和字段见 [architecture §21](architecture.md#21-电脑状态与磁盘保护)，长相见界面稿 v2 第 ② 部分。Android 的取舍：
+
+- 入口是「设置 › 电脑 › 某台电脑」页顶部的三只环（每 10 秒），点开进「电脑状态」页（路由 `machine/{id}`，每 2 秒）。能力位 `machineStatus` 为假的电脑不显示入口、不轮询。页面不在 STARTED 状态（切到别的页、App 进后台）就停止请求和图表帧循环，由 `MachineStatusController` 按 owner 生命周期驱动。
+- 数据和展示分开：`core/MachineStatusModel.kt` 只出纯值（环、卡片、排行行、曲线几何、主页提醒），文字全部来自 `machine_status` 文案；图表按每个采样点自带的 `time_ms` 定位，超过 6 秒的空洞断开不连线，右边缘用「落后最新点一个采样间隔」的时钟匀速前进。字节一律按十进制显示（协议约定），所以 16 GiB 内存显示为 17.2 GB。
+- 「附件存储」在 Android 上是电脑页里的一节，不是独立页：点磁盘小卡或「remote-agent 的占用」打开电脑页并滚到这一节（`device/{id}?storage=1`）。应急预留是这一节里不可清理的一行，为 0 时不显示。
+- 「让 Agent 帮我清理」把电脑和该电脑最近用过的项目预选进新建会话草稿，提示词接在已有草稿后面，不自动发送；该电脑还没有项目时先进目录选择页，提示词留到下一个新建会话。
+- 磁盘提醒通知的 PendingIntent 带 `machine_status` 额外字段（机器 ID），`MainActivity` 据此进入该电脑的状态页，不把它当会话。
+
+截图和布局检查用 Robolectric 原生图形渲染（`MachineStatusShotsTest`，设 `RA_MACHINE_STATUS_SHOTS=<目录>` 才写 PNG），不需要设备。
+
 ## 加密和密钥
 
 - **实现**：Android 13（API 33）起平台 JCA 也有 XDH 和 Ed25519，但导入导出原始 32 字节密钥、从 seed 推出公钥都没验证过，验证通过前继续用 Bouncy Castle。直接用 Bouncy Castle 的 lightweight API，不依赖系统里名为 `BC` 的旧 provider

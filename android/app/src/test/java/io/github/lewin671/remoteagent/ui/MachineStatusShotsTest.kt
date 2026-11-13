@@ -80,7 +80,7 @@ internal object MachineFixtures {
 
 /** The 电脑状态 screens drawn for real (Robolectric native graphics), for review against 界面稿 v2 ② and as layout tests. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35], application = Application::class, qualifiers = "w390dp-h1400dp-xhdpi")
+@Config(sdk = [35], application = Application::class, qualifiers = "w390dp-h2400dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MachineStatusShotsTest {
     @get:Rule(order = 0) val appFixture = io.github.lewin671.remoteagent.RaAppTestRule()
