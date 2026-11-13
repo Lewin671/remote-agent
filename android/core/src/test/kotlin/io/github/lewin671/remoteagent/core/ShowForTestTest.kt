@@ -30,7 +30,6 @@ class ShowForTestTest {
             )
             assertEquals(m, remote.state.value.machines["m"])
             val flow = remote.events("s")
-            Thread.sleep(200)
             // Nothing was fetched over the fixed history: the session is not in the lists.
             assertEquals(events, flow.value.events)
             assertTrue(flow.value.loaded)

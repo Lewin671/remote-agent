@@ -18,6 +18,7 @@ class OutcomeTest {
    assertEquals(row.toString(), s("outcome"), classifyOutcome(s("source"), s("code"), b("signed"), b("prior"), b("readOnly")).name.lowercase())
    if (s("source") == "local" || (s("source") == "daemon" && b("signed"))) {
     val error = CommandException(s("code"), "fixture", fromDaemon = s("source") == "daemon", readOnly = b("readOnly"))
+    if (!b("prior")) assertEquals(row.toString(), s("outcome") == "unknown", uncertain(error))
     val attempt = Attempt()
     attempt.next { PreparedCommand("machine", "", "fixture-request", 1000, Envelope.getDefaultInstance()) }
     if (b("prior")) attempt.settle(CommandException(CommandException.UNKNOWN, "fixture"))
