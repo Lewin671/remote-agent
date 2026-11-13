@@ -58,6 +58,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
     case asyncQuestion(AsyncQuestion)
     case thought(Thought)
     case tool(Tool)
+    case sharedFiles(SharedFiles)
     case running(Running)
     case tools(Tools)
     case note(Note)
@@ -154,6 +155,19 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
             self.decision = decision
             self.decisionOk = decisionOk
             self.background = background
+            self.seq = seq
+        }
+    }
+
+    /// The files one `send_file` call handed to the user, in place of its tool row: a card each.
+    public struct SharedFiles: Equatable, Sendable {
+        public var key: String
+        public var files: [PBSharedFile]
+        public var seq: UInt64
+
+        public init(key: String, files: [PBSharedFile], seq: UInt64 = 0) {
+            self.key = key
+            self.files = files
             self.seq = seq
         }
     }
@@ -262,6 +276,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
         case .asyncQuestion(let x): return x.key
         case .thought(let x): return x.key
         case .tool(let x): return x.key
+        case .sharedFiles(let x): return x.key
         case .running(let x): return x.key
         case .tools(let x): return x.key
         case .note(let x): return x.key
@@ -415,6 +430,7 @@ public func buildChat(
     home: String = "",
     now: Int64 = nowMs(),
     zone: TimeZone = .current,
+    sharedFiles: Bool = false,
     textOf: (String) -> String? = { _ in nil },
     who: (PBOrigin?) -> String? = { _ in nil }
 ) -> [ChatItem] {
@@ -460,7 +476,11 @@ public func buildChat(
     }
     func addCall(_ k: String, _ callEvent: PBEvent, background: Bool) {
         let t = callEvent.toolCall
-        if let decided = decisions.onCall[callEvent.seq] {
+        if sharedFiles, !t.sharedFiles.isEmpty {
+            // What the agent handed over is a card of its own, between whatever was folded before and after it.
+            flush()
+            out.append(.sharedFiles(.init(key: k, files: t.sharedFiles, seq: callEvent.seq)))
+        } else if let decided = decisions.onCall[callEvent.seq] {
             // Kept out of a fold so that its decision stays in sight.
             flush()
             // The approval is said next to it; whether it went to the background still shows.
@@ -634,6 +654,7 @@ public struct ChatProjection: Sendable {
         var cwd: String
         var home: String
         var agent: PBAgent
+        var sharedFiles: Bool
     }
 
     /// What the rows were built from besides the events and the context: dates name the day only when it is not today.
@@ -662,10 +683,11 @@ public struct ChatProjection: Sendable {
         agent: PBAgent = defaultAgent,
         now: Int64 = nowMs(),
         zone: TimeZone = .current,
+        sharedFiles: Bool = false,
         textOf: (String) -> String? = { _ in nil },
         who: (PBOrigin?) -> String? = { _ in nil }
     ) -> [ChatItem] {
-        let next = Context(locale: MessageLocale.current, machine: machine, cwd: cwd, home: home, agent: agent)
+        let next = Context(locale: MessageLocale.current, machine: machine, cwd: cwd, home: home, agent: agent, sharedFiles: sharedFiles)
         let given = Inputs(d: d, zone: zone, day: LocalDay(ms: now, zone: zone))
         // Published histories share immutable pages. Check their append lineage
         // instead of comparing every old protobuf on every arriving message.
@@ -702,7 +724,7 @@ public struct ChatProjection: Sendable {
             // pass, even with nothing new, builds them all once more, as before.
             inputs = nil
         } else {
-            items = buildChat(events, d: d, machine: machine, cwd: cwd, home: home, now: now, zone: zone, textOf: textOf, who: who)
+            items = buildChat(events, d: d, machine: machine, cwd: cwd, home: home, now: now, zone: zone, sharedFiles: sharedFiles, textOf: textOf, who: who)
             previous = (events as? PagedList<PBEvent>) ?? PagedList(events)
             builds += 1
             inputs = given

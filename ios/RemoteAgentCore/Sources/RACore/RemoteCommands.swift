@@ -257,6 +257,25 @@ extension Remote {
         return token
     }
 
+    // --- shared files ---
+
+    /// One block of a file the agent shared (`GetSharedFileChunk`): read-only, so a retry of the same
+    /// request is safe, and never kept in a log.
+    public func sharedFileChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
+        var cmd = PBCommand()
+        cmd.getSharedFileChunk.sessionID = sessionId
+        cmd.getSharedFileChunk.fileID = fileId
+        cmd.getSharedFileChunk.offset = offset
+        let r = try await command(sessionId, cmd)
+        guard case .getSharedFileChunk(let chunk)? = r.kind else {
+            throw CommandError("internal", L10nMessage.newSessionUnexpectedReply())
+        }
+        return chunk
+    }
+
+    /// The fetcher `SharedFileStore` downloads with.
+    public nonisolated var sharedFileFetcher: any SharedFileFetching { RemoteSharedFileFetcher(remote: self) }
+
     // --- images ---
 
     /// An image's display copy, from the cache of envelopes or the server.
@@ -313,9 +332,16 @@ extension Duration {
 extension PBCommand {
     var isReadOnlyCommand: Bool {
         switch kind {
-        case .getMachineStatus, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus: true
+        case .getMachineStatus, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus, .getSharedFileChunk: true
         case .schedule(let request): ["list", "get"].contains(request.operation)
         default: false
         }
+    }
+}
+
+private struct RemoteSharedFileFetcher: SharedFileFetching {
+    let remote: Remote
+    func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
+        try await remote.sharedFileChunk(sessionId: sessionId, fileId: fileId, offset: offset)
     }
 }
