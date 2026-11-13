@@ -1440,7 +1440,7 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		}
 		e.data = d
 	}
-	if h.Purpose == Command && readOnlyCommand(h, plain) {
+	if h.Purpose == Command && ReadOnlyCommand(h, plain) {
 		e.mu.Unlock()
 		gateHeld = false
 		e.execution.Unlock()

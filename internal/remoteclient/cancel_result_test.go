@@ -11,7 +11,22 @@ func TestInterruptedResultsRemainUnknown(t *testing.T) {
 			}
 		}
 	}
-	if !Uncertain(&CommandError{Code: "unknown"}) {
+	if !Uncertain(&CommandError{Code: "unknown_outcome"}) {
 		t.Fatal("unsigned outcome is not final")
+	}
+}
+
+func TestSignedUnknownAndReadOnlyInterruptionsAreFinal(t *testing.T) {
+	for _, fromDaemon := range []bool{false, true} {
+		for _, code := range []string{"unknown", "generation_conflict"} {
+			if Uncertain(&CommandError{Code: code, FromDaemon: fromDaemon}) {
+				t.Fatalf("%s daemon=%v", code, fromDaemon)
+			}
+		}
+	}
+	for _, code := range []string{"canceled", "deadline_exceeded", "aborted"} {
+		if Uncertain(&CommandError{Code: code, FromDaemon: true, ReadOnly: true}) {
+			t.Fatal(code)
+		}
 	}
 }

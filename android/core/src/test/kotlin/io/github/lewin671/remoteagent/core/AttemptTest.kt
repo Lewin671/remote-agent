@@ -9,6 +9,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AttemptTest {
+    @Test fun signedUnknownAndReadOnlyInterruptionsAreFinal() {
+        for (fromDaemon in listOf(false, true)) {
+            for (code in listOf("unknown", "generation_conflict"))
+                assertFalse(uncertain(CommandException(code, "failure", fromDaemon)))
+            assertTrue(uncertain(CommandException(CommandException.UNKNOWN, "unverified", fromDaemon)))
+        }
+        for (code in listOf("canceled", "deadline_exceeded", "aborted"))
+            assertFalse(uncertain(CommandException(code, "read interrupted", fromDaemon = true, readOnly = true)))
+    }
+
     @Test fun interruptedResultsRemainUnknown() {
         for (code in listOf("canceled", "deadline_exceeded", "aborted")) {
             val a = Attempt()

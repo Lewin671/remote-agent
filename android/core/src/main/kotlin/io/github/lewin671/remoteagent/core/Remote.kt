@@ -3400,6 +3400,7 @@ class Remote(
                             msg.errorCode,
                             msg.errorMessage.ifEmpty { msg.errorCode },
                             fromDaemon = true,
+                            readOnly = p.command?.isReadOnlyCommand() == true,
                         )
                     if (p.command?.hasSchedule() == true && p.command.schedule.operation == "list" && msg.hasSchedule() && currentScheduleMember(p.machineId)) {
                         cache?.putBlob("schedule:${p.machineId}", scheduleSnapshot(p.requestId, res.result))
@@ -3995,3 +3996,8 @@ class Remote(
         )
     }
 }
+
+/** Keep in step with deviceauth.IsReadOnlyCommand; unrecognized kinds mutate. */
+internal fun io.github.lewin671.remoteagent.proto.Command.isReadOnlyCommand(): Boolean =
+    hasGetSettings() || hasListModels() || hasListDirectories() || hasGetLiveSnapshot() || hasGetImageUploadStatus() ||
+        hasSchedule() && schedule.operation in setOf("list", "get")

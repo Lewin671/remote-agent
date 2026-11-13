@@ -79,7 +79,7 @@ func localImageProblem(_ message: LocalizedMessage) -> ImageProblem? {
 private func uploadProblem(_ code: String) -> ImageProblem? {
     switch code {
     case "resource_exhausted": ImageProblem(kind: .storage)
-    case "network", "unavailable", "deadline_exceeded", "expired", "unknown_outcome", "not_found", "aborted": ImageProblem(kind: .offline)
+    case "network", "unavailable", "deadline_exceeded", "expired", "unknown_outcome", "not_found", "generation_conflict": ImageProblem(kind: .offline)
     case "invalid_argument", "data_loss": ImageProblem(kind: .unreadable)
     case "permission_denied", "unauthenticated": ImageProblem(kind: .failed)
     default: nil

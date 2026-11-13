@@ -3,6 +3,8 @@ package relay
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -92,5 +94,26 @@ func TestCancellationTakesPriorityOverBackendStatus(t *testing.T) {
 				t.Errorf("%v wrapped=%v: %s want %s", cause, wrap, out.ErrorCode, want)
 			}
 		}
+	}
+}
+
+type canceledTerminalBackend struct {
+	interruptedScheduleBackend
+	dir string
+}
+
+func (canceledTerminalBackend) SessionIDs() []string                  { return []string{"test-session"} }
+func (canceledTerminalBackend) OpenTerminal(string) (Terminal, error) { return nil, context.Canceled }
+func (b canceledTerminalBackend) SessionDir(string) string            { return b.dir }
+func TestOpenTerminalBeforeStreamIsDefinite(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "relay.key"), make([]byte, 32), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := &conn{r: New(canceledTerminalBackend{dir: dir})}
+	initializeTestSecurityKeys(t, c)
+	out := c.execute(context.Background(), "test-session", &pb.Command{Kind: &pb.Command_OpenTerminal{OpenTerminal: &pb.OpenTerminalRequest{SessionId: "test-session", StreamId: "terminal-stream-request"}}})
+	if out.ErrorCode != "failed_precondition" {
+		t.Fatalf("pre-stream cancellation: %s", out.ErrorCode)
 	}
 }

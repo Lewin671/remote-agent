@@ -810,7 +810,7 @@ func TestStopUsesTheSealedCommandDeadline(t *testing.T) {
 		}
 	})
 	var commandErr *remoteclient.CommandError
-	if !errors.As(err, &commandErr) || commandErr.Code != "unknown" {
+	if !errors.As(err, &commandErr) || commandErr.Code != "unknown_outcome" {
 		t.Fatalf("stop result = %v, want unknown after command deadline", err)
 	}
 	if late := time.Since(deadline); late > 650*time.Millisecond {

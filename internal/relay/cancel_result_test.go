@@ -36,7 +36,7 @@ func TestInterruptedResultRemainsUnknownAcrossRestart(t *testing.T) {
 				}
 				_, err := e.client.Forward(context.Background(), s.MachineID, cmd)
 				var ce *remoteclient.CommandError
-				if !errors.As(err, &ce) || ce.Code != "unknown" {
+				if !errors.As(err, &ce) || ce.Code != "unknown_outcome" {
 					t.Errorf("attempt %d: want unknown, got %v", i, err)
 				}
 			}
@@ -66,5 +66,30 @@ func TestScheduleRevisionConflictIsAuthenticatedAndFinal(t *testing.T) {
 	var ce *remoteclient.CommandError
 	if !errors.As(err, &ce) || ce.Code != "revision_conflict" || !ce.FromDaemon || remoteclient.Uncertain(err) {
 		t.Fatalf("conflict must be final: %v", err)
+	}
+}
+
+func TestSignedUnknownIsCachedAndFinal(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "sess1")
+	e.backend.sendResult = func(context.Context) error {
+		return connect.NewError(connect.CodeUnknown, errors.New("unclassified failure"))
+	}
+	e.startRelay()
+	s := e.session(t, "sess1", 0)
+	e.online(t, true)
+	env, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, Text: "hello", RequestId: "final-message"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		_, err = e.client.Forward(context.Background(), s.MachineID, env)
+		var ce *remoteclient.CommandError
+		if !errors.As(err, &ce) || ce.Code != "unknown" || !ce.FromDaemon || remoteclient.Uncertain(err) {
+			t.Fatalf("want final signed unknown: %v", err)
+		}
+	}
+	if n := e.backend.sendCount(); n != 1 {
+		t.Fatal(n)
 	}
 }

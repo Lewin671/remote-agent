@@ -69,9 +69,11 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		}
 		// These codes cannot prove that no native side effect happened.
 		// Leave the accepted entry started and send no authenticated final result.
-		switch res.ErrorCode {
-		case "canceled", "deadline_exceeded", "aborted":
-			return nil, deviceauth.ErrOutcomeUnknown
+		if !deviceauth.IsReadOnlyCommand(cmd) {
+			switch res.ErrorCode {
+			case "canceled", "deadline_exceeded", "aborted":
+				return nil, deviceauth.ErrOutcomeUnknown
+			}
 		}
 		return proto.Marshal(res)
 	})
@@ -278,7 +280,14 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 		out.ErrorCode = connect.CodeOf(err).String()
 		// Some Backend methods return context errors directly rather than
 		// passing through the local RPC error mapper.
+		_, openingTerminal := cmd.Kind.(*pb.Command_OpenTerminal)
+		var generationConflict *protocol.GenerationConflictError
 		switch {
+		case openingTerminal && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)):
+			// openTerminal cleans up on every error before serving the stream.
+			out.ErrorCode = connect.CodeFailedPrecondition.String()
+		case errors.As(err, &generationConflict):
+			out.ErrorCode = "generation_conflict"
 		case errors.Is(err, context.Canceled):
 			out.ErrorCode = connect.CodeCanceled.String()
 		case errors.Is(err, context.DeadlineExceeded):

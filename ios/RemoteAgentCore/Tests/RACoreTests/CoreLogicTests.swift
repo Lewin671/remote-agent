@@ -6,6 +6,18 @@ import Testing
 @testable import RACore
 
 @Suite struct AttemptTests {
+    @Test func signedUnknownAndReadOnlyInterruptionsAreFinal() {
+        for fromDaemon in [false, true] {
+            for code in ["unknown", "generation_conflict"] {
+                #expect(!uncertain(CommandError(code, "failure", fromDaemon: fromDaemon)))
+            }
+            #expect(uncertain(CommandError(CommandError.unknownOutcome, "unverified", fromDaemon: fromDaemon)))
+        }
+        for code in ["canceled", "deadline_exceeded", "aborted"] {
+            #expect(!uncertain(CommandError(code, "read interrupted", fromDaemon: true, readOnly: true)))
+        }
+    }
+
     private final class Maker {
         var n = 0
         func make() -> PreparedCommand {

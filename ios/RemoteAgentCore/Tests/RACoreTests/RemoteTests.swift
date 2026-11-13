@@ -459,6 +459,28 @@ extension SyncServerTests {
             }
         }
 
+        @Test func verifiedReadTimeoutAndFinalFailuresDoNotRetry() async throws {
+            try await world { w in
+                let r = try await w.client()
+                r.start()
+                _ = try await r.awaitState("online machine") { $0.machines[w.daemon.id]?.online == true }
+                for code in ["canceled", "deadline_exceeded", "unknown", "generation_conflict"] {
+                    await w.daemon.setAnswer { _, _ in
+                        PBCommandResult.with { $0.errorCode = code; $0.errorMessage = "failure" }
+                    }
+                    var command = PBCommand()
+                    if code == "generation_conflict" { command.completeImageUpload.transferID = "test-transfer-id" }
+                    else { command.listModels = PBListModelsRequest() }
+                    do {
+                        _ = try await r.forward(r.prepare(machineId: w.daemon.id, sessionId: "", command))
+                        Issue.record("expected final failure")
+                    } catch let error as CommandError {
+                        #expect(error.fromDaemon && error.code == code && !error.unknown)
+                    }
+                }
+            }
+        }
+
         @Test func forwardsCommandsAndReportsOffline() async throws {
             try await world { w in
                 let r = try await w.client()

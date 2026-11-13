@@ -12,6 +12,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -106,7 +107,8 @@ func TestFileHashCannotCompleteAnotherBeginGeneration(t *testing.T) {
 			close(resume)
 			got := <-done
 			joined = true
-			if got.status != nil || connect.CodeOf(got.err) != connect.CodeAborted {
+			var conflict *protocol.GenerationConflictError
+			if got.status != nil || !errors.As(got.err, &conflict) || connect.CodeOf(got.err) != connect.CodeFailedPrecondition {
 				t.Fatalf("old hash completed replacement generation: status=%v err=%v", got.status, got.err)
 			}
 			current, err := u.load(tid)

@@ -66,7 +66,7 @@ fun attachmentFailure(error: Throwable, upload: Boolean = false): AttachmentFail
     val declared = (error as? MessageFailure)?.imageKind
     if (declared != null) return localAttachmentFailure(declared, detail)
     if (upload && isUploadHashMismatch(error)) return localAttachmentFailure(ImageProblemKind.SOURCE, detail)
-    if (upload && error is CommandException && error.code in setOf("already_exists", "aborted"))
+    if (upload && error is CommandException && error.code in setOf("already_exists", "generation_conflict"))
         return localAttachmentFailure(ImageProblemKind.OTHER, detail)
     if (upload && error is java.io.IOException) return localAttachmentFailure(ImageProblemKind.NETWORK, detail)
     if (error is ConnectException) {

@@ -17,6 +17,12 @@ import (
 // Stored content uses deviceauth.Version; pairing uses e2e.Version.
 const Version = 14
 
+// GenerationConflictError rejects completion of a replaced upload before commit.
+// Its diagnostic remains owned by the upload handler.
+type GenerationConflictError struct{ Message string }
+
+func (e *GenerationConflictError) Error() string { return e.Message }
+
 // Header carries Version on the daemon's local socket, in both directions.
 const Header = "Remote-Agent-Protocol"
 

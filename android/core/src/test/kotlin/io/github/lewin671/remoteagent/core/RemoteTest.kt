@@ -1158,6 +1158,54 @@ class RemoteTest {
             r.awaitState("new title") { it.sessions["s1"]?.info?.title == "新的标题" }
         }
 
+    @Test fun generationConflictStopsTheFileUploadWithoutResync() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.machines[daemon.id]?.online == true }
+        var completes = 0
+        var statuses = 0
+        daemon.answer = { _, command ->
+            val status = ImageUploadStatus.newBuilder().setState(ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING).setMaxChunkBytes(8192).build()
+            when {
+                command.hasBeginImageUpload() -> CommandResult.newBuilder().setBeginImageUpload(BeginImageUploadResponse.newBuilder().setStatus(status)).build()
+                command.hasCompleteImageUpload() -> {
+                    completes++
+                    CommandResult.newBuilder().setErrorCode("generation_conflict").setErrorMessage("diagnostic changed").build()
+                }
+                else -> { statuses++; error("unexpected upload retry/resync") }
+            }
+        }
+        val error = runCatching {
+            uploadFile(r.uploadChannel(daemon.id), "file-transfer-id", "empty.bin", 0, { java.io.ByteArrayInputStream(byteArrayOf()) })
+        }.exceptionOrNull() as CommandException
+        assertTrue(error.fromDaemon)
+        assertEquals("generation_conflict", error.code)
+        assertFalse(error.unknown)
+        assertEquals(1, completes)
+        assertEquals(0, statuses)
+    }
+
+    @Test fun verifiedReadTimeoutAndFinalFailuresDoNotRetry() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.machines[daemon.id]?.online == true }
+        for (code in listOf("canceled", "deadline_exceeded", "unknown", "generation_conflict")) {
+            var calls = 0
+            daemon.answer = { _, _ ->
+                calls++
+                CommandResult.newBuilder().setErrorCode(code).setErrorMessage("failure").build()
+            }
+            val command = if (code == "generation_conflict")
+                Command.newBuilder().setCompleteImageUpload(CompleteImageUploadRequest.newBuilder().setTransferId("test-transfer-id")).build()
+            else Command.newBuilder().setListModels(ListModelsRequest.getDefaultInstance()).build()
+            val error = runCatching { r.forward(r.prepare(daemon.id, "", command)) }.exceptionOrNull() as CommandException
+            assertTrue(error.fromDaemon)
+            assertEquals(code, error.code)
+            assertFalse(error.unknown)
+            assertEquals(1, calls)
+        }
+    }
+
     @Test
     fun forwardsCommandsAndReportsOffline() =
         runBlocking<Unit> {

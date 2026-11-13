@@ -95,7 +95,7 @@ it("retries create with its frozen request and uses CAS for all task mutations",
   const r = probe();
   const send = vi
     .spyOn(r, "machineCommand")
-    .mockRejectedValueOnce(new CommandError("unknown", "lost reply"));
+    .mockRejectedValueOnce(new CommandError("unknown_outcome", "lost reply"));
   await expect(
     r.changeSchedule("computer", "draft", {
       operation: "create",
@@ -263,7 +263,7 @@ it("does not hold the list slot or revision follow-up while resolving a target",
 });
 
 it("retains an uncertain relay abort instead of treating it as a task revision conflict",async()=>{
- const r=probe();vi.spyOn(r,"machineCommand").mockRejectedValue(new CommandError("unknown","relay outcome unknown",false));
+ const r=probe();vi.spyOn(r,"machineCommand").mockRejectedValue(new CommandError("unknown_outcome","relay outcome unknown",false));
  await expect(r.changeSchedule("computer","task-1",{operation:"pause",taskId:"task-1",revision:1})).rejects.toThrow("relay outcome unknown");
  expect(r.scheduleAttempts.get("computer/task-1")?.frozen).toBe(true);
 });

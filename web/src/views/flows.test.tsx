@@ -229,7 +229,7 @@ it("moves to the next question when a retried answer goes through", async () => 
   let calls = 0;
   const real = r.command.bind(r);
   r.command = async (sid: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
-    if (cmd?.case === "answerQuestion" && calls++ === 0) throw new CommandError("unknown", "连接超时");
+    if (cmd?.case === "answerQuestion" && calls++ === 0) throw new CommandError("unknown_outcome", "连接超时");
     return real(sid, cmd, slot);
   };
   mount(<AskDock r={r} />);
@@ -504,7 +504,7 @@ it("never sends one project's unknown start from another project's box", async (
   r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "createSession") {
       sent.push({ cwd: cmd.value.cwd, prompt: cmd.value.prompt, requestId: slot?.requestId });
-      throw new CommandError("unknown", "连接超时");
+      throw new CommandError("unknown_outcome", "连接超时");
     }
     throw new CommandError("unavailable", "no");
   };
@@ -665,7 +665,7 @@ it("lets a multi-select answer be changed and sent again after a definite failur
 
 it("retries a multi-select answer of unknown outcome unchanged", async () => {
   const r = demo();
-  const { sent, slots } = failingAnswers(r, new CommandError("unknown", "连接超时"));
+  const { sent, slots } = failingAnswers(r, new CommandError("unknown_outcome", "连接超时"));
   mount(<ClaudeAsk r={r} />);
   await click(button(/^按 IP/));
   await click(button(/^按设备/));
@@ -745,7 +745,7 @@ function ClaudeQuestionPage({ r, id = "cq" }: { r: DemoRemote; id?: string }) {
 
 it("keeps ticks and a pending answer between the dock and the question page", async () => {
   const r = demo();
-  const { sent, slots } = failingAnswers(r, new CommandError("unknown", "连接超时"));
+  const { sent, slots } = failingAnswers(r, new CommandError("unknown_outcome", "连接超时"));
   mount(<ClaudeAsk r={r} />);
   await click(button(/按 IP/));
   // To the page and back: the tick is still there.
@@ -831,7 +831,7 @@ it("does not start an empty session when 重试 is tapped after the text was cle
 it("never renews a session start of unknown outcome, even once it expired", async () => {
   const r = demo();
   const sent: string[] = [];
-  const answers = [new CommandError("unknown", "连接超时"), new CommandError("deadline_exceeded", "the command expired before it reached the machine")];
+  const answers = [new CommandError("unknown_outcome", "连接超时"), new CommandError("expired", "the command expired before it reached the machine")];
   r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "createSession") {
       sent.push(slot!.requestId);
@@ -866,7 +866,7 @@ it("never renews a session start of unknown outcome, even once it expired", asyn
 it("keeps an answer of unknown outcome unknown when its retry comes back expired", async () => {
   const r = demo();
   const slots: string[] = [];
-  const answers = [new CommandError("unknown", "连接超时"), new CommandError("deadline_exceeded", "expired")];
+  const answers = [new CommandError("unknown_outcome", "连接超时"), new CommandError("expired", "expired")];
   r.command = async (_s: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "answerQuestion") {
       slots.push(slot!.requestId);
@@ -918,7 +918,7 @@ it("shows a failed call's exit code beside its approval", () => {
 it("keeps an answer of unknown outcome unknown when its retry finds the machine offline", async () => {
   const r = demo();
   const slots: string[] = [];
-  const answers = [new CommandError("unknown", "连接超时"), new CommandError("unavailable", "电脑不在线，指令没有发出")];
+  const answers = [new CommandError("unknown_outcome", "连接超时"), new CommandError("unavailable", "电脑不在线，指令没有发出")];
   r.command = async (_s: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "answerQuestion") {
       slots.push(slot!.requestId);
@@ -947,10 +947,10 @@ describe("an unknown session start", () => {
     r.machineCommand = async (_m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
       if (cmd?.case !== "createSession") throw new CommandError("unavailable", "no");
       sent.push({ id: slot!.requestId, prompt: cmd.value.prompt ?? "", agent: cmd.value.agent ?? 0 });
-      const o = outcomes.shift() ?? new CommandError("unknown", "连接超时");
+      const o = outcomes.shift() ?? new CommandError("unknown_outcome", "连接超时");
       if (o === "wait") {
         await new Promise<void>((res) => (release = res));
-        throw new CommandError("unknown", "连接超时");
+        throw new CommandError("unknown_outcome", "连接超时");
       }
       throw o;
     };
@@ -1004,7 +1004,7 @@ describe("an unknown session start", () => {
   });
 
   it("gives way to a different start, even once it expired", async () => {
-    const t = setup([new CommandError("unknown", "连接超时"), new CommandError("deadline_exceeded", "expired")]);
+    const t = setup([new CommandError("unknown_outcome", "连接超时"), new CommandError("expired", "expired")]);
     await t.type("加限流");
     await t.send(1);
     await t.send(2);
@@ -1043,7 +1043,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
       if (cmd?.case === "createSession") {
         sent.push({ machine: m, id: slot!.requestId, prompt: cmd.value.prompt, imageIds: cmd.value.imageIds });
-        throw new CommandError("unknown", "连接超时");
+        throw new CommandError("unknown_outcome", "连接超时");
       }
       return DemoRemote.prototype.machineCommand.call(r, m, cmd);
     };
@@ -1090,7 +1090,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
       if (cmd?.case !== "createSession") return DemoRemote.prototype.machineCommand.call(r, m, cmd);
       sent.push({ id: slot!.requestId, prompt: cmd.value.prompt });
       const e = await new Promise<CommandError | undefined>((resolve) => answers.push(resolve));
-      throw e ?? new CommandError("unknown", "连接超时");
+      throw e ?? new CommandError("unknown_outcome", "连接超时");
     };
     mount(page(r));
     await type("加限流");
@@ -1591,7 +1591,7 @@ describe("approvals whose answer was not confirmed (v2)", () => {
   const card = () => host.querySelector(".tc")!;
 
   it("locks both choices and retries only the one made, as the same request", async () => {
-    const calls = setup(new CommandError("unknown", "连接超时"));
+    const calls = setup(new CommandError("unknown_outcome", "连接超时"));
     await click(button(message("approval.allow"), card()));
     await vi.waitFor(() => expect(card().textContent).toContain("没送到电脑"), { timeout: 3000 });
     expect(button(message("approval.deny"), card())).toBeUndefined();
@@ -2846,7 +2846,7 @@ it("retries a start with a launch override whose reply was lost as the same requ
   r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "createSession") {
       sent.push({ id: slot!.requestId, model: cmd.value.model });
-      throw new CommandError("unknown", "连接超时");
+      throw new CommandError("unknown_outcome", "连接超时");
     }
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
@@ -3303,7 +3303,7 @@ it("sends a fork whose answer was lost again as the same request, and gives it u
 
   // The computer may have forked: the row says so and promises no second fork.
   const command = vi.spyOn(r, "command");
-  command.mockRejectedValueOnce(new CommandError("unknown", "不确定电脑有没有执行"));
+  command.mockRejectedValueOnce(new CommandError("unknown_outcome", "不确定电脑有没有执行"));
   await click(row());
   await vi.waitFor(() => expect(row().textContent).toBe("分叉会话上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"));
   const slot = command.mock.calls[0][2];
@@ -3315,7 +3315,7 @@ it("sends a fork whose answer was lost again as the same request, and gives it u
   expect(row().textContent).toContain("上次的分叉结果不确定");
 
   // The retry is the same request; one that comes back expired is not sent again.
-  command.mockRejectedValueOnce(new CommandError("deadline_exceeded", "过期了"));
+  command.mockRejectedValueOnce(new CommandError("expired", "过期了"));
   await click(row());
   await vi.waitFor(() => expect(row().textContent).toMatch(/^放弃上次的分叉/));
   expect(command.mock.calls[1][2]).toBe(slot);
@@ -3670,7 +3670,7 @@ async function reviewType(el: HTMLInputElement | HTMLTextAreaElement, text: stri
 it("retains an unknown start across page unmounts", async () => {
   const r = demo();
   const slots: string[] = [];
-  r.machineCommand = async (_m: string, _c: CommandKind, slot?: RequestSlot) => { slots.push(slot!.requestId); throw new CommandError("unknown", "连接超时"); };
+  r.machineCommand = async (_m: string, _c: CommandKind, slot?: RequestSlot) => { slots.push(slot!.requestId); throw new CommandError("unknown_outcome", "连接超时"); };
   let ns!: ReturnType<typeof useNewSession>;
   function Box() { ns = useNewSession(r, "/Users/me/Code/foo", () => undefined); return null; }
   mount(<Box />);
@@ -3822,7 +3822,7 @@ it("shows the pending start and its original message when returning to the proje
   const slots: string[] = [];
   const original = r.machineCommand.bind(r);
   r.machineCommand = async (machine: string, cmd: CommandKind, slot?: RequestSlot) => {
-    if (cmd?.case === "createSession") { slots.push(slot!.requestId); throw new CommandError("unknown", "连接超时"); }
+    if (cmd?.case === "createSession") { slots.push(slot!.requestId); throw new CommandError("unknown_outcome", "连接超时"); }
     return original(machine, cmd);
   };
   const page = <ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />;
@@ -4054,7 +4054,7 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot) => {
     if (cmd?.case !== "createSession") return real(m, cmd);
     calls.push({ cmd, slot });
-    if (calls.length === 1) throw new CommandError("unknown", "连接中断");
+    if (calls.length === 1) throw new CommandError("unknown_outcome", "连接中断");
     return create(CommandResultSchema, { kind: { case: "createSession", value: { session: { id: "new-files" } } } });
   };
   // The default demo project selects the image-capable machine.

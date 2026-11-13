@@ -25,6 +25,7 @@ import {
   type HistoryResult,
 } from "./device-security-client";
 import {
+  MAX_CLOCK_SKEW,
   parseHeader,
   Purpose,
   SecurityError,
@@ -243,6 +244,7 @@ export class CommandError extends Error {
     readonly code: string,
     message: string,
     readonly fromDaemon = false,
+    readonly readOnly = false,
   ) {
     super(message);
   }
@@ -254,7 +256,7 @@ export class CommandError extends Error {
  * the next attempt start afresh. */
 export function uncertain(e: unknown): boolean {
   if (e instanceof CommandError)
-    return e.code === "unknown" || (e.fromDaemon && ["canceled", "deadline_exceeded", "aborted"].includes(e.code));
+    return e.code === "unknown_outcome" || (e.fromDaemon && !e.readOnly && ["canceled", "deadline_exceeded", "aborted"].includes(e.code));
   return e instanceof ConnectError;
 }
 
@@ -297,6 +299,14 @@ export type ConnState = "connecting" | "online" | "offline";
 export type Link = "online" | "waiting" | "no-network" | "no-server";
 
 export const COMMAND_TTL_MS = 60_000;
+// Match the security protocol's five-minute maximum clock skew. Waiting this
+// long avoids offering abandonment while a slower daemon could still admit it.
+export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
+
+function readOnlyCommand(cmd: CommandKind): boolean {
+  return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getImageUploadStatus"].includes(cmd.case ?? "") ||
+    cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""));
+}
 
 /** Largest piece of an image upload: each is sealed into one command,
  * which must stay under 1 MiB. */
@@ -552,7 +562,7 @@ export class Remote {
   private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
     if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
     const issue = this.fileUploadIssue(machineId);
-    if (issue) throw new CommandError(mayHaveRun ? "unknown" : "failed_precondition", issue);
+    if (issue) throw new CommandError(mayHaveRun ? "unknown_outcome" : "failed_precondition", issue);
   }
 
   supportsSchedules(id: string): boolean {
@@ -3188,6 +3198,8 @@ export class Remote {
         toBinary(CommandSchema, create(CommandSchema, { kind: cmd })),
       ).kind;
     const { requestId, deadline } = slot;
+    if (Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
+      throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
     // A machine of another protocol version would refuse the command, in
     // words that do not say which side to update: say so here, unsent.
     const m = this.machines.get(machineId);
@@ -3239,6 +3251,8 @@ export class Remote {
     let mayHaveRun = false;
     for (let attempt = 0; ; attempt++) {
       try {
+        if (attempt > 0 && Date.now() >= deadline)
+          throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"));
         // Metadata may refresh while sealing, logging in or backing off.
         // Check the immutable authorized payload, including unknown retries.
         this.checkFileCapability(machineId, cmd, mayHaveRun);
@@ -3262,12 +3276,12 @@ export class Remote {
           ).msg;
         } catch {
           throw new CommandError(
-            "unknown",
+            "unknown_outcome",
             l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),
           );
         }
         if (msg.errorCode)
-          throw new CommandError(msg.errorCode, msg.errorMessage, true);
+          throw new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd));
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
@@ -3282,7 +3296,7 @@ export class Remote {
             await this.login();
           } catch {
             throw new CommandError(
-              "unknown",
+              "unknown_outcome",
               l10n.t("errors.the_previous_request_s_outcome_is_still_unknown_cannot"),
             );
           }
@@ -3298,18 +3312,19 @@ export class Remote {
           Code.Aborted,
         ].includes(ce.code);
         if (unknown) mayHaveRun = true;
-        if (unknown && attempt < 3 && Date.now() + 2000 < deadline) {
-          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        const delay = 1000 * (attempt + 1);
+        if (unknown && attempt < 3 && Date.now() + delay < deadline) {
+          await new Promise((r) => setTimeout(r, delay));
           continue;
         }
         if (ce.code === Code.Unavailable)
           throw mayHaveRun
-            ? new CommandError("unknown", l10n.t("errors.connection_dropped_midway"))
+            ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"))
             : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
-        if (unknown) throw new CommandError("unknown", l10n.t("errors.connection_timed_out"));
+        if (unknown) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"));
         if (mayHaveRun)
           throw new CommandError(
-            "unknown",
+            "unknown_outcome",
             l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"),
           );
         throw e;
@@ -3318,8 +3333,8 @@ export class Remote {
   }
 
   /** Sends a chat message. A retry passes the first attempt's slot, so
-   * the daemon answers it from its log. Only if that slot expired before
-   * reaching the computer is a new one used; the send ID still keeps the
+   * the daemon answers it from its log. Only if that slot expired locally and
+   * its prior outcome was never unknown is a new one used; the send ID still keeps the
    * daemon from queueing the text twice. Returns the slot that got an
    * answer. */
   async sendMessage(
@@ -3345,7 +3360,7 @@ export class Remote {
         wasUnknown ||
         uncertain(e) ||
         !(e instanceof CommandError) ||
-        e.code !== "deadline_exceeded" ||
+        e.code !== "expired" ||
         Date.now() < slot.deadline
       )
         throw e;

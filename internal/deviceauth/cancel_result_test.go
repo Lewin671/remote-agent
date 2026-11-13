@@ -75,3 +75,44 @@ func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 		t.Fatalf("completed retry: %q %v", out, err)
 	}
 }
+
+func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
+	c := newCurrentChain(t)
+	path := filepath.Join(t.TempDir(), "endpoint.db")
+	m := c.machineEndpoint(t, path)
+	cl := c.clientEndpoint(t)
+	defer cl.Close()
+	now := uint64(time.Now().UnixMilli())
+	deadline := now + 60000
+	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "pruned-interruption", Deadline: deadline}, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	_, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { calls++; return nil, context.Canceled })
+	if !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatal(err)
+	}
+	// Admission of another request actually prunes the persisted expired entry.
+	next, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "next-request-after-prune", Deadline: deadline + 60000}, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Accept(next, nil, deadline, func(Header, []byte) ([]byte, error) { return []byte("done"), nil }); err != nil {
+		t.Fatal(err)
+	}
+	h, _ := ParseHeader(w.Header)
+	if _, ok := m.data.Accepted[acceptedKey(h)]; ok {
+		t.Fatal("entry was not pruned")
+	}
+	m.Close()
+	m, err = OpenEndpoint(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	_, err = m.Accept(w, nil, deadline, func(Header, []byte) ([]byte, error) { calls++; return nil, nil })
+	if !errors.Is(err, ErrInvalid) || calls != 1 {
+		t.Fatalf("expired retry: calls=%d err=%v", calls, err)
+	}
+}
