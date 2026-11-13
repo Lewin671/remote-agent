@@ -355,7 +355,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	stop()
 	start()
 	mustLive(t, client.Sync(ctx))
-	retried, err := client.Seal(machine, "", request, commandDeadline, create)
+	retried, err := client.Reseal(sealed)
 	mustLive(t, err)
 	if bytes.Equal(retried.Ciphertext, sealed.Ciphertext) {
 		t.Fatal("retry did not re-seal")

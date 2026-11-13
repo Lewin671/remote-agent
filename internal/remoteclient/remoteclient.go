@@ -38,13 +38,14 @@ type Client struct {
 	device     ed25519.PrivateKey
 	endpoint   *deviceauth.Endpoint
 	attemptsMu sync.Mutex
-	attempts   map[string]int
+	attempts   map[string]*dispatchHistory
 }
 
 // Token is the bearer token, for tests that talk to the server directly.
 func (c *Client) Token() string { return c.token }
 
-// API is the raw client service.
+// API is the raw client service. Its Forward bypasses dispatch tracking;
+// subsequent high-level retries must supply MayHaveBeenDispatched.
 func (c *Client) API() remoteagentv1connect.ClientServiceClient { return c.api }
 
 // Machine is a decrypted machine.
@@ -229,7 +230,22 @@ func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time
 	if err != nil {
 		return nil, err
 	}
-	return wire.Envelope()
+	env, err := wire.Envelope()
+	if err != nil {
+		return nil, err
+	}
+	header, err := deviceauth.ParseHeader(wire.Header)
+	if err != nil {
+		return nil, err
+	}
+	// plain is the original uncompressed command; compression is not identity.
+	header.Compression = 0
+	key, _, err := deviceauth.RequestIdentity(header, plain)
+	if err != nil {
+		return nil, err
+	}
+	c.rememberFirstSeal(string(key[:]), env)
+	return env, nil
 }
 
 // Do sends cmd to the session's machine and returns the opened result.
@@ -251,8 +267,15 @@ func (c *Client) DoMachine(ctx context.Context, machineID string, cmd *pb.Comman
 	return c.Forward(ctx, machineID, env)
 }
 
-// Forward sends a sealed command and opens the result.
-func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope) (*pb.CommandResult, error) {
+// Forward sends a sealed command and opens the result. With no explicit history,
+// only the unchanged envelope first returned by this Client's Seal is known new.
+// Restored, re-sealed or externally supplied envelopes may have been dispatched.
+// NeverDispatched explicitly asserts otherwise; it cannot erase evidence already
+// observed by this Client. Raw API retries should use MayHaveBeenDispatched.
+func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope, prior ...DispatchEvidence) (*pb.CommandResult, error) {
+	if len(prior) > 1 || len(prior) == 1 && prior[0] != MayHaveBeenDispatched && prior[0] != NeverDispatched {
+		return nil, deviceauth.ErrInvalid
+	}
 	if env == nil {
 		return nil, deviceauth.ErrInvalid
 	}
@@ -275,13 +298,10 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	if err != nil {
 		return nil, err
 	}
-	identity := string(key[:]) + string(payload[:])
-	c.attemptsMu.Lock()
-	if c.attempts == nil {
-		c.attempts = map[string]int{}
-	}
-	c.attempts[identity]++
-	c.attemptsMu.Unlock()
+	// History belongs to the logical request key, including across re-sealing
+	// or a conflicting payload. A changed payload must not reset its prior.
+	identity := string(key[:])
+	c.beginDispatch(identity, env, prior)
 	attempt := NewRequestID()
 	req := connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env, AttemptId: attempt})
 	req.Header().Set("Remote-Agent-Attempt", attempt)
@@ -292,12 +312,8 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 			for _, detail := range ce.Details() {
 				value, e := detail.Value()
 				if d, ok := value.(*pb.NotForwarded); e == nil && ok && d.AttemptId == attempt {
-					c.attemptsMu.Lock()
-					c.attempts[identity]--
-					remaining := c.attempts[identity]
-					c.attemptsMu.Unlock()
 					category := outcome.NotSent
-					if remaining > 0 {
+					if c.notForwarded(identity) {
 						category = outcome.Unknown
 					}
 					return nil, &CommandError{Code: ce.Code().String(), Message: ce.Message(), Outcome: category}
@@ -313,11 +329,7 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	}
 	category := outcome.Verify(out, key[:], payload[:], res.Msg.Outcome, res.Msg.Reason, false)
 	if category == outcome.NotSent {
-		c.attemptsMu.Lock()
-		c.attempts[identity]--
-		remaining := c.attempts[identity]
-		c.attemptsMu.Unlock()
-		if remaining > 0 {
+		if c.notForwarded(identity) {
 			category = outcome.Unknown
 		}
 	}

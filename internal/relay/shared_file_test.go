@@ -56,7 +56,7 @@ func TestSharedFileBlocksAreSealedWithoutCompression(t *testing.T) {
 		}
 		sizes = append(sizes, len(raw.Msg.Result.Ciphertext))
 		// Read-only: the same sealed request may be sent again and runs again.
-		res, err := e.client.Forward(ctx, s.MachineID, env)
+		res, err := e.client.Forward(ctx, s.MachineID, env, remoteclient.MayHaveBeenDispatched)
 		if err != nil || len(res.GetGetSharedFileChunk().GetData()) != testBlock {
 			t.Fatalf("%s: %v %v", id, res, err)
 		}

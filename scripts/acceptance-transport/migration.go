@@ -44,7 +44,7 @@ func (r *run) upgrade(ctx context.Context) response {
 	}
 	probe, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if _, err := r.client.Forward(probe, r.machine, r.oldEnvelope); !remoteclient.Uncertain(err) {
+	if _, err := r.client.Forward(probe, r.machine, r.oldEnvelope, remoteclient.MayHaveBeenDispatched); !remoteclient.Uncertain(err) {
 		return response{Code: "driver_old_result", Error: "old ID did not remain unknown"}
 	}
 	return response{Code: "ok", Unknown: false}
