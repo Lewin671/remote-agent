@@ -21,7 +21,7 @@ const statusLineCommand = `"$RA_EXE" statusline agy`
 // SettingsFile is where a session's settings are written in its state directory.
 const SettingsFile = "agy-settings.json"
 
-// AddonDir is the subdirectory passed to --add-dir holding .agents/hooks.json and .agents/mcp_config.json.
+// AddonDir is the subdirectory passed to --add-dir holding the managed hooks and MCP plugin.
 const AddonDir = "agy"
 
 // ownFlags are agy options that remote-agent manages itself or that would interfere with session operation.
@@ -167,9 +167,17 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 		return nil, err
 	}
 
-	// 2. Write mcp_config.json
+	// 2. Register session-local MCP through the documented native plugin
+	// discovery path, alongside the managed workspace hooks.
+	pluginDir := filepath.Join(agentsDir, "plugins", "remote-agent")
+	if err := os.MkdirAll(pluginDir, 0o700); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.json"), []byte(`{"name":"remote-agent"}`), 0o600); err != nil {
+		return nil, err
+	}
 	mcpJSON := buildMCPConfig(l)
-	if err := os.WriteFile(filepath.Join(agentsDir, "mcp_config.json"), mcpJSON, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "mcp_config.json"), mcpJSON, 0o600); err != nil {
 		return nil, err
 	}
 

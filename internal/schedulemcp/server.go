@@ -107,7 +107,10 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters). The notification title is always the dispatch-time task name and cannot be overridden. Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "notify_user", "", 0, in, "")
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "send_file", Description: sendFileDescription}, func(ctx context.Context, _ *mcp.CallToolRequest, in SendFileInput) (*mcp.CallToolResult, map[string]any, error) {
+	// Antigravity defers MCP tools by default. Expose file delivery directly
+	// so an ordinary request can discover it without knowing MCP terminology.
+	// This vendor metadata does not alter other clients or permission policy.
+	mcp.AddTool(server, &mcp.Tool{Name: "send_file", Description: sendFileDescription, Meta: mcp.Meta{"antigravity/alwaysLoad": true}}, func(ctx context.Context, _ *mcp.CallToolRequest, in SendFileInput) (*mcp.CallToolResult, map[string]any, error) {
 		// Copying up to 100 MiB with its hash can take a while on a slow disk.
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()

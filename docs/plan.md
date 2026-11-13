@@ -117,7 +117,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 **Agent 发文件**
 
 - Codex 在自动 / 完全放行下调用 `send_file` 的审批表现仍未实测；询问模式及 rollout 结果识别已验证（[codex-notes](codex-notes.md#send_file-mcp-工具)）。
-- Antigravity 的自然工具发现和 MCP 远程审批：1.5.7 仍需在终端补充指定原生工具的指令并单次允许；解析与下载已验证，全程远程流程未通过（[antigravity-notes §14](antigravity-notes.md#14-send_file-mcp-工具1572026-11-12)）。
+- Antigravity 的自然工具发现和 MCP 远程审批：1.5.8 已复现首轮返回本地链接、补充原生工具指令后显示 MCP 菜单；本地候选增加原生 MCP plugin、直接暴露 `send_file` 的元数据和六项菜单识别。全部可用模型族额度耗尽，三条自然请求、反例和远程允许/拒绝的真实链路仍未验收通过（[antigravity-notes §14](antigravity-notes.md#14-send_file-mcp-工具1572026-11-12)）。
 - 工具声明 `readOnlyHint` 会不会让各 CLI 跳过询问（现在不声明）；Claude Code 自动和完全放行模式下的表现。
 - 旧 Android / iOS 实际收到带 `shared_files` 的工具调用事件时照常显示：按 protobuf 规则会忽略新字段，未在真实客户端上验证。
 - 100 MiB 文件经中继逐块下载的耗时、连续大块 Forward 在每账户并发和 WebSocket 发送预算下的表现。

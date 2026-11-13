@@ -160,6 +160,13 @@ func TestSendFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tool := range list.Tools {
+		if tool.Name == "send_file" {
+			if tool.Meta["antigravity/alwaysLoad"] != true {
+				t.Fatal("send_file is hidden behind Antigravity's deferred discovery")
+			}
+		} else if tool.Meta["antigravity/alwaysLoad"] != nil {
+			t.Fatalf("unrelated tool %s forced into context", tool.Name)
+		}
 		// A read-only hint could let a CLI skip asking in its ask mode.
 		if tool.Name == "send_file" && tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
 			t.Fatal("send_file claims to be read-only")

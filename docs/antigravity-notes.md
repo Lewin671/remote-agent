@@ -588,3 +588,14 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 隔离状态目录、tmux socket、本地中继、询问模式，Gemini 3.8 Flash Medium。首条消息要求用 `remote_agent` 的 `send_file` 发文件时，模型没有直接调用 MCP，而是尝试用 shell 查找配置和自行启动 MCP；这条自然发现路线没有成功。中断后在隔离终端补充明确要求使用原生 `call_mcp_tool`，指定服务器、工具和路径，模型才调用它。
 
 实测原生工具调用标题为 `remote_agent/send_file`，参数为 `ServerName`、`ToolName`、`Arguments`，结果中的 `file_id` 能被 daemon 识别并挂上 `shared_files`。加密客户端逐块取回后 SHA-256 一致；随后只要求一句完成摘要，没有调用 `send_file`。MCP 审批只在终端出现，客户端未收到审批事件；在终端单次允许后调用完成，没有持久放行。因此这次验证证明工具调用解析与下载成立，不能证明自然工具发现或全程远程审批成立，后续项见 [plan.md](plan.md) 的「待确认」。下载与清理细节见[本轮验收](acceptance-notes.md#agent-发文件电脑端整合2026-11-12未发布分支)。
+
+
+### 1.5.8 续验（2026-11-13，未完成）
+
+使用本 checkout 构建的本地 server、daemon、临时 Remote Agent 账户、独立状态目录与 tmux socket，真实 `agy 1.5.8`，Gemini 3.8 Flash Medium。首轮只说「请把当前目录里的 sample-cn.bin 发给我」，模型先运行文件检查命令，最后给出 `file://` 链接，没有调用 MCP。通过测试 daemon 的本地 CLI 补充明确的 `call_mcp_tool`、ServerName、ToolName 和 Arguments 后，出现原生 MCP 审批；这属于调试补充，不算首轮自然发现。
+
+捕获的 MCP 菜单以 `MCP`、限定工具名和 `Allow calling this tool?` 开头，六项依次是单次允许、本对话允许、持久允许、单次拒绝、本对话拒绝、持久拒绝；对应单次键为 `1` 与 `4`。菜单不展示 Arguments，因此只看限定工具名不能区分同工具的两份待处理调用。样本已脱敏保存为 `internal/antigravity/testdata/screen/mcp-permission-1.5.8.txt`。本轮没有在终端允许这个调用，也没有收到旧 matcher 的远程审批事件。
+
+工具已握手并写出 `send_file` 的 schema 缓存，不能把模型不调用工具等同于 MCP 未注册。CLI 自带 changelog 的 1.3.3 条目说明：MCP 工具可按需发现，`tools/list` 的 `_meta: {"antigravity/alwaysLoad": true}` 可让工具直接暴露；同版本自带定制文档推荐 `plugins/<name>/plugin.json` 与同目录的 `mcp_config.json`。本地候选改为该注册方式并给 `send_file` 加元数据。额外 addon 规则和延迟首条消息的试验未解决发现问题，未保留；注册方式是否就是缺口的根因、候选是否解决首轮发现，均尚未由成功的真实轮次证明。
+
+Gemini Flash 随后达到额度上限。分别用新会话请求 Claude Sonnet 5.5、GPT-OSS 120B、Gemini 4 Argon、Gemini 4 Hydrogen、Claude Opus 5.5，也均在原生终端得到 `Individual quota reached`，停止模型验收。两条中文、一条英文、无发送请求反例、远程允许与拒绝及文件哈希核对尚未完成。新增的解析、菜单匹配和 daemon 卡片/决策测试属于自动测试，不能替代真实 CLI 链路。

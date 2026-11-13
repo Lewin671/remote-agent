@@ -68,9 +68,23 @@ func TestLaunchPermissionAndResume(t *testing.T) {
 					}
 				}
 			}
-			mcp, _ := os.ReadFile(filepath.Join(l.Dir, AddonDir, ".agents", "mcp_config.json"))
+			mcp, _ := os.ReadFile(filepath.Join(l.Dir, AddonDir, ".agents", "plugins", "remote-agent", "mcp_config.json"))
 			if !strings.Contains(string(mcp), "remote_agent") || !strings.Contains(string(mcp), "remote-session") {
 				t.Fatal("MCP binding missing")
+			}
+			manifest := filepath.Join(l.Dir, AddonDir, ".agents", "plugins", "remote-agent", "plugin.json")
+			var plugin struct {
+				Name string `json:"name"`
+			}
+			manifestJSON, err := os.ReadFile(manifest)
+			if err != nil || json.Unmarshal(manifestJSON, &plugin) != nil || plugin.Name != "remote-agent" {
+				t.Fatal("native MCP plugin manifest missing")
+			}
+			if info, err := os.Stat(manifest); err != nil || info.Mode().Perm() != 0o600 {
+				t.Fatal("plugin manifest must be private")
+			}
+			if _, err := os.Stat(filepath.Join(l.Dir, AddonDir, ".agents", "mcp_config.json")); !os.IsNotExist(err) {
+				t.Fatal("standalone MCP registration must not be generated")
 			}
 			mustWrite(t, config, []byte(`{"toolPermission":"always-proceed"}`))
 			l.Resume = true
