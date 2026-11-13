@@ -2113,9 +2113,6 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .ms-ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-top: 1px; }
 .ms-ic .amark { width: 16px; height: 16px; }
 .ms-ic.pr { background: var(--fill2); color: var(--ink2); }
-.ms-ic.c { background: linear-gradient(160deg, #e69a72, #d2714a); }
-.ms-ic.x { background: linear-gradient(160deg, #3a3a3c, #1c1c1e); }
-.ms-ic.g { background: linear-gradient(160deg, #6aa7ff, #3478f6); }
 .ms-rb { flex: 1; min-width: 0; padding-bottom: 12px; border-bottom: .5px solid var(--sep); }
 .ms-u:last-child .ms-rb { border: 0; }
 .ms-rt { display: flex; justify-content: space-between; gap: 10px; font-size: 16px; }

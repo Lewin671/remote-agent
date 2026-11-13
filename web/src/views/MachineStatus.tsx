@@ -329,10 +329,9 @@ function DiskTile({ s, onOpen }: { s: MachineStatus; onOpen: () => void }) {
   );
 }
 
-/** One session's CLI as a ranking row's block: the CLI's own colour and its mark. */
+/** One session's CLI as a ranking row's block: the same grey block as a process, with the CLI's mark in one colour. */
 function SessionBlock({ agent }: { agent: Agent }) {
-  const brand = agent === Agent.CODEX ? "x" : agent === Agent.ANTIGRAVITY ? "g" : "c";
-  return <span className={"ms-ic " + brand}><AgentMark agent={agent} named /></span>;
+  return <span className="ms-ic pr"><AgentMark agent={agent} named /></span>;
 }
 
 /** 占用最多 (A3 ④): up to eight rows, by the main chart's figure, each with a bar

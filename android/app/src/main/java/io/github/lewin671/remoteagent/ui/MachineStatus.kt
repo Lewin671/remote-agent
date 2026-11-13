@@ -509,25 +509,15 @@ private fun ListRow(text: String, color: Color, value: String?, chevron: Boolean
     }
 }
 
-private val agentGradients = mapOf(
-    Agent.AGENT_CLAUDE to listOf(Color(0xFFE69A72), Color(0xFFD2714A)),
-    Agent.AGENT_CODEX to listOf(Color(0xFF3A3A3C), Color(0xFF1C1C1E)),
-    Agent.AGENT_ANTIGRAVITY to listOf(Color(0xFF6AA7FF), Color(0xFF3478F6)),
-)
-
 @Composable
 private fun UsageIcon(row: UsageRow, dim: Boolean) {
     val p = pal
     Box(Modifier.padding(top = 1.dp).size(30.dp).clip(RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
         val agent = row.agent
         val mark = agent?.let { AgentMarks.of(it) }
-        if (row.isSession && mark != null) {
-            Box(Modifier.fillMaxSize().background(Brush.linearGradient(agentGradients[agent] ?: listOf(Color(0xFFB0B0B8), Color(0xFF8E8E93)))).alpha(if (dim) .5f else 1f))
-            Icon16(mark, Color.White)
-        } else {
-            Box(Modifier.fillMaxSize().background(p.fill2))
-            Ic(Lucide.Terminal, 16.dp, p.ink2)
-        }
+        // One grey block for sessions and processes alike: CLI marks stay monochrome (design-system.md).
+        Box(Modifier.fillMaxSize().background(p.fill2))
+        if (row.isSession && mark != null) Icon16(mark, if (dim) p.ink3 else p.ink2) else Ic(Lucide.Terminal, 16.dp, p.ink2)
     }
 }
 
