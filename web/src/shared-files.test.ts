@@ -325,7 +325,7 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
     expect(await store.getPartialMeta("s1", file.fileId)).toBeUndefined();
   });
 
-  it("auto-resumes once on disconnect within 30s, or fails preserving chunks after 30s timeout", async () => {
+  it.each(["unavailable", "unknown_outcome"])("auto-resumes once on %s within 30s, or fails preserving chunks after timeout", async (code) => {
     vi.useFakeTimers();
     const c = vectors.cases[5];
     const size = Number(c.sizeBytes);
@@ -344,7 +344,7 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
         fetched.push(offset.toString());
         if (offset === BigInt(blockBytes) && dropSecondBlock) {
           online = false;
-          throw new CommandError("unavailable", "offline");
+          throw new CommandError(code, "offline");
         }
         return { data: makeVectorBlock(size, Number(offset), blockBytes), totalBytes: BigInt(size) };
       },
@@ -357,13 +357,20 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
     expect(mgr.stateOf("s1", file).status).toBe("downloading");
     expect(mgr.stateOf("s1", file).downloadedBytes).toBe(blockBytes);
 
+    mgr.pause("s1", file.fileId);
+    expect(mgr.stateOf("s1", file).status).toBe("paused");
+    expect(mgr.stateOf("s1", file).downloadedBytes).toBe(blockBytes);
+    await p;
+    const resumed = mgr.startDownload("s1", file);
+    await vi.advanceTimersByTimeAsync(100);
+
     // Connection returns before 30s: resumes once and completes.
     dropSecondBlock = false;
     online = true;
     mgr.onConnectivityChange();
-    await p;
+    await resumed;
     expect(mgr.stateOf("s1", file).status).toBe("downloaded");
-    expect(fetched).toEqual(["0", "786432", "786432", "1572864"]);
+    expect(fetched).toEqual(["0", "786432", "786432", "786432", "1572864"]);
 
     // Case 2: stays disconnected past 30s -> fails with disconnected & preserves block 0.
     const store2 = new MemorySharedFileStore();
@@ -377,7 +384,7 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       getChunk: async (_sid, _fid, offset) => {
         if (offset > 0n) {
           online2 = false;
-          throw new CommandError("unavailable", "lost link");
+          throw new CommandError(code, "lost link");
         }
         return { data: makeVectorBlock(size, 0, blockBytes), totalBytes: BigInt(size) };
       },
@@ -385,7 +392,7 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
     const p2 = mgr2.startDownload("s1", file);
     await vi.advanceTimersByTimeAsync(30_001);
     await p2;
-    online2 = true;
+    // A timed-out transfer keeps its failure and Retry control while offline.
     expect(mgr2.stateOf("s1", file).status).toBe("failed");
     expect(mgr2.stateOf("s1", file).failKind).toBe("disconnected");
     expect(failureNotice("disconnected")).toBe("没下载下来，连接断了");

@@ -269,7 +269,7 @@ async function sha256(blob: Blob): Promise<Uint8Array> {
 function isLinkDrop(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const code = (err as { code?: string }).code;
-  return code === "unavailable" || code === "unknown";
+  return code === "unavailable" || code === "unknown" || code === "unknown_outcome";
 }
 
 function rawFailureDetail(err: unknown): string {
@@ -483,17 +483,7 @@ export class SharedFileManager {
         waitingReconnect: !!e.waitingReconnect,
       };
     }
-    if (!online) {
-      // Unfinished files render as offline when the computer cannot be reached.
-      return {
-        status: "offline",
-        downloadedBytes: e?.downloadedBytes ?? 0,
-        totalBytes,
-        progress: totalBytes > 0 ? Math.min(1, (e?.downloadedBytes ?? 0) / totalBytes) : 0,
-        waitingReconnect: false,
-      };
-    }
-    if (e?.status === "paused") {
+    if (e?.status === "paused" && (online || e.downloadedBytes > 0)) {
       const done = Math.min(e.downloadedBytes, totalBytes);
       return {
         status: "paused",
@@ -512,6 +502,16 @@ export class SharedFileManager {
         progress: totalBytes > 0 ? Math.min(1, done / totalBytes) : 0,
         failKind: e.failKind,
         failReason: e.failReason,
+        waitingReconnect: false,
+      };
+    }
+    if (!online) {
+      // Untouched files need the computer; local partials and failures keep their controls.
+      return {
+        status: "offline",
+        downloadedBytes: e?.downloadedBytes ?? 0,
+        totalBytes,
+        progress: totalBytes > 0 ? Math.min(1, (e?.downloadedBytes ?? 0) / totalBytes) : 0,
         waitingReconnect: false,
       };
     }
