@@ -17,6 +17,7 @@ func TestExplicitResumeClaimsRejectedImplicitLifetime(t *testing.T) {
 	for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {
 		for _, fault := range []string{"image", "quota", "queue"} {
 			t.Run(origin.Kind.String()+"/"+fault, func(t *testing.T) {
+				t.Parallel()
 				h := closedOwnedSession(t)
 				if fault == "quota" {
 					h.d.inputMu.Lock()

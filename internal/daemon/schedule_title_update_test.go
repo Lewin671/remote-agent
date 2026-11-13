@@ -28,6 +28,7 @@ func TestTitleOnlyUpdatePreservesExecutionState(t *testing.T) {
 	for _, status := range []string{"paused", "failed", "failed-at", "uncertain", "running"} {
 		for _, origin := range []*pb.Origin{originLocal, {Kind: pb.OriginKind_ORIGIN_KIND_CLIENT}} {
 			t.Run(status+"/"+origin.Kind.String(), func(t *testing.T) {
+				t.Parallel()
 				var h *harness
 				var task *schedule.Task
 				var run *schedule.Run

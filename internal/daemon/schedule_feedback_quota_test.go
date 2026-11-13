@@ -36,6 +36,7 @@ func TestPublicationRefusalUsesScheduledClosure(t *testing.T) {
 	for _, manual := range []bool{false, true} {
 		for _, order := range []string{"before", "restarted-before", "queued", "running", "finished"} {
 			t.Run(map[bool]string{false: "automatic", true: "manual"}[manual]+order, func(t *testing.T) {
+				t.Parallel()
 				h, task, snapshot, before := unpublishedRun(t, manual)
 				defer h.s.log.Close()
 				if order != "before" && order != "restarted-before" {

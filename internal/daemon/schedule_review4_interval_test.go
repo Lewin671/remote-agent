@@ -16,6 +16,7 @@ func TestIntervalDefinitionRoundTripDoesNotRedispatch(t *testing.T) {
 		for _, scoped := range []bool{false, true} {
 			for _, tail := range []string{"none", "manual", "skipped"} {
 				t.Run(map[bool]string{true: "explicit", false: "implicit"}[explicit]+map[bool]string{true: "mcp", false: "client"}[scoped]+tail, func(t *testing.T) {
+					t.Parallel()
 					h := scopedHarness(t, "ask")
 					tr := schedule.Trigger{Type: "interval", IntervalSeconds: 3600}
 					if explicit {

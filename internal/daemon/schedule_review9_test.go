@@ -86,6 +86,7 @@ func TestContextDependentScheduleOperationsRequireCommittedAdmission(t *testing.
 	for _, fault := range []string{"read", "commit"} {
 		for _, op := range []string{"create", "update", "resume", "run", "notify_user"} {
 			t.Run(fault+"/"+op, func(t *testing.T) {
+				t.Parallel()
 				h, own := admissionFixture(t, false)
 				defer func() { h.s.log.Close() }()
 				writeScheduledTranscriptInput(t, h, "old", false)

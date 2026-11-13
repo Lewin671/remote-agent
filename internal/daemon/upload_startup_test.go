@@ -20,6 +20,7 @@ func TestStartupPreservesUploadsUntilSessionLivenessIsRestored(t *testing.T) {
 				kind = "image"
 			}
 			t.Run(kind+"/"+state, func(t *testing.T) {
+				t.Parallel()
 				r := newRestoreHarness(t)
 				r.d.cfg.PollInterval = time.Hour
 				const sid = "00000000000000aa"

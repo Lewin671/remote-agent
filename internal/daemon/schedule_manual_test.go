@@ -309,6 +309,7 @@ func TestManualControlMatrix(t *testing.T) {
 		for _, started := range []bool{false, true} {
 			for _, control := range []string{"pause", "pause_resume", "cancel"} {
 				t.Run(typ+map[bool]string{false: "pending", true: "started"}[started]+control, func(t *testing.T) {
+					t.Parallel()
 					h, task := manualFixture(t, typ)
 					defer h.s.log.Close()
 					requestManual(t, h, task.ID)

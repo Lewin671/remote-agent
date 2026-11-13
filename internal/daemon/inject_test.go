@@ -93,6 +93,10 @@ func runInjector(t *testing.T, h *harness) {
 
 func TestSendWithImages(t *testing.T) {
 	t.Parallel()
+	synctest.Test(t, testSendWithImages)
+}
+
+func testSendWithImages(t *testing.T) {
 	h := newHarness(t, Config{})
 	imgs := imagesFor(t, h.dir, "a.png", "b.png")
 	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true, imgs[1].Path: true})

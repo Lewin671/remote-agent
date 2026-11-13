@@ -16,6 +16,7 @@ func TestTitleNotifyOnlyUpdatePreservesPlanAndTakesOver(t *testing.T) {
 		for _, withTitle := range []bool{false, true} {
 			for _, via := range []string{"local", "client", "MCP"} {
 				t.Run(status+"/"+map[bool]string{false: "notify", true: "title-notify"}[withTitle]+"/"+via, func(t *testing.T) {
+					t.Parallel()
 					h := scopedHarness(t, "ask")
 					spec := taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600, DelaySeconds: 3600})
 					raw, err := scopedSchedule(t, h, "create", "", &spec)

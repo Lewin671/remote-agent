@@ -17,6 +17,8 @@ import (
 // Every operation uses real temporary files. Fail before each I/O boundary,
 // or panic immediately after it to simulate losing the caller/undo on a crash.
 // Restart/GC then uses a fresh uploads instance, with no in-memory intent.
+// Build each pre-operation state once per artifact kind; each operation and
+// fault cell gets its own copy, retaining real I/O and fsync at every boundary.
 func TestUploadTransitionFaultMatrix(t *testing.T) {
 	t.Parallel()
 	move := []string{"move-intent", "move-directory", "move-rename", "move-destination", "move-source"}
@@ -39,60 +41,63 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 		if image {
 			kind = "image"
 		}
+		data := []byte("exact original file bytes")
+		if image {
+			data = testPNG(t, 3, 2, color.RGBA{1, 2, 3, 255})
+		}
+		sum := sha256.Sum256(data)
+		req := &pb.BeginImageUploadRequest{TransferId: tid, TotalBytes: int64(len(data)), Sha256: sum[:]}
+		if image {
+			req.Format = pb.ImageFormat_IMAGE_FORMAT_PNG
+		} else {
+			req.FileName = "matrix.bin"
+		}
+		begin := func(t *testing.T, u *uploads) {
+			if _, err := u.begin(req, "phone"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		chunk := func(t *testing.T, u *uploads) {
+			if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "phone"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		u := newUploads(t.TempDir())
+		roots := map[string]string{"begin": t.TempDir()}
+		begin(t, u)
+		roots["chunk"] = copyUploadState(t, u.root)
+		chunk(t, u)
+		roots["complete"] = copyUploadState(t, u.root)
+		st, err := u.complete(tid, "phone")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ims, files []string
+		if image {
+			ims = []string{st.ImageId}
+		} else {
+			files = []string{st.FileId}
+		}
+		roots["pending"] = copyUploadState(t, u.root)
+		taken, err := u.takeUploads(ims, files, "phone", "s", "r")
+		if err != nil {
+			t.Fatal(err)
+		}
+		roots["claimed"] = u.root
 		for _, tc := range cases {
 			if !image && (tc.name == "cancel" || tc.name == "lru") {
 				continue
 			}
-			root := t.TempDir()
-			u := newUploads(root)
-			data := []byte("exact original file bytes")
-			if image {
-				data = testPNG(t, 3, 2, color.RGBA{1, 2, 3, 255})
-			}
-			sum := sha256.Sum256(data)
-			req := &pb.BeginImageUploadRequest{TransferId: tid, TotalBytes: int64(len(data)), Sha256: sum[:]}
-			if image {
-				req.Format = pb.ImageFormat_IMAGE_FORMAT_PNG
-			} else {
-				req.FileName = "matrix.bin"
-			}
-			begin := func(t *testing.T, u *uploads) {
-				if _, err := u.begin(req, "phone"); err != nil {
-					t.Fatal(err)
-				}
-			}
-			chunk := func(t *testing.T, u *uploads) {
-				if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "phone"); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if tc.name != "begin" {
-				begin(t, u)
-			}
-			if tc.name != "begin" && tc.name != "chunk" {
-				chunk(t, u)
-			}
-			var ims, files []string
-			if tc.name != "begin" && tc.name != "chunk" && tc.name != "complete" {
-				st, err := u.complete(tid, "phone")
-				if err != nil {
-					t.Fatal(err)
-				}
-				if image {
-					ims = []string{st.ImageId}
-				} else {
-					files = []string{st.FileId}
-				}
-			}
-			var taken messageUploads
 			claimed := tc.name == "untake" || tc.name == "release" || tc.name == "returning" || tc.name == "exit" || tc.name == "cancel" || tc.name == "lru"
-			if claimed {
-				var err error
-				taken, err = u.takeUploads(ims, files, "phone", "s", "r")
-				if err != nil {
-					t.Fatal(err)
-				}
+			source := roots[tc.name]
+			if source == "" {
+				source = roots["pending"]
 			}
+			if claimed {
+				source = roots["claimed"]
+			}
+			root := copyUploadState(t, source)
+			u := newUploads(root)
 			if claimed || tc.name == "take" || tc.name == "reconcile" {
 				dir := u.sessionStateDir("s")
 				if err := os.MkdirAll(dir, 0700); err != nil {

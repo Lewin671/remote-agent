@@ -17,6 +17,7 @@ func TestScheduledNotifyTitleUsesExecutionSource(t *testing.T) {
 		for _, manual := range []bool{false, true} {
 			for _, phase := range []string{"active", "edited", "restarted"} {
 				t.Run(target+map[bool]string{false: "/automatic/", true: "/manual/"}[manual]+phase, func(t *testing.T) {
+					t.Parallel()
 					h := scheduleHarness(t)
 					defer func() { h.s.log.Close() }()
 					if err := h.s.rename("对话的自定名称"); err != nil {

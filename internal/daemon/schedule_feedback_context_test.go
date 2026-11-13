@@ -151,10 +151,13 @@ func TestOrdinaryHumanReplayDoesNotWriteMetadata(t *testing.T) {
 	t.Parallel()
 	h := scheduleHarness(t)
 	defer func() { h.s.log.Close() }()
-	for i := 0; i < 300; i++ {
-		if err := h.s.emit(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{Status: pb.InputStatus_INPUT_STATUS_QUEUED}}}, originLocal)); err != nil {
-			t.Fatal(err)
-		}
+	// Replay still sees all 300 records; fixture setup needs only one commit.
+	events := make([]*pb.Event, 300)
+	for i := range events {
+		events[i] = withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{Status: pb.InputStatus_INPUT_STATUS_QUEUED}}}, originLocal)
+	}
+	if err := h.s.emit(events...); err != nil {
+		t.Fatal(err)
 	}
 	if err := h.s.meta.save(h.s.dir); err != nil {
 		t.Fatal(err)

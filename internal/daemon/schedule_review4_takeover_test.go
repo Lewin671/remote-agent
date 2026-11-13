@@ -15,6 +15,7 @@ func TestAcceptedHumanQueueOwnsSessionWithoutQueuedEvent(t *testing.T) {
 	for _, origin := range origins {
 		for _, fault := range []string{"event", "directory-sync", "none"} {
 			t.Run(origin.GetKind().String()+fault, func(t *testing.T) {
+				t.Parallel()
 				h, _, snapshot, _ := unpublishedRun(t, false)
 				if err := h.s.meta.save(h.s.dir); err != nil {
 					t.Fatal(err)

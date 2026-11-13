@@ -51,6 +51,7 @@ func TestScheduleAdmissionCapsKeepBookkeepingAvailable(t *testing.T) {
 	t.Parallel()
 	for _, total := range []int{1000, 1001} {
 		t.Run(fmt.Sprint(total), func(t *testing.T) {
+			t.Parallel()
 			h := scheduleHarness(t)
 			spec := taskSpec(schedule.Trigger{Type: "interval", IntervalSeconds: 3600})
 			original := createTask(t, h, spec, "original")
