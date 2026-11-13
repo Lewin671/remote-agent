@@ -1728,6 +1728,7 @@
 "shared_file_subtitle_media_size" = "%1$@ · %2$@";
 "shared_file_subtitle_offline" = "电脑不在线";
 "shared_file_subtitle_paused" = "已暂停 · %1$@ / %2$@";
+"shared_file_toast_saved_to_album" = "已存到相册";
 "shared_file_type_archive" = "压缩包";
 "shared_file_type_audio" = "音频";
 "shared_file_type_image" = "图片";

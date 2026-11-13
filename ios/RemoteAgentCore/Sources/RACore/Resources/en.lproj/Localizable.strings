@@ -1728,6 +1728,7 @@
 "shared_file_subtitle_media_size" = "%1$@ · %2$@";
 "shared_file_subtitle_offline" = "Computer offline";
 "shared_file_subtitle_paused" = "Paused · %1$@ / %2$@";
+"shared_file_toast_saved_to_album" = "Saved to Photos";
 "shared_file_type_archive" = "Archive";
 "shared_file_type_audio" = "Audio";
 "shared_file_type_image" = "Image";

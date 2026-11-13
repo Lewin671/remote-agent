@@ -7261,6 +7261,10 @@ public enum L10n {
         let key = "shared_file_subtitle_paused"
         return format(key, locale: locale, args: [downloaded, total])
     }
+    public static func sharedFileToastSavedToAlbum(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_toast_saved_to_album"
+        return format(key, locale: locale, args: [])
+    }
     public static func sharedFileTypeArchive(locale: String = MessageLocale.current) -> String {
         let key = "shared_file_type_archive"
         return format(key, locale: locale, args: [])
@@ -14944,6 +14948,10 @@ public enum L10nMessage {
     public static func sharedFileSubtitlePaused(downloaded: String, total: String) -> LocalizedMessage {
         let key = "shared_file_subtitle_paused"
         return LocalizedMessage(key: key, arguments: [.string(downloaded), .string(total)])
+    }
+    public static func sharedFileToastSavedToAlbum() -> LocalizedMessage {
+        let key = "shared_file_toast_saved_to_album"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func sharedFileTypeArchive() -> LocalizedMessage {
         let key = "shared_file_type_archive"

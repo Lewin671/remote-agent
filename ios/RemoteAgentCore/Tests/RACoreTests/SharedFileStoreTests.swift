@@ -234,7 +234,7 @@ private final class Ticker: @unchecked Sendable {
         computer.release()
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(await s.state(key) == .idle)
-        #expect(await s.inspect(key, file: f) == .idle)
+        #expect(s.inspect(key, file: f) == .idle)
     }
 
     // MARK: The link
@@ -266,7 +266,7 @@ private final class Ticker: @unchecked Sendable {
         await s.start(key, file: f)
         #expect(await wait(s, { failed($0) }) == .failed(.disconnected))
         #expect(ticker.time - started >= 30_000)
-        #expect(await s.inspect(key, file: f) == .paused(done: 2000, total: 3500))
+        #expect(s.inspect(key, file: f) == .paused(done: 2000, total: 3500))
         // 重试 goes on from the blocks that are there.
         await s.start(key, file: f)
         _ = await wait(s) { done($0) }
@@ -293,7 +293,7 @@ private final class Ticker: @unchecked Sendable {
         let f = file(content)
         await s.start(key, file: f)
         #expect(await wait(s, { $0 == .cleanedUp }) == .cleanedUp)
-        #expect(await s.inspect(key, file: f) == .idle)
+        #expect(s.inspect(key, file: f) == .idle)
     }
 
     @Test func anUnknownSessionOfThisPhoneIsNotTheComputerCleaningUp() async {
@@ -327,7 +327,7 @@ private final class Ticker: @unchecked Sendable {
         let f = file(content)
         await s.start(key, file: f)
         #expect(await wait(s, { failed($0) }) == .failed(.checksum))
-        #expect(await s.inspect(key, file: f) == .idle)
+        #expect(s.inspect(key, file: f) == .idle)
     }
 
     @Test func aHashThatDoesNotMatchThrowsTheWholeCopyAway() async {
@@ -339,7 +339,7 @@ private final class Ticker: @unchecked Sendable {
         let f = file(content)
         await s.start(key, file: f)
         #expect(await wait(s, { failed($0) }) == .failed(.checksum))
-        #expect(await s.inspect(key, file: f) == .idle)
+        #expect(s.inspect(key, file: f) == .idle)
         // 重试 begins from nothing.
         computer.corrupt()
         await s.start(key, file: f)

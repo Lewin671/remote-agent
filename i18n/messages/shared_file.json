@@ -739,7 +739,8 @@
     "notes": "存到相册成功后的轻提示。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

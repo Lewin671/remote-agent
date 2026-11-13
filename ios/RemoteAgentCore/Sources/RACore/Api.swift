@@ -304,6 +304,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public static let unknownOutcome = "unknown_outcome"
     public static let unavailable = "unavailable"
     public static let expired = "expired"
+    public static let internalFailure = "internal"
 }
 
 /// What kept a request from getting an answer, as far as the system says.

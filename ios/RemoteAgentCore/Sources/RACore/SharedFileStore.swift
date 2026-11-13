@@ -28,7 +28,7 @@ public enum SharedFileStoreEvent: Equatable, Sendable {
 }
 
 public actor SharedFileStore {
-    private struct Meta: Codable {
+    private struct Meta: Codable, Sendable {
         var size: Int64
         var blockBytes: Int
         var completed: Int64
@@ -41,7 +41,7 @@ public actor SharedFileStore {
         let task: Task<Void, Never>
     }
 
-    private let root: URL
+    private nonisolated let root: URL
     private let fetcher: any SharedFileFetching
     private let isMachineOnline: @Sendable (String) -> Bool
     private let blockBytesFor: @Sendable (String) -> Int
@@ -75,26 +75,26 @@ public actor SharedFileStore {
 
     // MARK: Paths
 
-    private func directory(_ key: SharedFileKey) -> URL {
+    private nonisolated func directory(_ key: SharedFileKey) -> URL {
         root.appending(path: sharedFileFolderName(key.sessionId), directoryHint: .isDirectory)
             .appending(path: sharedFileFolderName(key.fileId), directoryHint: .isDirectory)
     }
 
-    private func partURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".part") }
-    private func metaURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".meta") }
+    private nonisolated func partURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".part") }
+    private nonisolated func metaURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".meta") }
 
     /// Where the finished copy of `file` is, or would be.
-    public func localURL(_ key: SharedFileKey, name: String) -> URL {
+    public nonisolated func localURL(_ key: SharedFileKey, name: String) -> URL {
         directory(key).appending(path: "file", directoryHint: .isDirectory)
             .appending(path: sanitizeSharedFileName(name), directoryHint: .notDirectory)
     }
 
-    private func readMeta(_ key: SharedFileKey) -> Meta? {
+    private nonisolated func readMeta(_ key: SharedFileKey) -> Meta? {
         guard let data = try? Data(contentsOf: metaURL(key)) else { return nil }
         return try? JSONDecoder().decode(Meta.self, from: data)
     }
 
-    private func writeMeta(_ key: SharedFileKey, _ meta: Meta) throws {
+    private nonisolated func writeMeta(_ key: SharedFileKey, _ meta: Meta) throws {
         try JSONEncoder().encode(meta).write(to: metaURL(key), options: .atomic)
     }
 
@@ -111,7 +111,7 @@ public actor SharedFileStore {
     }
 
     /// The state of `key` as the disk says it, without starting anything.
-    public func inspect(_ key: SharedFileKey, file: PBSharedFile) -> SharedFileTransfer {
+    public nonisolated func inspect(_ key: SharedFileKey, file: PBSharedFile) -> SharedFileTransfer {
         let final = localURL(key, name: file.name)
         let meta = readMeta(key)
         if Self.length(final) == file.sizeBytes {
@@ -209,6 +209,12 @@ public actor SharedFileStore {
             states[key] = nil
             continuation.yield(.state(key, .idle))
         }
+    }
+
+    /// The centre is closed: nothing more is fetched. What is on the disk stays, to be found again.
+    public func stop() {
+        for (_, job) in jobs { job.task.cancel() }
+        jobs.removeAll()
     }
 
     /// What the copies and partial downloads take on disk.

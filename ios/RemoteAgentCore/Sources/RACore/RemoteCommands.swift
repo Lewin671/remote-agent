@@ -268,7 +268,7 @@ extension Remote {
         cmd.getSharedFileChunk.offset = offset
         let r = try await command(sessionId, cmd)
         guard case .getSharedFileChunk(let chunk)? = r.kind else {
-            throw CommandError("internal", L10nMessage.newSessionUnexpectedReply())
+            throw CommandError(CommandError.internalFailure, L10nMessage.newSessionUnexpectedReply())
         }
         return chunk
     }
