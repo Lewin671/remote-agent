@@ -16,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -127,7 +129,7 @@ class SharedMediaPlayerTest {
         tempDir.deleteRecursively()
     }
 
-    private fun page(engine: PlayerEngine, name: String, video: Boolean, theme: ThemeMode = ThemeMode.LIGHT) {
+    private fun page(engine: PlayerEngine, name: String, video: Boolean, theme: ThemeMode = ThemeMode.LIGHT, safeInsets: androidx.compose.foundation.layout.WindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)) {
         ui.setContent {
             RaTheme(theme) {
                 CompositionLocalProvider(
@@ -141,6 +143,7 @@ class SharedMediaPlayerTest {
                         onClose = { closed++ },
                         onAction = { actions += it },
                         videoSurface = { m -> Box(m.background(Color(0xFF2F4858))) },
+                        safeInsets = safeInsets,
                     )
                 }
             }
@@ -167,6 +170,123 @@ class SharedMediaPlayerTest {
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         assertFalse(controller.isAppearanceLightStatusBars)
         assertFalse(controller.isAppearanceLightNavigationBars)
+        assertEquals(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE, controller.systemBarsBehavior)
+        assertEquals(android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES, window.attributes.layoutInDisplayCutoutMode)
+        val requested: Int = ReflectionHelpers.getField(window.insetsController, "mRequestedVisibleTypes")
+        assertEquals(0, requested and android.view.WindowInsets.Type.systemBars())
+    }
+
+
+    @Test
+    @Config(sdk = [30])
+    fun audioWindowIsImmersiveAndDismissalPreservesTheActivityBars() {
+        val file = File(tempDir, "tone.mp3").apply { writeBytes(byteArrayOf(0)) }
+        var visible by mutableStateOf(true)
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                if (visible) SharedMediaPlayerDialog(
+                    SharedFile.newBuilder().setName(file.name).build(), file, video = false,
+                    onDismiss = { visible = false }, onAction = {},
+                )
+            }
+        }
+        ui.waitForIdle()
+        val parent = android.view.inspector.WindowInspector.getGlobalWindowViews().first().windowInsetsController!!
+        val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+        ui.runOnIdle { parent.setSystemBarsAppearance(mask, mask) }
+        val parentStatus = ReflectionHelpers.callInstanceMethod<Boolean>(parent, "isRequestedVisible", ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType, 0))
+        val parentNavigation = ReflectionHelpers.callInstanceMethod<Boolean>(parent, "isRequestedVisible", ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType, 1))
+        val window = ShadowDialog.getLatestDialog().window!!
+        assertFalse(ReflectionHelpers.callInstanceMethod<Boolean>(window.insetsController, "isRequestedVisible", ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType, 0)))
+        assertFalse(ReflectionHelpers.callInstanceMethod<Boolean>(window.insetsController, "isRequestedVisible", ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType, 1)))
+        ui.runOnIdle { visible = false }
+        ui.waitForIdle()
+        assertEquals(mask, parent.systemBarsAppearance and mask)
+        assertEquals(parentStatus, ReflectionHelpers.callInstanceMethod<Boolean>(parent, "isRequestedVisible", ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType, 0)))
+        assertEquals(parentNavigation, ReflectionHelpers.callInstanceMethod<Boolean>(parent, "isRequestedVisible", ReflectionHelpers.ClassParameter.from(Int::class.javaPrimitiveType, 1)))
+    }
+
+    @Test
+    fun rotatingReappliesImmersiveWindowState() {
+        val file = File(tempDir, "clip.mp4").apply { writeBytes(byteArrayOf(0)) }
+        var orientation by mutableIntStateOf(android.content.res.Configuration.ORIENTATION_PORTRAIT)
+        ui.setContent {
+            val configuration = android.content.res.Configuration(androidx.compose.ui.platform.LocalConfiguration.current).apply {
+                this.orientation = orientation
+            }
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalConfiguration provides configuration) {
+                RaTheme(ThemeMode.LIGHT) {
+                    SharedMediaPlayerDialog(
+                        SharedFile.newBuilder().setName(file.name).build(), file, video = true,
+                        onDismiss = {}, onAction = {},
+                    )
+                }
+            }
+        }
+        ui.waitForIdle()
+        val window = ShadowDialog.getLatestDialog().window!!
+        ui.runOnIdle {
+            // Model the platform changing window state while rotating the existing dialog.
+            androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                .show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            orientation = android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        }
+        ui.waitForIdle()
+        val rotatedWindow = ShadowDialog.getLatestDialog().window!!
+        assertTrue(window !== rotatedWindow)
+        val requested: Int = ReflectionHelpers.getField(rotatedWindow.insetsController, "mRequestedVisibleTypes")
+        assertEquals(0, requested and android.view.WindowInsets.Type.systemBars())
+    }
+
+    private fun checkSafeArea() {
+        page(FakePlayerEngine(), "clip.mp4", video = true,
+            safeInsets = androidx.compose.foundation.layout.WindowInsets(left = 30, top = 24, right = 10, bottom = 8))
+        val root = ui.onNodeWithTag(SharedPlayerPageTag).fetchSemanticsNode().boundsInRoot
+        val close = ui.onNodeWithContentDescription("关闭").fetchSemanticsNode().boundsInRoot
+        val more = ui.onNodeWithContentDescription("更多").fetchSemanticsNode().boundsInRoot
+        val elapsed = ui.onNodeWithText("0:00").fetchSemanticsNode().boundsInRoot
+        assertEquals(root.left + 30 + 16, close.left, 0.5f)
+        assertEquals(root.top + 24 + 12, close.top, 0.5f)
+        assertEquals(root.right - 10 - 16, more.right, 0.5f)
+        assertEquals(root.bottom - 8 - 16, elapsed.bottom, 0.5f)
+        assertEquals(root.left + 30 + 16, elapsed.left, 0.5f)
+        val topShade = ui.onNodeWithTag("player-top-shade").fetchSemanticsNode().boundsInRoot
+        val bottomShade = ui.onNodeWithTag("player-bottom-shade").fetchSemanticsNode().boundsInRoot
+        assertEquals(root.top, topShade.top, 0.5f)
+        assertEquals(root.bottom, bottomShade.bottom, 0.5f)
+    }
+
+    @Test
+    fun portraitControlsUseCutoutSafetyAndExactScreenMargins() = checkSafeArea()
+
+    @Test
+    @Config(qualifiers = "w844dp-h390dp-mdpi")
+    fun landscapeControlsAvoidTheSideCutout() = checkSafeArea()
+
+    @Test
+    fun lightThemePlayerMenuUsesTheDarkMenuSurfaceTextDividerAndIcons() {
+        page(FakePlayerEngine(), "clip.mp4", video = true)
+        ui.onNodeWithContentDescription("更多").performClick()
+        val label = ui.onNodeWithText("存到相册")
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        label.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(DarkPalette.ink, layouts.single().layoutInput.style.color)
+        ui.runOnIdle {
+            val view = android.view.inspector.WindowInspector.getGlobalWindowViews().first()
+            val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+            view.draw(android.graphics.Canvas(bitmap))
+            val row = label.fetchSemanticsNode().boundsInRoot
+            val menu = ui.onNodeWithTag("player-menu").fetchSemanticsNode().boundsInRoot
+            assertEquals(SharedFileSpec.menuSurface(true).toArgb(), bitmap.getPixel(menu.center.x.toInt(), menu.top.toInt() + 5))
+            val y = (row.center.y + 22).toInt()
+            assertEquals(DarkPalette.sep.compositeOver(SharedFileSpec.menuSurface(true)).toArgb(), bitmap.getPixel(menu.center.x.toInt(), y))
+            // The right-hand icon uses the same solid ink as the label.
+            val ink = DarkPalette.ink.toArgb()
+            assertTrue((view.width - 60 until view.width - 30).any { x ->
+                (row.top.toInt() until row.bottom.toInt()).any { yy -> bitmap.getPixel(x, yy) == ink }
+            })
+            bitmap.recycle()
+        }
     }
 
     @Test

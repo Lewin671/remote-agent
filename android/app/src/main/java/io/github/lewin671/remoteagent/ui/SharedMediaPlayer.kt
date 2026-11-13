@@ -26,8 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.waterfall
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,8 +36,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +54,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -100,8 +100,9 @@ internal object SharedPlayerSpec {
     val ScrubberTouchHeight = 32.dp
     val PlayButton = 56.dp
     val PlayIcon = 28.dp
-    val ControlsBottomPad = 12.dp
-    val MenuTopPad = 8.dp + 44.dp + 6.dp
+    val ControlsBottomPad = 16.dp
+    val ControlsTopPad = 12.dp
+    val MenuTopPad = ControlsTopPad + 44.dp + 6.dp
     val ArtworkToName = 20.dp
     val NameToScrubber = 28.dp
     val ScrubberToButton = 12.dp
@@ -294,39 +295,51 @@ internal fun SharedMediaPlayerDialog(
     onAction: (SharedMenuAction) -> Unit,
 ) {
     val context = LocalContext.current
+    val orientation = LocalConfiguration.current.orientation
     val engine = remember(localFile) { MediaPlayerEngine(context.applicationContext, localFile, video) }
     DisposableEffect(engine) { onDispose { engine.release() } }
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = false,
-            decorFitsSystemWindows = false,
-        ),
-    ) {
-        val view = LocalView.current
-        SideEffect {
-            (view.parent as? DialogWindowProvider)?.window?.let { window ->
-                // Draw the black page and video shades through the system-bar areas too.
-                window.statusBarColor = android.graphics.Color.TRANSPARENT
-                window.navigationBarColor = android.graphics.Color.TRANSPARENT
-                if (android.os.Build.VERSION.SDK_INT >= 29) {
-                    window.isStatusBarContrastEnforced = false
-                    window.isNavigationBarContrastEnforced = false
+    // Android 11 can retain stale edge-gesture regions when a dialog rotates in place.
+    // Recreate just the window; the engine above keeps its playback position and state.
+    key(orientation) {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = false,
+                decorFitsSystemWindows = false,
+            ),
+        ) {
+            val view = LocalView.current
+            DisposableEffect(view) {
+                (view.parent as? DialogWindowProvider)?.window?.let { window ->
+                    // Draw the black page and video shades through the system-bar areas too.
+                    window.statusBarColor = android.graphics.Color.TRANSPARENT
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    if (android.os.Build.VERSION.SDK_INT >= 29) {
+                        window.isStatusBarContrastEnforced = false
+                        window.isNavigationBarContrastEnforced = false
+                    }
+                    window.attributes = window.attributes.apply {
+                        layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                    WindowCompat.getInsetsController(window, view).apply {
+                        isAppearanceLightStatusBars = false
+                        isAppearanceLightNavigationBars = false
+                        systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                    }
                 }
-                WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = false
-                    isAppearanceLightNavigationBars = false
-                }
+                // This is a separate window: dismissing it exposes the activity's unchanged bars.
+                onDispose { }
             }
+            SharedMediaPlayerPage(
+                engine = engine,
+                fileName = sanitizeSharedFileName(file.name),
+                video = video,
+                onClose = onDismiss,
+                onAction = onAction,
+            )
         }
-        SharedMediaPlayerPage(
-            engine = engine,
-            fileName = sanitizeSharedFileName(file.name),
-            video = video,
-            onClose = onDismiss,
-            onAction = onAction,
-        )
     }
 }
 
@@ -375,6 +388,7 @@ internal fun SharedMediaPlayerPage(
     video: Boolean,
     onClose: () -> Unit,
     onAction: (SharedMenuAction) -> Unit,
+    safeInsets: WindowInsets = WindowInsets.displayCutout.union(WindowInsets.waterfall),
     videoSurface: @Composable (Modifier) -> Unit = { PlayerTextureView(engine, it) },
 ) {
     val copy = uiText()
@@ -465,7 +479,7 @@ internal fun SharedMediaPlayerPage(
                 onSeek = ::seek,
                 onScrubbing = { scrubbing = it },
                 onToggle = ::togglePlay,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.align(Alignment.Center).windowInsetsPadding(safeInsets),
             )
         }
 
@@ -489,7 +503,7 @@ internal fun SharedMediaPlayerPage(
                     onScrubbing = { scrubbing = it },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
+                        .windowInsetsPadding(safeInsets)
                         .padding(start = SharedPlayerSpec.SideMargin, end = SharedPlayerSpec.SideMargin, bottom = SharedPlayerSpec.ControlsBottomPad),
                 )
             }
@@ -498,8 +512,8 @@ internal fun SharedMediaPlayerPage(
         if (chromeAlpha > 0f) {
             Row(
                 Modifier.fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
-                    .padding(8.dp).alpha(chromeAlpha),
+                    .windowInsetsPadding(safeInsets)
+                    .padding(horizontal = SharedPlayerSpec.SideMargin, vertical = SharedPlayerSpec.ControlsTopPad).alpha(chromeAlpha),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 GlassButton(Lucide.X, copy(UiMessages.commonClose()), onClose, dark = true)
@@ -519,10 +533,11 @@ internal fun SharedMediaPlayerPage(
                     onAction(action)
                 },
                 copy = copy,
-                modifier = Modifier
+                palette = DarkPalette,
+                modifier = Modifier.testTag("player-menu")
                     .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
-                    .padding(top = SharedPlayerSpec.MenuTopPad, end = 8.dp),
+                    .windowInsetsPadding(safeInsets)
+                    .padding(top = SharedPlayerSpec.MenuTopPad, end = SharedPlayerSpec.SideMargin),
             )
         }
     }

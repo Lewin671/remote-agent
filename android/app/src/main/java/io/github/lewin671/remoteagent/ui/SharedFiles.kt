@@ -1188,6 +1188,7 @@ internal fun SharedFileContextMenuOverlay(
     val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
     var rootOnScreen by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
+    val parentView = LocalView.current
     Dialog(
         onDismissRequest = { close() },
         properties = DialogProperties(
@@ -1201,8 +1202,27 @@ internal fun SharedFileContextMenuOverlay(
         val blurPx = with(density) { SharedFileSpec.BlurRadius.toPx() }
         val windowProgress = progress.value
         SideEffect {
-            if (blurred) {
-                (view.parent as? DialogWindowProvider)?.window?.let { window ->
+            (view.parent as? DialogWindowProvider)?.window?.let { window ->
+                // Only our animated scrim dims the page, including its system-bar regions.
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                if (Build.VERSION.SDK_INT >= 29) {
+                    window.isStatusBarContrastEnforced = false
+                    window.isNavigationBarContrastEnforced = false
+                }
+                val appearance = if (Build.VERSION.SDK_INT >= 30) {
+                    parentView.windowInsetsController?.systemBarsAppearance ?: 0
+                } else 0
+                androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = if (Build.VERSION.SDK_INT >= 30) {
+                        appearance and android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS != 0
+                    } else parentView.rootView.systemUiVisibility and android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR != 0
+                    isAppearanceLightNavigationBars = if (Build.VERSION.SDK_INT >= 30) {
+                        appearance and android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS != 0
+                    } else parentView.rootView.systemUiVisibility and android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR != 0
+                }
+                if (blurred) {
                     window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                     val attrs = window.attributes
                     attrs.blurBehindRadius = (blurPx * windowProgress).roundToInt()
@@ -1326,8 +1346,9 @@ internal fun SharedFileContextMenuCard(
     onAction: (SharedMenuAction) -> Unit,
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
     modifier: Modifier = Modifier,
+    palette: Palette = pal,
 ) {
-    val p = pal
+    val p = palette
     val menuBg = SharedFileSpec.menuSurface(p.dark)
     val gapBg = SharedFileSpec.menuDestructiveGap(p.dark)
     val hairlineColor = SharedFileSpec.darkHairline(p.dark)

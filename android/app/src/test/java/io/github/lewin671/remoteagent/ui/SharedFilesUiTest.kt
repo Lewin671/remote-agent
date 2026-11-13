@@ -685,6 +685,34 @@ class SharedFilesUiTest {
         ui.onAllNodes(hasContentDescription("daocheng-final.mp4", substring = true)).assertCountEquals(2)
     }
 
+    private fun checkOverlayWindow(theme: ThemeMode, lightIcons: Boolean) {
+        val sf = downloadedFile("s-bars", "v-bars", "daocheng-final.mp4")
+        renderPageWithBars("s-bars", listOf(sf), theme = theme)
+        ui.runOnIdle {
+            val controller = WindowInspector.getGlobalWindowViews().first().windowInsetsController!!
+            val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            controller.setSystemBarsAppearance(if (lightIcons) mask else 0, mask)
+        }
+        ui.onNodeWithTag(SharedFileCardTag).performTouchInput { longClick() }
+        ui.waitForIdle()
+        val window = org.robolectric.shadows.ShadowDialog.getLatestDialog().window!!
+        assertEquals(0, window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        assertEquals(android.graphics.Color.TRANSPARENT, window.statusBarColor)
+        assertEquals(android.graphics.Color.TRANSPARENT, window.navigationBarColor)
+        assertFalse(window.isStatusBarContrastEnforced)
+        assertFalse(window.isNavigationBarContrastEnforced)
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        assertEquals(lightIcons, controller.isAppearanceLightStatusBars)
+        assertEquals(lightIcons, controller.isAppearanceLightNavigationBars)
+    }
+
+    @Test
+    @Config(sdk = [30])
+    fun lightOverlayHasTransparentBarsOneScrimAndPreservesDarkIcons() = checkOverlayWindow(ThemeMode.LIGHT, true)
+
+    @Test
+    fun darkOverlayHasTransparentBarsOneScrimAndPreservesLightIcons() = checkOverlayWindow(ThemeMode.DARK, false)
+
     @Test
     fun cardAndMenuMoveUpTogetherJustEnoughToFit() {
         val sf = downloadedFile("s-up", "v-up", "daocheng-final.mp4")
