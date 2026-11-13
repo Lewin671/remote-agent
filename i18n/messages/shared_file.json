@@ -126,25 +126,6 @@
     }
   },
   {
-    "key": "shared_file.a11y_too_large",
-    "zh-CN": "文件超过 {limit}，请在电脑端直接查看",
-    "en": "File exceeds {limit}, view it on your computer",
-    "notes": "Accessible status when a shared file exceeds the transfer limit.",
-    "params": {
-      "limit": {
-        "type": "string",
-        "example": "100 MB"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "shared_file.cancel_download",
     "zh-CN": "取消下载",
     "en": "Cancel download",
@@ -230,13 +211,13 @@
   },
   {
     "key": "shared_file.downloading_eta",
-    "zh-CN": "{done} / {total} · 剩 {eta}",
-    "en": "{done} / {total} · {eta} left",
+    "zh-CN": "{done} / {total} · 约 {eta}",
+    "en": "{done} / {total} · about {eta} left",
     "notes": "Progress subtitle while downloading after ETA is available.",
     "params": {
       "done": {
         "type": "string",
-        "example": "26.4 MB"
+        "example": "26.4"
       },
       "eta": {
         "type": "string",
@@ -263,7 +244,7 @@
     "params": {
       "done": {
         "type": "string",
-        "example": "4.2 MB"
+        "example": "26.4"
       },
       "total": {
         "type": "string",
@@ -416,33 +397,6 @@
     }
   },
   {
-    "key": "shared_file.image_meta",
-    "zh-CN": "{width}×{height} · {size}",
-    "en": "{width}×{height} · {size}",
-    "notes": "Subtitle for a downloaded image file showing pixel dimensions and size.",
-    "params": {
-      "height": {
-        "type": "integer",
-        "example": 1600
-      },
-      "size": {
-        "type": "string",
-        "example": "2.4 MB"
-      },
-      "width": {
-        "type": "integer",
-        "example": 2400
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "shared_file.kind_archive",
     "zh-CN": "压缩包",
     "en": "Archive",
@@ -576,7 +530,7 @@
     "params": {
       "done": {
         "type": "string",
-        "example": "26.4 MB"
+        "example": "26.4"
       },
       "total": {
         "type": "string",
@@ -635,8 +589,8 @@
   },
   {
     "key": "shared_file.share",
-    "zh-CN": "分享",
-    "en": "Share",
+    "zh-CN": "分享…",
+    "en": "Share…",
     "notes": "Menu action to invoke Web Share API when supported by the browser.",
     "params": {},
     "platforms": [
@@ -656,25 +610,6 @@
       "reason": {
         "type": "string",
         "example": "Permission denied"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.too_large",
-    "zh-CN": "文件超过 {limit}，请在电脑端直接查看",
-    "en": "File exceeds {limit}, view it directly on your computer",
-    "notes": "Card subtitle when the file exceeds max_shared_file_bytes.",
-    "params": {
-      "limit": {
-        "type": "string",
-        "example": "100 MB"
       }
     },
     "platforms": [

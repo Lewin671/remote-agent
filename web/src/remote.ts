@@ -510,10 +510,6 @@ export class Remote {
         const s = this.sessions.get(sid);
         return s?.info?.status === SessionStatus.EXITED || (s?.endedMs ?? 0n) > 0n;
       },
-      maxSharedFileBytes: (sid) => {
-        const s = this.sessions.get(sid);
-        return (s && this.machines.get(s.machineId)?.meta?.capabilities?.maxSharedFileBytes) || 0n;
-      },
       sharedFileChunkBytes: (sid) => {
         const s = this.sessions.get(sid);
         return (s && this.machines.get(s.machineId)?.meta?.capabilities?.sharedFileChunkBytes) || 0;

@@ -1615,7 +1615,6 @@ export class DemoRemote extends Remote {
     const mac = this.machines.get("mac");
     if (mac?.meta?.capabilities) {
       mac.meta.capabilities.sharedFiles = true;
-      mac.meta.capabilities.maxSharedFileBytes = 104_857_600n;
       mac.meta.capabilities.sharedFileChunkBytes = 786432;
     }
     const mini = this.machines.get("mini");
@@ -1623,7 +1622,6 @@ export class DemoRemote extends Remote {
       mini.meta ??= create(MachineMetaSchema, { hostname: "Mac mini", capabilities: {} });
       mini.meta.capabilities ??= create(MachineMetaSchema, { capabilities: {} }).capabilities!;
       mini.meta.capabilities.sharedFiles = true;
-      mini.meta.capabilities.maxSharedFileBytes = 104_857_600n;
       mini.meta.capabilities.sharedFileChunkBytes = 786432;
     }
 
@@ -1709,10 +1707,9 @@ export class DemoRemote extends Remote {
     const sDoneImg = sf("sf-done-img", "cover.png", 1_887_437n, "/Users/me/Movies/daocheng/cover.png");
     const sFail = sf("sf-fail", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
     const sPdf = sf("sf-pdf", "2026-Q3-roadmap-final-v2.pdf", 4_404_019n, "/Users/me/Documents/2026-Q3-roadmap-final-v2.pdf");
-    const sLarge = sf("sf-large", "render-cache.tar.gz", 125_829_120n, "/Users/me/Movies/daocheng/render-cache.tar.gz");
     addSession("s-sf-states", "mac", "shared-file-states", SessionStatus.IDLE, [
       { case: "turnStarted", value: {} },
-      sendOk("sf-all-1", [sAvail, sDl, sPaused, sDoneVid, sDoneImg, sPdf, sFail, sLarge]),
+      sendOk("sf-all-1", [sAvail, sDl, sPaused, sDoneVid, sDoneImg, sPdf, sFail]),
       { case: "turnEnded", value: { durationMs: 1200n, outcome: TurnOutcome.COMPLETED } },
     ]);
 

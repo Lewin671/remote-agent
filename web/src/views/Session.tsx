@@ -26,7 +26,6 @@ import {
 import type { Event, ImageRef, SharedFile } from "../gen/remoteagent/v1/event_pb";
 import { sessionImages, splitPlaceholders } from "../imageview";
 import {
-  DEFAULT_MAX_SHARED_FILE_BYTES,
   previewBlobForFile,
   saveBlobAsDownload,
 } from "../shared-files";
@@ -937,8 +936,6 @@ function ChatBody({
     () => timeline(events, d, { sharedFiles: hasSharedFiles }),
     [events, events.length, d, hasSharedFiles],
   );
-  const machineCaps = remote.machines.get(session.machineId)?.meta?.capabilities;
-  const maxSharedFileBytes = machineCaps?.maxSharedFileBytes || DEFAULT_MAX_SHARED_FILE_BYTES;
   const focusSeq = focus && (events.find(e => e.kind.case === "userMessage" && e.origin?.scheduledRunId === focus.runId)?.seq ?? focus.seq);
   const items = useMemo(() => foldScheduled(rawItems, events, expandedQuiet, focusSeq), [rawItems, events, events.length, expandedQuiet, focusSeq]);
   const focusKey = focus && (rawItems.find(it => it.kind === "event" && it.event.kind.case === "userMessage" && it.event.origin?.scheduledRunId === focus.runId) ?? rawItems.find(it => it.kind === "event" && it.event.seq >= focus.seq))?.key;
@@ -1292,7 +1289,6 @@ function ChatBody({
                 sentHere={sentHere.current}
                 hasSharedFiles={hasSharedFiles}
                 machineHome={home}
-                maxSharedFileBytes={maxSharedFileBytes}
               />
             </RowState>
           )}
@@ -1492,7 +1488,6 @@ function Row({
   sentHere,
   hasSharedFiles,
   machineHome,
-  maxSharedFileBytes,
 }: {
   it: Item;
   d: Derived;
@@ -1511,7 +1506,6 @@ function Row({
   sentHere: Map<string, Sent>;
   hasSharedFiles: boolean;
   machineHome: string;
-  maxSharedFileBytes: bigint;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "background")
@@ -1611,7 +1605,6 @@ function Row({
             files={k.value.sharedFiles}
             machineName={machine}
             machineHome={machineHome}
-            maxBytes={maxSharedFileBytes}
           />
         );
       }

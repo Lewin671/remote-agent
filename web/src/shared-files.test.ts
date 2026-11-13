@@ -5,6 +5,7 @@ import { SharedFileSchema, type SharedFile } from "./gen/remoteagent/v1/event_pb
 import {
   classifySharedFile,
   failureNotice,
+  fileSizeDone,
   formatEta,
   formatMediaDuration,
   LOCAL_CACHE_MAX_BYTES,
@@ -105,6 +106,15 @@ describe("shared-files security & helpers", () => {
     expect(formatEta(12)).toBe("12 秒");
     expect(formatEta(65)).toBe("2 分");
   });
+
+  it("writes downloaded bytes without a unit, in the unit of the total", () => {
+    expect(fileSizeDone(8_493_465, 25_480_397)).toBe("8.1");
+    expect(fileSizeDone(6_291_456, 18_874_368)).toBe("6.0");
+    expect(fileSizeDone(0, 25_480_397)).toBe("0.0");
+    expect(fileSizeDone(204_800, 1_887_437n)).toBe("0.2");
+    expect(fileSizeDone(512 * 1024, 900 * 1024)).toBe("512.0");
+    expect(fileSizeDone(300, 800)).toBe("300");
+  });
 });
 
 describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
@@ -127,7 +137,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
         isConnected: () => true,
         isMachineOnline: () => true,
         isSessionEnded: () => false,
-        maxSharedFileBytes: () => 200_000_000n,
         sharedFileChunkBytes: () => blockBytes,
         onSaveLargeFile: (blob, safeName) => {
           autoSaved.push({ size: blob.size, name: safeName });
@@ -195,7 +204,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async () => ({
         data: new Uint8Array(blockBytes - 1),
@@ -217,7 +225,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async () => ({
         data: makeVectorBlock(Number(c.sizeBytes), 0, blockBytes),
@@ -240,7 +247,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async (_sid, _fid, offset) => {
         offsets.push(offset.toString());
@@ -279,7 +285,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async (_sid, _fid, offset) => {
         fetched.push(offset.toString());
@@ -334,7 +339,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => online,
       isMachineOnline: () => online,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async (_sid, _fid, offset) => {
         fetched.push(offset.toString());
@@ -369,7 +373,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => online2,
       isMachineOnline: () => online2,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async (_sid, _fid, offset) => {
         if (offset > 0n) {
@@ -390,6 +393,26 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
     expect((await store2.getPartialMeta("s1", file.fileId))?.nextOffset).toBe(blockBytes);
   });
 
+  it("treats an oversize reference like any other file and fails through the normal failure state", async () => {
+    const huge = makeFile({ fileId: "huge", name: "render-cache.tar.gz", sizeBytes: 125_829_120n });
+    const mgr = new SharedFileManager({
+      store: new MemorySharedFileStore(),
+      isConnected: () => true,
+      isMachineOnline: () => true,
+      isSessionEnded: () => false,
+      sharedFileChunkBytes: () => blockBytes,
+      getChunk: async () => {
+        throw new CommandError("too_large", "file is larger than the transfer limit");
+      },
+    });
+    expect(mgr.stateOf("s1", huge).status).toBe("available");
+    await mgr.startDownload("s1", huge);
+    const st = mgr.stateOf("s1", huge);
+    expect(st.status).toBe("failed");
+    expect(st.failKind).toBe("other");
+    expect(failureNotice(st.failKind, st.failReason)).toBe("没下载下来，file is larger than the transfer limit");
+  });
+
   it("maps storage quota exceeded and daemon error reasons verbatim", async () => {
     const c = vectors.cases[3]; // 786432 bytes
     const fullStore = new MemorySharedFileStore({ maxBytes: 100 });
@@ -398,7 +421,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async () => ({
         data: makeVectorBlock(Number(c.sizeBytes), 0, blockBytes),
@@ -417,7 +439,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => false,
-      maxSharedFileBytes: () => 104_857_600n,
       sharedFileChunkBytes: () => blockBytes,
       getChunk: async () => {
         throw new CommandError("not_found", "文件已从电脑删除");
@@ -430,7 +451,7 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
     expect(failureNotice(stOther.failKind, stOther.failReason)).toBe("没下载下来，文件已从电脑删除");
   });
 
-  it("shares state by fileId, suppresses auto-open if user left session, and honors offline/ended/too_large states", async () => {
+  it("shares state by fileId, suppresses auto-open if user left session, and honors offline/ended states", async () => {
     const c = vectors.cases[2];
     const autoOpened: string[] = [];
     let online = false;
@@ -440,7 +461,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => online,
       isSessionEnded: () => ended,
-      maxSharedFileBytes: () => 1000n,
       sharedFileChunkBytes: () => blockBytes,
       onAutoOpen: (_sid, f) => autoOpened.push(f.fileId),
       getChunk: async () => ({
@@ -448,9 +468,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
         totalBytes: BigInt(c.sizeBytes),
       }),
     });
-
-    const tooBig = makeFile({ fileId: "big", name: "big.zip", sizeBytes: 1001n });
-    expect(mgr.stateOf("s1", tooBig).status).toBe("too_large");
 
     const small = makeFile({ fileId: "ok", name: "note.txt", sizeBytes: 10n });
     expect(mgr.stateOf("s1", small).status).toBe("offline");
@@ -465,7 +482,6 @@ describe("SharedFileManager against testdata/shared-files/blocks.json", () => {
       isConnected: () => true,
       isMachineOnline: () => true,
       isSessionEnded: () => ended,
-      maxSharedFileBytes: () => 10_000_000n,
       sharedFileChunkBytes: () => blockBytes,
       onAutoOpen: (_sid, f) => autoOpened.push(f.fileId),
       getChunk: async () => {

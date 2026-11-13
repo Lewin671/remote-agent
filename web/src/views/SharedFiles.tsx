@@ -31,6 +31,7 @@ import { errorText, type Remote } from "../remote";
 import {
   classifySharedFile,
   failureNotice,
+  fileSizeDone,
   formatEta,
   formatMediaDuration,
   kindName,
@@ -94,8 +95,6 @@ function useSharedFileState(remote: Remote, sessionId: string, file: SharedFile)
 
 interface MediaMeta {
   thumbUrl?: string;
-  width?: number;
-  height?: number;
   durationSec?: number;
 }
 
@@ -119,13 +118,6 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
       const url = URL.createObjectURL(preview.blob);
       urlsToRevoke.push(url);
       setMeta({ thumbUrl: url });
-      const img = new Image();
-      img.onload = () => {
-        if (alive && img.naturalWidth > 0 && img.naturalHeight > 0) {
-          setMeta({ thumbUrl: url, width: img.naturalWidth, height: img.naturalHeight });
-        }
-      };
-      img.src = url;
     } else if (preview.kind === "video") {
       const videoUrl = URL.createObjectURL(preview.blob);
       const video = document.createElement("video");
@@ -215,12 +207,6 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
   return meta;
 }
 
-function formatLimit(bytes: bigint): string {
-  const n = Number(bytes);
-  if (n > 0 && n % (1024 * 1024) === 0) return `${n / (1024 * 1024)} MB`;
-  return fileSize(bytes);
-}
-
 function tileAppearance(kind: SharedFileKind): { cls: string; icon: ReactElement } {
   switch (kind) {
     case "video":
@@ -251,14 +237,13 @@ function subtitleFor(
   file: SharedFile,
   state: SharedFileDerivedState,
   meta: MediaMeta,
-  maxBytes: bigint,
 ): string {
   const totalText = fileSize(file.sizeBytes);
   switch (state.status) {
     case "available":
       return i18n.t("shared_file.type_and_size", { kind: kindName(kind), size: totalText });
     case "downloading": {
-      const doneText = fileSize(state.downloadedBytes);
+      const doneText = fileSizeDone(state.downloadedBytes, file.sizeBytes);
       if (state.etaSeconds !== undefined) {
         return i18n.t("shared_file.downloading_eta", {
           done: doneText,
@@ -270,20 +255,13 @@ function subtitleFor(
     }
     case "paused":
       return i18n.t("shared_file.paused", {
-        done: fileSize(state.downloadedBytes),
+        done: fileSizeDone(state.downloadedBytes, file.sizeBytes),
         total: totalText,
       });
     case "downloaded":
       if ((kind === "video" || kind === "audio") && meta.durationSec !== undefined) {
         return i18n.t("shared_file.video_and_size", {
           duration: formatMediaDuration(meta.durationSec),
-          size: totalText,
-        });
-      }
-      if (kind === "image" && meta.width && meta.height) {
-        return i18n.t("shared_file.image_meta", {
-          width: meta.width,
-          height: meta.height,
           size: totalText,
         });
       }
@@ -294,12 +272,10 @@ function subtitleFor(
       return i18n.t("shared_file.machine_offline");
     case "cleaned":
       return i18n.t("shared_file.cleaned");
-    case "too_large":
-      return i18n.t("shared_file.too_large", { limit: formatLimit(maxBytes) });
   }
 }
 
-function a11yLabelFor(file: SharedFile, state: SharedFileDerivedState, maxBytes: bigint): string {
+function a11yLabelFor(file: SharedFile, state: SharedFileDerivedState): string {
   const safe = sanitizeFileName(file.name);
   let detail: string;
   switch (state.status) {
@@ -326,16 +302,13 @@ function a11yLabelFor(file: SharedFile, state: SharedFileDerivedState, maxBytes:
     case "cleaned":
       detail = i18n.t("shared_file.a11y_cleaned");
       break;
-    case "too_large":
-      detail = i18n.t("shared_file.a11y_too_large", { limit: formatLimit(maxBytes) });
-      break;
   }
   return i18n.t("shared_file.a11y_card", { name: safe, status: detail });
 }
 
 function cardClass(state: SharedFileDerivedState): string {
   if (state.status === "failed") return "sf-fc sf-fail";
-  if (state.status === "offline" || state.status === "too_large") return "sf-fc sf-off";
+  if (state.status === "offline") return "sf-fc sf-off";
   if (state.status === "cleaned") return "sf-fc sf-gone";
   return "sf-fc";
 }
@@ -538,14 +511,12 @@ export function SharedFileCard({
   file,
   machineName,
   machineHome,
-  maxBytes,
 }: {
   remote: Remote;
   sessionId: string;
   file: SharedFile;
   machineName: string;
   machineHome?: string;
-  maxBytes: bigint;
 }) {
   const state = useSharedFileState(remote, sessionId, file);
   const { kind } = classifySharedFile(file.name);
@@ -563,12 +534,19 @@ export function SharedFileCard({
     return () => clearTimeout(longPressTimer.current);
   }, []);
 
-  const subtitle = subtitleFor(kind, file, state, meta, maxBytes);
+  const subtitle = subtitleFor(kind, file, state, meta);
   const fullPath = displayHomePath(file.path, file.name, machineHome);
   const canShare = state.status === "downloaded" && state.blob ? canSystemShareBlob(state.blob, file.name) : false;
 
   const menuItems: MenuItemSpec[] = [];
   if (state.status === "downloaded" && state.blob) {
+    menuItems.push({
+      id: "save",
+      label: i18n.t("shared_file.save_to_device"),
+      icon: <DownloadIcon />,
+      group: 0,
+      onClick: () => saveBlobAsDownload(state.blob!, file.name),
+    });
     if (canShare) {
       menuItems.push({
         id: "share",
@@ -578,13 +556,6 @@ export function SharedFileCard({
         onClick: () => void systemShareBlob(state.blob!, file.name, onToast),
       });
     }
-    menuItems.push({
-      id: "save",
-      label: i18n.t("shared_file.save_to_device"),
-      icon: <DownloadIcon />,
-      group: 0,
-      onClick: () => saveBlobAsDownload(state.blob!, file.name),
-    });
     menuItems.push({
       id: "delete",
       label: i18n.t("shared_file.delete_local"),
@@ -652,7 +623,7 @@ export function SharedFileCard({
   }
 
   const interactive =
-    state.status !== "offline" && state.status !== "cleaned" && state.status !== "too_large";
+    state.status !== "offline" && state.status !== "cleaned";
 
   const handlePrimaryAction = () => {
     if (suppressNextClick.current) {
@@ -673,7 +644,6 @@ export function SharedFileCard({
         break;
       case "offline":
       case "cleaned":
-      case "too_large":
         break;
     }
   };
@@ -740,7 +710,7 @@ export function SharedFileCard({
         role="button"
         tabIndex={0}
         aria-disabled={interactive ? undefined : true}
-        aria-label={a11yLabelFor(file, state, maxBytes)}
+        aria-label={a11yLabelFor(file, state)}
         className={cardClass(state)}
         onClick={handlePrimaryAction}
         onKeyDown={onKeyDown}
@@ -806,14 +776,12 @@ export function SharedFileCards({
   files,
   machineName,
   machineHome,
-  maxBytes,
 }: {
   remote: Remote;
   sessionId: string;
   files: SharedFile[];
   machineName: string;
   machineHome?: string;
-  maxBytes: bigint;
 }) {
   return (
     <div className="sf-files">
@@ -825,7 +793,6 @@ export function SharedFileCards({
           file={f}
           machineName={machineName}
           machineHome={machineHome}
-          maxBytes={maxBytes}
         />
       ))}
     </div>

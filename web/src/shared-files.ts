@@ -3,7 +3,6 @@ import type { SharedFile } from "./gen/remoteagent/v1/event_pb";
 import { hasQuotaExceeded, OpfsSharedFileStore, type SharedFileStore } from "./shared-file-store";
 
 export const DEFAULT_SHARED_FILE_CHUNK_BYTES = 786_432;
-export const DEFAULT_MAX_SHARED_FILE_BYTES = 104_857_600n;
 /** Files strictly larger than 50 MB are saved to disk on completion without local OPFS/memory caching. */
 export const LOCAL_CACHE_MAX_BYTES = 50 * 1024 * 1024;
 export const AUTO_RESUME_TIMEOUT_MS = 30_000;
@@ -18,8 +17,7 @@ export type SharedFileStatus =
   | "downloaded"
   | "failed"
   | "offline"
-  | "cleaned"
-  | "too_large";
+  | "cleaned";
 
 export type SharedFileFailKind = "checksum" | "disconnected" | "storage" | "other";
 
@@ -58,7 +56,6 @@ export interface SharedFileEnvironment {
   isConnected(): boolean;
   isMachineOnline(sessionId: string): boolean;
   isSessionEnded(sessionId: string): boolean;
-  maxSharedFileBytes(sessionId: string): bigint;
   sharedFileChunkBytes(sessionId: string): number;
   store?: SharedFileStore;
   now?: () => number;
@@ -179,6 +176,18 @@ export function formatMediaDuration(totalSeconds: number): string {
     return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * Downloaded bytes written without a unit, in the unit of the total
+ * ("8.1" for "8.1 / 24.3 MB"), same rounding as the file-size label.
+ */
+export function fileSizeDone(done: number | bigint, total: number | bigint): string {
+  const d = Number(done);
+  const t = Number(total);
+  if (t < 1024) return `${d}`;
+  if (t < 1024 * 1024) return (d / 1024).toFixed(1);
+  return (d / 1024 / 1024).toFixed(1);
 }
 
 export function formatEta(seconds: number): string {
@@ -435,8 +444,6 @@ export class SharedFileManager {
   stateOf(sessionId: string, file: SharedFile): SharedFileDerivedState {
     const e = this.entries.get(this.key(sessionId, file.fileId));
     const totalBytes = Number(file.sizeBytes);
-    const maxBytes = this.maxBytesFor(sessionId);
-    const tooLarge = maxBytes > 0n && file.sizeBytes > maxBytes;
     const ended = this.env.isSessionEnded(sessionId);
     const online = this.env.isConnected() && this.env.isMachineOnline(sessionId);
 
@@ -453,15 +460,6 @@ export class SharedFileManager {
     if (ended) {
       return {
         status: "cleaned",
-        downloadedBytes: 0,
-        totalBytes,
-        progress: 0,
-        waitingReconnect: false,
-      };
-    }
-    if (tooLarge) {
-      return {
-        status: "too_large",
         downloadedBytes: 0,
         totalBytes,
         progress: 0,
@@ -520,11 +518,6 @@ export class SharedFileManager {
     };
   }
 
-  private maxBytesFor(sessionId: string): bigint {
-    const v = this.env.maxSharedFileBytes(sessionId);
-    return v > 0n ? v : DEFAULT_MAX_SHARED_FILE_BYTES;
-  }
-
   private chunkSizeFor(sessionId: string): number {
     const v = this.env.sharedFileChunkBytes(sessionId);
     return v > 0 ? v : DEFAULT_SHARED_FILE_CHUNK_BYTES;
@@ -539,7 +532,6 @@ export class SharedFileManager {
     if (
       derived.status === "downloaded" ||
       derived.status === "downloading" ||
-      derived.status === "too_large" ||
       derived.status === "cleaned" ||
       derived.status === "offline"
     ) {

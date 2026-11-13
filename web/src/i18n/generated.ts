@@ -1273,7 +1273,6 @@ export interface MessageArgs {
   "shared_file.a11y_failed": { [name: string]: never };
   "shared_file.a11y_offline": { [name: string]: never };
   "shared_file.a11y_paused": { [name: string]: never };
-  "shared_file.a11y_too_large": { limit: string };
   "shared_file.cancel_download": { [name: string]: never };
   "shared_file.cleaned": { [name: string]: never };
   "shared_file.close_preview": { [name: string]: never };
@@ -1290,7 +1289,6 @@ export interface MessageArgs {
   "shared_file.fail_other": { reason: string };
   "shared_file.fail_storage": { [name: string]: never };
   "shared_file.from_machine": { name: string };
-  "shared_file.image_meta": { height: number; size: string; width: number };
   "shared_file.kind_archive": { [name: string]: never };
   "shared_file.kind_audio": { [name: string]: never };
   "shared_file.kind_file": { [name: string]: never };
@@ -1306,7 +1304,6 @@ export interface MessageArgs {
   "shared_file.save_to_device": { [name: string]: never };
   "shared_file.share": { [name: string]: never };
   "shared_file.share_failed": { reason: string };
-  "shared_file.too_large": { limit: string };
   "shared_file.type_and_size": { kind: string; size: string };
   "shared_file.unknown_reason": { [name: string]: never };
   "shared_file.video_and_size": { duration: string; size: string };
@@ -3025,14 +3022,13 @@ export const messages = {
     "shared_file.a11y_failed": "Download failed, tap to retry",
     "shared_file.a11y_offline": "Computer offline",
     "shared_file.a11y_paused": "Paused, tap to resume",
-    "shared_file.a11y_too_large": "File exceeds {limit}, view it on your computer",
     "shared_file.cancel_download": "Cancel download",
     "shared_file.cleaned": "Session ended, file cleaned",
     "shared_file.close_preview": "Close preview",
     "shared_file.context_menu_label": "File actions menu",
     "shared_file.delete_local": "Delete local copy",
     "shared_file.download": "Download",
-    "shared_file.downloading_eta": "{done} / {total} · {eta} left",
+    "shared_file.downloading_eta": "{done} / {total} · about {eta} left",
     "shared_file.downloading_no_eta": "{done} / {total}",
     "shared_file.eta_hours": "{count}h",
     "shared_file.eta_minutes": "{count}m",
@@ -3042,7 +3038,6 @@ export const messages = {
     "shared_file.fail_other": "Download failed, {reason}",
     "shared_file.fail_storage": "Download failed, browser storage is full",
     "shared_file.from_machine": "From {name}",
-    "shared_file.image_meta": "{width}×{height} · {size}",
     "shared_file.kind_archive": "Archive",
     "shared_file.kind_audio": "Audio",
     "shared_file.kind_file": "File",
@@ -3056,9 +3051,8 @@ export const messages = {
     "shared_file.resume": "Resume download",
     "shared_file.retry": "Retry",
     "shared_file.save_to_device": "Save to device",
-    "shared_file.share": "Share",
+    "shared_file.share": "Share…",
     "shared_file.share_failed": "Couldn't share: {reason}",
-    "shared_file.too_large": "File exceeds {limit}, view it directly on your computer",
     "shared_file.type_and_size": "{kind} · {size}",
     "shared_file.unknown_reason": "Unknown error",
     "shared_file.video_and_size": "{duration} · {size}",
@@ -4756,14 +4750,13 @@ export const messages = {
     "shared_file.a11y_failed": "下载失败，点击重试",
     "shared_file.a11y_offline": "电脑不在线",
     "shared_file.a11y_paused": "已暂停，点击继续下载",
-    "shared_file.a11y_too_large": "文件超过 {limit}，请在电脑端直接查看",
     "shared_file.cancel_download": "取消下载",
     "shared_file.cleaned": "会话已结束，文件已清理",
     "shared_file.close_preview": "关闭预览",
     "shared_file.context_menu_label": "文件操作菜单",
     "shared_file.delete_local": "删除本机副本",
     "shared_file.download": "下载",
-    "shared_file.downloading_eta": "{done} / {total} · 剩 {eta}",
+    "shared_file.downloading_eta": "{done} / {total} · 约 {eta}",
     "shared_file.downloading_no_eta": "{done} / {total}",
     "shared_file.eta_hours": "{count} 小时",
     "shared_file.eta_minutes": "{count} 分",
@@ -4773,7 +4766,6 @@ export const messages = {
     "shared_file.fail_other": "没下载下来，{reason}",
     "shared_file.fail_storage": "没下载下来，浏览器空间不足",
     "shared_file.from_machine": "来自 {name}",
-    "shared_file.image_meta": "{width}×{height} · {size}",
     "shared_file.kind_archive": "压缩包",
     "shared_file.kind_audio": "音频",
     "shared_file.kind_file": "文件",
@@ -4787,9 +4779,8 @@ export const messages = {
     "shared_file.resume": "继续下载",
     "shared_file.retry": "重试",
     "shared_file.save_to_device": "保存到本机",
-    "shared_file.share": "分享",
+    "shared_file.share": "分享…",
     "shared_file.share_failed": "没能分享：{reason}",
-    "shared_file.too_large": "文件超过 {limit}，请在电脑端直接查看",
     "shared_file.type_and_size": "{kind} · {size}",
     "shared_file.unknown_reason": "未知原因",
     "shared_file.video_and_size": "{duration} · {size}",

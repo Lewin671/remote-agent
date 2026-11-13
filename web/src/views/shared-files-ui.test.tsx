@@ -16,9 +16,9 @@ import { DemoRemote } from "../dev/demo";
 import * as i18n from "../i18n";
 import { derive, timeline } from "../model";
 import {
-  DEFAULT_MAX_SHARED_FILE_BYTES,
   DEFAULT_SHARED_FILE_CHUNK_BYTES,
   previewBlobForFile,
+  saveBlobAsDownload,
 } from "../shared-files";
 import { SessionPage } from "./Session";
 import {
@@ -165,9 +165,8 @@ it("splits ToolGroups around completed send_file calls and falls back when capab
   // and SessionPage Row skips SharedFileCards when status !== "completed" or capability is false.
 });
 
-it("renders all 8 card states, middle filename split, and shared state for duplicate fileId", async () => {
+it("renders all 7 card states plus offline/cleaned, middle filename split, and shared state for duplicate fileId", async () => {
   const r = makeDemo();
-  const maxBytes = DEFAULT_MAX_SHARED_FILE_BYTES;
   const files = [
     "sf-avail",
     "sf-dl",
@@ -176,7 +175,6 @@ it("renders all 8 card states, middle filename split, and shared state for dupli
     "sf-done-img",
     "sf-pdf",
     "sf-fail",
-    "sf-large",
   ].map((id) => {
     const evs = r.events("s-sf-states");
     for (const e of evs) {
@@ -196,41 +194,37 @@ it("renders all 8 card states, middle filename split, and shared state for dupli
         files={files}
         machineName="Mac"
         machineHome="/Users/me"
-        maxBytes={maxBytes}
       />
       <SharedFileCard
         remote={r}
         sessionId="s-sf-offline"
         file={create(SharedFileSchema, { fileId: "sf-off-1", name: "a.mp4", sizeBytes: 100n, path: "/a.mp4" })}
         machineName="Mac mini"
-        maxBytes={maxBytes}
       />
       <SharedFileCard
         remote={r}
         sessionId="s-sf-ended"
         file={create(SharedFileSchema, { fileId: "sf-gone-1", name: "b.mp4", sizeBytes: 100n, path: "/b.mp4" })}
         machineName="Mac"
-        maxBytes={maxBytes}
       />
       <SharedFileCard
         remote={r}
         sessionId="s-sf-states"
         file={files[0]}
         machineName="Mac"
-        maxBytes={maxBytes}
       />
     </div>,
   );
 
   const cards = [...host!.querySelectorAll<HTMLElement>(".sf-fc")];
-  expect(cards.length).toBe(11);
+  expect(cards.length).toBe(10);
 
   // Check expected state texts.
   expect(cards[0].querySelector(".sf-fs")?.textContent).toBe("视频 · 24.3 MB");
   expect(cards[1].querySelector(".sf-ring")).toBeTruthy();
-  expect(cards[1].textContent).toContain("剩 12 秒");
+  expect(cards[1].querySelector(".sf-fs")?.textContent).toBe("8.1 / 24.3 MB · 约 12 秒");
   expect(cards[2].querySelector(".sf-ring-play")).toBeTruthy();
-  expect(cards[2].textContent).toContain("已暂停");
+  expect(cards[2].querySelector(".sf-fs")?.textContent).toBe("已暂停 · 6.0 / 18.0 MB");
   expect(cards[3].querySelector(".sf-pill")?.textContent).toBe("打开");
   expect(cards[5].textContent).toContain("2026-Q3-roadmap-final-v2.pdf");
   const splitSpans = cards[5].querySelectorAll(".sf-fn > span");
@@ -241,20 +235,67 @@ it("renders all 8 card states, middle filename split, and shared state for dupli
   expect(cards[6].querySelector(".sf-pill")?.textContent).toBe("重试");
   expect(cards[7].classList.contains("sf-off")).toBe(true);
   expect(cards[7].getAttribute("aria-disabled")).toBe("true");
-  expect(cards[7].textContent).toContain("文件超过 100 MB，请在电脑端直接查看");
-  expect(cards[8].classList.contains("sf-off")).toBe(true);
+  expect(cards[7].textContent).toContain("电脑不在线");
+  expect(cards[8].classList.contains("sf-gone")).toBe(true);
   expect(cards[8].getAttribute("aria-disabled")).toBe("true");
-  expect(cards[8].textContent).toContain("电脑不在线");
-  expect(cards[9].classList.contains("sf-gone")).toBe(true);
-  expect(cards[9].getAttribute("aria-disabled")).toBe("true");
-  expect(cards[9].textContent).toContain("会话已结束，文件已清理");
+  expect(cards[8].textContent).toContain("会话已结束，文件已清理");
+  expect(host!.textContent).not.toContain("100 MB");
 
   // Duplicate fileId card shares seeded/mutated state.
   await act(async () => {
     r.sharedFiles.seedState("s-sf-states", "sf-avail", { status: "paused", downloadedBytes: 1234 });
   });
   expect(cards[0].textContent).toContain("已暂停");
-  expect(cards[10].textContent).toContain("已暂停");
+  expect(cards[9].textContent).toContain("已暂停");
+});
+
+it("shows {type} · {size} for a downloaded image and {duration} · {size} only for audio/video", async () => {
+  const r = makeDemo();
+  const img = create(SharedFileSchema, { fileId: "sf-sub-img", name: "cover.png", sizeBytes: 1_887_437n, path: "/Users/me/cover.png" });
+  const zip = create(SharedFileSchema, { fileId: "sf-sub-zip", name: "a.zip", sizeBytes: 2_097_152n, path: "/Users/me/a.zip" });
+  r.sharedFiles.seedDownloaded("s-sf-chat", img.fileId, new Blob(["png"], { type: "image/png" }));
+  r.sharedFiles.seedDownloaded("s-sf-chat", zip.fileId, new Blob(["zip"]));
+  await mount(<SharedFileCards remote={r} sessionId="s-sf-chat" files={[img, zip]} machineName="Mac" machineHome="/Users/me" />);
+  const subs = [...host!.querySelectorAll(".sf-fs")].map((e) => e.textContent);
+  expect(subs).toEqual(["图片 · 1.8 MB", "压缩包 · 2.0 MB"]);
+});
+
+it("orders the downloaded web menu as save, share… (only when canShare), separator, delete", async () => {
+  const r = makeDemo();
+  const f = create(SharedFileSchema, { fileId: "sf-order", name: "cover.png", sizeBytes: 100n, path: "/Users/me/cover.png" });
+  r.sharedFiles.seedDownloaded("s-sf-chat", f.fileId, new Blob(["png"], { type: "image/png" }));
+  await mount(<SharedFileCard remote={r} sessionId="s-sf-chat" file={f} machineName="Mac" machineHome="/Users/me" />);
+  const card = host!.querySelector<HTMLElement>(".sf-fc")!;
+  card.getBoundingClientRect = () => new DOMRect(20, 120, 296, 62);
+  const items = () => [...host!.querySelectorAll('.sf-ctx-overlay [role="menuitem"]')].map((b) => b.textContent);
+  const openClose = async () => {
+    await act(async () => {
+      card.dispatchEvent(new KeyboardEvent("keydown", { key: "ContextMenu", bubbles: true }));
+    });
+    const got = items();
+    const seps = host!.querySelectorAll(".sf-ctx-overlay .sf-mgap").length;
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    return { got, seps };
+  };
+
+  // No navigator.canShare: no share item.
+  const none = await openClose();
+  expect(none.got).toEqual(["保存到本机", "删除本机副本"]);
+
+  const canShare = vi.fn(() => true);
+  Object.defineProperty(navigator, "canShare", { value: canShare, configurable: true });
+  try {
+    const yes = await openClose();
+    expect(yes.got).toEqual(["保存到本机", "分享…", "删除本机副本"]);
+    expect(canShare).toHaveBeenCalled();
+    expect([none.seps, yes.seps]).toEqual([1, 1]);
+    canShare.mockReturnValue(false);
+    expect((await openClose()).got).toEqual(["保存到本机", "删除本机副本"]);
+  } finally {
+    delete (navigator as unknown as { canShare?: unknown }).canShare;
+  }
 });
 
 it("handles click transitions, auto-open only while staying in session, and opens image/video/non-media safely", async () => {
@@ -283,7 +324,6 @@ it("handles click transitions, auto-open only while staying in session, and open
         file={fVid}
         machineName="Mac"
         machineHome="/Users/me"
-        maxBytes={104_857_600n}
       />
     </SharedFileViewContext.Provider>,
   );
@@ -349,7 +389,6 @@ it("handles click transitions, auto-open only while staying in session, and open
           file={fSlow}
           machineName="Mac"
           machineHome="/Users/me"
-          maxBytes={104_857_600n}
         />
       </SharedFileViewContext.Provider>,
     );
@@ -399,7 +438,6 @@ it("handles click transitions, auto-open only while staying in session, and open
 it("supports phone long-press blurred overlay, wide right-click menu, keyboard ContextMenu, delete/cancel, and header-only disabled menus", async () => {
   vi.useFakeTimers();
   const r = makeDemo();
-  const maxBytes = 104_857_600n;
   const fDone = create(SharedFileSchema, {
     fileId: "sf-menu-done",
     name: "cover.png",
@@ -431,7 +469,6 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
         file={fDone}
         machineName="MacBook Pro"
         machineHome="/Users/me"
-        maxBytes={maxBytes}
       />
       <SharedFileCard
         remote={r}
@@ -439,7 +476,6 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
         file={fPaused}
         machineName="MacBook Pro"
         machineHome="/Users/me"
-        maxBytes={maxBytes}
       />
       <SharedFileCard
         remote={r}
@@ -447,7 +483,6 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
         file={fOff}
         machineName="Mac mini"
         machineHome="/Users/me"
-        maxBytes={maxBytes}
       />
     </div>,
   );
@@ -521,7 +556,6 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
         file={fOff}
         machineName="Mac mini"
         machineHome="/Users/me"
-        maxBytes={maxBytes}
       />,
     );
   });
@@ -572,4 +606,82 @@ it("wires SessionPage to trigger non-media download on PDF click without inline 
     root!.render(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   });
   expect(host!.querySelector(".sf-fc")).toBeNull();
+});
+
+it("web security: saves always as application/octet-stream, previews only whitelisted types with a client MIME, never opens a new tab", async () => {
+  const r = makeDemo();
+  const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+  const created = URL.createObjectURL as unknown as ReturnType<typeof vi.fn>;
+  const clicked: HTMLAnchorElement[] = [];
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+    clicked.push(this);
+  });
+  const lastBlobType = () => (created.mock.calls.at(-1)?.[0] as Blob).type;
+
+  // Direct save: the blob's own type (even image/svg+xml or text/html) is never kept.
+  created.mockClear();
+  saveBlobAsDownload(new Blob(["<svg onload=alert(1)>"], { type: "image/svg+xml" }), "../evil.svg");
+  expect(lastBlobType()).toBe("application/octet-stream");
+  expect(clicked.at(-1)?.download).toBe("..evil.svg");
+  expect(clicked.at(-1)?.getAttribute("target")).toBeNull();
+  saveBlobAsDownload(new Blob(["<html>"], { type: "text/html" }), "page.html");
+  expect(lastBlobType()).toBe("application/octet-stream");
+
+  // The preview blob carries the client-chosen MIME from the extension, not the file's own type.
+  const spoof = new Blob(["x"], { type: "text/html" });
+  expect(previewBlobForFile(spoof, "pic.png")?.blob.type).toBe("image/png");
+  expect(previewBlobForFile(spoof, "clip.m4v")?.blob.type).toBe("video/mp4");
+  expect(previewBlobForFile(spoof, "voice.wav")?.blob.type).toBe("audio/wav");
+  for (const name of ["a.svg", "a.html", "a.htm", "a.pdf", "a.xhtml", "a.txt", "a.mkv", "a.flac", "a.png.svg", "png"]) {
+    expect(previewBlobForFile(spoof, name)).toBeUndefined();
+  }
+
+  // Image overlay "save" goes through the octet-stream path, not the image/* preview blob.
+  const png = create(SharedFileSchema, { fileId: "sec-png", name: "cover.png", sizeBytes: 3n, path: "/Users/me/cover.png" });
+  const preview = previewBlobForFile(new Blob(["png"]), png.name)!;
+  await mount(
+    <SharedFilePreviewOverlay
+      remote={r}
+      sessionId="s-sf-chat"
+      agentName="Claude"
+      machineHome="/Users/me"
+      wide={false}
+      target={{ file: png, blob: new Blob(["png"]), kind: "image", previewBlob: preview.blob, path: png.path }}
+      onClose={() => undefined}
+    />,
+  );
+  const saveBtn = [...host!.querySelectorAll("button")].find((b) => b.textContent === i18n.t("common.save"))!;
+  expect(saveBtn).toBeTruthy();
+  const before = clicked.length;
+  created.mockClear();
+  await act(async () => saveBtn.click());
+  expect(clicked.length).toBe(before + 1);
+  expect(lastBlobType()).toBe("application/octet-stream");
+  expect(clicked.at(-1)?.getAttribute("target")).toBeNull();
+
+  // Video overlay: media element source is a blob of the client MIME; saving is octet-stream.
+  const vid = create(SharedFileSchema, { fileId: "sec-vid", name: "clip.mp4", sizeBytes: 3n, path: "/Users/me/clip.mp4" });
+  const vprev = previewBlobForFile(new Blob(["v"], { type: "text/html" }), vid.name)!;
+  created.mockClear();
+  await act(async () => {
+    root!.render(
+      <SharedFilePreviewOverlay
+        remote={r}
+        sessionId="s-sf-chat"
+        agentName="Claude"
+        machineHome="/Users/me"
+        wide={false}
+        target={{ file: vid, blob: new Blob(["v"], { type: "text/html" }), kind: "video", previewBlob: vprev.blob, path: vid.path }}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(lastBlobType()).toBe("video/mp4");
+  const vsave = [...host!.querySelectorAll("button")].find((b) => b.textContent === "保存到本机")!;
+  created.mockClear();
+  await act(async () => vsave.click());
+  expect(lastBlobType()).toBe("application/octet-stream");
+
+  expect(openSpy).not.toHaveBeenCalled();
+  expect(clicked.every((a) => a.getAttribute("target") === null)).toBe(true);
 });

@@ -10,6 +10,7 @@ import { create } from "@bufbuild/protobuf";
 import { ImageFormat, ImageRefSchema } from "../gen/remoteagent/v1/event_pb";
 import type { Tray, TrayItem } from "../attach";
 import { imageProblem } from "../image-problem";
+import { saveBlobAsDownload } from "../shared-files";
 import {
   createContext,
   useContext,
@@ -369,6 +370,8 @@ export function ImageViewer({
       : `image-${i + 1}.${extOf(load.kind === "ok" ? load.format : img.ref.format)}`;
   const blob = load.kind === "ok" ? load.blob : undefined;
   const save = () => {
+    // Agent-sent files are always saved as application/octet-stream, never with the preview MIME.
+    if (sharedFile) return saveBlobAsDownload(sharedFile.blob, sharedFile.name);
     if (!full) return;
     const a = document.createElement("a");
     a.href = full;
