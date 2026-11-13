@@ -329,8 +329,12 @@ func migrationCutoff(db *sql.DB, now time.Time) (uint64, error) {
 		return 0, errMigration
 	}
 	clock := uint64(now.UnixMilli())
-	var deadline, cutoff, floor, saved uint64
-	if db.QueryRow(`SELECT COALESCE(MAX(deadline),0) FROM accepted`).Scan(&deadline) != nil || deadline > clock {
+	deadline, err := validatedV3Deadline(db)
+	if err != nil {
+		return 0, err
+	}
+	var cutoff, floor, saved uint64
+	if deadline > clock {
 		return 0, errMigration
 	}
 	if db.QueryRow(`SELECT cutoff FROM accepted_meta WHERE id=1`).Scan(&cutoff) != nil {
@@ -377,24 +381,31 @@ func copyFile(source, target string) (err error) {
 	return out.Sync()
 }
 
-func main() {
+func run(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("migrate-security-v4", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	home := flags.String("home", "", "")
 	dry := flags.Bool("dry-run", false, "")
 	locale := flags.String("locale", "en", "")
-	if flags.Parse(os.Args[1:]) != nil || *home == "" || flags.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, i18n.SecurityMigrationUsage(*locale))
-		os.Exit(2)
+	if flags.Parse(args) != nil || *home == "" || flags.NArg() != 0 {
+		fmt.Fprintln(stderr, i18n.SecurityMigrationUsage(*locale))
+		return 2
 	}
-	fmt.Println(i18n.SecurityMigrationOldResults(*locale))
+	fmt.Fprintln(stdout, i18n.SecurityMigrationOldResults(*locale))
 	if err := migrate(*home, *dry); err != nil {
-		fmt.Fprintln(os.Stderr, i18n.SecurityMigrationFailed(*locale))
-		os.Exit(1)
+		if errors.Is(err, errV3Acceptance) {
+			fmt.Fprintln(stderr, i18n.SecurityMigrationAcceptanceCorrupt(*locale))
+		} else {
+			fmt.Fprintln(stderr, i18n.SecurityMigrationFailed(*locale))
+		}
+		return 1
 	}
 	if *dry {
-		fmt.Println(i18n.SecurityMigrationDryRun(*locale))
+		fmt.Fprintln(stdout, i18n.SecurityMigrationDryRun(*locale))
 	} else {
-		fmt.Println(i18n.SecurityMigrationComplete(*locale))
+		fmt.Fprintln(stdout, i18n.SecurityMigrationComplete(*locale))
 	}
+	return 0
 }
+
+func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }

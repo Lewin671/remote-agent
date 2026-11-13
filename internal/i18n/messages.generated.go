@@ -245,6 +245,10 @@ func QuotaReadFailed(locale string) string {
 	return render(locale, "quota.read_failed", map[string]any{})
 }
 
+func SecurityMigrationAcceptanceCorrupt(locale string) string {
+	return render(locale, "security.migration_acceptance_corrupt", map[string]any{})
+}
+
 func SecurityMigrationComplete(locale string) string {
 	return render(locale, "security.migration_complete", map[string]any{})
 }

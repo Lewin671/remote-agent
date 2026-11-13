@@ -55,7 +55,7 @@ func fixture(t *testing.T) (string, []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`DROP TABLE accepted; DROP TABLE accepted_bodies; CREATE TABLE accepted(key BLOB PRIMARY KEY,deadline INTEGER NOT NULL,done INTEGER NOT NULL,result BLOB,failed INTEGER NOT NULL,checksum BLOB NOT NULL); UPDATE security SET version=3;INSERT INTO accepted VALUES(X'01',1,1,X'02',0,zeroblob(32));`)
+	_, err = db.Exec(`DROP TABLE accepted; DROP TABLE accepted_bodies; CREATE TABLE accepted(key BLOB PRIMARY KEY,deadline INTEGER NOT NULL,done INTEGER NOT NULL,result BLOB,failed INTEGER NOT NULL,checksum BLOB NOT NULL); UPDATE security SET version=3;INSERT INTO accepted VALUES(X'01',1,1,X'02',0,X'c1991a0ad90159da42914cbc92bd35518f89981ded472f14c8804e651c33ef4f');`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,8 @@ func TestMigrationRefusesActiveDaemonAndUnexpiredIDs(t *testing.T) {
 	}
 	unlock()
 	db, _ := sql.Open("sqlite", filepath.Join(home, "security-v3.db"))
-	_, err = db.Exec(`UPDATE accepted SET deadline=?`, time.Now().Add(time.Minute).UnixMilli())
+	deadline := uint64(time.Now().Add(time.Minute).UnixMilli())
+	_, err = db.Exec(`UPDATE accepted SET deadline=?,checksum=?`, deadline, v3AcceptedChecksum([]byte{1}, deadline, 1, []byte{2}, 0))
 	if err != nil {
 		t.Fatal(err)
 	}

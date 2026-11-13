@@ -1538,5 +1538,15 @@
     "path": "web/src/attempt.ts",
     "literal": "not_sent",
     "reason": "Authenticated outcome enum gates the diagnostic expired code; this is a protocol identifier, not display copy."
+  },
+  {
+    "path": "scripts/migrate-security-v4/accepted_v3.go",
+    "literal": "v3_acceptance_corrupt",
+    "reason": "Legacy v3 checksum domain separator or internal validation sentinel. The CLI displays the localized security.migration_acceptance_corrupt message and never exposes this value."
+  },
+  {
+    "path": "scripts/migrate-security-v4/accepted_v3.go",
+    "literal": "ra3/accepted-entry\\x00",
+    "reason": "Legacy v3 checksum domain separator or internal validation sentinel. The CLI displays the localized security.migration_acceptance_corrupt message and never exposes this value."
   }
 ]

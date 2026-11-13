@@ -7745,5 +7745,19 @@
       "zh-CN": "source",
       "en": "reviewed"
     }
+  },
+  {
+    "key": "security.migration_acceptance_corrupt",
+    "zh-CN": "第 3 代请求记录校验失败，无法信任原请求期限。升级已拒绝，原库、备份和代数标记未改动；请保持 daemon 停止，核对原库或有效备份，不要修改期限或跳过损坏记录。",
+    "en": "Generation-3 request records failed validation; their original deadlines cannot be trusted. Upgrade was refused. The source, backup and generation marker were not changed. Keep the daemon stopped and verify the source or a valid backup; do not alter deadlines or skip damaged records.",
+    "notes": "手动 v3→v4 升级及 dry-run 在任何接受记录形状或原 checksum 不符时显示。不得包含请求 ID、内容、路径或密钥；不要暗示可通过删坏记录继续迁移。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

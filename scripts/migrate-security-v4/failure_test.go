@@ -75,7 +75,7 @@ func TestMigrationCutoffDoesNotPinFastClock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = db.Exec(`UPDATE accepted SET deadline=100; UPDATE accepted_meta SET cutoff=200`); err != nil {
+	if _, err = db.Exec(`UPDATE accepted SET deadline=100,checksum=X'a5b733cf92cdf8866b3273eca34ce4f4d71af0be653140bd234abc146a17b400'; UPDATE accepted_meta SET cutoff=200`); err != nil {
 		t.Fatal(err)
 	}
 	db.Close()
@@ -233,7 +233,7 @@ func TestMigrationReadsUncheckpointedWALAfterKill(t *testing.T) {
 			panic(err)
 		}
 		db.SetMaxOpenConns(1)
-		if _, err = db.Exec(`PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA synchronous=FULL; UPDATE security SET floor_ms=700,floor_saved_ms=700; UPDATE accepted SET deadline=500; UPDATE accepted_meta SET cutoff=600;`); err != nil {
+		if _, err = db.Exec(`PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; PRAGMA synchronous=FULL; UPDATE security SET floor_ms=700,floor_saved_ms=700; UPDATE accepted SET deadline=500,checksum=X'73bde900f8d7fbb241c46a3bd30e9d01f2b5652f91836553dfd0a79f3404a307'; UPDATE accepted_meta SET cutoff=600;`); err != nil {
 			panic(err)
 		}
 		fmt.Fprintln(os.Stdout, "wal committed")
