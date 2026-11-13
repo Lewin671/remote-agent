@@ -21,7 +21,7 @@ type failedSecurityPull struct {
 func (s failedSecurityPull) GetSecurityStates(context.Context, *connect.Request[pb.GetSecurityStatesRequest]) (*connect.Response[pb.GetSecurityStatesResponse], error) {
 	return nil, connect.NewError(s.code, errors.New("synthetic pull failure"))
 }
-func TestSecuritySyncReconnectsOnLostAuthentication(t *testing.T) {
+func TestSecuritySyncKeepsItsLifetimeOnRPCFailure(t *testing.T) {
 	for _, code := range []connect.Code{connect.CodeUnauthenticated, connect.CodePermissionDenied, connect.CodeUnavailable} {
 		t.Run(code.String(), func(t *testing.T) {
 			c := &conn{r: New(publishBackend{})}
@@ -35,13 +35,9 @@ func TestSecuritySyncReconnectsOnLostAuthentication(t *testing.T) {
 			c.security.requestSync()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
-			err := c.securitySyncLoop(ctx)
-			if code == connect.CodeUnavailable {
-				if !errors.Is(err, context.DeadlineExceeded) {
-					t.Fatalf("transient error disconnected session: %v", err)
-				}
-			} else if connect.CodeOf(err) != code {
-				t.Fatalf("authentication loss was swallowed: %v", err)
+			err := c.security.syncLoop(ctx, 20*time.Millisecond, nil)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("security loop abandoned process ownership: %v", err)
 			}
 		})
 	}

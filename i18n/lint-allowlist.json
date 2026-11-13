@@ -790,6 +790,11 @@
     "reason": "Internal command outcome/state code used for classification; displayed text comes from existing localized messages."
   },
   {
+    "path": "internal/relay/dispatcher.go",
+    "literal": "publication refresh",
+    "reason": "Process-local publication wake sentinel, compared with errors.Is and consumed by the dispatcher; never sent, logged or rendered as product text."
+  },
+  {
     "path": "internal/daemon/shared_files.go",
     "literal": "zh-CN",
     "reason": "Explicit stage-0 display locale code for generated messages; not rendered text."

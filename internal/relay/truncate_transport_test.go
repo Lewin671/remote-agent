@@ -30,11 +30,11 @@ func (b *sizeFallbackBackend) EachEvents(id string, after uint64, fn func(*pb.Ev
 // forwarding; only the local CLI backend is a fake. An oversized question
 // must retain its kind as a skeleton and let subsequent history pass.
 func TestOversizedQuestionTransportContinuesAfterSkeleton(t *testing.T) {
-	var logins, notifies atomic.Int32
+	var streams, notifies atomic.Int32
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasSuffix(r.URL.Path, "/Login") {
-				logins.Add(1)
+			if r.URL.Path == "/v1/stream" {
+				streams.Add(1)
 			}
 			if strings.HasSuffix(r.URL.Path, "/Notify") {
 				notifies.Add(1)
@@ -61,7 +61,7 @@ func TestOversizedQuestionTransportContinuesAfterSkeleton(t *testing.T) {
 		t.Fatal(err)
 	}
 	backend := &sizeFallbackBackend{Backend: e.backend}
-	logins.Store(0)
+	streams.Store(0)
 	e.startRelayBackend(backend)
 	s := e.session(t, "healthy", 1)
 	events, err := e.client.Events(context.Background(), s, 0)
@@ -94,7 +94,7 @@ func TestOversizedQuestionTransportContinuesAfterSkeleton(t *testing.T) {
 	if err != nil || e.backend.sendCount() != 1 {
 		t.Fatalf("command blocked: %v", err)
 	}
-	if logins.Load() != 1 {
+	if streams.Load() != 1 {
 		t.Fatal("skeleton caused reconnect")
 	}
 }

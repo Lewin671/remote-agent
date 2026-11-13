@@ -74,14 +74,18 @@ func (b interruptedModelBackend) OpenTerminal(string) (relay.Terminal, error) {
 	return nil, errors.New("unused test terminal stream")
 }
 
-func startCancellationTestRelay(t *testing.T, backend relay.Backend) (*remoteclient.Client, string) {
+func startCancellationTestRelay(t *testing.T, backend relay.Backend, configure ...func(*httptest.Server)) (*remoteclient.Client, string) {
 	t.Helper()
 	srv, err := server.New(server.Config{DBPath: filepath.Join(t.TempDir(), "relay.db"), SetupToken: "test-setup"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { srv.Close() })
-	http := httptest.NewServer(srv.Handler())
+	http := httptest.NewUnstartedServer(srv.Handler())
+	for _, fn := range configure {
+		fn(http)
+	}
+	http.Start()
 	t.Cleanup(http.Close)
 	ctx := context.Background()
 	authority, err := remoteclient.NewAuthority(ctx, http.URL, "test-setup")

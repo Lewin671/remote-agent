@@ -19,3 +19,5 @@ func HasOwedNotificationForTest(r *Relay, id string) bool { return r.hasOwedNoti
 // HasBacklogWorkerForTest is false after an ended worker has returned and
 // released its admission slot. It does not require a scheduler sleep.
 func HasBacklogWorkerForTest(r *Relay) bool { return len(r.backlog) != 0 }
+
+func SetSecurityIntervalForTest(r *Relay, interval time.Duration) { r.securityInterval = interval }

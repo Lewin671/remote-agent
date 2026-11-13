@@ -69,13 +69,13 @@ func machineRequestSession(r *http.Request) string {
 func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 	for _, stage := range []string{"metadata", "events", "key", "PutSession", "UploadEvents"} {
 		t.Run(stage, func(t *testing.T) {
-			var logins, rejected atomic.Int32
+			var streams, rejected atomic.Int32
 			var broken atomic.Bool
 			broken.Store(true)
 			e := setupWithHandler(t, func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if strings.HasSuffix(r.URL.Path, "/Login") {
-						logins.Add(1)
+					if r.URL.Path == "/v1/stream" {
+						streams.Add(1)
 					}
 					if strings.HasSuffix(r.URL.Path, "/"+stage) && machineRequestSession(r) == "bad" && broken.Load() {
 						rejected.Add(1)
@@ -104,7 +104,7 @@ func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 			}
 			backend := &failingSyncBackend{Backend: e.backend, stage: stage}
 			backend.broken.Store(true)
-			logins.Store(0)
+			streams.Store(0)
 			e.startRelayBackend(backend, func(r *relay.Relay) {
 				relay.SetSyncRetryBaseForTest(r, testSyncInterval)
 			})
@@ -143,8 +143,8 @@ func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 				t.Fatalf("healthy command: %v", err)
 			}
 			e.online(t, true)
-			if n := logins.Load(); n != 1 {
-				t.Fatalf("session failure caused %d logins; want 1", n)
+			if n := streams.Load(); n != 1 {
+				t.Fatalf("session failure caused %d streams; want 1", n)
 			}
 			broken.Store(false)
 			backend.broken.Store(false)
@@ -154,21 +154,21 @@ func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 				}
 			}
 			e.session(t, "bad", 1)
-			if n := logins.Load(); n != 1 {
-				t.Fatalf("recovery caused reconnect: %d logins", n)
+			if n := streams.Load(); n != 1 {
+				t.Fatalf("recovery caused reconnect: %d streams", n)
 			}
 		})
 	}
 }
 
-func TestSessionRPCConnectionFailureStillReconnects(t *testing.T) {
+func TestSessionRPCFailureRetriesPublicationWithoutReconnect(t *testing.T) {
 	for _, code := range []string{"unauthenticated", "unavailable", "canceled", "deadline_exceeded"} {
 		t.Run(code, func(t *testing.T) {
-			var logins, failures atomic.Int32
+			var streams, failures atomic.Int32
 			e := setupWithHandler(t, func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if strings.HasSuffix(r.URL.Path, "/Login") {
-						logins.Add(1)
+					if r.URL.Path == "/v1/stream" {
+						streams.Add(1)
 					}
 					if strings.HasSuffix(r.URL.Path, "/UploadEvents") && failures.Add(1) == 1 {
 						w.Header().Set("Content-Type", "application/json")
@@ -180,12 +180,12 @@ func TestSessionRPCConnectionFailureStillReconnects(t *testing.T) {
 				})
 			})
 			appendText(t, e.backend.add(t, "session"), "session", "retry after reconnect")
-			logins.Store(0)
+			streams.Store(0)
 			e.startRelay()
 			e.session(t, "session", 1)
 			e.online(t, true)
-			if n := logins.Load(); n < 2 {
-				t.Fatalf("connection error did not reconnect: %d logins", n)
+			if n := streams.Load(); n != 1 {
+				t.Fatalf("publication failure replaced the main WS: %d streams", n)
 			}
 		})
 	}

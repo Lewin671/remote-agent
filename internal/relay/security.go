@@ -3,12 +3,13 @@ package relay
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -31,10 +32,14 @@ func securityPath() string { return filepath.Join(paths.Dir(), "security-v3.db")
 
 // role is the signed state's copy of this device's membership.
 type securitySession struct {
-	clock    func() uint64
-	endpoint *deviceauth.Endpoint
-	client   remoteagentv1connect.ClientServiceClient
-	syncNow  chan struct{}
+	clock         func() uint64
+	endpoint      *deviceauth.Endpoint
+	client        remoteagentv1connect.ClientServiceClient
+	syncNow       chan struct{}
+	blocked       atomic.Bool
+	authMu        sync.Mutex
+	authorization context.Context
+	revoke        context.CancelFunc
 }
 
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
@@ -57,6 +62,7 @@ func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServic
 }
 
 func (s *securitySession) Close() {
+	s.setAuthorized(false)
 	if s.endpoint != nil {
 		s.endpoint.Close()
 	}
@@ -86,6 +92,9 @@ func (s *securitySession) sealRaw(h *pb.Header, purpose deviceauth.Purpose, seed
 }
 
 func (s *securitySession) sealWith(prepare func(deviceauth.Header, []byte, []byte) (deviceauth.Ciphertext, error), h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+	if s.blocked.Load() {
+		return nil, deviceauth.ErrUntrusted
+	}
 	if err := s.endpoint.CheckLease(s.now()); err != nil {
 		return nil, err
 	}
@@ -114,6 +123,9 @@ func (s *securitySession) requestSync() {
 // open verifies an envelope against the local chain. An unknown state is
 // fetched immediately and the open is retried once.
 func (s *securitySession) open(ctx context.Context, w deviceauth.Wire, seed []byte, live bool, now uint64) (deviceauth.Header, []byte, error) {
+	if live && s.blocked.Load() {
+		return deviceauth.Header{}, nil, deviceauth.ErrUntrusted
+	}
 	h, plain, err := s.endpoint.Open(w, seed, live, now)
 	if !errors.Is(err, deviceauth.ErrUnknown) {
 		return h, plain, err
@@ -128,6 +140,9 @@ func (s *securitySession) open(ctx context.Context, w deviceauth.Wire, seed []by
 // accept is the at-most-once control gate. An unknown state is fetched first
 // and the whole gate is retried once.
 func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
+	if s.blocked.Load() {
+		return nil, deviceauth.ErrUntrusted
+	}
 	out, err := s.endpoint.Accept(w, seed, now, fn)
 	if !errors.Is(err, deviceauth.ErrUnknown) {
 		return out, err
@@ -143,7 +158,11 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 // The connection maintenance loop separately retries current checkpoints.
 func (s *securitySession) syncOnce(ctx context.Context) error {
 	_, err := s.pull(ctx)
-
+	if securityAuthenticationLost(err) || s.endpoint.CheckLease(s.now()) != nil {
+		s.setAuthorized(false)
+	} else if err == nil {
+		s.setAuthorized(true)
+	}
 	return err
 }
 
@@ -204,47 +223,34 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 	return 0, deviceauth.ErrCapacity
 }
 
-// Authentication loss invalidates this connection's token and possibly its
-// saved X key. Relay.Run must reload the account and endpoint before logging in.
+// Authentication loss on the WS login is reported by Relay.Run. Independent
+// HTTP credentials renew Unauthenticated responses inside their own component.
 func securityAuthenticationLost(err error) bool {
 	return connect.CodeOf(err) == connect.CodeUnauthenticated || connect.CodeOf(err) == connect.CodePermissionDenied
 }
 
-// securitySyncLoop polls every 60 seconds and immediately on an unknown
-// state. It advances the time floor even when no control envelope arrives.
-func (c *conn) securitySyncLoop(ctx context.Context) error {
-	if err := c.security.endpoint.Touch(uint64(time.Now().UnixMilli())); err != nil {
-		return fmt.Errorf("security time floor: %w", err)
-	}
-	ticker := time.NewTicker(60 * time.Second)
+// syncLoop retains the current 60/15-second timing. The shorter direct
+// liveness budget belongs to phase 1. It starts independently of WS readiness.
+func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, initialDone chan<- struct{}) error {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	s.requestSync()
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-		case <-c.security.syncNow:
+		case <-s.syncNow:
 		}
 		attempt, cancel := context.WithTimeout(ctx, 15*time.Second)
-		err := c.security.syncOnce(attempt)
+		err := s.syncOnce(attempt)
 		cancel()
-		if err != nil {
-			if securityAuthenticationLost(err) {
-				return fmt.Errorf("security synchronization: %w", err)
-			}
-			// Keep events and the terminal running: only remote control
-			// depends on the new state. The next tick tries again.
-			slog.Warn("relay: security synchronization paused remote control; retrying next sync", "err", err)
-			continue
+		if initialDone != nil {
+			close(initialDone)
+			initialDone = nil
 		}
-		publishCtx, publishCancel := context.WithTimeout(ctx, 60*time.Second)
-		err = c.ensurePublished(publishCtx)
-		publishCancel()
-		if err != nil {
-			if securityAuthenticationLost(err) {
-				return fmt.Errorf("checkpoint synchronization: %w", err)
-			}
-			slog.Warn("relay: republishing current state failed; retrying next sync", "err", err)
+		if err != nil && ctx.Err() == nil {
+			slog.Warn("relay: security synchronization failed; retrying next sync", "code", connect.CodeOf(err).String())
 		}
 	}
 }
@@ -274,4 +280,34 @@ func headerOfSecurity(env *pb.Envelope) *pb.Header {
 		return &pb.Header{}
 	}
 	return h.Projection()
+}
+
+// Authentication loss pauses control and existing streams without stopping
+// the process endpoint or its accepted executions. Successful independent sync
+// can admit fresh streams again; it never resurrects a retired terminal.
+func (s *securitySession) setAuthorized(valid bool) {
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	if !valid {
+		s.blocked.Store(true)
+		if s.revoke != nil {
+			s.revoke()
+		}
+	} else if s.blocked.Swap(false) {
+		s.authorization, s.revoke = context.WithCancel(context.Background())
+	}
+}
+func (s *securitySession) streamContext(parent context.Context) (context.Context, context.CancelFunc) {
+	s.authMu.Lock()
+	if s.authorization == nil {
+		s.authorization, s.revoke = context.WithCancel(context.Background())
+		if s.blocked.Load() {
+			s.revoke()
+		}
+	}
+	authorization := s.authorization
+	s.authMu.Unlock()
+	ctx, cancel := context.WithCancel(parent)
+	stop := context.AfterFunc(authorization, cancel)
+	return ctx, func() { stop(); cancel() }
 }

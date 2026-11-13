@@ -61,7 +61,8 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 	if lifetime == nil {
 		lifetime = ctx
 	}
-	c.terminals.Go(func() { c.serveTerminal(lifetime, ws, t, key, sessionID, streamID) })
+	streamCtx, streamCancel := c.security.streamContext(lifetime)
+	c.dispatcher.terminals.Go(func() { defer streamCancel(); c.serveTerminal(streamCtx, ws, t, key, sessionID, streamID) })
 	return nil
 }
 

@@ -186,6 +186,8 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				state.nextCheck = time.Time{}
 			}
 			continue
+		case <-c.publishNow:
+			return errPublicationRefresh
 		case <-t.C:
 		}
 	}

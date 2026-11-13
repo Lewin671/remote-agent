@@ -70,7 +70,8 @@ type Relay struct {
 	Retry time.Duration
 	// syncInterval paces idle workers and completed-session checks. Tests can
 	// shorten it without changing the production schedule.
-	syncInterval time.Duration
+	syncInterval     time.Duration
+	securityInterval time.Duration
 	// These durations are per relay so integration tests can exercise the
 	// real timeout and retry paths without waiting on production intervals.
 	readyTimeout  time.Duration
@@ -95,7 +96,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
+	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 60 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -106,9 +107,15 @@ func (r *Relay) Connected() bool {
 }
 
 // Run connects and reconnects until ctx is done. Without an account it
-// waits for one to be created. Return drains admitted publication mutations;
-// canceled readers/command callbacks cannot start new publication writes.
+// waits for one to be created. The process endpoint and admitted work survive
+// reconnects. Shutdown cancels and drains their owners before closing storage.
 func (r *Relay) Run(ctx context.Context) {
+	var dispatcher *dispatcher
+	defer func() {
+		if dispatcher != nil {
+			dispatcher.close()
+		}
+	}()
 	delay := r.Retry
 	logged := false
 	for ctx.Err() == nil {
@@ -121,6 +128,10 @@ func (r *Relay) Run(ctx context.Context) {
 		}
 		acct, err := LoadAccount()
 		if errors.Is(err, ErrNoAccount) {
+			if dispatcher != nil {
+				dispatcher.close()
+				dispatcher = nil
+			}
 			if !logged {
 				slog.Info("relay: no account yet; waiting for `remote-agent account join` with a code from the phone")
 				logged = true
@@ -133,8 +144,20 @@ func (r *Relay) Run(ctx context.Context) {
 			sleep(ctx, time.Minute)
 			continue
 		}
+		if dispatcher != nil && !sameAccount(dispatcher.acct, acct) {
+			dispatcher.close()
+			dispatcher = nil
+		}
+		if dispatcher == nil {
+			dispatcher, err = r.newDispatcher(ctx, acct)
+			if err != nil {
+				slog.Warn("relay: security initialization failed", "err", err)
+				sleep(ctx, r.Retry)
+				continue
+			}
+		}
 		start := time.Now()
-		err = r.session(ctx, acct)
+		err = r.session(ctx, acct, dispatcher)
 		if ctx.Err() != nil {
 			return
 		}
@@ -159,11 +182,15 @@ func sleep(ctx context.Context, d time.Duration) {
 	}
 }
 
-// conn is one connected period: the login token, clients and keys.
+// conn supplies helpers to a WS path or to the process publication component.
+// Only a WS path has dispatcher/pathLifetime/ws/token; the publisher owns
+// machine/writes/publication state. Neither owns the shared security endpoint.
 type conn struct {
-	diskAlertNow      func() time.Time
-	nextDiskAlert     time.Time       // volatile notification retry deadline; syncLoop owns it
-	terminals         sync.WaitGroup  // added by command handlers, joined after readLoop drains
+	diskAlertNow func() time.Time
+	nextDiskAlert time.Time // publisher syncLoop owns the volatile retry deadline
+	dispatcher *dispatcher
+	pathLifetime context.Context // socket/reply waiting, never execution
+
 	lifetime          context.Context // stream lifetime, independent of one command deadline
 	writes            connectionWrites
 	security          *securitySession
@@ -172,35 +199,22 @@ type conn struct {
 	machine           remoteagentv1connect.MachineServiceClient
 	publishMu         sync.Mutex
 	checkpointPending atomic.Bool
+	publishNow        chan struct{}
 	ws                *websocket.Conn
 	token             string
 }
 
 // session logs in, opens the stream, and serves until an error.
-func (r *Relay) session(ctx context.Context, acct *Account) error {
+func (r *Relay) session(ctx context.Context, acct *Account, dispatcher *dispatcher) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	token, err := login(ctx, acct)
 	if err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
-	hc := httpClient()
-	c := &conn{r: r, acct: acct, token: token, lifetime: ctx,
-		machine: remoteagentv1connect.NewMachineServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token), r.limitMachineRPCs()))}
-
-	securityClient := remoteagentv1connect.NewClientServiceClient(hc, acct.Server, connect.WithInterceptors(bearer(token)))
-	c.security, err = openSecuritySession(acct, securityClient)
-	if err != nil {
-		return err
-	}
+	c := &conn{r: r, acct: acct, token: token, lifetime: dispatcher.ctx, pathLifetime: ctx, dispatcher: dispatcher, security: dispatcher.security}
 	var workers sync.WaitGroup
-	defer func() {
-		cancel()
-		workers.Wait()
-		c.terminals.Wait()
-		c.writes.close()
-		c.security.Close()
-	}()
+	defer func() { cancel(); workers.Wait() }()
 
 	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
 	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
@@ -233,24 +247,8 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 		r.mu.Unlock()
 	}()
 	slog.Info("relay: connected", "server", acct.Server, "machine", acct.DeviceID)
+	dispatcher.ready()
 
-	if err := c.security.syncOnce(ctx); err != nil {
-		if securityAuthenticationLost(err) {
-			return err
-		}
-		// The stream itself is up. Installed states still serve events and
-		// the terminal; remote control pauses until a later sync succeeds.
-		slog.Warn("relay: starting without the newest security state; control remains valid until the local lease expires", "err", err)
-	}
-	meta := c.r.backend.MachineMeta()
-	if err := c.ensurePublished(ctx); err != nil {
-		slog.Warn("relay: current checkpoint pending; retrying during synchronization", "err", err)
-	}
-	if err := c.putMachine(ctx, meta); err != nil {
-		return err
-	}
-	workers.Go(func() { errc <- c.syncLoop(ctx, meta) })
-	workers.Go(func() { errc <- c.securitySyncLoop(ctx) })
 	workers.Go(func() {
 		// Keep the connection alive through proxies and notice a dead one.
 		t := time.NewTicker(25 * time.Second)
@@ -437,15 +435,12 @@ func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 const maxConcurrentCalls = 8
 
 func (c *conn) readLoop(ctx context.Context) error {
-	return readForwardCalls(ctx, c.r.calls, func() (*pb.ServerFrame, error) {
+	return readForwardCalls(ctx, c.dispatcher.ctx, c.r.calls, &c.dispatcher.workers, func() (*pb.ServerFrame, error) {
 		return readFrame(ctx, c.ws)
 	}, c.handleCall)
 }
 
-func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {
-	ctx, cancel := context.WithCancel(ctx)
-	var calls sync.WaitGroup
-	defer func() { cancel(); calls.Wait() }()
+func readForwardCalls(ctx, execution context.Context, slots chan struct{}, calls *sync.WaitGroup, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -468,13 +463,16 @@ func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb
 			}
 			calls.Go(func() {
 				defer func() { <-slots }()
-				handle(ctx, call)
+				handle(execution, call)
 			})
 		}
 	}
 }
 
 func (c *conn) reply(ctx context.Context, r *pb.ForwardReply) {
+	if c.pathLifetime != nil {
+		ctx = c.pathLifetime
+	}
 	b, err := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: r}})
 	if err != nil {
 		return

@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -17,11 +18,13 @@ func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	slots := make(chan struct{}, maxConcurrentCalls)
+	var owned sync.WaitGroup
+	defer func() { cancel(); owned.Wait() }()
 	var reads, starts atomic.Int32
 	done := make(chan error, 1)
 	workers := make(chan struct{}, maxConcurrentCalls)
 	go func() {
-		done <- readForwardCalls(ctx, slots, func() (*pb.ServerFrame, error) {
+		done <- readForwardCalls(ctx, ctx, slots, &owned, func() (*pb.ServerFrame, error) {
 			reads.Add(1)
 			return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
 		}, func(ctx context.Context, call *pb.ForwardCall) {
@@ -62,13 +65,16 @@ func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 	}
 }
 
-func TestForwardReadFailureCancelsAndDrainsHandler(t *testing.T) {
-	entered, canceled, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
+func TestForwardReadFailureLeavesExecutionWithProcess(t *testing.T) {
+	process, stop := context.WithCancel(context.Background())
+	defer stop()
+	entered, release := make(chan struct{}), make(chan struct{})
+	var owned sync.WaitGroup
 	done := make(chan error, 1)
 	failure := errors.New("stream ended")
 	reads := 0
 	go func() {
-		done <- readForwardCalls(context.Background(), make(chan struct{}, 1), func() (*pb.ServerFrame, error) {
+		done <- readForwardCalls(context.Background(), process, make(chan struct{}, 1), &owned, func() (*pb.ServerFrame, error) {
 			reads++
 			if reads == 1 {
 				return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
@@ -77,25 +83,21 @@ func TestForwardReadFailureCancelsAndDrainsHandler(t *testing.T) {
 			return nil, failure
 		}, func(ctx context.Context, _ *pb.ForwardCall) {
 			close(entered)
-			<-ctx.Done()
-			close(canceled)
 			<-release
+			if ctx.Err() != nil {
+				t.Error("path failure canceled execution")
+			}
 		})
 	}()
-	select {
-	case <-canceled:
-	case <-time.After(time.Second):
-		close(release)
-		t.Fatal("stream failure did not cancel its handler")
-	}
+	<-entered
 	select {
 	case err := <-done:
-		close(release)
-		t.Fatalf("reader returned before handler drain: %v", err)
-	case <-time.After(50 * time.Millisecond):
+		if !errors.Is(err, failure) {
+			t.Error(err)
+		}
+	case <-time.After(time.Second):
+		t.Error("path waited for execution")
 	}
 	close(release)
-	if err := <-done; !errors.Is(err, failure) {
-		t.Fatalf("reader error: %v", err)
-	}
+	owned.Wait()
 }

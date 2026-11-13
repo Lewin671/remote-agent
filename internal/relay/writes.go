@@ -34,5 +34,8 @@ func (w *connectionWrites) close() {
 }
 
 func (c *conn) writeDisk(write func() error) error {
+	if c.dispatcher != nil {
+		return c.dispatcher.publisher.writes.run(c.dispatcher.ctx, write)
+	}
 	return c.writes.run(c.lifetime, write)
 }
