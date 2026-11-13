@@ -7650,8 +7650,8 @@
   },
   {
     "key": "security.migration_usage",
-    "zh-CN": "用法：go run ./scripts/migrate-security-v4 --home DIR [--dry-run] [--locale zh-CN|en]。必须先停止 daemon；先核对旧操作。",
-    "en": "Usage: go run ./scripts/migrate-security-v4 --home DIR [--dry-run] [--locale zh-CN|en]. Stop the daemon and check old operations first.",
+    "zh-CN": "用法：go run ./scripts/migrate-security-v4 --home DIR [--dry-run] [--locale zh-CN|en]。DIR 必须是已有状态目录（含 security-v3.db 和 daemon.lock）；先校准电脑时间、停止 daemon 并核对旧操作。",
+    "en": "Usage: go run ./scripts/migrate-security-v4 --home DIR [--dry-run] [--locale zh-CN|en]. DIR must be an existing state directory with security-v3.db and daemon.lock. Check the computer clock, stop the daemon and check old operations first.",
     "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
     "params": {},
     "platforms": [
@@ -7664,8 +7664,8 @@
   },
   {
     "key": "security.migration_old_results",
-    "zh-CN": "第 3 代接受记录不会迁移。旧 ID 的结果查询将返回未知，绝不重新执行；请核对会话后再决定新操作。",
-    "en": "Generation 3 acceptance records are not migrated. Old ID queries return unknown and are never reexecuted; check the session before deciding on a new operation.",
+    "zh-CN": "第 3 代接受记录不会迁移。旧 ID 的结果查询将返回未知，绝不重新执行；请核对会话后再决定新操作。请先校准电脑时间；迁移保留旧请求期限和已有时间水位，不把迁移时刻写成新水位。",
+    "en": "Generation 3 acceptance records are not migrated. Old ID queries return unknown and are never reexecuted; check the session before deciding on a new operation. Check the computer clock first; migration preserves old request deadlines and existing time floors without adding the migration time as a new floor.",
     "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
     "params": {},
     "platforms": [
@@ -7706,8 +7706,8 @@
   },
   {
     "key": "security.migration_failed",
-    "zh-CN": "升级未完成，原库未替换。请确认 daemon 已停止、目标和备份尚不存在、磁盘可写、原库为第 3 代且完整，并且旧接受记录的截止时间全部已过；修正后重试。",
-    "en": "Upgrade did not complete; the source was not replaced. Ensure the daemon is stopped, target and backup do not exist, disk is writable, the source is valid generation 3, and all old acceptance deadlines have passed; then retry.",
+    "zh-CN": "升级未完成，原库未替换。请确认 --home 是已有状态目录且有 daemon.lock、daemon 已停止、目标和备份尚不存在、磁盘可写、原库为第 3 代且完整、电脑时间正确、旧请求期限已过且旧水位没有明显领先当前时钟。发布失败会尝试清理本次创建的文件；清理也失败时需停机处理残留文件后重试。",
+    "en": "Upgrade did not complete; the source was not replaced. Check that --home is an existing state directory with daemon.lock, the daemon is stopped, target and backup are absent, disk is writable, the source is valid generation 3, the clock is correct, old deadlines have passed and existing time floors are not far ahead. Publication failure removes files created by this attempt where possible; if cleanup also fails, keep the daemon stopped and resolve leftover files before retrying.",
     "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
     "params": {},
     "platforms": [

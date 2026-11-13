@@ -80,27 +80,45 @@ func syncDir(path string) error {
 	return f.Sync()
 }
 
-func migrate(home string, dry bool) error {
-	home, err := filepath.Abs(home)
+type migrationOps struct {
+	now     func() time.Time
+	publish func(string, string) error
+	syncDir func(string) error
+}
+
+func defaultMigrationOps() migrationOps {
+	return migrationOps{time.Now, func(src, dst string) error { return publishFile(src, dst, os.Link) }, syncDir}
+}
+func migrate(home string, dry bool) error { return migrateWith(home, dry, defaultMigrationOps()) }
+func migrateWith(home string, dry bool, ops migrationOps) (err error) {
+	home, err = filepath.Abs(home)
 	if err != nil {
 		return err
 	}
-	// Hold exactly the same exclusive lock as daemon.Run through publication.
+	source := filepath.Join(home, "security-v3.db")
+	target := filepath.Join(home, "security-v4.db")
+	backup := source + ".backup"
+	// Reject typos before any lock/database/temp-file creation. Existing daemon
+	// state has both a regular v3 store and its pre-existing lock inode.
+	info, err := os.Stat(home)
+	if err != nil || !info.IsDir() {
+		return errMigration
+	}
+	for _, path := range []string{source, filepath.Join(home, "daemon.lock")} {
+		info, err := os.Lstat(path)
+		if err != nil || !info.Mode().IsRegular() {
+			return errMigration
+		}
+	}
+	if !absent(target) || !absent(backup) {
+		return errMigration
+	}
+	// Hold exactly the same existing inode as daemon.Run through publication.
 	unlock, err := lockDaemon(filepath.Join(home, "daemon.lock"))
 	if err != nil {
 		return err
 	}
 	defer unlock()
-	source := filepath.Join(home, "security-v3.db")
-	target := filepath.Join(home, "security-v4.db")
-	backup := source + ".backup"
-	if !absent(target) || !absent(backup) {
-		return errMigration
-	}
-	info, err := os.Lstat(source)
-	if err != nil || !info.Mode().IsRegular() {
-		return errMigration
-	}
 	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(source)}).String()+"?mode=ro&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return err
@@ -111,19 +129,15 @@ func migrate(home string, dry bool) error {
 		return err
 	}
 	var version int
-	var deadline, cutoff uint64
 	if db.QueryRow(`SELECT version FROM security WHERE id=1`).Scan(&version) != nil || version != 3 {
 		return errMigration
 	}
-	if db.QueryRow(`SELECT COALESCE(MAX(deadline),0) FROM accepted`).Scan(&deadline) != nil || deadline > uint64(time.Now().UnixMilli()) {
-		return errMigration
+	cutoff, err := migrationCutoff(db, ops.now())
+	if err != nil {
+		return err
 	}
-	if db.QueryRow(`SELECT cutoff FROM accepted_meta WHERE id=1`).Scan(&cutoff) != nil {
-		return errMigration
-	}
-	cutoff = max(cutoff, deadline, uint64(time.Now().UnixMilli()))
-	// No ID without a hash is copied. The retained pruning floor prevents
-	// expired missing requests resurrecting after a clock rollback.
+	// No old ID is copied. Preserve only replay barriers already required by
+	// the source, rather than permanently pinning the operator's wall clock.
 	before := map[string][][]any{}
 	for _, table := range identityTables {
 		before[table], err = snapshot(db, table)
@@ -137,7 +151,7 @@ func migrate(home string, dry bool) error {
 	}
 	defer os.RemoveAll(work)
 	candidate := filepath.Join(work, "security.db")
-	// VACUUM INTO is a consistent SQLite backup, including any checkpointed WAL.
+	// VACUUM INTO includes committed WAL frames even before checkpoint.
 	// Bind the path; never interpolate an operator path into SQL.
 	if _, err = db.Exec(`VACUUM INTO ?`, candidate); err != nil {
 		return err
@@ -217,23 +231,69 @@ func migrate(home string, dry bool) error {
 	if closeErr != nil {
 		return closeErr
 	}
-	// Hard links publish without overwriting a concurrently created file.
-	if err = os.Link(backupTemp, backup); err != nil {
+	// Roll back only files published by this invocation. A pre-existing file
+	// (including one that races publication) is never overwritten or removed.
+	backupPublished, targetPublished := false, false
+	defer func() {
+		if err == nil {
+			return
+		}
+		if targetPublished {
+			err = errors.Join(err, os.Remove(target))
+		}
+		if backupPublished {
+			err = errors.Join(err, os.Remove(backup))
+		}
+		if backupPublished || targetPublished {
+			err = errors.Join(err, ops.syncDir(home))
+		}
+	}()
+	if err = ops.publish(backupTemp, backup); err != nil {
 		return err
 	}
-	if err = syncDir(home); err != nil {
+	backupPublished = true
+	if err = ops.syncDir(home); err != nil {
 		return err
 	}
-	if err = os.Link(candidate, target); err != nil {
+	if err = ops.publish(candidate, target); err != nil {
 		return err
 	}
-	if err = syncDir(home); err != nil {
-		os.Remove(target)
-		return err
-	}
-	return nil
+	targetPublished = true
+	return ops.syncDir(home)
 }
-func copyFile(source, target string) error {
+
+func migrationCutoff(db *sql.DB, now time.Time) (uint64, error) {
+	if now.UnixMilli() <= 0 {
+		return 0, errMigration
+	}
+	clock := uint64(now.UnixMilli())
+	var deadline, cutoff, floor, saved uint64
+	if db.QueryRow(`SELECT COALESCE(MAX(deadline),0) FROM accepted`).Scan(&deadline) != nil || deadline > clock {
+		return 0, errMigration
+	}
+	if db.QueryRow(`SELECT cutoff FROM accepted_meta WHERE id=1`).Scan(&cutoff) != nil {
+		return 0, errMigration
+	}
+	if db.QueryRow(`SELECT floor_ms,floor_saved_ms FROM security WHERE id=1`).Scan(&floor, &saved) != nil {
+		return 0, errMigration
+	}
+	if max(cutoff, floor, saved) > clock+deviceauth.MaxClockSkew {
+		return 0, errMigration
+	}
+	return max(cutoff, deadline), nil
+}
+
+// Hard links are preferred, but FAT/network filesystems may not support them.
+// Exclusive copying preserves no-overwrite semantics while the daemon lock is
+// held. Both paths publish only our private, verified and synced candidate.
+func publishFile(source, target string, link func(string, string) error) error {
+	err := link(source, target)
+	if err == nil || os.IsExist(err) {
+		return err
+	}
+	return copyFile(source, target)
+}
+func copyFile(source, target string) (err error) {
 	in, err := os.Open(source)
 	if err != nil {
 		return err
@@ -243,7 +303,12 @@ func copyFile(source, target string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		err = errors.Join(err, out.Close())
+		if err != nil {
+			err = errors.Join(err, os.Remove(target))
+		}
+	}()
 	if _, err = io.Copy(out, in); err != nil {
 		return err
 	}

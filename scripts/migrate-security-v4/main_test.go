@@ -16,6 +16,9 @@ import (
 func fixture(t *testing.T) (string, []byte) {
 	t.Helper()
 	home := t.TempDir()
+	if err := os.WriteFile(filepath.Join(home, "daemon.lock"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
 	_, ed, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
