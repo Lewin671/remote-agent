@@ -3,6 +3,7 @@ package remoteclient
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -14,27 +15,27 @@ func TestMachinePollingLifecycle(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		done := make(chan struct{})
-		calls := 0
+		var calls atomic.Int64
 		p := NewMachineStatusController(func(context.Context) (*pb.MachineStatus, error) {
-			calls++
-			if calls >= 2 && calls <= 4 {
+			n := calls.Add(1)
+			if n >= 2 && n <= 4 {
 				return nil, errors.New("offline")
 			}
-			return &pb.MachineStatus{ObservedMs: int64(calls)}, nil
+			return &pb.MachineStatus{ObservedMs: n}, nil
 		}, 2*time.Second)
 		go func() { p.Run(ctx); close(done) }()
 		synctest.Wait()
-		if calls != 0 {
+		if calls.Load() != 0 {
 			t.Fatal("hidden fetch")
 		}
 		p.SetActive(true, true, false)
 		synctest.Wait()
-		if calls != 0 {
+		if calls.Load() != 0 {
 			t.Fatal("unsupported fetch")
 		}
 		p.SetActive(true, true, true)
 		synctest.Wait()
-		if p.Snapshot().State != MachineLive || calls != 1 {
+		if p.Snapshot().State != MachineLive || calls.Load() != 1 {
 			t.Fatal(p.Snapshot())
 		}
 		time.Sleep(6 * time.Second)
@@ -51,7 +52,7 @@ func TestMachinePollingLifecycle(t *testing.T) {
 		p.SetActive(false, true, true)
 		time.Sleep(10 * time.Second)
 		synctest.Wait()
-		if calls != 5 {
+		if calls.Load() != 5 {
 			t.Fatal("hidden requested")
 		}
 		p.SetActive(true, true, true)
