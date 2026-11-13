@@ -43,7 +43,9 @@ git add version.properties
 git commit -m "Release $tag" -m "$summary"
 # The tests of the release tools decide eligibility themselves.
 env -u RA_REPUBLISH python3 -m unittest discover -s scripts -p '*_test.py'
-go test ./...
+# Release binaries are built with CGO_ENABLED=0 (scripts/build-dist.sh); test the same way,
+# so a local C toolchain without a usable SDK cannot fail the release.
+CGO_ENABLED=0 go test ./...
 git tag -a "$tag" -m "$summary"
 python3 scripts/release.py validate "$tag"
 # If main moved during tests this fails without publishing either ref.
