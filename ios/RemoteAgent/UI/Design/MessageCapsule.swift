@@ -65,19 +65,19 @@ struct MessageCapsule<Top: View, Plus: View, Trailing: View>: View {
             HStack(alignment: .bottom, spacing: 2) {
                 // The two buttons keep a size a thumb knows; the words between them are what grows.
                 plus.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(DS.ink3), axis: .vertical)
-                    .lineLimit(1...6)
-                    .font(.body)
-                    .foregroundStyle(DS.ink)
-                    .tint(DS.blue)
-                    .focused(focus)
-                    .accessibilityLabel(label)
-                    .accessibilityIdentifier(identifier)
-                    .padding(.horizontal, 4).padding(.vertical, 11)
-                    .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
-                    // The whole of the capsule between the buttons is the field to the finger.
-                    .contentShape(Rectangle())
-                    .onTapGesture { focus.wrappedValue = true }
+                WrappingPlaceholder(text: placeholder, empty: text.isEmpty, font: .body, color: DS.ink3) { prompt in
+                    TextField("", text: $text, prompt: prompt, axis: .vertical).lineLimit(1...6)
+                        .focused(focus)
+                        .accessibilityLabel(label).accessibilityIdentifier(identifier)
+                }
+                .font(.body)
+                .foregroundStyle(DS.ink)
+                .tint(DS.blue)
+                .padding(.horizontal, 4).padding(.vertical, 11)
+                .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
+                // The whole of the capsule between the buttons is the field to the finger.
+                .contentShape(Rectangle())
+                .onTapGesture { focus.wrappedValue = true }
                 trailing.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
         }

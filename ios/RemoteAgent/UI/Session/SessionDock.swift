@@ -79,15 +79,15 @@ struct PendingDock<Content: View, Actions: View>: View {
     }
 
     /// What follows the type: folded, the summary and how many more wait; open, how many more wait and
-    /// the note. It gives way, down to nothing: it asks for no width of its own. That more wait behind
-    /// it is always said.
+    /// the note. A folded CLI summary gives way; fixed progress and status text can wrap.
+    /// That more wait behind it is always said.
     @ViewBuilder private func rest(_ brief: String) -> some View {
         Group {
             if open {
                 let count = more > 0 ? L10n.dockMore(count: Int(more)) : ""
                 let gap = !count.isEmpty && !note.text.isEmpty ? " · " : ""
                 Text("\(Text(count + gap).foregroundStyle(DS.ink2))\(Text(note.text).foregroundStyle(note.urgent ? DS.orange : DS.ink2))")
-                    .font(.footnote).lineLimit(1).frame(idealWidth: 0)
+                    .font(.footnote).fixedSize(horizontal: false, vertical: true)
             } else {
                 HStack(spacing: 0) {
                     Text(brief).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).frame(idealWidth: 0)
@@ -115,7 +115,8 @@ struct PendingDock<Content: View, Actions: View>: View {
             HStack(spacing: 6) {
                 dot
                 label.lineLimit(1).fixedSize()
-                rest
+                rest.fixedSize(horizontal: open, vertical: false)
+                if open { Spacer(minLength: 0) }
                 toggle
             }
             VStack(alignment: .leading, spacing: 0) {
@@ -253,26 +254,28 @@ struct DockFoot: View {
     }
 
     var body: some View {
-        Group {
-            if typeSize.isAccessibilitySize {
-                // No room for both on a line: the link goes under the question, at the right.
-                VStack(alignment: .trailing, spacing: 0) {
-                    if !left.isEmpty { Text(left).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
-                    Button(action: onLink) {
-                        Group {
-                            if arrow { ArrowText(link, style: .footnote.weight(.semibold)) } else { Text(link).font(.footnote.weight(.semibold)).ink(DS.blue) }
-                        }
-                        .multilineTextAlignment(.trailing).hitTarget(alignment: .trailing)
-                    }
-                    .buttonStyle(PressStyle())
-                }
-            } else {
+        ViewThatFits(in: .horizontal) {
+            if !typeSize.isAccessibilitySize {
                 HStack(spacing: 8) {
-                    // With nothing at the left the link starts the line.
-                    if !left.isEmpty { Text(left).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
+                    // Prefer the original row only when both labels fit in full.
+                    if !left.isEmpty {
+                        Text(left).font(.footnote).ink(DS.ink2).fixedSize()
+                        Spacer(minLength: 0)
+                    }
                     TextAction(link, style: .footnote.weight(.semibold), arrow: arrow, action: onLink)
                     if left.isEmpty { Spacer(minLength: 0) }
                 }
+            }
+            VStack(alignment: .trailing, spacing: 0) {
+                if !left.isEmpty { Text(left).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
+                Button(action: onLink) {
+                    Group {
+                        if arrow { ArrowText(link, style: .footnote.weight(.semibold)) } else { Text(link).font(.footnote.weight(.semibold)).ink(DS.blue) }
+                    }
+                    .multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
+                    .hitTarget(alignment: .trailing)
+                }
+                .buttonStyle(PressStyle())
             }
         }
         .padding(.top, 7)

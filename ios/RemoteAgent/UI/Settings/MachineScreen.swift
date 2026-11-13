@@ -17,6 +17,7 @@ struct MachineScreen: View {
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var settings: MachineSettingsModel?
     @State private var cleaning = false
     @State private var picking: Pick?
@@ -150,7 +151,7 @@ struct MachineScreen: View {
                             nav.open(.quota(machine: id))
                         }
                         .valueLead {
-                            Text(usedPart).font(.subheadline).ink(quotaSummaryRow(g).map { $0.tone == .warn || $0.tone == .full } == true ? DS.orangeInk : DS.ink2).lineLimit(1)
+                            Text(usedPart).font(.subheadline).ink(quotaSummaryRow(g).map { $0.tone == .warn || $0.tone == .full } == true ? DS.orangeInk : DS.ink2).lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                         }
                     } else {
                         GRow(title, value: line, chevron: true) {
@@ -320,7 +321,7 @@ struct MachineScreen: View {
         let free = usage.map { $0.reclaimableBytes + $0.cacheBytes } ?? 0
         GroupLabel(L10n.settingsAttachmentStorage()).id(MachineAnchor.storage)
         GroupCard {
-            GRow(L10n.settingsUploadedImagesAndFiles(), value: usage.map(uploadsText) ?? L10n.projectsReadingDirectory())
+            GRow(L10n.settingsUploadedImagesAndFiles(), value: usage.map(uploadsText) ?? L10n.projectsReadingDirectory(), valueLines: nil)
             GRow(
                 L10n.settingsStorageLimit(), value: wholeBytes(s.imageUploadQuotaBytes), chevron: true, enabled: enabled
             ) { picking = .imageQuota }

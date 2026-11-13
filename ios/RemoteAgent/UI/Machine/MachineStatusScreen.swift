@@ -204,6 +204,7 @@ struct MachineStatusScreen: View {
                         .padding(.horizontal, 16).padding(.bottom, 30).frame(maxWidth: DS.column)
                 }
                 .frame(maxWidth: .infinity)
+                .startAtEndForScreenshots()
             }
         }
     }
@@ -400,14 +401,25 @@ struct MachineStatusScreen: View {
     // MARK: The ranking (A3 ④)
 
     private var usageHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(L10n.machineStatusTopUsage()).font(.title3.bold()).foregroundStyle(DS.ink).accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            Button { showSessions.toggle() } label: {
-                Text(showSessions ? L10n.machineStatusShowProcesses() : L10n.machineStatusShowSessions()).font(.subheadline).foregroundStyle(DS.blue)
-                    .frame(minHeight: DS.minHit).contentShape(Rectangle())
+        let title = Text(L10n.machineStatusTopUsage()).font(.title3.bold()).foregroundStyle(DS.ink).accessibilityAddTraits(.isHeader)
+        let toggle = Button { showSessions.toggle() } label: {
+            Text(showSessions ? L10n.machineStatusShowProcesses() : L10n.machineStatusShowSessions()).font(.subheadline).foregroundStyle(DS.blue)
+                .multilineTextAlignment(.leading)
+                .frame(minHeight: DS.minHit).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // The title and its link share a line while both fit; otherwise the link goes under the title.
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                title
+                Spacer(minLength: 8)
+                toggle
             }
-            .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 0) {
+                title.fixedSize(horizontal: false, vertical: true)
+                toggle
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 4).padding(.bottom, -2)
     }

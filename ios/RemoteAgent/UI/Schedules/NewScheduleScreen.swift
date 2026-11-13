@@ -81,9 +81,9 @@ struct NewScheduleScreen: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(spacing: 12) {
-                            InputField(L10n.scheduleWhatShouldTheAgentDo(), text: Bindable(draft).message, placeholder: L10n.scheduleIosWhatToCheckNotifyMeWhenThereAreResults(), lines: 1...(sessionID.isEmpty ? 8 : 4))
+                            InputField(L10n.scheduleWhatShouldTheAgentDo(), text: Bindable(draft).message, placeholder: L10n.scheduleIosWhatToCheckNotifyMeWhenThereAreResults(), wrapPlaceholder: true, lines: 1...(sessionID.isEmpty ? 8 : 4))
                             if draft.message.utf8.count > scheduleMessageLimit { Hint(L10n.scheduleTooLongMaximum32Kb(), color: DS.red) }
-                            InputField(L10n.scheduleTaskName(), text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence() : L10n.scheduleIfBlankUses(value: String(describing: scheduleTitle("", message: draft.message)))).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
+                            InputField(L10n.scheduleTaskName(), text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence() : L10n.scheduleIfBlankUses(value: String(describing: scheduleTitle("", message: draft.message))), wrapPlaceholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
                         }.padding(16).disabled(draft.mutation.frozen)
                         GroupCard {
                             ToggleRow(L10n.scheduleNotifyOnCompletion(), isOn: Bindable(draft).notifyFinish)

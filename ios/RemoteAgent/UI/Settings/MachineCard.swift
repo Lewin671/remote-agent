@@ -12,6 +12,7 @@ struct MachineCard: View {
     let state: RemoteState
     let now: Int64
     @Environment(Navigator.self) private var nav
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let id = machine.id
@@ -61,17 +62,34 @@ struct MachineCard: View {
         let ink = line.low ? DS.orangeInk : DS.ink2
         return Button { nav.open(.quota(machine: id)) } label: {
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        AgentMark(agent, style: .subheadline, named: true)
-                        Text(agentName(agent))
+                if typeSize.isAccessibilitySize {
+                    // At accessibility sizes the name, what is left and when it resets do not fit in a line: one under the other.
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            AgentMark(agent, style: .subheadline, named: true)
+                            Text(agentName(agent)).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+                        Text(line.text).font(.subheadline).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
+                        if !line.reset.isEmpty {
+                            Text(line.reset).font(.subheadline).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
-                    Text(line.text).font(.subheadline).foregroundStyle(ink)
-                    if !line.reset.isEmpty {
-                        Text(line.reset).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(1).layoutPriority(-1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            AgentMark(agent, style: .subheadline, named: true)
+                            Text(agentName(agent))
+                        }
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+                        Text(line.text).font(.subheadline).foregroundStyle(ink)
+                        if !line.reset.isEmpty {
+                            Text(line.reset).font(.subheadline).foregroundStyle(DS.ink2)
+                                .fixedSize(horizontal: false, vertical: true).layoutPriority(-1)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
                 }
                 if let left = line.left {
                     GeometryReader { box in

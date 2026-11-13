@@ -22,16 +22,49 @@ struct FieldBox<Content: View>: View {
     }
 }
 
+/// Retains the native prompt where it fits, measuring a whole instruction only when it must wrap.
+/// Measuring in the background leaves the field's width and focus independent of its hint.
+struct WrappingPlaceholder<Field: View>: View {
+    let text: String
+    let empty: Bool
+    let font: Font
+    let color: Color
+    @ViewBuilder let field: (Text?) -> Field
+    @State private var width: CGFloat = 0
+    @State private var naturalWidth: CGFloat = 0
+
+    private var wraps: Bool { naturalWidth > width + 0.5 }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            if empty && wraps {
+                Text(text).font(font).foregroundStyle(color)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true).allowsHitTesting(false)
+            }
+            field(wraps ? nil : Text(text).foregroundStyle(color))
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .background {
+            Text(text).font(font).fixedSize().hidden()
+                .accessibilityHidden(true).allowsHitTesting(false)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { naturalWidth = $0 }
+        }
+    }
+}
+
 /// A text field in a `FieldBox`: an optional small label over what is
 /// typed, a placeholder, one line or growing up to `lines`. `mono` is for a
 /// key or a path; `code` for a pairing code, large, centred and checked
 /// digit by digit. `focusOnAppear` brings the keyboard up with the field.
+/// `wrapPlaceholder` shows a whole instruction without changing the input's line limit.
 struct InputField: View {
     enum Look: Sendable { case text, mono, code }
 
     private let label: String?
     @Binding private var text: String
     private let placeholder: String
+    private let wrapPlaceholder: Bool
     private let look: Look
     private let lines: ClosedRange<Int>
     private let background: Color?
@@ -43,13 +76,14 @@ struct InputField: View {
     @FocusState private var focused: Bool
 
     init(
-        _ label: String? = nil, text: Binding<String>, placeholder: String = "", look: Look = .text,
+        _ label: String? = nil, text: Binding<String>, placeholder: String = "", wrapPlaceholder: Bool = false, look: Look = .text,
         lines: ClosedRange<Int> = 1...1, background: Color? = nil, keyboard: UIKeyboardType = .default, contentType: UITextContentType? = nil,
         submitLabel: SubmitLabel = .done, focusOnAppear: Bool = false, onSubmit: (() -> Void)? = nil
     ) {
         self.label = label
         _text = text
         self.placeholder = placeholder
+        self.wrapPlaceholder = wrapPlaceholder
         self.look = look
         self.lines = lines
         self.background = background
@@ -66,26 +100,34 @@ struct InputField: View {
         case .mono: .footnote.monospaced()
         case .code: .title2.monospaced().weight(.semibold)
         }
-        FieldBox(background: background) {
+        let field = { (prompt: Text?) in
+            TextField(
+                "", text: $text, prompt: prompt,
+                axis: lines.upperBound > 1 ? .vertical : .horizontal
+            )
+            .lineLimit(lines)
+            // The placeholder is a sentence in the text size; only what is typed takes the look.
+            .font(text.isEmpty && look == .code ? .body : style).ink(DS.ink)
+            .multilineTextAlignment(look == .code ? .center : .leading)
+            .keyboardType(keyboard)
+            .textContentType(contentType)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(submitLabel)
+            .onSubmit { onSubmit?() }
+            .focused($focused)
+            .tint(DS.blue)
+            .accessibilityLabel(label ?? placeholder)
+        }
+
+        return FieldBox(background: background) {
             VStack(alignment: .leading, spacing: 2) {
                 if let label { Text(label).font(.footnote).ink(DS.ink2) }
-                TextField(
-                    "", text: $text, prompt: Text(placeholder).foregroundStyle(DS.ink2),
-                    axis: lines.upperBound > 1 ? .vertical : .horizontal
-                )
-                .lineLimit(lines)
-                // The placeholder is a sentence in the text size; only what is typed takes the look.
-                .font(text.isEmpty && look == .code ? .body : style).ink(DS.ink)
-                .multilineTextAlignment(look == .code ? .center : .leading)
-                .keyboardType(keyboard)
-                .textContentType(contentType)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(submitLabel)
-                .onSubmit { onSubmit?() }
-                .focused($focused)
-                .tint(DS.blue)
-                .accessibilityLabel(label ?? placeholder)
+                if wrapPlaceholder {
+                    WrappingPlaceholder(text: placeholder, empty: text.isEmpty, font: style, color: DS.ink2) { field($0) }
+                } else {
+                    field(Text(placeholder).foregroundStyle(DS.ink2))
+                }
             }
         }
         // The whole surface is the field to the finger, not just the line of text.

@@ -19,44 +19,62 @@ struct SegPick: View {
     }
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(items.indices, id: \.self) { i in
-                let on = i == selected
-                Button {
-                    if !on {
-                        selected = i
-                        Haptics.selection()
-                    }
-                } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        if marks.indices.contains(i) { AgentMark(marks[i], style: .subheadline, named: true) }
+        // Side by side when the words fit the width; otherwise, as at accessibility text sizes, one under another.
+        ViewThatFits(in: .horizontal) {
+            pill(stacked: false)
+            pill(stacked: true)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder private func segments(stacked: Bool) -> some View {
+        ForEach(items.indices, id: \.self) { i in
+            let on = i == selected
+            Button {
+                if !on {
+                    selected = i
+                    Haptics.selection()
+                }
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    if marks.indices.contains(i) { AgentMark(marks[i], style: .subheadline, named: true) }
+                    if stacked {
+                        Text(items[i]).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    } else {
                         Text(items[i]).lineLimit(1)
                     }
-                    .font(on ? .subheadline.weight(.semibold) : .subheadline).ink(DS.ink)
-                        .padding(.horizontal, 10)
-                        .frame(minWidth: 56, minHeight: 32)
-                        .background {
-                            if on {
-                                Capsule()
-                                    .fill(scheme == .dark ? Color(white: 0.39) : DS.paper)
-                                    .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.08), radius: 1.5, y: 1)
-                            }
-                        }
-                        // The pill is 36 pt tall; each segment is 44 to the finger.
-                        .frame(minHeight: DS.minHit)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
+                .font(on ? .subheadline.weight(.semibold) : .subheadline).ink(DS.ink)
+                    .padding(.horizontal, 10)
+                    .frame(minWidth: 56, maxWidth: stacked ? .infinity : nil, minHeight: 32, alignment: stacked ? .leading : .center)
+                    .background {
+                        if on {
+                            Capsule()
+                                .fill(scheme == .dark ? Color(white: 0.39) : DS.paper)
+                                .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.08), radius: 1.5, y: 1)
+                        }
+                    }
+                    // The pill is 36 pt tall; each segment is 44 to the finger.
+                    .frame(minHeight: DS.minHit)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(on ? .isSelected : [])
         }
-        .padding(.horizontal, 2)
-        .background {
-            Capsule().fill(DS.fill2).padding(.vertical, 4)
+    }
+
+    @ViewBuilder private func pill(stacked: Bool) -> some View {
+        if stacked {
+            VStack(spacing: 2) { segments(stacked: true) }
+                .padding(.horizontal, 2)
+                .background { RoundedRectangle(cornerRadius: 22, style: .continuous).fill(DS.fill2).padding(.vertical, 4) }
+        } else {
+            // As wide as its words: beside a label it is never squeezed into dots.
+            HStack(spacing: 2) { segments(stacked: false) }
+                .padding(.horizontal, 2)
+                .background { Capsule().fill(DS.fill2).padding(.vertical, 4) }
+                .fixedSize()
         }
-        // As wide as its words: beside a label it is never squeezed into dots; a row too narrow for both puts it underneath.
-        .fixedSize()
-        .accessibilityElement(children: .contain)
     }
 }
 

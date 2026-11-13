@@ -51,18 +51,34 @@ struct GroupLabel: View {
         self.onAction = onAction
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(text).font(.subheadline).ink(DS.ink2).accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 0)
-            if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
-            if let action, onAction != nil { ArrowText(action, style: .subheadline).lineLimit(1).fixedSize() }
-        }
-        .padding(.init(top: 18, leading: 30, bottom: 8, trailing: 30))
-        .overlay(alignment: .trailing) {
-            if let action, let onAction {
-                Button(action: onAction) { Color.clear.frame(width: 104, height: DS.minHit).contentShape(Rectangle()) }
-                    .accessibilityLabel(action)
+        if typeSize.isAccessibilitySize, let action, let onAction {
+            // At accessibility sizes the heading and its link do not share a line: the link goes under it.
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(text).font(.subheadline).ink(DS.ink2).accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 0)
+                    if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
+                }
+                Button(action: onAction) { ArrowText(action, style: .subheadline).multilineTextAlignment(.leading) }
+                    .frame(minHeight: DS.minHit, alignment: .leading)
+            }
+            .padding(.init(top: 18, leading: 30, bottom: 8, trailing: 30))
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(text).font(.subheadline).ink(DS.ink2).accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
+                if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
+                if let action, onAction != nil { ArrowText(action, style: .subheadline).lineLimit(1).fixedSize() }
+            }
+            .padding(.init(top: 18, leading: 30, bottom: 8, trailing: 30))
+            .overlay(alignment: .trailing) {
+                if let action, let onAction {
+                    Button(action: onAction) { Color.clear.frame(width: 104, height: DS.minHit).contentShape(Rectangle()) }
+                        .accessibilityLabel(action)
+                }
             }
         }
     }
@@ -170,7 +186,7 @@ struct GRow: View {
     private let danger: Bool
     private let enabled: Bool
     private let valueColor: Color?
-    private let valueLines: Int
+    private let valueLines: Int?
     private let icon: String?
     private let onTap: (() -> Void)?
     private var lead: AnyView?
@@ -181,7 +197,7 @@ struct GRow: View {
     /// `sub` is a second line under the text, 13 muted: what a client runs on, a computer's quota in short.
     init(
         _ text: String, sub: String? = nil, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
-        enabled: Bool = true, valueColor: Color? = nil, valueLines: Int = 2, icon: String? = nil, onTap: (() -> Void)? = nil
+        enabled: Bool = true, valueColor: Color? = nil, valueLines: Int? = 2, icon: String? = nil, onTap: (() -> Void)? = nil
     ) {
         self.text = text
         self.sub = sub
@@ -240,11 +256,22 @@ struct GRow: View {
                     title.frame(maxWidth: .infinity, alignment: .leading)
                     trailing
                 }
-                HStack(spacing: 4) {
-                    Spacer(minLength: 0)
-                    valueLead.padding(.trailing, 1)
-                    Text(value ?? "").font(.subheadline).ink(valueColor ?? DS.ink2).multilineTextAlignment(.trailing)
-                    if chevron { Arrow(DS.ink2) }
+                // A lead and a value that do not fit in one line go one under the other, to the right.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) {
+                        Spacer(minLength: 0)
+                        valueLead.padding(.trailing, 1)
+                        Text(value ?? "").font(.subheadline).ink(valueColor ?? DS.ink2).multilineTextAlignment(.trailing)
+                        if chevron { Arrow(DS.ink2) }
+                    }
+                    HStack(alignment: .top, spacing: 4) {
+                        Spacer(minLength: 0)
+                        VStack(alignment: .trailing, spacing: 0) {
+                            valueLead
+                            Text(value ?? "").font(.subheadline).ink(valueColor ?? DS.ink2).multilineTextAlignment(.trailing)
+                        }
+                        if chevron { Arrow(DS.ink2) }
+                    }
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 8)

@@ -162,7 +162,7 @@ private struct ScheduleCard: View {
                     Text(task.listPreview(now: date)).font(.body).foregroundStyle(DS.ink).lineLimit(4)
                     HStack(alignment: .firstTextBaseline) {
                         Text(scheduleListMetadata(entry, entries: store.tasks, state: model.state, online: store.online(entry.machineID)))
-                            .font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
+                            .font(.footnote).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
                         Text(L10n.scheduleIosReadFullText()).font(.subheadline.weight(.semibold)).foregroundStyle(DS.blue).fixedSize()
                     }
@@ -215,7 +215,7 @@ struct ScheduleListRow: View {
                 HStack(spacing: 5) {
                     if task.running != nil { Spinner().frame(width: 10, height: 10) }
                     Text(scheduleListMetadata(entry, entries: store.tasks, state: model.state, online: store.online(entry.machineID)))
-                        .font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
+                        .font(.footnote).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.horizontal, DS.Space.page).padding(.vertical, 12)
