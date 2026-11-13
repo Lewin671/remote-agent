@@ -1354,28 +1354,28 @@ input.field { margin: 0; }
 .account-entry { background: var(--paper); }
 .account-entry .entry-row { padding-top: 12px; padding-bottom: 12px; }
 
-/* English labels need more room than the current Chinese layout. Keep the
-   Chinese geometry, and give fixed English copy whole lines of its own. */
-.tc:lang(en) .k { white-space: normal; flex-wrap: wrap; }
-.tc:lang(en) .k:not(.pending-sum) > span { overflow: visible; }
-.tc:lang(en) .pending-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 6px; }
-.tc:lang(en) .pending-head .pending-sum { grid-row: 1; grid-column: 1; white-space: normal; text-align: left; margin: 0; min-height: 20px; }
-.tc:lang(en) .pending-head > .pending-brief { grid-row: 2; grid-column: 1 / -1; margin: 0; white-space: normal; overflow-wrap: anywhere; }
-.tc:lang(en) .pending-head > :is(.pending-action, .pending-full) { grid-row: 1; margin-top: -6px; margin-bottom: -6px; }
-.tc:lang(en) .pending-head > .pending-action { grid-column: 3; }
-.tc:lang(en) .pending-head > .pending-full { grid-column: 2; }
-.tc:lang(en) .pending-head > .pending-brief:empty { display: none; }
-.tc:lang(en) .pending-label { white-space: normal; text-align: left; }
-.tc:lang(en) .m { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
-.authority-setup:lang(en) .navbar .title b { white-space: normal; overflow: visible; }
-.sheet-head:lang(en) > b { white-space: normal; overflow: visible; }
-.row:lang(en) .v { white-space: normal; overflow: visible; text-align: right; justify-content: flex-end; padding-top: 8px; padding-bottom: 8px; }
-.row.quota-line:lang(en) .v { white-space: normal; overflow: visible; }
+/* Labels in other languages need more room than the Chinese layout. Keep the
+   Chinese geometry, and give fixed copy in other languages whole lines. */
+.tc:not(:lang(zh)) .k { white-space: normal; flex-wrap: wrap; }
+.tc:not(:lang(zh)) .k:not(.pending-sum) > span { overflow: visible; }
+.tc:not(:lang(zh)) .pending-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; row-gap: 6px; }
+.tc:not(:lang(zh)) .pending-head .pending-sum { grid-row: 1; grid-column: 1; white-space: normal; text-align: left; margin: 0; min-height: 20px; }
+.tc:not(:lang(zh)) .pending-head > .pending-brief { grid-row: 2; grid-column: 1 / -1; margin: 0; white-space: normal; overflow-wrap: anywhere; }
+.tc:not(:lang(zh)) .pending-head > :is(.pending-action, .pending-full) { grid-row: 1; margin-top: -6px; margin-bottom: -6px; }
+.tc:not(:lang(zh)) .pending-head > .pending-action { grid-column: 3; }
+.tc:not(:lang(zh)) .pending-head > .pending-full { grid-column: 2; }
+.tc:not(:lang(zh)) .pending-head > .pending-brief:empty { display: none; }
+.tc:not(:lang(zh)) .pending-label { white-space: normal; text-align: left; }
+.tc:not(:lang(zh)) .m { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.authority-setup:not(:lang(zh)) .navbar .title b { white-space: normal; overflow: visible; }
+.sheet-head:not(:lang(zh)) > b { white-space: normal; overflow: visible; }
+.row:not(:lang(zh)) .v { white-space: normal; overflow: visible; text-align: right; justify-content: flex-end; padding-top: 8px; padding-bottom: 8px; }
+.row.quota-line:not(:lang(zh)) .v { white-space: normal; overflow: visible; }
 
 /* An input's placeholder cannot wrap. Show the same hint below the empty
    English name field; entered names keep the ordinary single-line input. */
-.schedule-name:lang(en) input:placeholder-shown::placeholder { color: transparent; }
-.schedule-name:lang(en):has(input:placeholder-shown)::after { content: attr(data-name-hint); display: block; font-size: 13px; color: var(--ink2); margin-top: 4px; }
+.schedule-name:not(:lang(zh)) input:placeholder-shown::placeholder { color: transparent; }
+.schedule-name:not(:lang(zh)):has(input:placeholder-shown)::after { content: attr(data-name-hint); display: block; font-size: 13px; color: var(--ink2); margin-top: 4px; }
 
 /* ---------- 定时 (design-system §6 定时列表, client-v58 #schedules) ---------- */
 /* The phone's list: no buttons at the top, only the fade; a sentence. */
