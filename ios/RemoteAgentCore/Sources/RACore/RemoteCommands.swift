@@ -50,16 +50,17 @@ extension Remote {
     }
 
     public func prepare(_ sid: String, _ command: PBCommand) throws -> PreparedCommand {
-        guard let session=sessions[sid] else {throw CommandError("not_found",L10nMessage.errorsIosUnknownSession())}
-        return try prepare(machineId:session.machineId,sessionId:sid,command)
+        // A visible session can outlive its live route. Keep the file update
+        // notice ahead of route lookup, including when preparing an outbox retry.
+        try requireFileCapability(machineId: state.value.sessions[sid]?.machineId ?? "", hasFiles: requiresFileCapability(command))
+        guard let session = sessions[sid] else { throw CommandError("not_found", L10nMessage.errorsIosUnknownSession()) }
+        return try prepare(machineId: session.machineId, sessionId: sid, command)
     }
 
     /// Sends a command about a session.
     @discardableResult
     public func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
-        try requireFileCapability(machineId: state.value.sessions[sid]?.machineId ?? "", hasFiles: requiresFileCapability(cmd))
-        guard let s = sessions[sid] else { throw CommandError("not_found", L10nMessage.errorsIosUnknownSession()) }
-        return try await forward(try prepare(machineId: s.machineId, sessionId: sid, cmd))
+        try await forward(try prepare(sid, cmd))
     }
 
     /// Sends a command about a machine, such as starting a session.
