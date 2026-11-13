@@ -54,4 +54,3 @@ it.each(["before", "after"] as const)("keeps a single successor across every sta
     }
   } finally { for (const spy of spies) spy.mockRestore(); }
 }, 60000);
-
