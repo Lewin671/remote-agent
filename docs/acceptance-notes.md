@@ -2328,3 +2328,15 @@ daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 
 - Go build、vet 和全部测试通过：27 个测试包，1,215 个顶层测试通过（含子测试 3,216 项），8 项按既有条件跳过；i18n 生成检查、lint 通过，Python 72 项通过；网页构建、120 个文件 / 1,741 项测试通过；Android 82 个 core 测试套件 / 495 项通过、debug APK 构建通过；Swift build 和 109 个套件 / 685 项测试通过。
 
 没有覆盖：三端下载界面和旧客户端收事件；Codex 自动/完全放行、Claude 自动/完全放行；Antigravity 的自然发现及全程远程审批；100 MiB 下载性能、电脑离线、真实网络断连恢复和真机。反向样例只证明本次普通汇报任务没有发送文件，不能代替对所有模型行为的保证。
+
+## Antigravity 发文件改动：Claude Code / Codex 回归（2026-11-13，未发布）
+
+基线为 v0.72.1（`81fa2685`），候选包含 Antigravity MCP plugin 注册、`send_file` 的 `antigravity/alwaysLoad` 元数据及原生 MCP 审批识别。从各自源码构建 daemon；本 checkout 构建本地 server；自动端口、临时 Remote Agent 账户、独立数据库、状态目录与 tmux socket。Claude Code、Codex 分别使用临时 `CLAUDE_CONFIG_DIR`、`CODEX_HOME`，只复制模型登录所需的凭据和最小设置，不复制日常会话或 MCP 配置。测试二进制每次启动前核对并打印隔离路径；会话保存的环境也逐项核对。入口为 `scripts/acceptance-send-file-regression`。
+
+- **Claude Code 2.1.322 / Haiku 5.5** 与 **Codex 0.166.0 / GPT-6.1-Sol medium**：询问模式下，新建后的第一个用户请求只用自然语言要求把当前目录文件发送到手机，在 Remote Agent 客户端下载原文件，没有指定 MCP 或工具名。两者同一轮均调用 `send_file`，MCP 审批由加密 Go 客户端签名允许，收到 `shared_files` 并分两块取回。每个文件 1,179,648 字节，两个 786,432 字节块、`total_bytes` 一致，去除补零后与源文件及事件 SHA-256 一致。
+- 两者都完成了无发送请求的摘要反例，没有 `send_file` 或共享文件；随后分别通过现有命令审批允许、拒绝各一次。允许后目标文件内容正确，拒绝后目标文件不存在，未改用其他工具绕过拒绝。Codex 的命令用例明确要求通过普通工具审批请求沙箱外执行，避免把工作区内本来就允许的写入误算成审批通过。
+- 停止 CLI 后经客户端 `ResumeSession` 恢复，各自再发送另一个文件，分块与哈希验证再次通过；原生会话 ID 保持一致。两者的最终文件审批、命令审批与恢复指令都走客户端 → server → daemon → 原生 CLI，再回到加密客户端。
+- 新建、恢复时另起只读 MCP stdio 探针，核对 initialize 与 `tools/list`。候选和 v0.72.1 都是 10 个工具，去掉 `_meta` 后全列表一致，新增字段仅在 `send_file` 上为 `antigravity/alwaysLoad: true`；没有 readOnlyHint。Claude/Codex 的注册代码未变化，没有生成或使用 Antigravity addon。两者原生调用成功，也证明实际 CLI 握手及调用成立；探针计时不是原生 CLI 内部握手分段耗时。
+- 无首次引导等待的一组启动样本：Claude 基线 1,937 ms，候选新建 1,346 ms、恢复 1,666 ms；Codex 基线 1,657 ms，候选新建 1,701 ms、恢复 1,678 ms。MCP 探针 initialize / 完成 tools/list 分别为：Claude 基线 18 / 20 ms、候选 19 / 22 ms；Codex 基线 18 / 21 ms、候选 27 / 30 ms。样本有限，未见明显启动阻塞，不作为性能基准。
+
+边界：普通英文 “Please send me … from the current directory” 曾只返回本地路径；v0.72.1 的独立新会话对照也出现相同行为，因此未将此例归为本次回归。通过的是明确手机客户端下载意图的自然请求，不保证所有模型对所有自然表述都调用工具。第一次使用临时 profile 的原生信任/引导由隔离终端处理，未通过终端回答文件或命令审批。Antigravity 仍因额度延后复验；没有操作手机、客户端界面或生产中继。
