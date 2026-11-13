@@ -11,6 +11,7 @@ import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -424,6 +425,7 @@ class SharedFileStore(
         return SharedFileTransferState.Idle
     }
 
+    @Synchronized
     fun startOrResume(
         sessionId: String,
         file: SharedFile,
@@ -437,15 +439,20 @@ class SharedFileStore(
             return
         }
         controlModes.remove(k)
-        val job = scope.launch {
+        val previous = jobs[k]
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            previous?.join()
+            currentCoroutineContext().ensureActive()
             runDownload(sessionId, file, userInitiated)
         }
         jobs[k] = job
         job.invokeOnCompletion {
             jobs.remove(k, job)
         }
+        job.start()
     }
 
+    @Synchronized
     fun pause(sessionId: String, file: SharedFile) {
         val k = key(sessionId, file.fileId)
         controlModes[k] = ControlMode.PAUSE
@@ -460,6 +467,7 @@ class SharedFileStore(
         setState(k, SharedFileTransferState.Paused(completed, file.sizeBytes))
     }
 
+    @Synchronized
     fun cancel(sessionId: String, file: SharedFile) {
         val k = key(sessionId, file.fileId)
         controlModes[k] = ControlMode.CANCEL
@@ -470,6 +478,7 @@ class SharedFileStore(
         setState(k, SharedFileTransferState.Idle)
     }
 
+    @Synchronized
     fun deleteLocal(sessionId: String, file: SharedFile) {
         val k = key(sessionId, file.fileId)
         controlModes[k] = ControlMode.CANCEL
@@ -478,6 +487,7 @@ class SharedFileStore(
         setState(k, SharedFileTransferState.Idle)
     }
 
+    @Synchronized
     fun removeSession(sessionId: String) {
         val prefix = "$sessionId:"
         for ((k, job) in jobs.entries) {
@@ -491,6 +501,7 @@ class SharedFileStore(
         _states.update { map -> map.filterKeys { !it.startsWith(prefix) } }
     }
 
+    @Synchronized
     fun clearAll() {
         for ((k, job) in jobs.entries) {
             controlModes[k] = ControlMode.CANCEL
@@ -521,37 +532,41 @@ class SharedFileStore(
         val expectedHashHex = expectedHash.toHex()
 
         try {
-            dir.mkdirs()
-            val savedMeta = readMeta(meta)
-            var nextOffset = 0L
-            if (
-                savedMeta != null &&
-                part.isFile &&
-                savedMeta.getProperty("sizeBytes")?.toLongOrNull() == file.sizeBytes &&
-                savedMeta.getProperty("blockBytes")?.toIntOrNull() == blockBytes &&
-                savedMeta.getProperty("sha256") == expectedHashHex
-            ) {
-                val savedCompleted = savedMeta.getProperty("completedOffset")?.toLongOrNull() ?: 0L
-                if (savedCompleted > 0L && savedCompleted % blockBytes == 0L && savedCompleted < file.sizeBytes && part.length() >= savedCompleted) {
-                    RandomAccessFile(part, "rw").use { it.setLength(savedCompleted) }
-                    nextOffset = savedCompleted
+            val startContext = currentCoroutineContext()
+            val nextOffset = synchronized(this) {
+                startContext.ensureActive()
+                dir.mkdirs()
+                val savedMeta = readMeta(meta)
+                var nextOffset = 0L
+                if (
+                    savedMeta != null &&
+                    part.isFile &&
+                    savedMeta.getProperty("sizeBytes")?.toLongOrNull() == file.sizeBytes &&
+                    savedMeta.getProperty("blockBytes")?.toIntOrNull() == blockBytes &&
+                    savedMeta.getProperty("sha256") == expectedHashHex
+                ) {
+                    val savedCompleted = savedMeta.getProperty("completedOffset")?.toLongOrNull() ?: 0L
+                    if (savedCompleted > 0L && savedCompleted % blockBytes == 0L && savedCompleted < file.sizeBytes && part.length() >= savedCompleted) {
+                        RandomAccessFile(part, "rw").use { it.setLength(savedCompleted) }
+                        nextOffset = savedCompleted
+                    } else {
+                        part.delete()
+                    }
                 } else {
                     part.delete()
                 }
-            } else {
-                part.delete()
+
+                if (!part.exists()) {
+                    writeMeta(meta, file.sizeBytes, blockBytes, 0L, expectedHashHex, durationMs = null)
+                }
+
+                setState(k, SharedFileTransferState.Downloading(nextOffset.coerceAtMost(file.sizeBytes), file.sizeBytes))
+                nextOffset
             }
 
-            if (!part.exists()) {
-                writeMeta(meta, file.sizeBytes, blockBytes, 0L, expectedHashHex, durationMs = null)
-            }
-
-            val startDownloaded = nextOffset.coerceAtMost(file.sizeBytes)
             val startTimeMs = clock()
             var sessionBytes = 0L
             var retriedOnce = false
-
-            setState(k, SharedFileTransferState.Downloading(startDownloaded, file.sizeBytes))
 
             val plan = planSharedFileBlocks(file.sizeBytes, blockBytes)
             var blockIndex = plan.offsets.indexOfFirst { it >= nextOffset }
@@ -567,6 +582,7 @@ class SharedFileStore(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: CommandException) {
+                        currentCoroutineContext().ensureActive()
                         if (e.code == "not_found") {
                             part.delete()
                             meta.delete()
@@ -580,20 +596,11 @@ class SharedFileStore(
                             if (reconnected) {
                                 continue
                             }
-                            if (!isMachineOnline(sessionId) && currentDownloaded > 0L) {
-                                setState(k, SharedFileTransferState.Paused(currentDownloaded, file.sizeBytes))
-                            } else {
-                                setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED))
-                            }
+                            setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED))
                             return
                         }
                         if (isTransientDisconnect(e)) {
-                            val currentDownloaded = offset.coerceAtMost(file.sizeBytes)
-                            if (!isMachineOnline(sessionId) && currentDownloaded > 0L) {
-                                setState(k, SharedFileTransferState.Paused(currentDownloaded, file.sizeBytes))
-                            } else {
-                                setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED))
-                            }
+                            setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED))
                             return
                         }
                         setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.OTHER, e.message.orEmpty()))
@@ -606,87 +613,97 @@ class SharedFileStore(
                         return
                     }
 
-                if (!res.hasTotalBytes() || res.totalBytes != file.sizeBytes) {
-                    part.delete()
-                    meta.delete()
-                    setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
-                    return
-                }
-                val chunkBytes = res.data.toByteArray()
-                val remaining = (file.sizeBytes - offset).coerceAtLeast(0L)
-                val expectedWrite = minOf(remaining, blockBytes.toLong()).toInt()
-                if (chunkBytes.size != blockBytes && !(file.sizeBytes == 0L && chunkBytes.isEmpty())) {
-                    part.delete()
-                    meta.delete()
-                    setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
-                    return
-                }
-                if (chunkBytes.size < expectedWrite) {
-                    part.delete()
-                    meta.delete()
-                    setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
-                    return
-                }
-
-                try {
-                    RandomAccessFile(part, "rw").use { raf ->
-                        raf.seek(offset)
-                        if (expectedWrite > 0) raf.write(chunkBytes, 0, expectedWrite)
-                        raf.setLength(offset + expectedWrite)
+                // A response can arrive as pause/cancel is being processed. Commit the
+                // block and its visible state atomically with those controls.
+                val activeContext = currentCoroutineContext()
+                synchronized(this) {
+                    activeContext.ensureActive()
+                    if (!res.hasTotalBytes() || res.totalBytes != file.sizeBytes) {
+                        part.delete()
+                        meta.delete()
+                        setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
+                        return
                     }
-                } catch (e: IOException) {
-                    val kind =
-                        if (isDiskFull(e)) SharedFileFailureKind.DISK_FULL else SharedFileFailureKind.OTHER
-                    setState(k, SharedFileTransferState.Failed(kind, e.message.orEmpty()))
-                    return
+                    val chunkBytes = res.data.toByteArray()
+                    val remaining = (file.sizeBytes - offset).coerceAtLeast(0L)
+                    val expectedWrite = minOf(remaining, blockBytes.toLong()).toInt()
+                    if (chunkBytes.size != blockBytes && !(file.sizeBytes == 0L && chunkBytes.isEmpty())) {
+                        part.delete()
+                        meta.delete()
+                        setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
+                        return
+                    }
+                    if (chunkBytes.size < expectedWrite) {
+                        part.delete()
+                        meta.delete()
+                        setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
+                        return
+                    }
+
+                    try {
+                        RandomAccessFile(part, "rw").use { raf ->
+                            raf.seek(offset)
+                            if (expectedWrite > 0) raf.write(chunkBytes, 0, expectedWrite)
+                            raf.setLength(offset + expectedWrite)
+                        }
+                    } catch (e: IOException) {
+                        val kind =
+                            if (isDiskFull(e)) SharedFileFailureKind.DISK_FULL else SharedFileFailureKind.OTHER
+                        setState(k, SharedFileTransferState.Failed(kind, e.message.orEmpty()))
+                        return
+                    }
+
+                    val committedOffset = offset + blockBytes
+                    val downloadedNow = minOf(file.sizeBytes, offset + expectedWrite)
+                    sessionBytes += expectedWrite
+                    writeMeta(meta, file.sizeBytes, blockBytes, committedOffset, expectedHashHex, durationMs = null)
+
+                    val elapsedMs = (clock() - startTimeMs).coerceAtLeast(0L)
+                    val eta =
+                        if (elapsedMs >= 3_000L && sessionBytes > 0L && downloadedNow < file.sizeBytes) {
+                            val ratePerSec = sessionBytes / (elapsedMs / 1000.0)
+                            ((file.sizeBytes - downloadedNow) / ratePerSec).toLong().coerceAtLeast(1L)
+                        } else null
+                    setState(k, SharedFileTransferState.Downloading(downloadedNow, file.sizeBytes, eta))
+                    blockIndex++
                 }
-
-                val committedOffset = offset + blockBytes
-                val downloadedNow = minOf(file.sizeBytes, offset + expectedWrite)
-                sessionBytes += expectedWrite
-                writeMeta(meta, file.sizeBytes, blockBytes, committedOffset, expectedHashHex, durationMs = null)
-
-                val elapsedMs = (clock() - startTimeMs).coerceAtLeast(0L)
-                val eta =
-                    if (elapsedMs >= 1_000L && sessionBytes > 0L && downloadedNow < file.sizeBytes) {
-                        val ratePerSec = sessionBytes / (elapsedMs / 1000.0)
-                        ((file.sizeBytes - downloadedNow) / ratePerSec).toLong().coerceAtLeast(1L)
-                    } else null
-                setState(k, SharedFileTransferState.Downloading(downloadedNow, file.sizeBytes, eta))
-                blockIndex++
             }
 
-            // Full file fetched: verify SHA-256 over the truncated payload.
-            if (expectedHash.size == 32) {
-                val actualHash = sha256File(part, file.sizeBytes)
-                if (!MessageDigest.isEqual(actualHash, expectedHash)) {
+            val finalContext = currentCoroutineContext()
+            synchronized(this) {
+                finalContext.ensureActive()
+                // Full file fetched: verify SHA-256 over the truncated payload.
+                if (expectedHash.size == 32) {
+                    val actualHash = sha256File(part, file.sizeBytes)
+                    if (!MessageDigest.isEqual(actualHash, expectedHash)) {
+                        part.delete()
+                        meta.delete()
+                        setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
+                        return
+                    }
+                }
+
+                if (finalFile.exists()) finalFile.delete()
+                if (file.sizeBytes == 0L && !part.exists()) {
+                    finalFile.createNewFile()
+                } else if (!part.renameTo(finalFile)) {
+                    part.copyTo(finalFile, overwrite = true)
                     part.delete()
-                    meta.delete()
-                    setState(k, SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH))
-                    return
                 }
-            }
 
-            if (finalFile.exists()) finalFile.delete()
-            if (file.sizeBytes == 0L && !part.exists()) {
-                finalFile.createNewFile()
-            } else if (!part.renameTo(finalFile)) {
-                part.copyTo(finalFile, overwrite = true)
-                part.delete()
+                val durationMs = durationExtractor(finalFile)
+                writeMeta(meta, file.sizeBytes, blockBytes, file.sizeBytes, expectedHashHex, durationMs)
+                setState(k, SharedFileTransferState.Downloaded(finalFile, durationMs))
+                _completions.tryEmit(
+                    SharedFileCompletion(
+                        sessionId = sessionId,
+                        fileId = file.fileId,
+                        fileName = file.name,
+                        localFile = finalFile,
+                        userInitiated = userInitiated,
+                    ),
+                )
             }
-
-            val durationMs = durationExtractor(finalFile)
-            writeMeta(meta, file.sizeBytes, blockBytes, file.sizeBytes, expectedHashHex, durationMs)
-            setState(k, SharedFileTransferState.Downloaded(finalFile, durationMs))
-            _completions.tryEmit(
-                SharedFileCompletion(
-                    sessionId = sessionId,
-                    fileId = file.fileId,
-                    fileName = file.name,
-                    localFile = finalFile,
-                    userInitiated = userInitiated,
-                ),
-            )
         } catch (e: CancellationException) {
             if (controlModes[k] == ControlMode.CANCEL) {
                 part.delete()

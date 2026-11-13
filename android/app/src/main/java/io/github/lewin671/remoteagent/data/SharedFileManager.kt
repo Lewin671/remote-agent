@@ -53,7 +53,8 @@ class SharedFileManager(
         isMachineOnline = { sid ->
             val st = remoteProvider()?.state?.value
             val mid = st?.sessions?.get(sid)?.machineId
-            mid != null && st.machines[mid]?.online == true
+            st?.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE &&
+                mid != null && st.machines[mid]?.online == true
         },
         blockBytesProvider = { sid ->
             val st = remoteProvider()?.state?.value

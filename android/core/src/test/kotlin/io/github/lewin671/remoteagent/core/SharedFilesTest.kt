@@ -246,6 +246,53 @@ class SharedFilesTest {
     }
 
     @Test
+    fun pauseAndCancelCannotBeOverwrittenByALateChunkResponse() = runTest {
+        for (cancel in listOf(false, true)) {
+            val root = tempRoot()
+            val file = sharedFile(sizeBytes = 2048L)
+            lateinit var store: SharedFileStore
+            var interrupt = true
+            val offsets = mutableListOf<Long>()
+            store = SharedFileStore(
+                rootDir = root,
+                fetcher = SharedFileChunkFetcher { _, _, offset ->
+                    offsets += offset
+                    if (offset == 1024L && interrupt) {
+                        // Model a synchronous response arriving while the UI cancels its job.
+                        if (cancel) store.cancel("s", file) else store.pause("s", file)
+                    }
+                    GetSharedFileChunkResponse.newBuilder()
+                        .setData(ByteString.copyFrom(ByteArray(1024)))
+                        .setTotalBytes(2048L).build()
+                },
+                isMachineOnline = { true },
+                blockBytesProvider = { 1024 },
+                ioDispatcher = StandardTestDispatcher(testScheduler),
+            )
+            try {
+                store.startOrResume("s", file)
+                testScheduler.advanceUntilIdle()
+                if (cancel) {
+                    assertEquals(SharedFileTransferState.Idle, store.states.value["s:file-1"])
+                    assertFalse(File(root, "s/file-1/download.part").exists())
+                } else {
+                    assertEquals(SharedFileTransferState.Paused(1024, 2048), store.states.value["s:file-1"])
+                    assertEquals(1024L, File(root, "s/file-1/download.part").length())
+                }
+                interrupt = false
+                offsets.clear()
+                store.startOrResume("s", file)
+                testScheduler.advanceUntilIdle()
+                assertEquals(if (cancel) listOf(0L, 1024L) else listOf(1024L), offsets)
+                assertTrue(store.states.value["s:file-1"] is SharedFileTransferState.Downloaded)
+            } finally {
+                store.close()
+                root.deleteRecursively()
+            }
+        }
+    }
+
+    @Test
     fun cancelAndChecksumMismatchDeletePartialFile() = runTest {
         val root = tempRoot()
         try {
@@ -357,6 +404,79 @@ class SharedFilesTest {
                 store.close()
             }
         } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun remainingTimeIsHiddenForTheFirstThreeSeconds() = runTest {
+        val root = tempRoot()
+        val file = sharedFile(sizeBytes = 5120)
+        lateinit var store: SharedFileStore
+        store = SharedFileStore(
+            rootDir = root,
+            fetcher = SharedFileChunkFetcher { _, _, offset ->
+                val state = store.states.value["s:file-1"] as SharedFileTransferState.Downloading
+                if (offset < 3072) assertEquals(null, state.etaSeconds)
+                if (offset == 3072L) assertTrue(state.etaSeconds != null)
+                kotlinx.coroutines.delay(1000)
+                GetSharedFileChunkResponse.newBuilder().setTotalBytes(5120)
+                    .setData(ByteString.copyFrom(ByteArray(1024))).build()
+            },
+            isMachineOnline = { true },
+            blockBytesProvider = { 1024 },
+            clock = { testScheduler.currentTime },
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        try {
+            store.startOrResume("s", file)
+            testScheduler.advanceUntilIdle()
+            assertTrue(store.states.value["s:file-1"] is SharedFileTransferState.Downloaded)
+        } finally {
+            store.close()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun longDisconnectFailsWithBlocksIntactAndRetryStartsAtTheirOffset() = runTest {
+        val root = tempRoot()
+        val offsets = mutableListOf<Long>()
+        var online = true
+        var drop = true
+        val file = sharedFile(sizeBytes = 2048)
+        val store = SharedFileStore(
+            rootDir = root,
+            fetcher = SharedFileChunkFetcher { _, _, offset ->
+                offsets += offset
+                if (drop && offset > 0) {
+                    online = false
+                    throw CommandException("network", "connection dropped")
+                }
+                GetSharedFileChunkResponse.newBuilder().setTotalBytes(2048)
+                    .setData(ByteString.copyFrom(ByteArray(1024))).build()
+            },
+            isMachineOnline = { online },
+            blockBytesProvider = { 1024 },
+            clock = { testScheduler.currentTime },
+            sleeper = { kotlinx.coroutines.delay(it) },
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        try {
+            store.startOrResume("s", file)
+            testScheduler.advanceUntilIdle()
+            assertEquals(30_000L, testScheduler.currentTime)
+            assertEquals(SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED), store.states.value["s:file-1"])
+            assertEquals(1024L, File(root, "s/file-1/download.part").length())
+            online = true
+            drop = false
+            offsets.clear()
+            store.startOrResume("s", file)
+            testScheduler.advanceUntilIdle()
+            assertEquals(listOf(1024L), offsets)
+            assertTrue(store.states.value["s:file-1"] is SharedFileTransferState.Downloaded)
+        } finally {
+            store.close()
             root.deleteRecursively()
         }
     }
