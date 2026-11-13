@@ -15,7 +15,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const ReserveBytes uint64 = 256_000_000
+const ReserveBytes uint64 = 256 << 20
 const ReleaseBelow uint64 = 300_000_000
 const RebuildAbove uint64 = 5_000_000_000
 const WarnBelow uint64 = 10_000_000_000
