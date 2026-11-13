@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,6 +71,7 @@ type Relay struct {
 	// shorten it without changing the production schedule.
 	syncInterval     time.Duration
 	securityInterval time.Duration
+	timing           retryTiming
 	// These durations are per relay so integration tests can exercise the
 	// real timeout and retry paths without waiting on production intervals.
 	readyTimeout  time.Duration
@@ -116,15 +116,20 @@ func (r *Relay) Run(ctx context.Context) {
 			dispatcher.close()
 		}
 	}()
-	delay := r.Retry
+	timing := r.retryTime()
+	backoff := retryBackoff{base: r.Retry, jitter: timing.jitter}
+	var registrationWarn, initializeWarn, connectionWarn warningGate
 	logged := false
+	recovering := false
 	for ctx.Err() == nil {
 		registrationCtx, registrationCancel := context.WithTimeout(ctx, 10*time.Second)
 		registrationErr := ResumeRegistration(registrationCtx)
 		registrationCancel()
 		if err := registrationErr; err != nil {
 			// Pending enrollment must not gate an already installed account.
-			slog.Warn("relay: registration pending; retry or explicitly discard with `remote-agent account discard-registration`", "err", err)
+			if registrationWarn.allow(timing.now()) {
+				slog.Warn("relay: registration pending; retry or explicitly discard with `remote-agent account discard-registration`", "code", connect.CodeOf(err).String())
+			}
 		}
 		acct, err := LoadAccount()
 		if errors.Is(err, ErrNoAccount) {
@@ -145,31 +150,41 @@ func (r *Relay) Run(ctx context.Context) {
 			continue
 		}
 		if dispatcher != nil && !sameAccount(dispatcher.acct, acct) {
-			dispatcher.close()
+			dispatcher.retire()
 			dispatcher = nil
+			recovering = true
 		}
 		if dispatcher == nil {
-			dispatcher, err = r.newDispatcher(ctx, acct)
+			dispatcher, err = r.newDispatcher(ctx, acct, recovering)
 			if err != nil {
-				slog.Warn("relay: security initialization failed", "err", err)
-				sleep(ctx, r.Retry)
+				if initializeWarn.allow(timing.now()) {
+					slog.Warn("relay: security initialization failed", "code", connect.CodeOf(err).String())
+				}
+				timing.wait(ctx, backoff.failure())
 				continue
 			}
 		}
-		start := time.Now()
+		start := timing.now()
 		err = r.session(ctx, acct, dispatcher)
+		if dispatcher.reloadRequested.Load() && ctx.Err() == nil {
+			dispatcher.retire()
+			dispatcher = nil
+			recovering = true
+		} else if dispatcher != nil && !dispatcher.security.blocked.Load() {
+			recovering = false
+		}
+
 		if ctx.Err() != nil {
 			return
 		}
-		if time.Since(start) > time.Minute {
-			delay = r.Retry
+		if timing.now().Sub(start) > time.Minute {
+			backoff.reset()
 		}
-		if securityAuthenticationLost(err) || connect.CodeOf(err) == connect.CodeFailedPrecondition {
-			slog.Warn("relay: authorization refused; re-pair with `remote-agent account join` and a new phone code", "err", err)
+		delay := backoff.failure()
+		if connectionWarn.allow(timing.now()) {
+			slog.Warn("relay: disconnected", "code", connect.CodeOf(err).String(), "retry_in", delay)
 		}
-		slog.Warn("relay: disconnected", "err", err, "retry_in", delay)
-		sleep(ctx, delay+time.Duration(rand.Int64N(int64(delay/4+1))))
-		delay = min(delay*2, time.Minute)
+		timing.wait(ctx, delay)
 	}
 }
 
@@ -200,6 +215,7 @@ type conn struct {
 	publishMu         sync.Mutex
 	checkpointPending atomic.Bool
 	publishNow        chan struct{}
+	onSyncReady       func()
 	ws                *websocket.Conn
 	token             string
 }
@@ -208,6 +224,8 @@ type conn struct {
 func (r *Relay) session(ctx context.Context, acct *Account, dispatcher *dispatcher) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	stopRetirement := context.AfterFunc(dispatcher.maintenance, cancel)
+	defer stopRetirement()
 	token, err := login(ctx, acct)
 	if err != nil {
 		return fmt.Errorf("login: %w", err)
@@ -435,7 +453,7 @@ func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 const maxConcurrentCalls = 8
 
 func (c *conn) readLoop(ctx context.Context) error {
-	return readForwardCalls(ctx, c.dispatcher.ctx, c.r.calls, &c.dispatcher.workers, func() (*pb.ServerFrame, error) {
+	return readForwardCalls(ctx, c.dispatcher.ctx, c.r.calls, &c.dispatcher.executions, func() (*pb.ServerFrame, error) {
 		return readFrame(ctx, c.ws)
 	}, c.handleCall)
 }

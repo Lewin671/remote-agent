@@ -269,6 +269,7 @@ type env struct {
 	backend   *fakeBackend
 	acct      *relay.Account
 	client    *remoteclient.Client
+	authority *remoteclient.Authority
 	stop      context.CancelFunc
 	done      chan struct{}
 	streamsMu sync.Mutex
@@ -313,6 +314,7 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, config
 		t.Fatal("made an account with a wrong setup token")
 	}
 	authority, err := remoteclient.NewAuthority(ctx, e.http.URL, "setup")
+	e.authority = authority
 	if err != nil {
 		t.Fatal(err)
 	}

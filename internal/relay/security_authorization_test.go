@@ -11,9 +11,12 @@ import (
 
 func TestAuthorizationPauseRetiresStreamsButNotEndpoint(t *testing.T) {
 	c := &conn{}
-	initializeTestSecurityKeys(t, c)
+	keys := initializeTestSecurityKeys(t, c)
 	s := c.security
-	ctx, closeStream := s.streamContext(context.Background())
+	ctx, closeStream, err := s.streamContext(context.Background(), keys.states[0].Core.Members[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer closeStream()
 	s.setAuthorized(false)
 	select {
@@ -39,7 +42,10 @@ func TestAuthorizationPauseRetiresStreamsButNotEndpoint(t *testing.T) {
 		t.Fatalf("pausing destroyed endpoint: %v", err)
 	}
 	s.setAuthorized(true)
-	fresh, closeFresh := s.streamContext(context.Background())
+	fresh, closeFresh, err := s.streamContext(context.Background(), keys.states[0].Core.Members[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer closeFresh()
 	if fresh.Err() != nil || ctx.Err() == nil {
 		t.Fatal("fresh/retired stream lifetimes mixed")

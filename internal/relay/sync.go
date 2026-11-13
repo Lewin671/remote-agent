@@ -42,6 +42,9 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 	if err != nil {
 		return fmt.Errorf("list session heads: %w", err)
 	}
+	if c.onSyncReady != nil {
+		c.onSyncReady()
+	}
 	heads := map[string]*pb.SessionHead{}
 	for _, h := range res.Msg.Sessions {
 		heads[h.SessionId] = h

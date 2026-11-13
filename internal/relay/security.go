@@ -40,6 +40,10 @@ type securitySession struct {
 	authMu        sync.Mutex
 	authorization context.Context
 	revoke        context.CancelFunc
+	beforeSync    func() error
+	onAuthLost    func()
+	streams       map[uint64]*authorizedStream
+	nextStream    uint64
 }
 
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
@@ -157,9 +161,17 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 // syncOnce pulls states after the local head, verifies and installs them.
 // The connection maintenance loop separately retries current checkpoints.
 func (s *securitySession) syncOnce(ctx context.Context) error {
+	if s.beforeSync != nil {
+		if err := s.beforeSync(); err != nil {
+			return err
+		}
+	}
 	_, err := s.pull(ctx)
 	if securityAuthenticationLost(err) || s.endpoint.CheckLease(s.now()) != nil {
 		s.setAuthorized(false)
+		if securityAuthenticationLost(err) && s.onAuthLost != nil {
+			s.onAuthLost()
+		}
 	} else if err == nil {
 		s.setAuthorized(true)
 	}
@@ -199,8 +211,10 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 			proofs = append(proofs, proof)
 		}
 		if len(states) > 0 {
-			if err := s.endpoint.Install(states, proofs); err != nil {
-				return 0, err
+			installErr := s.endpoint.Install(states, proofs)
+			s.revalidateStreams()
+			if installErr != nil {
+				return 0, installErr
 			}
 		}
 		head := s.endpoint.HeadEpoch()
@@ -232,6 +246,7 @@ func securityAuthenticationLost(err error) bool {
 // syncLoop retains the current 60/15-second timing. The shorter direct
 // liveness budget belongs to phase 1. It starts independently of WS readiness.
 func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, initialDone chan<- struct{}) error {
+	var warn warningGate
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	s.requestSync()
@@ -249,7 +264,7 @@ func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, 
 			close(initialDone)
 			initialDone = nil
 		}
-		if err != nil && ctx.Err() == nil {
+		if err != nil && ctx.Err() == nil && warn.allow(time.Now()) {
 			slog.Warn("relay: security synchronization failed; retrying next sync", "code", connect.CodeOf(err).String())
 		}
 	}
@@ -297,17 +312,68 @@ func (s *securitySession) setAuthorized(valid bool) {
 		s.authorization, s.revoke = context.WithCancel(context.Background())
 	}
 }
-func (s *securitySession) streamContext(parent context.Context) (context.Context, context.CancelFunc) {
+
+type authorizedStream struct {
+	peer   deviceauth.Member
+	cancel context.CancelFunc
+}
+type streamAuthorizationKey struct{}
+
+func (s *securitySession) peerCurrent(peer deviceauth.Member) bool {
+	_, head, _ := s.endpoint.Snapshot()
+	current, ok := head.Core.Member(peer.ID)
+	return ok && current.Kind == deviceauth.Client && current == peer
+}
+func (s *securitySession) revalidateStreams() {
 	s.authMu.Lock()
-	if s.authorization == nil {
-		s.authorization, s.revoke = context.WithCancel(context.Background())
-		if s.blocked.Load() {
-			s.revoke()
+	defer s.authMu.Unlock()
+	for id, stream := range s.streams {
+		if !s.peerCurrent(stream.peer) {
+			stream.cancel()
+			delete(s.streams, id)
 		}
 	}
+}
+func (s *securitySession) confirmStream(ctx context.Context) error {
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	if s.blocked.Load() {
+		return deviceauth.ErrUntrusted
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	peer, ok := ctx.Value(streamAuthorizationKey{}).(deviceauth.Member)
+	if !ok || !s.peerCurrent(peer) {
+		return deviceauth.ErrUntrusted
+	}
+	return s.endpoint.CheckLease(s.now())
+}
+func (s *securitySession) streamContext(parent context.Context, peerID string) (context.Context, context.CancelFunc, error) {
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	if s.blocked.Load() {
+		return nil, nil, deviceauth.ErrUntrusted
+	}
+	if err := s.endpoint.CheckLease(s.now()); err != nil {
+		return nil, nil, err
+	}
+	_, head, _ := s.endpoint.Snapshot()
+	peer, ok := head.Core.Member(peerID)
+	if !ok || peer.Kind != deviceauth.Client {
+		return nil, nil, deviceauth.ErrUntrusted
+	}
+	if s.authorization == nil {
+		s.authorization, s.revoke = context.WithCancel(context.Background())
+	}
 	authorization := s.authorization
-	s.authMu.Unlock()
-	ctx, cancel := context.WithCancel(parent)
+	ctx, cancel := context.WithCancel(context.WithValue(parent, streamAuthorizationKey{}, peer))
 	stop := context.AfterFunc(authorization, cancel)
-	return ctx, func() { stop(); cancel() }
+	if s.streams == nil {
+		s.streams = map[uint64]*authorizedStream{}
+	}
+	s.nextStream++
+	id := s.nextStream
+	s.streams[id] = &authorizedStream{peer, cancel}
+	return ctx, func() { stop(); cancel(); s.authMu.Lock(); delete(s.streams, id); s.authMu.Unlock() }, nil
 }

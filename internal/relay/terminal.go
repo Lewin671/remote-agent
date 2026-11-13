@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
@@ -37,12 +38,36 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 	if len(streamID) < minRequestID {
 		return errors.New("invalid stream ID")
 	}
+	lifetime := c.lifetime
+	if lifetime == nil {
+		lifetime = ctx
+	}
+	peer := agent.OriginFrom(ctx).GetDeviceId()
+	streamCtx, streamCancel, err := c.security.streamContext(lifetime, peer)
+	if err != nil {
+		return err
+	}
+	established := false
+	defer func() {
+		if !established {
+			streamCancel()
+		}
+	}()
+	opening, cancelOpening := context.WithCancel(ctx)
+	defer cancelOpening()
+	stopOpening := context.AfterFunc(streamCtx, cancelOpening)
+	defer stopOpening()
+	ctx = opening
 	key, err := c.sessionKey(sessionID, true)
 	if err != nil {
 		return err
 	}
 	t, err := c.r.backend.OpenTerminal(sessionID)
 	if err != nil {
+		return err
+	}
+	if err := c.security.confirmStream(streamCtx); err != nil {
+		t.Close()
 		return err
 	}
 	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.acct.Server, "http")+"/v1/term", &websocket.DialOptions{HTTPClient: httpClient()})
@@ -57,11 +82,12 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 		ws.CloseNow()
 		return err
 	}
-	lifetime := c.lifetime
-	if lifetime == nil {
-		lifetime = ctx
+	if err := c.security.confirmStream(streamCtx); err != nil {
+		t.Close()
+		ws.CloseNow()
+		return err
 	}
-	streamCtx, streamCancel := c.security.streamContext(lifetime)
+	established = true
 	c.dispatcher.terminals.Go(func() { defer streamCancel(); c.serveTerminal(streamCtx, ws, t, key, sessionID, streamID) })
 	return nil
 }
@@ -78,6 +104,9 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 
 	var seq uint64
 	send := func(f *pb.TerminalFrame) error {
+		if err := c.security.confirmStream(ctx); err != nil {
+			return err
+		}
 		seq++
 		env, err := c.security.sealMessage(&pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_OUTPUT, MachineId: c.acct.DeviceID, SessionId: sessionID,

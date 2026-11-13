@@ -21,7 +21,7 @@ type failedSecurityPull struct {
 func (s failedSecurityPull) GetSecurityStates(context.Context, *connect.Request[pb.GetSecurityStatesRequest]) (*connect.Response[pb.GetSecurityStatesResponse], error) {
 	return nil, connect.NewError(s.code, errors.New("synthetic pull failure"))
 }
-func TestSecuritySyncKeepsItsLifetimeOnRPCFailure(t *testing.T) {
+func TestSecuritySyncRequestsReloadOnAuthenticationLoss(t *testing.T) {
 	for _, code := range []connect.Code{connect.CodeUnauthenticated, connect.CodePermissionDenied, connect.CodeUnavailable} {
 		t.Run(code.String(), func(t *testing.T) {
 			c := &conn{r: New(publishBackend{})}
@@ -35,9 +35,17 @@ func TestSecuritySyncKeepsItsLifetimeOnRPCFailure(t *testing.T) {
 			c.security.requestSync()
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
+			reloads := 0
+			c.security.onAuthLost = func() { reloads++; cancel() }
 			err := c.security.syncLoop(ctx, 20*time.Millisecond, nil)
-			if !errors.Is(err, context.DeadlineExceeded) {
-				t.Fatalf("security loop abandoned process ownership: %v", err)
+			if code == connect.CodeUnavailable {
+				if reloads != 0 || !errors.Is(err, context.DeadlineExceeded) {
+					t.Fatal(err, reloads)
+				}
+			} else {
+				if reloads != 1 || !errors.Is(err, context.Canceled) || !c.security.blocked.Load() {
+					t.Fatal(err, reloads)
+				}
 			}
 		})
 	}

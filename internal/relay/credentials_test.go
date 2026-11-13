@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestCredentialsCoalesceRenewalAndDropFailedToken(t *testing.T) {
@@ -40,5 +41,45 @@ func TestCredentialsCoalesceRenewalAndDropFailedToken(t *testing.T) {
 	}
 	if token, err := c.get(context.Background(), ""); err == nil || token != "" {
 		t.Fatal("retained refused credentials")
+	}
+}
+
+func TestCredentialsWaitHonorsContextAndCoalescesFailure(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	var attempts atomic.Int32
+	now := time.Unix(0, 0)
+	c := &credentials{now: func() time.Time { return now }, login: func(context.Context) (string, error) {
+		attempts.Add(1)
+		close(started)
+		<-release
+		return "", context.DeadlineExceeded
+	}}
+	leader := make(chan error, 1)
+	go func() { _, err := c.get(context.Background(), ""); leader <- err }()
+	<-started
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := c.get(ctx, ""); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	var workers sync.WaitGroup
+	for range 32 {
+		workers.Go(func() {
+			_, err := c.get(context.Background(), "")
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Error(err)
+			}
+		})
+	}
+	close(release)
+	<-leader
+	workers.Wait()
+	if attempts.Load() != 1 {
+		t.Fatalf("failed logins were serialized: %d", attempts.Load())
+	}
+	now = now.Add(time.Second)
+	c.login = func(context.Context) (string, error) { attempts.Add(1); return "recovered", nil }
+	if token, err := c.get(context.Background(), ""); err != nil || token != "recovered" {
+		t.Fatal(err)
 	}
 }
