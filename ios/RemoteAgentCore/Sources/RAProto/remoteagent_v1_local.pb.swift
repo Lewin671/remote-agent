@@ -1451,12 +1451,22 @@ public struct PBGetSharedFileChunkResponse: Sendable {
   /// zeros past its end.
   public var data: Data = Data()
 
-  /// The file's size; fixed width so the result's length does not vary.
-  public var totalBytes: UInt64 = 0
+  /// The file's size. Fixed width and always present (an empty file's 0
+  /// would otherwise be left out), so the result's length does not vary.
+  public var totalBytes: UInt64 {
+    get {return _totalBytes ?? 0}
+    set {_totalBytes = newValue}
+  }
+  /// Returns true if `totalBytes` has been explicitly set.
+  public var hasTotalBytes: Bool {return self._totalBytes != nil}
+  /// Clears the value of `totalBytes`. Subsequent reads from it will return its default value.
+  public mutating func clearTotalBytes() {self._totalBytes = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _totalBytes: UInt64? = nil
 }
 
 public struct PBGetImageUploadStatusResponse: Sendable {
@@ -4138,25 +4148,29 @@ extension PBGetSharedFileChunkResponse: SwiftProtobuf.Message, SwiftProtobuf._Me
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularBytesField(value: &self.data) }()
-      case 2: try { try decoder.decodeSingularFixed64Field(value: &self.totalBytes) }()
+      case 2: try { try decoder.decodeSingularFixed64Field(value: &self._totalBytes) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.data.isEmpty {
       try visitor.visitSingularBytesField(value: self.data, fieldNumber: 1)
     }
-    if self.totalBytes != 0 {
-      try visitor.visitSingularFixed64Field(value: self.totalBytes, fieldNumber: 2)
-    }
+    try { if let v = self._totalBytes {
+      try visitor.visitSingularFixed64Field(value: v, fieldNumber: 2)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBGetSharedFileChunkResponse, rhs: PBGetSharedFileChunkResponse) -> Bool {
     if lhs.data != rhs.data {return false}
-    if lhs.totalBytes != rhs.totalBytes {return false}
+    if lhs._totalBytes != rhs._totalBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

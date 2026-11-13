@@ -22,6 +22,7 @@ public  final class GetSharedFileChunkResponse extends
   private GetSharedFileChunkResponse() {
     data_ = com.google.protobuf.ByteString.EMPTY;
   }
+  private int bitField0_;
   public static final int DATA_FIELD_NUMBER = 1;
   private com.google.protobuf.ByteString data_;
   /**
@@ -68,10 +69,24 @@ public  final class GetSharedFileChunkResponse extends
   private long totalBytes_;
   /**
    * <pre>
-   * The file's size; fixed width so the result's length does not vary.
+   * The file's size. Fixed width and always present (an empty file's 0
+   * would otherwise be left out), so the result's length does not vary.
    * </pre>
    *
-   * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+   * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+   * @return Whether the totalBytes field is set.
+   */
+  @java.lang.Override
+  public boolean hasTotalBytes() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <pre>
+   * The file's size. Fixed width and always present (an empty file's 0
+   * would otherwise be left out), so the result's length does not vary.
+   * </pre>
+   *
+   * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
    * @return The totalBytes.
    */
   @java.lang.Override
@@ -80,25 +95,27 @@ public  final class GetSharedFileChunkResponse extends
   }
   /**
    * <pre>
-   * The file's size; fixed width so the result's length does not vary.
+   * The file's size. Fixed width and always present (an empty file's 0
+   * would otherwise be left out), so the result's length does not vary.
    * </pre>
    *
-   * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+   * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
    * @param value The totalBytes to set.
    */
   private void setTotalBytes(long value) {
-    
+    bitField0_ |= 0x00000001;
     totalBytes_ = value;
   }
   /**
    * <pre>
-   * The file's size; fixed width so the result's length does not vary.
+   * The file's size. Fixed width and always present (an empty file's 0
+   * would otherwise be left out), so the result's length does not vary.
    * </pre>
    *
-   * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+   * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
    */
   private void clearTotalBytes() {
-
+    bitField0_ = (bitField0_ & ~0x00000001);
     totalBytes_ = 0L;
   }
 
@@ -249,10 +266,24 @@ public  final class GetSharedFileChunkResponse extends
 
     /**
      * <pre>
-     * The file's size; fixed width so the result's length does not vary.
+     * The file's size. Fixed width and always present (an empty file's 0
+     * would otherwise be left out), so the result's length does not vary.
      * </pre>
      *
-     * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+     * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+     * @return Whether the totalBytes field is set.
+     */
+    @java.lang.Override
+    public boolean hasTotalBytes() {
+      return instance.hasTotalBytes();
+    }
+    /**
+     * <pre>
+     * The file's size. Fixed width and always present (an empty file's 0
+     * would otherwise be left out), so the result's length does not vary.
+     * </pre>
+     *
+     * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
      * @return The totalBytes.
      */
     @java.lang.Override
@@ -261,10 +292,11 @@ public  final class GetSharedFileChunkResponse extends
     }
     /**
      * <pre>
-     * The file's size; fixed width so the result's length does not vary.
+     * The file's size. Fixed width and always present (an empty file's 0
+     * would otherwise be left out), so the result's length does not vary.
      * </pre>
      *
-     * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+     * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
      * @param value The totalBytes to set.
      * @return This builder for chaining.
      */
@@ -275,10 +307,11 @@ public  final class GetSharedFileChunkResponse extends
     }
     /**
      * <pre>
-     * The file's size; fixed width so the result's length does not vary.
+     * The file's size. Fixed width and always present (an empty file's 0
+     * would otherwise be left out), so the result's length does not vary.
      * </pre>
      *
-     * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+     * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
      * @return This builder for chaining.
      */
     public Builder clearTotalBytes() {
@@ -303,12 +336,13 @@ public  final class GetSharedFileChunkResponse extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "data_",
             "totalBytes_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\n\u0002\u0005" +
-              "";
+              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\n\u0002\u1005" +
+              "\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

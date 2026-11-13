@@ -23,10 +23,21 @@ public interface GetSharedFileChunkResponseOrBuilder extends
 
   /**
    * <pre>
-   * The file's size; fixed width so the result's length does not vary.
+   * The file's size. Fixed width and always present (an empty file's 0
+   * would otherwise be left out), so the result's length does not vary.
    * </pre>
    *
-   * <code>fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+   * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
+   * @return Whether the totalBytes field is set.
+   */
+  boolean hasTotalBytes();
+  /**
+   * <pre>
+   * The file's size. Fixed width and always present (an empty file's 0
+   * would otherwise be left out), so the result's length does not vary.
+   * </pre>
+   *
+   * <code>optional fixed64 total_bytes = 2 [json_name = "totalBytes"];</code>
    * @return The totalBytes.
    */
   long getTotalBytes();
