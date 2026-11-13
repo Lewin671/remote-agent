@@ -297,6 +297,20 @@
     }
   },
   {
+    "key": "shared_file.menu_open_with",
+    "zh-CN": "用其他应用打开",
+    "en": "Open in another app",
+    "notes": "长按菜单、应用内播放器「⋯」菜单和播放失败页的按钮：总是弹出系统应用选择器，让用户自己选用哪个应用打开这个文件。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "shared_file.menu_save_to_album",
     "zh-CN": "存到相册",
     "en": "Save to Photos",
@@ -373,6 +387,48 @@
     "zh-CN": "手机上没有能打开这个文件的应用",
     "en": "No app on this phone can open this file",
     "notes": "点按打开未知或不支持类型的文件时，系统无可用应用处理时的提示。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.player_error",
+    "zh-CN": "播放不了这个文件",
+    "en": "Can't play this file",
+    "notes": "应用内播放器遇到系统播放器无法解码的文件时居中显示的提示，下面紧跟「用其他应用打开」按钮。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.player_pause",
+    "zh-CN": "暂停",
+    "en": "Pause",
+    "notes": "应用内播放器的暂停按钮的无障碍标签（当前正在播放时）。与下载中的「暂停」同字，但这里是播放控制。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.player_play",
+    "zh-CN": "播放",
+    "en": "Play",
+    "notes": "应用内播放器的播放按钮的无障碍标签（当前处于暂停时）。",
     "params": {},
     "platforms": [
       "android"

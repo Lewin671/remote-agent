@@ -2064,6 +2064,7 @@
     </plurals>
     <string name="shared_file_menu_delete_local" formatted="false">"Delete local copy"</string>
     <string name="shared_file_menu_from_machine">"From %1$s"</string>
+    <string name="shared_file_menu_open_with" formatted="false">"Open in another app"</string>
     <string name="shared_file_menu_save_to_album" formatted="false">"Save to Photos"</string>
     <string name="shared_file_menu_save_to_downloads" formatted="false">"Save to Downloads"</string>
     <string name="shared_file_menu_share" formatted="false">"Share…"</string>
@@ -2072,6 +2073,9 @@
         <item quantity="other">"%1$d files attached"</item>
     </plurals>
     <string name="shared_file_open_no_app" formatted="false">"No app on this phone can open this file"</string>
+    <string name="shared_file_player_error" formatted="false">"Can\'t play this file"</string>
+    <string name="shared_file_player_pause" formatted="false">"Pause"</string>
+    <string name="shared_file_player_play" formatted="false">"Play"</string>
     <string name="shared_file_reason_checksum_mismatch" formatted="false">"file verification failed"</string>
     <string name="shared_file_reason_disconnected" formatted="false">"connection dropped"</string>
     <string name="shared_file_reason_disk_full" formatted="false">"phone storage is full"</string>

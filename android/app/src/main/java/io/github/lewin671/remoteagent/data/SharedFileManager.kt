@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -210,16 +211,23 @@ class SharedFileManager(
             }
     }
 
-    /** Opens a downloaded non-image file in a compatible Android app; returns false if none found. */
+    /**
+     * Always shows the system chooser (titled with the file name) so no app silently takes the file
+     * over; returns false, showing nothing, when no app can open it.
+     */
     fun openExternal(activityContext: Context, file: File, displayName: String): Boolean {
         val uri = contentUri(file)
         val mime = mimeTypeFor(displayName)
-        val intent = Intent(Intent.ACTION_VIEW)
+        val view = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, mime)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        @Suppress("DEPRECATION")
+        val handlers = activityContext.packageManager.queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY)
+        if (handlers.isEmpty()) return false
+        val chooser = Intent.createChooser(view, sanitizeSharedFileName(displayName))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
-            activityContext.startActivity(intent)
+            activityContext.startActivity(chooser)
             true
         } catch (_: ActivityNotFoundException) {
             false

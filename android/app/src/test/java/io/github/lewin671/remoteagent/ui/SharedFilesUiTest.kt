@@ -26,9 +26,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.graphics.toArgb
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.robolectric.Shadows.shadowOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
@@ -134,6 +146,9 @@ class SharedFilesUiTest {
 
     @Before
     fun setup() {
+        // FileProvider keeps the folders of the first test's cache for the whole JVM.
+        (androidx.core.content.FileProvider::class.java.getDeclaredField("sCache").apply { isAccessible = true }
+            .get(null) as MutableMap<*, *>).clear()
         tempDir = Files.createTempDirectory("sf-ui-test").toFile()
         manager = SharedFileManager(context) { remote }
     }
@@ -183,13 +198,36 @@ class SharedFilesUiTest {
         ui.mainClock.advanceTimeBy(350)
         ui.waitForIdle()
         ui.runOnIdle {
-            val view = WindowInspector.getGlobalWindowViews().last()
-            val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-            view.draw(Canvas(bitmap))
+            val bitmap = drawAllWindows()
             File(outDir, "$name.png").apply { parentFile!!.mkdirs() }.outputStream().use {
                 assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
         }
+    }
+
+    /** The activity window with every window over it (the long-press overlay is one), as on a screen. */
+    private fun drawAllWindows(): Bitmap {
+        val views = WindowInspector.getGlobalWindowViews()
+        val base = views.first()
+        val baseAt = IntArray(2).also { base.getLocationOnScreen(it) }
+        val bitmap = Bitmap.createBitmap(base.width, base.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        for (view in views) {
+            val at = IntArray(2).also { view.getLocationOnScreen(it) }
+            canvas.save()
+            canvas.translate((at[0] - baseAt[0]).toFloat(), (at[1] - baseAt[1]).toFloat())
+            view.draw(canvas)
+            canvas.restore()
+        }
+        return bitmap
+    }
+
+    /** Only the activity window: what is on the page under any overlay. */
+    private fun drawPageWindow(): Bitmap {
+        val base = WindowInspector.getGlobalWindowViews().first()
+        val bitmap = Bitmap.createBitmap(base.width, base.height, Bitmap.Config.ARGB_8888)
+        base.draw(Canvas(bitmap))
+        return bitmap
     }
 
     private fun createMockThumbnailBitmap(warm: Boolean): Bitmap {
@@ -357,6 +395,9 @@ class SharedFilesUiTest {
             captureSixStates(theme, tag)
             captureMultiFiles(theme, tag)
             captureLongPress(theme, tag)
+            captureLongPressNearBottom(theme, tag)
+            captureFontScale(theme, tag)
+            capturePlayer(theme, tag)
         }
     }
 
@@ -468,32 +509,377 @@ class SharedFilesUiTest {
         captureShot("android-multi-$tag")
     }
 
-    private fun captureLongPress(theme: ThemeMode, tag: String) {
-        val sf = sharedFile("v-ctx", "daocheng-final.mp4", 24_300_000L, "/Users/alex/Movies/daocheng/out/daocheng-final.mp4")
-        val doneFile = File(tempDir, "ctx-$tag.mp4").apply { writeBytes(ByteArray(10)) }
-        manager.store.setStateForTest("s-ctx", sf.fileId, SharedFileTransferState.Downloaded(doneFile, durationMs = 102_000L))
+    @Composable
+    private fun FakeComposer() {
+        Box(
+            Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().height(52.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(26.dp)).background(pal.bubble)
+                .padding(horizontal = 18.dp),
+            contentAlignment = androidx.compose.ui.Alignment.CenterStart,
+        ) { Text("消息", color = pal.ink3) }
+    }
+
+    private fun captureLongPress(theme: ThemeMode, tag: String, nearBottom: Boolean = false) {
+        val id = if (nearBottom) "v-ctx-b" else "v-ctx"
+        val session = if (nearBottom) "s-ctx-b" else "s-ctx"
+        val sf = sharedFile(id, "daocheng-final.mp4", 24_300_000L, "/Users/alex/Movies/daocheng/out/daocheng-final.mp4")
+        val doneFile = File(tempDir, "$id-$tag.mp4").apply { writeBytes(ByteArray(10)) }
+        manager.store.setStateForTest(session, sf.fileId, SharedFileTransferState.Downloaded(doneFile, durationMs = 102_000L))
 
         render(theme) {
             val px = with(LocalDensity.current) { SharedTileSize.roundToPx() }
             manager.putThumbnailForTest(doneFile, px, createMockThumbnailBitmap(warm = true).asImageBitmap())
-            SharedFileHost("s-ctx", "MacBook Pro", machineOnline = true, sessionExited = false, manager = manager) {
-                CompositionLocalProvider(LocalChat provides ChatContext("s-ctx", Agent.AGENT_CLAUDE, derive(emptyList()), 0L, machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
-                    Column(Modifier.fillMaxSize().padding(top = 18.dp)) {
-                        MeBubble("把剪好的成片发我手机上看看")
-                        ChatItemView(ChatItem.Agent("ag-ctx-1", "成片导出好了，时长 1 分 42 秒，1080p。"), "Claude")
-                        SharedFilesBlock(
-                            files = listOf(sf),
-                            sessionId = "s-ctx",
-                            machineName = "MacBook Pro",
-                            machineOnline = true,
-                            sessionExited = false,
-                        )
-                        ChatItemView(ChatItem.Agent("ag-ctx-2", "需要我再出一版竖屏的吗？"), "Claude")
+            Column(Modifier.fillMaxSize().padding(top = 18.dp)) {
+                PageBar("稻城剪辑", {}, subtitle = "MacBook Pro · 询问")
+                SharedFileHost(session, "MacBook Pro", machineOnline = true, sessionExited = false, modifier = Modifier.weight(1f), manager = manager) {
+                    CompositionLocalProvider(LocalChat provides ChatContext(session, Agent.AGENT_CLAUDE, derive(emptyList()), 0L, machineName = "MacBook Pro", machineOnline = true, sessionExited = false)) {
+                        Column(Modifier.fillMaxSize().padding(top = 10.dp)) {
+                            if (nearBottom) Spacer(Modifier.weight(1f))
+                            MeBubble("把剪好的成片发我手机上看看")
+                            ChatItemView(ChatItem.Agent("ag-$id-1", "成片导出好了，时长 1 分 42 秒，1080p。"), "Claude")
+                            SharedFilesBlock(
+                                files = listOf(sf),
+                                sessionId = session,
+                                machineName = "MacBook Pro",
+                                machineOnline = true,
+                                sessionExited = false,
+                            )
+                            if (!nearBottom) ChatItemView(ChatItem.Agent("ag-$id-2", "需要我再出一版竖屏的吗？"), "Claude")
+                        }
                     }
+                }
+                FakeComposer()
+            }
+        }
+        ui.onNodeWithTag(SharedFileCardTag).performTouchInput { longClick() }
+        captureShot(if (nearBottom) "android-longpress-bottom-$tag" else "android-longpress-$tag")
+    }
+
+    private fun captureLongPressNearBottom(theme: ThemeMode, tag: String) = captureLongPress(theme, tag, nearBottom = true)
+
+    private fun captureFontScale(theme: ThemeMode, tag: String) {
+        val paused = sharedFile("fs-p", "pixel-project.zip", 51_100_000L)
+        val done = sharedFile("fs-d", "pixel-acceptance-final-1080p-v3.mp4", 51_100_000L)
+        val failed = sharedFile("fs-f", "daocheng-final.mp4", 24_300_000L)
+        val doneFile = File(tempDir, "fs-$tag.mp4").apply { writeBytes(ByteArray(10)) }
+        render(theme) {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 1.3f)) {
+                Column(Modifier.fillMaxSize().padding(horizontal = ChatSide, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StateHeader("字号 1.3：已暂停")
+                    SharedFileCard(paused, io.github.lewin671.remoteagent.core.resolveSharedFileUiState(paused, SharedFileTransferState.Paused(29_100_000L, 51_100_000L), true, false), null, false, {}, {}, {})
+                    StateHeader("字号 1.3：已下载，长文件名")
+                    SharedFileCard(done, io.github.lewin671.remoteagent.core.resolveSharedFileUiState(done, SharedFileTransferState.Downloaded(doneFile, 102_000L), true, false), createMockThumbnailBitmap(warm = true).asImageBitmap(), false, {}, {}, {})
+                    StateHeader("字号 1.3：失败")
+                    SharedFileCard(failed, io.github.lewin671.remoteagent.core.resolveSharedFileUiState(failed, SharedFileTransferState.Failed(SharedFileFailureKind.OTHER, "磁盘配额已用尽"), true, false), null, false, {}, {}, {})
+                    StateHeader("字号 1.3：下载中")
+                    SharedFileCard(paused, io.github.lewin671.remoteagent.core.resolveSharedFileUiState(paused, SharedFileTransferState.Downloading(8_100_000L, 51_100_000L, 12L), true, false), null, false, {}, {}, {})
                 }
             }
         }
-        ui.onNodeWithText("1:42 · 24.3 MB").performTouchInput { longClick() }
-        captureShot("android-longpress-$tag")
+        captureShot("android-fontscale13-$tag")
+    }
+
+    private fun capturePlayer(theme: ThemeMode, tag: String) {
+        fun still(m: Modifier): @Composable () -> Unit = {
+            androidx.compose.foundation.Image(createMockThumbnailBitmap(warm = true).asImageBitmap(), null, m, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+        }
+        val video = FakePlayerEngine(102_000, video = true).apply { position = 42_000 }
+        render(theme) {
+            SharedMediaPlayerPage(video, "daocheng-final.mp4", true, {}, {}) { m -> still(m)() }
+        }
+        captureShot("android-player-video-$tag")
+        ui.onNodeWithContentDescription("更多").performClick()
+        captureShot("android-player-video-menu-$tag")
+
+        val audio = FakePlayerEngine(12_000, video = false).apply { position = 4_000 }
+        render(theme) {
+            SharedMediaPlayerPage(audio, "pixel-tone-voice-memo-take-3.mp3", false, {}, {})
+        }
+        captureShot("android-player-audio-$tag")
+
+        val broken = FakePlayerEngine(video = true).apply { failed = true }
+        render(theme) {
+            SharedMediaPlayerPage(broken, "clip.mkv", true, {}, {})
+        }
+        captureShot("android-player-error-$tag")
+    }
+
+    // ---- long-press overlay ----
+
+    private fun downloadedFile(session: String, id: String, name: String, durationMs: Long? = 102_000L): SharedFile {
+        val sf = sharedFile(id, name, 24_300_000L)
+        val local = File(manager.rootDir, "$session/$id/$name").apply {
+            parentFile!!.mkdirs()
+            writeBytes(ByteArray(16))
+        }
+        manager.store.setStateForTest(session, id, SharedFileTransferState.Downloaded(local, durationMs))
+        return sf
+    }
+
+    /** A page with a top bar and a composer around the chat area, like the session page. */
+    private fun renderPageWithBars(
+        session: String,
+        files: List<SharedFile>,
+        gapAboveDp: Int = 0,
+        theme: ThemeMode = ThemeMode.LIGHT,
+        fontScale: Float = 1f,
+    ) {
+        render(theme) {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
+                Column(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxWidth().height(56.dp).background(Color(0xFFD0021B))) { Text("top bar", color = Color.White) }
+                    SharedFileHost(session, "MacBook Pro", machineOnline = true, sessionExited = false, modifier = Modifier.weight(1f), manager = manager) {
+                        Column(Modifier.fillMaxSize()) {
+                            Spacer(Modifier.height(gapAboveDp.dp))
+                            SharedFilesBlock(files, session, "MacBook Pro", machineOnline = true, sessionExited = false)
+                        }
+                    }
+                    Box(Modifier.fillMaxWidth().height(80.dp).background(Color(0xFF0A84FF))) { Text("composer", color = Color.White) }
+                }
+            }
+        }
+    }
+
+    private fun windowHeightPx(): Int = ui.runOnIdle { WindowInspector.getGlobalWindowViews().first().height }
+
+    private fun liftedCard() = ui.onNode(
+        hasContentDescription("daocheng-final.mp4", substring = true) and !hasTestTag(SharedFileCardTag),
+    )
+
+    @Test
+    fun longPressOverlayCoversTheWholeWindowAndTheOriginalCardIsHidden() {
+        val sf = downloadedFile("s-ov", "v-ov", "daocheng-final.mp4")
+        renderPageWithBars("s-ov", listOf(sf), gapAboveDp = 40)
+        val card = ui.onNodeWithTag(SharedFileCardTag).fetchSemanticsNode().boundsInWindow
+        val probeX = (card.left + 150f).toInt()
+        val probeY = (card.top + 3f).toInt()
+        ui.runOnIdle { assertEquals(LightPalette.bubble.toArgb(), drawPageWindow().getPixel(probeX, probeY)) }
+
+        ui.onNodeWithTag(SharedFileCardTag).performTouchInput { longClick() }
+        ui.waitForIdle()
+
+        // The overlay is a window of its own over everything: top bar and composer included.
+        val overlay = ui.onNodeWithTag(SharedFileOverlayTag).fetchSemanticsNode().boundsInWindow
+        assertEquals(0f, overlay.left, 0.5f)
+        assertEquals(0f, overlay.top, 0.5f)
+        val windowH = windowHeightPx()
+        assertEquals(390f, overlay.width, 0.5f)
+        assertEquals(windowH.toFloat(), overlay.height, 1.5f)
+        ui.runOnIdle {
+            val page = drawPageWindow()
+            val all = drawAllWindows()
+            // The pressed card is not on the page any more: its place shows the page colour.
+            assertEquals(LightPalette.paper.toArgb(), page.getPixel(probeX, probeY))
+            // The dim reaches the top bar and the composer.
+            for ((x, y) in listOf(5 to 5, 5 to windowH - 5)) {
+                assertTrue("dimmed at $x,$y", android.graphics.Color.red(all.getPixel(x, y)) < android.graphics.Color.red(page.getPixel(x, y)) ||
+                    android.graphics.Color.blue(all.getPixel(x, y)) < android.graphics.Color.blue(page.getPixel(x, y)))
+            }
+        }
+
+        // The lifted card sits where the original is (centred on it: it is 2% larger), never a second one.
+        val lifted = liftedCard().fetchSemanticsNode().boundsInWindow
+        assertEquals(card.center.x, lifted.center.x, 1.5f)
+        assertEquals(card.center.y, lifted.center.y, 1.5f)
+        assertEquals(card.width * 1.02f, lifted.width, 2f)
+        ui.onAllNodes(hasContentDescription("daocheng-final.mp4", substring = true)).assertCountEquals(2)
+    }
+
+    @Test
+    fun cardAndMenuMoveUpTogetherJustEnoughToFit() {
+        val sf = downloadedFile("s-up", "v-up", "daocheng-final.mp4")
+        renderPageWithBars("s-up", listOf(sf), gapAboveDp = 600)
+        val card = ui.onNodeWithTag(SharedFileCardTag).fetchSemanticsNode().boundsInWindow
+        ui.onNodeWithTag(SharedFileCardTag).performTouchInput { longClick() }
+        ui.waitForIdle()
+        val menu = ui.onNodeWithTag(SharedFileMenuTag).fetchSemanticsNode().boundsInWindow
+        val lifted = liftedCard().fetchSemanticsNode().boundsInWindow
+        // 16 dp from the bottom edge, exactly; the card moved up, not sideways.
+        assertEquals(windowHeightPx() - 16f, menu.bottom, 2f)
+        assertTrue("card moved up: ${card.top} -> ${lifted.top}", lifted.top < card.top - 20f)
+        assertEquals(card.center.x, lifted.center.x, 1.5f)
+        // 10 dp between the card and the menu (the card is drawn 2% larger than its slot).
+        assertEquals(10f, menu.top - lifted.bottom, 4f)
+    }
+
+    @Test
+    fun scrimIsEighteenPercentOverABlurAndStrongerWithoutOne() {
+        assertEquals(0.18f, SharedFileSpec.scrim(dark = false, blurred = true).alpha, 0.01f)
+        assertEquals(0.18f, SharedFileSpec.scrim(dark = true, blurred = true).alpha, 0.01f)
+        assertEquals(0.32f, SharedFileSpec.scrim(dark = false, blurred = false).alpha, 0.01f)
+        assertEquals(0.50f, SharedFileSpec.scrim(dark = true, blurred = false).alpha, 0.01f)
+    }
+
+    @Test
+    fun openInAnotherAppIsInTheMenuOnlyOfADownloadedFile() {
+        val done = downloadedFile("s-m1", "m-done", "report.pdf")
+        val idle = sharedFile("m-idle", "report.pdf", 1_000)
+        val downloading = sharedFile("m-dl", "report.pdf", 1_000)
+        val paused = sharedFile("m-pa", "report.pdf", 1_000)
+        val failed = sharedFile("m-fa", "report.pdf", 1_000)
+        manager.store.setStateForTest("s-m", "m-idle", SharedFileTransferState.Idle)
+        manager.store.setStateForTest("s-m", "m-dl", SharedFileTransferState.Downloading(100, 1_000, null))
+        manager.store.setStateForTest("s-m", "m-pa", SharedFileTransferState.Paused(100, 1_000))
+        manager.store.setStateForTest("s-m", "m-fa", SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED))
+        for ((session, file) in listOf("s-m" to idle, "s-m" to downloading, "s-m" to paused, "s-m" to failed)) {
+            renderPageWithBars(session, listOf(file))
+            ui.onNodeWithTag(SharedFileCardTag).performTouchInput { longClick() }
+            ui.waitForIdle()
+            ui.onAllNodesWithText("用其他应用打开").assertCountEquals(0)
+        }
+        renderPageWithBars("s-m1", listOf(done))
+        ui.onNodeWithTag(SharedFileCardTag).performTouchInput { longClick() }
+        ui.waitForIdle()
+        ui.onNodeWithText("用其他应用打开").assertExists()
+        // Right after 分享…, before the separated delete.
+        val labels = listOf("存到「下载」", "分享…", "用其他应用打开", "删除本机副本")
+            .map { ui.onNodeWithText(it).fetchSemanticsNode().boundsInWindow.top }
+        assertEquals(labels.sorted(), labels)
+    }
+
+    // ---- large font ----
+
+    private fun unmergedText(text: String, substring: Boolean = false) =
+        ui.onNode(hasText(text, substring = substring), useUnmergedTree = true)
+
+    private fun textLayoutOf(node: androidx.compose.ui.test.SemanticsNodeInteraction): androidx.compose.ui.text.TextLayoutResult {
+        val out = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        node.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action!!.invoke(out)
+        return out.single()
+    }
+
+    private fun cardAt(fontScale: Float, file: SharedFile, state: SharedFileTransferState) {
+        val resolved = io.github.lewin671.remoteagent.core.resolveSharedFileUiState(file, state, true, false)
+        render {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
+                Column(Modifier.padding(16.dp)) { SharedFileCard(file, resolved, null, false, {}, {}, {}, modifier = Modifier.testTag(SharedFileCardTag)) }
+            }
+        }
+    }
+
+    @Test
+    fun subtitleIsNeverEllipsizedAtFontScale13AndTheControlStaysCentred() {
+        val sf = sharedFile("fs-1", "pixel-project.zip", 51_100_000L)
+        cardAt(1.0f, sf, SharedFileTransferState.Failed(SharedFileFailureKind.OTHER, "磁盘配额已用尽"))
+        val normalHeight = ui.onNodeWithTag(SharedFileCardTag).fetchSemanticsNode().boundsInWindow.height
+
+        cardAt(1.3f, sf, SharedFileTransferState.Failed(SharedFileFailureKind.OTHER, "磁盘配额已用尽"))
+        val full = "没下载下来，磁盘配额已用尽"
+        val layout = textLayoutOf(unmergedText(full))
+        assertEquals(full, layout.layoutInput.text.text)
+        assertEquals(2, layout.lineCount)
+        assertFalse(layout.hasVisualOverflow)
+        assertEquals(full.length, layout.getLineEnd(layout.lineCount - 1, visibleEnd = true))
+        val card = ui.onNodeWithTag(SharedFileCardTag).fetchSemanticsNode().boundsInWindow
+        assertTrue("the card grew: $normalHeight -> ${card.height}", card.height > normalHeight)
+        val retry = ui.onNode(hasText("重试"), useUnmergedTree = true).fetchSemanticsNode().boundsInWindow
+        assertEquals(card.center.y, retry.center.y, 1.5f)
+
+        cardAt(1.3f, sf, SharedFileTransferState.Paused(29_100_000L, 51_100_000L))
+        val paused = textLayoutOf(unmergedText("已暂停 · 29.1 / 51.1 MB"))
+        assertTrue(paused.lineCount <= 2)
+        assertFalse(paused.hasVisualOverflow)
+        assertEquals("已暂停 · 29.1 / 51.1 MB".length, paused.getLineEnd(paused.lineCount - 1, visibleEnd = true))
+        val control = ui.onNode(hasContentDescription("继续下载"), useUnmergedTree = true).fetchSemanticsNode().boundsInWindow
+        assertEquals(ui.onNodeWithTag(SharedFileCardTag).fetchSemanticsNode().boundsInWindow.center.y, control.center.y, 1.5f)
+    }
+
+    @Test
+    fun fileNameIsOneLineUpToScale115AndTwoAbove() {
+        assertEquals(1, sharedFileNameMaxLines(1.0f))
+        assertEquals(1, sharedFileNameMaxLines(1.15f))
+        assertEquals(2, sharedFileNameMaxLines(1.16f))
+        assertEquals(2, sharedFileNameMaxLines(1.3f))
+
+        val long = sharedFile("fs-2", "daocheng-final-vertical-1080-v3-with-subtitles-and-music-and-more.mp4", 61_700_000L)
+        cardAt(1.0f, long, SharedFileTransferState.Idle)
+        val oneLine = textLayoutOf(ui.onNode(hasText("…", substring = true) and hasText(".mp4", substring = true), useUnmergedTree = true))
+        assertEquals(1, oneLine.lineCount)
+
+        cardAt(1.3f, long, SharedFileTransferState.Idle)
+        val twoLines = textLayoutOf(ui.onNode(hasText("…", substring = true) and hasText(".mp4", substring = true), useUnmergedTree = true))
+        assertEquals(2, twoLines.lineCount)
+        assertTrue(twoLines.layoutInput.text.text.endsWith(".mp4"))
+
+        // A name that fits on two lines is shown whole.
+        val medium = sharedFile("fs-3", "daocheng-final-v3.mp4", 61_700_000L)
+        cardAt(1.3f, medium, SharedFileTransferState.Idle)
+        unmergedText("daocheng-final-v3.mp4").assertExists()
+    }
+
+    // ---- where a file opens ----
+
+    @Test
+    fun routingSendsImagesToTheViewerMediaToThePlayerAndTheRestToTheChooser() {
+        for (n in listOf("a.png", "a.JPG", "a.webp", "a.gif", "a.heic")) assertEquals(n, SharedFileOpenRoute.IMAGE_VIEWER, sharedFileOpenRoute(n))
+        for (n in listOf("a.mp4", "a.MOV", "a.m4v", "a.webm", "a.mkv")) assertEquals(n, SharedFileOpenRoute.VIDEO_PLAYER, sharedFileOpenRoute(n))
+        for (n in listOf("a.mp3", "a.m4a", "a.wav", "a.AAC", "a.flac", "a.ogg")) assertEquals(n, SharedFileOpenRoute.AUDIO_PLAYER, sharedFileOpenRoute(n))
+        for (n in listOf("a.zip", "a.pdf", "a.txt", "a.avi", "a.3gp", "a.opus", "noext", "a.mp4.zip")) assertEquals(n, SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(n))
+    }
+
+    private fun localFor(session: String, name: String): File =
+        File(manager.rootDir, "$session/x/$name").apply {
+            parentFile!!.mkdirs()
+            writeBytes(ByteArray(8))
+        }
+
+    private fun registerViewer() {
+        val pm = shadowOf(context.packageManager)
+        val cn = android.content.ComponentName("com.example.viewer", "com.example.viewer.Main")
+        pm.addActivityIfNotPresent(cn)
+        pm.addIntentFilterForActivity(cn, android.content.IntentFilter(android.content.Intent.ACTION_VIEW).apply {
+            addCategory(android.content.Intent.CATEGORY_DEFAULT)
+            addDataType("*/*")
+        })
+    }
+
+    @Test
+    fun openingARoutedFileGoesToTheRightPlace() {
+        registerViewer()
+        val host = SharedFileHostState(manager, "s-r", "MacBook Pro", true, false)
+        val app = shadowOf(context)
+
+        openSharedFile(context, sharedFile("r1", "clip.mp4", 5), localFor("s-r", "clip.mp4"), host)
+        assertEquals(true, host.playerTarget?.video)
+        assertEquals(null, host.imagePreview)
+        host.playerTarget = null
+
+        openSharedFile(context, sharedFile("r2", "tone.mp3", 5), localFor("s-r", "tone.mp3"), host)
+        assertEquals(false, host.playerTarget?.video)
+        host.playerTarget = null
+
+        openSharedFile(context, sharedFile("r3", "cover.png", 5), localFor("s-r", "cover.png"), host)
+        assertEquals("cover.png", host.imagePreview?.file?.name)
+        assertEquals(null, host.playerTarget)
+        host.imagePreview = null
+        assertNull(app.nextStartedActivity)
+
+        // Everything else: always the system chooser, titled with the file name.
+        openSharedFile(context, sharedFile("r4", "project.zip", 5), localFor("s-r", "project.zip"), host)
+        val started = app.nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_CHOOSER, started.action)
+        assertEquals("project.zip", started.getCharSequenceExtra(android.content.Intent.EXTRA_TITLE).toString())
+        val inner = started.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)!!
+        assertEquals(android.content.Intent.ACTION_VIEW, inner.action)
+        assertEquals("application/zip", inner.type)
+        assertEquals(null, host.playerTarget)
+    }
+
+    @Test
+    fun withoutAnyAppTheChooserIsNotShownAndTheNoticeIs() {
+        val host = SharedFileHostState(manager, "s-n", "MacBook Pro", true, false)
+        openSharedFile(context, sharedFile("n1", "project.zip", 5), localFor("s-n", "project.zip"), host)
+        assertNull(shadowOf(context).nextStartedActivity)
+        assertEquals("project.zip", host.unopenableTarget?.file?.name)
+    }
+
+    @Test
+    fun openInAnotherAppAlwaysShowsTheChooserEvenForAVideo() {
+        registerViewer()
+        val local = localFor("s-o", "clip.mp4")
+        assertTrue(manager.openExternal(context, local, "clip.mp4"))
+        val started = shadowOf(context).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_CHOOSER, started.action)
+        assertEquals("video/mp4", started.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)!!.type)
     }
 }

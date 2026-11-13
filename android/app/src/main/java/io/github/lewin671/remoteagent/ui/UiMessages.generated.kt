@@ -6005,6 +6005,9 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val machine = message.args.getValue("machine") as String
             resources.getString(R.string.shared_file_menu_from_machine, machine)
         }
+        "shared_file.menu_open_with" -> {
+            resources.getString(R.string.shared_file_menu_open_with)
+        }
         "shared_file.menu_save_to_album" -> {
             resources.getString(R.string.shared_file_menu_save_to_album)
         }
@@ -6020,6 +6023,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         }
         "shared_file.open_no_app" -> {
             resources.getString(R.string.shared_file_open_no_app)
+        }
+        "shared_file.player_error" -> {
+            resources.getString(R.string.shared_file_player_error)
+        }
+        "shared_file.player_pause" -> {
+            resources.getString(R.string.shared_file_player_pause)
+        }
+        "shared_file.player_play" -> {
+            resources.getString(R.string.shared_file_player_play)
         }
         "shared_file.reason_checksum_mismatch" -> {
             resources.getString(R.string.shared_file_reason_checksum_mismatch)
