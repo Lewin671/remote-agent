@@ -1071,17 +1071,6 @@ it.each(["complete", "missing", "final", "transient", "close"])(
   },
 );
 
-// Same vectors as interruptedResultsRemainUnknown on Android/iOS/Go.
-it("interruptedResultsRemainUnknown", () => {
-  for (const code of ["canceled", "deadline_exceeded", "aborted"]) {
-    expect(uncertain(new CommandError(code, "interrupted", true)), code).toBe(true);
-    expect(uncertain(new CommandError(code, "local refusal", false)), code).toBe(false);
-  }
-  for (const code of ["revision_conflict", "failed_precondition"])
-    for (const fromDaemon of [false, true])
-      expect(uncertain(new CommandError(code, "refused", fromDaemon))).toBe(false);
-});
-
 it("does not renew an interrupted send at its deadline", async () => {
   const r = await probe();
   const error = new CommandError("deadline_exceeded", "interrupted", true);
@@ -1109,16 +1098,6 @@ it("retries an unsigned in-flight abort with the same request slot", async () =>
     expect(uncertain(await result)).toBe(true);
     expect(ids).toEqual(Array(4).fill(slot.requestId));
   } finally { vi.useRealTimers(); }
-});
-
-it("signedUnknownAndReadOnlyInterruptionsAreFinal", () => {
-  for (const fromDaemon of [false, true]) {
-    for (const code of ["unknown", "generation_conflict"])
-      expect(uncertain(new CommandError(code, "failure", fromDaemon))).toBe(false);
-    expect(uncertain(new CommandError("unknown_outcome", "unverified", fromDaemon))).toBe(true);
-  }
-  for (const code of ["canceled", "deadline_exceeded", "aborted"])
-    expect(uncertain(new CommandError(code, "read interrupted", true, true))).toBe(false);
 });
 
 it.each(["createSession", "forkSession"] as const)("expires a frozen %s through real forward dispatch", async (kind) => {

@@ -1,10 +1,9 @@
 import { IDBFactory } from "fake-indexeddb";
-import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { AuthorityServer } from "./test/authority-server";
 import { AuthoritySetup, authorityServices, authorityStartup } from "./authority-setup";
-import { AuthorityLifecycle, readSecurityOperation, isAuthority, operation, claimSecurityOperation, saveSecurityOperation } from "./security-operation";
+import { readSecurityOperation, isAuthority, operation, claimSecurityOperation, saveSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates } from "./authority-client";
 import { AuthorityPairing } from "./authority-pairing";
 import { loadAccount, type StoredAccount } from "./storage";
@@ -25,74 +24,8 @@ import { PROTOCOL_VERSION } from "./protocol";
 import { Remote, joinWithApproval } from "./remote";
 import { RecoveryCode } from "./recovery";
 
-let creation: Awaited<ReturnType<typeof prepareCreationFixture>>;
-let server: AuthorityServer;
-let visible = true;
-let setup: AuthoritySetup;
-let local: IDBFactory;
-const lifecycles: AuthorityLifecycle[] = [];
-function lifecycle() { const l = new AuthorityLifecycle(() => visible); lifecycles.push(l); return l; }
-function locks() {
-  let tail = Promise.resolve();
-  return { request: (_name: string, _options: object, work: () => Promise<unknown>) => {
-    const next = tail.then(work); tail = next.then(() => undefined, () => undefined); return next;
-  } };
-}
-async function prepareCreationFixture() {
-  vi.stubGlobal("indexedDB", new IDBFactory());
-  vi.stubGlobal("navigator", { locks: locks() });
-  const life = new AuthorityLifecycle(() => true);
-  try {
-    const prepared = await new AuthoritySetup(life).prepareCreation("https://relay.example.com");
-    const draft = (await readSecurityOperation<{ account: StoredAccount }>())!;
-    return { draft, code: prepared.code! };
-  } finally { life.dispose(); vi.unstubAllGlobals(); }
-}
-beforeAll(async () => { creation = await prepareCreationFixture(); });
-beforeEach(async () => {
-  local = new IDBFactory(); visible = true;
-  vi.stubGlobal("indexedDB", local);
-  vi.stubGlobal("navigator", { locks: locks() });
-  vi.stubGlobal("localStorage", { setItem: vi.fn(), getItem: () => null });
-  setup = new AuthoritySetup(lifecycle());
-  server = await AuthorityServer.start();
-}, 30000);
-afterEach(async () => { for (const l of lifecycles.splice(0)) l.dispose(); await server?.close(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-async function createAccount(token = "test-setup") {
-  // Genesis/signatures are independent of the relay URL. Clone the prepared
-  // draft once per fresh relay/database; creation and its crash boundaries
-  // still exercise prepareCreation directly in their dedicated tests.
-  const draft = structuredClone(creation.draft);
-  draft.server = draft.local.account.server = server.url;
-  await claimSecurityOperation(draft);
-  await setup.continueCreation(token);
-  await setup.confirmCreationCodeSaved();
-  return { account: (await loadAccount())!, code: creation.code };
-}
-async function clients(account: StoredAccount) {
-  const services = authorityServices(account.server);
-  const { challenge } = await services.auth.getChallenge({ deviceId: account.deviceId });
-  const { token } = await services.auth.login({ deviceId: account.deviceId, challenge, signature: await signLogin(account.devicePrivate, challenge), protocolVersion: PROTOCOL_VERSION });
-  const api = services.client(token);
-  const pairing = createClient(PairingService, createConnectTransport({ baseUrl: account.server, useBinaryFormat: true, interceptors: [(next) => (req) => { req.header.set("Authorization", "Bearer " + token); return next(req); }] }));
-  const security = new DeviceSecurityClient(account.deviceId, account.devicePrivate, (afterEpoch, limit) => api.getSecurityStates({ afterEpoch, limit }), () => true, {
-    loadSecurity: () => securityStore.loadSecurity(),
-    installSecurity: (...args) => securityStore.installSecurity(...args),
-    touchSecurity: (...args) => securityStore.touchSecurity(...args),
-  });
-  const authority = new AuthorityClient(account, security, api, pairing, async (publicKey, check, persist, request) => { if (!request) await persist(publicKey); check(); return true; }, lifecycle());
-  return { api, pairing, security, authority, token };
-}
-function dropAck(path: string) {
-  const fetch = globalThis.fetch;
-  let dropped = false;
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-    const response = await fetch(input, init);
-    const url = input instanceof Request ? input.url : String(input);
-    if (!dropped && url.endsWith("/" + path) && response.ok) { dropped = true; throw new Error("injected lost ack"); }
-    return response;
-  });
-}
+import { server, setup, local, lifecycle, createAccount, clients, dropAck, resetSetup, restartServer } from "./test/authority-workflow-fixture";
+
 it("continues the exact creation draft after registration and pin acknowledgements are lost; token can be corrected", async () => {
   expect(await securitySetupStatus()).toBe("missing");
   const { code } = await setup.prepareCreation(server.url);
@@ -101,7 +34,7 @@ it("continues the exact creation draft after registration and pin acknowledgemen
   expect((await readSecurityOperation())!.signed).toEqual(original!.signed);
   const ack = dropAck("RegisterDevice");
   await expect(setup.continueCreation("test-setup")).rejects.toThrow(); ack.mockRestore();
-  setup = new AuthoritySetup(lifecycle());
+  resetSetup();
   expect(await setup.prepareCreation(server.url)).toMatchObject({ code: undefined, resumed: true });
   const pin = dropAck("PinSecurityDomain");
   await expect(setup.continueCreation()).rejects.toThrow(); pin.mockRestore();
@@ -115,7 +48,7 @@ it("continues the exact creation draft after registration and pin acknowledgemen
   expect(RecoveryCode.decode(code!)!.genesis).toEqual((await loadSecurity()).pin.genesis.slice(0, 10));
 });
 it("creates on an open relay with real PoW while retaining its signed registration", async () => {
-  await server.close(); server = await AuthorityServer.start(true);
+  await restartServer(true);
   await createAccount("");
   expect(isAuthority(await loadSecurity())).toBe(true);
   expect((await loadSecurity()).lease).toBeDefined();
@@ -541,12 +474,12 @@ it.each(["before", "after"] as const)("recovers creation after every durable wri
     await run(); const count = events;
     for (let index = 0; index < count; index++) {
       vi.stubGlobal("indexedDB", new IDBFactory()); events = 0; failure = index; fired = false;
-      setup = new AuthoritySetup(lifecycle());
+      resetSetup();
       try { await run(); } catch { /* Simulate process loss, preserving committed storage. */ }
       const pending = await readSecurityOperation();
       const signed = pending?.signed;
       failure = -1;
-      setup = new AuthoritySetup(lifecycle());
+      resetSetup();
       if (pending) {
         await setup.continueCreation("test-setup");
         if (await readSecurityOperation()) {
@@ -557,106 +490,6 @@ it.each(["before", "after"] as const)("recovers creation after every durable wri
       expect(isAuthority(await loadSecurity())).toBe(true);
       expect(await readSecurityOperation()).toBeUndefined();
       expect(fired).toBe(true);
-    }
-  } finally { for (const spy of spies) spy.mockRestore(); }
-}, 60000);
-
-it.each(["before", "after"] as const)("resumes emergency recovery at every durable write and RPC (%s)", async (side) => {
-  let events = 0, failure = -1, fired = false, monitor = false;
-  const step = async <T>(work: () => Promise<T>): Promise<T> => {
-    if (!monitor) return work();
-    const at = events++;
-    if (at === failure && side === "before") { fired = true; throw new Error("injected crash"); }
-    const result = await work();
-    if (at === failure && side === "after") { fired = true; throw new Error("injected crash"); }
-    return result;
-  };
-  const update = securityStore.updateSecurityEntry, adopt = securityStore.adoptRecoveredSecurity;
-  const profile = accountStore.saveAccountPublicProfile, account = accountStore.saveAccount, fetch = globalThis.fetch;
-  const spies = [
-    vi.spyOn(securityStore, "updateSecurityEntry").mockImplementation((...args) => step(() => update(...args))),
-    vi.spyOn(securityStore, "adoptRecoveredSecurity").mockImplementation((...args) => step(() => adopt(...args))),
-    vi.spyOn(accountStore, "saveAccountPublicProfile").mockImplementation((...args) => step(() => profile(...args))),
-    vi.spyOn(accountStore, "saveAccount").mockImplementation((...args) => step(() => account(...args))),
-    vi.spyOn(globalThis, "fetch").mockImplementation((...args) => step(() => fetch(...args))),
-  ];
-  let count = 1;
-  try {
-    for (let index = -1; index < count; index++) {
-      monitor = false; await server.close(); server = await AuthorityServer.start();
-      vi.stubGlobal("indexedDB", new IDBFactory()); setup = new AuthoritySetup(lifecycle());
-      const { code } = await createAccount();
-      vi.stubGlobal("indexedDB", new IDBFactory()); const recovery = new AuthoritySetup(lifecycle());
-      events = 0; failure = index; fired = false; monitor = true;
-      try {
-        await recovery.prepareEmergencyRecovery(server.url, code);
-        const status = await recovery.resumeRecovery();
-        await server.ready(status.recoveryId);
-        await recovery.confirmRecoveryCodeSaved();
-        await recovery.completeRecovery();
-      } catch { /* Restart at the committed boundary. */ }
-      monitor = false;
-      if (index === -1) count = events;
-      else expect(fired).toBe(true);
-      const pending = await readSecurityOperation(); const signed = pending?.signed;
-      if (pending) {
-        if (!signed) await recovery.continueRecoverySigning(code);
-        const status = await recovery.resumeRecovery();
-        await server.ready(status.recoveryId);
-        if (signed) expect((await readSecurityOperation())!.signed).toEqual(signed);
-        await recovery.completeRecovery();
-      } else if (!await loadAccount()) {
-        await recovery.prepareEmergencyRecovery(server.url, code);
-        const status = await recovery.resumeRecovery(); await server.ready(status.recoveryId);
-        await recovery.completeRecovery();
-      }
-      expect(await readSecurityOperation()).toBeUndefined(); expect(isAuthority(await loadSecurity())).toBe(true);
-    }
-  } finally { for (const spy of spies) spy.mockRestore(); }
-}, 60000);
-it.each(["before", "after"] as const)("keeps a single successor across every state-publication write and RPC (%s)", async (side) => {
-  let events = 0, failure = -1, fired = false, monitor = false;
-  const step = async <T>(work: () => Promise<T>): Promise<T> => {
-    if (!monitor) return work();
-    const at = events++;
-    if (at === failure && side === "before") { fired = true; throw new Error("injected crash"); }
-    const result = await work();
-    if (at === failure && side === "after") { fired = true; throw new Error("injected crash"); }
-    return result;
-  };
-  const update = securityStore.updateSecurityEntry, install = securityStore.installSecurity, touch = securityStore.touchSecurity;
-  const fetch = globalThis.fetch;
-  const spies = [
-    vi.spyOn(securityStore, "updateSecurityEntry").mockImplementation((...args) => step(() => update(...args))),
-    vi.spyOn(securityStore, "installSecurity").mockImplementation((...args) => step(() => install(...args))),
-    vi.spyOn(securityStore, "touchSecurity").mockImplementation((...args) => step(() => touch(...args))),
-    vi.spyOn(globalThis, "fetch").mockImplementation((...args) => step(() => fetch(...args))),
-  ];
-  let count = 1;
-  try {
-    for (let index = -1; index < count; index++) {
-      monitor = false; await server.close(); server = await AuthorityServer.start();
-      vi.stubGlobal("indexedDB", new IDBFactory()); setup = new AuthoritySetup(lifecycle());
-      const { account } = await createAccount(), c = await clients(account);
-      await c.authority.prepareRecovery();
-      events = 0; failure = index; fired = false; monitor = true;
-      try { await c.authority.publishRecovery(); } catch { /* Restart. */ }
-      monitor = false;
-      if (index === -1) count = events; else expect(fired).toBe(true);
-      const pending = await readSecurityOperation(); const signed = pending?.signed;
-      if (pending) {
-        if (!pending.codeSaved) await c.authority.publishRecovery(); else await c.authority.resumeSecurityOperation();
-        if (signed) {
-          const state = fromBinary(PutSecurityStateRequestSchema, signed).states[0].state;
-          expect(await stateBytes((await loadSecurity()).states.at(-1)!)).toEqual(state);
-        }
-      }
-      if (!pending && (await loadSecurity()).states.length === 1) {
-        // Crash before claiming the slot: no publication was possible. The
-        // display-only code is lost, so explicitly prepare and save a new one.
-        await c.authority.prepareRecovery(); await c.authority.publishRecovery();
-      }
-      expect(await readSecurityOperation()).toBeUndefined(); expect((await loadSecurity()).states).toHaveLength(2);
     }
   } finally { for (const spy of spies) spy.mockRestore(); }
 }, 60000);
