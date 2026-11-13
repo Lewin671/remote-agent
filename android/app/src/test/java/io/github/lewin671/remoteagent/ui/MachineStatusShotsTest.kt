@@ -53,7 +53,7 @@ internal object MachineFixtures {
     ): MachineStatus.Builder {
         val b = MachineStatus.newBuilder().setObservedMs(T0 + 118_000).setCpuPercent(cpu).setCores(10).setLoadOne(load)
             .setMemoryUsedBytes(memUsed).setMemoryTotalBytes(17_179_869_184).setMemoryPressure(pressure).setMemoryPressurePosition(position).setSwapUsedBytes(swap)
-            .setDisk(DiskStatus.newBuilder().setTotalBytes(460_000_000_000).setAvailableBytes(avail).setPressure(diskPressure).setEmergencyReserveBytes(256_000_000))
+            .setDisk(DiskStatus.newBuilder().setTotalBytes(460_000_000_000).setAvailableBytes(avail).setPressure(diskPressure).setEmergencyReserveBytes(268_435_456))
             .setAgentBytes(3_100_000_000).setUptimeSeconds(3 * 86400L + 4 * 3600 + 120)
             .setBattery(MachineBattery.newBuilder().setPercent(81.0).setCharging(true))
         val cpus = curve(if (busy) busyAnchors else cpuAnchors)
@@ -125,10 +125,10 @@ class MachineStatusShotsTest {
         }
     }
 
-    private fun save(name: String, trim: Boolean = false, topDp: Int = 0) {
-        ui.waitForIdle()
+    private fun save(name: String, trim: Boolean = false, topDp: Int = 0, settle: Boolean = true) {
+        if (settle) ui.waitForIdle()
         val dir = System.getenv("RA_MACHINE_STATUS_SHOTS") ?: return
-        ui.mainClock.advanceTimeBy(600)
+        if (settle) ui.mainClock.advanceTimeBy(600)
         ui.runOnIdle {
             val view = WindowInspector.getGlobalWindowViews().last()
             var bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
@@ -150,7 +150,7 @@ class MachineStatusShotsTest {
 
     // ---- the entrance ---------------------------------------------------------------------------------------
 
-    private fun settingsReply(reserve: Long = 256_000_000) = GetSettingsResponse.newBuilder().setSettings(DaemonSettings.newBuilder()
+    private fun settingsReply(reserve: Long = 268_435_456) = GetSettingsResponse.newBuilder().setSettings(DaemonSettings.newBuilder()
         .setApprovalTimeoutSeconds(1800).setIdleCloseMinutes(120).setImageUploadQuotaBytes(1L shl 30)
         .setClaude(AgentDefaults.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_ASK).setModel("example-model")))
         .setImageStorage(ImageStorageUsage.newBuilder().setUploadBytes(14L shl 20).setReclaimableBytes(2L shl 20).setCacheBytes(3L shl 20).setEmergencyReserveBytes(reserve)).build()
@@ -268,6 +268,32 @@ class MachineStatusShotsTest {
         assertFalse(Motion.reduced)
     }
 
+    @Test fun theSwapShowsOneSetOfFiguresAtATimeAndKeepsTheCardVisible() {
+        page(MachineFixtures.live(MachineFixtures.status().build()))
+        fun alpha(tag: String): Float? =
+            ui.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()?.config?.getOrNull(SwapAlpha)
+        ui.mainClock.autoAdvance = false
+        ui.onNodeWithContentDescription("内存，11.2 GB 已用，压力正常，设为主图").performClick()
+        val frames = mutableListOf<Triple<Int, Float, Float>>()
+        for (ms in 16..368 step 16) {
+            ui.mainClock.advanceTimeBy(16)
+            // The card that is going to the main place: the memory one.
+            frames += Triple(ms, alpha("swap-old-MEMORY") ?: 0f, alpha("swap-new-MEMORY") ?: 1f)
+            if (ms == 48 || ms == 112 || ms == 176 || ms == 272) save("24-swap-frame-%03dms".format(ms), topDp = 900, settle = false)
+        }
+        // Never two sets of figures at once, in either card.
+        assertTrue(frames.joinToString(), frames.all { (_, old, new) -> old == 0f || new == 0f })
+        assertTrue("old figures fade out first", frames.any { (ms, old, _) -> ms in 16..96 && old > 0f && old < 1f })
+        assertTrue("nothing in between", frames.any { (ms, old, new) -> ms in 112..224 && old == 0f && new == 0f })
+        assertTrue("new figures fade in last", frames.any { (ms, _, new) -> ms in 240..336 && new > 0f && new < 1f })
+        assertEquals(1f, frames.last().third, 0f)
+        ui.mainClock.autoAdvance = true
+        ui.waitForIdle()
+        assertEquals(StatusMetric.MEMORY, main)
+        ui.onNodeWithContentDescription("CPU，23%，设为主图").assertExists()
+        assertNull(alpha("swap-old-MEMORY"))
+    }
+
     @Test fun holdingTheCurveLooksBack() {
         page(MachineFixtures.live(MachineFixtures.status().build()))
         val chart = ui.onNode(SemanticsMatcher("chart") { n -> n.config.getOrNull(SemanticsProperties.ContentDescription)?.any { it.startsWith("最近 2 分钟") } == true })
@@ -319,6 +345,13 @@ class MachineStatusShotsTest {
         ui.onAllNodesWithText("电池", substring = true).assertCountEquals(0)
         ui.onAllNodesWithText("已开机", substring = true).assertCountEquals(0)
         save("10-status-missing-items", trim = true)
+    }
+
+    @Test fun aLevelWithoutAPositionShowsTheWordAndNoScale() {
+        val s = MachineFixtures.status().clearMemoryPressurePosition().build()
+        page(MachineFixtures.live(s))
+        ui.onNodeWithText("压力正常").assertExists()
+        ui.onNodeWithContentDescription("内存，11.2 GB 已用，压力正常，设为主图").assertExists()
     }
 
     @Test fun pageDarkLargeAndEnglish() {
@@ -402,7 +435,7 @@ class MachineStatusShotsTest {
     @Test fun storageShowsTheEmergencyReserve() {
         val settings = settingsReply().settings
         show { Column(Modifier.fillMaxSize().background(pal.paper)) { Spacer(Modifier.height(12.dp)); MachineImageStorage(settings, settingsReply().imageStorage, true) { _, _ -> } } }
-        ui.onNodeWithText("应急预留").assertExists(); ui.onNodeWithText("256 MB").assertExists()
+        ui.onNodeWithText("应急预留").assertExists(); ui.onNodeWithText("256 MiB").assertExists()
         ui.onNodeWithText("磁盘写满时自动释放，让你还能开会话处理。").assertExists()
         save("22-storage-emergency-reserve", trim = true)
         ui.runOnIdle { language = "en" }

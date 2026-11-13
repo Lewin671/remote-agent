@@ -123,7 +123,6 @@ data class MemoryCard(
 )
 
 fun memoryCard(s: MachineStatus, text: StatusText): MemoryCard {
-    val hasPressure = s.memoryPressure != ResourcePressure.RESOURCE_PRESSURE_UNSPECIFIED
     val word = when (s.memoryPressure) {
         ResourcePressure.RESOURCE_PRESSURE_NORMAL -> UiMessages.machineStatusPressureNormal()
         ResourcePressure.RESOURCE_PRESSURE_WARNING -> UiMessages.machineStatusPressureHigh()
@@ -134,21 +133,14 @@ fun memoryCard(s: MachineStatus, text: StatusText): MemoryCard {
     val swap = if (s.hasSwapUsedBytes() && s.swapUsedBytes > 0) text.size(s.swapUsedBytes, binary = true) else null
     return MemoryCard(
         used = text.gbNumber(s.memoryUsedBytes, oneDecimal = true, binary = true), usedNumber = s.memoryUsedBytes / GIB, pressureWord = word,
-        position = if (hasPressure) pressurePosition(s) else null, tone = tone(s.memoryPressure), total = total, swap = swap,
+        position = pressurePosition(s), tone = tone(s.memoryPressure), total = total, swap = swap,
         detail = if (swap == null) text.copy(UiMessages.machineStatusTotal(total)) else text.copy(UiMessages.machineStatusTotalSwap(total, swap)),
     )
 }
 
-/** Where the dot sits on the scale: the computer's own number, else the middle of the level's range. */
-fun pressurePosition(s: MachineStatus): Float? {
-    if (s.memoryPressure == ResourcePressure.RESOURCE_PRESSURE_UNSPECIFIED) return null
-    if (s.hasMemoryPressurePosition()) return s.memoryPressurePosition.toFloat().coerceIn(0f, 1f)
-    return when (s.memoryPressure) {
-        ResourcePressure.RESOURCE_PRESSURE_WARNING -> 0.8f
-        ResourcePressure.RESOURCE_PRESSURE_CRITICAL -> 0.95f
-        else -> 0.35f
-    }
-}
+/** Where the dot sits on the scale: the computer's own number only; with a level and no position the scale is not drawn. */
+fun pressurePosition(s: MachineStatus): Float? =
+    if (s.memoryPressure != ResourcePressure.RESOURCE_PRESSURE_UNSPECIFIED && s.hasMemoryPressurePosition()) s.memoryPressurePosition.toFloat().coerceIn(0f, 1f) else null
 
 /** The disk card: the free amount, the bar's segments (shares of the volume) and its two lines. */
 data class DiskCard(
@@ -207,8 +199,8 @@ fun footerParts(s: MachineStatus, text: StatusText): List<String> = listOfNotNul
  */
 const val CHART_WINDOW_MS = 116_000L
 const val SAMPLE_INTERVAL_MS = 2_000L
-/** A hole longer than this between two samples is not drawn across (the page was away; no fake points). */
-const val CHART_GAP_MS = 6_000L
+/** Two neighbouring samples more than this apart are not joined (the page was away; no fake points). */
+const val CHART_GAP_MS = 10_000L
 
 data class ChartPoint(val timeMs: Long, val value: Double)
 
@@ -385,6 +377,19 @@ fun statusView(state: MachinePollState, last: MachineStatus?): StatusView = when
     else -> StatusView.LIVE
 }
 
-/** The prompt of 让 Agent 帮我清理, added after what is already written in the draft. */
+/** The prompt of 让 Agent 帮我清理, added after what is already written in the draft, and not again when the draft already holds it. */
 fun cleanupDraft(existing: String, prompt: String): String =
-    if (existing.isBlank()) prompt else existing.trimEnd() + "\n\n" + prompt
+    if (existing.isBlank()) prompt else if (existing.contains(prompt)) existing else existing.trimEnd() + "\n\n" + prompt
+
+// ---- the swap of the main chart and a small card (A3) ---------------------------------------------------------
+
+const val SWAP_MS = 350
+const val SWAP_OUT_MS = 100
+const val SWAP_IN_MS = 120
+
+/**
+ * What the swap shows [ms] into its 350: the card keeps its colour and corners throughout; the old figures fade out over the
+ * first 100, nothing shows until the last 120, in which the new ones fade in. Never both at once.
+ */
+fun swapOldAlpha(ms: Double): Float = (1.0 - ms / SWAP_OUT_MS).coerceIn(0.0, 1.0).toFloat()
+fun swapNewAlpha(ms: Double): Float = ((ms - (SWAP_MS - SWAP_IN_MS)) / SWAP_IN_MS).coerceIn(0.0, 1.0).toFloat()

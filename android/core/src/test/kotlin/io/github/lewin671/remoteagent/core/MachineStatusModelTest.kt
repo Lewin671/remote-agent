@@ -58,6 +58,9 @@ class MachineStatusModelTest {
         val bare = memoryCard(status(pressure = ResourcePressure.RESOURCE_PRESSURE_UNSPECIFIED).build(), text())
         assertEquals("共 16 GB", bare.detail); assertNull(bare.position); assertNull(bare.pressureWord)
         assertEquals("共 16 GB", memoryCard(status().setSwapUsedBytes(0).build(), text()).detail)
+        // A level without a position: the word, no scale.
+        val levelOnly = memoryCard(status(pressure = ResourcePressure.RESOURCE_PRESSURE_WARNING).build(), text())
+        assertNull(levelOnly.position); assertEquals("压力偏高", messageTextForTest(levelOnly.pressureWord!!))
     }
 
     @Test fun diskCardLinesAndBar() {
@@ -142,6 +145,22 @@ class MachineStatusModelTest {
         assertEquals(116_000L, CHART_WINDOW_MS)
     }
 
+    @Test fun samplesMoreThanTenSecondsApartAreNotJoined() {
+        val p = pts(0L to 10.0, 10_000L to 20.0, 20_001L to 30.0)
+        val runs = chartRuns(p, 30_000L, 100.0)
+        assertEquals(listOf(2, 1), runs.map { it.size })
+        assertEquals(10_000L, CHART_GAP_MS)
+    }
+
+    @Test fun theSwapNeverShowsTwoSetsOfFiguresAtOnce() {
+        assertEquals(1f, swapOldAlpha(0.0), 0f); assertEquals(0f, swapNewAlpha(0.0), 0f)
+        assertEquals(0.5f, swapOldAlpha(50.0), 0.001f); assertEquals(0f, swapOldAlpha(100.0), 0f)
+        assertEquals(0f, swapNewAlpha(230.0), 0f); assertEquals(0.5f, swapNewAlpha(290.0), 0.001f); assertEquals(1f, swapNewAlpha(350.0), 0f)
+        for (ms in 0..350) assertTrue("at $ms", swapOldAlpha(ms.toDouble()) == 0f || swapNewAlpha(ms.toDouble()) == 0f)
+        // Between the two nothing shows at all.
+        assertEquals(0f, swapOldAlpha(150.0) + swapNewAlpha(150.0), 0f)
+    }
+
     @Test fun nearestSampleAndSummary() {
         val p = pts(0L to 10.0, 2_000L to 40.0, 4_000L to 20.0)
         assertEquals(1, nearestSample(p, 2_700.0)); assertEquals(-1, nearestSample(emptyList(), 1.0))
@@ -217,6 +236,8 @@ class MachineStatusModelTest {
         val prompt = messageTextForTest(UiMessages.machineStatusCleanupPrompt())
         assertEquals(prompt, cleanupDraft("", prompt)); assertEquals(prompt, cleanupDraft("  \n", prompt))
         assertEquals("先看看日志\n\n$prompt", cleanupDraft("先看看日志\n", prompt))
+        // Already in the draft: not added again.
+        assertEquals("先看看日志\n\n$prompt", cleanupDraft("先看看日志\n\n$prompt", prompt)); assertEquals(prompt, cleanupDraft(prompt, prompt))
         assertEquals("这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。", prompt)
     }
 

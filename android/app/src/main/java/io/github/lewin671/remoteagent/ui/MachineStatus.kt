@@ -61,6 +61,11 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.requiredSize
+import io.github.lewin671.remoteagent.core.SWAP_MS
+import io.github.lewin671.remoteagent.core.swapNewAlpha
+import io.github.lewin671.remoteagent.core.swapOldAlpha
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -214,7 +219,11 @@ private fun StatusHeader(name: String, liveText: String?, stale: Boolean, p: Pal
     }
 }
 
-/** What moves between the two cards when the memory card takes the main place (350 ms, ui-spec A3). */
+/**
+ * The swap of the main chart and a small card (ui-spec A3, 350 ms): the card's colour and corners stay in view the whole time and
+ * move to the other's place and size; the old figures fade out in the first 100 ms, nothing shows until the last 120, in which
+ * the new ones fade in. [progress] is linear time, 0 to 1.
+ */
 @Stable
 class SwapAnimation {
     val bounds = mutableStateMapOf<StatusMetric, Rect>()
@@ -222,19 +231,64 @@ class SwapAnimation {
     val progress = Animatable(1f)
 }
 
-private fun Modifier.flip(host: SwapAnimation, id: StatusMetric): Modifier =
-    onGloballyPositioned { host.bounds[id] = it.boundsInRoot() }.graphicsLayer {
-        val f = host.from?.get(id)
-        val to = host.bounds[id]
-        val t = host.progress.value
-        if (f != null && to != null && t < 1f && to.width > 0f && to.height > 0f) {
-            transformOrigin = TransformOrigin(0f, 0f)
-            translationX = (f.left - to.left) * (1 - t)
-            translationY = (f.top - to.top) * (1 - t)
-            scaleX = f.width / to.width + (1 - f.width / to.width) * t
-            scaleY = f.height / to.height + (1 - f.height / to.height) * t
+/** Where a card's box is on its way: an offset and a scale from the box it had to the box it has now. */
+private class SwapTransform(val dx: Float, val dy: Float, val sx: Float, val sy: Float, val pending: Boolean)
+
+private fun swapTransform(host: SwapAnimation, id: StatusMetric): SwapTransform? {
+    val f = host.from?.get(id) ?: return null
+    val to = host.bounds[id] ?: return null
+    val linear = host.progress.value
+    if (linear >= 1f || to.width <= 0f || to.height <= 0f) return null
+    // The new layout is not measured yet: the box has not got its new place to move from.
+    if (f == to) return SwapTransform(0f, 0f, 1f, 1f, pending = true)
+    val e = Motion.Decelerate.transform(linear)
+    return SwapTransform(
+        (f.left - to.left) * (1 - e), (f.top - to.top) * (1 - e),
+        f.width / to.width + (1 - f.width / to.width) * e, f.height / to.height + (1 - f.height / to.height) * e, pending = false,
+    )
+}
+
+/** For tests: how visible the old and the new figures of a swapping card are. */
+internal val SwapAlpha = androidx.compose.ui.semantics.SemanticsPropertyKey<Float>("SwapAlpha")
+private var androidx.compose.ui.semantics.SemanticsPropertyReceiver.swapAlpha by SwapAlpha
+
+/**
+ * A card that can take the other's place. Its container (colour, corners, shadow) moves and resizes over the 350 ms; what is in it
+ * is drawn at its own size, not stretched: the old content (the card as it was) fades out first, the new one fades in last.
+ */
+@Composable
+private fun SwapCard(id: StatusMetric, hero: Boolean, swap: SwapAnimation, modifier: Modifier, content: @Composable (Boolean) -> Unit) {
+    val p = pal
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val from = swap.from?.get(id)
+    val running = from != null && swap.progress.value < 1f
+    val ms = swap.progress.value.toDouble() * SWAP_MS
+    val newAlpha = if (running) swapNewAlpha(ms) else 1f
+    val oldAlpha = if (running) swapOldAlpha(ms) else 0f
+    val natural = Modifier.graphicsLayer {
+        val t = swapTransform(swap, id)
+        if (t != null) { transformOrigin = TransformOrigin(0f, 0f); scaleX = 1f / t.sx; scaleY = 1f / t.sy }
+    }
+    Box(
+        modifier.onGloballyPositioned { swap.bounds[id] = it.boundsInRoot() }.graphicsLayer {
+            val t = swapTransform(swap, id)
+            if (t != null) {
+                transformOrigin = TransformOrigin(0f, 0f)
+                translationX = t.dx; translationY = t.dy; scaleX = t.sx; scaleY = t.sy
+                if (t.pending) alpha = 0f
+            }
+        }.statusCard(p),
+        contentAlignment = Alignment.TopStart,
+    ) {
+        Box(natural.alpha(newAlpha).testTag("swap-new-$id").semantics { swapAlpha = newAlpha }) { content(hero) }
+        if (running && oldAlpha > 0f && from != null) {
+            Box(
+                natural.requiredSize(with(density) { androidx.compose.ui.unit.DpSize(from.width.toDp(), from.height.toDp()) }).alpha(oldAlpha)
+                    .testTag("swap-old-$id").clearAndSetSemantics { swapAlpha = oldAlpha },
+            ) { content(!hero) }
         }
     }
+}
 
 /** The big figure of the main chart and its unit. */
 @Composable
@@ -293,7 +347,7 @@ private fun HeroCard(
         val bytes = scrub?.value?.toLong() ?: s.memoryUsedBytes
         value = text.gbNumber(bytes, oneDecimal = true, binary = true); number = bytes / io.github.lewin671.remoteagent.core.GIB
     }
-    Column(modifier.fillMaxWidth().statusCard(p).padding(top = 16.dp)) {
+    Column(modifier.fillMaxWidth().padding(top = 16.dp)) {
         Row(Modifier.padding(horizontal = 18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f, fill = false)) {
                 Kick(if (metric == StatusMetric.CPU) Lucide.Cpu else Lucide.Memory, label, ink2)
@@ -335,10 +389,10 @@ private fun HeroCard(
 }
 
 @Composable
-private fun TileCard(modifier: Modifier, onClick: (() -> Unit)?, description: String, onClickLabel: String? = null, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+private fun TileCard(modifier: Modifier, onClick: (() -> Unit)?, description: String, onClickLabel: String? = null, card: Boolean = true, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     val p = pal
     Column(
-        modifier.statusCard(p)
+        modifier.then(if (card) Modifier.statusCard(p) else Modifier.fillMaxSize())
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClickLabel = onClickLabel, onClick = onClick) else Modifier)
             .semantics(mergeDescendants = true) { contentDescription = description }
             .heightIn(min = 168.dp).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 15.dp),
@@ -392,14 +446,14 @@ private fun OneLine(text: String, color: Color) {
 }
 
 @Composable
-private fun MemoryTile(s: MachineStatus, text: StatusText, stale: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun MemoryTile(s: MachineStatus, text: StatusText, stale: Boolean, modifier: Modifier, card: Boolean = true, onClick: () -> Unit) {
     val p = pal
     val c = memoryCard(s, text)
     val copy = text.copy
     val word = c.pressureWord?.let { copy(it) }
     val used = copy(UiMessages.machineStatusSizeGb(c.used))
     val spoken = if (word != null) copy(UiMessages.machineStatusA11YMemoryCard(pressure = word, used = used)) else copy(UiMessages.machineStatusA11YMemoryCardPlain(used))
-    TileCard(modifier, onClick, spoken) {
+    TileCard(modifier, onClick, spoken, card = card) {
         Kick(Lucide.Memory, copy(UiMessages.machineStatusMemory()), if (stale) p.ink3 else p.ink2)
         LargeFigure(c.used, c.usedNumber, copy(UiMessages.machineStatusGbUsed()), if (stale) p.ink3 else p.ink, if (stale) p.ink3 else p.ink2)
         val position = c.position
@@ -410,11 +464,11 @@ private fun MemoryTile(s: MachineStatus, text: StatusText, stale: Boolean, modif
 }
 
 @Composable
-private fun CpuTile(s: MachineStatus, text: StatusText, stale: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun CpuTile(s: MachineStatus, text: StatusText, stale: Boolean, modifier: Modifier, card: Boolean = true, onClick: () -> Unit) {
     val p = pal
     val copy = text.copy
     val f = cpuFigures(s, text)
-    TileCard(modifier, onClick, copy(UiMessages.machineStatusA11YCpuCard("${f.percent}%"))) {
+    TileCard(modifier, onClick, copy(UiMessages.machineStatusA11YCpuCard("${f.percent}%")), card = card) {
         Kick(Lucide.Cpu, copy(UiMessages.machineStatusCpu()), if (stale) p.ink3 else p.ink2)
         LargeFigure(f.percent.toString(), f.percent.toDouble(), "%", if (stale) p.ink3 else p.ink, if (stale) p.ink3 else p.ink2)
         Spacer(Modifier.weight(1f, fill = true))
@@ -610,7 +664,7 @@ fun MachineStatusContent(
             swap.from = swap.bounds.toMap()
             swap.progress.snapTo(0f)
             onMain(next)
-            swap.progress.animateTo(1f, tween(350, easing = Motion.Decelerate))
+            swap.progress.animateTo(1f, tween(SWAP_MS, easing = androidx.compose.animation.core.LinearEasing))
             swap.from = null
         }
     }
@@ -642,11 +696,15 @@ fun MachineStatusContent(
                     s!!
                     StatusHeader(name, liveText, stale, p)
                     val other = if (main == StatusMetric.CPU) StatusMetric.MEMORY else StatusMetric.CPU
-                    HeroCard(main, s, text, stale, points, endMs, scrub, { scrub = it }, ::step, Modifier.padding(top = 18.dp).flip(swap, main))
+                    val hero = @Composable { metric: StatusMetric -> HeroCard(metric, s, text, stale, points, endMs, scrub, { scrub = it }, ::step, Modifier) }
+                    val tileOf = @Composable { metric: StatusMetric ->
+                        if (metric == StatusMetric.MEMORY) MemoryTile(s, text, stale, Modifier, card = false) { pick(StatusMetric.MEMORY) }
+                        else CpuTile(s, text, stale, Modifier, card = false) { pick(StatusMetric.CPU) }
+                    }
+                    SwapCard(main, true, swap, Modifier.padding(top = 18.dp)) { asHero -> if (asHero) hero(main) else tileOf(main) }
                     Row(Modifier.padding(top = 12.dp).height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val tile = Modifier.weight(1f).fillMaxHeight()
-                        if (main == StatusMetric.CPU) MemoryTile(s, text, stale, tile.flip(swap, other)) { pick(StatusMetric.MEMORY) }
-                        else CpuTile(s, text, stale, tile.flip(swap, other)) { pick(StatusMetric.CPU) }
+                        SwapCard(other, false, swap, tile) { asHero -> if (asHero) hero(other) else tileOf(other) }
                         DiskTile(s, text, stale, tile, onOpenStorage)
                     }
                     if (showDiskActions(s)) Column(Modifier.padding(top = 12.dp).fillMaxWidth().statusCard(p)) {

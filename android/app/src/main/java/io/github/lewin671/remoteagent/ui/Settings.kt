@@ -1493,16 +1493,6 @@ internal fun MachineImageStorage(
                         } ?: copy(UiMessages.projectsReadingDirectory()),
                     )
                 },
-                *(if (usage != null && usage.emergencyReserveBytes > 0) arrayOf<@Composable () -> Unit>({
-                    // 应急预留 (ui-spec B2): not clearable, so no action; the line under it says why it is there.
-                    Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(copy(UiMessages.machineStatusEmergencyReserve()), style = T.s17, color = pal.ink, modifier = Modifier.weight(1f))
-                            Text(StatusText(copy, LocalMessageLocale.current).size(usage.emergencyReserveBytes), style = T.s17, color = pal.ink2)
-                        }
-                        Text(copy(UiMessages.machineStatusEmergencyReserveNote()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 2.dp))
-                    }
-                }) else emptyArray()),
                 {
                     GRow(
                         copy(UiMessages.settingsStorageLimit()),
@@ -1512,6 +1502,16 @@ internal fun MachineImageStorage(
                     )
                 },
                 { GRow(copy(UiMessages.settingsPreviewCache()), usage?.let { imageBytes(it.cacheBytes, copy = copy) } ?: "—") },
+                *(if (usage != null && usage.emergencyReserveBytes > 0) arrayOf<@Composable () -> Unit>({
+                    // 应急预留 (ui-spec B2): not clearable, so no action; the line under it says why it is there.
+                    Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(copy(UiMessages.machineStatusEmergencyReserve()), style = T.s17, color = pal.ink, modifier = Modifier.weight(1f))
+                            Text(mib(usage.emergencyReserveBytes), style = T.s17, color = pal.ink2)
+                        }
+                        Text(copy(UiMessages.machineStatusEmergencyReserveNote()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }) else emptyArray()),
                 {
                     GRow(
                         copy(UiMessages.settingsClear()),
