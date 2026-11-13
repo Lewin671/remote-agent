@@ -104,7 +104,7 @@ describe("shared-files security & helpers", () => {
     expect(formatMediaDuration(84)).toBe("1:24");
     expect(formatMediaDuration(3661)).toBe("1:01:01");
     expect(formatEta(12)).toBe("12 秒");
-    expect(formatEta(65)).toBe("2 分");
+    expect(formatEta(65)).toBe("2 分钟");
   });
 
   it("writes downloaded bytes without a unit, in the unit of the total", () => {

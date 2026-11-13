@@ -241,37 +241,37 @@ function subtitleFor(
   const totalText = fileSize(file.sizeBytes);
   switch (state.status) {
     case "available":
-      return i18n.t("shared_file.type_and_size", { kind: kindName(kind), size: totalText });
+      return i18n.t("shared_file.subtitle_kind_size", { kind: kindName(kind), size: totalText });
     case "downloading": {
       const doneText = fileSizeDone(state.downloadedBytes, file.sizeBytes);
       if (state.etaSeconds !== undefined) {
-        return i18n.t("shared_file.downloading_eta", {
-          done: doneText,
+        return i18n.t("shared_file.subtitle_downloading_eta", {
+          downloaded: doneText,
           total: totalText,
           eta: formatEta(state.etaSeconds),
         });
       }
-      return i18n.t("shared_file.downloading_no_eta", { done: doneText, total: totalText });
+      return i18n.t("shared_file.subtitle_downloading", { downloaded: doneText, total: totalText });
     }
     case "paused":
-      return i18n.t("shared_file.paused", {
-        done: fileSizeDone(state.downloadedBytes, file.sizeBytes),
+      return i18n.t("shared_file.subtitle_paused", {
+        downloaded: fileSizeDone(state.downloadedBytes, file.sizeBytes),
         total: totalText,
       });
     case "downloaded":
       if ((kind === "video" || kind === "audio") && meta.durationSec !== undefined) {
-        return i18n.t("shared_file.video_and_size", {
+        return i18n.t("shared_file.subtitle_media_size", {
           duration: formatMediaDuration(meta.durationSec),
           size: totalText,
         });
       }
-      return i18n.t("shared_file.type_and_size", { kind: kindName(kind), size: totalText });
+      return i18n.t("shared_file.subtitle_kind_size", { kind: kindName(kind), size: totalText });
     case "failed":
       return failureNotice(state.failKind, state.failReason);
     case "offline":
-      return i18n.t("shared_file.machine_offline");
+      return i18n.t("shared_file.subtitle_offline");
     case "cleaned":
-      return i18n.t("shared_file.cleaned");
+      return i18n.t("shared_file.subtitle_cleaned");
   }
 }
 
@@ -280,30 +280,33 @@ function a11yLabelFor(file: SharedFile, state: SharedFileDerivedState): string {
   let detail: string;
   switch (state.status) {
     case "available":
-      detail = i18n.t("shared_file.a11y_available");
+      detail = i18n.t("shared_file.a11y_state_available");
       break;
     case "downloading":
-      detail = i18n.t("shared_file.a11y_downloading", {
-        percent: Math.round(state.progress * 100),
-      });
+      detail = i18n.t("shared_file.a11y_state_downloading");
       break;
     case "paused":
-      detail = i18n.t("shared_file.a11y_paused");
+      detail = i18n.t("shared_file.a11y_state_paused");
       break;
     case "downloaded":
-      detail = i18n.t("shared_file.a11y_downloaded");
+      detail = i18n.t("shared_file.a11y_state_downloaded");
       break;
     case "failed":
-      detail = i18n.t("shared_file.a11y_failed");
+      detail = failureNotice(state.failKind, state.failReason);
       break;
     case "offline":
-      detail = i18n.t("shared_file.a11y_offline");
+      detail = i18n.t("shared_file.subtitle_offline");
       break;
     case "cleaned":
-      detail = i18n.t("shared_file.a11y_cleaned");
+      detail = i18n.t("shared_file.subtitle_cleaned");
       break;
   }
-  return i18n.t("shared_file.a11y_card", { name: safe, status: detail });
+  return i18n.t("shared_file.a11y_card", {
+    name: safe,
+    kind: kindName(classifySharedFile(file.name).kind),
+    size: fileSize(file.sizeBytes),
+    state: detail,
+  });
 }
 
 function cardClass(state: SharedFileDerivedState): string {
@@ -369,10 +372,10 @@ function CardVisuals({
         </span>
       )}
       {state.status === "downloaded" && (
-        <span className="sf-pill">{i18n.t("shared_file.open")}</span>
+        <span className="sf-pill">{i18n.t("shared_file.action_open")}</span>
       )}
       {state.status === "failed" && (
-        <span className="sf-pill">{i18n.t("shared_file.retry")}</span>
+        <span className="sf-pill">{i18n.t("shared_file.action_retry")}</span>
       )}
     </>
   );
@@ -435,7 +438,7 @@ function PhoneContextOverlay({
   const overlayDialogProps = {
     role: "dialog" as const,
     "aria-modal": true,
-    "aria-label": i18n.t("shared_file.context_menu_label"),
+    "aria-label": i18n.t("shared_file.menu_a11y_label"),
   };
 
   return (
@@ -448,7 +451,7 @@ function PhoneContextOverlay({
         <div className="sf-menu" role="menu">
           <div className="sf-mh">
             <div>{fullPath}</div>
-            <small>{i18n.t("shared_file.from_machine", { name: machineName })}</small>
+            <small>{i18n.t("shared_file.menu_from_machine", { machine: machineName })}</small>
             {state.status === "failed" && (
               <small className="sf-mh-err">{sub}</small>
             )}
@@ -499,7 +502,7 @@ async function systemShareBlob(blob: Blob, name: string, onToast: (msg: string) 
     await navigator.share({ files: [f] });
   } catch (e) {
     if ((e as Error).name !== "AbortError") {
-      onToast(i18n.t("shared_file.share_failed", { reason: errorText(e) }));
+      onToast(i18n.t("shared_file.toast_share_failed", { reason: errorText(e) }));
     }
   }
 }
@@ -542,7 +545,7 @@ export function SharedFileCard({
   if (state.status === "downloaded" && state.blob) {
     menuItems.push({
       id: "save",
-      label: i18n.t("shared_file.save_to_device"),
+      label: i18n.t("shared_file.menu_save_to_device"),
       icon: <DownloadIcon />,
       group: 0,
       onClick: () => saveBlobAsDownload(state.blob!, file.name),
@@ -550,7 +553,7 @@ export function SharedFileCard({
     if (canShare) {
       menuItems.push({
         id: "share",
-        label: i18n.t("shared_file.share"),
+        label: i18n.t("shared_file.menu_share"),
         icon: <ShareIcon />,
         group: 0,
         onClick: () => void systemShareBlob(state.blob!, file.name, onToast),
@@ -558,7 +561,7 @@ export function SharedFileCard({
     }
     menuItems.push({
       id: "delete",
-      label: i18n.t("shared_file.delete_local"),
+      label: i18n.t("shared_file.menu_delete_local"),
       icon: <TrashIcon />,
       red: true,
       group: 1,
@@ -568,13 +571,13 @@ export function SharedFileCard({
     menuItems.push(
       {
         id: "pause",
-        label: i18n.t("shared_file.pause"),
+        label: i18n.t("shared_file.action_pause"),
         group: 0,
         onClick: () => remote.sharedFiles.pause(sessionId, file.fileId),
       },
       {
         id: "cancel",
-        label: i18n.t("shared_file.cancel_download"),
+        label: i18n.t("shared_file.action_cancel_download"),
         group: 0,
         onClick: () => void remote.sharedFiles.cancel(sessionId, file.fileId),
       },
@@ -583,14 +586,14 @@ export function SharedFileCard({
     menuItems.push(
       {
         id: "resume",
-        label: i18n.t("shared_file.resume"),
+        label: i18n.t("shared_file.action_resume"),
         group: 0,
         onClick: () =>
           void remote.sharedFiles.startDownload(sessionId, file, { autoOpenIfStaying: false }),
       },
       {
         id: "cancel",
-        label: i18n.t("shared_file.cancel_download"),
+        label: i18n.t("shared_file.action_cancel_download"),
         group: 0,
         onClick: () => void remote.sharedFiles.cancel(sessionId, file.fileId),
       },
@@ -598,7 +601,7 @@ export function SharedFileCard({
   } else if (state.status === "failed") {
     menuItems.push({
       id: "retry",
-      label: i18n.t("shared_file.retry"),
+      label: i18n.t("shared_file.action_retry"),
       group: 0,
       onClick: () =>
         void remote.sharedFiles.startDownload(sessionId, file, { autoOpenIfStaying: false }),
@@ -606,7 +609,7 @@ export function SharedFileCard({
     if (state.downloadedBytes > 0) {
       menuItems.push({
         id: "cancel",
-        label: i18n.t("shared_file.cancel_download"),
+        label: i18n.t("shared_file.action_cancel_download"),
         group: 0,
         onClick: () => void remote.sharedFiles.cancel(sessionId, file.fileId),
       });
@@ -614,7 +617,7 @@ export function SharedFileCard({
   } else if (state.status === "available") {
     menuItems.push({
       id: "download",
-      label: i18n.t("shared_file.download"),
+      label: i18n.t("shared_file.action_download"),
       icon: <DownloadIcon />,
       group: 0,
       onClick: () =>
@@ -742,7 +745,7 @@ export function SharedFileCard({
         <Sheet anchor={cardRef} onClose={() => setMenuState(undefined)} className="menu">
           <div className="menu-info">
             <span className="mono sf-wide-path">{fullPath}</span>
-            <span>{i18n.t("shared_file.from_machine", { name: machineName })}</span>
+            <span>{i18n.t("shared_file.menu_from_machine", { machine: machineName })}</span>
             {state.status === "failed" && <span className="red">{subtitle}</span>}
           </div>
           {menuGroups.map((grp, g) => (
@@ -867,7 +870,7 @@ export function SharedFilePreviewOverlay({
       <div className="lightbox" ref={boxRef} {...dialogProps}>
         <div className="lb-top">
           <span>{safeName}</span>
-          <GlassButton label={i18n.t("shared_file.close_preview")} onClick={onClose}>
+          <GlassButton label={i18n.t("shared_file.preview_close")} onClick={onClose}>
             <X />
           </GlassButton>
         </div>
@@ -888,10 +891,10 @@ export function SharedFilePreviewOverlay({
             {safeName} · <code>{pathText}</code> · {fileSize(target.file.sizeBytes)}
           </span>
           <button className="glass" onClick={() => saveBlobAsDownload(target.blob, target.file.name)}>
-            {i18n.t("shared_file.save_to_device")}
+            {i18n.t("shared_file.menu_save_to_device")}
           </button>
           <button className="glass" onClick={onClose}>
-            {i18n.t("shared_file.close_preview")}
+            {i18n.t("shared_file.preview_close")}
           </button>
         </div>
       </div>
@@ -901,7 +904,7 @@ export function SharedFilePreviewOverlay({
   return (
     <div className="viewer" ref={boxRef} {...dialogProps}>
       <div className="vbar">
-        <GlassButton label={i18n.t("shared_file.close_preview")} onClick={onClose}>
+        <GlassButton label={i18n.t("shared_file.preview_close")} onClick={onClose}>
           <X />
         </GlassButton>
         <b>{safeName}</b>
@@ -926,10 +929,10 @@ export function SharedFilePreviewOverlay({
       </div>
       <div className="vact">
         <button className="glass" onClick={() => saveBlobAsDownload(target.blob, target.file.name)}>
-          {i18n.t("shared_file.save_to_device")}
+          {i18n.t("shared_file.menu_save_to_device")}
         </button>
         <button className="glass" onClick={onClose}>
-          {i18n.t("shared_file.close_preview")}
+          {i18n.t("shared_file.preview_close")}
         </button>
       </div>
     </div>

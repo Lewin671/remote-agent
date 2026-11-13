@@ -1,34 +1,29 @@
 [
   {
-    "key": "shared_file.a11y_available",
-    "zh-CN": "未下载，点击下载",
-    "en": "Not downloaded, tap to download",
-    "notes": "Shared file card accessibility status suffix when the file is available to download.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "shared_file.a11y_card",
-    "zh-CN": "{name}，{status}",
-    "en": "{name}, {status}",
-    "notes": "Accessible label for a shared file card combining filename and state.",
+    "zh-CN": "{name}，{kind}，{size}，{state}",
+    "en": "{name}, {kind}, {size}, {state}",
+    "notes": "Agent 发来的文件卡片整体无障碍朗读标签。参数：name 为文件名，kind 为类型名称，size 为大小字符串，state 为当前状态描述。",
     "params": {
       "name": {
         "type": "string",
         "example": "daocheng-final.mp4"
       },
-      "status": {
+      "kind": {
         "type": "string",
-        "example": "未下载，点击下载"
+        "example": "视频"
+      },
+      "size": {
+        "type": "string",
+        "example": "24.3 MB"
+      },
+      "state": {
+        "type": "string",
+        "example": "可下载"
       }
     },
     "platforms": [
+      "android",
       "web"
     ],
     "status": {
@@ -37,46 +32,18 @@
     }
   },
   {
-    "key": "shared_file.a11y_cleaned",
-    "zh-CN": "会话已结束，文件已清理",
-    "en": "Session ended, file cleaned",
-    "notes": "Accessible status when session has ended and local copy is not present.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.a11y_downloaded",
-    "zh-CN": "已下载，点击打开",
-    "en": "Downloaded, tap to open",
-    "notes": "Accessible status when file is downloaded locally.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.a11y_downloading",
-    "zh-CN": "下载中 {percent}%，点击暂停",
-    "en": "Downloading {percent}%, tap to pause",
-    "notes": "Accessible status while a shared file is downloading.",
+    "key": "shared_file.a11y_downloaded_announce",
+    "zh-CN": "{name} 下载完成",
+    "en": "{name} downloaded",
+    "notes": "文件下载完成时的无障碍朗读提示。参数：name 为文件名。",
     "params": {
-      "percent": {
-        "type": "integer",
-        "example": 42
+      "name": {
+        "type": "string",
+        "example": "daocheng-final.mp4"
       }
     },
     "platforms": [
-      "web"
+      "android"
     ],
     "status": {
       "zh-CN": "source",
@@ -84,12 +51,13 @@
     }
   },
   {
-    "key": "shared_file.a11y_failed",
-    "zh-CN": "下载失败，点击重试",
-    "en": "Download failed, tap to retry",
-    "notes": "Accessible status when a shared file download has failed.",
+    "key": "shared_file.a11y_state_available",
+    "zh-CN": "可下载",
+    "en": "Ready to download",
+    "notes": "文件卡片无障碍状态：尚未下载、可点按开始下载。",
     "params": {},
     "platforms": [
+      "android",
       "web"
     ],
     "status": {
@@ -98,12 +66,13 @@
     }
   },
   {
-    "key": "shared_file.a11y_offline",
-    "zh-CN": "电脑不在线",
-    "en": "Computer offline",
-    "notes": "Accessible status when the source machine is offline and no local copy exists.",
+    "key": "shared_file.a11y_state_downloaded",
+    "zh-CN": "已下载",
+    "en": "Downloaded",
+    "notes": "文件卡片无障碍状态：本机已有完整副本。",
     "params": {},
     "platforms": [
+      "android",
       "web"
     ],
     "status": {
@@ -112,12 +81,13 @@
     }
   },
   {
-    "key": "shared_file.a11y_paused",
-    "zh-CN": "已暂停，点击继续下载",
-    "en": "Paused, tap to resume",
-    "notes": "Accessible status when a shared file download is paused.",
+    "key": "shared_file.a11y_state_downloading",
+    "zh-CN": "下载中",
+    "en": "Downloading",
+    "notes": "文件卡片无障碍状态：正在下载文件。",
     "params": {},
     "platforms": [
+      "android",
       "web"
     ],
     "status": {
@@ -126,12 +96,28 @@
     }
   },
   {
-    "key": "shared_file.cancel_download",
+    "key": "shared_file.a11y_state_paused",
+    "zh-CN": "已暂停",
+    "en": "Paused",
+    "notes": "文件卡片无障碍状态：下载已暂停。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.action_cancel_download",
     "zh-CN": "取消下载",
     "en": "Cancel download",
-    "notes": "Context menu item to cancel an active or paused shared file download.",
+    "notes": "长按菜单操作：取消下载并删掉未完成的临时文件。",
     "params": {},
     "platforms": [
+      "android",
       "web"
     ],
     "status": {
@@ -140,12 +126,344 @@
     }
   },
   {
-    "key": "shared_file.cleaned",
+    "key": "shared_file.action_download",
+    "zh-CN": "下载",
+    "en": "Download",
+    "notes": "下载按钮无障碍描述与长按菜单操作：开始下载文件。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.action_open",
+    "zh-CN": "打开",
+    "en": "Open",
+    "notes": "已下载文件卡片右侧胶囊按钮文字。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.action_pause",
+    "zh-CN": "暂停",
+    "en": "Pause",
+    "notes": "下载中进度环按钮无障碍描述与长按菜单操作：暂停下载。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.action_resume",
+    "zh-CN": "继续下载",
+    "en": "Resume download",
+    "notes": "已暂停进度环按钮无障碍描述与长按菜单操作：继续下载。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.action_retry",
+    "zh-CN": "重试",
+    "en": "Retry",
+    "notes": "失败文件卡片右侧胶囊按钮文字。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.action_save_to_phone",
+    "zh-CN": "存到手机",
+    "en": "Save to phone",
+    "notes": "手机上没有能打开此文件的应用时，引导用户存入本机的操作按钮。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.eta_minutes",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} min",
+        "other": "{count} mins"
+      }
+    },
+    "notes": "下载预计剩余时间（分钟）。用于拼接进 subtitle_downloading_eta。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.eta_seconds",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 秒"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} sec",
+        "other": "{count} secs"
+      }
+    },
+    "notes": "下载预计剩余时间（秒）。用于拼接进 subtitle_downloading_eta。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 12
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.menu_delete_local",
+    "zh-CN": "删除本机副本",
+    "en": "Delete local copy",
+    "notes": "长按菜单破坏性操作（红色文字）：删除手机缓存里的文件副本，不影响电脑原文件。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.menu_from_machine",
+    "zh-CN": "来自 {machine}",
+    "en": "From {machine}",
+    "notes": "长按菜单顶部电脑来源说明。参数：machine 为电脑名称。",
+    "params": {
+      "machine": {
+        "type": "string",
+        "example": "MacBook Pro"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.menu_save_to_album",
+    "zh-CN": "存到相册",
+    "en": "Save to Photos",
+    "notes": "长按菜单与图片查看器操作：把图片或视频存到系统相册。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.menu_save_to_downloads",
+    "zh-CN": "存到「下载」",
+    "en": "Save to Downloads",
+    "notes": "长按菜单操作（Android）：把文件存到系统下载目录。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.menu_share",
+    "zh-CN": "分享…",
+    "en": "Share…",
+    "notes": "长按菜单操作：调用系统分享。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.notification_files",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "附 {count} 个文件"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} file attached",
+        "other": "{count} files attached"
+      }
+    },
+    "notes": "一轮对话结束通知正文末尾追加的文件数量说明。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.open_no_app",
+    "zh-CN": "手机上没有能打开这个文件的应用",
+    "en": "No app on this phone can open this file",
+    "notes": "点按打开未知或不支持类型的文件时，系统无可用应用处理时的提示。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.reason_checksum_mismatch",
+    "zh-CN": "文件校验不一致",
+    "en": "file verification failed",
+    "notes": "下载失败原因：SHA-256 校验与约定不一致。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.reason_disconnected",
+    "zh-CN": "连接断了",
+    "en": "connection dropped",
+    "notes": "下载失败原因：网络或中继连接中断。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.reason_disk_full",
+    "zh-CN": "手机空间不足",
+    "en": "phone storage is full",
+    "notes": "下载失败原因：手机剩余存储空间不够写入文件。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.storage_received_files",
+    "zh-CN": "收到的文件",
+    "en": "Received files",
+    "notes": "设置 -> 本机附件存储页面中显示的已下载共享文件占用条目名称。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_cleaned",
     "zh-CN": "会话已结束，文件已清理",
-    "en": "Session ended, file cleaned",
-    "notes": "Card status subtitle when the session has ended and local copy is gone.",
+    "en": "Session ended, file cleaned up",
+    "notes": "文件卡片副标题：未下载且会话已结束或电脑端副本已被清理。",
     "params": {},
     "platforms": [
+      "android",
       "web"
     ],
     "status": {
@@ -154,7 +472,298 @@
     }
   },
   {
-    "key": "shared_file.close_preview",
+    "key": "shared_file.subtitle_downloading",
+    "zh-CN": "{downloaded} / {total}",
+    "en": "{downloaded} / {total}",
+    "notes": "下载中副标题（尚无剩余时间估算时）。参数：downloaded 为已下载大小，total 为总大小。",
+    "params": {
+      "downloaded": {
+        "type": "string",
+        "example": "12.0 MB"
+      },
+      "total": {
+        "type": "string",
+        "example": "61.7 MB"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_downloading_eta",
+    "zh-CN": "{downloaded} / {total} · 约 {eta}",
+    "en": "{downloaded} / {total} · ~{eta} left",
+    "notes": "下载中副标题（含预计剩余时间）。参数：downloaded 为已下载大小，total 为总大小，eta 为格式化后的剩余时间。",
+    "params": {
+      "downloaded": {
+        "type": "string",
+        "example": "8.1 MB"
+      },
+      "total": {
+        "type": "string",
+        "example": "24.3 MB"
+      },
+      "eta": {
+        "type": "string",
+        "example": "12 秒"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_failed",
+    "zh-CN": "没下载下来，{reason}",
+    "en": "Couldn't download, {reason}",
+    "notes": "文件卡片下载失败副标题（红色文字）。参数：reason 为失败原因。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "连接断了"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_kind_size",
+    "zh-CN": "{kind} · {size}",
+    "en": "{kind} · {size}",
+    "notes": "可下载文件或非音视频已下载文件的卡片副标题。参数：kind 为文件类型名，size 为文件大小。",
+    "params": {
+      "kind": {
+        "type": "string",
+        "example": "视频"
+      },
+      "size": {
+        "type": "string",
+        "example": "24.3 MB"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_media_size",
+    "zh-CN": "{duration} · {size}",
+    "en": "{duration} · {size}",
+    "notes": "已下载视频或音频的文件卡片副标题，含时长与文件大小。参数：duration 如 1:42，size 如 24.3 MB。",
+    "params": {
+      "duration": {
+        "type": "string",
+        "example": "1:42"
+      },
+      "size": {
+        "type": "string",
+        "example": "24.3 MB"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_offline",
+    "zh-CN": "电脑不在线",
+    "en": "Computer offline",
+    "notes": "文件卡片副标题：未下载且电脑离线。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.subtitle_paused",
+    "zh-CN": "已暂停 · {downloaded} / {total}",
+    "en": "Paused · {downloaded} / {total}",
+    "notes": "下载已暂停的文件卡片副标题。参数：downloaded 为已下载大小，total 为总大小。",
+    "params": {
+      "downloaded": {
+        "type": "string",
+        "example": "8.1 MB"
+      },
+      "total": {
+        "type": "string",
+        "example": "24.3 MB"
+      }
+    },
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.toast_cleaned",
+    "zh-CN": "文件已清理",
+    "en": "File cleaned up",
+    "notes": "点按或尝试操作已被清理的文件时的提示。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.toast_saved_to_album",
+    "zh-CN": "已存到相册",
+    "en": "Saved to Photos",
+    "notes": "存到相册成功后的轻提示。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.toast_saved_to_downloads",
+    "zh-CN": "已存到「下载」",
+    "en": "Saved to Downloads",
+    "notes": "存到「下载」成功后的轻提示。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_archive",
+    "zh-CN": "压缩包",
+    "en": "Archive",
+    "notes": "共享文件类型名称：压缩归档文件。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_audio",
+    "zh-CN": "音频",
+    "en": "Audio",
+    "notes": "共享文件类型名称：音频文件。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_image",
+    "zh-CN": "图片",
+    "en": "Image",
+    "notes": "共享文件类型名称：图片文件。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_other",
+    "zh-CN": "文件",
+    "en": "File",
+    "notes": "共享文件类型名称：其他普通文件或文档。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_pdf",
+    "zh-CN": "PDF",
+    "en": "PDF",
+    "notes": "共享文件类型名称：PDF 文档。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.type_video",
+    "zh-CN": "视频",
+    "en": "Video",
+    "notes": "共享文件类型名称：视频文件。",
+    "params": {},
+    "platforms": [
+      "android",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.preview_close",
     "zh-CN": "关闭预览",
     "en": "Close preview",
     "notes": "Accessible label for closing the media preview overlay.",
@@ -168,7 +777,7 @@
     }
   },
   {
-    "key": "shared_file.context_menu_label",
+    "key": "shared_file.menu_a11y_label",
     "zh-CN": "文件操作菜单",
     "en": "File actions menu",
     "notes": "Accessible dialog label for the shared file context menu.",
@@ -182,87 +791,20 @@
     }
   },
   {
-    "key": "shared_file.delete_local",
-    "zh-CN": "删除本机副本",
-    "en": "Delete local copy",
-    "notes": "Destructive menu action removing the locally cached file copy.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.download",
-    "zh-CN": "下载",
-    "en": "Download",
-    "notes": "Menu or button label to download a shared file.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.downloading_eta",
-    "zh-CN": "{done} / {total} · 约 {eta}",
-    "en": "{done} / {total} · about {eta} left",
-    "notes": "Progress subtitle while downloading after ETA is available.",
-    "params": {
-      "done": {
-        "type": "string",
-        "example": "26.4"
-      },
-      "eta": {
-        "type": "string",
-        "example": "12 秒"
-      },
-      "total": {
-        "type": "string",
-        "example": "62.8 MB"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.downloading_no_eta",
-    "zh-CN": "{done} / {total}",
-    "en": "{done} / {total}",
-    "notes": "Progress subtitle during initial seconds before ETA is estimated.",
-    "params": {
-      "done": {
-        "type": "string",
-        "example": "26.4"
-      },
-      "total": {
-        "type": "string",
-        "example": "62.8 MB"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "shared_file.eta_hours",
-    "zh-CN": "{count} 小时",
-    "en": "{count}h",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 小时"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count}h",
+        "other": "{count}h"
+      }
+    },
     "notes": "Short ETA unit in hours.",
     "params": {
       "count": {
@@ -279,302 +821,7 @@
     }
   },
   {
-    "key": "shared_file.eta_minutes",
-    "zh-CN": "{count} 分",
-    "en": "{count}m",
-    "notes": "Short ETA unit in minutes.",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 3
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.eta_seconds",
-    "zh-CN": "{count} 秒",
-    "en": "{count}s",
-    "notes": "Short ETA unit in seconds.",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 12
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.fail_checksum",
-    "zh-CN": "没下载下来，文件校验不一致",
-    "en": "Download failed, checksum mismatch",
-    "notes": "Failure reason when SHA-256 or block size verification fails.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.fail_disconnected",
-    "zh-CN": "没下载下来，连接断了",
-    "en": "Download failed, connection lost",
-    "notes": "Failure reason when connection drops and 30s auto-resume does not recover.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.fail_other",
-    "zh-CN": "没下载下来，{reason}",
-    "en": "Download failed, {reason}",
-    "notes": "Failure reason showing verbatim error text returned from the computer.",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "文件不存在"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.fail_storage",
-    "zh-CN": "没下载下来，浏览器空间不足",
-    "en": "Download failed, browser storage is full",
-    "notes": "Failure reason when browser OPFS/storage quota is exceeded.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.from_machine",
-    "zh-CN": "来自 {name}",
-    "en": "From {name}",
-    "notes": "Context menu subheader showing the machine name the file comes from.",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "MacBook Pro"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.kind_archive",
-    "zh-CN": "压缩包",
-    "en": "Archive",
-    "notes": "File type label for archive extensions (zip, tar, gz, 7z, rar, etc.).",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.kind_audio",
-    "zh-CN": "音频",
-    "en": "Audio",
-    "notes": "File type label for audio files.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.kind_file",
-    "zh-CN": "文件",
-    "en": "File",
-    "notes": "Generic file type label when extension is not video, image, audio, archive, or pdf.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.kind_image",
-    "zh-CN": "图片",
-    "en": "Image",
-    "notes": "File type label for image files.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.kind_pdf",
-    "zh-CN": "PDF",
-    "en": "PDF",
-    "notes": "File type label for PDF files.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.kind_video",
-    "zh-CN": "视频",
-    "en": "Video",
-    "notes": "File type label for video files.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.machine_offline",
-    "zh-CN": "电脑不在线",
-    "en": "Computer offline",
-    "notes": "Card subtitle when the machine is offline and file has not been downloaded.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.open",
-    "zh-CN": "打开",
-    "en": "Open",
-    "notes": "Pill button label on a downloaded shared file card.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.pause",
-    "zh-CN": "暂停",
-    "en": "Pause",
-    "notes": "Context menu or accessibility action label to pause a download.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.paused",
-    "zh-CN": "已暂停 · {done} / {total}",
-    "en": "Paused · {done} / {total}",
-    "notes": "Card subtitle when a download is paused, showing progress so far.",
-    "params": {
-      "done": {
-        "type": "string",
-        "example": "26.4"
-      },
-      "total": {
-        "type": "string",
-        "example": "62.8 MB"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.resume",
-    "zh-CN": "继续下载",
-    "en": "Resume download",
-    "notes": "Action label to resume a paused download.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.retry",
-    "zh-CN": "重试",
-    "en": "Retry",
-    "notes": "Pill button label on a failed shared file card.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.save_to_device",
+    "key": "shared_file.menu_save_to_device",
     "zh-CN": "保存到本机",
     "en": "Save to device",
     "notes": "Menu action to trigger browser file download to local disk.",
@@ -588,21 +835,7 @@
     }
   },
   {
-    "key": "shared_file.share",
-    "zh-CN": "分享…",
-    "en": "Share…",
-    "notes": "Menu action to invoke Web Share API when supported by the browser.",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.share_failed",
+    "key": "shared_file.toast_share_failed",
     "zh-CN": "没能分享：{reason}",
     "en": "Couldn't share: {reason}",
     "notes": "Error notice when navigator.share fails.",
@@ -621,30 +854,7 @@
     }
   },
   {
-    "key": "shared_file.type_and_size",
-    "zh-CN": "{kind} · {size}",
-    "en": "{kind} · {size}",
-    "notes": "Default card subtitle combining file kind and size.",
-    "params": {
-      "kind": {
-        "type": "string",
-        "example": "视频"
-      },
-      "size": {
-        "type": "string",
-        "example": "62.8 MB"
-      }
-    },
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.unknown_reason",
+    "key": "shared_file.reason_unknown",
     "zh-CN": "未知原因",
     "en": "Unknown error",
     "notes": "Fallback error text when the computer returned a failure without details.",
@@ -658,20 +868,11 @@
     }
   },
   {
-    "key": "shared_file.video_and_size",
-    "zh-CN": "{duration} · {size}",
-    "en": "{duration} · {size}",
-    "notes": "Subtitle for a downloaded video or audio file showing formatted duration and size.",
-    "params": {
-      "duration": {
-        "type": "string",
-        "example": "1:24"
-      },
-      "size": {
-        "type": "string",
-        "example": "62.8 MB"
-      }
-    },
+    "key": "shared_file.reason_browser_storage_full",
+    "zh-CN": "浏览器空间不足",
+    "en": "browser storage is full",
+    "notes": "下载失败原因：浏览器 OPFS 或存储配额不足。用于网页的 subtitle_failed 参数。",
+    "params": {},
     "platforms": [
       "web"
     ],

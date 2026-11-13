@@ -138,17 +138,17 @@ export function classifySharedFile(name: string): {
 export function kindName(kind: SharedFileKind): string {
   switch (kind) {
     case "video":
-      return i18n.t("shared_file.kind_video");
+      return i18n.t("shared_file.type_video");
     case "image":
-      return i18n.t("shared_file.kind_image");
+      return i18n.t("shared_file.type_image");
     case "audio":
-      return i18n.t("shared_file.kind_audio");
+      return i18n.t("shared_file.type_audio");
     case "archive":
-      return i18n.t("shared_file.kind_archive");
+      return i18n.t("shared_file.type_archive");
     case "pdf":
-      return i18n.t("shared_file.kind_pdf");
+      return i18n.t("shared_file.type_pdf");
     case "file":
-      return i18n.t("shared_file.kind_file");
+      return i18n.t("shared_file.type_other");
   }
 }
 
@@ -200,14 +200,20 @@ export function formatEta(seconds: number): string {
 export function failureNotice(failKind?: SharedFileFailKind, reason?: string): string {
   switch (failKind) {
     case "checksum":
-      return i18n.t("shared_file.fail_checksum");
+      return i18n.t("shared_file.subtitle_failed", {
+        reason: i18n.t("shared_file.reason_checksum_mismatch"),
+      });
     case "disconnected":
-      return i18n.t("shared_file.fail_disconnected");
+      return i18n.t("shared_file.subtitle_failed", {
+        reason: i18n.t("shared_file.reason_disconnected"),
+      });
     case "storage":
-      return i18n.t("shared_file.fail_storage");
+      return i18n.t("shared_file.subtitle_failed", {
+        reason: i18n.t("shared_file.reason_browser_storage_full"),
+      });
     default:
-      return i18n.t("shared_file.fail_other", {
-        reason: reason?.trim() || i18n.t("shared_file.unknown_reason"),
+      return i18n.t("shared_file.subtitle_failed", {
+        reason: reason?.trim() || i18n.t("shared_file.reason_unknown"),
       });
   }
 }
@@ -268,7 +274,7 @@ function isLinkDrop(err: unknown): boolean {
 
 function rawFailureDetail(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
-  return String(err || i18n.t("shared_file.unknown_reason"));
+  return String(err || i18n.t("shared_file.reason_unknown"));
 }
 
 interface InternalEntry extends SharedFileTransferState {
