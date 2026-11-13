@@ -61,7 +61,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	publishCredentials := accountCredentials(acct)
 	publishCredentials.now = r.retryTime().now
 	ctx = maintenance
-	d.publisher = &conn{r: r, acct: acct, security: security, lifetime: ctx, publishNow: make(chan struct{}, 1),
+	d.publisher = &conn{r: r, acct: acct, security: security, lifetime: ctx, diskAlertNow: r.retryTime().now, publishNow: make(chan struct{}, 1),
 		machine: remoteagentv1connect.NewMachineServiceClient(httpClient(), acct.Server, connect.WithInterceptors(publishCredentials.bearer(), r.limitMachineRPCs()))}
 	// Each loop has its own budget and credentials; no network I/O lock or RPC
 	// slot used by publication is shared with membership synchronization.

@@ -29,7 +29,7 @@ func TestSharedOutcomeVectors(t *testing.T) {
 	if err := json.Unmarshal(b, &f); err != nil {
 		t.Fatal(err)
 	}
-	if f.Protocol != 14 || len(f.Vectors) != 504 {
+	if f.Protocol != 14 || len(f.Vectors) != 552 {
 		t.Fatalf("unexpected vector coverage: %d/%d", f.Protocol, len(f.Vectors))
 	}
 	for i, v := range f.Vectors {

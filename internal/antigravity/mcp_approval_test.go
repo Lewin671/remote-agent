@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 )
 
 func mcpHook(path string) *agent.Hook {
@@ -55,7 +56,7 @@ func TestMCPApprovalRejectsMismatchedAndIncompletePanels(t *testing.T) {
 			if _, ok := a.MatchApproval(changed, mcpHook("report.bin")); ok {
 				t.Fatal("matched another or unproven native prompt")
 			}
-			if err := a.AnswerApproval(term, mcpHook("report.bin"), true, nil); !errors.Is(err, agent.ErrNotAnswering) || len(term.written) > 0 {
+			if err := a.AnswerApproval(term, mcpHook("report.bin"), true, nil); !errors.Is(err, agent.ErrNotAnswering) || !outcome.IsFinalError(err) || len(term.written) > 0 {
 				t.Fatalf("wrote %q to unproven prompt: %v", term.written, err)
 			}
 		})
@@ -100,7 +101,7 @@ func TestMCPApprovalOneShotKeysAndConsumption(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	term := contextTerm{&fakeTerm{screen: screen}, ctx}
-	if err := a.AnswerApproval(term, mcpHook("report.bin"), true, nil); !errors.Is(err, agent.ErrDeliveryUnconfirmed) {
+	if err := a.AnswerApproval(term, mcpHook("report.bin"), true, nil); !errors.Is(err, agent.ErrDeliveryUnconfirmed) || outcome.IsFinalError(err) {
 		t.Fatalf("consumption was not proved: %v", err)
 	}
 }

@@ -12,7 +12,7 @@ test.each(fixture.vectors)("outcome $source/$code signed=$signed prior=$prior re
  if (v.source === "local" || (v.source === "daemon" && v.signed))
    expect(stillUnknown(new CommandError(v.code, "fixture", v.source === "daemon", v.readOnly), v.prior)).toBe(v.outcome === "unknown");
 });
-test("protocol 14 coverage", () => {expect(fixture.protocol).toBe(14); expect(fixture.vectors).toHaveLength(504);});
+test("protocol 14 coverage", () => {expect(fixture.protocol).toBe(14); expect(fixture.vectors).toHaveLength(552);});
 
 test.each(fixture.commands)("command evidence $kind/$operation", v => {
  const body: Record<string,string> = v.kind === "schedule" ? {operation: ("operation" in v ? v.operation : "") ?? ""} : {};

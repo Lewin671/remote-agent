@@ -201,10 +201,10 @@ func sleep(ctx context.Context, d time.Duration) {
 // Only a WS path has dispatcher/pathLifetime/ws/token; the publisher owns
 // machine/writes/publication state. Neither owns the shared security endpoint.
 type conn struct {
-	diskAlertNow func() time.Time
+	diskAlertNow  func() time.Time
 	nextDiskAlert time.Time // publisher syncLoop owns the volatile retry deadline
-	dispatcher *dispatcher
-	pathLifetime context.Context // socket/reply waiting, never execution
+	dispatcher    *dispatcher
+	pathLifetime  context.Context // socket/reply waiting, never execution
 
 	lifetime          context.Context // stream lifetime, independent of one command deadline
 	writes            connectionWrites

@@ -4032,6 +4032,390 @@
       "prior": true,
       "readOnly": true,
       "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "disk_full",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "disk_full",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "disk_full",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "storage_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
     }
   ],
   "commands": [
@@ -4186,6 +4570,10 @@
     {
       "kind": "",
       "readOnly": false
+    },
+    {
+      "kind": "getMachineStatus",
+      "readOnly": true
     }
   ],
   "downloads": [

@@ -21,3 +21,6 @@ func HasOwedNotificationForTest(r *Relay, id string) bool { return r.hasOwedNoti
 func HasBacklogWorkerForTest(r *Relay) bool { return len(r.backlog) != 0 }
 
 func SetSecurityIntervalForTest(r *Relay, interval time.Duration) { r.securityInterval = interval }
+
+// SetRetryNowForTest shares a process publication clock across socket changes.
+func SetRetryNowForTest(r *Relay, now func() time.Time) { r.timing.now = now }

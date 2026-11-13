@@ -433,7 +433,13 @@ func (h *handler) AbortImageUpload(ctx context.Context, req *connect.Request[pb.
 
 // uploadErr keeps the codes of upload errors and hides the others, which
 // may name files.
-func uploadErr(err error) error {
+func uploadErr(err error) (mapped error) {
+	final := outcome.IsFinalError(err)
+	defer func() {
+		if final && mapped != nil {
+			mapped = outcome.FinalError(mapped)
+		}
+	}()
 	var ce *connect.Error
 	if errors.As(err, &ce) {
 		return err

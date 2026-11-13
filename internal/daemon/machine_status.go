@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/machinestatus"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 )
 
@@ -97,9 +98,15 @@ func (d *Daemon) diskError(err error) error {
 		if detail, err := connect.NewErrorDetail(&pb.MachineError{Code: code}); err == nil {
 			e.AddDetail(detail)
 		}
-		return e
+		return outcome.UndeterminedError(e)
 	}
-	return protocol.NewMachineError(code, message)
+	// This statfs check establishes the diagnostic, never execution completion.
+	// Only the operation boundary can prove rejection/rollback before admission.
+	e := protocol.NewMachineError(code, message)
+	if outcome.IsFinalError(err) && !fileReplaced(err) {
+		return outcome.FinalError(e)
+	}
+	return outcome.UndeterminedError(e)
 }
 func (d *Daemon) rpcErr(err error) error {
 	if e := d.diskError(err); e != nil {

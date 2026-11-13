@@ -10,7 +10,7 @@ class OutcomeTest {
   val fixture = Json.parseToJsonElement(File(System.getProperty("outcomeVectors")).readText()).jsonObject
   val vectors = fixture.getValue("vectors").jsonArray
   assertEquals(14, fixture.getValue("protocol").jsonPrimitive.int)
-  assertEquals(504, vectors.size)
+  assertEquals(552, vectors.size)
   for (row in vectors) {
    val v = row.jsonObject
    fun s(k: String) = v.getValue(k).jsonPrimitive.content

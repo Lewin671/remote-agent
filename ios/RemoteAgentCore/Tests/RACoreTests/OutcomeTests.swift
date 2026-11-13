@@ -8,7 +8,7 @@ struct OutcomeTests {
   let fixture = try loadJSON("testdata/transport/outcomes.json")
   let vectors = fixture["vectors"] as! [[String: Any]]
   #expect(fixture["protocol"] as? Int == 14)
-  #expect(vectors.count == 504)
+  #expect(vectors.count == 552)
   for v in vectors {
    let result = classifyOutcome(source: v.s("source"), code: v.s("code"), signed: v["signed"] as! Bool, prior: v["prior"] as! Bool, readOnly: v["readOnly"] as! Bool)
    #expect(result.rawValue == v.s("outcome"))

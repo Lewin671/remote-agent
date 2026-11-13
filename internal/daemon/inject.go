@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/machinestatus"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -263,6 +264,11 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 		if take != nil {
 			s.d.uploads.untake(images, s.meta.ID, requestID)
 			s.d.uploads.untakeFiles(files, s.meta.ID, requestID)
+		}
+		// No canonical queue replacement, no attachment moves, memory restored.
+		// Auto-resume, when performed, masks this in enqueueInputContext.
+		if len(images) == 0 && len(files) == 0 && machinestatus.NoSpace(err) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			return 0, outcome.FinalError(err)
 		}
 		return 0, err
 	}

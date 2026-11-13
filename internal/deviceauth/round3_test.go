@@ -166,7 +166,7 @@ func TestMachineStatusResultsDoNotFillAcceptedLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
-		if _, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return bytes.Repeat([]byte{1}, 4<<20), nil }); err != nil {
+		if _, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { return Final(bytes.Repeat([]byte{1}, 4<<20)), nil }); err != nil {
 			t.Fatal(err)
 		}
 	}

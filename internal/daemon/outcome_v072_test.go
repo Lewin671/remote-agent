@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ func (b outcomeAuditBackend) Local() remoteagentv1connect.LocalServiceHandler {
 // Each failure travels through the real server/WS/handler/acceptance log,
 // including a same-ID retry. The terminal and its catalogue are isolated fakes.
 func TestV072DeterministicFailuresStayFinal(t *testing.T) {
-	for _, name := range []string{"exited-send", "empty-send", "missing-session", "input-capacity", "attachment-capacity", "invalid-create", "invalid-settings", "invalid-model", "invalid-effort", "invalid-mode", "long-title", "invalid-schedule", "missing-upload", "missing-shared-file", "invalid-shared-offset", "invalid-question", "resume-directory", "resume-cli", "resume-env", "auto-directory", "auto-cli", "auto-env", "fork-directory", "fork-cli", "fork-env", "create-directory", "create-cli", "resume-cached-cli", "auto-cached-cli", "fork-cached-cli", "create-cached-cli", "stopped-interrupt", "stopped-compact", "missing-cancel", "missing-stop", "truncated-question"} {
+	for _, name := range []string{"exited-send", "empty-send", "missing-session", "input-capacity", "attachment-capacity", "invalid-create", "invalid-settings", "invalid-model", "invalid-effort", "invalid-mode", "long-title", "invalid-schedule", "missing-upload", "missing-shared-file", "invalid-shared-offset", "invalid-question", "resume-directory", "resume-cli", "resume-env", "auto-directory", "auto-cli", "auto-env", "fork-directory", "fork-cli", "fork-env", "create-directory", "create-cli", "resume-cached-cli", "auto-cached-cli", "fork-cached-cli", "create-cached-cli", "stopped-interrupt", "stopped-compact", "missing-cancel", "missing-stop", "truncated-question", "queue-disk-full", "queue-storage-exhausted", "queue-storage-unverified"} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 			h, _ := controlHarness(t)
@@ -38,6 +39,23 @@ func TestV072DeterministicFailuresStayFinal(t *testing.T) {
 			var cmd *pb.Command
 			want := "failed_precondition"
 			switch name {
+			case "queue-disk-full", "queue-storage-exhausted", "queue-storage-unverified":
+				want = "storage_exhausted"
+				h.d.diskVolume = func() (*pb.DiskStatus, error) { return &pb.DiskStatus{AvailableBytes: 50e9}, nil }
+				if name == "queue-disk-full" {
+					want = "disk_full"
+					h.d.diskVolume = func() (*pb.DiskStatus, error) { return &pb.DiskStatus{AvailableBytes: 1}, nil }
+				}
+				if name == "queue-storage-unverified" {
+					h.d.diskVolume = func() (*pb.DiskStatus, error) { return nil, os.ErrPermission }
+				}
+				h.d.uploads.beforeUploadStep = func(step string) error {
+					if step == "queue-commit" {
+						return syscall.ENOSPC
+					}
+					return nil
+				}
+				cmd = &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: "disk-fixture", Text: "fixture"}}}
 			case "exited-send":
 				h.s.meta.Exited = true
 				cmd = &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, Text: "test"}}}
