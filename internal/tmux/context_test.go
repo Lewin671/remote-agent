@@ -27,7 +27,7 @@ func TestTmuxBlockedHelper(t *testing.T) {
 }
 
 func TestRunContextStopsBlockedTmux(t *testing.T) {
-	t.Parallel()
+	// Not parallel for the same ETXTBSY reason as the fake-tmux poll cases.
 	for _, manual := range []bool{true, false} {
 		name := "default bound"
 		if manual {

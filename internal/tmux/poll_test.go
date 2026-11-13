@@ -11,7 +11,9 @@ import (
 )
 
 func TestPollUsesOneInvocationAndDistinguishesFailures(t *testing.T) {
-	t.Parallel()
+	// Not parallel: these cases write and exec fake tmux scripts. On Linux a
+	// fork in a concurrent test can inherit the script's write descriptor and
+	// make exec fail with ETXTBSY, so they run in the sequential phase.
 	for _, tt := range []struct {
 		name, stdout, stderr string
 		alive, fail          bool
@@ -26,7 +28,6 @@ func TestPollUsesOneInvocationAndDistinguishesFailures(t *testing.T) {
 		{name: "transient", stderr: "server exited unexpectedly", alive: true, fail: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			dir := t.TempDir()
 			bin, calls := filepath.Join(dir, "tmux"), filepath.Join(dir, "calls")
 			// Each child gets literal fixture data, without changing the test
