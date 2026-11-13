@@ -7129,6 +7129,162 @@ public enum L10n {
         let key = "settings_when_unspecified_uses"
         return format(key, locale: locale, args: [])
     }
+    public static func sharedFileA11YCard(kind: String, name: String, size: String, state: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_a11y_card"
+        return format(key, locale: locale, args: [kind, name, size, state])
+    }
+    public static func sharedFileA11YDownloadedAnnounce(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_a11y_downloaded_announce"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func sharedFileA11YStateAvailable(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_a11y_state_available"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileA11YStateDownloaded(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_a11y_state_downloaded"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileA11YStateDownloading(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_a11y_state_downloading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileA11YStatePaused(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_a11y_state_paused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileActionCancelDownload(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_action_cancel_download"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileActionDownload(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_action_download"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileActionOpen(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_action_open"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileActionPause(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_action_pause"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileActionResume(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_action_resume"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileActionRetry(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_action_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileEtaMinutes(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_eta_minutes"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sharedFileEtaSeconds(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_eta_seconds"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sharedFileMenuDeleteLocal(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_delete_local"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileMenuFromMachine(machine: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_from_machine"
+        return format(key, locale: locale, args: [machine])
+    }
+    public static func sharedFileMenuSaveToAlbum(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_save_to_album"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileMenuSaveToFiles(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_save_to_files"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileMenuShare(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_share"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileNotificationFiles(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_notification_files"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sharedFileReasonChecksumMismatch(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_reason_checksum_mismatch"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileReasonDisconnected(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_reason_disconnected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileReasonDiskFull(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_reason_disk_full"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileReasonUnknown(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_reason_unknown"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileStorageReceivedFiles(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_storage_received_files"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileSubtitleCleaned(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_cleaned"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileSubtitleDownloading(downloaded: String, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_downloading"
+        return format(key, locale: locale, args: [downloaded, total])
+    }
+    public static func sharedFileSubtitleDownloadingEta(downloaded: String, eta: String, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_downloading_eta"
+        return format(key, locale: locale, args: [downloaded, eta, total])
+    }
+    public static func sharedFileSubtitleFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sharedFileSubtitleKindSize(kind: String, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_kind_size"
+        return format(key, locale: locale, args: [kind, size])
+    }
+    public static func sharedFileSubtitleMediaSize(duration: String, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_media_size"
+        return format(key, locale: locale, args: [duration, size])
+    }
+    public static func sharedFileSubtitleOffline(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_offline"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileSubtitlePaused(downloaded: String, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_subtitle_paused"
+        return format(key, locale: locale, args: [downloaded, total])
+    }
+    public static func sharedFileTypeArchive(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_type_archive"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileTypeAudio(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_type_audio"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileTypeImage(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_type_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileTypeOther(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_type_other"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileTypePdf(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_type_pdf"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileTypeVideo(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_type_video"
+        return format(key, locale: locale, args: [])
+    }
     public static func startupInstallDescription(locale: String = MessageLocale.current) -> String {
         let key = "startup_install_description"
         return format(key, locale: locale, args: [])
@@ -14655,6 +14811,162 @@ public enum L10nMessage {
     }
     public static func settingsWhenUnspecifiedUses() -> LocalizedMessage {
         let key = "settings_when_unspecified_uses"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileA11YCard(kind: String, name: String, size: String, state: String) -> LocalizedMessage {
+        let key = "shared_file_a11y_card"
+        return LocalizedMessage(key: key, arguments: [.string(kind), .string(name), .string(size), .string(state)])
+    }
+    public static func sharedFileA11YDownloadedAnnounce(name: String) -> LocalizedMessage {
+        let key = "shared_file_a11y_downloaded_announce"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func sharedFileA11YStateAvailable() -> LocalizedMessage {
+        let key = "shared_file_a11y_state_available"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileA11YStateDownloaded() -> LocalizedMessage {
+        let key = "shared_file_a11y_state_downloaded"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileA11YStateDownloading() -> LocalizedMessage {
+        let key = "shared_file_a11y_state_downloading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileA11YStatePaused() -> LocalizedMessage {
+        let key = "shared_file_a11y_state_paused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileActionCancelDownload() -> LocalizedMessage {
+        let key = "shared_file_action_cancel_download"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileActionDownload() -> LocalizedMessage {
+        let key = "shared_file_action_download"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileActionOpen() -> LocalizedMessage {
+        let key = "shared_file_action_open"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileActionPause() -> LocalizedMessage {
+        let key = "shared_file_action_pause"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileActionResume() -> LocalizedMessage {
+        let key = "shared_file_action_resume"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileActionRetry() -> LocalizedMessage {
+        let key = "shared_file_action_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileEtaMinutes(count: Int) -> LocalizedMessage {
+        let key = "shared_file_eta_minutes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sharedFileEtaSeconds(count: Int) -> LocalizedMessage {
+        let key = "shared_file_eta_seconds"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sharedFileMenuDeleteLocal() -> LocalizedMessage {
+        let key = "shared_file_menu_delete_local"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileMenuFromMachine(machine: String) -> LocalizedMessage {
+        let key = "shared_file_menu_from_machine"
+        return LocalizedMessage(key: key, arguments: [.string(machine)])
+    }
+    public static func sharedFileMenuSaveToAlbum() -> LocalizedMessage {
+        let key = "shared_file_menu_save_to_album"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileMenuSaveToFiles() -> LocalizedMessage {
+        let key = "shared_file_menu_save_to_files"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileMenuShare() -> LocalizedMessage {
+        let key = "shared_file_menu_share"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileNotificationFiles(count: Int) -> LocalizedMessage {
+        let key = "shared_file_notification_files"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sharedFileReasonChecksumMismatch() -> LocalizedMessage {
+        let key = "shared_file_reason_checksum_mismatch"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileReasonDisconnected() -> LocalizedMessage {
+        let key = "shared_file_reason_disconnected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileReasonDiskFull() -> LocalizedMessage {
+        let key = "shared_file_reason_disk_full"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileReasonUnknown() -> LocalizedMessage {
+        let key = "shared_file_reason_unknown"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileStorageReceivedFiles() -> LocalizedMessage {
+        let key = "shared_file_storage_received_files"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileSubtitleCleaned() -> LocalizedMessage {
+        let key = "shared_file_subtitle_cleaned"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileSubtitleDownloading(downloaded: String, total: String) -> LocalizedMessage {
+        let key = "shared_file_subtitle_downloading"
+        return LocalizedMessage(key: key, arguments: [.string(downloaded), .string(total)])
+    }
+    public static func sharedFileSubtitleDownloadingEta(downloaded: String, eta: String, total: String) -> LocalizedMessage {
+        let key = "shared_file_subtitle_downloading_eta"
+        return LocalizedMessage(key: key, arguments: [.string(downloaded), .string(eta), .string(total)])
+    }
+    public static func sharedFileSubtitleFailed(reason: String) -> LocalizedMessage {
+        let key = "shared_file_subtitle_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sharedFileSubtitleKindSize(kind: String, size: String) -> LocalizedMessage {
+        let key = "shared_file_subtitle_kind_size"
+        return LocalizedMessage(key: key, arguments: [.string(kind), .string(size)])
+    }
+    public static func sharedFileSubtitleMediaSize(duration: String, size: String) -> LocalizedMessage {
+        let key = "shared_file_subtitle_media_size"
+        return LocalizedMessage(key: key, arguments: [.string(duration), .string(size)])
+    }
+    public static func sharedFileSubtitleOffline() -> LocalizedMessage {
+        let key = "shared_file_subtitle_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileSubtitlePaused(downloaded: String, total: String) -> LocalizedMessage {
+        let key = "shared_file_subtitle_paused"
+        return LocalizedMessage(key: key, arguments: [.string(downloaded), .string(total)])
+    }
+    public static func sharedFileTypeArchive() -> LocalizedMessage {
+        let key = "shared_file_type_archive"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileTypeAudio() -> LocalizedMessage {
+        let key = "shared_file_type_audio"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileTypeImage() -> LocalizedMessage {
+        let key = "shared_file_type_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileTypeOther() -> LocalizedMessage {
+        let key = "shared_file_type_other"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileTypePdf() -> LocalizedMessage {
+        let key = "shared_file_type_pdf"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileTypeVideo() -> LocalizedMessage {
+        let key = "shared_file_type_video"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func startupInstallDescription() -> LocalizedMessage {

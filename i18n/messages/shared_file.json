@@ -24,6 +24,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -43,7 +44,8 @@
       }
     },
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -58,6 +60,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -73,6 +76,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -88,6 +92,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -103,6 +108,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -118,6 +124,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -133,6 +140,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -148,6 +156,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -163,6 +172,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -178,6 +188,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -193,6 +204,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -238,6 +250,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -269,6 +282,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -284,6 +298,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -304,6 +319,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -332,7 +348,8 @@
     "notes": "长按菜单与图片查看器操作：把图片或视频存到系统相册。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -361,6 +378,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -392,6 +410,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -463,6 +482,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -478,6 +498,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -492,7 +513,8 @@
     "notes": "下载失败原因：手机剩余存储空间不够写入文件。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -506,7 +528,8 @@
     "notes": "设置 -> 本机附件存储页面中显示的已下载共享文件占用条目名称。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -521,6 +544,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -545,6 +569,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -573,6 +598,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -593,6 +619,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -617,6 +644,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -641,6 +669,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -656,6 +685,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -680,6 +710,7 @@
     },
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -737,6 +768,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -752,6 +784,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -767,6 +800,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -782,6 +816,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -797,6 +832,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -812,6 +848,7 @@
     "params": {},
     "platforms": [
       "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -917,6 +954,7 @@
     "notes": "Fallback error text when the computer returned a failure without details.",
     "params": {},
     "platforms": [
+      "ios",
       "web"
     ],
     "status": {
@@ -932,6 +970,20 @@
     "params": {},
     "platforms": [
       "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "shared_file.menu_save_to_files",
+    "zh-CN": "存到「文件」",
+    "en": "Save to Files",
+    "notes": "长按菜单操作（iOS）：用系统的文件导出面板把本机副本存到「文件」App。",
+    "params": {},
+    "platforms": [
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

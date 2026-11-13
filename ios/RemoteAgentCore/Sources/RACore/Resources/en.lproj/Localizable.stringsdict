@@ -1282,6 +1282,54 @@
 			<string>%1$lld new messages</string>
 		</dict>
 	</dict>
+	<key>shared_file_eta_minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld min</string>
+			<key>other</key>
+			<string>%1$lld mins</string>
+		</dict>
+	</dict>
+	<key>shared_file_eta_seconds</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld sec</string>
+			<key>other</key>
+			<string>%1$lld secs</string>
+		</dict>
+	</dict>
+	<key>shared_file_notification_files</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld file attached</string>
+			<key>other</key>
+			<string>%1$lld files attached</string>
+		</dict>
+	</dict>
 	<key>time_duration_seconds</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
