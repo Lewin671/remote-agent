@@ -84,3 +84,13 @@ test("a restored unknown send keeps earlier evidence after a relay refusal",asyn
   expect(missing.outcome).toBe("unknown");expect(uncertain(missing)).toBe(true);
  }finally{await r.dispose();}
 });
+
+
+test("a full relay queue keeps its own unsent reason",async()=>{
+ const r=await SyntheticRemote.create();
+ try {
+  (r as unknown as {api:unknown}).api={forward:async(q:{attemptId:string})=>{throw new ConnectError("queue is full",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:q.attemptId,reason:"queue_full"}}]);}};
+  const error=await r.machineCommand(r.machine,{case:"listModels",value:{}},newSlot()).catch(e=>e);
+  expect(error.outcome).toBe("not_sent");expect(error.message).toBe("queue is full");
+ }finally{await r.dispose();}
+});

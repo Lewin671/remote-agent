@@ -1513,5 +1513,15 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Api.kt",
     "literal": "disk_full",
     "reason": "Machine diagnostic code selecting the existing localized disk message; explicit missing-result/identity notices take precedence. Not display copy."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "machine_offline",
+    "reason": "Bound relay refusal reason selecting the existing offline message. Other queue/admission refusals keep their diagnostic cause; this identifier is not display copy."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteCommands.swift",
+    "literal": "machine_offline",
+    "reason": "Bound relay refusal reason selecting the existing offline message. Other queue/admission refusals keep their diagnostic cause; this identifier is not display copy."
   }
 ]

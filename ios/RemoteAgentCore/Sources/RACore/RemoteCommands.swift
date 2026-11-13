@@ -190,10 +190,11 @@ extension Remote {
                 }
                 return msg
             } catch let ce as ConnectError {
-                let unsent = (ce.unpackedDetails() as [PBNotForwarded]).contains { $0.attemptID == attemptId }
+                let notForwarded = (ce.unpackedDetails() as [PBNotForwarded]).first { $0.attemptID == attemptId }
+                let unsent = notForwarded != nil
                 if unsent {
                     mayHaveRun = p.notSent() || retryOfUnknown
-                    if !mayHaveRun && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),ce.code == .unavailable ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : errorText(ce),outcome:.notSent) }
+                    if !mayHaveRun && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),notForwarded?.reason == "machine_offline" ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : ce.code == .unavailable ? (ce.message ?? errorText(ce)) : errorText(ce),outcome:.notSent) }
                 }
                 if neverSent(ce.exception) { if !unsent { mayHaveRun = p.notSent() || retryOfUnknown }; throw notSent("network", L10n.errorsIosNetworkUnavailableTheCommandWasNotSent()) }
                 if ce.code == .unauthenticated && attempt < 3 {

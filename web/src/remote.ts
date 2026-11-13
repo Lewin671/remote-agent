@@ -3360,10 +3360,11 @@ export class Remote {
         // daemon answers still freeze the caller's request slot.
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
-        const unsent = ce.findDetails(NotForwardedSchema).some(d=>d.attemptId===attemptId);
+        const notForwarded = ce.findDetails(NotForwardedSchema).find(d=>d.attemptId===attemptId);
+        const unsent = notForwarded !== undefined;
         if (unsent) {
           mayHaveRun=this.unsentAttempt(slot);
-          if (!mayHaveRun && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),ce.code===Code.Unavailable ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
+          if (!mayHaveRun && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),notForwarded?.reason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
         }
         if (ce.code === Code.Unauthenticated && attempt < 3) {
           try {

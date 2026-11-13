@@ -3420,12 +3420,14 @@ class Remote(
                     return msg
                 } catch (ce: ConnectException) {
                     waiting = false
-                    val unsent = ce.details.any { detail ->
-                        detail.type.endsWith("remoteagent.v1.NotForwarded") && runCatching { io.github.lewin671.remoteagent.proto.NotForwarded.parseFrom(detail.payload.toByteArray()).attemptId == attemptId }.getOrDefault(false)
-                    }
+                    val notForwarded = ce.details.mapNotNull { detail ->
+                        if (!detail.type.endsWith("remoteagent.v1.NotForwarded")) null
+                        else runCatching { io.github.lewin671.remoteagent.proto.NotForwarded.parseFrom(detail.payload.toByteArray()) }.getOrNull()
+                    }.firstOrNull { it.attemptId == attemptId }
+                    val unsent = notForwarded != null
                     if (unsent) {
                         mayHaveRun=p.notSent() || retryOfUnknown
-                        if (!mayHaveRun && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (ce.code==Code.UNAVAILABLE) UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
+                        if (!mayHaveRun && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (notForwarded?.reason=="machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else if (ce.code==Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
                     }
                     val cause = ce.exception
                     if (
