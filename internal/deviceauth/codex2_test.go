@@ -29,7 +29,9 @@ func TestPersistedFloorTimestampThrottlesTouchAndAccept(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if _, err := m.Accept(w, nil, at, func(Header, []byte) ([]byte, error) { return nil, nil }); err != nil {
+					if _, err := m.Accept(w, nil, at, func(Header, []byte) (Completion, error) {
+						return Final(nil), nil
+					}); err != nil {
 						t.Fatal(err)
 					}
 				}

@@ -15,6 +15,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -164,7 +165,14 @@ func (d *Daemon) settingsContext(ctx context.Context) (*pb.DaemonSettings, error
 // the CLI would ask in the terminal instead (architecture §7).
 var maxApprovalTimeout = time.Duration(agent.HookTimeoutSeconds-60) * time.Second
 
-func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, error) {
+func (d *Daemon) updateSettings(st *pb.DaemonSettings) (settings *pb.DaemonSettings, resultErr error) {
+	saving := false
+	defer func() {
+		if !saving && resultErr != nil {
+			resultErr = outcome.FinalError(resultErr)
+		}
+	}()
+
 	for _, n := range []int64{st.ImageUploadQuotaBytes} {
 		if n != 0 && (n < 32<<20 || n > 1024<<30) {
 			return nil, errors.New("image storage limits must be between 32 MiB and 1 TiB")
@@ -193,6 +201,7 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 			return nil, fmt.Errorf("invalid model %q", def.Model)
 		}
 	}
+	saving = true
 	return d.saveSettings(st, writeFileAtomic)
 }
 

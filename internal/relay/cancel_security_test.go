@@ -39,7 +39,11 @@ func TestInFlightDuplicateDoesNotSynchronizeSecurityState(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("done"), nil })
+		_, err := c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+			close(entered)
+			<-release
+			return deviceauth.Final([]byte("done")), nil
+		})
 		done <- err
 	}()
 	<-entered
@@ -51,7 +55,10 @@ func TestInFlightDuplicateDoesNotSynchronizeSecurityState(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	_, err = c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) ([]byte, error) { t.Error("duplicate executed"); return nil, nil })
+	_, err = c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+		t.Error("duplicate executed")
+		return deviceauth.Final(nil), nil
+	})
 	if !errors.Is(err, deviceauth.ErrOutcomeUnknown) {
 		t.Fatalf("duplicate: %v", err)
 	}

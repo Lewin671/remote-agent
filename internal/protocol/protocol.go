@@ -23,6 +23,12 @@ type GenerationConflictError struct{ Message string }
 
 func (e *GenerationConflictError) Error() string { return e.Message }
 
+// RevisionConflictError is a settled schedule compare-and-swap failure.
+// It is local backend evidence, not a new wire type.
+type RevisionConflictError struct{ Message string }
+
+func (e *RevisionConflictError) Error() string { return e.Message }
+
 // Header carries Version on the daemon's local socket, in both directions.
 const Header = "Remote-Agent-Protocol"
 

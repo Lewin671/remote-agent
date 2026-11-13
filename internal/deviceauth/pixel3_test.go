@@ -31,7 +31,11 @@ func TestUserIOCallbackDoesNotHoldSecurityGate(t *testing.T) {
 			entered, release := make(chan struct{}), make(chan struct{})
 			finished := make(chan error, 1)
 			go func() {
-				_, err := endpoint.Accept(wire, nil, now, func(Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("done"), nil })
+				_, err := endpoint.Accept(wire, nil, now, func(Header, []byte) (Completion, error) {
+					close(entered)
+					<-release
+					return Final([]byte("done")), nil
+				})
 				finished <- err
 			}()
 			<-entered
@@ -70,7 +74,10 @@ func TestUserIOCallbackDoesNotHoldSecurityGate(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer reopened.Close()
-				_, err = reopened.Accept(wire, nil, now, func(Header, []byte) ([]byte, error) { t.Error("accepted request executed twice"); return nil, nil })
+				_, err = reopened.Accept(wire, nil, now, func(Header, []byte) (Completion, error) {
+					t.Error("accepted request executed twice")
+					return Final(nil), nil
+				})
 				if err != nil && !errors.Is(err, ErrOutcomeUnknown) {
 					t.Fatal(err)
 				}

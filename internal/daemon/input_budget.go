@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 
 	"connectrpc.com/connect"
 )
@@ -31,7 +32,7 @@ type inputReservation struct {
 }
 
 func inputCapacityError() error {
-	return connect.NewError(connect.CodeResourceExhausted, errors.New("pending input limit reached (256 inputs or 32 MiB per session, 128 MiB per daemon); wait for or cancel pending input"))
+	return outcome.FinalError(connect.NewError(connect.CodeResourceExhausted, errors.New("pending input limit reached (256 inputs or 32 MiB per session, 128 MiB per daemon); wait for or cancel pending input")))
 }
 
 // Hold the session mutex when q belongs to a live session. inputMu never

@@ -127,7 +127,7 @@ func (s *securitySession) open(ctx context.Context, w deviceauth.Wire, seed []by
 
 // accept is the at-most-once control gate. An unknown state is fetched first
 // and the whole gate is retried once.
-func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) ([]byte, error)) ([]byte, error) {
+func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
 	out, err := s.endpoint.Accept(w, seed, now, fn)
 	if !errors.Is(err, deviceauth.ErrUnknown) {
 		return out, err

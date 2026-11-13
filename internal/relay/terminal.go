@@ -184,32 +184,38 @@ func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal,
 		if err != nil || h.Machine != c.acct.DeviceID || h.Session != sessionID || h.Request != streamID || h.Seq <= last || !h.Purpose.Control() || h.Purpose == deviceauth.Command {
 			return
 		}
-		_, err = c.security.accept(ctx, wire, key, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
+		_, err = c.security.accept(ctx, wire, key, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
 			plain, err := deviceauth.Unpack(h, plain)
 			if err != nil {
-				return nil, err
+				return deviceauth.Undetermined(), err
 			}
 			f := &pb.TerminalFrame{}
 			if proto.Unmarshal(plain, f) != nil {
-				return nil, deviceauth.ErrInvalid
+				return deviceauth.Undetermined(), deviceauth.ErrInvalid
 			}
 			switch k := f.Kind.(type) {
 			case *pb.TerminalFrame_Input:
-				return nil, t.Input(k.Input)
+				if err := t.Input(k.Input); err != nil {
+					return deviceauth.Undetermined(), err
+				}
+				return deviceauth.Final(nil), nil
 			case *pb.TerminalFrame_Resize:
-				return nil, t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit)
+				if err := t.Resize(int(k.Resize.Cols), int(k.Resize.Rows), k.Resize.Fit); err != nil {
+					return deviceauth.Undetermined(), err
+				}
+				return deviceauth.Final(nil), nil
 			case *pb.TerminalFrame_HistoryRequest:
 				if k.HistoryRequest == nil || len(k.HistoryRequest.RequestId) == 0 || len(k.HistoryRequest.RequestId) > 128 || len(k.HistoryRequest.Cursor) > 128 {
-					return nil, deviceauth.ErrInvalid
+					return deviceauth.Undetermined(), deviceauth.ErrInvalid
 				}
 				select {
 				case historyRequests <- k.HistoryRequest:
-					return nil, nil
+					return deviceauth.Final(nil), nil
 				default:
-					return nil, deviceauth.ErrCapacity
+					return deviceauth.Undetermined(), deviceauth.ErrCapacity
 				}
 			default:
-				return nil, deviceauth.ErrInvalid
+				return deviceauth.Undetermined(), deviceauth.ErrInvalid
 			}
 		})
 		if err == nil {

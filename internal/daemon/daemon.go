@@ -26,6 +26,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/machinestatus"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/schedule"
@@ -615,7 +616,14 @@ func (d *Daemon) createBy(req *pb.CreateSessionRequest, origin *pb.Origin, viaSh
 	return d.createByContext(context.Background(), req, origin, viaShell, terminal, pathFrom)
 }
 
-func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (*session, error) {
+func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionRequest, origin *pb.Origin, viaShell, terminal bool, pathFrom string) (created *session, resultErr error) {
+	effectsStarted := false
+	defer func() {
+		if !effectsStarted && resultErr != nil && !errors.Is(resultErr, context.Canceled) && !errors.Is(resultErr, context.DeadlineExceeded) {
+			resultErr = outcome.FinalError(resultErr)
+		}
+	}()
+
 	var firstInput *inputReservation
 	if strings.TrimSpace(req.Prompt) != "" || len(req.ImageIds) > 0 || len(req.FileIds) > 0 {
 		var err error
@@ -716,6 +724,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	// The first message's images move into the session before the CLI
 	// starts: if they cannot, nothing starts.
 	firstRequest := newID(8)
+	effectsStarted = true
 	all, err := d.uploads.takeUploads(req.ImageIds, req.FileIds, owner, id, firstRequest)
 	images, files := all.Images, all.Files
 	if err != nil {

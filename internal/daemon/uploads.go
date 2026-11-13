@@ -21,6 +21,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/imageproc"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 )
 
 // Images sent from clients (architecture §17 "从客户端发图片"). A client
@@ -146,11 +147,11 @@ func (u *uploads) usable() bool {
 
 func (u *uploads) load(id string) (*transfer, error) {
 	if !validHexID(id) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a transfer ID is 32 hex digits"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("a transfer ID is 32 hex digits")))
 	}
 	b, err := os.ReadFile(u.partial(id) + ".json")
 	if os.IsNotExist(err) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such transfer; it may have expired"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("no such transfer; it may have expired")))
 	}
 	if err != nil {
 		return nil, err
@@ -162,7 +163,7 @@ func (u *uploads) load(id string) (*transfer, error) {
 	// Enforce the advertised expiry even between periodic GC passes.
 	if t.Session == "" && time.Now().UnixMilli() >= t.expiresMs() {
 		u.remove(t.ID)
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer expired; upload it again"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("the transfer expired; upload it again")))
 	}
 	return t, nil
 }
@@ -205,35 +206,35 @@ func imageOwner(o *pb.Origin) (string, error) {
 	case o.Kind == pb.OriginKind_ORIGIN_KIND_CLIENT && o.DeviceId != "":
 		return o.DeviceId, nil
 	}
-	return "", connect.NewError(connect.CodePermissionDenied, errors.New("images need commands signed by the device; update the client"))
+	return "", outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("images need commands signed by the device; update the client")))
 }
 
 func (u *uploads) owned(t *transfer, device string) error {
 	if t.Device != device {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("the transfer belongs to another device"))
+		return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("the transfer belongs to another device")))
 	}
 	return nil
 }
 
 func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.ImageUploadStatus, error) {
 	if !u.usable() {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the remote-agent folder's path has spaces, which the CLIs do not take in image paths"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("the remote-agent folder's path has spaces, which the CLIs do not take in image paths")))
 	}
 	switch {
 	case !validHexID(req.TransferId):
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a transfer ID is 32 hex digits"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("a transfer ID is 32 hex digits")))
 	case req.FileName != "" && (!utf8.ValidString(req.FileName) || len(req.FileName) > 255):
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("file_name must be at most 255 UTF-8 bytes"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("file_name must be at most 255 UTF-8 bytes")))
 	case req.FileName != "" && req.Format != pb.ImageFormat_IMAGE_FORMAT_UNSPECIFIED:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a file transfer must use UNSPECIFIED format"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("a file transfer must use UNSPECIFIED format")))
 	case req.FileName == "" && imageproc.Ext(req.Format) == "":
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the format must be PNG, JPEG, WebP or GIF"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("the format must be PNG, JPEG, WebP or GIF")))
 	case req.FileName != "" && (req.TotalBytes < 0 || req.TotalBytes > maxFileUploadBytes):
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a file must be 0 to %d bytes", maxFileUploadBytes))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a file must be 0 to %d bytes", maxFileUploadBytes)))
 	case req.FileName == "" && (req.TotalBytes <= 0 || req.TotalBytes > maxUploadBytes):
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("an image must be 1 to %d bytes", maxUploadBytes))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("an image must be 1 to %d bytes", maxUploadBytes)))
 	case len(req.Sha256) != sha256.Size:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("sha256 must be 32 bytes"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("sha256 must be 32 bytes")))
 	}
 	pins := u.protectedSessions()
 	u.mu.Lock()
@@ -246,10 +247,10 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 			if err := u.deleteUpload(t); err != nil {
 				return nil, err
 			}
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer was deleted; begin a new transfer"))
+			return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("the transfer was deleted; begin a new transfer")))
 		}
 		if t.FileName != req.FileName || t.Format != req.Format || t.Total != req.TotalBytes || !bytes.Equal(t.SHA256, req.Sha256) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("the transfer exists with other parameters"))
+			return nil, outcome.FinalError(connect.NewError(connect.CodeAlreadyExists, errors.New("the transfer exists with other parameters")))
 		}
 		return t.status(), nil
 	} else if connect.CodeOf(err) != connect.CodeNotFound {
@@ -299,20 +300,20 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 	n := int64(len(req.Data))
 	switch {
 	case t.Deleting:
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted")))
 	case t.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING:
 		if req.Offset+n <= t.Total {
 			return t.status(), nil // a late retry of a chunk of a finished upload
 		}
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the transfer is complete"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("the transfer is complete")))
 	case n == 0:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a chunk must not be empty"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("a chunk must not be empty")))
 	case n > maxUploadChunk:
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a chunk carries at most %d bytes", maxUploadChunk))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a chunk carries at most %d bytes", maxUploadChunk)))
 	case req.Offset < 0 || req.Offset > t.Persisted:
-		return nil, connect.NewError(connect.CodeOutOfRange, fmt.Errorf("the next chunk starts at %d", t.Persisted))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeOutOfRange, fmt.Errorf("the next chunk starts at %d", t.Persisted)))
 	case req.Offset+n > t.Total:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the chunk goes past the image's length"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("the chunk goes past the image's length")))
 	}
 	f, err := os.OpenFile(u.partial(t.ID)+".part", os.O_RDWR, 0o600)
 	if err != nil {
@@ -326,7 +327,7 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 			return nil, err
 		}
 		if !bytes.Equal(have, req.Data[:overlap]) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the chunk differs from the bytes already received there"))
+			return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("the chunk differs from the bytes already received there")))
 		}
 	}
 	if req.Offset+n > t.Persisted {
@@ -357,7 +358,7 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 		return nil, err
 	}
 	if t.Deleting {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted")))
 	}
 	if t.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
 		if t.artifactID() != "" {
@@ -366,7 +367,7 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 		return t.status(), nil
 	}
 	if t.Persisted != t.Total {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("only %d of %d bytes arrived", t.Persisted, t.Total))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("only %d of %d bytes arrived", t.Persisted, t.Total)))
 	}
 	if t.FileName != "" {
 		return u.completeFile(t)
@@ -382,7 +383,7 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 		// A transfer that cannot complete is dropped; the client starts
 		// over with a new one.
 		u.remove(t.ID)
-		return connect.NewError(connect.CodeInvalidArgument, errors.New(msg))
+		return outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New(msg)))
 	}
 	if int64(len(data)) != t.Total || !bytes.Equal(sum[:], t.SHA256) {
 		return nil, bad("the bytes do not match the hash")
@@ -429,7 +430,7 @@ func (u *uploads) abort(id, device string) error {
 		return err
 	}
 	if t.Session != "" {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("a message already uses the image"))
+		return outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("a message already uses the image")))
 	}
 	return u.deleteUpload(t)
 }
@@ -765,7 +766,7 @@ func (u *uploads) room(add int64) error {
 		quota = u.limits()
 	}
 	if used+add > quota {
-		return connect.NewError(connect.CodeResourceExhausted, errors.New("这台电脑的附件存储已满；请结束不用的会话、等待未使用附件过期或提高限额"))
+		return outcome.FinalError(connect.NewError(connect.CodeResourceExhausted, errors.New("这台电脑的附件存储已满；请结束不用的会话、等待未使用附件过期或提高限额")))
 	}
 	return nil
 }

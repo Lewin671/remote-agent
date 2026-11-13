@@ -24,7 +24,11 @@ func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	finished := make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("done"), nil })
+		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Final([]byte("done")), nil
+		})
 		finished <- err
 	}()
 	<-entered
@@ -53,7 +57,10 @@ func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if _, err := reopened.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Fatal("executed twice"); return nil, nil }); !errors.Is(err, ErrOutcomeUnknown) {
+	if _, err := reopened.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		t.Fatal("executed twice")
+		return Final(nil), nil
+	}); !errors.Is(err, ErrOutcomeUnknown) {
 		t.Fatalf("unfinished accepted request = %v", err)
 	}
 }
@@ -70,7 +77,9 @@ func TestRePairPreservesAcceptanceAndTimeFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return []byte("original"), nil }); err != nil {
+	if _, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		return Final([]byte("original")), nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	floor := m.Floor()
@@ -113,7 +122,10 @@ func TestRePairPreservesAcceptanceAndTimeFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Fatal("re-pair ran the command twice"); return nil, nil })
+	out, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		t.Fatal("re-pair ran the command twice")
+		return Final(nil), nil
+	})
 	if err != nil || string(out) != "original" {
 		t.Fatalf("retry %q %v", out, err)
 	}
@@ -202,7 +214,11 @@ func TestRePairSnapshotCannotOverwriteFinishedAcceptanceOrNewerFloor(t *testing.
 	}
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("completed"), nil })
+		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Final([]byte("completed")), nil
+		})
 		done <- err
 	}()
 	<-entered
@@ -235,7 +251,10 @@ func TestRePairSnapshotCannotOverwriteFinishedAcceptanceOrNewerFloor(t *testing.
 	if reopened.Floor() < now+2000 {
 		t.Error("re-pair snapshot rolled back receive time")
 	}
-	out, err := reopened.Accept(w, nil, now+2000, func(Header, []byte) ([]byte, error) { t.Fatal("executed twice"); return nil, nil })
+	out, err := reopened.Accept(w, nil, now+2000, func(Header, []byte) (Completion, error) {
+		t.Fatal("executed twice")
+		return Final(nil), nil
+	})
 	if err != nil || string(out) != "completed" {
 		t.Fatalf("re-pair overwrote completed acceptance: %q %v", out, err)
 	}

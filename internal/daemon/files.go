@@ -18,6 +18,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/imageproc"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"golang.org/x/text/unicode/norm"
 )
@@ -140,12 +141,12 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	// Abort may have committed its intent while hashing, then failed to
 	// unlink or sync. Deleting overrides both receiving and completed state.
 	if current.Deleting {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("the transfer is being deleted")))
 	}
 	// Check before the completed fast path: it may belong to a replacement
 	// Begin which another Complete already finished while this hash ran.
 	if current.Generation != t.Generation {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, &protocol.GenerationConflictError{Message: "the transfer changed while its bytes were being checked"})
+		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, &protocol.GenerationConflictError{Message: "the transfer changed while its bytes were being checked"}))
 	}
 	if current.state() != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING {
 		return u.durableFileStatus(current)
@@ -155,7 +156,7 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 		return nil, err
 	}
 	if !os.SameFile(before, now) || current.FileName != t.FileName || current.Total != t.Total || !bytes.Equal(current.SHA256, t.SHA256) {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, &protocol.GenerationConflictError{Message: "the transfer changed while its bytes were being checked"})
+		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, &protocol.GenerationConflictError{Message: "the transfer changed while its bytes were being checked"}))
 	}
 	if hashErr != nil {
 		return nil, hashErr
@@ -163,7 +164,7 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	t = current
 	if n != t.Total || t.Persisted != t.Total || !bytes.Equal(h.Sum(nil), t.SHA256) {
 		u.remove(t.ID)
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the bytes do not match the hash"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("the bytes do not match the hash")))
 	}
 	t.FileID, t.CompletedMs = newID(16), time.Now().UnixMilli()
 	return u.commitUpload(t, func(dst string) error {
@@ -209,7 +210,7 @@ func (u *uploads) byFile(id string) *transfer {
 // Callers hold u.mu. Validate both lists before claiming or moving anything.
 func (u *uploads) selectUploads(imageIDs, fileIDs []string, device, session string) ([]*transfer, error) {
 	if len(imageIDs) > maxMessageImages || len(fileIDs) > maxMessageFiles {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a message has at most 6 images and 6 files"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("a message has at most 6 images and 6 files")))
 	}
 	var out []*transfer
 	seen := map[string]bool{}
@@ -241,20 +242,20 @@ func (u *uploads) selectUploads(imageIDs, fileIDs []string, device, session stri
 			}
 			switch {
 			case t == nil || t.Deleting || session == "" && t.Session != "":
-				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("%s %s is not on this machine; upload it again", label, id))
+				return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, fmt.Errorf("%s %s is not on this machine; upload it again", label, id)))
 			case seen[id]:
-				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s %s is named twice", label, id))
+				return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s %s is named twice", label, id)))
 			case t.Device != device:
-				return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%s %s was sent by another device", label, id))
+				return nil, outcome.FinalError(connect.NewError(connect.CodePermissionDenied, fmt.Errorf("%s %s was sent by another device", label, id)))
 			case t.Session != "" && t.Session != session:
-				return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s %s belongs to another session", label, id))
+				return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s %s belongs to another session", label, id)))
 			}
 			path := u.pending(t.relativeName())
 			if t.Session != "" {
 				path = t.sessionPath(u)
 			}
 			if fi, err := os.Stat(path); err != nil || !fi.Mode().IsRegular() {
-				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("%s %s is not on this machine; upload it again", label, id))
+				return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, fmt.Errorf("%s %s is not on this machine; upload it again", label, id)))
 			}
 			seen[id] = true
 			out = append(out, t)

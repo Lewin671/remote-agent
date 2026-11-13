@@ -22,7 +22,10 @@ func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls := 0
-			_, _ = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { calls++; return nil, cause })
+			_, _ = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+				calls++
+				return Undetermined(), cause
+			})
 			for _, a := range m.data.Accepted {
 				if a.Done {
 					t.Error("interrupted callback persisted as final")
@@ -34,7 +37,10 @@ func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer m.Close()
-			_, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { calls++; return nil, nil })
+			_, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+				calls++
+				return Final(nil), nil
+			})
 			if !errors.Is(err, ErrOutcomeUnknown) {
 				t.Errorf("retry must stay unknown, got %v", err)
 			}
@@ -58,11 +64,18 @@ func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 	}
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("done"), nil })
+		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Final([]byte("done")), nil
+		})
 		done <- err
 	}()
 	<-entered
-	_, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Error("duplicate executed"); return nil, nil })
+	_, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		t.Error("duplicate executed")
+		return Final(nil), nil
+	})
 	close(release)
 	if firstErr := <-done; firstErr != nil {
 		t.Fatal(firstErr)
@@ -70,7 +83,10 @@ func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 	if err == nil || errors.Is(err, ErrUnknown) {
 		t.Fatalf("in-flight duplicate confused with unknown epoch: %v", err)
 	}
-	out, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Error("completed duplicate executed"); return nil, nil })
+	out, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		t.Error("completed duplicate executed")
+		return Final(nil), nil
+	})
 	if err != nil || string(out) != "done" {
 		t.Fatalf("completed retry: %q %v", out, err)
 	}
@@ -89,7 +105,10 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	_, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { calls++; return nil, context.Canceled })
+	_, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		calls++
+		return Undetermined(), context.Canceled
+	})
 	if !errors.Is(err, ErrOutcomeUnknown) {
 		t.Fatal(err)
 	}
@@ -98,7 +117,9 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(next, nil, deadline, func(Header, []byte) ([]byte, error) { return []byte("done"), nil }); err != nil {
+	if _, err = m.Accept(next, nil, deadline, func(Header, []byte) (Completion, error) {
+		return Final([]byte("done")), nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	h, _ := ParseHeader(w.Header)
@@ -111,7 +132,10 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer m.Close()
-	_, err = m.Accept(w, nil, deadline, func(Header, []byte) ([]byte, error) { calls++; return nil, nil })
+	_, err = m.Accept(w, nil, deadline, func(Header, []byte) (Completion, error) {
+		calls++
+		return Final(nil), nil
+	})
 	if !errors.Is(err, ErrInvalid) || calls != 1 {
 		t.Fatalf("expired retry: calls=%d err=%v", calls, err)
 	}

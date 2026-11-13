@@ -20,6 +20,8 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/contextio"
+	"github.com/Lewin671/remote-agent/internal/outcome"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"google.golang.org/protobuf/proto"
 )
@@ -97,7 +99,7 @@ const (
 var errScheduleRequestTooLarge = errors.New("task request is too large")
 
 func scheduleAdmissionCapacityError() error {
-	return connect.NewError(connect.CodeResourceExhausted, errScheduleRequestTooLarge)
+	return outcome.FinalError(connect.NewError(connect.CodeResourceExhausted, errScheduleRequestTooLarge))
 }
 
 // Only definition-changing requests pay this budget. Count normalized JSON
@@ -134,7 +136,7 @@ func (d *Daemon) nonTerminalTasksLocked() int {
 }
 
 func scheduleCapacityError() error {
-	return connect.NewError(connect.CodeResourceExhausted, errors.New("daemon has reached the 100 non-terminal scheduled task limit"))
+	return outcome.FinalError(connect.NewError(connect.CodeResourceExhausted, errors.New("daemon has reached the 100 non-terminal scheduled task limit")))
 }
 
 func touchTask(t *schedule.Task, now time.Time) { t.Revision++; t.UpdatedAt = now }
@@ -181,7 +183,7 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		return nil, mcpScheduleDenied()
 	}
 	if q.Operation == "notify_user" && scope == "" {
-		return nil, errors.New("notify_user requires a bound session MCP")
+		return nil, outcome.FinalError(errors.New("notify_user requires a bound session MCP"))
 	}
 	var bound *session
 	if scope != "" {
@@ -216,7 +218,7 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		d.scheduleMu.Lock()
 		locked = true
 		if scope != "" && requiresScheduleAdmission(q.Operation) && d.sessionHasScheduledRunLocked(scope) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("MCP cannot create, update, resume or run tasks during a scheduled execution"))
+			return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("MCP cannot create, update, resume or run tasks during a scheduled execution")))
 		}
 		return nil
 	}
@@ -293,11 +295,11 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	}
 	if q.Operation == "create" {
 		if len(q.SpecJson) > 64<<10 || len(q.RequestId) > 256 {
-			return nil, errScheduleRequestTooLarge
+			return nil, outcome.FinalError(errScheduleRequestTooLarge)
 		}
 		spec, err := schedule.DecodeSpec(q.SpecJson)
 		if err != nil {
-			return nil, err
+			return nil, outcome.FinalError(err)
 		}
 		// Hash the unnormalized input and its context so retries do not inherit
 		// changed session settings. Device origins namespace creation keys.
@@ -318,7 +320,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 						return nil, mcpTaskAccessDenied(t, scope)
 					}
 					if t.CreationHash != hash {
-						return nil, errors.New("creation key already belongs to a different task")
+						return nil, outcome.FinalError(errors.New("creation key already belongs to a different task"))
 					}
 					return json.Marshal(t)
 				}
@@ -366,17 +368,17 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		return json.Marshal(t)
 	}
 	if q.ExpectedRevision != 0 && q.ExpectedRevision != t.Revision {
-		return nil, connect.NewError(connect.CodeAborted, errors.New("scheduled task changed; reload before editing"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeAborted, &protocol.RevisionConflictError{Message: "scheduled task changed; reload before editing"}))
 	}
 	var updateSpec schedule.Spec
 	if q.Operation == "update" {
 		if len(q.SpecJson) > 64<<10 {
-			return nil, errScheduleRequestTooLarge
+			return nil, outcome.FinalError(errScheduleRequestTooLarge)
 		}
 		var err error
 		updateSpec, err = schedule.DecodeSpec(q.SpecJson)
 		if err != nil {
-			return nil, err
+			return nil, outcome.FinalError(err)
 		}
 		// Title/notification edits do not reconcile, replace an active run,
 		// or prepare a new automatic plan. Notification edits still transfer
@@ -429,7 +431,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	switch q.Operation {
 	case "update":
 		if t.Active != nil {
-			return nil, errors.New("wait for the active execution before replacing the task definition")
+			return nil, outcome.FinalError(errors.New("wait for the active execution before replacing the task definition"))
 		}
 		spec := updateSpec
 		if !sameIntervalTiming(t.Spec.Trigger, spec.Trigger) {
@@ -463,7 +465,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		}
 	case "pause":
 		if t.Status == "cancelled" {
-			return nil, errors.New("cancelled tasks cannot be paused")
+			return nil, outcome.FinalError(errors.New("cancelled tasks cannot be paused"))
 		}
 		t.Status = "paused"
 		t.Reason = "user_paused"
@@ -480,13 +482,13 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 			}
 		}
 		if t.Status != "paused" && t.Status != "failed" && t.Status != "uncertain" {
-			return nil, errors.New("only paused, failed or uncertain tasks can be resumed")
+			return nil, outcome.FinalError(errors.New("only paused, failed or uncertain tasks can be resumed"))
 		}
 		if t.Status == "failed" && oneShotTrigger(t.Spec.Trigger) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("failed one-shot tasks cannot be resumed; use run (立即运行一次) for an extra execution, or update the definition to retry the plan"))
+			return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("failed one-shot tasks cannot be resumed; use run (立即运行一次) for an extra execution, or update the definition to retry the plan")))
 		}
 		if t.Active != nil && !t.Active.Manual && t.Active.InputPaused {
-			return nil, errors.New("execution input is paused; use resume-input or cancel that input first")
+			return nil, outcome.FinalError(errors.New("execution input is paused; use resume-input or cancel that input first"))
 		}
 		t.Reason = ""
 		if t.Active != nil && !t.Active.Manual {
@@ -505,7 +507,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 		}
 	case "run":
 		if until := t.Spec.Trigger.Until; until != nil && now.After(*until) {
-			return nil, errors.New("task deadline has passed; update until before running")
+			return nil, outcome.FinalError(errors.New("task deadline has passed; update until before running"))
 		}
 		if scope != "" {
 			if err := d.restrictMCPTask(t, false); err != nil {
@@ -513,14 +515,14 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 			}
 		}
 		if t.Status == "uncertain" || t.Status == "failed" && !oneShotTrigger(t.Spec.Trigger) || t.Terminal() || d.lateRuns[t.ID] != "" || t.Active != nil && t.Active.Status == "uncertain" {
-			return nil, fmt.Errorf("cannot run task in %s state; resume or update its definition first", t.Status)
+			return nil, outcome.FinalError(fmt.Errorf("cannot run task in %s state; resume or update its definition first", t.Status))
 		}
 		if t.ManualRequest != nil {
-			return nil, errors.New("a manual execution is already requested")
+			return nil, outcome.FinalError(errors.New("a manual execution is already requested"))
 		}
 		t.ManualRequest = &schedule.ManualRequest{RequestID: "schedule-" + newID(16), RequestedAt: now, RetryFailed: t.Status == "failed"}
 	default:
-		return nil, errors.New("unknown schedule operation")
+		return nil, outcome.FinalError(errors.New("unknown schedule operation"))
 	}
 	if prev.Terminal() && !t.Terminal() && d.nonTerminalTasksLocked() > maxNonTerminalTasks {
 		d.tasks[t.ID] = prev
@@ -585,14 +587,14 @@ func takeOverScheduledTask(t *schedule.Task, origin *pb.Origin) {
 
 func validateScheduleNotify(notify string) error {
 	if notify != "" && notify != "finish" && notify != "agent_only" {
-		return errors.New("notify must be finish or agent_only")
+		return outcome.FinalError(errors.New("notify must be finish or agent_only"))
 	}
 	return nil
 }
 
 func validateScheduleTitle(title string) error {
 	if strings.TrimSpace(title) == "" || len(title) > 512 {
-		return errors.New("title is required and must fit in 512 bytes")
+		return outcome.FinalError(errors.New("title is required and must fit in 512 bytes"))
 	}
 	return nil
 }
@@ -624,10 +626,18 @@ func scheduleMode(name string) (pb.ApprovalMode, error) {
 	case "plan":
 		return pb.ApprovalMode_APPROVAL_MODE_PLAN, nil
 	}
-	return 0, errors.New("mode must be ask, auto, full or plan")
+	return 0, outcome.FinalError(errors.New("mode must be ask, auto, full or plan"))
 }
 
-func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time.Time) error {
+// Preparation validates a candidate and reads its source; no task is committed
+// and no native CLI is started here. Cancellation retains its unknown status.
+func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time.Time) (resultErr error) {
+	defer func() {
+		if resultErr != nil && !errors.Is(resultErr, context.Canceled) && !errors.Is(resultErr, context.DeadlineExceeded) {
+			resultErr = outcome.FinalError(resultErr)
+		}
+	}()
+
 	spec := &t.Spec
 	if err := validateScheduleNotify(spec.Notify); err != nil {
 		return err

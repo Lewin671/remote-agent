@@ -45,13 +45,14 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	raw := false
 	// An unknown state is fetched outside the acceptance gate and the gate is
 	// retried once; the endpoint re-verifies the exact state inside it.
-	result, err := c.security.accept(ctx, wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
+	result, err := c.security.accept(ctx, wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
 		cmd := &pb.Command{}
 		plain, err := deviceauth.Unpack(h, plain)
 		if err != nil || proto.Unmarshal(plain, cmd) != nil {
-			return nil, deviceauth.ErrInvalid
+			return deviceauth.Undetermined(), deviceauth.ErrInvalid
 		}
 		var res *pb.CommandResult
+		final := true
 		if cmd.ProtocolVersion != protocol.Version {
 			res = &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
 		} else {
@@ -70,14 +71,16 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 			cancel := func() {}
 			callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
 			defer cancel()
-			res = c.execute(callCtx, h.Session, cmd)
+			res, final = c.executeEvidence(callCtx, h.Session, cmd)
 		}
-		// These codes cannot prove that no native side effect happened.
-		// Leave the accepted entry started and send no authenticated final result.
-		if outcome.Classify(outcome.Evidence{Source: "daemon", Code: res.ErrorCode, Signed: true, ReadOnly: deviceauth.IsReadOnlyCommand(cmd)}) == outcome.Unknown {
-			return nil, deviceauth.ErrOutcomeUnknown
+		if !final {
+			return deviceauth.Undetermined(), deviceauth.ErrOutcomeUnknown
 		}
-		return proto.Marshal(res)
+		body, err := proto.Marshal(res)
+		if err != nil {
+			return deviceauth.Undetermined(), err
+		}
+		return deviceauth.Final(body), nil
 	})
 	if err != nil {
 		fail("the command was refused or its outcome is unknown; it was not repeated")
@@ -98,6 +101,11 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 
 // execute runs a command on the session named in its sealed header.
 func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *pb.CommandResult {
+	result, _ := c.executeEvidence(ctx, sessionID, cmd)
+	return result
+}
+
+func (c *conn) executeEvidence(ctx context.Context, sessionID string, cmd *pb.Command) (*pb.CommandResult, bool) {
 	r := c.r
 	l := r.backend.Local()
 	out := &pb.CommandResult{}
@@ -105,14 +113,14 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	// it to, in full, then runs it.
 	on := func(id string, run func() error) error {
 		if id != sessionID || !slices.Contains(r.backend.SessionIDs(), id) {
-			return connect.NewError(connect.CodeNotFound, errors.New("no such session"))
+			return outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("no such session")))
 		}
 		return run()
 	}
 	// machine runs a command for the machine; its header names no session.
 	machine := func(run func() error) error {
 		if sessionID != "" {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("a machine command must not name a session"))
+			return outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("a machine command must not name a session")))
 		}
 		return run()
 	}
@@ -177,7 +185,7 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	case *pb.Command_OpenTerminal:
 		err = on(k.OpenTerminal.SessionId, func() error {
 			if err := c.openTerminal(ctx, sessionID, k.OpenTerminal.StreamId); err != nil {
-				return connect.NewError(connect.CodeFailedPrecondition, err)
+				return outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, err))
 			}
 			out.Kind = &pb.CommandResult_OpenTerminal{OpenTerminal: &pb.OpenTerminalResponse{}}
 			return nil
@@ -289,7 +297,7 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 			})
 		})
 	default:
-		err = connect.NewError(connect.CodeUnimplemented, errors.New("this daemon does not know the command; update remote-agent"))
+		err = outcome.FinalError(connect.NewError(connect.CodeUnimplemented, errors.New("this daemon does not know the command; update remote-agent")))
 	}
 	if err != nil {
 		out.Kind = nil
@@ -298,10 +306,13 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 		// passing through the local RPC error mapper.
 		_, openingTerminal := cmd.Kind.(*pb.Command_OpenTerminal)
 		var generationConflict *protocol.GenerationConflictError
+		var revisionConflict *protocol.RevisionConflictError
 		switch {
 		case openingTerminal && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)):
 			// openTerminal cleans up on every error before serving the stream.
 			out.ErrorCode = connect.CodeFailedPrecondition.String()
+		case errors.As(err, &revisionConflict):
+			out.ErrorCode = "revision_conflict"
 		case errors.As(err, &generationConflict):
 			out.ErrorCode = "generation_conflict"
 		case errors.Is(err, context.Canceled):
@@ -309,14 +320,10 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 		case errors.Is(err, context.DeadlineExceeded):
 			out.ErrorCode = connect.CodeDeadlineExceeded.String()
 		}
-		if _, schedule := cmd.Kind.(*pb.Command_Schedule); schedule && out.ErrorCode == connect.CodeAborted.String() && protocol.MachineErrorCode(err) == "" {
-			// A rejected schedule CAS is a trustworthy, final conflict, not an
-			// interrupted execution. Keep that distinction on the wire.
-			out.ErrorCode = "revision_conflict"
-		}
 		if code := protocol.MachineErrorCode(err); code != "" && connect.CodeOf(err) != connect.CodeAborted {
 			out.ErrorCode = code
 		}
+
 		var ce *connect.Error
 		if errors.As(err, &ce) {
 			out.ErrorMessage = ce.Message()
@@ -324,7 +331,9 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 			out.ErrorMessage = err.Error()
 		}
 	}
-	return out
+	// Read-only failures cannot leave an unknown mutation. For mutations,
+	// a response or a marker set at the actual backend decision is required.
+	return out, err == nil || deviceauth.IsReadOnlyCommand(cmd) || outcome.IsFinalError(err)
 }
 
 // call runs one local API method and hands its response to set.

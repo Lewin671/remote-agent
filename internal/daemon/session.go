@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"log/slog"
 	"path/filepath"
 	"regexp"
@@ -1245,7 +1246,7 @@ func (s *session) rename(title string) error {
 func (s *session) renameUsing(title string, save func(*meta, string) error) error {
 	title = strings.Join(strings.Fields(title), " ")
 	if n := utf8.RuneCountInString(title); n > renameMax {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the title has %d characters; at most %d fit", n, renameMax))
+		return outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the title has %d characters; at most %d fit", n, renameMax)))
 	}
 	s.mu.Lock()
 	m := s.meta

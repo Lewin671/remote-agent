@@ -13,6 +13,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 	"google.golang.org/protobuf/proto"
@@ -37,7 +38,14 @@ func (d *Daemon) fork(id string, origin *pb.Origin) (*session, error) {
 	return d.forkContext(context.Background(), id, origin)
 }
 
-func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) (*session, error) {
+func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) (resultSession *session, resultErr error) {
+	effectsStarted := false
+	defer func() {
+		if !effectsStarted && resultErr != nil && !errors.Is(resultErr, context.Canceled) && !errors.Is(resultErr, context.DeadlineExceeded) {
+			resultErr = outcome.FinalError(resultErr)
+		}
+	}()
+
 	src, err := d.exact(id)
 	if err != nil {
 		return nil, err
@@ -99,6 +107,7 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 		Title: m.Title, NoFullAccess: m.NoFullAccess, StandardContext: m.StandardContext, Starting: true,
 		ForkedFrom: m.ID, Shell: m.Shell}
 	dir := d.sessionDir(nid)
+	effectsStarted = true
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}

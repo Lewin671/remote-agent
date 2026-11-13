@@ -25,6 +25,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
@@ -230,7 +231,7 @@ func (f *fakeLocal) ResolveApproval(ctx context.Context, req *connect.Request[pb
 	defer f.b.mu.Unlock()
 	for _, r := range f.b.resolved {
 		if r.ApprovalId == req.Msg.ApprovalId {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("approval not pending"))
+			return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("approval not pending")))
 		}
 	}
 	f.b.resolved = append(f.b.resolved, req.Msg)

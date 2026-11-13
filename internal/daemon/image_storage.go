@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -143,7 +144,7 @@ func (u *uploads) makeRoom(add int64, pins map[string]bool) error {
 			return err
 		}
 	}
-	return connect.NewError(connect.CodeResourceExhausted, errors.New("附件空间不足：可回收内容已清理；请在设备的附件存储中查看占用、结束不用的会话或提高限额"))
+	return outcome.FinalError(connect.NewError(connect.CodeResourceExhausted, errors.New("附件空间不足：可回收内容已清理；请在设备的附件存储中查看占用、结束不用的会话或提高限额")))
 }
 
 func (u *uploads) usage(clean bool, pins map[string]bool) (*pb.ImageStorageUsage, error) {

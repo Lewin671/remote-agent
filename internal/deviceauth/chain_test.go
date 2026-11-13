@@ -186,9 +186,9 @@ func TestExpiredLeaseRejectedAfterClockRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The wall clock is below the persisted floor, which must not save it.
-	if _, err := ep.Accept(w, nil, (added.Core.IssuedAt+Lease)-1000, func(Header, []byte) ([]byte, error) {
+	if _, err := ep.Accept(w, nil, (added.Core.IssuedAt+Lease)-1000, func(Header, []byte) (Completion, error) {
 		t.Fatal("an expired control envelope was executed")
-		return nil, nil
+		return Final(nil), nil
 	}); err != ErrStale {
 		t.Fatalf("expired control envelope = %v, want ErrStale", err)
 	}

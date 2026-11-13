@@ -9,6 +9,8 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/outcome"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 )
 
@@ -56,7 +58,7 @@ func (b revisionConflictBackend) Local() remoteagentv1connect.LocalServiceHandle
 	return &revisionConflictLocal{fakeLocal: fakeLocal{b: b.fakeBackend}}
 }
 func (revisionConflictLocal) Schedule(context.Context, *connect.Request[pb.ScheduleRequest]) (*connect.Response[pb.ScheduleResponse], error) {
-	return nil, connect.NewError(connect.CodeAborted, errors.New("revision changed"))
+	return nil, outcome.FinalError(connect.NewError(connect.CodeAborted, &protocol.RevisionConflictError{Message: "revision changed"}))
 }
 func TestScheduleRevisionConflictIsAuthenticatedAndFinal(t *testing.T) {
 	e := setup(t)
@@ -73,7 +75,7 @@ func TestSignedUnknownIsCachedAndFinal(t *testing.T) {
 	e := setup(t)
 	e.backend.add(t, "sess1")
 	e.backend.sendResult = func(context.Context) error {
-		return connect.NewError(connect.CodeUnknown, errors.New("unclassified failure"))
+		return outcome.FinalError(connect.NewError(connect.CodeUnknown, errors.New("unclassified failure")))
 	}
 	e.startRelay()
 	s := e.session(t, "sess1", 0)

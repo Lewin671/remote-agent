@@ -3,6 +3,7 @@ package daemon
 import (
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"path/filepath"
 
 	"connectrpc.com/connect"
@@ -13,7 +14,7 @@ import (
 var errMCPMinimumInterval = errors.New("MCP recurring tasks require interval_seconds >= 300 or repeat delay_seconds >= 60")
 
 func mcpScheduleDenied() error {
-	return connect.NewError(connect.CodePermissionDenied, errors.New("MCP scheduling is limited to this session's own tasks, project, CLI and exact standard permissions; use the user CLI or remote client for other targets"))
+	return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("MCP scheduling is limited to this session's own tasks, project, CLI and exact standard permissions; use the user CLI or remote client for other targets")))
 }
 
 // restrictMCPTask bounds the capability delegated through an MCP tool. The
@@ -35,11 +36,11 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	{
 		tr := t.Spec.Trigger
 		if tr.Type == "interval" && tr.IntervalSeconds < 300 || tr.Type == "after_turn" && tr.Repeat && tr.DelaySeconds < 60 {
-			return connect.NewError(connect.CodePermissionDenied, errMCPMinimumInterval)
+			return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errMCPMinimumInterval))
 		}
 	}
 	if source.scheduleObservationStale() {
-		return connect.NewError(connect.CodeUnavailable, errMCPModeObservation)
+		return outcome.FinalError(connect.NewError(connect.CodeUnavailable, errMCPModeObservation))
 	}
 	info := source.scheduleInfo()
 	mode := exactScheduleMode(info)
@@ -105,7 +106,7 @@ func mcpTaskAccessDenied(t *schedule.Task, scope string) error {
 		if t.Takeover.Via == "client" {
 			via = "client"
 		}
-		return connect.NewError(connect.CodePermissionDenied, fmt.Errorf("this task is now read-only to the agent: a user operation in the %s transferred it to user management; the agent can no longer access or modify it through MCP. Ask the user to edit it in the client or use remote-agent schedule …", via))
+		return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, fmt.Errorf("this task is now read-only to the agent: a user operation in the %s transferred it to user management; the agent can no longer access or modify it through MCP. Ask the user to edit it in the client or use remote-agent schedule …", via)))
 	}
 	return mcpScheduleDenied()
 }

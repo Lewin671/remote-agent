@@ -114,7 +114,10 @@ func TestCommandAcceptedLogSurvivesRestartAndExpiredRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("result"), nil }
+	fn := func(Header, []byte) (Completion, error) {
+		calls++
+		return Final([]byte("result")), nil
+	}
 	if out, err := machine.Accept(w, nil, now, fn); err != nil || string(out) != "result" {
 		t.Fatalf("first: %q %v", out, err)
 	}
@@ -184,7 +187,10 @@ func TestCommandsFromOneDeviceMayArriveOutOfOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("ok"), nil }
+	fn := func(Header, []byte) (Completion, error) {
+		calls++
+		return Final([]byte("ok")), nil
+	}
 	// Concurrent senders reach the daemon in either order; a later request
 	// arriving first must not make an earlier one look stale.
 	if _, err := machine.Accept(second, nil, now, fn); err != nil {
@@ -211,7 +217,10 @@ func TestAcceptedRequestSurvivesAContentEpochChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("ok"), nil }
+	fn := func(Header, []byte) (Completion, error) {
+		calls++
+		return Final([]byte("ok")), nil
+	}
 	if _, err := machine.Accept(w, nil, now, fn); err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +278,9 @@ func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := bytes.Repeat([]byte{0x6b}, 400)
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return result, nil }); err != ErrCapacity {
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		return Final(result), nil
+	}); err != ErrCapacity {
 		t.Fatalf("finish over the byte cap: %v", err)
 	}
 	if _, ok := machine.data.Accepted["filler"]; !ok {
@@ -293,7 +304,10 @@ func TestClockBehindTheFloorPausesControl(t *testing.T) {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { called = true; return nil, nil }); !errors.Is(err, ErrStale) {
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		called = true
+		return Final(nil), nil
+	}); !errors.Is(err, ErrStale) {
 		t.Fatalf("control with a clock behind the floor: %v", err)
 	}
 	if called {
@@ -313,7 +327,9 @@ func TestAuthenticatedOnlyLookupDoesNotAnswerForgedRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return []byte("secret-result"), nil }); err != nil {
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		return Final([]byte("secret-result")), nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	// The header still names the accepted request, but the ciphertext is not
@@ -321,7 +337,9 @@ func TestAuthenticatedOnlyLookupDoesNotAnswerForgedRequests(t *testing.T) {
 	forged := w
 	forged.Cipher = bytes.Clone(w.Cipher)
 	forged.Cipher[0] ^= 1
-	if out, err := machine.Accept(forged, nil, now, func(Header, []byte) ([]byte, error) { return nil, nil }); err == nil || string(out) == "secret-result" {
+	if out, err := machine.Accept(forged, nil, now, func(Header, []byte) (Completion, error) {
+		return Final(nil), nil
+	}); err == nil || string(out) == "secret-result" {
 		t.Fatalf("forged request got a cached answer: %q %v", out, err)
 	}
 }
@@ -343,7 +361,10 @@ func TestAcceptedLogCapsBeforeExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { called = true; return nil, nil }); err != ErrCapacity {
+	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		called = true
+		return Final(nil), nil
+	}); err != ErrCapacity {
 		t.Fatalf("cap: %v", err)
 	}
 	if called {

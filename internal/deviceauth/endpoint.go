@@ -3,7 +3,6 @@ package deviceauth
 import (
 	"bytes"
 	"container/heap"
-	"context"
 	"crypto/ed25519"
 	"database/sql"
 	"errors"
@@ -1378,7 +1377,7 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 // result. The gate covers admission and result recording, never fn or user I/O.
 // New command entries are persisted before fn runs; terminal and
 // other non-command frames stay in memory and are pruned by deadline.
-func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header, []byte) ([]byte, error)) ([]byte, error) {
+func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header, []byte) (Completion, error)) ([]byte, error) {
 	e.execution.Lock()
 	gateHeld := true
 	defer func() {
@@ -1454,7 +1453,11 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		e.mu.Unlock()
 		gateHeld = false
 		e.execution.Unlock()
-		return fn(h, plain)
+		completion, _ := fn(h, plain)
+		if !completion.final {
+			return nil, ErrOutcomeUnknown
+		}
+		return completion.result, nil
 	}
 	if _, _, err := e.startAccepted(key, h.Deadline, now, persist); err != nil {
 		e.mu.Unlock()
@@ -1467,7 +1470,7 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	// prevents new admission, without waiting on filesystem/CLI/user I/O.
 	gateHeld = false
 	e.execution.Unlock()
-	out, callErr := fn(h, plain)
+	completion, _ := fn(h, plain)
 
 	e.execution.Lock()
 	gateHeld = true
@@ -1478,15 +1481,15 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 		// entry unknown, so a reconnect/retry cannot execute it again.
 		return nil, ErrOutcomeUnknown
 	}
-	// Cancellation can follow native writes. Keep the durable started entry,
-	// rather than recording either a final failure or an empty success.
-	if errors.Is(callErr, context.Canceled) || errors.Is(callErr, context.DeadlineExceeded) || errors.Is(callErr, ErrOutcomeUnknown) {
+	// Only explicit backend evidence can settle admission. A serialized body
+	// and a nil diagnostic error do not establish completion.
+	if !completion.final {
 		return nil, ErrOutcomeUnknown
 	}
-	if err := e.finishAccepted(key, out, callErr != nil, persist); err != nil {
+	if err := e.finishAccepted(key, completion.result, false, persist); err != nil {
 		return nil, err
 	}
-	return out, callErr
+	return completion.result, nil
 }
 
 // acceptedKey names one logical request. The content epoch is deliberately

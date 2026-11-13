@@ -12,6 +12,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/machinestatus"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
@@ -25,6 +26,8 @@ func rpcErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case outcome.IsFinalError(err):
+		return err
 	case errors.Is(err, context.DeadlineExceeded):
 		return connect.NewError(connect.CodeDeadlineExceeded, err)
 	case errors.Is(err, context.Canceled):
@@ -32,11 +35,11 @@ func rpcErr(err error) error {
 	case errors.Is(err, agent.ErrDeliveryUnconfirmed):
 		return connect.NewError(connect.CodeAborted, err)
 	case errors.Is(err, errNotFound):
-		return connect.NewError(connect.CodeNotFound, err)
+		return outcome.FinalError(connect.NewError(connect.CodeNotFound, err))
 	case errors.Is(err, errRemoteAnswerTruncated), errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning), errors.Is(err, errUnsettled),
 		errors.Is(err, errForkBusy), errors.Is(err, errForkEmpty), errors.Is(err, errQueueUnreadable),
 		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, errHeldChanged), errors.Is(err, agent.ErrUnsupported), errors.Is(err, agent.ErrBackground):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, err))
 	}
 	var ce *connect.Error
 	if errors.As(err, &ce) {
@@ -88,7 +91,7 @@ func (h *handler) GetSession(ctx context.Context, req *connect.Request[pb.GetSes
 
 func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
 	if req.Msg.Text == "" && len(req.Msg.ImageIds) == 0 && len(req.Msg.FileIds) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text is empty"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("text is empty")))
 	}
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
@@ -320,7 +323,7 @@ func (h *handler) GetSettings(ctx context.Context, req *connect.Request[pb.GetSe
 
 func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.UpdateSettingsRequest]) (*connect.Response[pb.UpdateSettingsResponse], error) {
 	if req.Msg.Settings == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("settings are required"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("settings are required")))
 	}
 	st, err := h.d.updateSettings(req.Msg.Settings)
 	if err != nil {

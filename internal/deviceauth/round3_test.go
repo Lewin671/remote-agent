@@ -21,7 +21,11 @@ func TestInstallDoesNotWaitForAcceptedBackendIO(t *testing.T) {
 	}
 	entered, release, finished := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		_, err := machine.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { close(entered); <-release; return []byte("done"), nil })
+		_, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Final([]byte("done")), nil
+		})
 		finished <- err
 	}()
 	<-entered
@@ -43,7 +47,10 @@ func TestInstallDoesNotWaitForAcceptedBackendIO(t *testing.T) {
 	if err := <-finished; err != nil {
 		t.Fatal(err)
 	}
-	if _, err := machine.Accept(w, nil, now+1, func(Header, []byte) ([]byte, error) { t.Fatal("removed sender executed"); return nil, nil }); err != nil {
+	if _, err := machine.Accept(w, nil, now+1, func(Header, []byte) (Completion, error) {
+		t.Fatal("removed sender executed")
+		return Final(nil), nil
+	}); err != nil {
 		t.Fatalf("authenticated recorded result: %v", err)
 	}
 }
@@ -58,10 +65,15 @@ func TestRecordedResultAfterLeaseExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return []byte("done"), nil }); err != nil {
+	if _, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		return Final([]byte("done")), nil
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := m.Accept(w, nil, (c.withClient.Core.IssuedAt+Lease)+1, func(Header, []byte) ([]byte, error) { t.Fatal("ran twice"); return nil, nil }); err != nil || string(out) != "done" {
+	if out, err := m.Accept(w, nil, (c.withClient.Core.IssuedAt+Lease)+1, func(Header, []byte) (Completion, error) {
+		t.Fatal("ran twice")
+		return Final(nil), nil
+	}); err != nil || string(out) != "done" {
 		t.Fatalf("recorded retry: %q %v", out, err)
 	}
 }
@@ -78,7 +90,9 @@ func TestReadOnlyResultsDoNotFillAcceptedLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
-		if _, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return bytes.Repeat([]byte{1}, 4<<20), nil }); err != nil {
+		if _, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			return Final(bytes.Repeat([]byte{1}, 4<<20)), nil
+		}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -119,7 +133,10 @@ func TestScheduleQueriesDoNotPersistResultsButMutationsDo(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls := 0
-			fn := func(Header, []byte) ([]byte, error) { calls++; return []byte("result"), nil }
+			fn := func(Header, []byte) (Completion, error) {
+				calls++
+				return Final([]byte("result")), nil
+			}
 			for i := 0; i < 2; i++ {
 				if _, err := m.Accept(w, nil, now, fn); err != nil {
 					t.Fatal(err)
