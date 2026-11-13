@@ -309,6 +309,33 @@ class SharedFilesUiTest {
     }
 
     @Test
+    fun fittingAndOverflowingFileNamesRenderAsSingleTextNodes() {
+        val fit = sharedFile("fit-1", "daocheng-final.mp4", 24_300_000L)
+        val overflow = sharedFile("ovr-1", "daocheng-final-vertical-1080-v3.mp4", 61_700_000L)
+        val audio = sharedFile("aud-1", "voice-memo.mp3", 1_200_000L)
+        render {
+            SharedFileHost("s-name", "MacBook Pro", machineOnline = true, sessionExited = false, manager = manager) {
+                SharedFilesBlock(
+                    files = listOf(fit, overflow, audio),
+                    sessionId = "s-name",
+                    machineName = "MacBook Pro",
+                    machineOnline = true,
+                    sessionExited = false,
+                )
+            }
+        }
+        // Fitting name renders cleanly as a single Text node with zero middle-split seam.
+        ui.onAllNodesWithText("daocheng-final.mp4").assertCountEquals(1)
+        ui.onAllNodesWithText("voice-memo.mp3").assertCountEquals(1)
+
+        // Overflowing name keeps the extension/tail intact in a single Text node with no gap after ellipsis.
+        val overflowNode = ui.onNodeWithText("…", substring = true).fetchSemanticsNode()
+        val renderedName = overflowNode.config[androidx.compose.ui.semantics.SemanticsProperties.Text].first().text
+        assertTrue("expected trailing extension on $renderedName", renderedName.endsWith("-v3.mp4"))
+        assertTrue("expected no gap after ellipsis in $renderedName", !renderedName.contains("… "))
+    }
+
+    @Test
     fun screenshotsMatchDraftLightAndDark() {
         for (theme in listOf(ThemeMode.LIGHT, ThemeMode.DARK)) {
             val tag = if (theme == ThemeMode.DARK) "dark" else "light"

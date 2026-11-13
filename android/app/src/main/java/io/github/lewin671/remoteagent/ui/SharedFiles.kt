@@ -4,7 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.graphics.BlurMaskFilter
 import android.graphics.ImageDecoder
+import android.graphics.Paint
+import android.graphics.RectF
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -62,7 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -70,6 +73,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -82,9 +88,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -118,13 +127,53 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal val SharedCardWidth = 296.dp
-internal val SharedCardRadius = 20.dp
-internal val SharedTileSize = 44.dp
-internal val SharedTileRadius = 11.dp
-internal val SharedMenuWidth = 250.dp
-internal val SharedMenuRadius = 14.dp
+private object SharedFileSpec {
+    val CardWidth = 296.dp
+    val CardRadius = 20.dp
+    val TileSize = 44.dp
+    val TileRadius = 11.dp
+    val PillRadius = 15.dp
+    val MenuWidth = 250.dp
+    val MenuRadius = 14.dp
+    val OverlayGap = 10.dp
+
+    // Scrim and opaque composited menu/lift surfaces aligned with draft.html light and dark tokens.
+    val Scrim = Color(0x2E000000)
+
+    fun controlFill(dark: Boolean): Color = if (dark) Color(0x57787880) else Color(0x2E787880)
+    fun liftSurface(dark: Boolean): Color = if (dark) Color(0xFF1C1C1E) else Color.White
+    fun menuSurface(dark: Boolean): Color = if (dark) Color(0xFF28282A) else Color(0xFFF6F6F8)
+    fun menuDestructiveGap(dark: Boolean): Color = if (dark) Color(0x38787880) else Color(0x1A787880)
+    fun darkHairline(dark: Boolean): Color? = if (dark) Color(0x1AFFFFFF) else null
+    fun floatShadowColor(dark: Boolean): Color = Color.Black.copy(alpha = if (dark) 0.60f else 0.22f)
+}
+
+internal val SharedCardWidth = SharedFileSpec.CardWidth
+internal val SharedTileSize = SharedFileSpec.TileSize
 private val SharedSubtitleStyle = T.s13.copy(fontFeatureSettings = "tnum")
+
+private fun Modifier.sharedFloatingShadow(
+    cornerRadius: Dp,
+    dark: Boolean,
+): Modifier = drawBehind {
+    val radiusPx = cornerRadius.toPx()
+    val blurPx = 28.dp.toPx()
+    val offsetYPx = 14.dp.toPx()
+    val shadowColor = SharedFileSpec.floatShadowColor(dark).toArgb()
+    drawIntoCanvas { canvas ->
+        val paint = Paint().apply {
+            isAntiAlias = true
+            color = shadowColor
+            maskFilter = BlurMaskFilter(blurPx, BlurMaskFilter.Blur.NORMAL)
+        }
+        canvas.nativeCanvas.drawRoundRect(
+            RectF(0f, offsetYPx, size.width, size.height + offsetYPx),
+            radiusPx,
+            radiusPx,
+            paint,
+        )
+    }
+}
 
 internal data class SharedFileMenuRequest(
     val file: SharedFile,
@@ -505,25 +554,22 @@ internal fun SharedFileCard(
         ),
     )
 
-    val bg =
-        if (lifted) {
-            if (p.dark) Color(0xFF1C1C1E) else Color.White
-        } else {
-            p.bubble
-        }
+    val bg = if (lifted) SharedFileSpec.liftSurface(p.dark) else p.bubble
+    val hairlineColor = SharedFileSpec.darkHairline(p.dark)
     val floatShadowMod =
         if (lifted) {
             Modifier
-                .shadow(
-                    elevation = 20.dp,
-                    shape = RoundedCornerShape(SharedCardRadius),
-                    ambientColor = Color.Black.copy(alpha = if (p.dark) 0.60f else 0.22f),
-                    spotColor = Color.Black.copy(alpha = if (p.dark) 0.60f else 0.22f),
-                )
-                .border(
-                    width = 0.5.dp,
-                    color = if (p.dark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.08f),
-                    shape = RoundedCornerShape(SharedCardRadius),
+                .sharedFloatingShadow(SharedFileSpec.CardRadius, p.dark)
+                .then(
+                    if (hairlineColor != null) {
+                        Modifier.border(
+                            width = 0.5.dp,
+                            color = hairlineColor,
+                            shape = RoundedCornerShape(SharedFileSpec.CardRadius),
+                        )
+                    } else {
+                        Modifier
+                    },
                 )
         } else {
             Modifier
@@ -531,10 +577,10 @@ internal fun SharedFileCard(
 
     Row(
         modifier = modifier
-            .widthIn(max = SharedCardWidth)
+            .widthIn(max = SharedFileSpec.CardWidth)
             .fillMaxWidth()
             .then(floatShadowMod)
-            .clip(RoundedCornerShape(SharedCardRadius))
+            .clip(RoundedCornerShape(SharedFileSpec.CardRadius))
             .background(bg)
             .combinedClickable(
                 onClick = onClick,
@@ -592,6 +638,7 @@ private fun SharedFileTile(
     val (rawStart, rawEnd) = when (kind.tileStyle()) {
         SharedFileTileStyle.VIDEO -> Color(0xFF7D7AFF) to Color(0xFF5856D6)
         SharedFileTileStyle.IMAGE -> Color(0xFF5AC8FA) to Color(0xFF2F9BF0)
+        SharedFileTileStyle.AUDIO -> Color(0xFFFFB45E) to Color(0xFFFF9500)
         SharedFileTileStyle.ARCHIVE_OR_OTHER -> Color(0xFFB0B0B8) to Color(0xFF8E8E93)
         SharedFileTileStyle.PDF_OR_DOC -> Color(0xFFFF8A80) to Color(0xFFFF453A)
     }
@@ -606,8 +653,8 @@ private fun SharedFileTile(
 
     Box(
         modifier = Modifier
-            .size(SharedTileSize)
-            .clip(RoundedCornerShape(SharedTileRadius))
+            .size(SharedFileSpec.TileSize)
+            .clip(RoundedCornerShape(SharedFileSpec.TileRadius))
             .alpha(if (muted) 0.55f else 1f)
             .background(
                 Brush.linearGradient(
@@ -669,32 +716,68 @@ private fun MiddleEllipsizedFileName(
     name: String,
     color: Color,
 ) {
-    val (head, tail) = remember(name) { splitMiddleTruncateName(name) }
-    val style = TextStyle(
-        fontSize = 15.sp,
+    val style = T.s15b.copy(
         lineHeight = 20.sp,
-        fontWeight = platformWeight(FontWeight.SemiBold),
         letterSpacing = (-0.1).sp,
     )
-    Row(modifier = Modifier.fillMaxWidth()) {
+    val textMeasurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val maxWidthPx = constraints.maxWidth
+        val display = remember(name, style, maxWidthPx) {
+            fitMiddleEllipsizedName(name, style, maxWidthPx, textMeasurer)
+        }
         Text(
-            text = head,
+            text = display,
             style = style,
             color = color,
             maxLines = 1,
+            softWrap = false,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
         )
-        if (tail.isNotEmpty()) {
-            Text(
-                text = tail,
-                style = style,
-                color = color,
-                maxLines = 1,
-                softWrap = false,
-            )
+    }
+}
+
+private fun fitMiddleEllipsizedName(
+    name: String,
+    style: TextStyle,
+    maxWidthPx: Int,
+    textMeasurer: TextMeasurer,
+): String {
+    if (name.isEmpty() || maxWidthPx <= 0) return name
+    val full = textMeasurer.measure(
+        text = name,
+        style = style,
+        maxLines = 1,
+        softWrap = false,
+    )
+    if (!full.hasVisualOverflow && full.size.width <= maxWidthPx) return name
+
+    val (head, tail) = splitMiddleTruncateName(name)
+    if (tail.isEmpty() || head.isEmpty()) return name
+
+    var lo = 0
+    var hi = head.length
+    var best = "…$tail"
+    while (lo <= hi) {
+        var mid = (lo + hi) ushr 1
+        if (mid > 0 && mid < head.length && Character.isHighSurrogate(head[mid - 1])) {
+            mid--
+        }
+        val candidate = "${head.substring(0, mid)}…$tail"
+        val m = textMeasurer.measure(
+            text = candidate,
+            style = style,
+            maxLines = 1,
+            softWrap = false,
+        )
+        if (!m.hasVisualOverflow && m.size.width <= maxWidthPx) {
+            best = candidate
+            lo = mid + 1
+        } else {
+            hi = mid - 1
         }
     }
+    return best
 }
 
 @Composable
@@ -772,7 +855,7 @@ private fun SharedFileTrailingControl(
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
     val p = pal
-    val fill2 = if (p.dark) Color(0x57787880) else Color(0x2E787880)
+    val fill2 = SharedFileSpec.controlFill(p.dark)
     val blue = p.blue
 
     val buttonDesc = when (uiState.visual) {
@@ -880,7 +963,7 @@ private fun SharedFileTrailingControl(
                 Box(
                     modifier = Modifier
                         .height(30.dp)
-                        .clip(RoundedCornerShape(15.dp))
+                        .clip(RoundedCornerShape(SharedFileSpec.PillRadius))
                         .background(fill2)
                         .clickable(onClick = onClick)
                         .semantics {
@@ -892,11 +975,7 @@ private fun SharedFileTrailingControl(
                 ) {
                     Text(
                         text = label,
-                        style = TextStyle(
-                            fontSize = 15.sp,
-                            lineHeight = 20.sp,
-                            fontWeight = platformWeight(FontWeight.SemiBold),
-                        ),
+                        style = T.s15b.copy(lineHeight = 20.sp),
                         color = blue,
                         maxLines = 1,
                     )
@@ -968,7 +1047,7 @@ internal fun SharedFileContextMenuOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.18f))
+            .background(SharedFileSpec.Scrim)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -977,7 +1056,7 @@ internal fun SharedFileContextMenuOverlay(
     ) {
         Column(
             modifier = Modifier.offset { IntOffset(x = startPx, y = topPx) },
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(SharedFileSpec.OverlayGap),
         ) {
             SharedFileCard(
                 file = request.file,
@@ -1044,25 +1123,26 @@ private fun SharedFileContextMenuCard(
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
     val p = pal
-    // Use opaque composited equivalents so underlying sharp chat text never bleeds through on API < 31 or software canvas.
-    val menuBg = if (p.dark) Color(0xFF28282A) else Color(0xFFF6F6F8)
-    val gapBg = if (p.dark) Color(0x38787880) else Color(0x1A787880)
+    val menuBg = SharedFileSpec.menuSurface(p.dark)
+    val gapBg = SharedFileSpec.menuDestructiveGap(p.dark)
+    val hairlineColor = SharedFileSpec.darkHairline(p.dark)
 
     Column(
         modifier = Modifier
-            .width(SharedMenuWidth)
-            .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(SharedMenuRadius),
-                ambientColor = Color.Black.copy(alpha = if (p.dark) 0.60f else 0.22f),
-                spotColor = Color.Black.copy(alpha = if (p.dark) 0.60f else 0.22f),
+            .width(SharedFileSpec.MenuWidth)
+            .sharedFloatingShadow(SharedFileSpec.MenuRadius, p.dark)
+            .then(
+                if (hairlineColor != null) {
+                    Modifier.border(
+                        width = 0.5.dp,
+                        color = hairlineColor,
+                        shape = RoundedCornerShape(SharedFileSpec.MenuRadius),
+                    )
+                } else {
+                    Modifier
+                },
             )
-            .border(
-                width = 0.5.dp,
-                color = if (p.dark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(SharedMenuRadius),
-            )
-            .clip(RoundedCornerShape(SharedMenuRadius))
+            .clip(RoundedCornerShape(SharedFileSpec.MenuRadius))
             .background(menuBg)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -1080,7 +1160,8 @@ private fun SharedFileContextMenuCard(
                 style = TextStyle(
                     fontFamily = MonoFamily,
                     fontSize = 11.5.sp,
-                    lineHeight = 16.7.sp,
+                    lineHeight = (11.5f * 1.45f).sp,
+                    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
                 ),
                 color = p.ink2,
             )
@@ -1088,7 +1169,7 @@ private fun SharedFileContextMenuCard(
                 Spacer(Modifier.height(3.dp))
                 Text(
                     text = copy(UiMessages.sharedFileMenuFromMachine(machine = machineName)),
-                    style = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
+                    style = T.s12.copy(lineHeight = 16.sp),
                     color = p.ink3,
                 )
             }

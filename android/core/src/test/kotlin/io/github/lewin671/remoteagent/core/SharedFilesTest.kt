@@ -151,6 +151,16 @@ class SharedFilesTest {
     }
 
     @Test
+    fun tileStylesSeparateAudioFromArchivesAndDocs() {
+        assertEquals(SharedFileTileStyle.VIDEO, classifySharedFile("clip.mp4").tileStyle())
+        assertEquals(SharedFileTileStyle.IMAGE, classifySharedFile("cover.png").tileStyle())
+        assertEquals(SharedFileTileStyle.AUDIO, classifySharedFile("track.mp3").tileStyle())
+        assertEquals(SharedFileTileStyle.ARCHIVE_OR_OTHER, classifySharedFile("proj.zip").tileStyle())
+        assertEquals(SharedFileTileStyle.ARCHIVE_OR_OTHER, classifySharedFile("blob.bin").tileStyle())
+        assertEquals(SharedFileTileStyle.PDF_OR_DOC, classifySharedFile("report.pdf").tileStyle())
+    }
+
+    @Test
     fun pauseAndAppRestartResumesFromPersistedBlocks() = runTest {
         val root = tempRoot()
         try {

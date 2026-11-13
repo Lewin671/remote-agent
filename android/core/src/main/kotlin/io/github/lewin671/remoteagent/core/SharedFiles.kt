@@ -44,6 +44,7 @@ enum class SharedFileKind {
 enum class SharedFileTileStyle {
     VIDEO,
     IMAGE,
+    AUDIO,
     ARCHIVE_OR_OTHER,
     PDF_OR_DOC,
 }
@@ -154,9 +155,9 @@ fun SharedFileKind.tileStyle(): SharedFileTileStyle =
     when (this) {
         SharedFileKind.VIDEO -> SharedFileTileStyle.VIDEO
         SharedFileKind.IMAGE -> SharedFileTileStyle.IMAGE
+        SharedFileKind.AUDIO -> SharedFileTileStyle.AUDIO
         SharedFileKind.PDF, SharedFileKind.DOC -> SharedFileTileStyle.PDF_OR_DOC
-        SharedFileKind.AUDIO, SharedFileKind.ARCHIVE, SharedFileKind.OTHER ->
-            SharedFileTileStyle.ARCHIVE_OR_OTHER
+        SharedFileKind.ARCHIVE, SharedFileKind.OTHER -> SharedFileTileStyle.ARCHIVE_OR_OTHER
     }
 
 fun SharedFileKind.typeMessage(): UiMessage =
