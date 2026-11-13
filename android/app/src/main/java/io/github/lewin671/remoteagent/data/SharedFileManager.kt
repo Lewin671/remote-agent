@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -53,7 +54,8 @@ class SharedFileManager(
         isMachineOnline = { sid ->
             val st = remoteProvider()?.state?.value
             val mid = st?.sessions?.get(sid)?.machineId
-            mid != null && st.machines[mid]?.online == true
+            st?.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE &&
+                mid != null && st.machines[mid]?.online == true
         },
         blockBytesProvider = { sid ->
             val st = remoteProvider()?.state?.value
@@ -209,16 +211,24 @@ class SharedFileManager(
             }
     }
 
-    /** Opens a downloaded non-image file in a compatible Android app; returns false if none found. */
+    /**
+     * Always shows the system chooser (titled with the file name) so no app silently takes the file
+     * over; returns false, showing nothing, when no app can open it.
+     */
     fun openExternal(activityContext: Context, file: File, displayName: String): Boolean {
         val uri = contentUri(file)
         val mime = mimeTypeFor(displayName)
-        val intent = Intent(Intent.ACTION_VIEW)
+        val view = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, mime)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        @Suppress("DEPRECATION")
+        val handlers = activityContext.packageManager.queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY)
+        if (handlers.isEmpty()) return false
+        val chooser = Intent.createChooser(view, sanitizeSharedFileName(displayName))
+            .putExtra(Intent.EXTRA_AUTO_LAUNCH_SINGLE_CHOICE, false)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
-            activityContext.startActivity(intent)
+            activityContext.startActivity(chooser)
             true
         } catch (_: ActivityNotFoundException) {
             false
@@ -263,14 +273,14 @@ class SharedFileManager(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     insertMediaStoreFile(
                         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                        Environment.DIRECTORY_DOWNLOADS,
+                        Environment.DIRECTORY_DOWNLOADS + "/RemoteAgent",
                         safeName,
                         mime,
                         file,
                     )
                 } else {
                     @Suppress("DEPRECATION")
-                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    val downloadsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "RemoteAgent")
                     downloadsDir.mkdirs()
                     val dest = uniqueDest(downloadsDir, safeName)
                     file.inputStream().use { input ->
