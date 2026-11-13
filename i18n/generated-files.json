@@ -6,6 +6,8 @@
   "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/UiMessages.generated.kt",
   "internal/i18n/messages.generated.go",
   "internal/i18n/messages.generated.json",
+  "ios/RemoteAgent/Info-Debug.plist",
+  "ios/RemoteAgent/Info.plist",
   "ios/RemoteAgent/en.lproj/InfoPlist.strings",
   "ios/RemoteAgent/zh-Hans.lproj/InfoPlist.strings",
   "ios/RemoteAgentCore/Localization/Localizable.xcstrings",

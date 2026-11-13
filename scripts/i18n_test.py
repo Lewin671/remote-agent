@@ -41,6 +41,14 @@ class CompilerTest(unittest.TestCase):
                 if row['key'].startswith('startup.ios_'):
                     self.assertIn(json.dumps(row[language], ensure_ascii=False), metadata)
                     self.assertNotIn(row['key'], output['web/src/i18n/startup.generated.ts'])
+        for name in ('Info.plist', 'Info-Debug.plist'):
+            values = plistlib.loads(output[f'ios/RemoteAgent/{name}'].encode())
+            self.assertEqual(values['RASourceCommit'], 'unknown')
+            for field, key in [('NSCameraUsageDescription', 'startup.ios_camera_usage'),
+                               ('NSPhotoLibraryAddUsageDescription', 'startup.ios_photo_library_add_usage')]:
+                row = next(row for row in i18n.read(self.root / 'i18n/messages/startup.json') if row['key'] == key)
+                self.assertEqual(values[field], row['zh-CN'])
+            self.assertEqual('NSAppTransportSecurity' in values, name == 'Info-Debug.plist')
         swift = output['ios/RemoteAgentCore/Sources/RACore/L10n.generated.swift']
         self.assertIn('public enum L10nMessage', swift)
         self.assertIn('arguments: [.string(reason)]', swift)

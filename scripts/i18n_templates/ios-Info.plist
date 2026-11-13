@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  What the build settings cannot say (the rest of the Info.plist is
+  generated from INFOPLIST_KEY_ settings). The version and RASourceCommit
+  are written into the built copy by scripts/version.sh, from
+  version.properties at the repository root and from git.
+-->
+<plist version="1.0">
+<dict>
+	<key>RASourceCommit</key>
+	<string>unknown</string>
+</dict>
+</plist>

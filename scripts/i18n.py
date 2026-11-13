@@ -306,8 +306,17 @@ def build(root):
     put('ios/RemoteAgentCore/Sources/RACore/L10n.generated.swift', swift)
     put('ios/RemoteAgentCore/Localization/Localizable.xcstrings', dump(catalog))
     import plistlib
+    info = {'NSCameraUsageDescription': 'startup.ios_camera_usage', 'NSPhotoLibraryAddUsageDescription': 'startup.ios_photo_library_add_usage'}
+    # Apple requires purpose strings in the main plist as well as InfoPlist.strings.
+    # Keep both build configurations on the same message source as translations.
+    if all(key in messages for key in info.values()):
+        for name in ('Info.plist', 'Info-Debug.plist'):
+            values = plistlib.loads(template('ios-' + name).encode())
+            values.update({name: messages[key][locales['default']] for name, key in info.items()})
+            xml = plistlib.dumps(values, sort_keys=False).decode()
+            xml = xml.replace('<plist version="1.0">', '<!-- ' + HEADER + ' -->\n<plist version="1.0">', 1)
+            put('ios/RemoteAgent/' + name, xml)
     for lang, loc in metadata.items():
-        info = {'NSCameraUsageDescription': 'startup.ios_camera_usage', 'NSPhotoLibraryAddUsageDescription': 'startup.ios_photo_library_add_usage'}
         # Test fixtures without app metadata need no InfoPlist artifact.
         if all(key in messages for key in info.values()):
             lines = [f'{json.dumps(name)} = {json.dumps(messages[key][lang], ensure_ascii=False)};' for name, key in info.items()]
