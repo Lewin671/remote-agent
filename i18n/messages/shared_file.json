@@ -990,5 +990,28 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "shared_file.pdf_page_position",
+    "zh-CN": "{current} / {total}",
+    "en": "{current} / {total}",
+    "notes": "PDF 预览右下角页码浮标，显示当前页码 / 总页数；current 从 1 开始，保留斜线两侧空格。",
+    "params": {
+      "current": {
+        "type": "integer",
+        "example": 3
+      },
+      "total": {
+        "type": "integer",
+        "example": 12
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

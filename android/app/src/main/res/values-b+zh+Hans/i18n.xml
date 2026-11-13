@@ -2067,6 +2067,7 @@
         <item quantity="other">"附 %1$d 个文件"</item>
     </plurals>
     <string name="shared_file_open_no_app" formatted="false">"手机上没有能打开这个文件的应用"</string>
+    <string name="shared_file_pdf_page_position">"%1$d / %2$d"</string>
     <string name="shared_file_player_error" formatted="false">"播放不了这个文件"</string>
     <string name="shared_file_player_pause" formatted="false">"暂停"</string>
     <string name="shared_file_player_play" formatted="false">"播放"</string>

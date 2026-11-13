@@ -846,7 +846,8 @@ class SharedFilesUiTest {
         for (n in listOf("a.mp4", "a.MOV", "a.m4v", "a.webm", "a.mkv")) assertEquals(n, SharedFileOpenRoute.VIDEO_PLAYER, sharedFileOpenRoute(n))
         for (n in listOf("a.mp3", "a.m4a", "a.wav", "a.AAC", "a.flac", "a.ogg")) assertEquals(n, SharedFileOpenRoute.AUDIO_PLAYER, sharedFileOpenRoute(n))
         assertEquals(SharedFileOpenRoute.TEXT_VIEWER, sharedFileOpenRoute("a.txt"))
-        for (n in listOf("a.zip", "a.pdf", "a.avi", "a.3gp", "a.opus", "noext", "a.mp4.zip")) assertEquals(n, SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(n))
+        assertEquals(SharedFileOpenRoute.PDF_VIEWER, sharedFileOpenRoute("a.pdf"))
+        for (n in listOf("a.zip", "a.avi", "a.3gp", "a.opus", "noext", "a.mp4.zip")) assertEquals(n, SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(n))
     }
 
     private fun localFor(session: String, name: String): File =

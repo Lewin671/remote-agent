@@ -2155,6 +2155,7 @@
         <item quantity="other">"%1$d files attached"</item>
     </plurals>
     <string name="shared_file_open_no_app" formatted="false">"No app on this phone can open this file"</string>
+    <string name="shared_file_pdf_page_position">"%1$d / %2$d"</string>
     <string name="shared_file_player_error" formatted="false">"Can\'t play this file"</string>
     <string name="shared_file_player_pause" formatted="false">"Pause"</string>
     <string name="shared_file_player_play" formatted="false">"Play"</string>

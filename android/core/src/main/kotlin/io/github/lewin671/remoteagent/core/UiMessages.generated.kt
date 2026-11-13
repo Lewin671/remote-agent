@@ -1894,6 +1894,7 @@ object UiMessages {
     fun sharedFileMenuShare(): UiMessage = UiMessage("shared_file.menu_share", emptyMap())
     fun sharedFileNotificationFiles(count: Int): UiMessage = UiMessage("shared_file.notification_files", mapOf("count" to count))
     fun sharedFileOpenNoApp(): UiMessage = UiMessage("shared_file.open_no_app", emptyMap())
+    fun sharedFilePdfPagePosition(current: Int, total: Int): UiMessage = UiMessage("shared_file.pdf_page_position", mapOf("current" to current, "total" to total))
     fun sharedFilePlayerError(): UiMessage = UiMessage("shared_file.player_error", emptyMap())
     fun sharedFilePlayerPause(): UiMessage = UiMessage("shared_file.player_pause", emptyMap())
     fun sharedFilePlayerPlay(): UiMessage = UiMessage("shared_file.player_play", emptyMap())

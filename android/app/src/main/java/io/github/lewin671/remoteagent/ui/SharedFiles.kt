@@ -223,7 +223,7 @@ internal data class SharedFileMenuRequest(
 )
 
 /** Where a downloaded file opens. */
-internal enum class SharedFileOpenRoute { IMAGE_VIEWER, VIDEO_PLAYER, AUDIO_PLAYER, TEXT_VIEWER, SYSTEM_CHOOSER }
+internal enum class SharedFileOpenRoute { IMAGE_VIEWER, VIDEO_PLAYER, AUDIO_PLAYER, TEXT_VIEWER, PDF_VIEWER, SYSTEM_CHOOSER }
 
 private val PlayerVideoExts = setOf("mp4", "mov", "m4v", "webm", "mkv")
 private val PlayerAudioExts = setOf("mp3", "m4a", "wav", "aac", "flac", "ogg")
@@ -233,6 +233,7 @@ internal fun sharedFileOpenRoute(name: String): SharedFileOpenRoute {
     if (isSharedTextFile(name)) return SharedFileOpenRoute.TEXT_VIEWER
     val ext = sanitizeSharedFileName(name).substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)
     return when (ext) {
+        "pdf" -> SharedFileOpenRoute.PDF_VIEWER
         in PlayerVideoExts -> SharedFileOpenRoute.VIDEO_PLAYER
         in PlayerAudioExts -> SharedFileOpenRoute.AUDIO_PLAYER
         else -> SharedFileOpenRoute.SYSTEM_CHOOSER
@@ -277,6 +278,7 @@ internal class SharedFileHostState(
     var imagePreview by mutableStateOf<SharedFileImagePreview?>(null)
     var pendingTextPreview by mutableStateOf<SharedFileImagePreview?>(null)
     var textPreview by mutableStateOf<SharedFileTextPreview?>(null)
+    var pdfPreview by mutableStateOf<SharedFileImagePreview?>(null)
     var playerTarget by mutableStateOf<SharedFilePlayerTarget?>(null)
     var unopenableTarget by mutableStateOf<SharedFileImagePreview?>(null)
     var pendingSaveAction by mutableStateOf<(() -> Unit)?>(null)
@@ -397,6 +399,23 @@ internal fun SharedFileHost(
             fileName = preview.file.name,
             text = preview.text,
             onDismiss = { liveHost.textPreview = null },
+            onAction = { action ->
+                handleMenuAction(action, preview.file, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
+            },
+        )
+    }
+
+    liveHost.pdfPreview?.let { preview ->
+        SharedFilePdfViewer(
+            fileName = preview.file.name,
+            localFile = preview.localFile,
+            onDismiss = { liveHost.pdfPreview = null },
+            onUnsupported = {
+                liveHost.pdfPreview = null
+                if (!manager.openExternal(context, preview.localFile, preview.file.name)) {
+                    liveHost.unopenableTarget = preview
+                }
+            },
             onAction = { action ->
                 handleMenuAction(action, preview.file, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
             },
@@ -550,6 +569,7 @@ internal fun openSharedFile(
     host: SharedFileHostState?,
 ) {
     when (val route = sharedFileOpenRoute(file.name)) {
+        SharedFileOpenRoute.PDF_VIEWER -> host?.pdfPreview = SharedFileImagePreview(file, localFile)
         SharedFileOpenRoute.TEXT_VIEWER -> host?.pendingTextPreview = SharedFileImagePreview(file, localFile)
         SharedFileOpenRoute.IMAGE_VIEWER -> host?.imagePreview = SharedFileImagePreview(file, localFile)
         SharedFileOpenRoute.VIDEO_PLAYER, SharedFileOpenRoute.AUDIO_PLAYER ->

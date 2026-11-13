@@ -6263,6 +6263,11 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "shared_file.open_no_app" -> {
             resources.getString(R.string.shared_file_open_no_app)
         }
+        "shared_file.pdf_page_position" -> {
+            val current = message.args.getValue("current") as Int
+            val total = message.args.getValue("total") as Int
+            resources.getString(R.string.shared_file_pdf_page_position, current, total)
+        }
         "shared_file.player_error" -> {
             resources.getString(R.string.shared_file_player_error)
         }
@@ -6459,15 +6464,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.history_closed" -> {
             resources.getString(R.string.terminal_history_closed)
         }
-        "terminal.history_expired" -> {
-            resources.getString(R.string.terminal_history_expired)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "terminal.history_expired" -> {
+            resources.getString(R.string.terminal_history_expired)
+        }
         "terminal.history_start" -> {
             resources.getString(R.string.terminal_history_start)
         }
