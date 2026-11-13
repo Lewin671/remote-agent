@@ -116,7 +116,7 @@ func (s *session) checkRemoteAnswer(kind remoteAnswerKind, id string, allow bool
 	// Rewritten IDs always carry the skeleton suffix. They are display text,
 	// never executable aliases, even after settlement or on an ID collision.
 	if kind != remotePlan && eventview.TerminalOnlyAnswerID(id) || view.TerminalOnly || allow && view.ApprovalTruncated {
-		return errRemoteAnswerTruncated
+		return outcome.FinalError(errRemoteAnswerTruncated)
 	}
 	if kind == remotePlan {
 		if s.answerSafety.planSeq == 0 || origin.ObservedEventSeq != s.answerSafety.planSeq || len(origin.ObservedScreenHash) != 32 {

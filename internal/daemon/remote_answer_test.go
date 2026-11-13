@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -323,7 +324,7 @@ func TestRemoteAnswerChecksDoNotReadHistory(t *testing.T) {
 				err := h.s.checkRemoteAnswer(tc.kind, tc.id, tc.allow, origin)
 				h.s.mu.Unlock()
 				if tc.blocked {
-					if err != errRemoteAnswerTruncated {
+					if !errors.Is(err, errRemoteAnswerTruncated) {
 						t.Fatalf("safety check depended on history: %v", err)
 					}
 				} else if err != nil {
