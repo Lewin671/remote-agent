@@ -268,11 +268,13 @@ struct PendingScope: SealedFiles {
 /// cache must be closed before; this device's preferences
 /// (`SettingsStore.clear`) are the caller's to reset.
 enum LocalAccountData {
-    static func erase(vault: Vault = Vault(), cacheRoot: URL = CipherStore.defaultRoot, pending: PendingStore) throws {
+    static func erase(vault: Vault = Vault(), cacheRoot: URL = CipherStore.defaultRoot, sharedFiles: URL = SharedFileCenter.defaultRoot, pending: PendingStore) throws {
         try vault.clear()
         try everyStep([
             { try CipherStore.eraseAll(root: cacheRoot) },
             { try pending.clearAll() },
+            // The files the agent shared, kept in plain on the phone, go with the account.
+            { if FileManager.default.fileExists(atPath: sharedFiles.path) { try FileManager.default.removeItem(at: sharedFiles) } },
         ])
     }
 }

@@ -455,6 +455,7 @@ final class AppModel {
                     guard let context else { return }
                     context.sessionStore.forgetSession(sid)
                     ImageCenter.of(context.remote).forgetSession(sid)
+                    SharedFileCenter.of(context.remote).forgetSession(sid)
                 }
             }
         }
@@ -462,6 +463,8 @@ final class AppModel {
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
         ImageCenter.install(remote: made.remote, files: parts.storage.pending.scoped())
+        // What the agent shared is kept in the cache, per session, and counts in 附件存储.
+        SharedFileCenter.install(remote: made.remote, root: SharedFileCenter.defaultRoot)
         stage = .ready
         made.engine.setNetwork(path.available)
         follow(made.engine.state, gen: generation)
@@ -544,7 +547,7 @@ final class AppModel {
             generation += 1
             follower?.cancel(); follower = nil
             closeTerminals(); engine?.close(); engine = nil
-            if let remote { ImageCenter.remove(remote) }
+            if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
             context?.prefsChanges.close(); context = nil
             let oldCache = cache; cache = nil
             logins?.close(); logins = nil
@@ -615,7 +618,7 @@ final class AppModel {
         engine?.close()
         engine = nil
         // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
-        if let remote { ImageCenter.remove(remote) }
+        if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
         LibraryVideos.discardAll()
         context?.prefsChanges.close()
         context = nil

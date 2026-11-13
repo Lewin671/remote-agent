@@ -27,6 +27,11 @@ struct ChatEnv: Equatable, Sendable {
     var approvals = OrderedMap<String, PBApprovalRequested>()
     /// Tools whose turn completed without their result.
     var noResult = Set<UInt64>()
+    /// What the cards of shared files need to know: which session, which computer (and its name) and whether either is still there.
+    var session = ""
+    var machine = ""
+    var machineOnline = true
+    var sessionExited = false
 }
 
 /// What a row can do. Handed down in the environment: closures are not part of what a row shows.
@@ -142,6 +147,8 @@ struct ChatRowView: View, Equatable {
                 }
             }
             .padding(.horizontal, chatMargin)
+        case .sharedFiles(let s):
+            SharedFilesRow(item: s, env: env)
         case .running(let r):
             ExpandableToolRow(key: r.key, text: commandOf(kind: r.tool.kind, title: r.tool.title, input: r.tool.input)) {
                 RunningToolRow(item: r, env: env)

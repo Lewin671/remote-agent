@@ -70,6 +70,7 @@ import UIKit
 enum SessionSamples {
     static let machine = "sample-mac"
     static let oldMachine = "sample-old"
+    static let plainMachine = "sample-plain"
     static let other = "c0ffee00c0ffee00"
     static let cwd = "/Users/me/Code/foo"
     private static var installed = false
@@ -99,7 +100,7 @@ enum SessionSamples {
     nonisolated private static func ts(_ ms: Int64) -> Google_Protobuf_Timestamp { .with { $0.seconds = ms / 1000 } }
 
     private static func machines(_ now: Int64) -> [MachineView] {
-        func make(_ id: String, _ name: String, version: UInt32) -> MachineView {
+        func make(_ id: String, _ name: String, version: UInt32, shares: Bool = false) -> MachineView {
             MachineView(
                 id: id, online: true, lastSeenMs: now,
                 meta: .with {
@@ -110,11 +111,18 @@ enum SessionSamples {
                     $0.capabilities = .with {
                         $0.imageUpload = true
                         $0.fileUpload = ProcessInfo.processInfo.arguments.contains("-fileUploads")
+                        // Only the main sample computer hands out files; the other keeps send_file a plain tool row.
+                        $0.sharedFiles = shares
+                        $0.sharedFileChunkBytes = shares ? Int32(defaultSharedFileBlockBytes) : 0
+                        $0.maxSharedFileBytes = shares ? 104_857_600 : 0
                     }
                     $0.agents = [PBAgent.codex, .claude, .antigravity].map { agent in .with { $0.agent = agent } }
                 }, metaRev: 1)
         }
-        return [make(machine, "MacBook", version: protocolVersion), make(oldMachine, "旧 Mac mini", version: protocolVersion - 1)]
+        return [
+            make(machine, "MacBook", version: protocolVersion, shares: true), make(oldMachine, "旧 Mac mini", version: protocolVersion - 1),
+            make(plainMachine, "Mac mini", version: protocolVersion),
+        ]
     }
 
     private static func session(
@@ -163,6 +171,16 @@ enum SessionSamples {
             session("sample-wait", "别的客户端也在处理", now: now, status: .running, approvals: 1),
             session("sample-many", "一轮很忙的活", now: now, status: .running, agent: .claude, mode: .fullAccess),
             session("sample-ask", "有问题要回答", now: now, status: .running, agent: .claude) { $0.pendingQuestions = 1 },
+            session("sample-files", "稻城剪辑", now: now),
+            session("sample-files-states", "文件卡的六种状态", now: now),
+            session("sample-files-multi", "封面、成片和工程包", now: now),
+            session("sample-files-kinds", "各种文件", now: now),
+            session("sample-files-live", "真的下载（假电脑）", now: now),
+            session("sample-files-ended", "已结束的会话里的文件", now: now, status: .exited) {
+                $0.statusDetail = "stopped"
+                $0.endedAt = ts(now - 120_000)
+            },
+            session("sample-files-plain", "电脑没有声明共享文件", now: now, machine: plainMachine),
             session("sample-ended", "手动结束的会话", now: now, status: .exited) {
                 $0.statusDetail = "stopped"
                 $0.endedAt = ts(now - 120_000)
@@ -252,6 +270,24 @@ enum SessionSamples {
             $0.background = background
             $0.inputDigest = digest
             if let exit { $0.exitCode = exit }
+        }), nil)
+    }
+
+    /// A `send_file` call that handed over one file.
+    private static func shared(_ id: String, _ name: String, _ size: Int64, _ path: String, sha: Data = Data(count: 32)) -> Kind {
+        (.toolCall(.with {
+            $0.title = "send_file"
+            $0.callID = "send-" + id
+            $0.kind = .other
+            $0.status = "completed"
+            $0.itemType = "remote_agent/send_file"
+            $0.sharedFiles = [.with {
+                $0.fileID = id
+                $0.name = name
+                $0.sizeBytes = size
+                $0.sha256 = sha
+                $0.path = path
+            }]
         }), nil)
     }
 
@@ -386,6 +422,51 @@ enum SessionSamples {
                         },
                     ]
                 }), nil),
+            ]),
+            "sample-files": Demo.events(now, [
+                turn, user("把剪好的成片发我手机上看看"), call("ffmpeg -i cut.mov -c:v libx264 out/daocheng-final.mp4"),
+                agent("成片导出好了，时长 1 分 42 秒，1080p。"),
+                shared("f-video", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                agent("需要我再出一版竖屏的吗？"), turnEnd(40_000),
+            ]),
+            "sample-files-states": Demo.events(now, [
+                turn, user("把成片发我"),
+                shared("f-avail", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                shared("f-dl", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                shared("f-done", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                shared("f-fail", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                shared("f-off", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                shared("f-gone", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                turnEnd(9_000),
+            ]),
+            "sample-files-multi": Demo.events(now, [
+                turn, user("封面图、成片和工程包都给我"),
+                shared("m-cover", "cover.png", 1_887_437, "/Users/me/Movies/daocheng/cover.png"),
+                shared("m-video", "daocheng-final-vertical-1080-v3.mp4", 64_698_982, "/Users/me/Movies/daocheng/out/daocheng-final-vertical-1080-v3.mp4"),
+                shared("m-zip", "project.zip", 92_693_094, "/Users/me/Movies/daocheng/project.zip"),
+                agent("三个文件都放这儿了。"), turnEnd(12_000),
+            ]),
+            "sample-files-kinds": Demo.events(now, [
+                turn, user("报告、录音和文本都发来"),
+                shared("k-pdf", "季度报告.pdf", 3_251_200, "/Users/me/Documents/季度报告.pdf"),
+                shared("k-audio", "voice-memo.m4a", 4_194_304, "/Users/me/Music/voice-memo.m4a"),
+                shared("k-text", "notes.txt", 2_048, "/Users/me/Code/foo/notes.txt"),
+                shared("k-img", "cover.png", 1_887_437, "/Users/me/Movies/daocheng/cover.png"),
+                shared("k-other", "build.bin", 734_003, "/Users/me/Code/foo/build.bin"),
+                turnEnd(12_000),
+            ]),
+            "sample-files-live": Demo.events(now, [turn, user("三个文件都给我")] + SharedFileDebug.fakes.map {
+                shared($0.id, $0.name, Int64($0.data.count), $0.path, sha: $0.sha256)
+            } + [turnEnd(5_000)]),
+            "sample-files-ended": Demo.events(now, [
+                turn, user("把成片发我"),
+                shared("e-video", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                turnEnd(9_000), (.sessionState(.with { $0.status = .exited }), nil),
+            ]),
+            "sample-files-plain": Demo.events(now, [
+                turn, user("把成片发我"),
+                shared("p-video", "daocheng-final.mp4", 25_480_396, "/Users/me/Movies/daocheng/out/daocheng-final.mp4"),
+                turnEnd(9_000),
             ]),
             "sample-ended": Demo.events(now, [
                 turn, user("把日志级别调成 debug"), call("config/log.yaml", kind: .fileChange), agent("已调成 `debug`。"), turnEnd(6_000),

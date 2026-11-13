@@ -49,6 +49,8 @@ struct ChatParams: Equatable, Sendable {
     /// The first message of a session started from here.
     var prompt: String?
     var live: PBLiveSnapshot?
+    /// The computer says it hands out files: the calls that carry some are cards.
+    var sharedFiles = false
 }
 
 /// What one pass over the events gives.
@@ -69,6 +71,7 @@ actor ChatBuilder {
         var texts: [String: String]
         var prompt: String?
         var initialId: String?
+        var sharedFiles: Bool
     }
 
     private struct Parsed {
@@ -102,7 +105,7 @@ actor ChatBuilder {
         let next = Key(
             locale: MessageLocale.current, agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
             devices: p.devices, texts: p.texts,
-            prompt: p.prompt, initialId: initialId)
+            prompt: p.prompt, initialId: initialId, sharedFiles: p.sharedFiles)
         let localeChanged = key?.locale != next.locale
         // Rows name clients and carry the texts sent from here: when those
         // change, the rows kept from before may say something else.
@@ -113,7 +116,7 @@ actor ChatBuilder {
         var named = RemoteState()
         named.devices = p.devices
         let items = chat.update(
-            events, d: d, machine: p.machine, cwd: p.cwd, home: p.home, agent: p.agent,
+            events, d: d, machine: p.machine, cwd: p.cwd, home: p.home, agent: p.agent, sharedFiles: p.sharedFiles,
             textOf: { id in p.texts[id] ?? (id == initialId ? p.prompt : nil) },
             who: { originLabel($0, state: named, me: p.me, machine: p.machine) })
         let groups = fold.update(events)

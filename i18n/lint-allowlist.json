@@ -935,6 +935,126 @@
     "reason": "Stable MCP structured-result field name; not UI text."
   },
   {
+    "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
+    "literal": "季度报告 Quarterly report",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
+    "literal": "季度报告.pdf",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
+    "literal": "/Documents/季度报告.pdf",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
+    "literal": "not_found",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
+    "literal": "no such file",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "稻城剪辑",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "文件卡的六种状态",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "封面、成片和工程包",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "各种文件",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "真的下载（假电脑）",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "已结束的会话里的文件",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "电脑没有声明共享文件",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "send_file",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "send-",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "把剪好的成片发我手机上看看",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "成片导出好了，时长 1 分 42 秒，1080p。",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "需要我再出一版竖屏的吗？",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "把成片发我",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "封面图、成片和工程包都给我",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "三个文件都放这儿了。",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "报告、录音和文本都发来",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "季度报告.pdf",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "/Users/me/Documents/季度报告.pdf",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSamples.swift",
+    "literal": "三个文件都给我",
+    "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."
+  },
+  {
     "path": "internal/machinestatus/reader_darwin.go",
     "literal": "host cpu counters unavailable",
     "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"

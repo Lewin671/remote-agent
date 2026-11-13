@@ -98,6 +98,7 @@ private struct SessionPage: View {
     @State private var projectSettings: ProjectSettingsRequest?
     @State private var confirmStop = false
     @State private var act = ActionRunner()
+    @Environment(\.scenePhase) private var scenePhase
     /// Claude Code records full model IDs; the list gives the alias to show.
     @State private var models: PBListModelsResponse?
 
@@ -136,7 +137,8 @@ private struct SessionPage: View {
         return ChatParams(
             agent: session.agent, machine: machineLabel(state, id: session.machineId), cwd: session.info?.cwd ?? "",
             home: state.machines[session.machineId]?.meta?.home ?? "", me: context.me, devices: state.devices,
-            texts: store.texts(session.id), prompt: store.prompt(session.id))
+            texts: store.texts(session.id), prompt: store.prompt(session.id),
+            sharedFiles: sharedFilesSupported(state.machines[session.machineId]))
     }
 
     var body: some View {
@@ -189,6 +191,10 @@ private struct SessionPage: View {
                 ConnectionStrip()
                 if let refusal { GlassStrip(text: refusal, symbol: "exclamationmark.triangle", tone: .attention) }
                 if !act.error.isEmpty { GlassStrip(text: act.error, symbol: "xmark", tone: .error) }
+                if let notice = SharedFileCenter.of(context.remote).notice {
+                    GlassStrip(text: notice.text, symbol: notice.symbol, tone: notice.failed ? .error : .plain)
+                        .transition(Motion.appear(rise: -Motion.bubbleRise))
+                }
                 SessionScheduleBar(session: s)
             }
             .padding(.horizontal, DS.Space.m)
@@ -203,6 +209,10 @@ private struct SessionPage: View {
             nav.path.insert(.schedule(machine: s.machineId, id: task), at: max(0, nav.path.count - 1))
         }
         .task(id: sid) { SessionImages.restore(session: sid, remote: context.remote, store: context.sessionStore) }
+        // A file finished after the user has been away is theirs to open: nothing opens by itself then.
+        .onDisappear { SharedFileCenter.of(context.remote).leftPage(sid) }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { SharedFileCenter.of(context.remote).leftPage() } }
+        .animation(Motion.enter(), value: SharedFileCenter.of(context.remote).notice)
         // The system's bar, with nothing drawn under it: the back button, the title with its line of state,
         // and ⋯; from iOS 26 they are on glass, and the content runs under them.
         .navigationBarTitleDisplayMode(.inline)

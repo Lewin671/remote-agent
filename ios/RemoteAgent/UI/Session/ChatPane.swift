@@ -396,7 +396,8 @@ struct ChatPane: View {
             agent: session.agent, cwd: session.info?.cwd ?? "",
             home: state.machines[session.machineId]?.meta?.home ?? "",
             frozenAt: online ? 0 : state.offlineSinceMs, approvals: d.approvals,
-            noResult: d.noResult)
+            noResult: d.noResult, session: sid, machine: machineLabel(state, id: session.machineId),
+            machineOnline: online && state.machines[session.machineId]?.online == true, sessionExited: status == .exited)
         let pending = pendingInputs(d)
         let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputs[$0.requestId]) }
         let dock = dockItems(d)

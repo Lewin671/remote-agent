@@ -73,6 +73,15 @@
 //   -termRead                        the reader over the sample, with sample history
 //   -termOpening <reading|failed>    the live sample under the opening line
 //
+// Files the agent shared (UI/Session/SharedFileSamples.swift)
+//   -demo -demoRoute session/sample-files   the mockup's chat; also sample-files-states, -multi, -kinds, -ended, -plain
+//   -sharedFileCards <id=state,…>    a file's card in a state: available, downloading, downloadingEta, paused,
+//                                    downloaded, failed, failedChecksum, failedFull, offline, cleaned
+//   -sharedFileMenu <id>             the long-press menu of that file's card, once it is on screen
+//   -sharedFileFake                  with session/sample-files-live: really downloaded, from a fake computer
+//   sharedfile.tap.<id>, sharedfile.menu.<id>   signals: a tap or a long press on that file's card;
+//                                    sharedfile.quiet.<id> downloads without opening, sharedfile.photos.<id> saves to Photos
+//
 // Images (UI/Images/ImageDebug.swift)
 //   -imageAdd <path[,path…]>         once a message box is up: these files through what the picker's results go through
 //   -imageDraft <state>              with -demo: the strip in a fixed state: ready, crowded, uploading, failed,
