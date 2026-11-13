@@ -2301,16 +2301,180 @@ public enum L10n {
         let key = "list_state_unlinked"
         return format(key, locale: locale, args: [])
     }
+    public static func machineStatusA11YChart(max: String, now: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_chart"
+        return format(key, locale: locale, args: [max, now])
+    }
+    public static func machineStatusA11YCpuCard(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_cpu_card"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func machineStatusA11YDiskCard(size: String, state: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_disk_card"
+        return format(key, locale: locale, args: [size, state])
+    }
+    public static func machineStatusA11YMemoryCard(pressure: String, used: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_memory_card"
+        return format(key, locale: locale, args: [pressure, used])
+    }
+    public static func machineStatusA11YMemoryCardPlain(used: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_memory_card_plain"
+        return format(key, locale: locale, args: [used])
+    }
+    public static func machineStatusA11YNextSample(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_next_sample"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusA11YPrevSample(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_prev_sample"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusA11YRing(name: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_ring"
+        return format(key, locale: locale, args: [name, value])
+    }
+    public static func machineStatusAgentUsage(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_agent_usage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusAxis1Min(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_axis_1min"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusAxis2Min(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_axis_2min"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusAxisNow(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_axis_now"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusBattery(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_battery"
+        return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func machineStatusBatteryCharging(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_battery_charging"
+        return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func machineStatusCleanupAction(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_cleanup_action"
+        return format(key, locale: locale, args: [])
+    }
     public static func machineStatusCleanupPrompt(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_cleanup_prompt"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusCores(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_cores"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func machineStatusCpu(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_cpu"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDisk(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDiskAgentShare(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_agent_share"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusDiskAvailable(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_available"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDiskCritical(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_critical"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDiskCriticalHint(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_critical_hint"
         return format(key, locale: locale, args: [])
     }
     public static func machineStatusDiskFull(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_disk_full"
         return format(key, locale: locale, args: [])
     }
+    public static func machineStatusDiskLow(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_low"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDiskOk(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_ok"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDiskTotal(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_total"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusDurationDaysHours(days: Int, hours: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_duration_days_hours"
+        return format(key, locale: locale, args: [Int64(days), Int64(hours)])
+    }
+    public static func machineStatusDurationMinutes(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_duration_minutes"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func machineStatusEmergencyReserve(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_emergency_reserve"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusEmergencyReserveNote(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_emergency_reserve_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusGbAvailable(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_gb_available"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusGbUsed(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_gb_used"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusHomeCritical(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_home_critical"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusHomeCriticalDetail(computer: String, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_home_critical_detail"
+        return format(key, locale: locale, args: [computer, size])
+    }
     public static func machineStatusHomeWarning(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_home_warning"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusHomeWarningDetail(computer: String, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_home_warning_detail"
+        return format(key, locale: locale, args: [computer, size])
+    }
+    public static func machineStatusLaunchFailedBody(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_launch_failed_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusLive(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_live"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusLoad(load: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_load"
+        return format(key, locale: locale, args: [load])
+    }
+    public static func machineStatusLoadLine(load: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_load_line"
+        return format(key, locale: locale, args: [load])
+    }
+    public static func machineStatusLoading(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_loading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusMemory(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_memory"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusNoRunningSessions(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_no_running_sessions"
         return format(key, locale: locale, args: [])
     }
     public static func machineStatusNotifyCritical(computer: String, size: String, locale: String = MessageLocale.current) -> String {
@@ -2329,16 +2493,80 @@ public enum L10n {
         let key = "machine_status_notify_warning_body"
         return format(key, locale: locale, args: [])
     }
+    public static func machineStatusPressureCritical(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_pressure_critical"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusPressureHigh(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_pressure_high"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusPressureNormal(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_pressure_normal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusSecondsAgo(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_seconds_ago"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func machineStatusShowProcesses(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_show_processes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusShowSessions(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_show_sessions"
+        return format(key, locale: locale, args: [])
+    }
     public static func machineStatusSizeGb(size: String, locale: String = MessageLocale.current) -> String {
         let key = "machine_status_size_gb"
         return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusSizeMb(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_size_mb"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusStaleMinutes(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_stale_minutes"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func machineStatusStaleSeconds(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_stale_seconds"
+        return format(key, locale: locale, args: [Int64(count)])
     }
     public static func machineStatusStorageExhausted(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_storage_exhausted"
         return format(key, locale: locale, args: [])
     }
+    public static func machineStatusSwap(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_swap"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusTitle(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusTopUsage(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_top_usage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusTotal(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_total"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusTotalSwap(size: String, swap: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_total_swap"
+        return format(key, locale: locale, args: [size, swap])
+    }
     public static func machineStatusUnavailable(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_unavailable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusUptime(duration: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_uptime"
+        return format(key, locale: locale, args: [duration])
+    }
+    public static func machineStatusViewUsage(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_view_usage"
         return format(key, locale: locale, args: [])
     }
     public static func markdownCollapse(locale: String = MessageLocale.current) -> String {
@@ -9989,16 +10217,180 @@ public enum L10nMessage {
         let key = "list_state_unlinked"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func machineStatusA11YChart(max: String, now: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_chart"
+        return LocalizedMessage(key: key, arguments: [.string(max), .string(now)])
+    }
+    public static func machineStatusA11YCpuCard(value: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_cpu_card"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func machineStatusA11YDiskCard(size: String, state: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_disk_card"
+        return LocalizedMessage(key: key, arguments: [.string(size), .string(state)])
+    }
+    public static func machineStatusA11YMemoryCard(pressure: String, used: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_memory_card"
+        return LocalizedMessage(key: key, arguments: [.string(pressure), .string(used)])
+    }
+    public static func machineStatusA11YMemoryCardPlain(used: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_memory_card_plain"
+        return LocalizedMessage(key: key, arguments: [.string(used)])
+    }
+    public static func machineStatusA11YNextSample() -> LocalizedMessage {
+        let key = "machine_status_a11y_next_sample"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusA11YPrevSample() -> LocalizedMessage {
+        let key = "machine_status_a11y_prev_sample"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusA11YRing(name: String, value: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_ring"
+        return LocalizedMessage(key: key, arguments: [.string(name), .string(value)])
+    }
+    public static func machineStatusAgentUsage() -> LocalizedMessage {
+        let key = "machine_status_agent_usage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusAxis1Min() -> LocalizedMessage {
+        let key = "machine_status_axis_1min"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusAxis2Min() -> LocalizedMessage {
+        let key = "machine_status_axis_2min"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusAxisNow() -> LocalizedMessage {
+        let key = "machine_status_axis_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusBattery(percent: Int) -> LocalizedMessage {
+        let key = "machine_status_battery"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func machineStatusBatteryCharging(percent: Int) -> LocalizedMessage {
+        let key = "machine_status_battery_charging"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func machineStatusCleanupAction() -> LocalizedMessage {
+        let key = "machine_status_cleanup_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func machineStatusCleanupPrompt() -> LocalizedMessage {
         let key = "machine_status_cleanup_prompt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusCores(count: Int) -> LocalizedMessage {
+        let key = "machine_status_cores"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func machineStatusCpu() -> LocalizedMessage {
+        let key = "machine_status_cpu"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDisk() -> LocalizedMessage {
+        let key = "machine_status_disk"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDiskAgentShare(size: String) -> LocalizedMessage {
+        let key = "machine_status_disk_agent_share"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusDiskAvailable() -> LocalizedMessage {
+        let key = "machine_status_disk_available"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDiskCritical() -> LocalizedMessage {
+        let key = "machine_status_disk_critical"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDiskCriticalHint() -> LocalizedMessage {
+        let key = "machine_status_disk_critical_hint"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func machineStatusDiskFull() -> LocalizedMessage {
         let key = "machine_status_disk_full"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func machineStatusDiskLow() -> LocalizedMessage {
+        let key = "machine_status_disk_low"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDiskOk() -> LocalizedMessage {
+        let key = "machine_status_disk_ok"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDiskTotal(size: String) -> LocalizedMessage {
+        let key = "machine_status_disk_total"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusDurationDaysHours(days: Int, hours: Int) -> LocalizedMessage {
+        let key = "machine_status_duration_days_hours"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(days)), .integer(Int64(hours))])
+    }
+    public static func machineStatusDurationMinutes(count: Int) -> LocalizedMessage {
+        let key = "machine_status_duration_minutes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func machineStatusEmergencyReserve() -> LocalizedMessage {
+        let key = "machine_status_emergency_reserve"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusEmergencyReserveNote() -> LocalizedMessage {
+        let key = "machine_status_emergency_reserve_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusGbAvailable() -> LocalizedMessage {
+        let key = "machine_status_gb_available"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusGbUsed() -> LocalizedMessage {
+        let key = "machine_status_gb_used"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusHomeCritical() -> LocalizedMessage {
+        let key = "machine_status_home_critical"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusHomeCriticalDetail(computer: String, size: String) -> LocalizedMessage {
+        let key = "machine_status_home_critical_detail"
+        return LocalizedMessage(key: key, arguments: [.string(computer), .string(size)])
+    }
     public static func machineStatusHomeWarning() -> LocalizedMessage {
         let key = "machine_status_home_warning"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusHomeWarningDetail(computer: String, size: String) -> LocalizedMessage {
+        let key = "machine_status_home_warning_detail"
+        return LocalizedMessage(key: key, arguments: [.string(computer), .string(size)])
+    }
+    public static func machineStatusLaunchFailedBody() -> LocalizedMessage {
+        let key = "machine_status_launch_failed_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusLive() -> LocalizedMessage {
+        let key = "machine_status_live"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusLoad(load: String) -> LocalizedMessage {
+        let key = "machine_status_load"
+        return LocalizedMessage(key: key, arguments: [.string(load)])
+    }
+    public static func machineStatusLoadLine(load: String) -> LocalizedMessage {
+        let key = "machine_status_load_line"
+        return LocalizedMessage(key: key, arguments: [.string(load)])
+    }
+    public static func machineStatusLoading() -> LocalizedMessage {
+        let key = "machine_status_loading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusMemory() -> LocalizedMessage {
+        let key = "machine_status_memory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusNoRunningSessions() -> LocalizedMessage {
+        let key = "machine_status_no_running_sessions"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func machineStatusNotifyCritical(computer: String, size: String) -> LocalizedMessage {
@@ -10017,16 +10409,80 @@ public enum L10nMessage {
         let key = "machine_status_notify_warning_body"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func machineStatusPressureCritical() -> LocalizedMessage {
+        let key = "machine_status_pressure_critical"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusPressureHigh() -> LocalizedMessage {
+        let key = "machine_status_pressure_high"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusPressureNormal() -> LocalizedMessage {
+        let key = "machine_status_pressure_normal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusSecondsAgo(count: Int) -> LocalizedMessage {
+        let key = "machine_status_seconds_ago"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func machineStatusShowProcesses() -> LocalizedMessage {
+        let key = "machine_status_show_processes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusShowSessions() -> LocalizedMessage {
+        let key = "machine_status_show_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func machineStatusSizeGb(size: String) -> LocalizedMessage {
         let key = "machine_status_size_gb"
         return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusSizeMb(size: String) -> LocalizedMessage {
+        let key = "machine_status_size_mb"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusStaleMinutes(count: Int) -> LocalizedMessage {
+        let key = "machine_status_stale_minutes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func machineStatusStaleSeconds(count: Int) -> LocalizedMessage {
+        let key = "machine_status_stale_seconds"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
     }
     public static func machineStatusStorageExhausted() -> LocalizedMessage {
         let key = "machine_status_storage_exhausted"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func machineStatusSwap(size: String) -> LocalizedMessage {
+        let key = "machine_status_swap"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusTitle() -> LocalizedMessage {
+        let key = "machine_status_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusTopUsage() -> LocalizedMessage {
+        let key = "machine_status_top_usage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusTotal(size: String) -> LocalizedMessage {
+        let key = "machine_status_total"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusTotalSwap(size: String, swap: String) -> LocalizedMessage {
+        let key = "machine_status_total_swap"
+        return LocalizedMessage(key: key, arguments: [.string(size), .string(swap)])
+    }
     public static func machineStatusUnavailable() -> LocalizedMessage {
         let key = "machine_status_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusUptime(duration: String) -> LocalizedMessage {
+        let key = "machine_status_uptime"
+        return LocalizedMessage(key: key, arguments: [.string(duration)])
+    }
+    public static func machineStatusViewUsage() -> LocalizedMessage {
+        let key = "machine_status_view_usage"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func markdownCollapse() -> LocalizedMessage {
