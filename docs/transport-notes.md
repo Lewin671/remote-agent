@@ -58,7 +58,7 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 - 同逻辑序号的小包从一开始热备双发，在 direct 3% 丢包、40/150 ms RTT 条件下，最大应用间隔的三次中位数为 34.3/30.0 ms，所有运行范围为 27.8–43.4 ms，哈希及流序号/数量均通过（`net-mirror-*`）。这证明受控前台热备能绕开故障判断等待，不证明两路同时断开仍可即时工作。
 - Pion 虚拟 IPv4 变化后显式 ICE restart，同一 PC/DC 的新业务回显中位数约 205/389/509 ms（模型 RTT 0/40/150 ms）；不是物理换网。Chrome 黑洞远端 ICE socket 后，被动 8 秒的三次运行均无自主 SDP 协商；显式 restart 的 SDP 完成不等于业务已恢复。同一个 DC 连续序号校验通过，不证明手机本地 NIC 变化行为（`net-pion-migrate-*`、`net-chrome-migrate-*`）。
 
-**源码结论**：旧终端每次开流从零编号，拒绝 `seq <= last`，只检查严格递增而非连续；两路直接广播会关流，跳号可能静默漏输出。旧 endpoint 在已开始未完成时返回 unknown，不自带跨路结果等待；每连接各建 endpoint 会破坏共享至多一次接受。只读命令绕过持久去重，不能用 ping 证明副作用至多执行一次。现有接受日志 8,192 条/16 MiB、relay 8 个执行槽；上传须按 durable 偏移推进，原型八块在途窗口不能原样移植。
+**源码结论**：旧终端计数器每次开流从 0 初始化、发送前自增，首帧为 1；拒绝 `seq <= last`，只检查严格递增而非连续；两路直接广播会关流，跳号可能静默漏输出。旧 endpoint 在已开始未完成时返回 unknown，不自带跨路结果等待；每连接各建 endpoint 会破坏共享至多一次接受。只读命令绕过持久去重，不能用 ping 证明副作用至多执行一次。现有接受日志 8,192 条/16 MiB、relay 8 个执行槽；上传须按 durable 偏移推进，原型八块在途窗口不能原样移植。
 
 ## 4. NAT、移动库与验证边界
 
@@ -72,15 +72,21 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 
 ## 5. 当前设计 checkout 的源码核对
 
-**源码证据，未运行行为测试（2026-11-12，提交 `3dd329d5`、协议 13）**：本次只核对代码，不将旧原型数据当新基线复验。
+**源码证据，未运行行为测试（2026-11-12，复核提交 `d38905f4`、协议 13；相对 `3dd329d5` 仅文档变化）**：本次只核对代码，不将旧原型数据当新基线复验。
 
 - `internal/daemon/rpc.go:rpcErr` 将 context 错误映射成 canceled/deadline_exceeded；`internal/relay/handle.go:handleCall/execute` 把它装进 CommandResult，回调 marshal 返回 nil error；`internal/deviceauth/endpoint.go:Accept/finishAccepted` 因此可能记录 Done。代码足以支持取消被当最终答复的风险；是否已发生重复副作用及各后端取消行为未经本任务测试，由独立正确性任务验证。
 - 同 ID in-progress 的 `lookupAccepted` 返回 ErrUnknown，`securitySession.accept` 把它和未知 epoch 一起触发同步；`hub.forward` 把 ForwardReply.Error 统一映射 Aborted。Android/iOS 的网络重试集合包含 Aborted，网页网络集合没有；网页 `uncertain()` 又承认 aborted，不能把“没有自动网络重试”写成“网页所有调用都会当确定失败”。
 - `finishAccepted` 结果超限保留 in-progress；其他新准入触发的到期剪枝可删除尚在运行的条目，此后完成返回 ErrInvalid。不是无限保存 unknown：过期后缺少记录的原请求不能再获准执行，但也没有过去未执行的证据。
-- `session()` 打开安全 endpoint，其 defer 等 workers/terminals 再关闭；执行和终端挂在 conn 上。四端终端重复序号会关流，但只检查递增，未保证连续（跳过缺口仍能被接受）。计数器初始化为 0，发送前自增，首帧为 1。终端 Input 按 256 字节送 tmux，5 秒命令超时结束流，不能推导整帧原子性。
+- `session()` 打开安全 endpoint，其 defer 等 workers/terminals 再关闭；执行和终端挂在 conn 上。四端终端重复序号会关流，但只检查递增，未保证连续（跳过缺口仍能被接受）。计数器初始化为 0，发送前自增，首帧为 1。终端 Input 按 256 字节送 tmux，`TermStream.command` 单次期限 5 秒，超时/管道写失败会 end 流，不能推导整帧原子性。普通 tmux 命令错误返回给 Input；`readTerminal` 对 Input/Resize/History 回调错误只记日志并继续读，只有成功才推进 last。不能把普通命令失败、超时、History 容量拒绝都写成同一种关流行为。
 - `ParseHeader → Header.validate` 已检查 Purpose/kind、ID 格式、请求 ID 最短 16 字节；`codec.validID` 已限最长 128 字节。`Header.Scope` 也已核对角色与目标 Machine 成员。缺的是本机 Machine 等值及特定流 Session/Request/绑定 Sender 的上下文检查，不是所有范围检查都在 Accept 外。共享入口要保留这些已有检查并补齐上下文。
 - `internal/deviceauth/codec.go` 的 MaxClockSkew 是 **5 分钟**；Accept 允许的最大未来截止时间是 **10 分钟**，二者不是同一参数。接受日志开销为 key 长度 + 结果长度 + 128 字节；16 MiB 不全是结果空间。
 - agent 发文件任务分支 `wt/send-file`（核对提交 `7766a145`）已有 `Command_GetSharedFileChunk`：`readOnlyCommand` 白名单、relay handler 和共享副本设计。它不缓存块结果；“约 21 块填满日志”只适用于错误地将下载接成普通持久指令的假设，不能当成该分支的实际瓶颈。当前设计 checkout 没有该接口，不能说产品已经具备。
 - 上传 `uploads.put` 在 RECEIVING 状态核对归属、重叠字节并 fsync 后保存进度；完成后的晚到块在范围内直接回状态，不重新比较每个字节。因此“所有重叠重复都比较”过宽；已完成对象的最终哈希及不再写入仍保护内容。Put 仍持全局锁，fsync 对交互公平性的影响未测。
+- `CommandResult`（`proto/remoteagent/v1/remote.proto`）只有 error_code/error_message 与结果 oneof，`ForwardReply` 只有 result/error；两者都没有显式结果类别。`rpcErr` 默认 unknown；网页 `uncertain()` 接受字符串 unknown/aborted，Android/iOS 只将 unknown_outcome 或来自 daemon 的 aborted 识别为 unknown。`schedule.go` 的 expected revision、`files.go` 的 generation/文件身份冲突确实使用 aborted；Android `core/Schedules.kt` 单独按该码恢复编辑冲突，不能统一抹成 unknown。
+- server `hub.forward` 在找不到电脑或 send 入队失败时返回 Unavailable；`services.Forward` 与 RPC 额度入口也可在转发前拒绝。Android Forward 对 Unavailable 报 unknown，网页按 mayHaveRun 区分，iOS `notSent` 闭包同样保留先前可能执行的状态。这些分支当前没有统一的 attempt 未转发证明。网页仅 `sendMessage` 对 deadline_exceeded 尝试新槽，仍沿用 Send 的 sendId；不能推广为所有指令都会换 ID。
+- `accepted` 表及 `acceptedChecksum` 不含载荷 hash，存储 generation 为 3、路径 `security-v3.db`。`Accept` 在截止检查处返回 ErrInvalid，尽管较底层 `startAccepted` 已有 ErrExpired；只改底层映射不能区分“过期缺记录”与“无效信封”。已知结果在 finishAccepted 失败时被丢弃；回调接口只有 bytes/error，不含“不定案”。
+- `readForwardCalls` 在读取下一个帧前同步等 `Relay.calls` 的槽，确会形成读循环阻塞；8 槽本身已由 Relay 持有，并非每 conn 另建。只把槽改为 2/4/2 不能解决读取/排队次序。
+- server 主 WS 的 `peer.out` 共享 ForwardCall、广播和心跳；`sendFrame` 超预算会 cancel 接收 peer。当前 proto 无定向信令/投递回执，尚不能从“未来信令超额拒绝”推导已有队列能安全复用。
+- `securitySyncLoop` 是 60 秒 tick、同步限 15 秒、随后串行 ensurePublished 最长 60 秒；安全 HTTP client 使用 session 登录 token。`pull` 每页最多 8 条并逐页 Install，只有追平 head 才 InstallLease；不能用现有循环声称 21 秒撤销或主 WS 外独立续 token。本次未测各后端 ctx 响应、SDK 原串或最大候选数；信令恢复预算是设计核算而非实测。
 
 上述是 [transport.md](transport.md) 前提与改造位置的依据；新目标和决策仅在那里维护，阶段验收结果仍需另行取得。
