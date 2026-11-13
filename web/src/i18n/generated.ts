@@ -1284,6 +1284,7 @@ export interface MessageArgs {
   "shared_file.menu_from_machine": { machine: string };
   "shared_file.menu_save_to_device": { [name: string]: never };
   "shared_file.menu_share": { [name: string]: never };
+  "shared_file.notification_files": { count: number };
   "shared_file.preview_close": { [name: string]: never };
   "shared_file.reason_browser_storage_full": { [name: string]: never };
   "shared_file.reason_checksum_mismatch": { [name: string]: never };
@@ -3048,6 +3049,13 @@ export const messages = {
     "shared_file.menu_from_machine": "From {machine}",
     "shared_file.menu_save_to_device": "Save to device",
     "shared_file.menu_share": "Share…",
+    "shared_file.notification_files": {
+      "forms": {
+        "one": "{count} file attached",
+        "other": "{count} files attached"
+      },
+      "plural": "count"
+    },
     "shared_file.preview_close": "Close preview",
     "shared_file.reason_browser_storage_full": "browser storage is full",
     "shared_file.reason_checksum_mismatch": "file verification failed",
@@ -4788,6 +4796,12 @@ export const messages = {
     "shared_file.menu_from_machine": "来自 {machine}",
     "shared_file.menu_save_to_device": "保存到本机",
     "shared_file.menu_share": "分享…",
+    "shared_file.notification_files": {
+      "forms": {
+        "other": "附 {count} 个文件"
+      },
+      "plural": "count"
+    },
     "shared_file.preview_close": "关闭预览",
     "shared_file.reason_browser_storage_full": "浏览器空间不足",
     "shared_file.reason_checksum_mismatch": "文件校验不一致",

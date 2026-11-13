@@ -345,6 +345,7 @@ class SharedFilesUiTest {
             .setKind(NotifyKind.NOTIFY_KIND_TURN_ENDED)
             .setTitle("稻城剪辑")
             .setText("成片导出好了")
+            .setSharedFileCount(2)
             .build()
         Notifier.show(
             context,
@@ -353,10 +354,9 @@ class SharedFilesUiTest {
             content,
             showContent = true,
             copy = { msg -> messageTextForTest(msg, "zh-CN") },
-            sharedFileCount = 2,
         )
         val posted = snm.allNotifications.last()
-        assertEquals("成片导出好了 · 附 2 个文件", posted.extras.getString(Notification.EXTRA_TEXT))
+        assertEquals("成片导出好了 附 2 个文件", posted.extras.getString(Notification.EXTRA_TEXT))
         nm.cancelAll()
     }
 

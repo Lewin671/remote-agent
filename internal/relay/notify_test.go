@@ -176,3 +176,68 @@ func TestApprovalNotificationRecognizesExistingMarkersInEveryField(t *testing.T)
 		}
 	}
 }
+
+func TestTurnNotificationCountsSharedFiles(t *testing.T) {
+	file := func(turn string, seq uint64, ids ...string) *pb.Event {
+		call := &pb.ToolCall{Kind: pb.ToolKind_TOOL_KIND_MCP, Title: "remote_agent.send_file", Status: "completed"}
+		for _, id := range ids {
+			call.SharedFiles = append(call.SharedFiles, &pb.SharedFile{FileId: id, Name: "private.txt", Path: "/private/project/private.txt"})
+		}
+		return &pb.Event{TurnId: turn, Seq: seq, Kind: &pb.Event_ToolCall{ToolCall: call}}
+	}
+	for _, tc := range []struct {
+		name   string
+		events []*pb.Event
+		want   uint32
+	}{
+		{"zero", nil, 0},
+		{"one", []*pb.Event{file("turn", 2, "a")}, 1},
+		{"same file twice", []*pb.Event{file("turn", 2, "a", "a"), file("turn", 3, "a")}, 1},
+		{"two files", []*pb.Event{file("turn", 2, "a"), file("turn", 3, "b")}, 2},
+		{"failed send_file", []*pb.Event{{TurnId: "turn", Seq: 2, Kind: &pb.Event_ToolCall{ToolCall: &pb.ToolCall{Title: "remote_agent.send_file", Status: "failed", Output: "refused"}}}}, 0},
+		{"only ended turn and preceding events", []*pb.Event{file("previous", 1, "old"), file("turn", 2, "a"), file("next", 11, "new"), file("turn", 12, "late")}, 1},
+		{"missing file id", []*pb.Event{file("turn", 2, "")}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &conn{acct: &Account{DeviceID: "machine"}, r: &Relay{backend: &prefixBackend{events: tc.events}}}
+			initializeTestSecurity(t, c)
+			end := &pb.Event{TurnId: "turn", Seq: 10, Kind: &pb.Event_TurnEnded{TurnEnded: &pb.TurnEnded{}}}
+			// Serialize and restore the events as a daemon reconnect does.
+			b := c.r.backend.(*prefixBackend)
+			for i, e := range b.events {
+				raw, err := proto.Marshal(e)
+				if err != nil {
+					t.Fatal(err)
+				}
+				b.events[i] = &pb.Event{}
+				if err := proto.Unmarshal(raw, b.events[i]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for range 2 {
+				req, err := c.notifyRequest(context.Background(), "session", &pb.Session{Preview: "summary"}, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, end)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got := &pb.NotifyContent{}
+				if _, err := openTestSecureMessage(c, nil, req.Content, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY}, got); err != nil {
+					t.Fatal(err)
+				}
+				if got.SharedFileCount != tc.want || got.Text != "summary" || got.SourceEventSeq != 10 {
+					t.Fatalf("notification = %v; want count %d", got, tc.want)
+				}
+				if strings.Contains(string(req.Content.Header), "private") || strings.Contains(got.Text, "private") {
+					t.Fatal("notification includes file name/path")
+				}
+			}
+		})
+	}
+}
+
+func TestTurnSharedFileCountReadFailure(t *testing.T) {
+	failure := errors.New("unreadable events")
+	c := &conn{r: &Relay{backend: &prefixBackend{events: []*pb.Event{{Seq: 3}}, readErr: failure}}}
+	if _, err := c.turnSharedFileCount(context.Background(), "session", &pb.Event{TurnId: "turn", Seq: 10}); !errors.Is(err, failure) {
+		t.Fatalf("event read error lost: %v", err)
+	}
+}

@@ -399,6 +399,47 @@ public  final class NotifyContent extends
     sourceEventSeq_ = 0L;
   }
 
+  public static final int SHARED_FILE_COUNT_FIELD_NUMBER = 8;
+  private int sharedFileCount_;
+  /**
+   * <pre>
+   * Successful send_file offers in this turn, deduplicated by file_id.
+   * Only set for TURN_ENDED; no names or paths are included.
+   * </pre>
+   *
+   * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+   * @return The sharedFileCount.
+   */
+  @java.lang.Override
+  public int getSharedFileCount() {
+    return sharedFileCount_;
+  }
+  /**
+   * <pre>
+   * Successful send_file offers in this turn, deduplicated by file_id.
+   * Only set for TURN_ENDED; no names or paths are included.
+   * </pre>
+   *
+   * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+   * @param value The sharedFileCount to set.
+   */
+  private void setSharedFileCount(int value) {
+    
+    sharedFileCount_ = value;
+  }
+  /**
+   * <pre>
+   * Successful send_file offers in this turn, deduplicated by file_id.
+   * Only set for TURN_ENDED; no names or paths are included.
+   * </pre>
+   *
+   * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+   */
+  private void clearSharedFileCount() {
+
+    sharedFileCount_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.NotifyContent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -888,6 +929,49 @@ public  final class NotifyContent extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Successful send_file offers in this turn, deduplicated by file_id.
+     * Only set for TURN_ENDED; no names or paths are included.
+     * </pre>
+     *
+     * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+     * @return The sharedFileCount.
+     */
+    @java.lang.Override
+    public int getSharedFileCount() {
+      return instance.getSharedFileCount();
+    }
+    /**
+     * <pre>
+     * Successful send_file offers in this turn, deduplicated by file_id.
+     * Only set for TURN_ENDED; no names or paths are included.
+     * </pre>
+     *
+     * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+     * @param value The sharedFileCount to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSharedFileCount(int value) {
+      copyOnWrite();
+      instance.setSharedFileCount(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Successful send_file offers in this turn, deduplicated by file_id.
+     * Only set for TURN_ENDED; no names or paths are included.
+     * </pre>
+     *
+     * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSharedFileCount() {
+      copyOnWrite();
+      instance.clearSharedFileCount();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotifyContent)
   }
   @java.lang.Override
@@ -912,10 +996,11 @@ public  final class NotifyContent extends
             "text_",
             "approval_",
             "sourceEventSeq_",
+            "sharedFileCount_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\f\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\f" +
+              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003\b\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

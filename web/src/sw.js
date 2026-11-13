@@ -1,5 +1,5 @@
 // Service worker: shows push notifications and opens their session.
-import { scheduledPushContent } from "./sw-notify";
+import { pushContent } from "./sw-notify";
 // Scheduled content is verified and decrypted locally; other pushes remain generic.
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -184,7 +184,7 @@ self.addEventListener("push", (e) => {
       if (security) for (const w of windows) w.postMessage({ type: "security" });
       const scheduled = typeof d.tag === "string" && d.tag.endsWith("/NOTIFY_KIND_SCHEDULED");
       if (windows.some((w) => w.visibilityState === "visible" && w.focused && (!scheduled || viewingSession(w, d.session)))) return;
-      const content = await scheduledPushContent(d);
+      const content = await pushContent(d);
       await self.registration.showNotification(content.title, {
         body: content.body,
         tag: d.tag,

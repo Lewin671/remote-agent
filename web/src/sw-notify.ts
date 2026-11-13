@@ -13,10 +13,13 @@ type PushData = { title?: string; body?: string; tag?: string; session?: string;
 
 /** No network, management operations, signing keys or writes. Unknown local
  * state fails closed; the foreground page is responsible for security sync. */
-export async function scheduledPushContent(d: PushData): Promise<{ title: string; body: string }> {
+export async function pushContent(d: PushData): Promise<{ title: string; body: string }> {
   const generic = { title: "remote-agent", body: typeof d.body === "string" ? d.body : "" };
-  if (typeof d.tag !== "string" || !d.tag.endsWith("/NOTIFY_KIND_SCHEDULED")) return generic;
-  generic.body = l10n.t("notifications.scheduled_tasks_have_new_results");
+  if (typeof d.tag !== "string") return generic;
+  const scheduled = d.tag.endsWith("/NOTIFY_KIND_SCHEDULED");
+  const turnEnded = d.tag.endsWith("/NOTIFY_KIND_TURN_ENDED");
+  if (!scheduled && !turnEnded) return generic;
+  if (scheduled) generic.body = l10n.t("notifications.scheduled_tasks_have_new_results");
   try {
     if (typeof d.content !== "string" || !d.content.length ||
         new TextEncoder().encode(JSON.stringify(d)).length > MAX_PAYLOAD) return generic;
@@ -39,13 +42,24 @@ export async function scheduledPushContent(d: PushData): Promise<{ title: string
       await contentSecretOf(record, h.contentEpoch), true, now);
     const c = fromBinary(NotifyContentSchema, unpackSecurity(opened.header, opened.plaintext));
     validateSecurityBody(opened.header, NotifyContentSchema.typeName, c);
+    // Do not release plaintext if another tab changed membership while decrypting.
+    if (await loadSecurity() !== record) throw new SecurityError("stale");
+    if (turnEnded) {
+      if (c.kind !== NotifyKind.TURN_ENDED || c.approval || c.sourceEventSeq <= 0n ||
+          h.request !== `notify:${NotifyKind.TURN_ENDED}:${c.sourceEventSeq}` ||
+          d.tag !== `${c.sessionId}/NOTIFY_KIND_TURN_ENDED`)
+        throw new SecurityError();
+      if (c.sharedFileCount > 0) {
+        const suffix = l10n.t("shared_file.notification_files", { count: c.sharedFileCount });
+        return { ...generic, body: generic.body ? `${generic.body} ${suffix}` : suffix };
+      }
+      return generic;
+    }
     if (c.kind !== NotifyKind.SCHEDULED || c.approval || c.sourceEventSeq <= 0n ||
         h.request !== `scheduled:${c.sourceEventSeq}` ||
         d.tag !== `${c.sessionId}/scheduled:${c.sourceEventSeq}/NOTIFY_KIND_SCHEDULED` ||
         !c.title.trim() || [...c.title].length > 60 || !c.text.trim() || [...c.text].length > 200)
       throw new SecurityError();
-    // Do not release plaintext if another tab changed membership while decrypting.
-    if (await loadSecurity() !== record) throw new SecurityError("stale");
     return { title: c.title, body: c.text };
   } catch {
     return generic;

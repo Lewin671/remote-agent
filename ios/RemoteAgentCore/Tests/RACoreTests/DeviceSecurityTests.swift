@@ -24,6 +24,36 @@ import Testing
         }
     }
 
+    @Test(arguments: [nil, 0, 1, 2] as [UInt32?])
+    func opensTurnNotificationSharedFileCount(count: UInt32?) async throws {
+        let genesis = try state("genesis"), head = try state("added")
+        let machine = head.core.members.first { $0.kind == 1 }!.id
+        let record = try S.Record(
+            pin: pin(), states: [1: genesis, 2: head], memberID: machine,
+            xPrivate: hex("machine_x"), member: true, secret: hex("content_secret_2"),
+            lease: signedLease(head))
+        let sdk = DeviceSecurityClient(
+            store: MemorySecurityStore(record), memberID: machine,
+            signingKey: try SigningKey(seed: hex("machine_seed")),
+            clock: { head.core.issuedAt }, fetchStates: { _ in PBGetSecurityStatesResponse() })
+        var content = PBNotifyContent()
+        content.machineID = machine
+        content.sessionID = "session"
+        content.kind = .turnEnded
+        content.sourceEventSeq = 7
+        if let count { content.sharedFileCount = count }
+        let env = try await sdk.seal(
+            purpose: .notify, machine: machine, session: "session", request: "notify:2:7",
+            plaintext: content.serializedData())
+        let opener = try S.NotifyRecord.parse(S.NotifyRecord(record: record).bytes())
+        let opened = try opener.open(env)
+        #expect(opened.sharedFileCount == (count ?? 0))
+        #expect(opened.text.isEmpty && opened.kind == .turnEnded)
+        var tampered = env
+        tampered.signature[0] ^= 1
+        #expect(throws: S.Failure.self) { _ = try opener.open(tampered) }
+    }
+
     func hex(_ key: String) throws -> Data {
         guard let s = v[key] as? String, let b = Data(hex: s) else { throw S.Failure.invalid }
         return b

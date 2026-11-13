@@ -396,7 +396,7 @@ const webPushMaxPayload = 3993
 func webPushPayload(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) []byte {
 	data := map[string]string{"title": "remote-agent", "body": pushText[kind], "tag": pushNotificationTag(sessionID, kind, dedupeKey), "session": sessionID}
 	generic, _ := json.Marshal(data)
-	if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED && len(content) > 0 && base64.StdEncoding.EncodedLen(len(content)) <= webPushMaxPayload {
+	if (kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED) && len(content) > 0 && base64.StdEncoding.EncodedLen(len(content)) <= webPushMaxPayload {
 		data["content"] = base64.StdEncoding.EncodeToString(content)
 		payload, _ := json.Marshal(data)
 		if len(payload) <= webPushMaxPayload {

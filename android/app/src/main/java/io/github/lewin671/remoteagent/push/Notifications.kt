@@ -242,7 +242,6 @@ object Notifier {
         showContent: Boolean,
         eventKey: String? = null,
         copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) },
-        sharedFileCount: Int = 0,
     ) {
         require(kind != NotifyKind.NOTIFY_KIND_SCHEDULED || !eventKey.isNullOrEmpty())
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -323,11 +322,12 @@ object Notifier {
                 )
             }
         } else {
-            val baseText = c.text.ifEmpty { generic }
+            val sharedFileCount = c.sharedFileCount
+            val baseText = if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED && sharedFileCount > 0) c.text else c.text.ifEmpty { generic }
             val bodyText =
                 if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED && sharedFileCount > 0) {
                     val suffix = copy(UiMessages.sharedFileNotificationFiles(count = sharedFileCount))
-                    if (baseText.isEmpty()) suffix else "$baseText · $suffix"
+                    if (baseText.isEmpty()) suffix else "$baseText $suffix"
                 } else {
                     baseText
                 }

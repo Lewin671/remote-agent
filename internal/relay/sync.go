@@ -634,6 +634,11 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 		dedupe = fmt.Sprintf("scheduled:%d", e.Seq)
 	case *pb.Event_TurnEnded:
 		nc.Text, _ = clip(info.GetPreview(), notifyText)
+		count, err := c.turnSharedFileCount(ctx, sessionID, e)
+		if err != nil {
+			return nil, err
+		}
+		nc.SharedFileCount = count
 	}
 	if eventview.IsSkeleton(e) {
 		// A notification must not reintroduce a decision button for an
@@ -657,6 +662,31 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 		return nil, err
 	}
 	return &pb.NotifyRequest{SessionId: sessionID, Kind: kind, Content: env, DedupeKey: dedupe}, nil
+}
+
+// Read the durable local events, so reconnects/retries use the completed turn,
+// even after later turns or session cleanup. SharedFiles contains only offers
+// the daemon resolved to committed copies of this session's send_file result.
+func (c *conn) turnSharedFileCount(ctx context.Context, sessionID string, end *pb.Event) (uint32, error) {
+	if end.TurnId == "" {
+		return 0, nil
+	}
+	ids := map[string]struct{}{}
+	_, err := c.r.backend.EachEvents(sessionID, 0, func(e *pb.Event) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if e.TurnId != end.TurnId || e.Seq >= end.Seq {
+			return nil
+		}
+		for _, f := range e.GetToolCall().GetSharedFiles() {
+			if f.FileId != "" {
+				ids[f.FileId] = struct{}{}
+			}
+		}
+		return nil
+	})
+	return uint32(len(ids)), err
 }
 
 // notifyOwed reports whether a notification that failed with err is still

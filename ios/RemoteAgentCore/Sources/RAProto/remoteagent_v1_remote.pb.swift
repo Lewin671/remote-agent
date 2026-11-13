@@ -1215,6 +1215,10 @@ public struct PBNotifyContent: Sendable {
 
   public var sourceEventSeq: UInt64 = 0
 
+  /// Successful send_file offers in this turn, deduplicated by file_id.
+  /// Only set for TURN_ENDED; no names or paths are included.
+  public var sharedFileCount: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3350,7 +3354,7 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NotifyContent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0\u{3}shared_file_count\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3365,6 +3369,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
       case 5: try { try decoder.decodeSingularStringField(value: &self.text) }()
       case 6: try { try decoder.decodeSingularMessageField(value: &self._approval) }()
       case 7: try { try decoder.decodeSingularUInt64Field(value: &self.sourceEventSeq) }()
+      case 8: try { try decoder.decodeSingularUInt32Field(value: &self.sharedFileCount) }()
       default: break
       }
     }
@@ -3396,6 +3401,9 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if self.sourceEventSeq != 0 {
       try visitor.visitSingularUInt64Field(value: self.sourceEventSeq, fieldNumber: 7)
     }
+    if self.sharedFileCount != 0 {
+      try visitor.visitSingularUInt32Field(value: self.sharedFileCount, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3407,6 +3415,7 @@ extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     if lhs.text != rhs.text {return false}
     if lhs._approval != rhs._approval {return false}
     if lhs.sourceEventSeq != rhs.sourceEventSeq {return false}
+    if lhs.sharedFileCount != rhs.sharedFileCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

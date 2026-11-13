@@ -33,7 +33,7 @@ func TestScheduledWebPushDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	delivered := make(chan []byte, 4)
+	delivered := make(chan []byte, 6)
 	p.client = &http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -46,7 +46,7 @@ func TestScheduledWebPushDelivery(t *testing.T) {
 		delivered <- payload
 		return &http.Response{StatusCode: http.StatusCreated, Body: http.NoBody, Request: req}, nil
 	})}
-	if err := p.subscribe(context.Background(), ts.tenant(), "client", string(sub), []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_SCHEDULED, pb.NotifyKind_NOTIFY_KIND_ATTENTION}); err != nil {
+	if err := p.subscribe(context.Background(), ts.tenant(), "client", string(sub), []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_SCHEDULED, pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
@@ -57,6 +57,8 @@ func TestScheduledWebPushDelivery(t *testing.T) {
 		{pb.NotifyKind_NOTIFY_KIND_SCHEDULED, 512, true},
 		{pb.NotifyKind_NOTIFY_KIND_SCHEDULED, 4096, false},
 		{pb.NotifyKind_NOTIFY_KIND_ATTENTION, 512, false},
+		{pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, 512, true},
+		{pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, 4096, false},
 	} {
 		content := bytes.Repeat([]byte{0xa5}, tc.size)
 		if err := p.notify(context.Background(), ts.tenant(), "session", tc.kind, content, "scheduled:7"); err != nil {
@@ -86,7 +88,7 @@ func TestScheduledWebPushDelivery(t *testing.T) {
 	}
 }
 
-func TestWebPushOnlyScheduledCarriesCiphertext(t *testing.T) {
+func TestWebPushScheduledAndTurnEndedCarryCiphertext(t *testing.T) {
 	content := []byte("synthetic encrypted envelope")
 	for kind := range pushText {
 		payload := webPushPayload("session", kind, content, "scheduled:7")
@@ -94,10 +96,10 @@ func TestWebPushOnlyScheduledCarriesCiphertext(t *testing.T) {
 		if err := json.Unmarshal(payload, &data); err != nil {
 			t.Fatal(err)
 		}
-		if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED {
+		if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED {
 			raw, err := base64.StdEncoding.DecodeString(data["content"])
 			if err != nil || !bytes.Equal(raw, content) {
-				t.Fatal("scheduled push lost opaque envelope")
+				t.Fatal("push lost opaque envelope")
 			}
 		} else if _, ok := data["content"]; ok {
 			t.Fatalf("content leaked into %s Web Push", kind)

@@ -391,7 +391,8 @@
       }
     },
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

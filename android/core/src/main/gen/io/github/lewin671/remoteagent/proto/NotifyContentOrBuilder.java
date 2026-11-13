@@ -111,4 +111,15 @@ public interface NotifyContentOrBuilder extends
    * @return The sourceEventSeq.
    */
   long getSourceEventSeq();
+
+  /**
+   * <pre>
+   * Successful send_file offers in this turn, deduplicated by file_id.
+   * Only set for TURN_ENDED; no names or paths are included.
+   * </pre>
+   *
+   * <code>uint32 shared_file_count = 8 [json_name = "sharedFileCount"];</code>
+   * @return The sharedFileCount.
+   */
+  int getSharedFileCount();
 }

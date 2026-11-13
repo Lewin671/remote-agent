@@ -2,12 +2,12 @@
 // made-up cache, network and set of open pages.
 import { afterEach, expect, it, vi } from "vitest";
 import rawSource from "./sw.js?raw";
-import { scheduledPushContent } from "./sw-notify";
+import { pushContent } from "./sw-notify";
 const source = rawSource.replace(/^import .*$/m, "");
 function worker(...args: unknown[]) {
   const body = args.pop() as string;
-  const fn = new Function("scheduledPushContent", ...args as string[], body);
-  return (...values: unknown[]) => fn(scheduledPushContent, ...values);
+  const fn = new Function("pushContent", ...args as string[], body);
+  return (...values: unknown[]) => fn(pushContent, ...values);
 }
 
 const PAGE = '<script type="module" src="/assets/index-new.js"></script><link rel="stylesheet" href="/assets/index-new.css">';

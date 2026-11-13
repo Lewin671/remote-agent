@@ -17,7 +17,7 @@ import { joinBanner } from "./Pairing";
 import { ImageError } from "../imagecodec/error";
 import { Tray } from "../attach";
 import { imageProblem, imageProblemKind } from "../image-problem";
-import { scheduledPushContent } from "../sw-notify";
+import { pushContent } from "../sw-notify";
 import { t as launchText } from "../i18n/startup";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -82,8 +82,8 @@ it("localizes safe error and notification shells while preserving external conte
   expect(errorText(new Error("CLI 原始错误"))).toBe("CLI 原始错误");
   expect(reasonText("opaque_reason")).toBe("Reason returned by the computer: opaque_reason");
   expect(joinBanner(new PairingStatusError("refused"))).toMatchObject({ action: "restart", text: "The other device refused this join request" });
-  expect(await scheduledPushContent({ tag: "example/NOTIFY_KIND_SCHEDULED" })).toEqual({ title: "remote-agent", body: "Scheduled tasks have new results" });
-  expect(await scheduledPushContent({ body: "Original push content" })).toEqual({ title: "remote-agent", body: "Original push content" });
+  expect(await pushContent({ tag: "example/NOTIFY_KIND_SCHEDULED" })).toEqual({ title: "remote-agent", body: "Scheduled tasks have new results" });
+  expect(await pushContent({ body: "Original push content" })).toEqual({ title: "remote-agent", body: "Original push content" });
   expect(launchText("startup.the_page_could_not_load_check_your_connection_and", "en")).toBe("The page could not load. Check your connection and retry.");
 });
 

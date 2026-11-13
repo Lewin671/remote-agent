@@ -330,6 +330,9 @@ message NotifyContent {
   // notification.
   NotifyApproval approval = 6;
   uint64 source_event_seq = 7;
+  // Successful send_file offers in this turn, deduplicated by file_id.
+  // Only set for TURN_ENDED; no names or paths are included.
+  uint32 shared_file_count = 8;
 }
 
 message NotifyApproval {

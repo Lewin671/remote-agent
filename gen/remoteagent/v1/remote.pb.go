@@ -2470,8 +2470,11 @@ type NotifyContent struct {
 	// notification.
 	Approval       *NotifyApproval `protobuf:"bytes,6,opt,name=approval,proto3" json:"approval,omitempty"`
 	SourceEventSeq uint64          `protobuf:"varint,7,opt,name=source_event_seq,json=sourceEventSeq,proto3" json:"source_event_seq,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Successful send_file offers in this turn, deduplicated by file_id.
+	// Only set for TURN_ENDED; no names or paths are included.
+	SharedFileCount uint32 `protobuf:"varint,8,opt,name=shared_file_count,json=sharedFileCount,proto3" json:"shared_file_count,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *NotifyContent) Reset() {
@@ -2549,6 +2552,13 @@ func (x *NotifyContent) GetApproval() *NotifyApproval {
 func (x *NotifyContent) GetSourceEventSeq() uint64 {
 	if x != nil {
 		return x.SourceEventSeq
+	}
+	return 0
+}
+
+func (x *NotifyContent) GetSharedFileCount() uint32 {
+	if x != nil {
+		return x.SharedFileCount
 	}
 	return 0
 }
@@ -3410,7 +3420,7 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x12approval_signature\x18\x04 \x01(\fR\x11approvalSignature\x12F\n" +
 	"\x0fsecurity_states\x18\x05 \x03(\v2\x1d.remoteagent.v1.SecurityStateR\x0esecurityStates\x12,\n" +
 	"\x12account_public_key\x18\x06 \x01(\fR\x10accountPublicKey\x12\x14\n" +
-	"\x05lease\x18\a \x01(\fR\x05leaseJ\x04\b\x01\x10\x02R\x04root\"\x8d\x02\n" +
+	"\x05lease\x18\a \x01(\fR\x05leaseJ\x04\b\x01\x10\x02R\x04root\"\xb9\x02\n" +
 	"\rNotifyContent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -3420,7 +3430,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12\x12\n" +
 	"\x04text\x18\x05 \x01(\tR\x04text\x12:\n" +
 	"\bapproval\x18\x06 \x01(\v2\x1e.remoteagent.v1.NotifyApprovalR\bapproval\x12(\n" +
-	"\x10source_event_seq\x18\a \x01(\x04R\x0esourceEventSeq\"\xe8\x01\n" +
+	"\x10source_event_seq\x18\a \x01(\x04R\x0esourceEventSeq\x12*\n" +
+	"\x11shared_file_count\x18\b \x01(\rR\x0fsharedFileCount\"\xe8\x01\n" +
 	"\x0eNotifyApproval\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x1b\n" +
