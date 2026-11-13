@@ -5,6 +5,7 @@ import { t } from "../i18n";
 // (design-system §6, client-v58 #home).
 
 import { AgentMark } from "../agent-mark";
+import { DiskReminders } from "./DiskReminders";
 import { agentName } from "../agents";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
@@ -760,6 +761,7 @@ function ListError({ remote }: { remote: Remote }) {
 function HomeBanners({ remote, go, prefs }: { remote: Remote; go: Go; prefs?: boolean }) {
   return (
     <div className="home-banners">
+      <DiskReminders remote={remote} go={go} />
       <UpdateBanner />
       <ClockWarning remote={remote} />
       <RecoveryNotice remote={remote} go={go} />

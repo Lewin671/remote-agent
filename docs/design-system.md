@@ -236,6 +236,7 @@
 | `arrow-left` `arrow-up` `arrow-down` `arrow-right` `corner-down-left` | `arrow.left` `arrow.up` `arrow.down` `arrow.right` `return` | 方向键和回车 | 终端的按键栏 |
 | `keyboard` | `keyboard` | 调出屏幕键盘 | 终端按键栏的「键盘」前 |
 | `maximize-2` | `arrow.up.left.and.arrow.down.right` | 让终端适配这块屏幕 | 终端提示条和尺寸胶囊的「适配」前 |
+| `cpu` / `memory-stick` / `hard-drive` / `square-terminal` | `cpu` / `memorychip` / `internaldrive` / `terminal` | CPU / 内存 / 磁盘 / 进程 | 电脑页顶部三只环、电脑状态页的小标题、主页磁盘提醒的图标块；进程是排行里进程行的图标块 |
 
 - 同一个意思只用一个图标；要加新图标时先在 Lucide 里找，再找对应的 SF Symbols，并在上表补一行
 - **CLI 的标**是唯一的例外：Codex、Claude Code、Antigravity 各用自家官方标的原形（Codex 用 OpenAI 的标），不自己画，也不取自 Lucide。一律画成单色，颜色和大小跟旁边的文字走，不用品牌色：三个彩色标排在一列里会比内容还抢眼。用在两类地方：会话行的第三行，列表里不止一种 CLI 时，标放在行首代替 CLI 的名字（悬停和读屏给出名字）；写着 CLI 名字的地方（新任务里选 CLI 的胶囊和选项、会话 ⋯ 菜单的第一行、设置里电脑卡的额度行），标放在名字前面，只是装饰。这些图形是各家的商标，只用来指代它们的产品。网页在 `web/src/agent-mark.tsx`，Android 在 `android/app/src/main/java/io/github/lewin671/remoteagent/ui/AgentMarks.kt`（路径数据与网页相同，写成 `ImageVector`），iOS 在 `ios/RemoteAgent/UI/Design/AgentGlyphs.swift`（路径数据，和网页同一份）和 `AgentMark.swift`（把路径读成 `Path` 并画成填充的视图）

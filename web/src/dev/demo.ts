@@ -24,7 +24,7 @@
 //   ?demo&deny=1                          inline optional denial reason
 //   ?demo&longcmd=1#/s/s-appr               an approval of a 40-line command with a long description
 
-import { t } from "../i18n";
+import { localeStore, t, type Locale } from "../i18n";
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import {
@@ -58,6 +58,7 @@ import {
   CommandSchema,
   AgentQuotaSchema,
   MachineMetaSchema,
+  ProjectSummarySchema,
   type CommandResult,
   type TerminalFrame,
 } from "../gen/remoteagent/v1/remote_pb";
@@ -80,6 +81,7 @@ import {
   ProjectPrefsSchema,
 } from "../gen/remoteagent/v1/remote_pb";
 import { PROTOCOL_VERSION } from "../protocol";
+import { DemoStatus, demoDisk, scenarioOf } from "./machine-status-demo";
 import scheduledFixture from "../../../testdata/schedules/clients.json";
 import type { ScheduleTask } from "../schedules";
 
@@ -1491,6 +1493,9 @@ export class DemoRemote extends Remote {
     );
     r.opts = q;
     r.pause = pause;
+    // ?lang=en shows the English copy, for looking at layouts.
+    const lang = q.get("lang");
+    if (lang) localeStore.overrideForTesting(lang as Locale);
     // Prepared as for real, remembering the file's name so that one named
     // with "fail" can fail its upload.
     const real = r.prepareImage;
@@ -1509,6 +1514,7 @@ export class DemoRemote extends Remote {
       return Object.assign(p, { name: (f as File).name ?? "" });
     };
     r.seed();
+    r.seedMachineStatus();
     r.seedAuthority();
     if (q.has("tables"))
       r.evs.set("s-run", [
@@ -1872,6 +1878,27 @@ export class DemoRemote extends Remote {
       } as unknown as import("../authority-pairing").AuthorityPairing;
     } });
     if (this.opts.has("archive")) this.removedDemoDevices.add("mini");
+  }
+
+  private status!: DemoStatus;
+  /** Every machine but the VPS can report its status; ?ms picks how it is (machine-status-demo.ts). */
+  private seedMachineStatus() {
+    this.status = new DemoStatus(this.opts);
+    for (const [id, m] of this.machines) {
+      if (id === "vps" || !m.meta) continue;
+      m.meta.capabilities ??= create(MachineMetaSchema, { capabilities: {} }).capabilities!;
+      m.meta.capabilities.machineStatus = true;
+      m.meta.diskStatus = demoDisk(scenarioOf(this.opts, id));
+      // The project last used, which 让 Agent 帮我清理 opens its new session in.
+      if (id === "mac" && !m.meta.projects.length) m.meta.projects = [create(ProjectSummarySchema, { path: "/Users/me/Code/foo", latestEndedMs: BigInt(now - 3 * min) })];
+    }
+  }
+
+  override async getMachineStatus(machineId: string, signal?: AbortSignal) {
+    // ms-slow=<ms>: the answer takes that long, to look at the page before its first one.
+    await this.pause(Number(this.opts.get("ms-slow")) || 120);
+    signal?.throwIfAborted();
+    return this.status.read(machineId, ["s-claude", "s-run", "s-agy"]);
   }
 
   private seed() {
@@ -2690,6 +2717,7 @@ export class DemoRemote extends Remote {
         const v = cmd.value;
         if (v.prompt?.includes("失败"))
           throw new CommandError("failed_precondition", "tmux 没有安装");
+        if (this.opts.has("disk-full")) throw new CommandError("disk_full", "mkdir /Users/me/.remote-agent/sessions: no space left on device", true);
         const id = "s-new-" + Math.random().toString(16).slice(2, 8);
         const info = create(SessionSchema, {
           id,

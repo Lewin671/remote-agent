@@ -4,6 +4,8 @@ import { t } from "../i18n";
 // box and send. Project settings persist in the sealed account prefs.
 
 import { AgentMark } from "../agent-mark";
+import { isDiskFull } from "../machine-status";
+import { DiskFullCard } from "./DiskFullCard";
 import { useKeyboardDismiss } from "../keyboard";
 import { useEffect, useRef, useState, type ReactNode, type ComponentProps } from "react";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
@@ -298,6 +300,8 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // when it ends through the Remote, like the page that sent it.
   const busy = start.running;
   const [error, setError] = useState("");
+  // The start failed because the computer's disk is full: it gets a card of its own.
+  const [diskFull, setDiskFull] = useState(false);
   const [configError, setConfigError] = useState("");
   // The project's settings do not keep an approval mode: a scheduled task's choice lives in this page only.
   const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }, keepExisting = false) =>
@@ -324,7 +328,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     setPicked({ key, agent: a });
   };
   // A failure shown for one project is not the next one's.
-  useEffect(() => { setError(""); setConfigError(""); }, [key]);
+  useEffect(() => { setError(""); setDiskFull(false); setConfigError(""); }, [key]);
 
   // What a start would send. While one's outcome is unknown, only what the
   // user changed counts: the message as sent (trimmed), and the settings
@@ -378,6 +382,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     start.running = true;
     remote.touch();
     setError("");
+    setDiskFull(false);
     try {
       const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
       // Only this request's own answer settles it.
@@ -419,6 +424,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     } catch (e) {
       current.settle(e, sent);
       setError(errorText(e));
+      setDiskFull(isDiskFull(e));
       return false;
     } finally {
       if (!current.frozen) start.images = [];
@@ -436,6 +442,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     current.abandon();
     start.images = [];
     setError("");
+    setDiskFull(false);
     redraw((n) => n + 1);
   };
   /** Holds the launch settings as they are now, once a draft begins. */
@@ -497,6 +504,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     modeText,
     create,
     busy,
+    diskFull: diskFull && !!error,
     error: error || (current.frozen && !busy ? t("new_session.unconfirmed_start") : ""),
     text,
     setText,
@@ -645,6 +653,8 @@ export function NewBox({
       <Banner kind="warn" action={t("new_session.abandon_start")} onAction={ns.abandon}>
         {ns.expired ? t("new_session.expired_start") : t("new_session.start_unknown", { reason: ns.error })}
       </Banner>
+    ) : ns.diskFull ? (
+      <DiskFullCard onUsage={() => ns.go("machine-status/" + encodeURIComponent(ns.cfg.machineId))} onRetry={() => void submit()} />
     ) : (
       <Banner kind={ns.frozen ? "warn" : "err"} action={t("common.retry")} onAction={() => void submit()}>
         {ns.frozen ? t("new_session.start_unknown", { reason: ns.error }) : t("new_session.start_failed", { reason: ns.error })}

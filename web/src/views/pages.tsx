@@ -39,6 +39,7 @@ export function page<C extends ComponentType<any>>(load: () => Promise<{ default
 const settings = () => import("./Settings");
 const security = () => import("./Security");
 const schedules = () => import("./Schedules");
+const machineStatus = () => import("./MachineStatus");
 
 /** Whether a route's page is in a file of its own, which the page has to
  * wait for even if it has the file already: a lazy part suspends the first
@@ -47,13 +48,14 @@ const schedules = () => import("./Schedules");
  * (the page being left stays until the new one is ready). */
 export function inOwnFile(route: string): boolean {
   const [kind] = route.split("/");
-  return kind === "tasks" || kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m";
+  return kind === "tasks" || kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m" || kind === "machine-status";
 }
 
 export const SettingsPage = page(() => settings().then((m) => ({ default: m.Settings })));
 export const ClientPage = page(() => settings().then((m) => ({ default: m.ClientPage })));
 export const DevicesPage = page(() => settings().then((m) => ({ default: m.DevicesPage })));
 export const MachinePage = page(() => settings().then((m) => ({ default: m.MachinePage })));
+export const MachineStatusPage = page(() => machineStatus().then((m) => ({ default: m.MachineStatusPage })));
 export const QuotaPage = page(() => settings().then((m) => ({ default: m.QuotaPage })));
 export const RemovedScreen = page(() => settings().then((m) => ({ default: m.RemovedScreen })));
 export const SecurityPage = page(() => security().then((m) => ({ default: m.SecurityPage })));

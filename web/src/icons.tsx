@@ -49,6 +49,10 @@ import {
   Share as LShare,
   Download as LDownload,
   Trash2 as LTrash2,
+  Cpu as LCpu,
+  MemoryStick as LMemoryStick,
+  HardDrive as LHardDrive,
+  SquareTerminal as LSquareTerminal,
 } from "lucide-react";
 
 /** An icon as tall as the text around it and in that text's color, drawn
@@ -138,3 +142,9 @@ export const PlayIcon = icon(LPlay, "ic", { fill: "currentColor", stroke: "none"
 export const ShareIcon = icon(LShare);
 export const DownloadIcon = icon(LDownload);
 export const TrashIcon = icon(LTrash2);
+
+/** A computer's status: the processor, the memory, the disk, and a process in the ranking. */
+export const CpuIcon = icon(LCpu);
+export const MemoryIcon = icon(LMemoryStick);
+export const DiskIcon = icon(LHardDrive);
+export const TerminalIcon = icon(LSquareTerminal);

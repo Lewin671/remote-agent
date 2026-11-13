@@ -27,7 +27,9 @@ import {
 import { machineQuotaViews, quotaSummary } from "../quota";
 import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
+import { MachineRings } from "./MachineRings";
 import { DeviceActions, ManagementEntry } from "./DeviceManagement";
+import { sizeText } from "../machine-status-view";
 import { RejoinButton } from "../Rejoin";
 import { LeaveAlert, SecurityGroup } from "./Security";
 import { RecoveryNotice } from "./authority-notice";
@@ -840,11 +842,14 @@ type Field =
 export function MachinePage({
   remote,
   id,
+  section,
   go,
   onBack,
 }: {
   remote: Remote;
   id: string;
+  /** "storage": opened at the attachment storage, as 电脑状态 sends people there. */
+  section?: string;
   go: (r: string) => void;
   onBack: () => void;
 }) {
@@ -874,6 +879,10 @@ export function MachinePage({
         () => undefined,
       );
   }, [remote, id, m?.online, attempt, agents.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Once the settings are in, the storage is there to be scrolled to.
+  useEffect(() => {
+    if (section === "storage" && st) document.getElementById("attachment-storage")?.scrollIntoView?.({ block: "start" });
+  }, [section, !!st]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!m)
     return (
       <div className="page">
@@ -1062,6 +1071,7 @@ export function MachinePage({
     <div className="page set">
       <NavBar onBack={onBack} title={name} sub={m.online ? l10n.t("common.ios_online") : ago(m.lastSeenMs) ? l10n.t("settings.online", { value: String(ago(m.lastSeenMs)) }) : l10n.t("settings.offline")} />
       <div className="body">
+        <MachineRings remote={remote} id={id} go={go} />
         <QuotaSummary m={m} go={go} />
         {versions.length > 0 && (
           <div className="grp">
@@ -1291,6 +1301,9 @@ function ImageStorageSettings({
     }
   };
   const free = usage ? usage.reclaimableBytes + usage.cacheBytes : 0n;
+  // The emergency file the daemon keeps back (B2): listed, and not for clearing.
+  const meta = remote.machines.get(id)?.meta;
+  const reserve = meta?.capabilities?.machineStatus ? (meta.diskStatus?.emergencyReserveBytes ?? 0n) : 0n;
   // What is worth a line: sizes that are not zero.
   const parts = usage
     ? [
@@ -1304,7 +1317,7 @@ function ImageStorageSettings({
     : "";
   return (
     <>
-      <div className="label">{l10n.t("settings.attachment_storage")}</div>
+      <div className="label" id="attachment-storage">{l10n.t("settings.attachment_storage")}</div>
       <div className="grp">
         <div className="row col">
           <div className="line">
@@ -1348,6 +1361,15 @@ function ImageStorageSettings({
             {usage ? storageSize(usage.cacheBytes) : "—"}
           </span>
         </div>
+        {reserve > 0n && (
+          <div className="row col">
+            <div className="line">
+              <span>{l10n.t("machine_status.emergency_reserve")}</span>
+              <span className="v">{sizeText(reserve)}</span>
+            </div>
+            <div className="hint">{l10n.t("machine_status.emergency_reserve_note")}</div>
+          </div>
+        )}
         <button
           className="row act"
           disabled={busy || !online || free === 0n}

@@ -8,7 +8,7 @@ import { ProjectPage } from "./views/Project";
 import { ManagePage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
 import {
-  ClientPage, DevicesPage, MachinePage, PairCodePage, QuotaPage, RemovedScreen,
+  ClientPage, DevicesPage, MachinePage, MachineStatusPage, PairCodePage, QuotaPage, RemovedScreen,
   ScheduleCreate, ScheduleDetail, SchedulesPage, SecurityPage, SettingsPage, inOwnFile,
 } from "./views/pages";
 import { taskRoute } from "./schedules";
@@ -158,7 +158,9 @@ export default function Workspace({ remote }: { remote: Remote }) {
   else if (kind === "c")
     page = <ClientPage remote={remote} id={arg} onBack={back} />;
   else if (kind === "m")
-    page = <MachinePage remote={remote} id={arg} go={go} onBack={back} />;
+    page = <MachinePage remote={remote} id={arg.split("/")[0]} section={arg.split("/")[1]} go={go} onBack={back} />;
+  else if (kind === "machine-status")
+    page = <MachineStatusPage key={arg} remote={remote} id={arg} go={go} onBack={back} />;
   else if (kind.startsWith("pair"))
     page = (
       <div className="center muted">

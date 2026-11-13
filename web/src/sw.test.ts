@@ -251,3 +251,24 @@ it("first activation claims clients without navigating pages or fetching a repla
   expect(navigate).not.toHaveBeenCalled();
   expect(fetch).not.toHaveBeenCalled();
 });
+
+it("opens the computer's status when a disk notification is clicked, in an open window or a new one", async () => {
+  const handlers: Record<string, (event: any) => void> = {};
+  const navigate = vi.fn(), focus = vi.fn(), openWindow = vi.fn();
+  let windows: unknown[] = [{ focus, navigate }];
+  const self = {
+    addEventListener: (kind: string, work: (event: any) => void) => { handlers[kind] = work; },
+    clients: { matchAll: async () => windows, openWindow }, location: { origin: "https://app.example.com" },
+  };
+  worker("self", "caches", "fetch", source)(self, {}, vi.fn());
+  const click = async () => {
+    let work!: Promise<void>;
+    handlers.notificationclick({ notification: { data: { machineStatus: "mac/1" }, close: vi.fn() }, waitUntil: (p: Promise<void>) => { work = p; } });
+    await work;
+  };
+  await click();
+  expect(navigate).toHaveBeenCalledWith("/#/machine-status/mac%2F1");
+  windows = [];
+  await click();
+  expect(openWindow).toHaveBeenCalledWith("/#/machine-status/mac%2F1");
+});
