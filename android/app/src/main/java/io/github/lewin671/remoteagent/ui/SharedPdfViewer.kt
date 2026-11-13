@@ -6,6 +6,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -187,7 +188,7 @@ private fun SharedPdfPages(document: SharedPdfDocument, onUnsupported: () -> Uni
                     })
                 }
                 .transformable(transform, canPan = { zoom.scale > 1f }),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 12.dp + bottom),
+            contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp + bottom),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(document.pages.indices.toList(), key = { it }) { index ->
@@ -201,6 +202,7 @@ private fun SharedPdfPages(document: SharedPdfDocument, onUnsupported: () -> Uni
                             .graphicsLayer { translationX = zoom.panX }
                             .clip(RoundedCornerShape(4.dp))
                             .background(if (bitmap == null) pal.bubble else Color.White)
+                            .border(0.5.dp, pal.sep, RoundedCornerShape(4.dp))
                             .testTag(if (bitmap == null) "pdf-placeholder-$index" else "pdf-page-$index"),
                     ) {
                         // A page can remain composed for LazyColumn prefetch after cache eviction.
