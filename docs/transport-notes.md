@@ -70,7 +70,9 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 
 **平台资料推断，未经手机实测**：Android 后台调度/Doze 与 iOS 挂起不能由 DataChannel 保活保证；NWPathMonitor/Android NetworkMonitor 不会替应用恢复业务。资料见 [Android 网络状态](https://developer.android.com/develop/connectivity/network-ops/reading-network-state)、[Doze](https://developer.android.com/training/monitoring-device-state/doze-standby)、[Apple data-only WebRTC 后台答复](https://developer.apple.com/forums/thread/799259)、[NWPathMonitor](https://developer.apple.com/documentation/network/nwpathmonitor)。本次没有操作真机、真实 Wi-Fi/蜂窝、Safari/PWA，也没有原生 SDK 运行、商店归档、30 分钟耗电/内存或生产身份绑定验证；这些项目统一列入 [待确认](plan.md#传输模块与直连)。
 
-## 5. 当前设计 checkout 的源码核对
+## 5. 设计前源码基线的核对
+
+本节是协议 13 的历史审计快照，不描述当前分支的所有权、结果定案或安全同步实现；当前规则见 [architecture §10](architecture.md#10-报文同步和指令)，本地验收范围见[验收记录](acceptance-notes.md#传输-0a-前三步本地实现2026-11-13)。
 
 **源码证据，未运行行为测试（2026-11-12，复核提交 `d38905f4`、协议 13；相对 `3dd329d5` 仅文档变化）**：本次只核对代码，不将旧原型数据当新基线复验。
 
