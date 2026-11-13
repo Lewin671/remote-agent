@@ -67,6 +67,12 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 			defer cancel()
 			res = c.execute(callCtx, h.Session, cmd)
 		}
+		// These codes cannot prove that no native side effect happened.
+		// Leave the accepted entry started and send no authenticated final result.
+		switch res.ErrorCode {
+		case "canceled", "deadline_exceeded", "aborted":
+			return nil, deviceauth.ErrOutcomeUnknown
+		}
 		return proto.Marshal(res)
 	})
 	if err != nil {
@@ -270,6 +276,19 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	if err != nil {
 		out.Kind = nil
 		out.ErrorCode = connect.CodeOf(err).String()
+		// Some Backend methods return context errors directly rather than
+		// passing through the local RPC error mapper.
+		switch {
+		case errors.Is(err, context.Canceled):
+			out.ErrorCode = connect.CodeCanceled.String()
+		case errors.Is(err, context.DeadlineExceeded):
+			out.ErrorCode = connect.CodeDeadlineExceeded.String()
+		}
+		if _, schedule := cmd.Kind.(*pb.Command_Schedule); schedule && out.ErrorCode == connect.CodeAborted.String() {
+			// A rejected schedule CAS is a trustworthy, final conflict, not an
+			// interrupted execution. Keep that distinction on the wire.
+			out.ErrorCode = "revision_conflict"
+		}
 		var ce *connect.Error
 		if errors.As(err, &ce) {
 			out.ErrorMessage = ce.Message()

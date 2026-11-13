@@ -58,7 +58,7 @@ func TestUserIOCallbackDoesNotHoldSecurityGate(t *testing.T) {
 			close(release)
 			select {
 			case err := <-finished:
-				if err != nil && !errors.Is(err, ErrUnknown) {
+				if err != nil && !errors.Is(err, ErrOutcomeUnknown) {
 					t.Error(err)
 				}
 			case <-time.After(time.Second):
@@ -71,7 +71,7 @@ func TestUserIOCallbackDoesNotHoldSecurityGate(t *testing.T) {
 				}
 				defer reopened.Close()
 				_, err = reopened.Accept(wire, nil, now, func(Header, []byte) ([]byte, error) { t.Error("accepted request executed twice"); return nil, nil })
-				if err != nil && !errors.Is(err, ErrUnknown) {
+				if err != nil && !errors.Is(err, ErrOutcomeUnknown) {
 					t.Fatal(err)
 				}
 			}

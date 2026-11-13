@@ -26,6 +26,8 @@ func rpcErr(err error) error {
 		return connect.NewError(connect.CodeDeadlineExceeded, err)
 	case errors.Is(err, context.Canceled):
 		return connect.NewError(connect.CodeCanceled, err)
+	case errors.Is(err, agent.ErrDeliveryUnconfirmed):
+		return connect.NewError(connect.CodeAborted, err)
 	case errors.Is(err, errNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errRemoteAnswerTruncated), errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning), errors.Is(err, errUnsettled),

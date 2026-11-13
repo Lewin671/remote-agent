@@ -45,7 +45,7 @@ func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 		t.Fatalf("Install after Close = %v", err)
 	}
 	close(release)
-	if err := <-finished; !errors.Is(err, ErrUnknown) {
+	if err := <-finished; !errors.Is(err, ErrOutcomeUnknown) {
 		t.Fatalf("late result = %v", err)
 	}
 	reopened, err := OpenEndpoint(path)
@@ -53,7 +53,7 @@ func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if _, err := reopened.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Fatal("executed twice"); return nil, nil }); !errors.Is(err, ErrUnknown) {
+	if _, err := reopened.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { t.Fatal("executed twice"); return nil, nil }); !errors.Is(err, ErrOutcomeUnknown) {
 		t.Fatalf("unfinished accepted request = %v", err)
 	}
 }

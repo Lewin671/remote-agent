@@ -29,7 +29,7 @@ func TestAcceptedIncrementalExpiryAndDuplicates(t *testing.T) {
 		if _, _, err := e.startAccepted(tc.key, 20, 10, tc.durable); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := e.startAccepted(tc.key, 20, 10, tc.durable); err != ErrUnknown {
+		if _, _, err := e.startAccepted(tc.key, 20, 10, tc.durable); err != ErrOutcomeUnknown {
 			t.Fatalf("in progress: %v", err)
 		}
 		if err := e.finishAccepted(tc.key, []byte(tc.key), false, tc.durable); err != nil {
@@ -97,7 +97,7 @@ func TestAcceptedCapacityEdges(t *testing.T) {
 	if err := e.finishAccepted("replacement", result, false, false); err != ErrCapacity {
 		t.Fatalf("result cap: %v", err)
 	}
-	if _, _, err := e.startAccepted("replacement", 40, 30, false); err != ErrUnknown {
+	if _, _, err := e.startAccepted("replacement", 40, 30, false); err != ErrOutcomeUnknown {
 		t.Fatalf("lost unknown outcome: %v", err)
 	}
 	checkAcceptedIndex(t, e)
@@ -154,7 +154,7 @@ func TestAcceptedPersistenceFailureRollsBackDeltas(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkAcceptedIndex(t, e)
-	if _, _, err := e.startAccepted("next", 40, 30, true); err != ErrUnknown {
+	if _, _, err := e.startAccepted("next", 40, 30, true); err != ErrOutcomeUnknown {
 		t.Fatalf("restart lost in-progress entry: %v", err)
 	}
 	if _, _, err := e.startAccepted("expired", 20, 10, false); err != ErrExpired {

@@ -80,7 +80,7 @@ func TestBlockedDirectoryReadReturnsDeadlineAndDoesNotPreventReconnect(t *testin
 		}
 	})
 	var ce *remoteclient.CommandError
-	if !errors.As(err, &ce) || ce.Code != "deadline_exceeded" {
+	if !errors.As(err, &ce) || ce.Code != "unknown" {
 		t.Fatalf("phone result=%v", err)
 	}
 	// The raw OS-reader replacement remains blocked through stream teardown/reconnect.

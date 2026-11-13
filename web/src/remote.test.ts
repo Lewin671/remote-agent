@@ -29,7 +29,7 @@ it("reuses a request slot only when the outcome is unknown", () => {
   // Timed out or cut off: the command may have run; a retry must reuse
   // the slot so the daemon answers from its log.
   expect(uncertain(new CommandError("unknown", "连接超时"))).toBe(true);
-  expect(uncertain(new CommandError("aborted", "outcome unknown"))).toBe(true);
+  expect(uncertain(new CommandError("aborted", "outcome unknown", true))).toBe(true);
   expect(uncertain(new ConnectError("reset", Code.Internal))).toBe(true);
   // A definite answer: the next attempt starts afresh.
   expect(uncertain(new CommandError("unavailable", "电脑不在线"))).toBe(false);
@@ -1069,3 +1069,43 @@ it.each(["complete", "missing", "final", "transient", "close"])(
     } finally { r.stop(); vi.useRealTimers(); }
   },
 );
+
+// Same vectors as interruptedResultsRemainUnknown on Android/iOS/Go.
+it("interruptedResultsRemainUnknown", () => {
+  for (const code of ["canceled", "deadline_exceeded", "aborted"]) {
+    expect(uncertain(new CommandError(code, "interrupted", true)), code).toBe(true);
+    expect(uncertain(new CommandError(code, "local refusal", false)), code).toBe(false);
+  }
+  for (const code of ["revision_conflict", "failed_precondition"])
+    for (const fromDaemon of [false, true])
+      expect(uncertain(new CommandError(code, "refused", fromDaemon))).toBe(false);
+});
+
+it("does not renew an interrupted send at its deadline", async () => {
+  const r = await probe();
+  const error = new CommandError("deadline_exceeded", "interrupted", true);
+  const command = vi.spyOn(r, "command").mockRejectedValue(error);
+  const slot = { requestId: "original-request", deadline: Date.now() - 1 };
+  await expect(r.sendMessage("s1", "hello", "stable-send", slot)).rejects.toBe(error);
+  expect(command).toHaveBeenCalledTimes(1);
+});
+
+it("retries an unsigned in-flight abort with the same request slot", async () => {
+  const r = await probe();
+  const ids: string[] = [];
+  const forward = vi.fn(async ({ command }: { command: Envelope }) => {
+    ids.push(fromBinary(HeaderSchema, command.header).requestId);
+    throw new ConnectError("no final result", Code.Aborted);
+  });
+  (r as unknown as { api: object }).api = { forward };
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const slot = newSlot();
+    const result = r.machineCommand(r.machine, { case: "listModels", value: {} }, slot).catch(e => e);
+    // Let crypto and authorization settle before advancing the retry timers.
+    await vi.waitFor(() => expect(forward).toHaveBeenCalled());
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(uncertain(await result)).toBe(true);
+    expect(ids).toEqual(Array(4).fill(slot.requestId));
+  } finally { vi.useRealTimers(); }
+});

@@ -488,7 +488,7 @@ class ScheduleRepository(
             refresh(machine)
             result
         } catch (e: CommandException) {
-            if (e.code == "aborted" || e.code == "failed_precondition" && e.message.orEmpty().contains("revision", true)) {
+            if (e.fromDaemon && e.code == "revision_conflict") {
                 refresh(machine)
                 throw ScheduleConflictException()
             }

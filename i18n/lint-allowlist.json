@@ -758,5 +758,10 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
     "literal": "window:$name",
     "reason": "Stable quota-pool identity, separate from the translated section title; never rendered as product copy."
+  },
+  {
+    "path": "internal/deviceauth/codec.go",
+    "literal": "security: accepted operation has no trustworthy result",
+    "reason": "Internal accepted-log error sentinel, compared by identity. Relay command handling replaces it with the existing unknown-outcome response; never rendered as product copy."
   }
 ]

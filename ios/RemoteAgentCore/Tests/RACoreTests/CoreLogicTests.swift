@@ -16,6 +16,28 @@ import Testing
         }
     }
 
+    @Test func interruptedResultsRemainUnknown() {
+        for code in ["canceled", "deadline_exceeded", "aborted"] {
+            let maker = Maker()
+            let a = Attempt()
+            let first = try! a.next(maker.make)
+            let error = CommandError(code, "interrupted", fromDaemon: true)
+            #expect(uncertain(error))
+            a.settle(error)
+            #expect(a.frozen)
+            #expect(try! a.next(maker.make) === first)
+            #expect(!uncertain(CommandError(code, "local refusal")))
+        }
+    }
+
+    @Test func trustedRevisionConflictIsFinal() {
+        for code in ["revision_conflict", "failed_precondition"] {
+            for fromDaemon in [false, true] {
+                #expect(!uncertain(CommandError(code, "refused", fromDaemon: fromDaemon)))
+            }
+        }
+    }
+
     @Test func anUnknownOutcomeIsRetriedAsItWas() throws {
         let m = Maker()
         let a = Attempt()
@@ -65,7 +87,7 @@ import Testing
         // The retry comes back expired: still unknown, and never sealed again.
         let e = a.settle(
             CommandError(
-                "deadline_exceeded", "the command expired before it reached the machine",
+                CommandError.expired, "the command expired before it was sent",
                 fromDaemon: true))
         #expect((e as? CommandError)?.code == CommandError.unknownOutcome)
         #expect(a.frozen && a.expired)

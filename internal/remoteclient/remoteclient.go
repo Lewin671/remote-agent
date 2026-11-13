@@ -191,9 +191,21 @@ func NewRequestID() string {
 // CommandError is an error the daemon reported for a command.
 type CommandError struct {
 	Code, Message string
+	FromDaemon    bool
 }
 
 func (e *CommandError) Error() string { return e.Code + ": " + e.Message }
+
+// Uncertain reports whether retrying must preserve the request ID and deadline.
+// Local errors before dispatch are definite; unsigned transport failures are
+// normalized to unknown by Forward. Authentication cannot settle interruption.
+func Uncertain(err error) bool {
+	var ce *CommandError
+	if !errors.As(err, &ce) {
+		return false
+	}
+	return ce.Code == "unknown" || (ce.FromDaemon && (ce.Code == "canceled" || ce.Code == "deadline_exceeded" || ce.Code == "aborted"))
+}
 
 // Seal builds a sealed command for the given request ID and deadline.
 func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time, cmd *pb.Command) (*pb.Envelope, error) {
@@ -253,7 +265,7 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 		return nil, &CommandError{Code: "unknown", Message: "the command result failed authentication; retry the same request"}
 	}
 	if out.ErrorCode != "" {
-		return out, &CommandError{Code: out.ErrorCode, Message: out.ErrorMessage}
+		return out, &CommandError{Code: out.ErrorCode, Message: out.ErrorMessage, FromDaemon: true}
 	}
 	return out, nil
 }

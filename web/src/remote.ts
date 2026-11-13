@@ -254,7 +254,7 @@ export class CommandError extends Error {
  * the next attempt start afresh. */
 export function uncertain(e: unknown): boolean {
   if (e instanceof CommandError)
-    return e.code === "unknown" || e.code === "aborted";
+    return e.code === "unknown" || (e.fromDaemon && ["canceled", "deadline_exceeded", "aborted"].includes(e.code));
   return e instanceof ConnectError;
 }
 
@@ -738,7 +738,7 @@ export class Remote {
       return task;
     } catch (error) {
       attempt.settle(error, sent);
-      if (error instanceof CommandError && error.fromDaemon && error.code === "aborted") {
+      if (error instanceof CommandError && error.fromDaemon && error.code === "revision_conflict") {
         attempt.abandon(); // definite schedule revision conflict
         await this.refreshSchedules(machineId);
         throw new ScheduleRevisionError(l10n.t("errors.the_task_was_just_changed_updated_to_the_latest"));
@@ -3273,7 +3273,8 @@ export class Remote {
         }
         return msg;
       } catch (e) {
-        // The daemon's answer is final; only transport failures are retried.
+        // Only transport failures are automatically retried here. Interrupted
+        // daemon answers still freeze the caller's request slot.
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
         if (ce.code === Code.Unauthenticated && attempt < 3) {
@@ -3294,6 +3295,7 @@ export class Remote {
           Code.Unknown,
           Code.Internal,
           Code.Canceled,
+          Code.Aborted,
         ].includes(ce.code);
         if (unknown) mayHaveRun = true;
         if (unknown && attempt < 3 && Date.now() + 2000 < deadline) {
@@ -3341,6 +3343,7 @@ export class Remote {
       // A send whose outcome was unknown is never sealed afresh.
       if (
         wasUnknown ||
+        uncertain(e) ||
         !(e instanceof CommandError) ||
         e.code !== "deadline_exceeded" ||
         Date.now() < slot.deadline

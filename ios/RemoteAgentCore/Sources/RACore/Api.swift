@@ -290,9 +290,9 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     }
 
     /// The command may or may not have run; retrying with the same request ID is safe.
-    /// A daemon that stopped halfway through it answers "aborted" ever after.
+    /// Authentication alone does not make an interrupted execution final.
     public var unknown: Bool {
-        code == CommandError.unknownOutcome || (fromDaemon && code == "aborted")
+        code == CommandError.unknownOutcome || (fromDaemon && ["canceled", "deadline_exceeded", "aborted"].contains(code))
     }
     public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.outcomeDetail == rhs.outcomeDetail }
     public var errorDescription: String? { message }

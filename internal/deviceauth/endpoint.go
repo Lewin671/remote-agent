@@ -3,6 +3,7 @@ package deviceauth
 import (
 	"bytes"
 	"container/heap"
+	"context"
 	"crypto/ed25519"
 	"database/sql"
 	"errors"
@@ -270,7 +271,7 @@ func (e *Endpoint) persistAccepted(changed string, a accepted, pruned []string, 
 func (e *Endpoint) startAccepted(key string, deadline, now uint64, persist bool) ([]byte, bool, error) {
 	if a, ok := e.data.Accepted[key]; ok {
 		if !a.Done {
-			return nil, false, ErrUnknown
+			return nil, false, ErrOutcomeUnknown
 		}
 		if a.Failed {
 			return nil, false, ErrBackend
@@ -1465,7 +1466,12 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 	if e.closed {
 		// Close must not wait for a callback. Keep its durable in-progress
 		// entry unknown, so a reconnect/retry cannot execute it again.
-		return nil, ErrUnknown
+		return nil, ErrOutcomeUnknown
+	}
+	// Cancellation can follow native writes. Keep the durable started entry,
+	// rather than recording either a final failure or an empty success.
+	if errors.Is(callErr, context.Canceled) || errors.Is(callErr, context.DeadlineExceeded) || errors.Is(callErr, ErrOutcomeUnknown) {
+		return nil, ErrOutcomeUnknown
 	}
 	if err := e.finishAccepted(key, out, callErr != nil, persist); err != nil {
 		return nil, err
@@ -1487,7 +1493,7 @@ func (e *Endpoint) lookupAccepted(key string) ([]byte, bool, error) {
 		return nil, false, nil
 	}
 	if !a.Done {
-		return nil, false, ErrUnknown
+		return nil, false, ErrOutcomeUnknown
 	}
 	if a.Failed {
 		return nil, false, ErrBackend

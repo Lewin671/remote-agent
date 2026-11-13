@@ -50,6 +50,7 @@ type fakeBackend struct {
 	term          *fakeTerminal
 	resolved      []*pb.ResolveApprovalRequest
 	stopDeadlines chan time.Time
+	sendResult    func(context.Context) error
 	// images are display copies by image ID; imageResults the IDs whose
 	// upload finished, in order.
 	origins []*pb.Origin
@@ -204,6 +205,11 @@ func (f *fakeLocal) Send(ctx context.Context, req *connect.Request[pb.SendReques
 	f.b.origins = append(f.b.origins, agent.OriginFrom(ctx))
 	n := len(f.b.sends)
 	f.b.mu.Unlock()
+	if f.b.sendResult != nil {
+		if err := f.b.sendResult(ctx); err != nil {
+			return nil, err
+		}
+	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(n)}), nil
 }
 
@@ -804,8 +810,8 @@ func TestStopUsesTheSealedCommandDeadline(t *testing.T) {
 		}
 	})
 	var commandErr *remoteclient.CommandError
-	if !errors.As(err, &commandErr) || commandErr.Code != connect.CodeDeadlineExceeded.String() {
-		t.Fatalf("stop result = %v, want command deadline exceeded", err)
+	if !errors.As(err, &commandErr) || commandErr.Code != "unknown" {
+		t.Fatalf("stop result = %v, want unknown after command deadline", err)
 	}
 	if late := time.Since(deadline); late > 650*time.Millisecond {
 		t.Fatalf("stop returned %s after its command deadline", late)
