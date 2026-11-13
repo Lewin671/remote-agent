@@ -167,6 +167,7 @@ private struct HomeTimeline: View {
                     HomeHeadlineView(headline: headline, state: state)
                 }
                 HomeNotices(state: state).padding(.horizontal, DS.Space.card).padding(.top, 12)
+                HomeDiskReminders(state: state)
                 if list.showFilter {
                     FilterField(text: $query).padding(.horizontal, DS.Space.card).padding(.top, 18).padding(.bottom, 4)
                         .accessibilityIdentifier("title-filter")

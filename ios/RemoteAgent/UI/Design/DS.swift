@@ -50,6 +50,10 @@ enum DS {
     static let fill2 = dynamic(0x000000, 0xFFFFFF, alpha: (0.09, 0.15))
     /// Your message's bubble.
     static let bubble = dynamic(0xF0F0F3, 0x2C2C2E)
+    /// The cards of 电脑状态 (`lift`): white, one grey up from the black page in the dark.
+    static let lift = dynamic(0xFFFFFF, 0x1C1C1E)
+    /// The page 电脑状态 is drawn on, behind its `lift` cards: the mockup's `gbg` there (F2F2F7, pure black in the dark).
+    static let liftPage = dynamic(0xF2F2F7, 0x000000)
 
     // Text and graphics.
 
@@ -82,6 +86,8 @@ enum DS {
     static let orangeSoft = dynamic(0xFFF4E6, 0xFF9F2E, alpha: (1, 0.14))
     /// Online.
     static let green = dynamic(0x248A3D, 0x32D15D)
+    /// The middle of the memory pressure scale, between its green and its red (`yellow`): nothing else.
+    static let yellow = dynamic(0xFFCC00, 0xFFD60A)
     /// Danger and full access; failures.
     static let red = dynamic(0xD70015, 0xFF5A50)
 

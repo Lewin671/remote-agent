@@ -9,32 +9,43 @@ import UIKit
 
 /// A settings page: the grey surface with its readable column, the
 /// connection bar at the top, and the groups under it, scrolling. `refresh`
-/// is what pulling down does.
+/// is what pulling down does. `scrollTo` is the `id` of a group to bring to the top once `ready` (it is
+/// drawn only then): where a link into a page's middle leads.
 struct SettingsPage<Content: View>: View {
     private let refresh: (@MainActor @Sendable () async -> Void)?
+    private let scrollTo: (id: AnyHashable, ready: Bool)?
     private let content: Content
 
     init(
-        refresh: (@MainActor @Sendable () async -> Void)? = nil, @ViewBuilder content: () -> Content
+        refresh: (@MainActor @Sendable () async -> Void)? = nil, scrollTo: (id: AnyHashable, ready: Bool)? = nil,
+        @ViewBuilder content: () -> Content
     ) {
         self.refresh = refresh
+        self.scrollTo = scrollTo
         self.content = content()
     }
 
     var body: some View {
         Page(gray: true) {
-            let list = ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    ConnectionBar()
-                    content
-                    Color.clear.frame(height: 24)
+            ScrollViewReader { proxy in
+                let list = ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ConnectionBar()
+                        content
+                        Color.clear.frame(height: 24)
+                    }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
-            }
-            if let refresh {
-                list.refreshable { await refresh() }.startAtEndForScreenshots()
-            } else {
-                list.startAtEndForScreenshots()
+                .task(id: scrollTo?.ready) {
+                    guard let scrollTo, scrollTo.ready else { return }
+                    try? await Task.sleep(for: .milliseconds(80))
+                    proxy.scrollTo(scrollTo.id, anchor: .top)
+                }
+                if let refresh {
+                    list.refreshable { await refresh() }.startAtEndForScreenshots()
+                } else {
+                    list.startAtEndForScreenshots()
+                }
             }
         }
     }
@@ -274,6 +285,7 @@ extension View {
                 $0.reclaimableBytes = 96 << 20
                 $0.reservedBytes = 3 << 20
                 $0.cacheBytes = 41 << 20
+                $0.emergencyReserveBytes = 256 << 20
             }
         }
     }

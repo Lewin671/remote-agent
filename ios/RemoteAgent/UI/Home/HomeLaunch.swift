@@ -74,6 +74,13 @@ enum HomeLaunch {
                 s.machines["mac"] = machine(online: false)
             case "firstRun":
                 s.machines["mac"] = machine(online: true)
+            case "diskLow":
+                s.machines["mac"]?.meta?.diskStatus = .with { $0.totalBytes = 460_000_000_000; $0.availableBytes = 8_200_000_000; $0.pressure = .warning }
+            case "diskCritical":
+                s.machines["mac"]?.meta?.diskStatus = .with { $0.totalBytes = 460_000_000_000; $0.availableBytes = 1_200_000_000; $0.pressure = .critical }
+            case "diskTwo":
+                s.machines["mac"]?.meta?.diskStatus = .with { $0.totalBytes = 460_000_000_000; $0.availableBytes = 8_200_000_000; $0.pressure = .warning }
+                s.machines["vps"]?.meta?.diskStatus = .with { $0.totalBytes = 200_000_000_000; $0.availableBytes = 1_200_000_000; $0.pressure = .critical }
             case "listFailed":
                 s.sessionsListed = false
                 s.sessionsError = L10n.errorsConnectionTimedOut()

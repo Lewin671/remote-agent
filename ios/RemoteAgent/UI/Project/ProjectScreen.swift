@@ -148,7 +148,8 @@ struct ProjectPageView: View {
                         models: summaryModels.list,
                         onMachine: { settings = ProjectSettingsRequest(page: .machine) },
                         onModel: { settings = ProjectSettingsRequest(page: .model) },
-                        onMachineSettings: { nav.open(.machine(id: $0), from: route) })
+                        onMachineSettings: { nav.open(.machine(id: $0), from: route) },
+                        onMachineStatus: { nav.open(.machineStatus(id: $0), from: route) })
                 }
             }
         }

@@ -35,6 +35,8 @@ struct NewSessionBox: View {
     var onModel: () -> Void = {}
     /// Opens a computer's page in 设置, where its default mode is.
     var onMachineSettings: (String) -> Void = { _ in }
+    /// Opens a computer's 电脑状态, from the card of a start that failed on a full disk.
+    var onMachineStatus: (String) -> Void = { _ in }
     /// Drawn as 新任务's whole page (`NewTaskScreen`) rather than as the box at the bottom of a project's page.
     var sheet: NewTaskChrome?
     @Environment(AppModel.self) private var model
@@ -93,6 +95,7 @@ struct NewSessionBox: View {
             switch HomeLaunch.value("-projectStart") {
             case "running": draft.show(running: true)
             case "failed": draft.show(error: L10n.errorsIosThisDirectoryDoesNotExist())
+            case "diskFull": draft.show(error: L10n.machineStatusDiskFull(), diskFull: true)
             case "unknown": draft.show(error: L10n.approvalIosUnknownResult(), frozen: true)
             case "expired": draft.show(frozen: true, expired: true)
             default: break
@@ -353,6 +356,8 @@ struct NewSessionBox: View {
         case .failed(let text):
             // 重试 is ↑ again: it is offered when ↑ is.
             Banner(text, tone: .error, action: canStart ? L10n.commonRetry() : nil, onAction: { start(draft) })
+        case .diskFull(let machine):
+            LaunchFailedCard(onUsage: { onMachineStatus(machine) }, onRetry: canStart ? { start(draft) } : nil)
         case .unknown(let text):
             Banner(text, tone: .warn, action: L10n.newSessionIosAbandon(), onAction: { draft.abandon() })
         }
@@ -388,5 +393,43 @@ struct ProjectSummaryChip: View {
         .accessibilityHint(L10n.projectsIosSettings())
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("project-settings-summary")
+    }
+}
+
+/// The start that failed because the computer's disk is full (ui-spec B3, 界面稿 v2 「启动失败」): what happened, and two
+/// buttons under it: 查看占用 (to 电脑状态) and 重试.
+private struct LaunchFailedCard: View {
+    let onUsage: () -> Void
+    let onRetry: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L10n.machineStatusDiskFull()).font(.headline).foregroundStyle(DS.ink)
+                Text(L10n.machineStatusLaunchFailedBody()).font(.subheadline).foregroundStyle(DS.ink2)
+            }
+            .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            Rectangle().fill(DS.sep).frame(height: 0.5)
+            HStack(spacing: 0) {
+                button(L10n.machineStatusViewUsage(), weight: .regular, action: onUsage)
+                if let onRetry {
+                    Rectangle().fill(DS.sep).frame(width: 0.5)
+                    button(L10n.commonRetry(), weight: .semibold, action: onRetry)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .background(DS.gbg, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityIdentifier("launch-failed-disk-full")
+    }
+
+    private func button(_ title: String, weight: Font.Weight, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.body.weight(weight)).foregroundStyle(DS.blue).multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 46).padding(.horizontal, 8).contentShape(Rectangle())
+        }
+        .buttonStyle(RowPressStyle())
     }
 }

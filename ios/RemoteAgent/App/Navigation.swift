@@ -51,6 +51,10 @@ enum Route: Hashable, Sendable {
     case accountSecurity, recoveryCode, handoff, rePair
     /// A computer's details and settings.
     case machine(id: String)
+    /// A computer's details, scrolled to 附件存储 (the disk card and 「remote-agent 的占用」 lead here).
+    case machineStorage(id: String)
+    /// 电脑状态: a computer's CPU, memory, disk and what uses them.
+    case machineStatus(id: String)
     /// A client's details.
     case client(id: String)
     /// A computer's account quotas.
@@ -91,6 +95,8 @@ enum Route: Hashable, Sendable {
         case .devices: "devices"
         case .addDevice(let id): id.isEmpty ? "add-device" : "add-device/" + id
         case .machine(let id): "machine/\(id)"
+        case .machineStorage(let id): "machine-storage/\(id)"
+        case .machineStatus(let id): "machine-status/\(id)"
         case .client(let id): "client/\(id)"
         case .quota(let machine): "quota/\(machine)"
         case .notifications: "notifications"
@@ -145,6 +151,8 @@ enum Route: Hashable, Sendable {
         case ("devices", true): self = .devices
         case ("add-device", _): self = .addDevice(replacing: rest)
         case ("machine", false): self = .machine(id: rest)
+        case ("machine-storage", false): self = .machineStorage(id: rest)
+        case ("machine-status", false): self = .machineStatus(id: rest)
         case ("client", false): self = .client(id: rest)
         case ("quota", false): self = .quota(machine: rest)
         case ("notifications", true): self = .notifications
@@ -260,6 +268,8 @@ extension Route {
         case .devices: DevicesScreen()
         case .addDevice(let id): AddDeviceScreen(replacing: id)
         case .machine(let id): MachineScreen(id: id)
+        case .machineStorage(let id): MachineScreen(id: id, scrollToStorage: true)
+        case .machineStatus(let id): MachineStatusScreen(id: id)
         case .client(let id): ClientScreen(id: id)
         case .quota(let machine): QuotaScreen(machine: machine)
         case .notifications: NotificationsScreen()

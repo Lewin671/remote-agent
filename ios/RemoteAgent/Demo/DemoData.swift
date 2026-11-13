@@ -157,7 +157,10 @@ enum Demo {
                 meta.home = home
                 meta.os = "darwin"
                 meta.protocolVersion = protocolVersion
-                meta.capabilities = .with { $0.approvalAlways = true; $0.scheduledTasks = true }
+                meta.capabilities = .with { $0.approvalAlways = true; $0.scheduledTasks = true; $0.machineStatus = true }
+                meta.diskStatus = .with { $0.totalBytes = 460_000_000_000; $0.availableBytes = 42_000_000_000; $0.pressure = .normal }
+                // The project a cleanup session starts in: the one used last.
+                meta.projects = [.with { $0.path = foo; $0.latestCreatedMs = now - 3_600_000 }]
                 meta.agents = agents.map { agent in
                     .with {
                         $0.agent = agent

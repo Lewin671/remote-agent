@@ -133,6 +133,17 @@ CryptoKit 的 Ed25519 签名带随机盐，同一条消息两次签名不同，�
 
 SwiftTerm 固定在 1.11.2：1.12 起带 Metal 着色器，构建需要 Xcode 另装的 Metal Toolchain 组件；1.19 起带构建插件，命令行构建要跳过插件校验。升级前先决定接不接受这两项。
 
+## 电脑状态与磁盘保护
+
+界面规范和字段见 [architecture §21](architecture.md#21-电脑状态与磁盘保护)，长相见界面稿 v2 第 ② 部分，三端共同的取舍见 Android 一节（[android-client.md](android-client.md#电脑状态与磁盘保护)）。iOS 的做法：
+
+- 取数和轮询沿用 RACore 的 `MachineStatusController`，每个页面一个 `MachineStatusFeed`（`UI/Machine/MachineStatusFeed.swift`）：页面可见、App 在前台、电脑在线且 `machineStatus` 能力位为真才请求，离开页面就停，电脑页的三只环每 10 秒、状态页每 2 秒。显示用的纯值（环、两张小卡、排行行、曲线几何、主页提醒、清理草稿、换主图的淡入淡出时间）在 `RACore/MachineStatusModel.swift`，规则与 Android 的 `MachineStatusModel.kt` 一致，测试在 `MachineStatusModelTests`。
+- 状态页是 `Route.machineStatus`，页底 `liftPage`、卡片 `lift`（亮色白、暗色 #1c1c1e，对应系统的 grouped 配色）；`yellow` 进了 `DS`。主图和两张小卡由一个自定义 `Layout`（`SwapLayout`）排：每个指标有一块底和两份内容（主图、小卡），换主图时只有底在 350 毫秒内移动变形，内容按线性时间淡出（前 100 毫秒）和淡入（后 120 毫秒），下面的排行跟着布局高度走。逐位翻动用系统的 `numericText` 过渡，曲线用 `TimelineView` 加 `Canvas` 匀速滑动，按住曲线用不限最小距离的 `DragGesture`（它拿走起手在曲线上的触摸，页面不跟着滚）。减弱动态效果时换主图、数字、排行位移都直接到位，曲线每个采样点整格左移。辅助功能字号下，三只环改成上下排，两张小卡各占一行。
+- 附件存储在 iOS 上同 Android，是电脑页里的一节：磁盘小卡和「remote-agent 的占用」走 `Route.machineStorage`，打开电脑页并滚到这一节；应急预留是该组里不可清理的一行（沿用该组的 MiB 写法，为 0 不显示）。
+- 新建会话因磁盘满失败，`NewSessionProgress.diskFull` 让提示区出现「这台电脑磁盘满了」卡片（查看占用、重试）；发送、上传等其他路径沿用 `CommandError` 里 `disk_full` 的本机语言文案，加在各自原有前缀后面。「让 Agent 帮我清理」用 `NewSessionDrafts.prepareCleanup` 把电脑、最近项目和提示词写进该项目的草稿（追加、不重复），再打开新任务页；没有项目时先选目录。
+- iOS 还没有 APNs 通道，磁盘提醒的系统通知没做，只有 App 内的主页提醒卡和各处状态；RACore 的 `receiveMachineDiskNotification` 已能解密并生成文案。
+- 看示例数据：`-demo -demoRoute machine-status/mac -machineStatus tight` 等，参数列表在 `App/Launch.swift` 开头；界面测试 `MachineStatusGestureTests` 用真实触摸验证环入口、按住曲线不滚动页面、换主图。
+
 ## 还不能做的
 
 尚未实现或仍需确认的能力，见 [plan.md](plan.md) 的「待确认」：

@@ -13,7 +13,8 @@
 //   -demoRemoved                     with -demo: the 已被移出账户 notice
 //   -demoLink <waiting|noNetwork|noServer>   with -demo: a connection that is down
 //   -demoTweak <a,b,…>               with -demo: changes to the sample account: mismatch, fullAccess, loading,
-//                                    noneOnline, firstRun, listFailed, added, machineOffline (UI/Home/HomeLaunch.swift)
+//                                    noneOnline, firstRun, listFailed, added, machineOffline, diskLow, diskCritical, diskTwo
+//                                    (UI/Home/HomeLaunch.swift)
 //
 // A real account (here)
 //   -joinSecret <ra1…>               join with an account secret (an account already on the device is
@@ -41,7 +42,7 @@
 //   -homeCard <full|deny>            the home page's dark card with its command opened, or writing why not
 //   -projectSheet <main|machine|model|context|mode>   项目设置 on a page
 //   -projectDraft <text>             something written in the new-session box
-//   -projectStart <running|failed|unknown|expired>   how a start stands
+//   -projectStart <running|failed|diskFull|unknown|expired>   how a start stands
 //   -projectEnded                    a project's 已结束 opened
 //   -projectsMenu <path> / -projectsRemove <path> / -projectsAdd / -projectsElsewhere
 //                                    项目管理's menu, dialog, sheet, notice
@@ -65,6 +66,16 @@
 //                                    mismatch; connection: checking, serverDown, machineDown; image-storage: empty,
 //                                    clearing; licenses: <a licence's id>; client/<id>, devices: renaming, removing
 //   -settingsEnd                     a settings page scrolled to its end
+//
+// 电脑状态, with -demo (Demo/MachineStatusDemo.swift, UI/Machine/MachineStatusScreen.swift)
+//   -demoRoute machine-status/mac    the page; machine/mac its three rings; machine-storage/mac 附件存储 on that page
+//   -machineStatus <normal|tight|few|loading|failed|stale>   what the computer says: tight is a disk under 2 GB and a
+//                                    memory under pressure; few a single sample; loading never answers; failed never
+//                                    answers at all; stale answers twice and then no more
+//   -machineMain memory              memory as the main chart      -machineList processes   the ranking of processes
+//   -machineScrub <0...1>            looking back, that far along the curve
+//   -machineSwap <ms>                a still frame of the swap of memory into the main chart, that many ms of its 350
+//   -machineFrozen                   the curve still (a screenshot)
 //
 // The terminal (UI/Terminal/TerminalDebug.swift)
 //   -demo -demoRoute terminal/<session>   the terminal on a sample screen

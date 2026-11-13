@@ -42,11 +42,11 @@ struct ProjectDirPicker: View {
     @State private var loading = false
     @State private var error = ""
 
-    init(_ state: RemoteState, onPage: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
+    init(_ state: RemoteState, machine: String? = nil, onPage: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
         self.state = state
         self.onPage = onPage
         self.onChosen = onChosen
-        _at = State(initialValue: Browsing(machine: firstOnlineMachine(state), path: HomeLaunch.value("-dirPath") ?? ""))
+        _at = State(initialValue: Browsing(machine: machine ?? firstOnlineMachine(state), path: HomeLaunch.value("-dirPath") ?? ""))
     }
 
     private var source: DirectorySource {

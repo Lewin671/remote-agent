@@ -59,6 +59,10 @@ struct NewTaskScreen: View {
                 onClose()
                 nav.open(.machine(id: id))
             },
+            onMachineStatus: { id in
+                onClose()
+                nav.open(.machineStatus(id: id))
+            },
             sheet: NewTaskChrome(
                 parts: launch.map { newTaskParts(state, $0, models: models) },
                 models: summaryModels, picker: modelPicker,

@@ -2,12 +2,17 @@ import RACore
 import RAProto
 import SwiftUI
 
+/// Where a link into this page scrolls to.
+enum MachineAnchor: Hashable { case storage }
+
 /// A computer's details and daemon settings (Android's DeviceScreen): what
 /// it is, why it may be out of reach, its CLIs and their account quotas,
 /// the defaults new projects start from, where it keeps uploaded images,
 /// its projects, and removing it from the account.
 struct MachineScreen: View {
     let id: String
+    /// Opened from the disk card or 「remote-agent 的占用」 of 电脑状态: scrolled to 附件存储.
+    var scrollToStorage = false
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
@@ -16,6 +21,8 @@ struct MachineScreen: View {
     @State private var cleaning = false
     @State private var picking: Pick?
     @State private var selectedAgent: PBAgent?
+    /// The three rings at the top, read every 10 seconds while this page is showing (ui-spec A2).
+    @State private var ringsFeed = MachineStatusFeed(interval: .seconds(10))
 
     /// What a sheet of this page chooses.
     private enum Pick: Identifiable, Hashable {
@@ -50,13 +57,16 @@ struct MachineScreen: View {
         let state = model.state
         let m = state.machines[id]
         let live = reachable(state)
-        SettingsPage(refresh: refresh(live)) {
+        SettingsPage(refresh: refresh(live), scrollTo: scrollToStorage ? (id: MachineAnchor.storage, ready: settings?.settings != nil) : nil) {
             if let m {
                 Ticking { now in details(m, state: state, now: now) }
             } else {
                 PageNote(L10n.settingsIosThisComputerIsNotInTheCurrentTrustedDirectory())
             }
         }
+        .machineStatusPolling(
+            ringsFeed, fetch: context.machineStatusFetch(id, demo: model.isDemo), online: m?.online == true && !state.unlinked,
+            supported: m?.meta?.capabilities.machineStatus == true)
         .navBar(
             m == nil ? L10n.settingsComputer() : machineLabel(state, id: id),
             subtitle: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
@@ -107,6 +117,14 @@ struct MachineScreen: View {
         let status = machineStatus(m, state: state, now: now)
         if let mismatch { GroupBanner(mismatch, tone: .warn) }
         if let status, !status.online { GroupBanner(offlineText(m, now: now)) }
+
+        // CPU, memory and disk at a glance; a daemon that cannot say has none (ui-spec A2).
+        if m.meta?.capabilities.machineStatus == true {
+            MachineRingsCard(
+                rings: machineRings(status: ringsFeed.last, online: m.online && !state.unlinked, text: StatusText()),
+                online: m.online && !state.unlinked && protocolMismatch(m) == nil
+            ) { nav.open(.machineStatus(id: id)) }
+        }
 
         GroupLabel(L10n.settingsComputer())
         GroupCard {
@@ -300,13 +318,17 @@ struct MachineScreen: View {
         _ s: PBDaemonSettings, usage: PBImageStorageUsage?, enabled: Bool
     ) -> some View {
         let free = usage.map { $0.reclaimableBytes + $0.cacheBytes } ?? 0
-        GroupLabel(L10n.settingsAttachmentStorage())
+        GroupLabel(L10n.settingsAttachmentStorage()).id(MachineAnchor.storage)
         GroupCard {
             GRow(L10n.settingsUploadedImagesAndFiles(), value: usage.map(uploadsText) ?? L10n.projectsReadingDirectory())
             GRow(
                 L10n.settingsStorageLimit(), value: wholeBytes(s.imageUploadQuotaBytes), chevron: true, enabled: enabled
             ) { picking = .imageQuota }
             GRow(L10n.settingsPreviewCache(), value: usage.map { imageBytes($0.cacheBytes) } ?? "—")
+            // The space the daemon keeps back so that a session can still start on a full disk (ui-spec B2): not clearable; none while it is not kept.
+            if let reserve = usage?.emergencyReserveBytes, reserve > 0 {
+                EmergencyReserveRow(bytes: reserve)
+            }
             GRow(
                 L10n.settingsClear(), value: usage.map { _ in free > 0 ? L10n.settingsCanFree(value: String(describing: imageBytes(free))) : L10n.settingsNothingToClear() },
                 action: true,
@@ -449,5 +471,24 @@ private struct DefaultModelSheet: View {
                 self.error = errorText(error)
             }
         }
+    }
+}
+
+/// 应急预留 in 附件存储: its size as the group writes sizes (MiB), and under it why it is there; no action.
+private struct EmergencyReserveRow: View {
+    let bytes: Int64
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(L10n.machineStatusEmergencyReserve()).font(.body).foregroundStyle(DS.ink)
+                Spacer(minLength: 0)
+                Text(bytes % (1 << 20) == 0 ? wholeBytes(bytes) : imageBytes(bytes)).font(.subheadline).foregroundStyle(DS.ink2)
+            }
+            Text(L10n.machineStatusEmergencyReserveNote()).font(.footnote).foregroundStyle(DS.ink2)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

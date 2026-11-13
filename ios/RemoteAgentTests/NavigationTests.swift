@@ -12,7 +12,7 @@ import Testing
         .approval(session: "s", approval: "A1"), .plan(session: "s"), .question(session: "s", question: "toolu_01/x"),
         .image(session: "s", seq: 18_446_744_073_709_551_615, index: 2), .devices, .machine(id: "m1"), .client(id: "c1"),
         .addDevice(), .addDevice(replacing: "archived"), .accountSecurity, .recoveryCode, .handoff, .rePair,
-        .quota(machine: "m1"), .notifications, .connectionCheck, .imageStorage, .licenses,
+        .quota(machine: "m1"), .machineStatus(id: "m1"), .machineStorage(id: "m1"), .notifications, .connectionCheck, .imageStorage, .licenses,
     ]
 
     @Test(arguments: routes)
