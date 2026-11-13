@@ -22,12 +22,19 @@ type handler struct {
 	openDir func(string) (directoryReader, error)
 }
 
-func rpcErr(err error) error {
+func rpcErr(err error) (mapped error) {
+	// Completion evidence is orthogonal to the local RPC diagnostic mapping.
+	// Do not let a marker bypass not_found/context normalization.
+	final := outcome.IsFinalError(err)
+	defer func() {
+		if final && mapped != nil && !outcome.IsFinalError(mapped) {
+			mapped = outcome.FinalError(mapped)
+		}
+	}()
+
 	switch {
 	case err == nil:
 		return nil
-	case outcome.IsFinalError(err):
-		return err
 	case errors.Is(err, context.DeadlineExceeded):
 		return connect.NewError(connect.CodeDeadlineExceeded, err)
 	case errors.Is(err, context.Canceled):
@@ -439,7 +446,7 @@ func uploadErr(err error) error {
 // forwarded client command never reaches it, and a client origin is refused.
 func (h *handler) SendFile(ctx context.Context, req *connect.Request[pb.SendFileRequest]) (*connect.Response[pb.SendFileResponse], error) {
 	if o := originOf(ctx); o.GetKind() != pb.OriginKind_ORIGIN_KIND_LOCAL {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("send_file is only for the session's local MCP"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("send_file is only for the session's local MCP")))
 	}
 	f, err := h.d.sendFile(ctx, req.Msg.SessionId, req.Header().Get(schedule.MCPScopeHeader), req.Msg.Path)
 	if err != nil {
@@ -459,7 +466,7 @@ func (h *handler) GetSharedFileChunk(ctx context.Context, req *connect.Request[p
 	case o.GetKind() == pb.OriginKind_ORIGIN_KIND_LOCAL:
 	case o.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT && o.DeviceId != "":
 	default:
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New(i18n.AttachmentSharedClientsOnly("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New(i18n.AttachmentSharedClientsOnly("zh-CN"))))
 	}
 	res, err := h.d.uploads.sharedChunk(req.Msg.SessionId, req.Msg.FileId, req.Msg.Offset)
 	if err != nil {
@@ -476,5 +483,9 @@ func sharedErr(err error) error {
 		return rpcErr(err)
 	}
 	slog.Error("shared file", "err", errClass(err))
-	return connect.NewError(connect.CodeInternal, errors.New(i18n.AttachmentSharedFailed("zh-CN")))
+	mapped := connect.NewError(connect.CodeInternal, errors.New(i18n.AttachmentSharedFailed("zh-CN")))
+	if outcome.IsFinalError(err) {
+		return outcome.FinalError(mapped)
+	}
+	return mapped
 }

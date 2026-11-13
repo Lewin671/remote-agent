@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 )
 
 // Operations that drive Claude Code's menus (claude-code-notes §5, §7-§9).
@@ -193,11 +194,11 @@ func modelRow(cat *Catalog, rows []row, m *Model) (row, error) {
 func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	cat, err := a.catalog()
 	if err != nil {
-		return err
+		return outcome.FinalError(err)
 	}
 	info := cat.ByID(model)
 	if info == nil || info.Name == "" {
-		return fmt.Errorf("model %s is not one Claude Code offers: %w", model, agent.ErrNotFound)
+		return outcome.FinalError(fmt.Errorf("model %s is not one Claude Code offers: %w", model, agent.ErrNotFound))
 	}
 	switch {
 	case effort == "":
@@ -227,12 +228,12 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	cur := slices.IndexFunc(rows, func(r row) bool { return r.cursor })
 	if cur < 0 {
 		bail(t)
-		return errors.New("cannot find the cursor in Claude Code's /model menu")
+		return outcome.FinalError(errors.New("cannot find the cursor in Claude Code's /model menu"))
 	}
 	target, err := modelRow(cat, rows, info)
 	if err != nil {
 		bail(t)
-		return err
+		return outcome.FinalError(err)
 	}
 	label := target.label
 	key := agent.KeyDown
@@ -270,7 +271,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 			cur := slices.Index(info.Efforts, shownEffort(plain))
 			if i >= len(info.Efforts) || want < 0 || cur < 0 {
 				bail(t)
-				return fmt.Errorf("effort %s is not offered for %s", effort, info.Name)
+				return outcome.FinalError(fmt.Errorf("effort %s is not offered for %s", effort, info.Name))
 			}
 			key := agent.KeyRight
 			if want < cur {
@@ -421,7 +422,7 @@ func offered(cat *Catalog, facts agent.ModeFacts) map[string]bool {
 func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, facts agent.ModeFacts) error {
 	want, ok := permissionModes[mode]
 	if !ok {
-		return fmt.Errorf("unknown approval mode %v", mode)
+		return outcome.FinalError(fmt.Errorf("unknown approval mode %v", mode))
 	}
 	cat, _ := a.catalog()
 	scr, err := readyComposer(t)
@@ -633,7 +634,7 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFa
 	case pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING:
 		return t.Write([]byte(agent.KeyEsc))
 	default:
-		return fmt.Errorf("unknown plan choice %v", choice)
+		return outcome.FinalError(fmt.Errorf("unknown plan choice %v", choice))
 	}
 	for _, r := range rowsAfter(plain, "Would you like to proceed?") {
 		if strings.Contains(strings.ToLower(r.label), label) {

@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -132,7 +133,7 @@ var effortLabels = map[string]string{
 func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	label, ok := effortLabels[effort]
 	if !ok {
-		return fmt.Errorf("unknown effort %q", effort)
+		return outcome.FinalError(fmt.Errorf("unknown effort %q", effort))
 	}
 	displayName, err := a.displayName(model)
 	if err != nil {
@@ -157,7 +158,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	}
 	if num < 1 || num > 9 {
 		bail(t)
-		return fmt.Errorf("model %s is not in Codex's /model menu", displayName)
+		return outcome.FinalError(fmt.Errorf("model %s is not in Codex's /model menu", displayName))
 	}
 	if err := t.Write([]byte(strconv.Itoa(num))); err != nil {
 		return err
@@ -180,7 +181,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		}
 		if more < 0 {
 			bail(t)
-			return fmt.Errorf("effort %s is not offered for %s", effort, displayName)
+			return outcome.FinalError(fmt.Errorf("effort %s is not offered for %s", effort, displayName))
 		}
 		if err := moveTo(t, entries, more); err != nil {
 			bail(t)
@@ -201,7 +202,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	}
 	if target < 0 {
 		bail(t)
-		return fmt.Errorf("effort %s is not offered for %s", effort, displayName)
+		return outcome.FinalError(fmt.Errorf("effort %s is not offered for %s", effort, displayName))
 	}
 	if err := moveTo(t, entries, target); err != nil {
 		bail(t)
@@ -269,7 +270,7 @@ var permissionLevels = map[pb.ApprovalMode]int{
 func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ agent.ModeFacts) error {
 	level, isLevel := permissionLevels[mode]
 	if !isLevel && mode != pb.ApprovalMode_APPROVAL_MODE_PLAN {
-		return fmt.Errorf("unknown approval mode %v", mode)
+		return outcome.FinalError(fmt.Errorf("unknown approval mode %v", mode))
 	}
 	if err := readyComposer(t); err != nil {
 		return err
@@ -361,7 +362,7 @@ func (a *Adapter) Compact(t agent.Term, started func() bool) error {
 // AnswerPlan answers "Implement this plan?"; the choices are its entries.
 func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) error {
 	if choice < pb.PlanChoice_PLAN_CHOICE_IMPLEMENT || choice > pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
-		return fmt.Errorf("unknown plan choice %v", choice)
+		return outcome.FinalError(fmt.Errorf("unknown plan choice %v", choice))
 	}
 	scr, _, err := screenNow(t)
 	if err != nil {

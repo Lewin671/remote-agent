@@ -12,6 +12,10 @@ import (
 )
 
 func TestRPCCompletionEvidence(t *testing.T) {
+	if err := rpcErr(outcome.FinalError(errNotFound)); connect.CodeOf(err) != connect.CodeNotFound || !outcome.IsFinalError(err) {
+		t.Fatalf("completion erased diagnostic: %v", err)
+	}
+
 	for _, err := range []error{errNotFound, errForkBusy, errHeldChanged, agent.ErrUnsupported} {
 		if !outcome.IsFinalError(rpcErr(err)) {
 			t.Errorf("settled validation lost evidence: %v", err)

@@ -18,6 +18,7 @@ import (
 	"github.com/BurntSushi/toml"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 )
 
 // Adapter is Codex's agent.Adapter.
@@ -179,14 +180,14 @@ func defaultModel(codexHome string) string {
 func (a *Adapter) displayName(slug string) (string, error) {
 	models, err := a.Models()
 	if err != nil {
-		return "", err
+		return "", outcome.FinalError(err)
 	}
 	for _, m := range models.Models {
 		if m.Slug == slug {
 			return m.DisplayName, nil
 		}
 	}
-	return "", fmt.Errorf("model %s: %w", slug, agent.ErrNotFound)
+	return "", outcome.FinalError(fmt.Errorf("model %s: %w", slug, agent.ErrNotFound))
 }
 
 func (a *Adapter) CheckEffort(effort string) error {

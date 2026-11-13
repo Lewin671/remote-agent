@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 )
 
 // Operations that drive a CLI's menus. The daemon takes the control lock,
@@ -189,7 +190,7 @@ func (s *session) setModelBy(ctx context.Context, model, effort string, origin *
 		return agent.ErrUnsupported
 	}
 	if err := s.ag.CheckEffort(effort); err != nil {
-		return err
+		return outcome.FinalError(err)
 	}
 	if s.isRunning() {
 		return errBusy

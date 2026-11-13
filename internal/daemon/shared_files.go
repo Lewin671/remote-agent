@@ -19,6 +19,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/i18n"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -63,18 +64,18 @@ func (u *uploads) sharedDir(session string) string {
 
 func (u *uploads) loadShared(session, id string) (*sharedRecord, error) {
 	if !validSessionDir(session) || !validHexID(id) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New(i18n.AttachmentSharedInvalidId("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New(i18n.AttachmentSharedInvalidId("zh-CN"))))
 	}
 	b, err := os.ReadFile(filepath.Join(u.sharedDir(session), id, sharedRecordName))
 	if os.IsNotExist(err) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New(i18n.AttachmentSharedGone("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New(i18n.AttachmentSharedGone("zh-CN"))))
 	}
 	if err != nil {
 		return nil, err
 	}
 	r := &sharedRecord{}
 	if err := json.Unmarshal(b, r); err != nil || r.ID != id {
-		return nil, connect.NewError(connect.CodeDataLoss, errors.New(i18n.AttachmentSharedRecordDamaged("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeDataLoss, errors.New(i18n.AttachmentSharedRecordDamaged("zh-CN"))))
 	}
 	return r, nil
 }
@@ -101,7 +102,7 @@ func (u *uploads) sharedInTurn(session, turn string) (int, error) {
 }
 
 func perTurnError() error {
-	return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("at most %d files can be sent in one turn", maxSharedPerTurn))
+	return outcome.FinalError(connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("at most %d files can be sent in one turn", maxSharedPerTurn)))
 }
 
 // share copies src (already validated and opened) for session. The space
@@ -109,7 +110,7 @@ func perTurnError() error {
 // and hash run without it, and the rename into place commits the copy.
 func (u *uploads) share(session, turn string, drops uint64, src *os.File, before os.FileInfo, name, path string) (*sharedRecord, error) {
 	if !validSessionDir(session) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid session"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("invalid session")))
 	}
 	pins := u.protectedSessions()
 	id := newID(16)
@@ -145,6 +146,7 @@ func (u *uploads) share(session, turn string, drops uint64, src *os.File, before
 		err = dst.Truncate(size)
 	}
 	u.mu.Unlock()
+	// Cleanup failure never upgrades the copy/register error to final.
 	cleanup := func() {
 		if dst != nil {
 			dst.Close()
@@ -221,7 +223,7 @@ func (u *uploads) share(session, turn string, drops uint64, src *os.File, before
 }
 
 func errEnded() error {
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the session ended while the file was being copied"))
+	return outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("the session ended while the file was being copied")))
 }
 
 // sessionDrops counts how often session's files were removed. send_file
@@ -233,8 +235,9 @@ func (u *uploads) sessionDrops(session string) uint64 {
 	return u.drops[session]
 }
 
-var errChanged = connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being copied; send it again once it is complete"))
+var errChanged = outcome.FinalError(connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being copied; send it again once it is complete")))
 
+// Cleanup is best-effort GC, not evidence that a failed copy committed.
 // sweepShared removes staging directories a crash or failed copy left
 // behind. A copy in progress is far younger than the limit. Callers hold u.mu.
 func (u *uploads) sweepShared(session string, now time.Time) {
@@ -260,20 +263,20 @@ func (u *uploads) sharedChunk(session, id string, offset int64) (*pb.GetSharedFi
 	}
 	switch {
 	case offset < 0 || offset%sharedChunkBytes != 0:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New(i18n.AttachmentSharedOffset("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New(i18n.AttachmentSharedOffset("zh-CN"))))
 	case offset >= r.Size && !(offset == 0 && r.Size == 0):
-		return nil, connect.NewError(connect.CodeOutOfRange, errors.New(i18n.AttachmentSharedRange("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeOutOfRange, errors.New(i18n.AttachmentSharedRange("zh-CN"))))
 	}
 	f, err := os.Open(filepath.Join(u.sharedDir(session), id, sharedDataName))
 	if os.IsNotExist(err) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New(i18n.AttachmentSharedGone("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New(i18n.AttachmentSharedGone("zh-CN"))))
 	}
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	if fi, err := f.Stat(); err != nil || fi.Size() != r.Size {
-		return nil, connect.NewError(connect.CodeDataLoss, errors.New(i18n.AttachmentSharedCopyDamaged("zh-CN")))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeDataLoss, errors.New(i18n.AttachmentSharedCopyDamaged("zh-CN"))))
 	}
 	data := make([]byte, sharedChunkBytes)
 	want := min(int64(sharedChunkBytes), r.Size-offset)
@@ -384,7 +387,7 @@ func (d *Daemon) sendTarget(session, cwd string) sendTarget {
 // check decides on a real (symlink-free) path.
 func (t sendTarget) check(path string) error {
 	if within(path, t.shared) {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("that is already a copy sent to the user"))
+		return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("that is already a copy sent to the user")))
 	}
 	if within(path, t.uploads) {
 		return nil
@@ -394,11 +397,11 @@ func (t sendTarget) check(path string) error {
 		inside = inside || within(path, root)
 	}
 	if !inside {
-		return connect.NewError(connect.CodePermissionDenied, errors.New("only files inside the project directory, this session's uploaded files or the system temporary directory can be sent; copy the file into the project directory first if the user wants it"))
+		return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("only files inside the project directory, this session's uploaded files or the system temporary directory can be sent; copy the file into the project directory first if the user wants it")))
 	}
 	for _, root := range t.denied {
 		if within(path, root) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("this location holds credentials, keys or Remote Agent's own state and is never sent"))
+			return outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("this location holds credentials, keys or Remote Agent's own state and is never sent")))
 		}
 	}
 	return nil
@@ -409,30 +412,30 @@ func (t sendTarget) check(path string) error {
 func openSendFile(t sendTarget, cwd, raw string) (f *os.File, real string, fi os.FileInfo, err error) {
 	switch {
 	case strings.TrimSpace(raw) == "":
-		return nil, "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path is required"))
+		return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("path is required")))
 	case len(raw) > 4096 || !utf8.ValidString(raw) || strings.ContainsRune(raw, 0):
-		return nil, "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a valid file path"))
+		return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a valid file path")))
 	}
 	abs := raw
 	if !filepath.IsAbs(abs) {
 		if cwd == "" {
-			return nil, "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("give an absolute path"))
+			return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("give an absolute path")))
 		}
 		abs = filepath.Join(cwd, abs)
 	}
 	real, err = filepath.EvalSymlinks(abs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, "", nil, connect.NewError(connect.CodeNotFound, errors.New("no file at that path"))
+			return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("no file at that path")))
 		}
-		return nil, "", nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the path cannot be read"))
+		return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("the path cannot be read")))
 	}
 	if err := t.check(real); err != nil {
 		return nil, "", nil, err
 	}
 	before, err := os.Lstat(real)
 	if err != nil {
-		return nil, "", nil, connect.NewError(connect.CodeNotFound, errors.New("no file at that path"))
+		return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("no file at that path")))
 	}
 	if err := sendableMode(before.Mode()); err != nil {
 		return nil, "", nil, err
@@ -441,26 +444,26 @@ func openSendFile(t sendTarget, cwd, raw string) (f *os.File, real string, fi os
 	f, err = os.OpenFile(real, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		if errors.Is(err, os.ErrPermission) {
-			return nil, "", nil, connect.NewError(connect.CodePermissionDenied, errors.New("the file cannot be read"))
+			return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("the file cannot be read")))
 		}
-		return nil, "", nil, connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again"))
+		return nil, "", nil, outcome.FinalError(connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again")))
 	}
 	fi, err = f.Stat()
 	if err == nil {
 		err = sendableMode(fi.Mode())
 	}
 	if err == nil && !os.SameFile(before, fi) {
-		err = connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again"))
+		err = outcome.FinalError(connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again")))
 	}
 	if err == nil {
 		// A parent directory swapped for a link after the check would lead
 		// elsewhere; the path must still resolve to the checked place.
 		if again, e := filepath.EvalSymlinks(abs); e != nil || again != real {
-			err = connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again"))
+			err = outcome.FinalError(connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again")))
 		}
 	}
 	if err == nil && fi.Size() > maxSharedFileBytes {
-		err = connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the file has %d bytes; at most %d bytes (100 MiB) can be sent", fi.Size(), maxSharedFileBytes))
+		err = outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the file has %d bytes; at most %d bytes (100 MiB) can be sent", fi.Size(), maxSharedFileBytes)))
 	}
 	if err != nil {
 		f.Close()
@@ -474,9 +477,9 @@ func sendableMode(m os.FileMode) error {
 	case m.IsRegular():
 		return nil
 	case m.IsDir():
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("that is a directory; put it in a zip archive and send the archive"))
+		return outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("that is a directory; put it in a zip archive and send the archive")))
 	}
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("only regular files can be sent"))
+	return outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("only regular files can be sent")))
 }
 
 // sendFile serves the bound session MCP's send_file. scope is the MCP's
@@ -486,11 +489,11 @@ func (d *Daemon) sendFile(ctx context.Context, sessionID, scope, raw string) (*p
 		return nil, err
 	}
 	if scope == "" || scope != sessionID {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("send_file requires this session's Remote Agent MCP"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New("send_file requires this session's Remote Agent MCP")))
 	}
 	s, err := d.exact(scope)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such session"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeNotFound, errors.New("no such session")))
 	}
 	drops := d.uploads.sessionDrops(sessionID)
 	var cwd, turn string
@@ -504,7 +507,7 @@ func (d *Daemon) sendFile(ctx context.Context, sessionID, scope, raw string) (*p
 		return nil
 	})
 	if exited {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the session has ended"))
+		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("the session has ended")))
 	}
 	f, real, fi, err := openSendFile(d.sendTarget(sessionID, cwd), cwd, raw)
 	if err != nil {

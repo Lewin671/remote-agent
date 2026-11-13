@@ -1433,11 +1433,11 @@ func (s *session) answerBy(ctx context.Context, questionID string, options []int
 		return fmt.Errorf("question %s: %w", questionID, errNotFound)
 	}
 	if len(options) == 0 {
-		return fmt.Errorf("no option given")
+		return outcome.FinalError(fmt.Errorf("no option given"))
 	}
 	for _, o := range options {
 		if o < 1 || o > 9 {
-			return fmt.Errorf("option must be between 1 and 9")
+			return outcome.FinalError(fmt.Errorf("option must be between 1 and 9"))
 		}
 	}
 	if err := s.ctlMu.LockContext(ctx); err != nil {
@@ -1478,7 +1478,7 @@ func (s *session) answerBy(ctx context.Context, questionID string, options []int
 	var others []*pb.Question
 	if index != nil {
 		if *index < 0 || int(*index) >= len(items) {
-			return fmt.Errorf("question index %d out of range", *index)
+			return outcome.FinalError(fmt.Errorf("question index %d out of range", *index))
 		}
 		others = slices.Delete(slices.Clone(items), int(*index), int(*index)+1)
 		items = items[*index : *index+1]

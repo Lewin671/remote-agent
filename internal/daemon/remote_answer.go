@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"errors"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/eventview"
@@ -137,4 +138,4 @@ func (s *session) checkRemoteQuestion(id string, index *int32, origin *pb.Origin
 	return s.checkRemoteAnswer(remoteQuestion, id, false, origin)
 }
 
-var errRemoteAnswerStale = errors.New("current prompt was not verified or changed; refresh the owner snapshot")
+var errRemoteAnswerStale = outcome.FinalError(errors.New("current prompt was not verified or changed; refresh the owner snapshot"))
