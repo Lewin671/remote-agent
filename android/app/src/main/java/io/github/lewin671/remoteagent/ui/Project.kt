@@ -691,7 +691,8 @@ fun NewSessionBox(
             val frozen = Starts.of(key)
             // An unknown start has its own notice below.
             // 重试 is ↑ again: it is offered when ↑ is.
-            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Notice(uiText(UiMessages.newSessionStartFailed(reason = act.error)), tone = NoticeTone.ERROR, action = uiText(UiMessages.commonRetry()).takeIf { canStart }, onAction = { start() })
+            if (act.error.isNotEmpty() && !frozen.attempt.frozen && act.diskFull && c != null) DiskFullCard(onUsage = { nav.machineStatus(c.machineId) }, onRetry = if (canStart) ({ start() }) else null)
+            else if (act.error.isNotEmpty() && !frozen.attempt.frozen) Notice(uiText(UiMessages.newSessionStartFailed(reason = act.error)), tone = NoticeTone.ERROR, action = uiText(UiMessages.commonRetry()).takeIf { canStart }, onAction = { start() })
             if (!act.running && frozen.attempt.frozen) {
                 var gaveUp by remember { mutableStateOf(0) }
                 Notice(
@@ -1291,6 +1292,8 @@ fun NewProjectAtScreen(machine: String, path: String) {
     }
     val seed = projectStart(state, path, machine = machine)
     val entry = Drafts.newSession(path, seed?.config, seed?.settled != false)
+    // 让 Agent 帮我清理 on a computer with no project yet: its words wait for this box.
+    LaunchedEffect(machine, path) { CleanupDraft.take(machine)?.let { entry.text.value = io.github.lewin671.remoteagent.core.cleanupDraft(entry.text.value, it) } }
     val start = projectStart(state, path, entry.agent.value, machine)
     val initial = start?.config ?: NewConfig(machine, path)
     val selected = entry.config.value ?: initial

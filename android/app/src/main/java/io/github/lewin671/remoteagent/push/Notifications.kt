@@ -112,6 +112,7 @@ class RaMessagingService : FirebaseMessagingService() {
 object Notifier {
     const val EXTRA_APPROVAL = "approval"
     const val EXTRA_SECURITY = "security"
+    const val EXTRA_MACHINE_STATUS = "machine_status"
     const val EXTRA_SCHEDULE_SEQ = "schedule_seq"
     const val EXTRA_SCHEDULED = "scheduled"
 
@@ -155,7 +156,7 @@ object Notifier {
             Intent(context, MainActivity::class.java)
                 .putExtra(MainActivity.EXTRA_SESSION, session)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        if (machineStatus!=null) { i.putExtra("machine_status",machineStatus);i.action="io.github.lewin671.remoteagent.machine-status/$machineStatus" }
+        if (machineStatus!=null) { i.putExtra(EXTRA_MACHINE_STATUS,machineStatus);i.action="io.github.lewin671.remoteagent.machine-status/$machineStatus" }
         if (scheduled) i.putExtra(EXTRA_SCHEDULED, true)
         if (approval != null) i.putExtra(EXTRA_APPROVAL, approval)
         if (scheduleSeq > 0) i.putExtra(EXTRA_SCHEDULE_SEQ, scheduleSeq)

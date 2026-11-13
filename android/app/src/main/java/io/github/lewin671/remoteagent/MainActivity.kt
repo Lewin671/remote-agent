@@ -43,6 +43,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.push.Notifier
 import io.github.lewin671.remoteagent.push.VisiblePushSession
@@ -77,12 +78,15 @@ class MainActivity : ComponentActivity() {
     /** The device page, from a recovery notification. */
     private val openDevices = mutableStateOf(false)
     private val openScheduled = mutableStateOf(false)
+    /** The computer whose 电脑状态 a disk notification opens. */
+    private val openMachineStatus = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         io.github.lewin671.remoteagent.ui.Motion.observe(applicationContext)
         enableEdgeToEdge()
         openSession.value = target(intent)
+        openMachineStatus.value = intent?.getStringExtra(Notifier.EXTRA_MACHINE_STATUS)
         openDevices.value = intent?.getBooleanExtra(Notifier.EXTRA_SECURITY, false) == true
         val app = application as RaApp
         setContent {
@@ -125,12 +129,14 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         target(intent)?.let { openSession.value = it }
+        intent.getStringExtra(Notifier.EXTRA_MACHINE_STATUS)?.let { openMachineStatus.value = it }
         if (intent?.getBooleanExtra(Notifier.EXTRA_SECURITY, false) == true)
             openDevices.value = true
     }
 
     private fun target(i: Intent?): Pair<String, String?>? =
-        i?.getStringExtra(EXTRA_SESSION)?.let {
+        // A disk notification names a computer, not a session.
+        i?.takeIf { !it.hasExtra(Notifier.EXTRA_MACHINE_STATUS) }?.getStringExtra(EXTRA_SESSION)?.let {
             openScheduled.value = i.getBooleanExtra(Notifier.EXTRA_SCHEDULED, false)
             val seq = i.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ, 0)
             if (seq > 0) io.github.lewin671.remoteagent.ui.ScheduleJump.requested[it] = seq
@@ -150,6 +156,13 @@ class MainActivity : ComponentActivity() {
             if (openDevices.value) {
                 actions.devices()
                 openDevices.value = false
+            }
+        }
+        val machineStatus by openMachineStatus
+        LaunchedEffect(machineStatus) {
+            machineStatus?.let {
+                actions.machineStatus(it)
+                openMachineStatus.value = null
             }
         }
         LaunchedEffect(target) {
@@ -240,7 +253,8 @@ class MainActivity : ComponentActivity() {
                         it.arguments?.getString("focus") == "1",
                     )
                 }
-                page("device/{id}") { DeviceScreen(it.arguments?.getString("id").orEmpty()) }
+                page("device/{id}?storage={storage}") { DeviceScreen(it.arguments?.getString("id").orEmpty(), scrollToStorage = it.arguments?.getString("storage") == "1") }
+                page("machine/{id}") { io.github.lewin671.remoteagent.ui.MachineStatusScreen(it.arguments?.getString("id").orEmpty()) }
                 page("pair?replace={replace}") {
                     PairScreen(it.arguments?.getString("replace").orEmpty())
                 }
@@ -341,6 +355,15 @@ class MainActivity : ComponentActivity() {
                 go("session/$sid", single = true)
             },
             device = { go("device/$it") },
+            machineStatus = { go("machine/$it", single = true) },
+            deviceStorage = { go("device/$it?storage=1") },
+            cleanup = { machine ->
+                val state = remote.state.value
+                val prompt = io.github.lewin671.remoteagent.ui.sessionText(UiMessages.machineStatusCleanupPrompt())
+                val project = io.github.lewin671.remoteagent.ui.prepareCleanupDraft(state, machine, prompt)
+                // A computer without a project yet: the folder chooser, and the next new session on it gets the words.
+                if (project != null) go("project/${routeArg(project)}?focus=1") else go("newproject")
+            },
             pair = { go("pair") },
             rejoin = { go("pair?replace=$it") },
             recovery = { go("recovery") },

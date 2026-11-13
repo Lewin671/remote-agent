@@ -177,6 +177,7 @@ fun HomeScreen() {
                     if (list.showFilter) FilterField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp))
                 }
             }
+            item(key = "disk-reminders") { DiskReminderCards(state) }
             when (val e = list.empty) {
                 // Out of reach of the server the sentence says why nothing is here.
                 HomeEmpty.Loading -> if (headline == null) item(key = "loading") { Skeleton() }

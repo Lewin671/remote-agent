@@ -59,6 +59,9 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
+import io.github.lewin671.remoteagent.core.StatusText
+import io.github.lewin671.remoteagent.core.machineRings
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.RemoteState
@@ -510,6 +513,7 @@ fun DeviceScreen(
     readSettings: suspend (io.github.lewin671.remoteagent.core.Remote, String) -> io.github.lewin671.remoteagent.proto.GetSettingsResponse = { remote, machine ->
         remote.machineCommand(machine, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings
     },
+    scrollToStorage: Boolean = false,
 ) {
     val copy = uiText()
     val remote = LocalRemote.current
@@ -524,6 +528,7 @@ fun DeviceScreen(
     var imageStorage by remember { mutableStateOf<ImageStorageUsage?>(null) }
     var loadError by remember { mutableStateOf("") }
     val save = rememberAction()
+    val storageAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     var attempt by remember { mutableStateOf(0) }
     LaunchedEffect(id, member, m?.online, attempt) {
         if (!member || m?.online != true) return@LaunchedEffect
@@ -567,6 +572,13 @@ fun DeviceScreen(
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
+            // 电脑状态 (ui-spec A2): the card at the top of the page, only for a computer that has it.
+            if (member && m.meta?.capabilities?.machineStatus == true) {
+                val fetch = LocalStatusFetch.current
+                val feed = rememberMachineFeed(id, 10_000, true, m.online) { fetch(remote, id) }
+                val text = StatusText(copy, LocalMessageLocale.current)
+                MachineRingsCard(machineRings(feed.last, m.online, text), m.online, onOpen = { nav.machineStatus(id) })
+            }
             if (!member)
                 Notice(
                     copy(UiMessages.settingsAndroidRemovedRetainedSessionArchive()),
@@ -760,12 +772,20 @@ fun DeviceScreen(
                     NoticeTone.ERROR,
                 )
             settings?.let { s ->
-                MachineImageStorage(
-                    s,
-                    imageStorage,
-                    m.online && !save.running,
-                    onChange = { next, clean -> update(next, clean) },
-                )
+                Box(Modifier.bringIntoViewRequester(storageAt)) {
+                    Column {
+                        MachineImageStorage(
+                            s,
+                            imageStorage,
+                            m.online && !save.running,
+                            onChange = { next, clean -> update(next, clean) },
+                        )
+                    }
+                }
+                // 电脑状态 › 磁盘 and 「remote-agent 的占用」 lead here (ui-spec A3).
+                LaunchedEffect(scrollToStorage) {
+                    if (scrollToStorage) { androidx.compose.runtime.withFrameNanos { }; storageAt.bringIntoView() }
+                }
             }
             val projects = io.github.lewin671.remoteagent.core.machineProjects(state, id)
             if (projects.isNotEmpty()) {
@@ -1439,7 +1459,7 @@ private fun mib(n: Long) =
     if (n >= 1L shl 30 && n % (1L shl 30) == 0L) "${n shr 30} GiB" else "${n shr 20} MiB"
 
 @Composable
-private fun MachineImageStorage(
+internal fun MachineImageStorage(
     settings: DaemonSettings,
     usage: ImageStorageUsage?,
     enabled: Boolean,
@@ -1473,6 +1493,16 @@ private fun MachineImageStorage(
                         } ?: copy(UiMessages.projectsReadingDirectory()),
                     )
                 },
+                *(if (usage != null && usage.emergencyReserveBytes > 0) arrayOf<@Composable () -> Unit>({
+                    // 应急预留 (ui-spec B2): not clearable, so no action; the line under it says why it is there.
+                    Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 16.dp, top = 11.dp, bottom = 11.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(copy(UiMessages.machineStatusEmergencyReserve()), style = T.s17, color = pal.ink, modifier = Modifier.weight(1f))
+                            Text(StatusText(copy, LocalMessageLocale.current).size(usage.emergencyReserveBytes), style = T.s17, color = pal.ink2)
+                        }
+                        Text(copy(UiMessages.machineStatusEmergencyReserveNote()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }) else emptyArray()),
                 {
                     GRow(
                         copy(UiMessages.settingsStorageLimit()),

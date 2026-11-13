@@ -125,6 +125,20 @@ object Lucide {
         "M20.054 15.987H3.946",
     )
 
+    /** 电脑状态 (界面稿 v2 的线形图标): the processor, the memory, the disk and a process (the terminal). */
+    val Cpu = lucide(
+        "cpu",
+        "M8.5 6h7A2.5 2.5 0 0 1 18 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 15.5v-7A2.5 2.5 0 0 1 8.5 6z",
+        "M9.5 3v3", "M14.5 3v3", "M9.5 18v3", "M14.5 18v3", "M3 9.5h3", "M3 14.5h3", "M18 9.5h3", "M18 14.5h3",
+    )
+    val Memory = lucide(
+        "memory",
+        "M5 7h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z",
+        "M7 10.5v2", "M11 10.5v2", "M15 10.5v2", "M6 16v2.5", "M12 16v2.5", "M18 16v2.5",
+    )
+    val HardDrive = lucide("hard-drive", "M3.5 14.5 6 6a2 2 0 0 1 1.9-1.5h8.2A2 2 0 0 1 18 6l2.5 8.5v3a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2zM3.5 14.5h17M7.5 17h.01")
+    val Terminal = lucide("terminal", "M6 4.5h12a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3z", "m7.5 10 3 2.5-3 2.5", "M13 15h3.5")
+
     /** Client devices: Lucide globe, smartphone and tablet. */
     val Globe = lucide("globe", circle(12, 12, 10), "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20")
     val Smartphone = lucide("smartphone", "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z", "M12 18h.01")

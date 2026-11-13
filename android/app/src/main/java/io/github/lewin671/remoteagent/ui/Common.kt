@@ -156,6 +156,10 @@ data class Nav(
     /** 设置' sub-pages: they slide in as pages, like the rest. */
     val licenses: () -> Unit = {},
     val phoneStorage: () -> Unit = {},
+    /** 电脑状态 of a computer; its attachment storage (the computer's page, scrolled to it); a new session that asks the Agent to clean up. */
+    val machineStatus: (String) -> Unit = {},
+    val deviceStorage: (String) -> Unit = {},
+    val cleanup: (String) -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }

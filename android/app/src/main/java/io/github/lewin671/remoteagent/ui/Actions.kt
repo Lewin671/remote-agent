@@ -27,18 +27,23 @@ class Action(private val scope: CoroutineScope) {
     /** The last failure left the outcome unknown. */
     var unknown by mutableStateOf(false)
         private set
+    /** The last failure was the computer's disk being full: the page may say it its own way (ui-spec B3). */
+    var diskFull by mutableStateOf(false)
+        private set
 
     fun run(block: suspend () -> CommandResult?, onDone: (CommandResult?) -> Unit = {}) {
         if (running) return
         running = true
         error = ""
         unknown = false
+        diskFull = false
         scope.launch {
             try {
                 onDone(block())
             } catch (e: Exception) {
                 error = displayError(e)
                 unknown = (e as? CommandException)?.unknown == true
+                diskFull = io.github.lewin671.remoteagent.core.isDiskFull(e)
             } finally {
                 running = false
             }
@@ -198,6 +203,7 @@ object AccountMemory {
         token = Any()
         account = null
         Drafts.clear()
+        CleanupDraft.clear()
         Outbox.clear()
         Starts.clear()
         Forks.clear()
