@@ -28,8 +28,10 @@ final class BatchBLocaleTests: XCTestCase {
         try shot.pngRepresentation.write(to: directory.appendingPathComponent(name + ".png"))
     }
 
-    func testComposerMenusInBothLanguages() throws {
-        for locale in ["zh-CN", "en"] {
+    func testComposerMenusInEnglish() throws {
+        // Chinese menu gestures and keyboard geometry are exercised by
+        // ChatGestureTests.testComposerMenusKeepKeyboardAndPosition.
+        for locale in ["en"] {
             let app = XCUIApplication()
             app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads", "-messageLocale", locale]
             app.launch()

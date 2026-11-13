@@ -5,9 +5,11 @@ import XCTest
 @MainActor
 final class ChatGestureTests: XCTestCase {
     func testDraftImageRemoveGeometryAndTouches() throws {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-imageDraft", "ready"]
         app.launch()
+        defer { app.terminate() }
         let first = app.otherElements["第 1 张，共 3 张"]
         XCTAssertTrue(first.waitForExistence(timeout: 15))
         let remove = app.buttons["移除图片 1"]
@@ -44,9 +46,11 @@ final class ChatGestureTests: XCTestCase {
     }
 
     func testComposerMenusKeepKeyboardAndPosition() throws {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads"]
         app.launch()
+        defer { app.terminate() }
         let field = app.textFields["消息"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
@@ -78,9 +82,11 @@ final class ChatGestureTests: XCTestCase {
     }
 
     func testTallTranscriptDragFlingAndJump() throws {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-demo", "-demoRoute", "session/sample-boundary"]
         app.launch()
+        defer { app.terminate() }
         let list = app.descendants(matching: .any).matching(identifier: "chat-list").firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 15))
         // A downward drag reads back from the initially visible end. Fast
@@ -88,7 +94,9 @@ final class ChatGestureTests: XCTestCase {
         list.swipeDown(velocity: .fast)
         let pill = app.buttons["回到最新消息"]
         XCTAssertTrue(pill.waitForExistence(timeout: 5))
-        for _ in 0..<12 {
+        // One native round trip covers both directions and deceleration.
+        // The host's 240-offset stress test covers accumulated layout work.
+        for _ in 0..<1 {
             list.swipeDown(velocity: .fast)
             list.swipeUp(velocity: .fast)
         }
@@ -103,9 +111,11 @@ final class ChatGestureTests: XCTestCase {
     }
 
     func testCodeExpansionKeyboardDismissalAndTextSelection() throws {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-demo", "-demoRoute", "session/sample-boundary"]
         app.launch()
+        defer { app.terminate() }
         let list = app.descendants(matching: .any).matching(identifier: "chat-list").firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 15))
         let expand = list.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "展开全文")).firstMatch
