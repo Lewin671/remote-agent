@@ -57,6 +57,22 @@ import UIKit
             if let previous, !previous.isHidden { previous.makeKey() }
         }
         func wait() async throws { try await Task.sleep(for: .milliseconds(180)) }
+
+        func waitUntilSettled(_ ready: @escaping () -> Bool) async throws {
+            var previous: [CGFloat] = []
+            var stableFrames = 0
+            try await waitForLayout {
+                let geometry = [self.list.contentSize.width, self.list.contentSize.height,
+                                self.list.bounds.width, self.list.bounds.height,
+                                self.list.contentOffset.x, self.list.contentOffset.y]
+                if ready() && geometry == previous { stableFrames += 1 }
+                else { stableFrames = 0 }
+                previous = geometry
+                // Self-sizing can invalidate one apparently correct bottom
+                // sample before the coalesced follow operation catches up.
+                return stableFrames >= 3
+            }
+        }
     }
 
     @Test func opensAtEndAndShortChatsStartAtTop() async throws {
@@ -66,12 +82,18 @@ import UIKit
         defer { h.close() }
         h.ids = ["short"]
         h.update()
-        try await h.wait()
+        try await h.waitUntilSettled {
+            h.list.bounds.height > 0 && h.list.contentSize.height > 0 &&
+            !h.list.indexPathsForVisibleItems.isEmpty && abs(h.list.contentOffset.y) < 0.5
+        }
         #expect(abs(h.list.contentOffset.y) < 0.5)
         #expect(h.list.keyboardDismissMode == .interactive)
         h.ids += (0..<80).map { "row-\($0)" }
         h.update()
-        try await h.wait()
+        try await h.waitUntilSettled {
+            h.source.snapshot().numberOfItems == h.ids.count &&
+            h.list.contentSize.height > h.list.bounds.height && h.gap < 1
+        }
         #expect(h.gap < 1)
         #expect(h.tracker.scroll.following)
     }

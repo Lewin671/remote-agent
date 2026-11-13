@@ -43,10 +43,23 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
     private func center(_ computer: Computer, opened: Opened) -> (SharedFileCenter, URL) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("sf-\(UUID().uuidString)")
         let store = SharedFileStore(root: root, fetcher: computer, isMachineOnline: { _ in true }, blockBytes: { _ in 1000 })
-        return (SharedFileCenter(store: store, open: { opened.urls.append($0) }), root)
+        return (SharedFileCenter(store: store, open: { opened.record($0) }), root)
     }
 
-    @MainActor final class Opened { var urls: [URL] = [] }
+    @MainActor final class Opened {
+        var urls: [URL] = []
+        private let signal = AsyncStream<URL>.makeStream()
+        func record(_ url: URL) { urls.append(url); signal.continuation.yield(url) }
+        func next() async -> URL? {
+            let events = signal.stream
+            return await withTaskGroup(of: URL?.self) { group in
+                group.addTask { var iterator = events.makeAsyncIterator(); return await iterator.next() }
+                group.addTask { try? await Task.sleep(for: .seconds(5)); return nil }
+                defer { group.cancelAll() }
+                return await group.next() ?? nil
+            }
+        }
+    }
 
     // MARK: Rows
 
@@ -81,9 +94,12 @@ private final class Computer: SharedFileFetching, @unchecked Sendable {
         defer { try? FileManager.default.removeItem(at: root) }
         let f = file(content)
         c.tap(.available, key: key, file: f)
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
+        // The store publishes .state(.downloaded) before .completed. Wait for
+        // the actual presentation event, not an earlier transfer state.
+        let url = try #require(await opened.next())
         #expect(opened.urls.count == 1)
-        #expect(try Data(contentsOf: opened.urls[0]) == content)
+        #expect(try Data(contentsOf: url) == content)
+        #expect({ if case .downloaded = c.transfer(key, file: f) { true } else { false } }())
         // Tapping 打开 later opens it again.
         c.tap(.downloaded(durationMs: nil), key: key, file: f)
         #expect(opened.urls.count == 2)
