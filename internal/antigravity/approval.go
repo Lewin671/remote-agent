@@ -158,7 +158,10 @@ func (a *Adapter) MatchApprovals(styled string, pending []*agent.Hook) agent.Nat
 	}
 	return out
 }
-func (a *Adapter) AnswerApproval(t agent.Term, h *agent.Hook, allow bool, consumed func() bool) error {
+func (a *Adapter) AnswerApproval(t agent.Term, h *agent.Hook, allow bool, consumed func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	styled, err := t.Capture()
 	if err != nil {
 		return err

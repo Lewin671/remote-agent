@@ -161,7 +161,10 @@ func submitFocused(styled string) bool {
 	}
 	return false
 }
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.PlanFacts, observed func() bool) error {
+func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.PlanFacts, observed func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	if choice != pb.PlanChoice_PLAN_CHOICE_IMPLEMENT && choice != pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
 		return agent.ErrUnsupported
 	}

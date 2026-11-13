@@ -940,6 +940,36 @@
     "reason": "Stable MCP structured-result field name; not UI text."
   },
   {
+    "path": "internal/daemon/fork.go",
+    "literal": "ra-",
+    "reason": "Internal tmux session-name prefix; not displayed or translated."
+  },
+  {
+    "path": "internal/daemon/termstream.go",
+    "literal": "#{pane_id}",
+    "reason": "tmux format expression for pane identity, not product copy."
+  },
+  {
+    "path": "internal/daemon/termstream.go",
+    "literal": "send-keys",
+    "reason": "tmux command token, not product copy."
+  },
+  {
+    "path": "internal/relay/credentials.go",
+    "literal": "Authorization",
+    "reason": "HTTP header name; lexical error-sink proximity false positive."
+  },
+  {
+    "path": "internal/relay/credentials.go",
+    "literal": "Bearer ",
+    "reason": "HTTP authentication scheme syntax; never logged or rendered."
+  },
+  {
+    "path": "internal/relay/dispatcher.go",
+    "literal": "relay_account_reload",
+    "reason": "Internal generation-retirement sentinel; never sent or rendered as a user message."
+  },
+  {
     "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
     "literal": "季度报告 Quarterly report",
     "reason": "DEBUG-only demo fixture data (sample sessions and file cards for screenshots and UI tests); not compiled into release builds and never shown as product copy."

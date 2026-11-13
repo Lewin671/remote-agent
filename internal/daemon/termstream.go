@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"io"
 	"log/slog"
 	"os/exec"
@@ -63,7 +64,7 @@ func (d *Daemon) OpenTerminal(sessionID string) (*TermStream, error) {
 	exited, name := s.meta.Exited, s.meta.Tmux
 	s.mu.Unlock()
 	if exited {
-		return nil, errExited
+		return nil, outcome.FinalError(errExited)
 	}
 	tc := d.cfg.Tmux
 	pane, err := tc.Display(name, "#{pane_id}")
@@ -280,7 +281,7 @@ func (t *TermStream) inputUsing(b []byte, run func([]string) error) error {
 	exited := t.owner.meta.Exited
 	t.owner.mu.Unlock()
 	if exited {
-		return errExited
+		return outcome.FinalError(errExited)
 	}
 	for len(b) > 0 {
 		n := min(len(b), 256)

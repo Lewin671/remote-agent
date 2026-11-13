@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -157,7 +158,7 @@ func TestCancelHeldLeavesTheOthersPausedWhenTheBoxStays(t *testing.T) {
 func testCancelHeldLeavesTheOthersPausedWhenTheBoxStays(t *testing.T) {
 	h, _, stuck := heldPair(t)
 	*stuck = true
-	if err := h.s.cancelInputBy("a", originLocal); err != errHeldChanged {
+	if err := h.s.cancelInputBy("a", originLocal); !errors.Is(err, errHeldChanged) {
 		t.Fatalf("err %v", err)
 	}
 	h.s.mu.Lock()
@@ -188,7 +189,7 @@ func TestCancelHeldMismatch(t *testing.T) {
 			f.screen = ccBox("first typed locally")
 		}
 	}
-	if err := h.s.cancelInputBy("a", originLocal); err != errHeldChanged {
+	if err := h.s.cancelInputBy("a", originLocal); !errors.Is(err, errHeldChanged) {
 		t.Fatalf("err %v", err)
 	}
 	if w := h.term.written(); len(w) != 1 {
@@ -268,7 +269,7 @@ func TestCancelHeldMessageWithImages(t *testing.T) {
 	h.s.mu.Lock()
 	h.s.queue.Held = []input{{RequestID: "b", Text: "what are these", Images: imgs[:1], Indexes: []int32{3}}}
 	h.s.mu.Unlock()
-	if err := h.s.cancelInputBy("b", originLocal); err != errHeldChanged {
+	if err := h.s.cancelInputBy("b", originLocal); !errors.Is(err, errHeldChanged) {
 		t.Fatalf("err %v", err)
 	}
 }

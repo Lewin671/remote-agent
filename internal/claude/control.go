@@ -191,7 +191,10 @@ func modelRow(cat *Catalog, rows []row, m *Model) (row, error) {
 // SetModel picks the model in /model with the arrow keys, sets the effort
 // with ←/→ and presses s, which applies to this session only; the number
 // keys and Enter would change the default.
-func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
+func (a *Adapter) SetModel(t agent.Term, model, effort string) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	cat, err := a.catalog()
 	if err != nil {
 		return outcome.FinalError(err)
@@ -228,12 +231,12 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	cur := slices.IndexFunc(rows, func(r row) bool { return r.cursor })
 	if cur < 0 {
 		bail(t)
-		return outcome.FinalError(errors.New("cannot find the cursor in Claude Code's /model menu"))
+		return errors.New("cannot find the cursor in Claude Code's /model menu")
 	}
 	target, err := modelRow(cat, rows, info)
 	if err != nil {
 		bail(t)
-		return outcome.FinalError(err)
+		return err
 	}
 	label := target.label
 	key := agent.KeyDown
@@ -271,7 +274,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 			cur := slices.Index(info.Efforts, shownEffort(plain))
 			if i >= len(info.Efforts) || want < 0 || cur < 0 {
 				bail(t)
-				return outcome.FinalError(fmt.Errorf("effort %s is not offered for %s", effort, info.Name))
+				return fmt.Errorf("effort %s is not offered for %s", effort, info.Name)
 			}
 			key := agent.KeyRight
 			if want < cur {
@@ -419,7 +422,10 @@ func offered(cat *Catalog, facts agent.ModeFacts) map[string]bool {
 // way through looser modes is taken, but only with no background work on
 // the screen, and with the presses sent at once (burst), shortening the
 // moment (architecture §16).
-func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, facts agent.ModeFacts) error {
+func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, facts agent.ModeFacts) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	want, ok := permissionModes[mode]
 	if !ok {
 		return outcome.FinalError(fmt.Errorf("unknown approval mode %v", mode))
@@ -499,9 +505,9 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 		}
 	}
 	if mode == pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
-		return fmt.Errorf("%w: this session was not started with bypass permissions allowed", agent.ErrUnsupported)
+		return modeRejection(t, start, want, fmt.Errorf("%w: this session was not started with bypass permissions allowed", agent.ErrUnsupported))
 	}
-	return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
+	return modeRejection(t, start, want, fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want))
 }
 
 func enterPlan(t agent.Term) error {
@@ -559,7 +565,7 @@ func burst(t agent.Term, start, want string, offer map[string]bool) error {
 			offer[want] = false
 			_ = burst(t, m, start, offer)
 		}
-		return fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want)
+		return modeRejection(t, start, want, fmt.Errorf("%w: %s is not on offer in this session", agent.ErrUnsupported, want))
 	}
 	return errors.New("the permission mode did not settle")
 }
@@ -599,7 +605,10 @@ func index(mode string) int {
 }
 
 // Compact runs /compact; the transcript's compact_boundary records it.
-func (a *Adapter) Compact(t agent.Term, started func() bool) error {
+func (a *Adapter) Compact(t agent.Term, started func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	if _, err := readyComposer(t); err != nil {
 		return err
 	}
@@ -617,7 +626,10 @@ func (a *Adapter) Compact(t agent.Term, started func() bool) error {
 // "Yes, manually approve edits", which returns to manual mode; keeping on
 // planning is Esc, which stays in Plan mode and ends the turn. There is no
 // choice to clear the context first.
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) error {
+func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	scr, plain, err := screenNow(t)
 	if err != nil {
 		return err
@@ -689,7 +701,10 @@ func reviewing(plain string) bool {
 // The review page left by answers given in the terminal names the
 // questions too, but there the numbers submit and cancel: nothing is
 // pressed on it.
-func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
+func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	styled, err := t.Capture()
 	if err != nil {
 		return err
@@ -761,4 +776,17 @@ func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, option
 		}
 	}
 	return nil
+}
+
+// A rollback attempt is not proof. Read the settled mode again and report
+// success if the goal was reached, failure only if the original mode is back.
+func modeRejection(t agent.Term, start, want string, cause error) error {
+	mode, err := settledMode(t)
+	if err == nil && mode == want {
+		return nil
+	}
+	if err == nil && mode == start {
+		return outcome.VerifiedError(cause)
+	}
+	return outcome.UndeterminedError(cause)
 }

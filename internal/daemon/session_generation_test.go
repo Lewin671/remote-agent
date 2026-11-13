@@ -163,6 +163,9 @@ func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 	for _, operation := range []string{"resume", "fork"} {
 		t.Run(operation, func(t *testing.T) {
 			h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/bin/echo"}}, Exe: "remote-agent-test"})
+			if err := writeEnvFile(filepath.Join(h.dir, "env.json"), map[string]string{}); err != nil {
+				t.Fatal(err)
+			}
 			// HasSession must answer false without spawning anything. Both
 			// launches return from Argv, before tmux or login-shell startup.
 			h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux")}

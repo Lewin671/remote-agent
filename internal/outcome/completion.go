@@ -2,22 +2,44 @@ package outcome
 
 import "errors"
 
-// A backend's diagnostic code is independent of its completion evidence.
-// Keep this marker local; it is never serialized or sent to the server.
-type completionError struct{ error }
+// The outermost execution decision wins. In particular, uncertainty after a
+// native write must hide any earlier/preflight FinalError further in the chain.
+type completionError struct {
+	error
+	final, verified bool
+}
 
 func (e *completionError) Unwrap() error { return e.error }
-
-// FinalError marks a settled business failure at the backend decision point.
-// Unmarked errors are conservatively undetermined. Success responses themselves
-// establish completion; a context canceled after a response does not undo it.
+func decision(err error) *completionError {
+	var e *completionError
+	if errors.As(err, &e) {
+		return e
+	}
+	return nil
+}
 func FinalError(err error) error {
 	if err == nil {
 		return nil
 	}
-	return &completionError{err}
+	if decision(err) != nil {
+		return err
+	}
+	return &completionError{error: err, final: true}
 }
-func IsFinalError(err error) bool {
-	var e *completionError
-	return errors.As(err, &e)
+func UndeterminedError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &completionError{error: err}
 }
+
+// VerifiedError is only for a fresh terminal read proving the final state
+// matches the reported business failure. It can settle a prior uncertain write.
+func VerifiedError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &completionError{error: err, final: true, verified: true}
+}
+func IsFinalError(err error) bool    { e := decision(err); return e != nil && e.final }
+func IsVerifiedError(err error) bool { e := decision(err); return e != nil && e.final && e.verified }

@@ -15,6 +15,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/schedule"
+	"github.com/Lewin671/remote-agent/internal/tail"
 )
 
 type outcomeAuditBackend struct{ interruptedModelBackend }
@@ -26,7 +27,7 @@ func (b outcomeAuditBackend) Local() remoteagentv1connect.LocalServiceHandler {
 // Each failure travels through the real server/WS/handler/acceptance log,
 // including a same-ID retry. The terminal and its catalogue are isolated fakes.
 func TestV072DeterministicFailuresStayFinal(t *testing.T) {
-	for _, name := range []string{"exited-send", "empty-send", "missing-session", "input-capacity", "attachment-capacity", "invalid-create", "invalid-settings", "invalid-model", "invalid-effort", "invalid-mode", "long-title", "invalid-schedule", "missing-upload", "missing-shared-file", "invalid-shared-offset", "invalid-question"} {
+	for _, name := range []string{"exited-send", "empty-send", "missing-session", "input-capacity", "attachment-capacity", "invalid-create", "invalid-settings", "invalid-model", "invalid-effort", "invalid-mode", "long-title", "invalid-schedule", "missing-upload", "missing-shared-file", "invalid-shared-offset", "invalid-question", "resume-directory", "resume-cli", "resume-env", "auto-directory", "auto-cli", "auto-env", "fork-directory", "fork-cli", "fork-env", "create-directory", "create-cli", "resume-cached-cli", "auto-cached-cli", "fork-cached-cli", "create-cached-cli", "stopped-interrupt", "stopped-compact", "missing-cancel", "missing-stop"} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 			h, _ := controlHarness(t)
@@ -94,6 +95,66 @@ func TestV072DeterministicFailuresStayFinal(t *testing.T) {
 					t.Fatal(err)
 				}
 				cmd = &pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: sid, FileId: f.FileId, Offset: 1}}}
+			case "resume-directory", "resume-cli", "resume-env", "auto-directory", "auto-cli", "auto-env", "fork-directory", "fork-cli", "fork-env", "create-directory", "create-cli", "resume-cached-cli", "auto-cached-cli", "fork-cached-cli", "create-cached-cli":
+				want = "unknown"
+				if strings.HasPrefix(name, "resume") || strings.HasPrefix(name, "auto") {
+					h.s.meta.Exited = true
+				}
+				h.s.meta.Shell = false
+				if strings.HasSuffix(name, "directory") {
+					h.s.meta.Cwd = filepath.Join(t.TempDir(), "gone")
+				}
+				if strings.HasSuffix(name, "cached-cli") {
+					h.s.ag.(interface{ SetBin(string) }).SetBin(filepath.Join(t.TempDir(), "removed-cli"))
+				} else if strings.HasSuffix(name, "cli") {
+					h.s.ag.(interface{ SetBin(string) }).SetBin("")
+				} else {
+					h.s.ag.(interface{ SetBin(string) }).SetBin("/usr/bin/true")
+				}
+				switch {
+				case strings.HasPrefix(name, "auto"):
+					h.s.meta.IdleClosed = true
+					cmd = &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, Text: "test"}}}
+				case strings.HasPrefix(name, "resume"):
+					cmd = &pb.Command{Kind: &pb.Command_ResumeSession{ResumeSession: &pb.ResumeSessionRequest{SessionId: sid}}}
+				case strings.HasPrefix(name, "fork"):
+					if strings.HasSuffix(name, "env") {
+						h.s.meta.Exited = true
+						h.s.meta.RolloutPath = filepath.Join(h.dir, "rollout.jsonl")
+						h.s.meta.CodexSessionID = "source"
+						h.writeRollout(`{"type":"event_msg","payload":{"type":"user_message","message":"first"}}`)
+						h.s.bindRollout("source", filepath.Join(h.dir, "rollout.jsonl"))
+						h.s.readRollout()
+						info, err := os.Stat(filepath.Join(h.dir, "rollout.jsonl"))
+						if err != nil {
+							t.Fatal(err)
+						}
+						h.s.reader = tail.NewReader(filepath.Join(h.dir, "rollout.jsonl"), info.Size())
+						h.s.identityPending = false
+						h.s.mu.Lock()
+						h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+						h.s.running = false
+						h.s.planOpen = false
+						h.s.mu.Unlock()
+					}
+					cmd = &pb.Command{Kind: &pb.Command_ForkSession{ForkSession: &pb.ForkSessionRequest{SessionId: sid}}}
+				default:
+					headerSession = ""
+					want = "invalid_argument"
+					cmd = &pb.Command{Kind: &pb.Command_CreateSession{CreateSession: &pb.CreateSessionRequest{Cwd: h.s.meta.Cwd}}}
+				}
+			case "stopped-interrupt":
+				h.s.meta.Exited = true
+				cmd = &pb.Command{Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: sid}}}
+			case "stopped-compact":
+				h.s.meta.Exited = true
+				cmd = &pb.Command{Kind: &pb.Command_Compact{Compact: &pb.CompactRequest{SessionId: sid}}}
+			case "missing-cancel":
+				want = "not_found"
+				cmd = &pb.Command{Kind: &pb.Command_CancelInput{CancelInput: &pb.CancelInputRequest{SessionId: sid, RequestId: "missing"}}}
+			case "missing-stop":
+				want = "not_found"
+				cmd = &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: "missing"}}}
 			case "invalid-question":
 				want = "unknown"
 				h.s.questions = map[string]*pb.QuestionAsked{"q": {}}

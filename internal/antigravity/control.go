@@ -29,7 +29,10 @@ func (a *Adapter) Interrupt() []byte {
 
 // Answer validates the visible question and its entire numbered option list
 // before sending keys. Local selections are respected when toggling multi-select.
-func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
+func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	styled, err := agent.WaitFor(t, "native question", func(s string) bool { return a.Analyze(s).QuestionOpen })
 	if err != nil {
 		return agent.ErrNotAnswering
@@ -145,10 +148,17 @@ func questionRows(plain string) map[int]questionRow {
 }
 
 // SetModel never invokes /model: that command changes the global user settings.
-func (a *Adapter) SetModel(_ agent.Term, _, _ string) error { return agent.ErrUnsupported }
+func (a *Adapter) SetModel(t agent.Term, _, _ string) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+	return agent.ErrUnsupported
+}
 
 // SetMode confirms every Shift+Tab against statusLine cycle_mode.
-func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, facts agent.ModeFacts) error {
+func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, facts agent.ModeFacts) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	if mode == pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS || facts.FullAccess {
 		return agent.ErrUnsupported
 	}
@@ -213,7 +223,10 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 }
 
 // Compact triggers context compaction via /compact command.
-func (a *Adapter) Compact(t agent.Term, _ func() bool) error {
+func (a *Adapter) Compact(t agent.Term, _ func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	styled, err := t.Capture()
 	if err != nil {
 		return err

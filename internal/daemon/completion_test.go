@@ -17,8 +17,8 @@ func TestRPCCompletionEvidence(t *testing.T) {
 	}
 
 	for _, err := range []error{errNotFound, errForkBusy, errHeldChanged, agent.ErrUnsupported} {
-		if !outcome.IsFinalError(rpcErr(err)) {
-			t.Errorf("settled validation lost evidence: %v", err)
+		if outcome.IsFinalError(rpcErr(err)) {
+			t.Errorf("diagnostic sentinel manufactured completion: %v", err)
 		}
 	}
 	for _, err := range []error{context.Canceled, context.DeadlineExceeded, agent.ErrDeliveryUnconfirmed, errors.New("unconfirmed storage failure"), connect.NewError(connect.CodeAborted, errors.New("unconfirmed execution"))} {

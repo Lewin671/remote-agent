@@ -212,7 +212,7 @@ func (d *Daemon) knownAgent(k pb.Agent) (agent.Adapter, error) {
 	k = resolveKind(k)
 	a, ok := d.byKind(k)
 	if !ok {
-		return nil, fmt.Errorf("%v: %w", k, agent.ErrUnsupported)
+		return nil, outcome.FinalError(fmt.Errorf("%v: %w", k, agent.ErrUnsupported))
 	}
 	return a, nil
 }
@@ -660,8 +660,8 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 			return nil, err
 		}
 	}
-	if ag.Bin() == "" {
-		return nil, fmt.Errorf("%s is not installed on this machine", ag.Name())
+	if err := checkSessionLaunch(ctx, cwd, ag); err != nil {
+		return nil, err
 	}
 	args, err := d.sessionArgsContext(ctx, ag, req)
 	if err != nil {
@@ -696,6 +696,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	}
 	d.cliEnv(env, &m)
 	dir := d.sessionDir(id)
+	effectsStarted = true
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}
@@ -724,7 +725,6 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	// The first message's images move into the session before the CLI
 	// starts: if they cannot, nothing starts.
 	firstRequest := newID(8)
-	effectsStarted = true
 	all, err := d.uploads.takeUploads(req.ImageIds, req.FileIds, owner, id, firstRequest)
 	images, files := all.Images, all.Files
 	if err != nil {
@@ -917,7 +917,7 @@ func (d *Daemon) session(id string) (*session, error) {
 		}
 	}
 	if found == nil {
-		return nil, fmt.Errorf("session %s: %w", id, errNotFound)
+		return nil, outcome.FinalError(fmt.Errorf("session %s: %w", id, errNotFound))
 	}
 	return found, nil
 }
@@ -1164,7 +1164,37 @@ func (d *Daemon) resumeSessionForInputLocked(ctx context.Context, s *session) (*
 	return d.resumeSessionLifetimeLocked(ctx, s, originSystem, true)
 }
 
-func (d *Daemon) resumeSessionLifetimeLocked(ctx context.Context, s *session, origin *pb.Origin, pendingInput bool) (*session, error) {
+func (d *Daemon) resumeSessionLifetimeLocked(ctx context.Context, s *session, origin *pb.Origin, pendingInput bool) (resumed *session, resultErr error) {
+	effectsStarted := false
+	defer func() {
+		if !effectsStarted && resultErr != nil && !errors.Is(resultErr, context.Canceled) && !errors.Is(resultErr, context.DeadlineExceeded) {
+			resultErr = outcome.FinalError(resultErr)
+		}
+	}()
+	s.mu.Lock()
+	m, turnContext := s.meta, s.context
+	s.mu.Unlock()
+	if !m.Exited {
+		return nil, outcome.FinalError(errRunning)
+	}
+	if err := checkSessionLaunch(ctx, m.Cwd, s.ag); err != nil {
+		return nil, err
+	}
+	var env map[string]string
+	var bin string
+	if m.Shell {
+		env = shellSessionEnv(d.cfg.Env)
+	} else {
+		var err error
+		env, err = readEnvFile(filepath.Join(s.dir, "env.json"))
+		if err != nil {
+			return nil, fmt.Errorf("read the session's environment: %w", err)
+		}
+		bin, err = d.terminalCLI(s.ag, env["PATH"], "the session's saved PATH")
+		if err != nil {
+			return nil, err
+		}
+	}
 	id := s.info().Id
 	// An exit flag is visible before its workers finish. Drain that generation
 	// before touching the terminal or installing another. Neither lifecycleMu
@@ -1179,7 +1209,7 @@ drain:
 		exited := s.meta.Exited
 		s.mu.Unlock()
 		if !exited {
-			return nil, errRunning
+			return nil, outcome.FinalError(errRunning)
 		}
 		loops := s.sessionLoops
 		if loops.stop == nil {
@@ -1191,6 +1221,7 @@ drain:
 			break drain
 		default:
 		}
+		effectsStarted = true
 		loops.stop()
 		s.lifecycleMu.Unlock()
 		select {
@@ -1206,14 +1237,14 @@ drain:
 		return nil, err
 	}
 	s.mu.Lock()
-	m := s.meta
-	turnContext := s.context
+	m = s.meta
+	turnContext = s.context
 	s.mu.Unlock()
 	if !m.Exited {
-		return nil, errRunning
+		return nil, outcome.FinalError(errRunning)
 	}
 	if d.cfg.Tmux.HasSession(m.Tmux) {
-		return nil, errRunning
+		return nil, outcome.FinalError(errRunning)
 	}
 	if err := s.waitForPTYHostGone(ctx); err != nil {
 		return nil, fmt.Errorf("cannot resume while the previous pty-host may still be running: %w", err)
@@ -1224,17 +1255,9 @@ drain:
 	// Nothing queued before it exited is sent now. While their outcomes
 	// cannot be logged they stay queued, and a started session would be
 	// sent them.
+	effectsStarted = true
 	if err := s.settleExited(); err != nil {
 		return nil, err
-	}
-	if st, err := contextio.Stat(ctx, m.Cwd); err != nil || !st.IsDir() {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
-	}
-	if s.ag.Bin() == "" {
-		return nil, fmt.Errorf("%s is not installed on this machine", s.ag.Name())
 	}
 	cliArgs, err := s.ag.Argv(&agent.Launch{
 		Dir: s.dir, Cwd: m.Cwd, Args: m.Args, SessionID: m.CodexSessionID, Transcript: m.RolloutPath, Resume: true, Context: turnContext, FullAccess: !m.NoFullAccess, Exe: d.cfg.Exe, RemoteSession: id,
@@ -1246,18 +1269,8 @@ drain:
 	// provided credentials or proxies. A session that started through the
 	// login shell computes its environment the same way again, so that
 	// configuration changes since apply — that is why it starts that way.
-	var env map[string]string
-	var bin string
 	if m.Shell {
-		env = shellSessionEnv(d.cfg.Env)
 		clearShellReport(s.dir)
-	} else {
-		if env, err = readEnvFile(filepath.Join(s.dir, "env.json")); err != nil {
-			return nil, fmt.Errorf("read the session's environment: %w", err)
-		}
-		if bin, err = d.terminalCLI(s.ag, env["PATH"], "the session's saved PATH"); err != nil {
-			return nil, err
-		}
 	}
 	d.cliEnv(env, &m)
 	envFile, err := startEnv(s.dir, env)
@@ -1360,4 +1373,32 @@ func (s *session) resumeStateLocked(pendingInput bool) {
 		}
 	}
 	s.sawComposer = false
+}
+
+// Shared by create/fork/resume (including Send's auto-resume). Only reads;
+// callers run it before stopping old workers, writing config or launching tmux.
+func checkSessionLaunch(ctx context.Context, cwd string, ag agent.Adapter) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	st, err := contextio.Stat(ctx, cwd)
+	if err != nil || !st.IsDir() {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return outcome.FinalError(fmt.Errorf("directory %s is gone", cwd))
+	}
+	bin := ag.Bin()
+	missing := bin == ""
+	if filepath.IsAbs(bin) {
+		_, err := contextio.Stat(ctx, bin)
+		missing = missing || os.IsNotExist(err)
+		if err != nil && !os.IsNotExist(err) {
+			return outcome.FinalError(err)
+		}
+	}
+	if missing {
+		return outcome.FinalError(fmt.Errorf("%s is not installed on this machine", ag.Name()))
+	}
+	return nil
 }

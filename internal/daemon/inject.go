@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"log/slog"
 	"path/filepath"
 	"slices"
@@ -151,7 +152,14 @@ func (s *session) enqueueUploaded(text, requestID string, ids []string, origin *
 func (s *session) enqueueInput(text, requestID string, images []queuedImage, files []queuedFile, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) (messageUploads, error)) (int, error) {
 	return s.enqueueInputContext(context.Background(), text, requestID, images, files, origin, mode, reserved, take)
 }
-func (s *session) enqueueInputContext(ctx context.Context, text, requestID string, images []queuedImage, files []queuedFile, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) (messageUploads, error)) (int, error) {
+func (s *session) enqueueInputContext(ctx context.Context, text, requestID string, images []queuedImage, files []queuedFile, origin *pb.Origin, mode pb.SendMode, reserved *inputReservation, take func(string) (messageUploads, error)) (position int, resultErr error) {
+	resumed := false
+	defer func() {
+		if resumed && resultErr != nil {
+			resultErr = outcome.UndeterminedError(resultErr)
+		}
+	}()
+
 	if !humanOrigin(origin) {
 		return s.enqueueInputReady(text, requestID, images, files, origin, mode, reserved, take)
 	}
@@ -185,6 +193,7 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 			}
 			continue
 		}
+		resumed = true
 		if err := ctx.Err(); err != nil {
 			s.lifecycleMu.Unlock()
 			return 0, err
@@ -201,7 +210,7 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.queueLost {
-		return 0, errQueueUnreadable
+		return 0, outcome.FinalError(errQueueUnreadable)
 	}
 	if requestID != "" && s.queue.seen(requestID) {
 		if !s.meta.Exited && !s.closing {
@@ -210,7 +219,7 @@ func (s *session) enqueueInputReady(text, requestID string, images []queuedImage
 		return 0, nil
 	}
 	if s.meta.Exited || s.closing {
-		return 0, errExited
+		return 0, outcome.FinalError(errExited)
 	}
 	if requestID == "" {
 		requestID = newID(8)

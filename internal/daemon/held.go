@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 )
 
 // Messages the CLI holds (architecture §6). During a turn Claude Code
@@ -143,7 +144,18 @@ func (s *session) sweepHeld() {
 // input box; when it holds exactly the held messages, it is emptied. The
 // others go back to the daemon's queue and are written again from there
 // like any message.
-func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
+func (s *session) cancelHeld(requestID string, origin *pb.Origin) (resultErr error) {
+	wrote := false
+	defer func() {
+		if resultErr != nil {
+			if wrote {
+				resultErr = outcome.UndeterminedError(resultErr)
+			} else {
+				resultErr = outcome.FinalError(resultErr)
+			}
+		}
+	}()
+
 	s.ctlMu.Lock()
 	defer s.ctlMu.Unlock()
 	s.mu.Lock()
@@ -156,11 +168,11 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 		}
 	}
 	if idx < 0 {
-		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
+		return outcome.FinalError(fmt.Errorf("queued message %s: %w", requestID, errNotFound))
 	}
 	for i, in := range held {
 		if i != idx && len(in.Images) > 0 {
-			return errHeldChanged // images cannot be written again as they were
+			return outcome.FinalError(errHeldChanged) // images cannot be written again as they were
 		}
 	}
 	c, err := s.term.Control()
@@ -180,7 +192,7 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 	}
 	scr := s.ag.Analyze(styled)
 	if !scr.ComposerReady || !scr.DraftEmpty {
-		return errHeldChanged
+		return outcome.FinalError(errHeldChanged)
 	}
 	footer := scr.Footer
 	var want []string
@@ -188,8 +200,9 @@ func (s *session) cancelHeld(requestID string, origin *pb.Origin) error {
 		want = append(want, in.messageText())
 	}
 	if !l.holding() {
-		return errHeldChanged
+		return outcome.FinalError(errHeldChanged)
 	}
+	wrote = true
 	if err := c.Write([]byte("\x1b[A")); err != nil {
 		return err
 	}

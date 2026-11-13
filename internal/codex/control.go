@@ -130,7 +130,10 @@ var effortLabels = map[string]string{
 }
 
 // SetModel picks model and effort in /model for this session only.
-func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
+func (a *Adapter) SetModel(t agent.Term, model, effort string) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	label, ok := effortLabels[effort]
 	if !ok {
 		return outcome.FinalError(fmt.Errorf("unknown effort %q", effort))
@@ -140,6 +143,10 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		return err
 	}
 	if err := readyComposer(t); err != nil {
+		return err
+	}
+	before, _, err := screenNow(t)
+	if err != nil {
 		return err
 	}
 	if err := agent.Slash(t, "/model"); err != nil {
@@ -158,7 +165,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	}
 	if num < 1 || num > 9 {
 		bail(t)
-		return outcome.FinalError(fmt.Errorf("model %s is not in Codex's /model menu", displayName))
+		return modelRejection(t, before.Footer, displayName, effort, fmt.Errorf("model %s is not in Codex's /model menu", displayName))
 	}
 	if err := t.Write([]byte(strconv.Itoa(num))); err != nil {
 		return err
@@ -181,7 +188,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 		}
 		if more < 0 {
 			bail(t)
-			return outcome.FinalError(fmt.Errorf("effort %s is not offered for %s", effort, displayName))
+			return modelRejection(t, before.Footer, displayName, effort, fmt.Errorf("effort %s is not offered for %s", effort, displayName))
 		}
 		if err := moveTo(t, entries, more); err != nil {
 			bail(t)
@@ -202,7 +209,7 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	}
 	if target < 0 {
 		bail(t)
-		return outcome.FinalError(fmt.Errorf("effort %s is not offered for %s", effort, displayName))
+		return modelRejection(t, before.Footer, displayName, effort, fmt.Errorf("effort %s is not offered for %s", effort, displayName))
 	}
 	if err := moveTo(t, entries, target); err != nil {
 		bail(t)
@@ -212,14 +219,8 @@ func (a *Adapter) SetModel(t agent.Term, model, effort string) error {
 	if err := t.Write([]byte("s")); err != nil {
 		return err
 	}
-	word := strings.ToLower(label)
-	if effort == "xhigh" {
-		word = "xhigh"
-	}
 	if _, err := waitFor(t, "the new model in the footer", func(scr Screen, _ string) bool {
-		f := strings.ToLower(scr.Footer)
-		return scr.ComposerReady && strings.Contains(f, strings.ToLower(displayName)) &&
-			(strings.Contains(f, word) || strings.Contains(f, strings.ToLower(label)) || strings.Contains(f, effort))
+		return scr.ComposerReady && footerHasModel(scr.Footer, displayName, effort)
 	}); err != nil {
 		bail(t)
 		return err
@@ -267,7 +268,10 @@ var permissionLevels = map[pb.ApprovalMode]int{
 // SetMode switches the permission level or Plan mode. Choosing Plan turns
 // Plan mode on and leaves permissions alone; any other mode turns Plan
 // mode off first. Permissions and collaboration mode remain independent.
-func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ agent.ModeFacts) error {
+func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ agent.ModeFacts) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	level, isLevel := permissionLevels[mode]
 	if !isLevel && mode != pb.ApprovalMode_APPROVAL_MODE_PLAN {
 		return outcome.FinalError(fmt.Errorf("unknown approval mode %v", mode))
@@ -345,7 +349,10 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, _ ag
 }
 
 // Compact runs /compact.
-func (a *Adapter) Compact(t agent.Term, started func() bool) error {
+func (a *Adapter) Compact(t agent.Term, started func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	if err := readyComposer(t); err != nil {
 		return err
 	}
@@ -360,7 +367,10 @@ func (a *Adapter) Compact(t agent.Term, started func() bool) error {
 }
 
 // AnswerPlan answers "Implement this plan?"; the choices are its entries.
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) error {
+func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	if choice < pb.PlanChoice_PLAN_CHOICE_IMPLEMENT || choice > pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
 		return outcome.FinalError(fmt.Errorf("unknown plan choice %v", choice))
 	}
@@ -376,7 +386,10 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFa
 
 // Answer enters the option number of the question showing; the caller has
 // checked that it is showing.
-func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
+func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	if len(options) != 1 {
 		return fmt.Errorf("%w: Codex takes one option per question", agent.ErrUnsupported)
 	}
@@ -404,4 +417,55 @@ func (a *Adapter) ApplySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb
 		ctx.CollaborationMode = "plan"
 	}
 	return ctx
+}
+
+// Escape is best-effort cleanup. Only a stable composer/footer read may
+// settle a failed selection; a missing/different footer stays undetermined.
+func modelRejection(t agent.Term, before, model, effort string, cause error) error {
+	last := ""
+	same := 0
+	deadline := time.Now().Add(agent.MenuWait)
+	for time.Now().Before(deadline) {
+		scr, _, err := screenNow(t)
+		if err != nil {
+			return outcome.UndeterminedError(cause)
+		}
+		if scr.ComposerReady && scr.Footer != "" {
+			if scr.Footer == last {
+				same++
+			} else {
+				last = scr.Footer
+				same = 1
+			}
+			if same >= 3 {
+				if footerHasModel(scr.Footer, model, effort) {
+					return nil
+				}
+				if before != "" && scr.Footer == before {
+					return outcome.VerifiedError(cause)
+				}
+				return outcome.UndeterminedError(cause)
+			}
+		} else {
+			same = 0
+		}
+		if err := agent.Wait(t, 60*time.Millisecond); err != nil {
+			return outcome.UndeterminedError(cause)
+		}
+	}
+	return outcome.UndeterminedError(cause)
+}
+
+// Match tokens before the directory segment: high must not match xhigh, and a
+// model must not match a longer model name or text in the current directory.
+func footerHasModel(footer, model, effort string) bool {
+	f := strings.ToLower(strings.SplitN(footer, "·", 2)[0])
+	pattern := regexp.MustCompile(`(^|[^a-z0-9_.-])` + regexp.QuoteMeta(strings.ToLower(model)) + `([^a-z0-9_.-]|$)`)
+	match := pattern.FindStringIndex(f)
+	if match == nil {
+		return false
+	}
+	tail := strings.ReplaceAll(strings.TrimSpace(f[match[1]:]), "extra high", "xhigh")
+	tokens := strings.Fields(tail)
+	return len(tokens) > 0 && strings.Trim(tokens[0], "()[]") == effort
 }

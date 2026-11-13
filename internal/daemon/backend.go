@@ -3,6 +3,7 @@ package daemon
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"time"
 )
 
@@ -55,7 +56,7 @@ func (d *Daemon) exact(id string) (*session, error) {
 	defer d.mu.Unlock()
 	s, ok := d.sessions[id]
 	if !ok {
-		return nil, errNotFound
+		return nil, outcome.FinalError(errNotFound)
 	}
 	return s, nil
 }

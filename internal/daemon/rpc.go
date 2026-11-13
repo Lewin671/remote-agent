@@ -42,11 +42,11 @@ func rpcErr(err error) (mapped error) {
 	case errors.Is(err, agent.ErrDeliveryUnconfirmed):
 		return connect.NewError(connect.CodeAborted, err)
 	case errors.Is(err, errNotFound):
-		return outcome.FinalError(connect.NewError(connect.CodeNotFound, err))
+		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, errRemoteAnswerTruncated), errors.Is(err, errExited), errors.Is(err, errExpired), errors.Is(err, errNotAnswering), errors.Is(err, errWriting), errors.Is(err, errRunning), errors.Is(err, errUnsettled),
 		errors.Is(err, errForkBusy), errors.Is(err, errForkEmpty), errors.Is(err, errQueueUnreadable),
 		errors.Is(err, errBusy), errors.Is(err, errNotReady), errors.Is(err, errNoPlan), errors.Is(err, errHeldChanged), errors.Is(err, agent.ErrUnsupported), errors.Is(err, agent.ErrBackground):
-		return outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, err))
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	var ce *connect.Error
 	if errors.As(err, &ce) {

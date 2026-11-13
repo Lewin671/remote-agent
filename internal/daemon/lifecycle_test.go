@@ -16,7 +16,7 @@ import (
 
 func TestResumeAfterMissingTurnEndAllowsScheduledInput(t *testing.T) {
 	t.Parallel()
-	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/bin/true"}}})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/usr/bin/true"}}})
 	h.d.sessions[h.s.meta.ID] = h.s
 	bin := filepath.Join(h.dir, "fake-tmux")
 	// No real tmux is contacted. The session's terminal is the existing fakeTerm.

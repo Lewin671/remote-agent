@@ -40,7 +40,7 @@ func (h heldTerm) Capture() (string, error) {
 func (h heldTerm) RefreshView() error {
 	view, ok := h.term.(interface{ RefreshView(context.Context) error })
 	if !ok {
-		return agent.ErrUnsupported
+		return outcome.FinalError(agent.ErrUnsupported)
 	}
 	return view.RefreshView(h.ctx)
 }
@@ -83,7 +83,7 @@ func (s *session) drive(ctx context.Context, op func(t agent.Term, busy bool) er
 	exited := s.meta.Exited
 	s.mu.Unlock()
 	if exited {
-		return errExited
+		return outcome.FinalError(errExited)
 	}
 	if err := s.ctlMu.LockContext(ctx); err != nil {
 		return err
@@ -96,7 +96,7 @@ func (s *session) drive(ctx context.Context, op func(t agent.Term, busy bool) er
 	exited = s.meta.Exited
 	s.mu.Unlock()
 	if exited {
-		return errExited
+		return outcome.FinalError(errExited)
 	}
 	c, err := s.term.Control()
 	if err != nil {
@@ -187,23 +187,23 @@ func (s *session) setModel(model, effort string) error {
 // setModelBy is setModel on behalf of origin.
 func (s *session) setModelBy(ctx context.Context, model, effort string, origin *pb.Origin) error {
 	if !s.ag.Capabilities().ModelSwitch {
-		return agent.ErrUnsupported
+		return outcome.FinalError(agent.ErrUnsupported)
 	}
 	if err := s.ag.CheckEffort(effort); err != nil {
 		return outcome.FinalError(err)
 	}
 	if s.isRunning() {
-		return errBusy
+		return outcome.FinalError(errBusy)
 	}
 	if err := s.drive(ctx, func(t agent.Term, busy bool) error {
 		if busy {
-			return errBusy
+			return outcome.FinalError(errBusy)
 		}
 		if err := s.ag.SetModel(t, model, effort); err != nil {
 			return err
 		}
 		if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Model: model, Effort: effort}}}, origin)); err != nil {
-			return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
+			return outcome.UndeterminedError(fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err))
 		}
 		return nil
 	}); err != nil {
@@ -220,7 +220,7 @@ func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
 // setApprovalModeBy is setApprovalMode on behalf of origin.
 func (s *session) setApprovalModeBy(ctx context.Context, mode pb.ApprovalMode, origin *pb.Origin) error {
 	if !s.nativeIdentityReady() {
-		return agent.ErrNotReady
+		return outcome.FinalError(agent.ErrNotReady)
 	}
 	if _, ok := s.ag.(agent.StatusRefresher); ok {
 		s.mu.Lock()
@@ -237,7 +237,7 @@ func (s *session) setApprovalModeBy(ctx context.Context, mode pb.ApprovalMode, o
 			return err
 		}
 		if err := s.emit(withOrigin(&pb.Event{Kind: &pb.Event_SettingsChanged{SettingsChanged: &pb.SettingsChanged{Mode: mode}}}, origin)); err != nil {
-			return fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err)
+			return outcome.UndeterminedError(fmt.Errorf("settings already applied on the computer but could not be recorded: %w", err))
 		}
 		return nil
 	})
@@ -249,14 +249,14 @@ func (s *session) compact() error { return s.compactContext(context.Background()
 
 func (s *session) compactContext(ctx context.Context) error {
 	if !s.nativeIdentityReady() {
-		return agent.ErrNotReady
+		return outcome.FinalError(agent.ErrNotReady)
 	}
 	if s.isRunning() {
-		return errBusy
+		return outcome.FinalError(errBusy)
 	}
 	return s.drive(ctx, func(t agent.Term, busy bool) error {
 		if busy {
-			return errBusy
+			return outcome.FinalError(errBusy)
 		}
 		return s.ag.Compact(t, s.isRunningNoRead)
 	})
@@ -274,7 +274,7 @@ func (s *session) answerPlanBy(ctx context.Context, choice pb.PlanChoice, origin
 
 func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, origin *pb.Origin, record func(*pb.Event) error) error {
 	if !s.nativeIdentityReady() {
-		return agent.ErrNotReady
+		return outcome.FinalError(agent.ErrNotReady)
 	}
 	// The adapter checks on the held screen that the plan prompt shows.
 	return s.drive(ctx, func(t agent.Term, _ bool) error {
@@ -336,7 +336,7 @@ func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, ori
 		s.answerSafety.planPending = true
 		s.mu.Unlock()
 		if err := record(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin)); err != nil {
-			return fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err)
+			return outcome.UndeterminedError(fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err))
 		}
 		s.readMu.Lock()
 		s.parser.Replay(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}})

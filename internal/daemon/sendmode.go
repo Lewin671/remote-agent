@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -86,7 +87,7 @@ func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
-		return errExited
+		return outcome.FinalError(errExited)
 	}
 	idx := -1
 	for i, in := range s.queue.Queue {
@@ -97,7 +98,7 @@ func (s *session) resumeInputBy(requestID string, origin *pb.Origin) error {
 	}
 	if idx < 0 {
 		s.mu.Unlock()
-		return fmt.Errorf("queued message %s: %w", requestID, errNotFound)
+		return outcome.FinalError(fmt.Errorf("queued message %s: %w", requestID, errNotFound))
 	}
 	in := s.queue.Queue[idx]
 	if !in.Paused {

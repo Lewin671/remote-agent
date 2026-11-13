@@ -721,8 +721,9 @@ func TestExitedQueueIsSettledOnTheNextStart(t *testing.T) {
 // until its queued messages are settled: started with them still queued,
 // it would be sent what was to be canceled.
 func TestResumeWaitsForTheExitedQueueToBeSettled(t *testing.T) {
-	h := newHarness(t, Config{})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/usr/bin/true"}}})
 	h.d.sessions[h.s.meta.ID] = h.s
+	h.s.meta.Shell = true
 	// No tmux to ask or to start: a resume that got that far fails there.
 	h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "no-tmux")}
 	h.term.setScreen(draftScreen)
@@ -828,8 +829,9 @@ func (t *barrierHostTerminal) HostAlive(ctx context.Context) (bool, error) {
 }
 
 func TestResumeWaitsForPreviousPTYHost(t *testing.T) {
-	h := newHarness(t, Config{})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/usr/bin/true"}}})
 	h.d.sessions[h.s.meta.ID] = h.s
+	h.s.meta.Shell = true
 	h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux"), Socket: "ra-test"}
 	h.s.markExited("stopped")
 	term := &barrierHostTerminal{terminal: h.s.term, entered: make(chan struct{}), release: make(chan struct{})}

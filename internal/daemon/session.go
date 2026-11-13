@@ -1276,7 +1276,7 @@ func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 	s.mu.Lock()
 	if s.meta.Exited {
 		s.mu.Unlock()
-		return errExited
+		return outcome.FinalError(errExited)
 	}
 	idx := -1
 	for i, in := range s.queue.Queue {
@@ -1292,7 +1292,7 @@ func (s *session) cancelInputBy(requestID string, origin *pb.Origin) error {
 	}
 	if in := s.queue.Queue[idx]; in.Inflight != nil || in.Stage > pb.InputStage_INPUT_STAGE_WAITING {
 		s.mu.Unlock()
-		return errWriting
+		return outcome.FinalError(errWriting)
 	}
 	if !s.logOutcomeLocked(withOrigin(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{
 		RequestId: requestID, Status: pb.InputStatus_INPUT_STATUS_CANCELED,
@@ -1361,7 +1361,7 @@ func (s *session) interruptBy(ctx context.Context, origin *pb.Origin) (bool, err
 		return false, err
 	}
 	if exited {
-		return false, errExited
+		return false, outcome.FinalError(errExited)
 	}
 	if !running {
 		return false, nil
@@ -1415,7 +1415,7 @@ func (s *session) answerBy(ctx context.Context, questionID string, options []int
 		return err
 	}
 	if !s.nativeIdentityReady() {
-		return agent.ErrNotReady
+		return outcome.FinalError(agent.ErrNotReady)
 	}
 	s.readRollout()
 	s.mu.Lock()
@@ -1427,10 +1427,10 @@ func (s *session) answerBy(ctx context.Context, questionID string, options []int
 	exited := s.meta.Exited
 	s.mu.Unlock()
 	if exited {
-		return errExited
+		return outcome.FinalError(errExited)
 	}
 	if !ok {
-		return fmt.Errorf("question %s: %w", questionID, errNotFound)
+		return outcome.FinalError(fmt.Errorf("question %s: %w", questionID, errNotFound))
 	}
 	if len(options) == 0 {
 		return outcome.FinalError(fmt.Errorf("no option given"))
@@ -1468,7 +1468,7 @@ func (s *session) answerBy(ctx context.Context, questionID string, options []int
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("question %s was already answered: %w", questionID, errNotFound)
+		return outcome.FinalError(fmt.Errorf("question %s was already answered: %w", questionID, errNotFound))
 	}
 	styled, err := term.Capture()
 	if err != nil {
@@ -1484,7 +1484,7 @@ func (s *session) answerBy(ctx context.Context, questionID string, options []int
 		items = items[*index : *index+1]
 	}
 	if !s.ag.Analyze(styled).QuestionOpen || !showsQuestion(styled, items, others) {
-		return errNotAnswering
+		return outcome.FinalError(errNotAnswering)
 	}
 	// Known before the keys go out: the transcript may record the answer
 	// before Answer returns.
@@ -2007,15 +2007,15 @@ func (s *session) resolveBy(ctx context.Context, id string, allow, always bool, 
 	// user to decide in the native terminal; never silently grant once.
 	if allow && always {
 		s.mu.Unlock()
-		return fmt.Errorf("permanent approvals must be answered in the native terminal: %w", agent.ErrUnsupported)
+		return outcome.FinalError(fmt.Errorf("permanent approvals must be answered in the native terminal: %w", agent.ErrUnsupported))
 	}
 	if !ok || a.claimed {
 		s.mu.Unlock()
-		return fmt.Errorf("approval %s: %w", id, errNotFound)
+		return outcome.FinalError(fmt.Errorf("approval %s: %w", id, errNotFound))
 	}
 	if !time.Now().Before(a.deadline) {
 		s.mu.Unlock()
-		return fmt.Errorf("approval %s: %w", id, errExpired)
+		return outcome.FinalError(fmt.Errorf("approval %s: %w", id, errExpired))
 	}
 	if a.native != nil {
 		s.mu.Unlock()
@@ -2171,14 +2171,14 @@ func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, 
 		}
 		if !timeout && !time.Now().Before(a.deadline) {
 			s.mu.Unlock()
-			return errExpired
+			return outcome.FinalError(errExpired)
 		}
 		s.mu.Unlock()
 		// Terminal ownership is held before the refresh, so a local answer
 		// cannot slip between the authoritative read and menu revalidation.
 		if !s.readRollout() {
 			s.withdrawNativeOne(a, "去终端处理：无法刷新这次审批的 transcript")
-			return agent.ErrNotAnswering
+			return outcome.FinalError(agent.ErrNotAnswering)
 		}
 		styled, err := t.Capture()
 		if err != nil {
@@ -2191,7 +2191,7 @@ func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, 
 		s.mu.Unlock()
 		if !valid {
 			s.withdrawNativeOne(a, "去终端处理：审批身份或菜单已变化")
-			return agent.ErrNotAnswering
+			return outcome.FinalError(agent.ErrNotAnswering)
 		}
 		s.mu.Lock()
 		a.delivering = true
@@ -2258,7 +2258,7 @@ func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, 
 		err = errors.Join(err, queueErr)
 	}
 	if err != nil {
-		return fmt.Errorf("approval applied but could not be recorded or its message queued: %w", err)
+		return outcome.UndeterminedError(fmt.Errorf("approval applied but could not be recorded or its message queued: %w", err))
 	}
 	return nil
 }

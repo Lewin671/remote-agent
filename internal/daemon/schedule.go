@@ -359,7 +359,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	}
 	t, ok := d.tasks[q.TaskId]
 	if !ok {
-		return nil, errNotFound
+		return nil, outcome.FinalError(errNotFound)
 	}
 	if scope != "" && (t.ScopedSession != scope || t.SourceSession != scope) {
 		return nil, mcpTaskAccessDenied(t, scope)

@@ -454,7 +454,10 @@ func (a *Adapter) ModeLocked(_ *pb.TurnContext) bool { return false }
 func (a *Adapter) MatchApproval(_ string, _ *agent.Hook) (*pb.ApprovalRequested, bool) {
 	return nil, false
 }
-func (a *Adapter) AnswerApproval(_ agent.Term, _ *agent.Hook, _ bool, _ func() bool) error {
+func (a *Adapter) AnswerApproval(t agent.Term, _ *agent.Hook, _ bool, _ func() bool) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
 	return agent.ErrUnsupported
 }
 

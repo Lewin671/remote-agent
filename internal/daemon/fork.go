@@ -51,7 +51,7 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 		return nil, err
 	}
 	if !src.ag.Capabilities().Fork {
-		return nil, agent.ErrUnsupported
+		return nil, outcome.FinalError(agent.ErrUnsupported)
 	}
 	// Match resume's lock order: the source lifecycle, then terminal ownership.
 	src.lifecycleMu.Lock()
@@ -59,6 +59,9 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 	src.ctlMu.Lock()
 	defer src.ctlMu.Unlock()
 	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := checkSessionLaunch(ctx, src.info().Cwd, src.ag); err != nil {
 		return nil, err
 	}
 	src.readRollout()
@@ -81,31 +84,36 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 	src.mu.Unlock()
 	src.readMu.Unlock()
 	if busy {
-		return nil, errForkBusy
+		return nil, outcome.FinalError(errForkBusy)
 	}
 	if m.CodexSessionID == "" || m.RolloutPath == "" || offset == 0 {
-		return nil, errForkEmpty
+		return nil, outcome.FinalError(errForkEmpty)
 	}
 	if _, err := contextio.Stat(ctx, m.RolloutPath); err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, errForkEmpty
-	}
-	if st, err := contextio.Stat(ctx, m.Cwd); err != nil || !st.IsDir() {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, fmt.Errorf("directory %s is gone", m.Cwd)
-	}
-	if src.ag.Bin() == "" {
-		return nil, fmt.Errorf("%s is not installed on this machine", src.ag.Name())
+		return nil, outcome.FinalError(errForkEmpty)
 	}
 
 	nid := newID(8)
 	nm := meta{ID: nid, Agent: m.Agent, Cwd: m.Cwd, Tmux: "ra-" + nid[:8], Args: m.Args, CreatedAt: time.Now().UTC(),
 		Title: m.Title, NoFullAccess: m.NoFullAccess, StandardContext: m.StandardContext, Starting: true,
 		ForkedFrom: m.ID, Shell: m.Shell}
+	// The same environment as the source: its caller's shell may have
+	// provided credentials or proxies. A source that started through the
+	// login shell computes it again instead, like a resume.
+	var env map[string]string
+	var bin string
+	if nm.Shell {
+		env = shellSessionEnv(d.cfg.Env)
+	} else if env, err = readEnvFile(filepath.Join(src.dir, "env.json")); err != nil {
+		return nil, fmt.Errorf("read the session's environment: %w", err)
+	} else {
+		if bin, err = d.terminalCLI(src.ag, env["PATH"], "the session's saved PATH"); err != nil {
+			return nil, err
+		}
+	}
 	dir := d.sessionDir(nid)
 	effectsStarted = true
 	if err := paths.EnsureDir(dir); err != nil {
@@ -126,20 +134,6 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 	nm.CodexSessionID = launch.SessionID
 	if err := nm.save(dir); err != nil {
 		return fail(err)
-	}
-	// The same environment as the source: its caller's shell may have
-	// provided credentials or proxies. A source that started through the
-	// login shell computes it again instead, like a resume.
-	var env map[string]string
-	var bin string
-	if nm.Shell {
-		env = shellSessionEnv(d.cfg.Env)
-	} else if env, err = readEnvFile(filepath.Join(src.dir, "env.json")); err != nil {
-		return fail(fmt.Errorf("read the session's environment: %w", err))
-	} else {
-		if bin, err = d.terminalCLI(src.ag, env["PATH"], "the session's saved PATH"); err != nil {
-			return fail(err)
-		}
 	}
 	d.cliEnv(env, &nm)
 	envFile, err := startEnv(dir, env)
