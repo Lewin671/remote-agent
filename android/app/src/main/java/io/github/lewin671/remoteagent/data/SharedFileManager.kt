@@ -225,6 +225,7 @@ class SharedFileManager(
         val handlers = activityContext.packageManager.queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY)
         if (handlers.isEmpty()) return false
         val chooser = Intent.createChooser(view, sanitizeSharedFileName(displayName))
+            .putExtra(Intent.EXTRA_AUTO_LAUNCH_SINGLE_CHOICE, false)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
             activityContext.startActivity(chooser)

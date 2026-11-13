@@ -859,6 +859,7 @@ class SharedFilesUiTest {
         val started = app.nextStartedActivity
         assertEquals(android.content.Intent.ACTION_CHOOSER, started.action)
         assertEquals("project.zip", started.getCharSequenceExtra(android.content.Intent.EXTRA_TITLE).toString())
+        assertFalse(started.getBooleanExtra(android.content.Intent.EXTRA_AUTO_LAUNCH_SINGLE_CHOICE, true))
         val inner = started.getParcelableExtra<android.content.Intent>(android.content.Intent.EXTRA_INTENT)!!
         assertEquals(android.content.Intent.ACTION_VIEW, inner.action)
         assertEquals("application/zip", inner.type)
