@@ -27,6 +27,7 @@ export default function setup(project: TestProject) {
     execFileSync("go", ["build", "-o", directory + "/", ...Object.values(fixtures)], {
       cwd: resolve(fileURLToPath(new URL("../../..", import.meta.url))),
       stdio: "pipe",
+      timeout: 120_000,
     });
     for (const [key, source] of Object.entries(fixtures)) {
       project.provide(key as keyof typeof fixtures, join(directory, source.split("/").at(-1)!));

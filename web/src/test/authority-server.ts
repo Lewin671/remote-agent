@@ -35,7 +35,16 @@ export class AuthorityServer {
   private line(): Promise<string> {
     if (this.exited) throw new Error(this.error);
     const line = this.lines.shift();
-    return line === undefined ? new Promise((resolve) => this.waiters.push(resolve)) : Promise.resolve(line);
+    if (line !== undefined) return Promise.resolve(line);
+    return new Promise<string>((resolve, reject) => {
+      const waiter = (line: string) => { clearTimeout(timer); resolve(line); };
+      const timer = setTimeout(() => {
+        this.waiters = this.waiters.filter((item) => item !== waiter);
+        this.process.kill("SIGKILL");
+        reject(new Error("isolated authority fixture response timed out"));
+      }, 5000);
+      this.waiters.push(waiter);
+    });
   }
   async ready(recoveryId: string) {
     this.process.stdin.write(JSON.stringify({ Op: "ready", RecoveryID: recoveryId }) + "\n");
