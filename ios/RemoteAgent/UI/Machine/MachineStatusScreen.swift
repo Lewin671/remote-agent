@@ -820,29 +820,18 @@ private struct UsageRowView: View {
 
     private var spoken: String { [row.title, row.primary, row.secondary].joined(separator: L10n.commonIosSpokenSeparator()) }
 
+    /// The icon block of a row (ui-rulings 9): `fill2`, radius 8, 30 square. A session shows its CLI's mark and a process the
+    /// terminal, both in `ink2`: no brand colour or gradient on this page.
     @ViewBuilder private var icon: some View {
-        let glyph = row.agent.flatMap { AgentGlyph($0) }
+        let glyph = row.isSession && row.known ? row.agent.flatMap { AgentGlyph($0) } : nil
         ZStack {
-            if row.isSession, row.known, let glyph, let agent = row.agent {
-                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(agentGradient(agent)).opacity(dim ? 0.5 : 1)
-                AgentMarkShape(glyph: glyph).fill(.white).frame(width: 16, height: 16)
+            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(DS.fill2)
+            if let glyph {
+                AgentMarkShape(glyph: glyph).fill(dim ? DS.ink3 : DS.ink2).frame(width: 16, height: 16)
             } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(DS.fill2)
-                Image(systemName: StatusSymbol.process.rawValue).font(.system(size: 14, weight: .medium)).foregroundStyle(DS.ink2)
+                Image(systemName: StatusSymbol.process.rawValue).font(.system(size: 14, weight: .medium)).foregroundStyle(dim ? DS.ink3 : DS.ink2)
             }
         }
         .frame(width: 30, height: 30)
-    }
-
-    /// The mockup's colour block of each CLI (界面稿 `.ic.c`, `.ic.x`, `.ic.g`): the same in both themes.
-    private func agentGradient(_ agent: PBAgent) -> LinearGradient {
-        let colors: [UInt32] = switch agent {
-        case .claude: [0xE69A72, 0xD2714A]
-        case .codex: [0x3A3A3C, 0x1C1C1E]
-        case .antigravity: [0x6AA7FF, 0x3478F6]
-        default: [0xB0B0B8, 0x8E8E93]
-        }
-        func color(_ hex: UInt32) -> Color { Color(red: Double(hex >> 16 & 0xFF) / 255, green: Double(hex >> 8 & 0xFF) / 255, blue: Double(hex & 0xFF) / 255) }
-        return LinearGradient(colors: colors.map(color), startPoint: .top, endPoint: .bottom)
     }
 }
