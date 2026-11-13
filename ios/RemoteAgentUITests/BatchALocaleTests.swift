@@ -71,7 +71,7 @@ extension BatchALocaleTests {
             let details = app.buttons[locale == "en" ? "Details" : "详情"]
             XCTAssertTrue(details.waitForExistence(timeout: 15))
             details.tap()
-            XCTAssertTrue(app.buttons[locale == "en" ? "Retry now" : "立即重试"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons[locale == "en" ? "Retry now" : "重试"].waitForExistence(timeout: 5))
             try capture(app, "\(locale)-connection-details")
             app.terminate()
         }

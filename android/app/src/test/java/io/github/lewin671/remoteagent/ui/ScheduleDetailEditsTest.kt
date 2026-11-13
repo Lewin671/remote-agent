@@ -53,7 +53,7 @@ class ScheduleDetailEditsTest {
     }
     @Test fun existingTaskCannotSelectAnotherComputer() {
         prepare();render();ui.onNodeWithText("在哪运行").performScrollTo().performClick()
-        ui.onNodeWithText("机器").assertHasNoClickAction()
+        ui.onNodeWithText("电脑").assertHasNoClickAction()
         ui.onNodeWithText("任务设置").assertExists();ui.onNodeWithText("设为常用").assertDoesNotExist();ui.onNodeWithText("移除项目…").assertDoesNotExist()
     }
     @Test fun targetEditorSavesTheSelectedCliAndItsPermission() {

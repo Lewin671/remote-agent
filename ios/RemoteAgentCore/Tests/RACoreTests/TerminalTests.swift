@@ -138,7 +138,7 @@ import Testing
         #expect(
             steps == [
                 .output(Data("ab".utf8)), .snapshot(cols: 80, rows: 24, data: Data("S".utf8)), .output(Data("c".utf8)),
-                .closed("终端已关闭"), .output(Data("d".utf8)), .closed("over"),
+                .closed("终端连接已关闭"), .output(Data("d".utf8)), .closed("over"),
             ])
         #expect(terminalSteps([]).isEmpty)
     }

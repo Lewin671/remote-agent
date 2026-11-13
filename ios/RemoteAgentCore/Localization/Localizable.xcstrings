@@ -194,7 +194,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不允许的理由"
+            "value": "拒绝的理由"
           }
         }
       }
@@ -230,7 +230,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不允许"
+            "value": "拒绝"
           }
         }
       }
@@ -320,7 +320,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "`%1$@` 开头的命令以后不再问"
+            "value": "「%1$@」开头的命令以后不再问"
           }
         }
       }
@@ -1556,7 +1556,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "电脑报告的上传进度不对"
+            "value": "电脑返回的文件上传进度无效"
           }
         }
       }
@@ -1574,7 +1574,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "电脑的附件存储空间不足，请清理后重试"
+            "value": "电脑附件空间不足，清理后重试"
           }
         }
       }
@@ -2478,7 +2478,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "加载中"
+            "value": "读取中"
           }
         }
       }
@@ -2496,7 +2496,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "机器"
+            "value": "电脑"
           }
         }
       }
@@ -2802,7 +2802,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这条没有发出：%1$@"
+            "value": "没发出去：%1$@"
           }
         }
       }
@@ -3472,7 +3472,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "立即重试"
+            "value": "重试"
           }
         }
       }
@@ -3688,7 +3688,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有回应"
+            "value": "服务器没有回应"
           }
         }
       }
@@ -4122,7 +4122,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "回答了 %1$@"
+            "value": "已回答：%1$@"
           }
         }
       }
@@ -4194,7 +4194,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续规划…"
+            "value": "继续规划"
           }
         }
       }
@@ -5120,7 +5120,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "历史记录存在缺口，请重试"
+            "value": "历史记录不连续，请重试读取"
           }
         }
       }
@@ -5768,7 +5768,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有连上服务器"
+            "value": "连不上服务器"
           }
         }
       }
@@ -5786,7 +5786,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有连上服务器，连上后才能修改"
+            "value": "连上服务器后才能修改"
           }
         }
       }
@@ -5804,7 +5804,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设备名称只能由该设备自己设置"
+            "value": "名称只能在那台设备上修改"
           }
         }
       }
@@ -5912,7 +5912,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "终端已关闭"
+            "value": "终端连接已关闭"
           }
         }
       }
@@ -7028,7 +7028,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "中继未提供可验证的执行结果，请重试同一请求"
+            "value": "未收到可验证的执行结果，请重试同一请求"
           }
         }
       }
@@ -7118,7 +7118,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "server 返回了意外的设备 ID"
+            "value": "服务器返回了意外的设备 ID"
           }
         }
       }
@@ -7370,7 +7370,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先更新这台电脑上的 remote-agent，才能使用定时任务"
+            "value": "需要更新这台电脑上的 remote-agent 才能使用定时任务。"
           }
         }
       }
@@ -7974,7 +7974,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没能加载更早的会话：%1$@ · 点这里重试"
+            "value": "没能读取更早的会话：%1$@ · 点这里重试"
           }
         }
       }
@@ -7992,7 +7992,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连上服务器后加载更早的会话"
+            "value": "连上服务器后读取更早的会话"
           }
         }
       }
@@ -8136,7 +8136,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在加载更早的会话…"
+            "value": "正在读取更早的会话…"
           }
         }
       }
@@ -10600,7 +10600,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不支持的图片格式"
+            "value": "不支持这种图片格式"
           }
         }
       }
@@ -11031,7 +11031,7 @@
                   "other": {
                     "stringUnit": {
                       "state": "translated",
-                      "value": "图片 %2$lld，共 %1$lld 张"
+                      "value": "第 %2$lld 张，共 %1$lld 张"
                     }
                   }
                 }
@@ -11400,7 +11400,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 查看的图"
+            "value": "%1$@ 查看的图片"
           }
         }
       }
@@ -13168,7 +13168,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "换机器"
+            "value": "换电脑"
           }
         }
       }
@@ -13276,7 +13276,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "所选模型或推理强度在这台机器上不可用，这次用机器的默认值"
+            "value": "所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值"
           }
         }
       }
@@ -13456,7 +13456,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已装 %2$@；这台机器没有 %3$@，会改用 %1$@"
+            "value": "已装 %2$@；这台电脑没有 %3$@，会改用 %1$@"
           }
         }
       }
@@ -13510,7 +13510,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "换一台电脑"
+            "value": "换电脑"
           }
         }
       }
@@ -13528,7 +13528,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "换一个项目"
+            "value": "换项目"
           }
         }
       }
@@ -13636,7 +13636,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "草稿已保留，请选择在线机器；不自动换机器或 CLI。"
+            "value": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。"
           }
         }
       }
@@ -13906,7 +13906,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "机器：%1$@"
+            "value": "电脑：%1$@"
           }
         }
       }
@@ -14140,7 +14140,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "要做什么？"
+            "value": "要做什么"
           }
         }
       }
@@ -14500,7 +14500,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在添加…"
+            "value": "正在添加到项目列表…"
           }
         }
       }
@@ -14866,7 +14866,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "换机器后，各 CLI 的模型从那台机器的默认设置开始。"
+            "value": "换电脑后，各 CLI 的模型从那台电脑的默认设置开始。"
           }
         }
       }
@@ -14902,7 +14902,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这个项目还没有会话。"
+            "value": "这个项目还没有会话"
           }
         }
       }
@@ -15010,7 +15010,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在同步…"
+            "value": "正在同步项目列表…"
           }
         }
       }
@@ -17832,7 +17832,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "机器和模型"
+            "value": "电脑和模型"
           }
         }
       }
@@ -18120,7 +18120,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除任务？"
+            "value": "删除这个任务？"
           }
         }
       }
@@ -18956,7 +18956,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择项目"
+            "value": "选项目"
           }
         }
       }
@@ -19226,7 +19226,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "读取模型…"
+            "value": "读取模型列表…"
           }
         }
       }
@@ -19244,7 +19244,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "读取任务…"
+            "value": "正在读取任务…"
           }
         }
       }
@@ -19388,7 +19388,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要处理"
+            "value": "需要你处理"
           }
         }
       }
@@ -19406,7 +19406,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要你看一下"
+            "value": "需要你处理"
           }
         }
       }
@@ -19532,7 +19532,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "运行次数必须大于 0"
+            "value": "运行次数必须是正整数"
           }
         }
       }
@@ -19784,7 +19784,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "电脑不在线，连上后才能修改"
+            "value": "电脑不在线，连上后才能修改任务"
           }
         }
       }
@@ -19946,7 +19946,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未保存的修改会丢失。"
+            "value": "这次修改不会保存。"
           }
         }
       }
@@ -19964,7 +19964,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这台电脑需要更新 remote-agent 才能使用定时任务。"
+            "value": "需要更新电脑上的 remote-agent 才能使用定时任务。"
           }
         }
       }
@@ -19982,7 +19982,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要更新 remote-agent 才能使用定时任务"
+            "value": "需要更新电脑上的 remote-agent 才能使用定时任务。"
           }
         }
       }
@@ -23494,7 +23494,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续创建"
+            "value": "继续创建账户"
           }
         }
       }
@@ -23566,7 +23566,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "新建账户"
+            "value": "创建账户"
           }
         }
       }
@@ -23656,7 +23656,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除这台电脑的记录"
+            "value": "删除这台电脑的记录？"
           }
         }
       }
@@ -23998,7 +23998,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "生成中…"
+            "value": "正在生成…"
           }
         }
       }
@@ -24358,7 +24358,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "核对管理端的 4 个图案；一致后先在这里确认，再在管理端上允许。"
+            "value": "核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。"
           }
         }
       }
@@ -24664,7 +24664,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设备已加入。"
+            "value": "设备已加入"
           }
         }
       }
@@ -25510,7 +25510,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "远程控制已续期。"
+            "value": "远程控制已续期"
           }
         }
       }
@@ -25618,7 +25618,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "补齐账户公钥资料"
+            "value": "补齐账户公钥"
           }
         }
       }
@@ -25636,7 +25636,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "补齐资料"
+            "value": "补齐公开资料"
           }
         }
       }
@@ -25870,7 +25870,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前请求已变化，请重新核对"
+            "value": "电脑上的请求已变化，请重新核对"
           }
         }
       }
@@ -25906,7 +25906,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "管理端的信任信息与承诺不匹配"
+            "value": "管理端的信任信息与配对承诺不匹配"
           }
         }
       }
@@ -25960,7 +25960,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "旧恢复码立即作废，正在等待的恢复申请会被否决。"
+            "value": "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。"
           }
         }
       }
@@ -25978,7 +25978,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。"
+            "value": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对 4 个图案完成加入。日常使用不需要重复设置。"
           }
         }
       }
@@ -26086,7 +26086,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "安全状态链太长，无法加入账户；请在管理端重建账户"
+            "value": "账户的状态链太长，无法加入；请在管理端重建账户。"
           }
         }
       }
@@ -26140,7 +26140,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "接任公钥可能已经发布；放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期，请保留已保存的恢复码。"
+            "value": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"
           }
         }
       }
@@ -26356,7 +26356,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "试得太频繁了，稍等一分钟再试"
+            "value": "试得太频繁了，等一分钟再试"
           }
         }
       }
@@ -26644,7 +26644,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "加载中…"
+            "value": "读取中…"
           }
         }
       }
@@ -26842,7 +26842,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请打开%1$@续期。"
+            "value": "请打开%1$@续期"
           }
         }
       }
@@ -27184,7 +27184,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布中…"
+            "value": "正在发布…"
           }
         }
       }
@@ -27382,7 +27382,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "恢复申请待处理。可生效时间：%1$@"
+            "value": "恢复申请待处理 · 可生效时间：%1$@"
           }
         }
       }
@@ -28372,7 +28372,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。"
+            "value": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对 4 个图案完成加入。"
           }
         }
       }
@@ -28552,7 +28552,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"
+            "value": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"
           }
         }
       }
@@ -28930,7 +28930,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "试得太多了，等一分钟再试"
+            "value": "试得太频繁了，等一分钟再试"
           }
         }
       }
@@ -28966,7 +28966,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "交接结果尚未核实，请继续原操作"
+            "value": "交接结果尚未核实，请继续原操作。"
           }
         }
       }
@@ -29362,7 +29362,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "上下文"
+            "value": "上下文占用"
           }
         }
       }
@@ -29380,7 +29380,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "上下文 %2$@ / %1$@"
+            "value": "上下文占用 %2$@ / %1$@"
           }
         }
       }
@@ -29596,7 +29596,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@结束"
+            "value": "%1$@ 结束"
           }
         }
       }
@@ -29794,7 +29794,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@分叉自%1$@"
+            "value": "%2$@ 分叉自%1$@"
           }
         }
       }
@@ -30102,7 +30102,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已折叠"
+            "value": "已收起"
           }
         }
       }
@@ -30174,7 +30174,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "上下文 %2$lldk / %1$lldk"
+            "value": "上下文占用 %2$lldk / %1$lldk"
           }
         }
       }
@@ -30570,7 +30570,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "标题"
+            "value": "会话标题"
           }
         }
       }
@@ -30700,7 +30700,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "需要更新 remote-agent"
+            "value": "请更新电脑上的 remote-agent"
           }
         }
       }
@@ -30736,7 +30736,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "回到最新"
+            "value": "回到最新消息"
           }
         }
       }
@@ -30754,7 +30754,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在加载更早的记录…"
+            "value": "正在读取更早的记录…"
           }
         }
       }
@@ -30934,7 +30934,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "更多，上下文 %1$lld%%"
+            "value": "更多，上下文占用 %1$lld%%"
           }
         }
       }
@@ -31044,7 +31044,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "现在没有在运行"
+            "value": "会话不在运行。"
           }
         }
       }
@@ -31710,7 +31710,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ 终端把%1$@"
+            "value": "%2$@ 终端里%1$@"
           }
         }
       }
@@ -31764,7 +31764,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "思考"
+            "value": "思考过程"
           }
         }
       }
@@ -32178,7 +32178,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": " 正在检查…"
+            "value": "正在检查更新…"
           }
         }
       }
@@ -32340,7 +32340,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "机器离线，显示上次记录"
+            "value": "电脑不在线，显示上次记录"
           }
         }
       }
@@ -33600,7 +33600,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没人处理的审批过了这么久就按拒绝算。"
+            "value": "没人处理的审批过了这个时间就拒绝。"
           }
         }
       }
@@ -33960,7 +33960,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没有电脑。"
+            "value": "还没有电脑"
           }
         }
       }
@@ -34320,7 +34320,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在"
+            "value": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"
           }
         }
       }
@@ -34626,7 +34626,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没人回复的审批过了这个时间就拒绝"
+            "value": "没人处理的审批过了这个时间就拒绝。"
           }
         }
       }
@@ -34716,7 +34716,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已是最新"
+            "value": "已是最新版本"
           }
         }
       }

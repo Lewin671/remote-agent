@@ -135,7 +135,7 @@
   },
   {
     "key": "schedule.android_changes_have_not_been_saved",
-    "zh-CN": "修改还没有保存。",
+    "zh-CN": "这次修改不会保存。",
     "en": "Changes have not been saved.",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -177,7 +177,7 @@
   },
   {
     "key": "schedule.android_choose_a_project",
-    "zh-CN": "选择项目",
+    "zh-CN": "选项目",
     "en": "Choose a project",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -219,7 +219,7 @@
   },
   {
     "key": "schedule.android_computer_offline_tasks_cannot_be_edited",
-    "zh-CN": "电脑不在线，不能修改任务",
+    "zh-CN": "电脑不在线，连上后才能修改任务",
     "en": "Computer offline. Tasks cannot be edited",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -266,7 +266,7 @@
   },
   {
     "key": "schedule.android_creating",
-    "zh-CN": "创建中…",
+    "zh-CN": "正在创建…",
     "en": "Creating…",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -369,7 +369,7 @@
   },
   {
     "key": "schedule.android_end_date",
-    "zh-CN": "结束日期",
+    "zh-CN": "截止日期",
     "en": "End date",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -752,7 +752,7 @@
   },
   {
     "key": "schedule.android_needs_your_attention",
-    "zh-CN": "需要你看一下",
+    "zh-CN": "需要你处理",
     "en": "Needs your attention",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -902,7 +902,7 @@
   },
   {
     "key": "schedule.android_run_count_must_be_greater_than_0",
-    "zh-CN": "次数要大于 0",
+    "zh-CN": "运行次数必须是正整数",
     "en": "Run count must be greater than 0",
     "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -986,7 +986,7 @@
   },
   {
     "key": "schedule.android_select_at_least_one_day",
-    "zh-CN": "至少选一天",
+    "zh-CN": "请至少选择一天",
     "en": "Select at least one day",
     "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1126,7 +1126,7 @@
   },
   {
     "key": "schedule.android_update_remote_agent_on_the_computer_to_create_scheduled_tasks",
-    "zh-CN": "电脑需要更新 remote-agent，才能创建定时任务。",
+    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent on the computer to create scheduled tasks.",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -1140,7 +1140,7 @@
   },
   {
     "key": "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks",
-    "zh-CN": "这台电脑需要更新 remote-agent，才能管理定时任务",
+    "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent on this computer to manage scheduled tasks",
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
@@ -2663,7 +2663,7 @@
   },
   {
     "key": "schedule.delete_task_schedules",
-    "zh-CN": "删除任务？",
+    "zh-CN": "删除这个任务？",
     "en": "Delete task?",
     "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -3733,7 +3733,7 @@
   },
   {
     "key": "schedule.computer_and_model",
-    "zh-CN": "机器和模型",
+    "zh-CN": "电脑和模型",
     "en": "Computer and model",
     "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
@@ -4737,7 +4737,7 @@
   },
   {
     "key": "schedule.ios_choose_a_project",
-    "zh-CN": "选择项目",
+    "zh-CN": "选项目",
     "en": "Choose a project",
     "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -4952,7 +4952,7 @@
   },
   {
     "key": "schedule.ios_loading_models",
-    "zh-CN": "读取模型…",
+    "zh-CN": "读取模型列表…",
     "en": "Loading models…",
     "notes": "iOS ScheduleConfigSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -4966,7 +4966,7 @@
   },
   {
     "key": "schedule.ios_loading_tasks",
-    "zh-CN": "读取任务…",
+    "zh-CN": "正在读取任务…",
     "en": "Loading tasks…",
     "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5078,7 +5078,7 @@
   },
   {
     "key": "schedule.ios_needs_attention",
-    "zh-CN": "需要处理",
+    "zh-CN": "需要你处理",
     "en": "Needs attention",
     "notes": "iOS SchedulesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5092,7 +5092,7 @@
   },
   {
     "key": "schedule.ios_needs_your_attention",
-    "zh-CN": "需要你看一下",
+    "zh-CN": "需要你处理",
     "en": "Needs your attention",
     "notes": "iOS Schedules.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5195,7 +5195,7 @@
   },
   {
     "key": "schedule.ios_run_count_must_be_greater_than_0",
-    "zh-CN": "运行次数必须大于 0",
+    "zh-CN": "运行次数必须是正整数",
     "en": "Run count must be greater than 0",
     "notes": "iOS ScheduleTiming.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5396,7 +5396,7 @@
   },
   {
     "key": "schedule.ios_the_computer_is_offline_connect_to_make_changes",
-    "zh-CN": "电脑不在线，连上后才能修改",
+    "zh-CN": "电脑不在线，连上后才能修改任务",
     "en": "The computer is offline. Connect to make changes.",
     "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5531,7 +5531,7 @@
   },
   {
     "key": "schedule.ios_unsaved_changes_will_be_lost",
-    "zh-CN": "未保存的修改会丢失。",
+    "zh-CN": "这次修改不会保存。",
     "en": "Unsaved changes will be lost.",
     "notes": "iOS ScheduleMessageEditor.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5545,7 +5545,7 @@
   },
   {
     "key": "schedule.ios_update_remote_agent_on_this_computer_to_use_scheduled",
-    "zh-CN": "这台电脑需要更新 remote-agent 才能使用定时任务。",
+    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent on this computer to use scheduled tasks.",
     "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
@@ -5559,7 +5559,7 @@
   },
   {
     "key": "schedule.ios_update_remote_agent_to_use_scheduled_tasks",
-    "zh-CN": "需要更新 remote-agent 才能使用定时任务",
+    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
     "en": "Update remote-agent to use scheduled tasks",
     "notes": "iOS ScheduleConfigSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},

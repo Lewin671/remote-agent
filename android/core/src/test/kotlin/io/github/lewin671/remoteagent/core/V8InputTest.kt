@@ -33,7 +33,7 @@ class V8InputTest {
         val approval = ResolveApprovalRequest.newBuilder().setSessionId("s").setApprovalId("a").setAllow(true).setAlways(true).build()
         assertMessageEquals(SendMode.SEND_MODE_QUEUE, send.mode)
         assertTrue(approval.always)
-        assertMessageEquals("`go test` 开头的命令以后不再问", approvalAlwaysText("Yes, and don't ask again for commands that start with `go test`"))
+        assertMessageEquals("「go test」开头的命令以后不再问", approvalAlwaysText("Yes, and don't ask again for commands that start with `go test`"))
         assertMessageEquals("本项目访问 /w 以后不再问", approvalAlwaysText("Yes, and always allow access to /w from this project"))
         assertMessageEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.approvalAutoEdits()), approvalAlwaysText("Yes, and switch to accept edits"))
         assertMessageEquals("New CLI wording", approvalAlwaysText("New CLI wording"))

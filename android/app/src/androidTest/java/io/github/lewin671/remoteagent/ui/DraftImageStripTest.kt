@@ -58,11 +58,11 @@ class DraftImageStripTest {
                     }
                 }
             }
-            val first = ui.onNodeWithContentDescription("图片 1，共 3 张")
+            val first = ui.onNodeWithContentDescription("第 1 张，共 3 张")
             val remove = ui.onNodeWithContentDescription("移除图片 1")
             val body = first.getUnclippedBoundsInRoot()
             val hit = remove.getUnclippedBoundsInRoot()
-            val next = ui.onNodeWithContentDescription("图片 2，共 3 张").getUnclippedBoundsInRoot()
+            val next = ui.onNodeWithContentDescription("第 2 张，共 3 张").getUnclippedBoundsInRoot()
             assertEquals(44f, (hit.right - hit.left).value, 0.5f)
             assertEquals(44f, (hit.bottom - hit.top).value, 0.5f)
             assertEquals(body.right.value, ((hit.left + hit.right) / 2).value, 0.5f)

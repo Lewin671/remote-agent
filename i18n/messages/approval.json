@@ -151,7 +151,7 @@
   },
   {
     "key": "approval.android_prefix",
-    "zh-CN": "`{command}` 开头的命令以后不再问",
+    "zh-CN": "「{command}」开头的命令以后不再问",
     "en": "Do not ask again for commands starting with `{command}`",
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。参数为原始内容或无分组显示数字，不翻译 CLI/用户内容。英文初稿待审。",
     "params": {
@@ -302,7 +302,7 @@
   },
   {
     "key": "approval.denial_reason",
-    "zh-CN": "不允许的理由",
+    "zh-CN": "拒绝的理由",
     "en": "Reason for denial",
     "notes": "审批卡及详情页的操作/状态文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -334,7 +334,7 @@
   },
   {
     "key": "approval.deny",
-    "zh-CN": "不允许",
+    "zh-CN": "拒绝",
     "en": "Deny",
     "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
@@ -414,7 +414,7 @@
   },
   {
     "key": "approval.ios_always_prefix",
-    "zh-CN": "`{command}` 开头的命令以后不再问",
+    "zh-CN": "「{command}」开头的命令以后不再问",
     "en": "Never ask again for commands starting with `{command}`",
     "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：command 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
     "params": {

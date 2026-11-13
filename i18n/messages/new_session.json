@@ -128,7 +128,7 @@
   },
   {
     "key": "new_session.android_draft_preserved",
-    "zh-CN": "草稿已保留，请选择在线机器；不自动换机器或 CLI。",
+    "zh-CN": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。",
     "en": "Your draft is saved. Choose an online computer; the computer and CLI will not change automatically.",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
@@ -349,7 +349,7 @@
   },
   {
     "key": "new_session.change_machine",
-    "zh-CN": "换机器",
+    "zh-CN": "换电脑",
     "en": "Change computer",
     "notes": "新任务横幅操作，打开机器选择。 无变量。",
     "params": {},
@@ -463,7 +463,7 @@
   },
   {
     "key": "new_session.config_fallback",
-    "zh-CN": "所选模型或推理强度在这台机器上不可用，这次用机器的默认值",
+    "zh-CN": "所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值",
     "en": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
     "notes": "新任务配置回退横幅，允许多行。 无变量。",
     "params": {},
@@ -580,7 +580,7 @@
   },
   {
     "key": "new_session.installed_fallback",
-    "zh-CN": "已装 {agents}；这台机器没有 {missing}，会改用 {agent}",
+    "zh-CN": "已装 {agents}；这台电脑没有 {missing}，会改用 {agent}",
     "en": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
     "notes": "机器选择行下说明；agents 为列表，missing 为缺少的 CLI，agent 为替代 CLI 空间：短标签/列表行保持紧凑，正文可多行。 变量：agents, missing, agent，来自当前界面数据；示例只供翻译。",
     "params": {
@@ -639,7 +639,7 @@
   },
   {
     "key": "new_session.ios_change_computer",
-    "zh-CN": "换一台电脑",
+    "zh-CN": "换电脑",
     "en": "Change computer",
     "notes": "新任务机器读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
@@ -653,7 +653,7 @@
   },
   {
     "key": "new_session.ios_change_project",
-    "zh-CN": "换一个项目",
+    "zh-CN": "换项目",
     "en": "Change project",
     "notes": "新任务标题读屏提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
@@ -747,7 +747,7 @@
   },
   {
     "key": "new_session.ios_draft_kept",
-    "zh-CN": "草稿已保留，请选择在线机器；不自动换机器或 CLI。",
+    "zh-CN": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。",
     "en": "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.",
     "notes": "离线草稿横幅正文。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
@@ -1026,7 +1026,7 @@
   },
   {
     "key": "new_session.machine_label",
-    "zh-CN": "机器：{name}",
+    "zh-CN": "电脑：{name}",
     "en": "Computer: {name}",
     "notes": "新任务机器选择胶囊按钮的读屏标签；name 是当前电脑显示名。无可视空间限制。",
     "params": {
@@ -1189,7 +1189,7 @@
   },
   {
     "key": "new_session.prompt",
-    "zh-CN": "要做什么？",
+    "zh-CN": "要做什么",
     "en": "What would you like to do?",
     "notes": "新任务输入框占位。 无变量。",
     "params": {},

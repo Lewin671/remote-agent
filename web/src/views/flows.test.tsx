@@ -109,10 +109,10 @@ it("keeps the context warning and the settings behind ⋯ on a narrow phone", as
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     // ⋯ carries the high context as a dot, and its menu the reading; ＋
     // only adds images.
-    expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
+    expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文占用 86%");
     expect(host.querySelector(".cm-plus")?.getAttribute("aria-label")).toBe(message("image.add"));
     expect(host.querySelector(`button[aria-label="${message("composer.send")}"]`)).toBeTruthy();
-    await fromMenu("上下文已用 86%");
+    await fromMenu("上下文占用已用 86%");
     expect(host.textContent).toContain(message("session.settings"));
   } finally {
     act(() => viewport.setViewport({ width: 1024, height: 768 }));
@@ -259,7 +259,7 @@ it("keeps the dock's buttons out of its scrolling content", () => {
   const dock = host.querySelector(".dock")!;
   const scroll = dock.querySelector(".pending-scroll")!;
   expect(scroll.textContent).toContain("rm -rf gen/remoteagent");
-  for (const b of ["不允许", "允许"]) {
+  for (const b of ["拒绝", "允许"]) {
     const el = button(b, dock)!;
     expect(scroll.contains(el)).toBe(false);
   }
@@ -1826,7 +1826,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     expect(sheet.querySelector(".sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
     expect(sheet.querySelector(`.sheet-head button[aria-label="${message("common.back")}"]`)).toBeNull();
     expect(sheet.textContent).toContain("默认（");
-    expect(sheet.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
+    expect(sheet.textContent).not.toMatch(/电脑|审批|移除项目|常用|只影响之后新建/);
     // Choosing a model stores it, and 完成 closes the sheet.
     await click(button("GPT-6-Luna", document));
     await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
@@ -1839,7 +1839,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await fromMenu("新会话设置");
     expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
-    expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
+    expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/电脑|审批|移除项目|常用|只影响之后新建/);
     await click(button(message("common.done", {}, "zh-CN"), document));
     // The machine chip opens the list of machines, and picking one closes it.
     await click(host.querySelector<HTMLButtonElement>(".tok.m")!);

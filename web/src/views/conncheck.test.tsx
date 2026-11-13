@@ -54,7 +54,7 @@ describe("connection check", () => {
   it("says the server did not answer, and leaves the computers unmeasured", async () => {
     let asked = 0;
     open("", (r) => {
-      r.pingServer = async () => Promise.reject(new Error("没有回应"));
+      r.pingServer = async () => Promise.reject(new Error("服务器没有回应"));
       r.pingMachine = async () => ++asked;
     });
     await vi.waitFor(() => expect(rows()[message("security.server")]).toBe(message("connection.no_response")));

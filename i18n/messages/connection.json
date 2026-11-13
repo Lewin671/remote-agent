@@ -67,7 +67,7 @@
   },
   {
     "key": "connection.android_retry_now",
-    "zh-CN": "立即重试",
+    "zh-CN": "重试",
     "en": "Retry now",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
@@ -220,7 +220,7 @@
   },
   {
     "key": "connection.ios_retry_now",
-    "zh-CN": "立即重试",
+    "zh-CN": "重试",
     "en": "Retry now",
     "notes": "连接详情主动重试按钮；网页公共操作原句为重试。 iOS 现有原句，保持中文不变。",
     "params": {},
@@ -317,7 +317,7 @@
   },
   {
     "key": "connection.no_response",
-    "zh-CN": "没有回应",
+    "zh-CN": "服务器没有回应",
     "en": "No response",
     "notes": "服务器无错误详情时的短原因。 无变量。",
     "params": {},

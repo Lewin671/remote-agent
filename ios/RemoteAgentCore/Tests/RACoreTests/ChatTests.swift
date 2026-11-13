@@ -290,7 +290,7 @@ import Testing
             who: { o in o.flatMap { $0.deviceID == "me" ? nil : "Chrome · a8f2" } })
         #expect(
             items == [
-                .note(.init(key: "e1", text: "rm -rf build", icon: .check, tone: 1, meta: "已允许 · `rm` 开头的命令以后不再问 · Chrome · a8f2")),
+                .note(.init(key: "e1", text: "rm -rf build", icon: .check, tone: 1, meta: "已允许 · 「rm」开头的命令以后不再问 · Chrome · a8f2")),
                 .note(.init(key: "e3", text: "已回答：甲、乙", icon: .check, tone: 1)),
                 .note(.init(key: "e4", text: "Chrome · a8f2 将模型切到 sonnet · high")),
                 .note(.init(key: "e5", text: "模式切换到 完全放行")),

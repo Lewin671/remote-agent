@@ -545,7 +545,7 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>lld</string>
 			<key>other</key>
-			<string>图片 %2$lld，共 %1$lld 张</string>
+			<string>第 %2$lld 张，共 %1$lld 张</string>
 		</dict>
 	</dict>
 	<key>image_position_state</key>

@@ -128,7 +128,7 @@
   },
   {
     "key": "dock.android_plan_keep",
-    "zh-CN": "继续规划…",
+    "zh-CN": "继续规划",
     "en": "Continue planning…",
     "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
     "params": {},
@@ -259,7 +259,7 @@
   },
   {
     "key": "dock.answered",
-    "zh-CN": "回答了 {answers}",
+    "zh-CN": "已回答：{answers}",
     "en": "Answered {answers}",
     "notes": "会话停靠区的提问/计划/弹窗卡及完整页。历史提问回答行；answers 为加粗的原始答案列表。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：answers 为原始答案列表的加粗富文本槽位。",
     "params": {
@@ -328,7 +328,7 @@
   },
   {
     "key": "dock.ios_keep_planning",
-    "zh-CN": "继续规划…",
+    "zh-CN": "继续规划",
     "en": "Keep planning…",
     "notes": "Agents.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},

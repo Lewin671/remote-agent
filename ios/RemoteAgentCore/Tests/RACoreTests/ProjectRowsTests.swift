@@ -162,7 +162,7 @@ import Testing
         #expect(title == L10n.newSessionIosOfflineDraft(name: "MacBook") && none == nil)
         #expect(choices.map(\.title) == [L10n.newSessionUseMachine(name: "VPS-dev")])
         // That machine has only Codex: said, and the draft's model does not carry over.
-        #expect(choices[0].note == L10n.newSessionInstalled(agents: "Codex；这台机器没有 Claude Code，会改用 Codex"))
+        #expect(choices[0].note == L10n.newSessionInstalled(agents: "Codex；这台电脑没有 Claude Code，会改用 Codex"))
         #expect(choices[0].config == NewConfig(machineId: "vps", cwd: "/p/foo", agent: .codex))
         st.machines["vps"]?.online = false
         guard case .offlineChoice(_, _, let empty, let said)? = notices(st, c, drafting: true).first else { return }
@@ -306,7 +306,7 @@ import Testing
         var st = state([session("a", "/p/foo"), session("b", "/p/foo", machine: "vps")])
         #expect(machineRows(st, cwd: "/p/foo", agent: .claude).map(\.note) == [
             "已装 Codex、Claude Code",
-            "已装 Codex；这台机器没有 Claude Code，会改用 Codex"
+            "已装 Codex；这台电脑没有 Claude Code，会改用 Codex"
         ])
         st.machines["vps"]?.online = false
         #expect(machineRows(st, cwd: "/p/foo", agent: .codex).last == ProjectMachineRow(id: "vps", name: "VPS-dev", online: false, note: L10n.newSessionIosMachineUnavailable()))

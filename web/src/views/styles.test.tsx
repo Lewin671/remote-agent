@@ -16,7 +16,7 @@ beforeAll(() => {
 });
 
 const open = (cls = "") =>
-  (document.body.innerHTML = `<div class="dockwrap" style="--content-max: 60px"><div class="dock pending open ${cls}"><div class="tc"><div class="k pending-head"><button class="pending-sum">…</button></div><div class="pending-content"><div class="pending-scroll">…</div><div class="pending-actions"><textarea class="inp"></textarea><div class="btns"><button class="btn">取消</button><button class="btn pri">不允许</button></div></div></div></div></div></div>`);
+  (document.body.innerHTML = `<div class="dockwrap" style="--content-max: 60px"><div class="dock pending open ${cls}"><div class="tc"><div class="k pending-head"><button class="pending-sum">…</button></div><div class="pending-content"><div class="pending-scroll">…</div><div class="pending-actions"><textarea class="inp"></textarea><div class="btns"><button class="btn">取消</button><button class="btn pri">拒绝</button></div></div></div></div></div></div>`);
 
 it("scrolls an open dock's content, never its actions, within the room it has", () => {
   open();
@@ -59,7 +59,7 @@ it("keeps the tray's thumbnails square on a wide page", () => {
 });
 
 it("keeps an approval's or a plan's buttons to 480 on a wide window", () => {
-  document.body.innerHTML = `<div class="dock"><div class="btns decide"><button class="btn no">不允许</button><button class="btn pri">允许</button></div></div>`;
+  document.body.innerHTML = `<div class="dock"><div class="btns decide"><button class="btn no">拒绝</button><button class="btn pri">允许</button></div></div>`;
   expect(innerWidth).toBeGreaterThanOrEqual(900);
   expect(getComputedStyle(document.querySelector(".btns.decide")!).maxWidth).toBe("480px");
 });

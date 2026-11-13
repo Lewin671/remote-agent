@@ -66,14 +66,14 @@ class UnauthenticatedScreensTest {
                 }
             }
         }
-        val top = ui.onNodeWithText("新建账户").getUnclippedBoundsInRoot().top
+        val top = ui.onNodeWithText("创建账户").getUnclippedBoundsInRoot().top
         assertTrue("nested page applied system insets twice: $top", top >= 48.dp && top < 96.dp)
     }
 
     @Test
     fun creationHeaderRespectsActivityInsets() {
         val app = app()
-        assertSetupHeaderBelowSystemBar("新建账户") { CreateAccountScreen(app) {} }
+        assertSetupHeaderBelowSystemBar("创建账户") { CreateAccountScreen(app) {} }
     }
 
     @Test
@@ -185,7 +185,7 @@ class UnauthenticatedScreensTest {
     fun joinRendersWithoutSignedInNavigation() {
         val app = app()
         show { JoinScreen(app) }
-        ui.onNodeWithText("新建账户").assertExists()
+        ui.onNodeWithText("创建账户").assertExists()
     }
 
     @Test
@@ -201,12 +201,12 @@ class UnauthenticatedScreensTest {
     fun createAccountFromFreshJoinRendersAndReturns() {
         val app = app()
         show { JoinScreen(app) }
-        ui.onNodeWithText("新建账户").performScrollTo().performClick()
+        ui.onNodeWithText("创建账户").performScrollTo().performClick()
         ui.onNodeWithContentDescription("返回").assertIsDisplayed()
         // The top bar's round button is the one way back; no second "返回" text button at the bottom.
         ui.onNodeWithText("返回").assertDoesNotExist()
         ui.onNodeWithContentDescription("返回").performClick()
-        ui.onNodeWithText("新建账户").assertExists()
+        ui.onNodeWithText("创建账户").assertExists()
     }
 
     @Test

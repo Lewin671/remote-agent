@@ -43,11 +43,11 @@ class ScheduleCreationMachineTest {
     @Test fun changingComputerWithoutEditingSettingsCreatesWithDisplayedDefaults() {
         prepare(state())
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleEditor(""){} } } }
-        ui.onNodeWithText("选择项目",useUnmergedTree=true).performClick()
+        ui.onNodeWithText("选项目",useUnmergedTree=true).performClick()
         ui.onNodeWithText("project",useUnmergedTree=true).performClick()
         ui.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("检查回复")
-        ui.onNodeWithText("机器和模型",useUnmergedTree=true).performScrollTo().performClick()
-        ui.onNodeWithText("机器",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
+        ui.onNodeWithText("电脑和模型",useUnmergedTree=true).performScrollTo().performClick()
+        ui.onNodeWithText("电脑",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
         ui.onNodeWithText("默认模型",useUnmergedTree=true).assertExists();ui.onNodeWithText("询问",useUnmergedTree=true).assertExists()
         ui.onNodeWithText("完成").performScrollTo().performClick()
         ui.onNodeWithText("创建").performScrollTo().performClick()
@@ -61,7 +61,7 @@ class ScheduleCreationMachineTest {
         // The new computer has Codex only: the sheet, opened for Claude Code, shows and returns Codex's set.
         val state=state();prepare(state);var result:PrefsOp.SetSettings?=null
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { NewSettingsSheet(state,path,"project","old",Agent.AGENT_CLAUDE,onDone={result=it},onClose={},initial=initial,scheduling=true) } } }
-        ui.onNodeWithText("机器",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
+        ui.onNodeWithText("电脑",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
         ui.onNodeWithText("默认模型",useUnmergedTree=true).assertExists()
         ui.onNodeWithText("完成").performScrollTo().performClick()
         ui.runOnIdle {

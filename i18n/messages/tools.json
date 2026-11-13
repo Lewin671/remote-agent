@@ -76,7 +76,7 @@
   },
   {
     "key": "tools.android_collapsed",
-    "zh-CN": "已折叠",
+    "zh-CN": "已收起",
     "en": "Collapsed",
     "notes": "Android 批次 B：Tools.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},

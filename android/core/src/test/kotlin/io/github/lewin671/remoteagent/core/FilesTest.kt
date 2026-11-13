@@ -22,7 +22,7 @@ class FilesTest {
         assertEquals(6, maxFiles(machine(true, 99)))
         assertNull(fileLimitError(0, 0, 6, MAX_FILE_BYTES))
         assertNull(fileLimitError(MAX_FILE_BYTES, 5, 6, MAX_FILE_BYTES))
-        assertTrue(fileLimitError(MAX_FILE_BYTES + 1, 0, 6, MAX_FILE_BYTES)!!.contains("文件过大"))
+        assertTrue(fileLimitError(MAX_FILE_BYTES + 1, 0, 6, MAX_FILE_BYTES)!!.contains("文件太大"))
         assertTrue(fileLimitError(1, 6, 6, MAX_FILE_BYTES)!!.contains("最多 6 个文件"))
         assertNotNull(fileLimitError(-1, 0, 6, MAX_FILE_BYTES))
     }

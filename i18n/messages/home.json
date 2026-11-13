@@ -82,7 +82,7 @@
   },
   {
     "key": "home.android_earlier_failed_retry",
-    "zh-CN": "没能加载更早的会话：{reason} · 点这里重试",
+    "zh-CN": "没能读取更早的会话：{reason} · 点这里重试",
     "en": "Could not load earlier sessions: {reason} · Tap to retry",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {
@@ -101,7 +101,7 @@
   },
   {
     "key": "home.android_earlier_offline",
-    "zh-CN": "连上服务器后加载更早的会话",
+    "zh-CN": "连上服务器后读取更早的会话",
     "en": "Earlier sessions will load when connected to the server",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
@@ -220,7 +220,7 @@
   },
   {
     "key": "home.android_select_session",
-    "zh-CN": "选一个会话，在这里看",
+    "zh-CN": "选一个会话",
     "en": "Select a session to view it here",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
@@ -593,7 +593,7 @@
   },
   {
     "key": "home.ios_earlier_failed",
-    "zh-CN": "没能加载更早的会话：{reason} · 点这里重试",
+    "zh-CN": "没能读取更早的会话：{reason} · 点这里重试",
     "en": "Could not load earlier sessions: {reason} · Tap to retry",
     "notes": "首页更早分页失败。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {
@@ -612,7 +612,7 @@
   },
   {
     "key": "home.ios_earlier_offline",
-    "zh-CN": "连上服务器后加载更早的会话",
+    "zh-CN": "连上服务器后读取更早的会话",
     "en": "Connect to the server to load earlier sessions",
     "notes": "首页分页离线。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
@@ -740,7 +740,7 @@
   },
   {
     "key": "home.loading_earlier",
-    "zh-CN": "正在加载更早的会话…",
+    "zh-CN": "正在读取更早的会话…",
     "en": "Loading earlier sessions…",
     "notes": "列表底部加载状态。 无变量。",
     "params": {},

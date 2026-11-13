@@ -50,7 +50,7 @@ async function input(label: string, value: string) {
 }
 it("has three unauthenticated entries and keeps pairing direction", async () => {
   await mount();
-  for (const label of ["新建账户", "加入已有账户", "用恢复码找回管理权"])
+  for (const label of ["创建账户", "加入已有账户", "用恢复码找回管理权"])
     expect(button(label)).toBeTruthy();
   const rows = [...host.querySelectorAll(".grp .entry-row")];
   expect(rows.map(row => row.querySelector("small")?.textContent)).toEqual([

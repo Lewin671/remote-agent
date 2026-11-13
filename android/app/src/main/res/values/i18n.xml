@@ -11,7 +11,7 @@
     <plurals name="approval_android_minutes_meta">
         <item quantity="other">" · 剩 %1$d 分钟"</item>
     </plurals>
-    <string name="approval_android_prefix">"`%1$s` 开头的命令以后不再问"</string>
+    <string name="approval_android_prefix">"「%1$s」开头的命令以后不再问"</string>
     <plurals name="approval_android_remaining_timeout">
         <item quantity="other">"剩 %1$d 分钟，超时拒绝"</item>
     </plurals>
@@ -21,9 +21,9 @@
     <string name="approval_approve_execute" formatted="false">"批准执行"</string>
     <string name="approval_auto_edits" formatted="false">"本会话自动接受编辑"</string>
     <string name="approval_delivery_failed">"没送到电脑：%1$s"</string>
-    <string name="approval_denial_reason" formatted="false">"不允许的理由"</string>
+    <string name="approval_denial_reason" formatted="false">"拒绝的理由"</string>
     <string name="approval_denied" formatted="false">"已拒绝"</string>
-    <string name="approval_deny" formatted="false">"不允许"</string>
+    <string name="approval_deny" formatted="false">"拒绝"</string>
     <string name="approval_details" formatted="false">"审批详情"</string>
     <string name="approval_expired" formatted="false">"已超时"</string>
     <string name="approval_full_command" formatted="false">"看完整命令"</string>
@@ -51,7 +51,7 @@
     <plurals name="attachment_android_restore_limit">
         <item quantity="other">"放回后会超过 %1$d 个文件，先移除一些再放回"</item>
     </plurals>
-    <string name="attachment_android_source_unreadable" formatted="false">"无法读取源文件，请重新选择文件"</string>
+    <string name="attachment_android_source_unreadable" formatted="false">"读不到源文件，请重新选择"</string>
     <string name="attachment_android_upload_meta">" · 上传 %1$s%%"</string>
     <string name="attachment_android_upload_required" formatted="false">"附件需要重新传到电脑，请上传完成后再发送"</string>
     <string name="attachment_computer_offline">"%1$s 离线，连上后才能添加图片"</string>
@@ -116,8 +116,8 @@
     <string name="common_got_it" formatted="false">"知道了"</string>
     <string name="common_ios_spoken_separator" formatted="false">"，"</string>
     <string name="common_list_separator" formatted="false">"、"</string>
-    <string name="common_loading" formatted="false">"加载中"</string>
-    <string name="common_machine" formatted="false">"机器"</string>
+    <string name="common_loading" formatted="false">"读取中"</string>
+    <string name="common_machine" formatted="false">"电脑"</string>
     <string name="common_reload" formatted="false">"重新加载"</string>
     <string name="common_remove" formatted="false">"移除"</string>
     <string name="common_retry" formatted="false">"重试"</string>
@@ -126,7 +126,7 @@
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
     <string name="composer_after_turn" formatted="false">"这一轮结束后再发"</string>
     <string name="composer_android_image_not_on_computer" formatted="false">"图片不在电脑上"</string>
-    <string name="composer_android_not_sent">"这条没有发出：%1$s"</string>
+    <string name="composer_android_not_sent">"没发出去：%1$s"</string>
     <string name="composer_android_outbox_format" formatted="false">"待确认记录格式已变更，请清理旧记录并重新选择附件"</string>
     <string name="composer_android_reply_unverified" formatted="false">"回复验证失败"</string>
     <string name="composer_android_restart_unknown" formatted="false">"App 重启过，不确定这条有没有送到"</string>
@@ -166,7 +166,7 @@
     <string name="connection_android_explanation" formatted="false">"本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。"</string>
     <string name="connection_android_no_response" formatted="false">"服务器没有回应"</string>
     <string name="connection_android_reason">"原因　%1$s"</string>
-    <string name="connection_android_retry_now" formatted="false">"立即重试"</string>
+    <string name="connection_android_retry_now" formatted="false">"重试"</string>
     <string name="connection_android_server">"服务器　%1$s"</string>
     <string name="connection_android_server_failed">"连不上服务器：%1$s"</string>
     <string name="connection_checking" formatted="false">"检测中…"</string>
@@ -184,7 +184,7 @@
     <string name="connection_no_network" formatted="false">"本机网络不通"</string>
     <string name="connection_no_network_empty" formatted="false">"本机网络不通 · 联网后才能读取会话"</string>
     <string name="connection_no_network_previous" formatted="false">"本机网络不通 · 显示的是上次的内容"</string>
-    <string name="connection_no_response" formatted="false">"没有回应"</string>
+    <string name="connection_no_response" formatted="false">"服务器没有回应"</string>
     <string name="connection_no_server" formatted="false">"连不上服务器"</string>
     <string name="connection_not_checked" formatted="false">"未检测"</string>
     <string name="connection_previous_below" formatted="false">"下面是上次的内容"</string>
@@ -211,7 +211,7 @@
     <string name="dock_android_answered" formatted="false">"已回答提问"</string>
     <string name="dock_android_answered_values">"已回答：%1$s"</string>
     <string name="dock_android_plan_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择"</string>
-    <string name="dock_android_plan_keep" formatted="false">"继续规划…"</string>
+    <string name="dock_android_plan_keep" formatted="false">"继续规划"</string>
     <string name="dock_android_plan_unknown">"「%1$s」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次"</string>
     <string name="dock_android_question_answered" formatted="false">"这个问题已经回答了。"</string>
     <string name="dock_android_question_changed">"没能提交，终端里的问题可能已经变了：%1$s"</string>
@@ -219,7 +219,7 @@
     <string name="dock_android_retry_choice">"重试「%1$s」"</string>
     <string name="dock_answer_title" formatted="false">"回答提问"</string>
     <string name="dock_answer_unknown" formatted="false">"不确定提交了没有，重试会发送同一个回答"</string>
-    <string name="dock_answered">"回答了 %1$s"</string>
+    <string name="dock_answered">"已回答：%1$s"</string>
     <string name="dock_claude_plan_note" formatted="false">"批准后使用询问模式"</string>
     <string name="dock_handle" formatted="false">"处理"</string>
     <string name="dock_handle_terminal" formatted="false">"去终端处理"</string>
@@ -260,16 +260,16 @@
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
     <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"电脑的回复打不开，不确定指令有没有执行"</string>
     <string name="errors_android_cannot_read_file_size_select_the_file_again" formatted="false">"无法读取文件大小，请重新选择文件"</string>
-    <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"无法读取源文件，请移除后重新选择文件"</string>
+    <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"读不到源文件，请移除后重新选择"</string>
     <string name="errors_android_cannot_verify_the_current_request" formatted="false">"无法核实当前请求"</string>
     <string name="errors_android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends" formatted="false">"不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求"</string>
     <string name="errors_android_computer_outcome_unknown_the_connection_dropped" formatted="false">"不确定电脑有没有执行：连接中途断了"</string>
     <string name="errors_android_computer_outcome_unknown_the_request_may_have_arrived_before_login">"不确定电脑有没有执行：请求可能已经送到，之后登录失败（%1$s）"</string>
     <string name="errors_android_computer_outcome_unknown_value1">"不确定电脑有没有执行：%1$s"</string>
-    <string name="errors_android_could_not_connect_to_the_server" formatted="false">"没有连上服务器"</string>
+    <string name="errors_android_could_not_connect_to_the_server" formatted="false">"连不上服务器"</string>
     <string name="errors_android_could_not_read_the_session_list" formatted="false">"没能读取会话列表"</string>
     <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"文件名过长或为空，请重命名后重新选择"</string>
-    <string name="errors_android_file_too_large_maximum_size_per_file_value1">"文件过大，单个文件最多 %1$s"</string>
+    <string name="errors_android_file_too_large_maximum_size_per_file_value1">"文件太大，单个文件最多 %1$s"</string>
     <string name="errors_android_file_verification_failed_retry_or_select_the_file_again" formatted="false">"文件校验失败，请重试或重新选择文件"</string>
     <string name="errors_android_history_read_failed">"没能读取历史：%1$s"</string>
     <string name="errors_android_history_records_are_discontinuous_retry_reading" formatted="false">"历史记录不连续，请重试读取"</string>
@@ -296,8 +296,8 @@
     <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"终端输出积压，已停止接收"</string>
     <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"电脑没有返回文件 ID"</string>
     <string name="errors_android_the_computer_has_not_verified_the_current_request" formatted="false">"当前请求尚未由电脑核实"</string>
-    <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"电脑返回的文件进度无效"</string>
-    <string name="errors_android_the_current_request_changed_review_it_again" formatted="false">"当前请求已变化，请重新核对"</string>
+    <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"电脑返回的文件上传进度无效"</string>
+    <string name="errors_android_the_current_request_changed_review_it_again" formatted="false">"电脑上的请求已变化，请重新核对"</string>
     <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"文件在上传时发生变化，请重试或重新选择文件"</string>
     <string name="errors_android_the_managing_client_cannot_be_removed_normally" formatted="false">"管理端不能被普通删除"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"手机时钟比服务器快，成员状态暂不可用；请校准系统时间"</string>
@@ -305,7 +305,7 @@
     <string name="errors_android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the">"上一次的结果仍不确定：%1$s。重试会发送同一个请求"</string>
     <string name="errors_android_the_previous_outcome_is_unknown_the_request_expired_and_will" formatted="false">"不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始"</string>
     <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"这条指令已过期，没有发出"</string>
-    <string name="errors_android_this_request_can_no_longer_be_acted_on" formatted="false">"请求已不可操作"</string>
+    <string name="errors_android_this_request_can_no_longer_be_acted_on" formatted="false">"当前请求已不可操作"</string>
     <string name="errors_android_upload_connection_interrupted_retry" formatted="false">"上传连接中断，请重试"</string>
     <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s；上一次的结果仍不确定，能力恢复后可重试同一请求"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
@@ -322,7 +322,7 @@
     <string name="errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" formatted="false">"紧急恢复草稿已保留，请继续查询、等待或完成原恢复"</string>
     <string name="errors_establishing_push_connection" formatted="false">"建立推送连接"</string>
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"历史记录未能继续加载，请重试"</string>
-    <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录存在缺口，请重试"</string>
+    <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
     <string name="errors_invalid_ciphertext_current_state_checkpoint_mismatch" formatted="false">"密文无效：当前状态 checkpoint 不匹配"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
@@ -374,12 +374,12 @@
     <string name="errors_the_previous_operation_s_outcome_is_still_unknown_reload" formatted="false">"上次操作的结果仍未知，请重新读取任务核实后再操作"</string>
     <string name="errors_the_previous_request_s_outcome_is_still_unknown_cannot" formatted="false">"之前请求的结果仍未知，当前无法重新登录"</string>
     <string name="errors_the_recovery_object_was_updated_concurrently_retrying_on_the" formatted="false">"恢复对象同时更新，将在下次同步重试"</string>
-    <string name="errors_the_relay_did_not_provide_a_verifiable_execution_result" formatted="false">"中继未提供可验证的执行结果，请重试同一请求"</string>
+    <string name="errors_the_relay_did_not_provide_a_verifiable_execution_result" formatted="false">"未收到可验证的执行结果，请重试同一请求"</string>
     <string name="errors_the_request_on_the_computer_changed_review_it_again" formatted="false">"电脑上的请求已变化，请重新核对"</string>
     <string name="errors_the_server_address_cannot_include_a_username_or_password" formatted="false">"server 地址不能包含用户名或密码"</string>
     <string name="errors_the_server_does_not_recognize_this_device_it_may" formatted="false">"服务器不认识这台设备（可能已被移除，或服务已重建）"</string>
     <string name="errors_the_server_must_use_https" formatted="false">"server 必须使用 https"</string>
-    <string name="errors_the_server_returned_an_unexpected_device_id" formatted="false">"server 返回了意外的设备 ID"</string>
+    <string name="errors_the_server_returned_an_unexpected_device_id" formatted="false">"服务器返回了意外的设备 ID"</string>
     <string name="errors_the_session_record_s_computer_was_changed" formatted="false">"会话记录的机器被改动"</string>
     <string name="errors_the_task_list_returned_by_the_computer_could_not" formatted="false">"电脑返回的任务列表无法读取"</string>
     <string name="errors_the_task_was_just_changed_updated_to_the_latest" formatted="false">"任务刚被修改，已更新为最新内容"</string>
@@ -393,7 +393,7 @@
     <string name="errors_this_request_can_no_longer_be_acted_on" formatted="false">"当前请求已不可操作"</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"当前请求尚未由电脑核实，请等待同步"</string>
     <string name="errors_timed_out_reconnecting">"%1$s超时，正在重连"</string>
-    <string name="errors_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"请先更新这台电脑上的 remote-agent，才能使用定时任务"</string>
+    <string name="errors_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"需要更新这台电脑上的 remote-agent 才能使用定时任务。"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"上传没有进展"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current" formatted="false">"等待所属电脑更新当前状态"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current_remote" formatted="false">"等待所属电脑更新当前状态：这台设备没有当时的内容密钥"</string>
@@ -402,8 +402,8 @@
     <string name="home_all_projects" formatted="false">"全部项目"</string>
     <string name="home_android_change_scope" formatted="false">"换范围"</string>
     <string name="home_android_current_scope" formatted="false">"当前范围"</string>
-    <string name="home_android_earlier_failed_retry">"没能加载更早的会话：%1$s · 点这里重试"</string>
-    <string name="home_android_earlier_offline" formatted="false">"连上服务器后加载更早的会话"</string>
+    <string name="home_android_earlier_failed_retry">"没能读取更早的会话：%1$s · 点这里重试"</string>
+    <string name="home_android_earlier_offline" formatted="false">"连上服务器后读取更早的会话"</string>
     <string name="home_android_empty_project" formatted="false">"点右下角的「新任务」在这里开始一个。"</string>
     <string name="home_android_list_failed_retry">"没能读取会话列表：%1$s · 点这里重试"</string>
     <string name="home_android_no_machines" formatted="false">"这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 remote-agent account join。"</string>
@@ -412,7 +412,7 @@
     <plurals name="home_android_schedules_pending">
         <item quantity="other">"定时，%1$d 件需要处理"</item>
     </plurals>
-    <string name="home_android_select_session" formatted="false">"选一个会话，在这里看"</string>
+    <string name="home_android_select_session" formatted="false">"选一个会话"</string>
     <plurals name="home_android_sessions_pending">
         <item quantity="other">"会话，%1$d 件等你处理"</item>
     </plurals>
@@ -432,7 +432,7 @@
     <string name="home_ios_open_session" formatted="false">"打开会话"</string>
     <string name="home_list_failed">"没能读取会话列表：%1$s"</string>
     <string name="home_live" formatted="false">"进行中"</string>
-    <string name="home_loading_earlier" formatted="false">"正在加载更早的会话…"</string>
+    <string name="home_loading_earlier" formatted="false">"正在读取更早的会话…"</string>
     <string name="home_manage_projects" formatted="false">"管理项目"</string>
     <plurals name="home_matches">
         <item quantity="other">"%1$d 个会话的标题里有「%2$s」"</item>
@@ -526,7 +526,7 @@
     <string name="image_android_the_computer_did_not_provide_an_image_id" formatted="false">"电脑没有给出图片 ID"</string>
     <string name="image_android_the_computer_has_not_confirmed_the_attachment_upload_retry" formatted="false">"电脑尚未确认附件上传完成，请重试"</string>
     <string name="image_android_this_image_has_no_local_copy_available_for_reprocessing_remove" formatted="false">"这张图没有可重新处理的本机副本，请移除后重新选择"</string>
-    <string name="image_android_this_image_has_no_local_copy_remove_it_and_select" formatted="false">"这张图没有本机副本，请移除后重新选择"</string>
+    <string name="image_android_this_image_has_no_local_copy_remove_it_and_select" formatted="false">"这张图片没有本机副本，请移除后重新选择"</string>
     <string name="image_android_this_image_is_too_large_for_the_phone_s_available" formatted="false">"这张图太大，手机内存不够处理"</string>
     <string name="image_android_this_phone_cannot_read_this_image_format" formatted="false">"这台手机读不了这种图片格式"</string>
     <string name="image_android_total_size">" · 共 %1$s MB"</string>
@@ -534,7 +534,7 @@
     <string name="image_android_unreadable_jpeg" formatted="false">"不是能读的 JPEG"</string>
     <string name="image_android_unreadable_png" formatted="false">"不是能读的 PNG"</string>
     <string name="image_android_unreadable_webp" formatted="false">"不是能读的 WebP"</string>
-    <string name="image_android_unsupported_image_format" formatted="false">"不支持的图片格式"</string>
+    <string name="image_android_unsupported_image_format" formatted="false">"不支持这种图片格式"</string>
     <string name="image_android_upload_progress">"正在传到电脑，%1$s%%"</string>
     <string name="image_android_upload_to_the_computer_again" formatted="false">"需要重新传到电脑"</string>
     <string name="image_android_upload_to_the_computer_again_if_the_source_cannot_be" formatted="false">"需要重新传到电脑；源文件无法读取时请重新选择文件"</string>
@@ -575,7 +575,7 @@
     <string name="image_original_on_computer" formatted="false">"只有预览，原图在电脑上"</string>
     <string name="image_placeholder">"图 %1$d"</string>
     <plurals name="image_position">
-        <item quantity="other">"图片 %2$d，共 %1$d 张"</item>
+        <item quantity="other">"第 %2$d 张，共 %1$d 张"</item>
     </plurals>
     <plurals name="image_position_state">
         <item quantity="other">"图片 %2$d，共 %1$d 张，%3$s"</item>
@@ -596,7 +596,7 @@
     <string name="image_this_image_format_is_not_supported" formatted="false">"不支持这种图片格式"</string>
     <string name="image_this_image_has_no_local_copy_remove_it_and" formatted="false">"这张图片没有本机副本，请移除后重新选择"</string>
     <string name="image_title" formatted="false">"图片"</string>
-    <string name="image_tool_source">"%1$s 查看的图"</string>
+    <string name="image_tool_source">"%1$s 查看的图片"</string>
     <string name="image_total_size">" · 共 %1$s"</string>
     <string name="image_unsynced" formatted="false">"图片没有同步"</string>
     <string name="image_uploaded" formatted="false">"已传到电脑"</string>
@@ -693,7 +693,7 @@
     <string name="new_session_android_change_machine_hint" formatted="false">"换电脑后，各 CLI 的模型从那台电脑的默认设置开始。"</string>
     <string name="new_session_android_change_project" formatted="false">"换项目"</string>
     <string name="new_session_android_choose_project" formatted="false">"新会话 · 选项目"</string>
-    <string name="new_session_android_draft_preserved" formatted="false">"草稿已保留，请选择在线机器；不自动换机器或 CLI。"</string>
+    <string name="new_session_android_draft_preserved" formatted="false">"草稿已保留，请选择在线电脑；不自动换电脑或 CLI。"</string>
     <string name="new_session_android_expired_start">"不确定「%1$s」有没有启动，它已过期，不会再重发。请先看看进行中的会话"</string>
     <string name="new_session_android_machine_offline">"%1$s 不在线，现在不能新建"</string>
     <string name="new_session_android_model_no_auto">"这个模型没有自动模式，而 %1$s 的新项目默认审批模式是自动。换一个模型，或到这台电脑的设置里改默认"</string>
@@ -706,13 +706,13 @@
     <string name="new_session_android_unknown_start" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_attachments_moved">"已换到 %1$s，附件正在重新上传"</string>
     <string name="new_session_change_defaults" formatted="false">"去改默认"</string>
-    <string name="new_session_change_machine" formatted="false">"换机器"</string>
+    <string name="new_session_change_machine" formatted="false">"换电脑"</string>
     <string name="new_session_change_model" formatted="false">"换模型"</string>
     <string name="new_session_choose_cli" formatted="false">"用哪个 CLI"</string>
     <string name="new_session_cli_fallback">"%3$s 没有 %2$s，这次用 %1$s"</string>
     <string name="new_session_cli_label">"CLI：%1$s"</string>
     <string name="new_session_cli_picker_label" formatted="false">"CLI"</string>
-    <string name="new_session_config_fallback" formatted="false">"所选模型或推理强度在这台机器上不可用，这次用机器的默认值"</string>
+    <string name="new_session_config_fallback" formatted="false">"所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值"</string>
     <string name="new_session_default_model" formatted="false">"默认模型"</string>
     <string name="new_session_disconnected" formatted="false">"和服务器断线了"</string>
     <string name="new_session_each_cli_has_its_own_settings_choose_the_cli" formatted="false">"每个 CLI 各存一套，新建时用哪个在句子里选。"</string>
@@ -722,13 +722,13 @@
     <string name="new_session_follow_cli" formatted="false">"跟随 CLI 设置"</string>
     <string name="new_session_follow_s_configuration">"跟随 %1$s 自己的配置"</string>
     <string name="new_session_installed">"已装 %1$s"</string>
-    <string name="new_session_installed_fallback">"已装 %2$s；这台机器没有 %3$s，会改用 %1$s"</string>
+    <string name="new_session_installed_fallback">"已装 %2$s；这台电脑没有 %3$s，会改用 %1$s"</string>
     <string name="new_session_ios_attach" formatted="false">"添加附件"</string>
     <string name="new_session_location">"在%1$s"</string>
     <string name="new_session_location_cli">"在%2$s用%1$s"</string>
     <string name="new_session_location_machine">"在%1$s的%2$s"</string>
     <string name="new_session_location_machine_cli">"在%2$s的%3$s用%1$s"</string>
-    <string name="new_session_machine_label">"机器：%1$s"</string>
+    <string name="new_session_machine_label">"电脑：%1$s"</string>
     <string name="new_session_machine_offline">"%1$s 不在线"</string>
     <string name="new_session_machine_project_defaults">"用 %1$s 的新项目默认设置"</string>
     <string name="new_session_model_list_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
@@ -741,7 +741,7 @@
     <string name="new_session_permissions" formatted="false">"权限"</string>
     <string name="new_session_project_label">"项目：%1$s"</string>
     <string name="new_session_project_session_label">"%1$s · 新会话"</string>
-    <string name="new_session_prompt" formatted="false">"要做什么？"</string>
+    <string name="new_session_prompt" formatted="false">"要做什么"</string>
     <string name="new_session_reading_models" formatted="false">"正在读取模型列表…"</string>
     <string name="new_session_reading_previous" formatted="false">"正在读取这个项目上次的设置…"</string>
     <string name="new_session_reading_settings" formatted="false">"读取设置…"</string>
@@ -795,14 +795,14 @@
     <string name="notifications_scheduled_tasks_have_new_results" formatted="false">"定时任务有新结果"</string>
     <string name="notifications_the_browser_did_not_allow_notifications" formatted="false">"浏览器没有允许通知"</string>
     <string name="projects_add_again" formatted="false">"重新添加"</string>
-    <string name="projects_adding" formatted="false">"正在添加…"</string>
+    <string name="projects_adding" formatted="false">"正在添加到项目列表…"</string>
     <string name="projects_android_adding" formatted="false">"正在添加到项目列表…"</string>
     <string name="projects_android_no_online" formatted="false">"没有在线的电脑"</string>
     <string name="projects_android_save_failed">"没能保存：%1$s"</string>
     <string name="projects_android_saving_settings" formatted="false">"正在保存项目设置…"</string>
     <string name="projects_android_settings" formatted="false">"项目设置"</string>
     <string name="projects_android_settings_failed">"项目设置没能保存：%1$s"</string>
-    <string name="projects_android_syncing" formatted="false">"正在同步…"</string>
+    <string name="projects_android_syncing" formatted="false">"正在同步项目列表…"</string>
     <string name="projects_android_view_home" formatted="false">"在主页看这个项目"</string>
     <string name="projects_changed_elsewhere" formatted="false">"项目列表已在另一客户端更新"</string>
     <string name="projects_choose" formatted="false">"选项目"</string>
@@ -969,23 +969,23 @@
     <string name="schedule_android_beijing" formatted="false">"北京"</string>
     <string name="schedule_android_cannot_read_the_previous_task_list_connect_to_read_it" formatted="false">"上次的任务列表无法读取，联网后重新读取"</string>
     <string name="schedule_android_cannot_request_notification" formatted="false">"无法请求通知"</string>
-    <string name="schedule_android_changes_have_not_been_saved" formatted="false">"修改还没有保存。"</string>
+    <string name="schedule_android_changes_have_not_been_saved" formatted="false">"这次修改不会保存。"</string>
     <string name="schedule_android_check_project_updates_and_notify_me_of_noteworthy_changes" formatted="false">"检查项目的更新，有值得注意的变化再通知我。"</string>
     <string name="schedule_android_check_the_time" formatted="false">"请检查时间"</string>
-    <string name="schedule_android_choose_a_project" formatted="false">"选择项目"</string>
+    <string name="schedule_android_choose_a_project" formatted="false">"选项目"</string>
     <string name="schedule_android_choose_a_time_type" formatted="false">"请选择时间类型"</string>
     <string name="schedule_android_choose_directory" formatted="false">"选目录"</string>
-    <string name="schedule_android_computer_offline_tasks_cannot_be_edited" formatted="false">"电脑不在线，不能修改任务"</string>
+    <string name="schedule_android_computer_offline_tasks_cannot_be_edited" formatted="false">"电脑不在线，连上后才能修改任务"</string>
     <string name="schedule_android_connect_value1_to_edit_run_or_delete">"%1$s 连上后才能修改、运行或删除。"</string>
     <string name="schedule_android_continuing_may_send_the_previous_message_again_open_the_run" formatted="false">"继续可能重复执行上次的消息，请先打开运行记录核实。"</string>
-    <string name="schedule_android_creating" formatted="false">"创建中…"</string>
+    <string name="schedule_android_creating" formatted="false">"正在创建…"</string>
     <string name="schedule_android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can" formatted="false">"创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。"</string>
     <string name="schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a">"当前是「%1$s」。直接完成会保留原规则；选择上面的时间类型后再更改。"</string>
     <string name="schedule_android_date" formatted="false">"日期"</string>
     <string name="schedule_android_days" formatted="false">"天"</string>
     <string name="schedule_android_delete_this_task" formatted="false">"删除这个任务？"</string>
     <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。"</string>
-    <string name="schedule_android_end_date" formatted="false">"结束日期"</string>
+    <string name="schedule_android_end_date" formatted="false">"截止日期"</string>
     <string name="schedule_android_ended_value1">"已结束 %1$s"</string>
     <string name="schedule_android_follow_conversation" formatted="false">"跟随对话"</string>
     <string name="schedule_android_for_example_asia_shanghai" formatted="false">"例如 Asia/Shanghai"</string>
@@ -1016,7 +1016,7 @@
     <string name="schedule_android_minutes" formatted="false">"分钟"</string>
     <string name="schedule_android_missing_target" formatted="false">"运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。"</string>
     <string name="schedule_android_monday_to_friday" formatted="false">"周一到周五"</string>
-    <string name="schedule_android_needs_your_attention" formatted="false">"需要你看一下"</string>
+    <string name="schedule_android_needs_your_attention" formatted="false">"需要你处理"</string>
     <string name="schedule_android_new_result" formatted="false">"有新结果"</string>
     <string name="schedule_android_new_result_0653c4" formatted="false">"有新结果"</string>
     <string name="schedule_android_next_run">"下次 %1$s"</string>
@@ -1026,13 +1026,13 @@
     <string name="schedule_android_read_again" formatted="false">"重新读取"</string>
     <string name="schedule_android_recent" formatted="false">"最近"</string>
     <string name="schedule_android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and" formatted="false">"恢复或重新安排后从下一次自动时间开始，不重发上次消息。"</string>
-    <string name="schedule_android_run_count_must_be_greater_than_0" formatted="false">"次数要大于 0"</string>
+    <string name="schedule_android_run_count_must_be_greater_than_0" formatted="false">"运行次数必须是正整数"</string>
     <string name="schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" formatted="false">"立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。"</string>
     <string name="schedule_android_running_label" formatted="false">"正在运行 ·"</string>
     <string name="schedule_android_saving" formatted="false">"保存中…"</string>
     <string name="schedule_android_saving_ff509c" formatted="false">"保存中…"</string>
     <string name="schedule_android_seconds" formatted="false">"秒"</string>
-    <string name="schedule_android_select_at_least_one_day" formatted="false">"至少选一天"</string>
+    <string name="schedule_android_select_at_least_one_day" formatted="false">"请至少选择一天"</string>
     <string name="schedule_android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept" formatted="false">"停止后续调度，已发出的消息和已开的对话保留。"</string>
     <string name="schedule_android_task" formatted="false">"任务"</string>
     <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"任务未找到，可能已在另一端删除"</string>
@@ -1042,8 +1042,8 @@
     <string name="schedule_android_unit" formatted="false">"单位"</string>
     <string name="schedule_android_unknown_time" formatted="false">"时间未知"</string>
     <string name="schedule_android_unread" formatted="false">"未读"</string>
-    <string name="schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" formatted="false">"电脑需要更新 remote-agent，才能创建定时任务。"</string>
-    <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"这台电脑需要更新 remote-agent，才能管理定时任务"</string>
+    <string name="schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" formatted="false">"需要更新电脑上的 remote-agent 才能使用定时任务。"</string>
+    <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"需要更新这台电脑上的 remote-agent 才能使用定时任务。"</string>
     <string name="schedule_android_value1_time">"（%1$s时间）"</string>
     <string name="schedule_android_you_can_run_an_extra_time_now_or_change_the" formatted="false">"可立即额外执行一次，或改时间重排。"</string>
     <string name="schedule_attention_once">"%1$s。可改时间重排。"</string>
@@ -1052,7 +1052,7 @@
     <string name="schedule_beijing_time" formatted="false">"北京时间"</string>
     <string name="schedule_choose_a_valid_date_and_time" formatted="false">"请选择有效的日期和时间"</string>
     <string name="schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot" formatted="false">"请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。"</string>
-    <string name="schedule_computer_and_model" formatted="false">"机器和模型"</string>
+    <string name="schedule_computer_and_model" formatted="false">"电脑和模型"</string>
     <string name="schedule_connect_to_edit_run_or_delete" formatted="false">" 连上后才能修改、运行或删除。"</string>
     <string name="schedule_continuing_takes_over_the_task_and_runs_it_with" formatted="false">"继续会由你接管任务，按任务中显示的权限运行。"</string>
     <string name="schedule_conversation" formatted="false">"对话"</string>
@@ -1068,7 +1068,7 @@
     <string name="schedule_daylight_saving_time_skips_this_time_in_the_selected" formatted="false">"这个时区在该时刻发生夏令时跳转，请换一个时间"</string>
     <string name="schedule_delete" formatted="false">"删除"</string>
     <string name="schedule_delete_task" formatted="false">"删除任务…"</string>
-    <string name="schedule_delete_task_schedules" formatted="false">"删除任务？"</string>
+    <string name="schedule_delete_task_schedules" formatted="false">"删除这个任务？"</string>
     <string name="schedule_deleted" formatted="false">"已删除"</string>
     <string name="schedule_delivery_before_the_computer_restarted_could_not_be_confirmed" formatted="false">"电脑重启前的发送结果无法确认"</string>
     <string name="schedule_describe_the_scheduled_work_and_ask_the_agent_to" formatted="false">"描述要定时做的事，有结果时让 agent 通知你"</string>
@@ -1281,7 +1281,7 @@
     <string name="security_android_cannot_confirm_whether_the_new_device_joined_check_your_network" formatted="false">"暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果"</string>
     <string name="security_android_cannot_confirm_whether_this_phone_joined_value1_check_the_client">"不确定这台手机有没有加入：%1$s。可以在管理端的设置里看看客户端列表"</string>
     <string name="security_android_clearing" formatted="false">"正在清除…"</string>
-    <string name="security_android_compare_the_4_patterns_on_the_managing_client_if_they" formatted="false">"核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。"</string>
+    <string name="security_android_compare_the_4_patterns_on_the_managing_client_if_they" formatted="false">"核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。"</string>
     <string name="security_android_completing" formatted="false">"正在完成…"</string>
     <string name="security_android_completion_requires_48_hours" formatted="false">"48 小时后才能完成。"</string>
     <string name="security_android_connecting" formatted="false">"正在连接…"</string>
@@ -1301,9 +1301,9 @@
     <string name="security_android_first_delete_the_account_keys_and_cache_on_this_device" formatted="false">"会先删除这台设备上的账户密钥和缓存，再用配对码加入。"</string>
     <string name="security_android_first_delete_the_account_keys_and_cache_on_this_phone" formatted="false">"会先删除这台手机上的账户密钥和缓存，再用配对码加入。"</string>
     <string name="security_android_generating" formatted="false">"正在生成…"</string>
-    <string name="security_android_going_back_stops_this_wait_reject_the_old_request_on" formatted="false">"返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。"</string>
+    <string name="security_android_going_back_stops_this_wait_reject_the_old_request_on" formatted="false">"返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。"</string>
     <string name="security_android_i_saved_it_start_using_the_app" formatted="false">"我已保存，开始使用"</string>
-    <string name="security_android_i_saved_the_new_recovery_code_offline" formatted="false">"我已离线保存新恢复码"</string>
+    <string name="security_android_i_saved_the_new_recovery_code_offline" formatted="false">"我已离线保存新的恢复码"</string>
     <string name="security_android_if_48_hours_have_not_passed_or_the_original_managing" formatted="false">"如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。"</string>
     <string name="security_android_incorrect_recovery_code" formatted="false">"恢复码不对"</string>
     <string name="security_android_incorrect_recovery_code_or_no_pending_recovery" formatted="false">"恢复码不对，或者没有待处理的恢复"</string>
@@ -1348,7 +1348,7 @@
     <string name="security_android_recovery_can_now_be_completed" formatted="false">"已经可以完成恢复。"</string>
     <string name="security_android_recovery_code_backup_status" formatted="false">"恢复码保存状态"</string>
     <string name="security_android_recovery_code_shown_only_once" formatted="false">"恢复码 · 只显示这一次"</string>
-    <string name="security_android_recovery_eligible_at">"可以生效的时间：%1$s"</string>
+    <string name="security_android_recovery_eligible_at">"可生效时间：%1$s"</string>
     <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"找不到这次恢复，它可能已经完成或被否决"</string>
     <string name="security_android_registration_challenge_expired_retry" formatted="false">"注册挑战已过期，请重试"</string>
     <string name="security_android_remote_control" formatted="false">"远程控制"</string>
@@ -1371,10 +1371,10 @@
     <string name="security_android_the_account_saved_on_this_phone_does_not_match_its" formatted="false">"这台手机保存的账户与根密钥不一致"</string>
     <string name="security_android_the_candidate_device_cannot_use_the_managing_client_s_identity" formatted="false">"候选设备不能使用管理端身份"</string>
     <string name="security_android_the_candidate_device_needs_an_update" formatted="false">"候选设备需要更新"</string>
-    <string name="security_android_the_managing_client_s_trust_information_does_not_match_its" formatted="false">"管理端信任信息与承诺不匹配"</string>
+    <string name="security_android_the_managing_client_s_trust_information_does_not_match_its" formatted="false">"管理端的信任信息与配对承诺不匹配"</string>
     <string name="security_android_the_new_code_is_still_on_this_page_save_it" formatted="false">"新码仍显示在本页，请离线保存"</string>
     <string name="security_android_the_new_recovery_code_generated_for_this_request_is_invalid" formatted="false">"这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。"</string>
-    <string name="security_android_the_original_device_identity_keys_and_history_are_kept_open" formatted="false">"原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"</string>
+    <string name="security_android_the_original_device_identity_keys_and_history_are_kept_open" formatted="false">"原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"</string>
     <string name="security_android_the_original_managing_client_vetoed_this_recovery" formatted="false">"这次恢复被原管理端否决了。"</string>
     <string name="security_android_the_original_security_operation_is_verified_complete" formatted="false">"原安全操作已核实完成。"</string>
     <string name="security_android_the_recovery_chain_published_by_the_server_differs_from_the" formatted="false">"服务器发布的恢复链与提交的不一致"</string>
@@ -1409,7 +1409,7 @@
     <string name="security_android_this_recovery_was_submitted_complete_it_on_the_phone_that" formatted="false">"这次恢复已提交；请在保存了恢复身份的那台手机上完成"</string>
     <string name="security_android_this_recovery_was_submitted_if_you_have_not_saved_the" formatted="false">"这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。"</string>
     <string name="security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" formatted="false">"这次恢复已被否决，申请中生成的新恢复码也已作废。"</string>
-    <string name="security_android_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太频繁了，稍等一分钟再试"</string>
+    <string name="security_android_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太频繁了，等一分钟再试"</string>
     <string name="security_android_transfer_to">"交接给 %1$s"</string>
     <string name="security_android_unrecognized_recovery_status" formatted="false">"恢复状态无法识别"</string>
     <string name="security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" formatted="false">"已有账户升级？重建安全域并成为管理端"</string>
@@ -1447,16 +1447,16 @@
     <string name="security_confirm_the_patterns_on_this_device_first" formatted="false">"请先在本机确认图案"</string>
     <string name="security_confirm_transfer" formatted="false">"确认交接"</string>
     <string name="security_confirmed_here_waiting_for_managing_client_approval_and_binding" formatted="false">"本机已确认，等待管理端批准并完成绑定…"</string>
-    <string name="security_continue_creation" formatted="false">"继续创建"</string>
+    <string name="security_continue_creation" formatted="false">"继续创建账户"</string>
     <string name="security_continue_original_draft" formatted="false">"继续原草稿"</string>
     <string name="security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" formatted="false">"请先继续原恢复或明确放弃已否决的恢复"</string>
     <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"在任何设备上操作电脑里的 AI 编程 CLI"</string>
-    <string name="security_create_account" formatted="false">"新建账户"</string>
+    <string name="security_create_account" formatted="false">"创建账户"</string>
     <string name="security_current_managing_client" formatted="false">"当前管理端"</string>
     <string name="security_delete_local_keys_and_rejoin" formatted="false">"删除本机密钥并重新加入？"</string>
     <string name="security_delete_records" formatted="false">"删除记录"</string>
     <string name="security_delete_this_computer_s_records" formatted="false">"删除这台电脑的记录…"</string>
-    <string name="security_delete_this_computer_s_records_device_management" formatted="false">"删除这台电脑的记录"</string>
+    <string name="security_delete_this_computer_s_records_device_management" formatted="false">"删除这台电脑的记录？"</string>
     <string name="security_device_information_changed_the_original_transfer_request_was_not" formatted="false">"设备信息已变化，原交接申请未应用；可明确放弃后重新准备"</string>
     <string name="security_device_joined" formatted="false">"设备已加入"</string>
     <string name="security_duration_48_hours" formatted="false">"48 小时"</string>
@@ -1475,7 +1475,7 @@
     <string name="security_generate_new_recovery_code" formatted="false">"生成新的恢复码"</string>
     <string name="security_generate_pairing_code" formatted="false">"生成配对码"</string>
     <string name="security_generate_recovery_code" formatted="false">"生成恢复码"</string>
-    <string name="security_generating" formatted="false">"生成中…"</string>
+    <string name="security_generating" formatted="false">"正在生成…"</string>
     <string name="security_i_saved_the_new_recovery_code_offline" formatted="false">"我已离线保存新的恢复码"</string>
     <string name="security_if_this_browser_is_already_a_member_recovery_will" formatted="false">"若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。"</string>
     <string name="security_invalid_pairing_key" formatted="false">"配对密钥无效"</string>
@@ -1486,7 +1486,7 @@
     <string name="security_join_account" formatted="false">"加入账户"</string>
     <string name="security_join_an_existing_account" formatted="false">"加入已有账户"</string>
     <string name="security_join_with_a_code_from_the_managing_client" formatted="false">"用管理端给的配对码加入"</string>
-    <string name="security_loading" formatted="false">"加载中…"</string>
+    <string name="security_loading" formatted="false">"读取中…"</string>
     <string name="security_manage_on_authority">"设备管理请在管理端（%1$s）上操作。"</string>
     <string name="security_management_transferred_waiting_for_the_successor_to_complete_takeover" formatted="false">"已交接管理权，等待接任设备完成接管。"</string>
     <string name="security_new_recovery_code" formatted="false">"新的恢复码"</string>
@@ -1497,7 +1497,7 @@
     <string name="security_one_time_security_setup" formatted="false">"一次性安全设置"</string>
     <string name="security_only_a_removed_computer_s_archive_can_be_rejoined" formatted="false">"只能从已移除电脑的档案重新加入"</string>
     <string name="security_only_this_computer_can_rejoin_its_original_archive_with" formatted="false">"只允许这台电脑以新身份接回原档案，保留原会话和历史。"</string>
-    <string name="security_open_to_renew">"请打开%1$s续期。"</string>
+    <string name="security_open_to_renew">"请打开%1$s续期"</string>
     <string name="security_original_recovery_code" formatted="false">"原恢复码"</string>
     <string name="security_pair_again" formatted="false">"重新配对"</string>
     <string name="security_pair_valid_until">"有效期至 %1$s"</string>
@@ -1516,7 +1516,7 @@
     <string name="security_patterns_match_trust_and_continue" formatted="false">"图案一致，信任并继续"</string>
     <string name="security_prepare_recovery" formatted="false">"准备恢复"</string>
     <string name="security_processing" formatted="false">"处理中…"</string>
-    <string name="security_publishing" formatted="false">"发布中…"</string>
+    <string name="security_publishing" formatted="false">"正在发布…"</string>
     <string name="security_qr_code_for_adding_a_device" formatted="false">"添加设备的配对二维码"</string>
     <string name="security_re_enter" formatted="false">"重填"</string>
     <string name="security_reading" formatted="false">"正在读取…"</string>
@@ -1527,7 +1527,7 @@
     <string name="security_recovery_code_updated_the_previous_code_and_pending_recovery" formatted="false">"恢复码已更新，原恢复码和待处理恢复申请已作废。"</string>
     <string name="security_recovery_is_pending_or_its_outcome_is_unknown_and" formatted="false">"恢复仍待处理或结果未明，不能放弃"</string>
     <string name="security_recovery_request_pending" formatted="false">"恢复申请待处理"</string>
-    <string name="security_recovery_request_pending_eligible_at">"恢复申请待处理。可生效时间：%1$s"</string>
+    <string name="security_recovery_request_pending_eligible_at">"恢复申请待处理 · 可生效时间：%1$s"</string>
     <string name="security_recovery_was_rejected_explicitly_apply_again" formatted="false">"恢复已被否决，请明确重新申请"</string>
     <string name="security_recovery_was_rejected_you_can_apply_again" formatted="false">"恢复已被否决，可以重新申请。"</string>
     <string name="security_refresh_successor_devices" formatted="false">"刷新接任设备"</string>
@@ -1582,7 +1582,7 @@
     <string name="security_the_managing_client_s_trust_information_does_not_match" formatted="false">"管理端的信任信息与配对承诺不匹配"</string>
     <string name="security_the_new_recovery_code_backup_is_unconfirmed_replace_the" formatted="false">"新恢复码尚未确认备份，请立即换码并离线保存。"</string>
     <string name="security_the_original_creation_draft_is_preserved_continue_with_the" formatted="false">"原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。"</string>
-    <string name="security_the_original_device_identity_keys_and_history_are_preserved" formatted="false">"原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。"</string>
+    <string name="security_the_original_device_identity_keys_and_history_are_preserved" formatted="false">"原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对 4 个图案完成加入。"</string>
     <string name="security_the_original_device_public_key_does_not_match_the" formatted="false">"原设备公钥与本机签名密钥不匹配"</string>
     <string name="security_the_original_operation_is_unfinished_continue_verifying" formatted="false">"原操作尚未完成，请继续核实"</string>
     <string name="security_the_original_recovery_draft_is_preserved_the_new_recovery" formatted="false">"原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。"</string>
@@ -1592,7 +1592,7 @@
     <string name="security_the_pairing_code_is_wrong_or_has_already_been" formatted="false">"配对码不对，或者已经用过了"</string>
     <string name="security_the_pairing_draft_conflicts_with_the_current_identity" formatted="false">"配对草稿与当前身份冲突"</string>
     <string name="security_the_pairing_receipt_was_approved_by_a_device_other" formatted="false">"配对回执的批准设备不是当前管理端"</string>
-    <string name="security_the_public_key_may_already_be_published_abandoning_only" formatted="false">"公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"</string>
+    <string name="security_the_public_key_may_already_be_published_abandoning_only" formatted="false">"接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"</string>
     <string name="security_the_recovery_signature_has_not_been_saved_re_enter" formatted="false">"恢复签名尚未保存，请重新输入原恢复码继续原草稿"</string>
     <string name="security_the_security_operation_s_outcome_is_unverified_continue_the" formatted="false">"安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。"</string>
     <string name="security_the_server_does_not_recognize_this_device" formatted="false">"服务器不认识这台设备"</string>
@@ -1613,9 +1613,9 @@
     <string name="security_this_page_and_the_server_or_pairing_device_use" formatted="false">"这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试"</string>
     <string name="security_this_pairing_expired_generate_a_new_code_on_the" formatted="false">"这次配对已失效，请在管理端重新生成配对码"</string>
     <string name="security_this_permanently_deletes_sessions_events_and_images_on_the" formatted="false">"将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。"</string>
-    <string name="security_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太多了，等一分钟再试"</string>
+    <string name="security_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太频繁了，等一分钟再试"</string>
     <string name="security_transfer_management" formatted="false">"交接管理权"</string>
-    <string name="security_transfer_result_unverified_continue_the_original_operation" formatted="false">"交接结果尚未核实，请继续原操作"</string>
+    <string name="security_transfer_result_unverified_continue_the_original_operation" formatted="false">"交接结果尚未核实，请继续原操作。"</string>
     <string name="security_transfer_to" formatted="false">"交接给"</string>
     <string name="security_unfinished_security_operation" formatted="false">"未完成的安全操作"</string>
     <string name="security_unknown_type" formatted="false">"种类未知"</string>
@@ -1656,8 +1656,8 @@
     <string name="session_compacted" formatted="false">"上下文已压缩"</string>
     <string name="session_compacting" formatted="false">"正在压缩…"</string>
     <string name="session_connect_resume" formatted="false">"连上服务器后才能恢复。"</string>
-    <string name="session_context" formatted="false">"上下文"</string>
-    <string name="session_context_tokens">"上下文 %2$s / %1$s"</string>
+    <string name="session_context" formatted="false">"上下文占用"</string>
+    <string name="session_context_tokens">"上下文占用 %2$s / %1$s"</string>
     <string name="session_context_used">"已用 %1$d%%"</string>
     <string name="session_delivered" formatted="false">"已送达电脑"</string>
     <string name="session_disconnected_ago">"%1$s断开，"</string>
@@ -1669,7 +1669,7 @@
     <string name="session_end_session" formatted="false">"结束会话"</string>
     <string name="session_end_title" formatted="false">"结束这个会话？"</string>
     <string name="session_ended" formatted="false">"会话已结束"</string>
-    <string name="session_ended_at">"%1$s结束"</string>
+    <string name="session_ended_at">"%1$s 结束"</string>
     <string name="session_ended_message_failed" formatted="false">"有一条消息没发出去：会话已结束"</string>
     <string name="session_ended_send_failed" formatted="false">"没发出去：会话已结束"</string>
     <string name="session_fork" formatted="false">"分叉会话"</string>
@@ -1680,7 +1680,7 @@
     <string name="session_fork_expired" formatted="false">"不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表"</string>
     <string name="session_fork_failed">"没能分叉：%1$s"</string>
     <string name="session_fork_unknown" formatted="false">"上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"</string>
-    <string name="session_forked_from">"%2$s分叉自%1$s"</string>
+    <string name="session_forked_from">"%2$s 分叉自%1$s"</string>
     <string name="session_forking" formatted="false">"正在分叉…"</string>
     <string name="session_go_terminal" formatted="false">"去终端"</string>
     <string name="session_history_tail_missing" formatted="false">"后面的记录没读到"</string>
@@ -1692,8 +1692,8 @@
     <string name="session_interrupt" formatted="false">"中断"</string>
     <string name="session_interrupt_turn" formatted="false">"中断本轮"</string>
     <string name="session_interrupted" formatted="false">"已中断"</string>
-    <string name="session_latest" formatted="false">"回到最新"</string>
-    <string name="session_loading_earlier" formatted="false">"正在加载更早的记录…"</string>
+    <string name="session_latest" formatted="false">"回到最新消息"</string>
+    <string name="session_loading_earlier" formatted="false">"正在读取更早的记录…"</string>
     <string name="session_manually_closed" formatted="false">"会话是被手动结束的。"</string>
     <string name="session_max_effort">"最高 %1$s"</string>
     <string name="session_mode_changed">"模式切换到 %1$s"</string>
@@ -1703,13 +1703,13 @@
     <string name="session_model_locked" formatted="false">"运行中不能换模型，新建会话时可选"</string>
     <string name="session_model_switch_failed">"没能切到 %1$s：%2$s"</string>
     <string name="session_models_failed" formatted="false">"没能读取模型列表"</string>
-    <string name="session_more_context">"更多，上下文 %1$d%%"</string>
+    <string name="session_more_context">"更多，上下文占用 %1$d%%"</string>
     <plurals name="session_new_messages">
         <item quantity="other">"%1$d 条新消息"</item>
     </plurals>
     <string name="session_no_effort" formatted="false">"无推理强度"</string>
     <string name="session_no_effort_adjustment">"%1$s 没有推理强度可调"</string>
-    <string name="session_not_running" formatted="false">"现在没有在运行"</string>
+    <string name="session_not_running" formatted="false">"会话不在运行。"</string>
     <string name="session_notification">"通知你：%1$s"</string>
     <string name="session_offline_note">"%1$s可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。"</string>
     <string name="session_offline_resume">"%1$s 不在线，连上后才能恢复。"</string>
@@ -1746,10 +1746,10 @@
     <string name="session_switch_idle" formatted="false">"只在空闲时能切换，只改当前会话"</string>
     <string name="session_switching_model">"正在切换到 %1$s…"</string>
     <string name="session_terminal" formatted="false">"终端"</string>
-    <string name="session_terminal_changes">"%2$s 终端把%1$s"</string>
+    <string name="session_terminal_changes">"%2$s 终端里%1$s"</string>
     <string name="session_terminal_mode_change">"模式切到了 %1$s"</string>
     <string name="session_terminal_model_change">"模型切到了 %1$s"</string>
-    <string name="session_thinking" formatted="false">"思考"</string>
+    <string name="session_thinking" formatted="false">"思考过程"</string>
     <string name="session_title_label" formatted="false">"会话标题"</string>
     <string name="session_tmux_missing" formatted="false">"tmux 会话已经不在了。"</string>
     <string name="session_try_again" formatted="false">"再试一次"</string>
@@ -1802,7 +1802,7 @@
     <string name="settings_android_local_storage" formatted="false">"本机存储"</string>
     <string name="settings_android_new_computer" formatted="false">"新电脑"</string>
     <string name="settings_android_new_device" formatted="false">"新设备"</string>
-    <string name="settings_android_new_device_joined" formatted="false">"新设备已加入"</string>
+    <string name="settings_android_new_device_joined" formatted="false">"设备已加入"</string>
     <string name="settings_android_new_version_value1">"新版本 %1$s"</string>
     <string name="settings_android_new_version_value1_available">"有新版本 %1$s"</string>
     <string name="settings_android_offline_last_online_value1">"不在线 · 最后在线 %1$s"</string>
@@ -1815,7 +1815,7 @@
     <string name="settings_android_reconnect_archives_or_delete_records_on_the_managing_client_value1">"档案重接和删除记录，请在管理端（%1$s）上操作。"</string>
     <string name="settings_android_recovery_code_qr_code" formatted="false">"恢复码二维码"</string>
     <string name="settings_android_recovery_pending_eligible_at_value1">"恢复申请待处理 · 可生效时间：%1$s"</string>
-    <string name="settings_android_rejoin_this_computer_and_resume_sessions" formatted="false">"让这台电脑重新加入并接续会话"</string>
+    <string name="settings_android_rejoin_this_computer_and_resume_sessions" formatted="false">"重新加入并接续会话"</string>
     <string name="settings_android_release_information_is_missing_value1">"发布信息缺少 %1$s"</string>
     <string name="settings_android_release_protocol_is_not_a_number" formatted="false">"发布信息的 protocol 不是数字"</string>
     <string name="settings_android_release_size_is_not_a_number" formatted="false">"发布信息的 size 不是数字"</string>
@@ -1824,11 +1824,11 @@
     <string name="settings_android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on" formatted="false">"移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"</string>
     <string name="settings_android_remove_devices_on_the_managing_client_value1">"请在管理端（%1$s）上移除设备。"</string>
     <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。"</string>
-    <string name="settings_android_remove_this_machine" formatted="false">"移除这台机器…"</string>
+    <string name="settings_android_remove_this_machine" formatted="false">"移除这台电脑…"</string>
     <string name="settings_android_removed_retained_session_archive" formatted="false">"已移除 · 保留的会话档案"</string>
     <string name="settings_android_requests_to_join" formatted="false">" 请求加入"</string>
     <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC（符号子集）"</string>
-    <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"</string>
+    <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"</string>
     <string name="settings_android_show_content_and_approve_in_notifications" formatted="false">"在通知里显示内容并直接审批"</string>
     <string name="settings_android_terminal_symbols" formatted="false">"终端里的符号"</string>
     <string name="settings_android_the_downloaded_file_is_not_an_installation_package" formatted="false">"下载的文件不是安装包"</string>
@@ -1839,7 +1839,7 @@
     <string name="settings_android_the_system_will_confirm_installation_after_downloading_the_first_time" formatted="false">"下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。"</string>
     <string name="settings_android_this_computer_is_outside_the_current_trusted_directory_check_the" formatted="false">"这台电脑不在当前可信目录中，撤销状态以回执为准"</string>
     <string name="settings_android_this_is_the_managing_device_ordinary_removal_is_unavailable" formatted="false">"这是管理端设备，普通移除不可用"</string>
-    <string name="settings_android_this_machine_has_been_removed" formatted="false">"这台机器已经移除了"</string>
+    <string name="settings_android_this_machine_has_been_removed" formatted="false">"这台电脑已经移除了"</string>
     <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。"</string>
     <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。"</string>
     <string name="settings_android_unknown" formatted="false">"未知"</string>
@@ -1866,7 +1866,7 @@
     <string name="settings_cannot_receive" formatted="false">"无法接收"</string>
     <string name="settings_cannot_sign_in_to_the_relay_right_now" formatted="false">"暂时无法登录中继"</string>
     <string name="settings_check_for_updates" formatted="false">"检查更新"</string>
-    <string name="settings_checking" formatted="false">" 正在检查…"</string>
+    <string name="settings_checking" formatted="false">"正在检查更新…"</string>
     <string name="settings_clear" formatted="false">"清理…"</string>
     <string name="settings_clear_reclaimable_attachments_and_cache" formatted="false">"清理可回收附件和缓存？"</string>
     <string name="settings_clear_settings" formatted="false">"清理"</string>
@@ -1875,7 +1875,7 @@
     <string name="settings_client_name" formatted="false">"客户端名称"</string>
     <string name="settings_clients_control_sessions" formatted="false">"客户端 · 操作会话"</string>
     <string name="settings_computer" formatted="false">"电脑"</string>
-    <string name="settings_computer_offline_showing_the_last_reading" formatted="false">"机器离线，显示上次记录"</string>
+    <string name="settings_computer_offline_showing_the_last_reading" formatted="false">"电脑不在线，显示上次记录"</string>
     <string name="settings_computer_settings_offline">"%1$s 不在线，暂时看不到它的设置。"</string>
     <string name="settings_computers_run_clis" formatted="false">"电脑 · 运行 CLI"</string>
     <string name="settings_could_not_download_retry_later" formatted="false">"没能下载，稍后再试"</string>
@@ -1909,7 +1909,7 @@
     <string name="settings_names_sync_encrypted_the_server_cannot_read_them_leave" formatted="false">"名称加密后同步，服务器看不到。留空就用默认名称。"</string>
     <string name="settings_new_project_defaults" formatted="false">"新项目默认设置"</string>
     <string name="settings_new_project_defaults_settings">"新项目默认设置 · %1$s"</string>
-    <string name="settings_no_computers_yet" formatted="false">"还没有电脑。"</string>
+    <string name="settings_no_computers_yet" formatted="false">"还没有电脑"</string>
     <string name="settings_no_record" formatted="false">"没有记录"</string>
     <string name="settings_nothing_to_clear" formatted="false">"没有可清理的"</string>
     <string name="settings_notification_permission_help" formatted="false">"浏览器拒绝了通知权限。在地址栏左边的网站设置里把「通知」改成允许，再回来打开开关。"</string>
@@ -1929,7 +1929,7 @@
     <string name="settings_security_notifications" formatted="false">"安全通知"</string>
     <string name="settings_security_notifications_are_independent_of_session_alerts_delivery_is" formatted="false">"安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。"</string>
     <string name="settings_session_alerts_are_off_you_will_not_be_notified" formatted="false">"会话提醒没开，审批来了不会提醒你"</string>
-    <string name="settings_sessions_end_automatically_after_this_much_inactivity_not_running" formatted="false">"会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在"</string>
+    <string name="settings_sessions_end_automatically_after_this_much_inactivity_not_running" formatted="false">"会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"</string>
     <string name="settings_set_the_name_and_notification_preferences_on_that_device" formatted="false">"名称和通知开关要在那台设备上设置。"</string>
     <string name="settings_signed_account_state_confirms_this_device_was_removed_sessions" formatted="false">"已通过账户签名状态核实本机被移除。电脑上的会话不受影响；重新加入需要管理端提供配对码。"</string>
     <string name="settings_storage_limit" formatted="false">"空间上限"</string>
@@ -1946,12 +1946,12 @@
     <string name="settings_this_browser_does_not_support_push_notifications" formatted="false">"这个浏览器不支持推送"</string>
     <string name="settings_this_device_was_removed_from_the_account" formatted="false">"本机已被移出账户"</string>
     <string name="settings_times_are_shown_in_beijing_time_quotas_belong_to" formatted="false">"时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。"</string>
-    <string name="settings_unanswered_approvals_are_denied_after_this_time" formatted="false">"没人回复的审批过了这个时间就拒绝"</string>
+    <string name="settings_unanswered_approvals_are_denied_after_this_time" formatted="false">"没人处理的审批过了这个时间就拒绝。"</string>
     <string name="settings_unfinished_pairing" formatted="false">"未完成的配对"</string>
     <string name="settings_unfinished_pairing_settings" formatted="false">" · 未完成的配对"</string>
     <string name="settings_unnamed" formatted="false">"未命名"</string>
     <string name="settings_unverified" formatted="false">"未验证 · "</string>
-    <string name="settings_up_to_date" formatted="false">"已是最新"</string>
+    <string name="settings_up_to_date" formatted="false">"已是最新版本"</string>
     <string name="settings_uploaded_images_and_files" formatted="false">"上传的图片和文件"</string>
     <string name="settings_uploading">"正在上传 %1$s"</string>
     <string name="settings_use_cli_defaults_for_new_projects" formatted="false">"按 CLI 的新项目默认设置"</string>
@@ -1968,10 +1968,10 @@
     <string name="startup_page_updated" formatted="false">"页面已更新"</string>
     <string name="startup_the_page_could_not_load_check_your_connection_and" formatted="false">"页面未能加载，请检查网络后重试。"</string>
     <string name="startup_this_part_could_not_be_fetched_reload_to_continue" formatted="false">"这一部分没能取到，重新加载就好。"</string>
-    <string name="terminal_android_closed" formatted="false">"终端已关闭"</string>
-    <string name="terminal_android_font_larger" formatted="false">"字号增大"</string>
+    <string name="terminal_android_closed" formatted="false">"终端连接已关闭"</string>
+    <string name="terminal_android_font_larger" formatted="false">"增大字号"</string>
     <string name="terminal_android_font_size">"字号 %1$s"</string>
-    <string name="terminal_android_font_smaller" formatted="false">"字号减小"</string>
+    <string name="terminal_android_font_smaller" formatted="false">"减小字号"</string>
     <string name="terminal_android_hide_details" formatted="false">"收起详情"</string>
     <string name="terminal_android_not_running" formatted="false">"会话不在运行。"</string>
     <string name="terminal_android_paused" formatted="false">"终端已暂停，连接恢复后会重新获取画面"</string>
@@ -2014,7 +2014,7 @@
     <string name="terminal_view_details" formatted="false">"查看详情"</string>
     <string name="time_android_day_clock">"%2$s %1$s"</string>
     <string name="time_android_used_clock">"%1$s 使用"</string>
-    <string name="time_android_used_relative">"%1$s使用"</string>
+    <string name="time_android_used_relative">"%1$s 使用"</string>
     <string name="time_calendar_date_year">"%3$d年%2$d月%1$d日"</string>
     <string name="time_duration_hours_minutes">"%1$d 小时 %2$d 分"</string>
     <string name="time_duration_minutes_seconds">"%1$d 分 %2$d 秒"</string>
@@ -2049,7 +2049,7 @@
     <string name="tools_android_background_generic" formatted="false">"工具（后台）"</string>
     <string name="tools_android_background_label">"%1$s（后台）"</string>
     <string name="tools_android_background_search" formatted="false">"搜索（后台）"</string>
-    <string name="tools_android_collapsed" formatted="false">"已折叠"</string>
+    <string name="tools_android_collapsed" formatted="false">"已收起"</string>
     <string name="tools_android_edit" formatted="false">"编辑"</string>
     <string name="tools_android_processing" formatted="false">"处理中"</string>
     <string name="tools_android_search" formatted="false">"搜索"</string>

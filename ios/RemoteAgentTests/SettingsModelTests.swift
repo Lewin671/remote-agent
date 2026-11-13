@@ -78,7 +78,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         let m = model()
         reads.then(reply(settings(timeout: 120)))
         await m.read()
-        reads.thenFail(UserError("没有回应"))
+        reads.thenFail(UserError("服务器没有回应"))
         await m.read()
         #expect(m.settings?.approvalTimeoutSeconds == 120)
         #expect(m.readError == L10n.connectionNoResponse())
@@ -123,7 +123,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         while !m.saving { await Task.yield() }
         await m.read()
         // The read made afterwards fails: what the save came to stays.
-        reads.thenFail(UserError("没有回应"))
+        reads.thenFail(UserError("服务器没有回应"))
         release.yield()
         await saving.value
         #expect(!m.saving)
@@ -408,7 +408,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
     @Test func aServerThatDoesNotAnswerLeavesTheComputersUnmeasured() async {
         let asked = Mail<String>()
         let check = ConnectionCheckModel(probes: ConnectionProbes(
-            server: { throw UserError("没有回应") },
+            server: { throw UserError("服务器没有回应") },
             machine: { id in
                 asked.put(id)
                 return 1

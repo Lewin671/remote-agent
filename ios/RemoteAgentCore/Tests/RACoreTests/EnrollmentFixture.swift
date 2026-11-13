@@ -317,7 +317,7 @@ func joinWithRoot(
     }
     let res = try await api.auth.registerDevice(request: req).value()
     if res.deviceID != deviceId(publicKey: device.publicKey) {
-        throw UserError("server 返回了意外的设备 ID")
+        throw UserError("服务器返回了意外的设备 ID")
     }
     return Account(
         server: api.server, root: root, deviceSeed: seed, deviceId: res.deviceID,
@@ -350,7 +350,7 @@ func registerJoined(
     req.approvalSignature = enrollment.signature
     let res = try await api.auth.registerDevice(request: req).value()
     if res.deviceID != deviceId(publicKey: device.publicKey) {
-        throw UserError("server 返回了意外的设备 ID")
+        throw UserError("服务器返回了意外的设备 ID")
     }
     return Account(
         server: api.server, root: Data(), deviceSeed: deviceSeed, deviceId: res.deviceID,
