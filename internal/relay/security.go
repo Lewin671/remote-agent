@@ -27,8 +27,22 @@ type SecurityConfig struct {
 	XPrivate []byte         `json:"x_private"`
 }
 
-// securityPath is daemon storage generation 3.
-func securityPath() string { return filepath.Join(paths.Dir(), "security-v3.db") }
+// securityPath is daemon storage generation 4.
+func securityPath() string { return filepath.Join(paths.Dir(), "security-v4.db") }
+
+// CheckSecurityStorage refuses an old trust anchor before startup or pairing
+// can create a fresh identity. The manual tool is the only upgrade path.
+func CheckSecurityStorage() error {
+	if _, err := os.Lstat(securityPath()); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return deviceauth.ErrStorage
+	}
+	if _, err := os.Lstat(filepath.Join(paths.Dir(), "security-v3.db")); !os.IsNotExist(err) {
+		return deviceauth.ErrStorageVersion
+	}
+	return nil
+}
 
 // role is the signed state's copy of this device's membership.
 type securitySession struct {
@@ -49,6 +63,9 @@ type securitySession struct {
 func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServiceClient) (*securitySession, error) {
 	if acct.Security == nil {
 		return nil, errors.New("remote security is not initialized; run `remote-agent account join` with a code from the authority client")
+	}
+	if err := CheckSecurityStorage(); err != nil {
+		return nil, err
 	}
 	endpoint, err := deviceauth.OpenEndpoint(securityPath())
 	if err != nil {
@@ -144,10 +161,11 @@ func (s *securitySession) open(ctx context.Context, w deviceauth.Wire, seed []by
 // accept is the at-most-once control gate. An unknown state is fetched first
 // and the whole gate is retried once.
 func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
-	if s.blocked.Load() {
-		return nil, deviceauth.ErrUntrusted
-	}
-	out, err := s.endpoint.Accept(w, seed, now, fn)
+	return s.acceptWith(ctx, w, seed, now, nil, fn)
+}
+func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, acquire func() (func(), error), fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
+	options := deviceauth.AcceptOptions{AllowNew: func() bool { return !s.blocked.Load() }, Acquire: acquire}
+	out, err := s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
 	if !errors.Is(err, deviceauth.ErrUnknown) {
 		return out, err
 	}
@@ -155,7 +173,21 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 	if err := s.syncOnce(ctx); err != nil {
 		return nil, err
 	}
-	return s.endpoint.Accept(w, seed, now, fn)
+	return s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
+}
+
+// sealResult is only used after authenticated acceptance lookup/completion.
+// An HTTP authentication pause prevents new work, but cannot hide durable results.
+func (s *securitySession) sealResult(h *pb.Header, seed, plain []byte, raw bool) (*pb.Envelope, error) {
+	prepare := s.endpoint.Prepare
+	if raw {
+		prepare = s.endpoint.PrepareUncompressed
+	}
+	wire, err := prepare(securityHeader(h, deviceauth.Result), seed, plain)
+	if err != nil {
+		return nil, err
+	}
+	return wire.Envelope()
 }
 
 // syncOnce pulls states after the local head, verifies and installs them.

@@ -27,7 +27,7 @@ func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
 				return Undetermined(), cause
 			})
 			for _, a := range m.data.Accepted {
-				if a.Done {
+				if a.State == final {
 					t.Error("interrupted callback persisted as final")
 				}
 			}
@@ -54,6 +54,7 @@ func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
 func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 	c := newCurrentChain(t)
 	m := c.machineEndpoint(t, "")
+	m.waitTimeout = time.Millisecond
 	defer m.Close()
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
@@ -113,11 +114,11 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Admission of another request actually prunes the persisted expired entry.
-	next, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "next-request-after-prune", Deadline: deadline + 60000}, nil, commandBody(t))
+	next, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "next-request-after-prune", Deadline: deadline + acceptedGrace + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(next, nil, deadline, func(Header, []byte) (Completion, error) {
+	if _, err = m.Accept(next, nil, deadline+acceptedGrace, func(Header, []byte) (Completion, error) {
 		return Final([]byte("done")), nil
 	}); err != nil {
 		t.Fatal(err)
@@ -132,11 +133,11 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer m.Close()
-	_, err = m.Accept(w, nil, deadline, func(Header, []byte) (Completion, error) {
+	_, err = m.Accept(w, nil, deadline+acceptedGrace, func(Header, []byte) (Completion, error) {
 		calls++
 		return Final(nil), nil
 	})
-	if !errors.Is(err, ErrInvalid) || calls != 1 {
+	if !errors.Is(err, ErrExpired) || calls != 1 {
 		t.Fatalf("expired retry: calls=%d err=%v", calls, err)
 	}
 }

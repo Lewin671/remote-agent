@@ -38,8 +38,28 @@ question/approval observations come from the signed live owner snapshot, not
 terminal text. Native tool events without turn IDs use the sequence window
 anchored by the exact authenticated input request ID.
 
-Interrupt the controller to stop only its daemon/server and isolated tmux server.
+Interrupt the controller to stop only its recorded daemon/server and isolated tmux PIDs.
 Extract sanitized operation/effect counts from `results.jsonl` and
 `checks.jsonl`, then remove the entire task directory including copied native
 credentials, raw logs, binaries and observer files. Do not retain credentials,
 full native screens or decrypted events in a public report.
+
+
+For a generation-3 migration exercise, extract `v0.73.2` into a separate `/tmp`
+checkout and pass its path as `prepare.py --v3-source /tmp/BASELINE --copy-auth`.
+This builds the original daemon and a fixture initializer using the original
+storage implementation. Start the controller with
+`RA_TRANSPORT_V3_BINARY=$RA_DEV_DIR/bin/remote-agent-v3`. It enrolls a fresh
+machine in the local relay and initializes it with that original implementation.
+Run create/send on both CLIs, then POST `/stop-daemon` through the guarded
+controller. After all original signed deadlines have elapsed (the v3 phase uses
+30 seconds), POST `/upgrade`: it runs the manual tool in dry-run and real modes,
+starts the current daemon, and verifies that the last original mutation's
+unchanged envelope returns unknown. The same in-memory client, credentials and
+sessions are retained. New `/rpc` calls then verify continued operation without
+pairing. These endpoints exist only in this explicit test controller.
+
+Use absolute `RA_REAL_CLAUDE` and `RA_REAL_CODEX` paths when installed launch
+wrappers resolve binaries relative to HOME. The native HOME is deliberately
+isolated. Initial native trust/onboarding can require `drive.onboard`; this is
+separate from tool approvals, which must use signed `resolveApproval` commands.

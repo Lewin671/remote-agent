@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -270,7 +271,7 @@ func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
 	filler := bytes.Repeat([]byte{0x5a}, maxAcceptedBytes-300)
-	machine.data.Accepted["filler"] = accepted{Deadline: now + 600_000, Done: true, Result: filler, Persisted: true}
+	machine.data.Accepted["filler"] = accepted{Deadline: now + 600_000, RetainUntil: now + 1_200_000, State: final, Category: Executed, Available: true, Result: filler, Persisted: true}
 	machine.indexAccepted()
 	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
@@ -280,8 +281,8 @@ func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
 	result := bytes.Repeat([]byte{0x6b}, 400)
 	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
 		return Final(result), nil
-	}); err != ErrCapacity {
-		t.Fatalf("finish over the byte cap: %v", err)
+	}); err == nil {
+		t.Fatalf("finish over the byte cap must retain category without body: %v", err)
 	}
 	if _, ok := machine.data.Accepted["filler"]; !ok {
 		t.Fatal("an unexpired accepted entry was evicted")
@@ -352,7 +353,7 @@ func TestAcceptedLogCapsBeforeExecution(t *testing.T) {
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
 	for i := 0; i < maxAccepted; i++ {
-		machine.data.Accepted[string(rune(i))] = accepted{Deadline: now + 600_000, Done: true}
+		machine.data.Accepted[testKey(fmt.Sprint(i))] = accepted{Deadline: now + 600_000, RetainUntil: now + 1_200_000, State: final, Category: Executed, Persisted: true}
 	}
 	machine.indexAccepted()
 	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}

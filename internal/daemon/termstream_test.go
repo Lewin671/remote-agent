@@ -149,7 +149,7 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	}
 	account := &relay.Account{Server: authority.Server, Root: authority.Root, DeviceSeed: med.Seed(), DeviceID: machine.ID,
 		Security: &relay.SecurityConfig{Pin: authority.Pin, XPrivate: mx}}
-	if err := machine.Endpoint.Save(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v3.db")); err != nil {
+	if err := machine.Endpoint.Save(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v4.db")); err != nil {
 		t.Fatal(err)
 	}
 	if err := account.Save(); err != nil {

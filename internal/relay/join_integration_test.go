@@ -217,7 +217,7 @@ func testJoinRegistration(t *testing.T, refused bool) {
 	if res.acct != nil {
 		t.Fatal("failed join returned account")
 	}
-	file := filepath.Join(paths.Dir(), "security-v3.db")
+	file := filepath.Join(paths.Dir(), "security-v4.db")
 	if err := os.Remove(file); err != nil {
 		t.Fatal(err)
 	}

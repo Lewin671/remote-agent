@@ -572,6 +572,118 @@
         "zh-CN": "source"
       },
       "zh-CN": "无法解析 CLI 状态栏数据，请检查 CLI 版本和会话设置。"
+    },
+    "security.migration_complete": {
+      "en": "Upgrade validated; no pairing is needed. The source backup is security-v3.db.backup. Direct rollback is safe only before v4 accepts new operations: stop the daemon, move security-v4.db and its -wal/-shm files aside, then run the old version. Otherwise follow the development guide to check operations and let their authorizations expire first.",
+      "key": "security.migration_complete",
+      "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "升级完成并校验通过，无需重新配对。原库备份为 security-v3.db.backup。仅在 v4 尚未接受新操作时可直接回退：先停止 daemon，移走 security-v4.db 及其 -wal/-shm 文件，再运行旧版。已有 v4 操作时请先按开发说明核对并等待授权期限结束。"
+    },
+    "security.migration_dry_run": {
+      "en": "Dry run validated; the source is unchanged. Pairing identity, security chain, keys and lease will be preserved; session and account files stay unchanged.",
+      "key": "security.migration_dry_run",
+      "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "演练验证通过，原库未修改。配对身份、安全链、密钥和租约将原样保留，会话与账户文件不变。"
+    },
+    "security.migration_failed": {
+      "en": "Upgrade did not complete; the source was not replaced. Ensure the daemon is stopped, target and backup do not exist, disk is writable, the source is valid generation 3, and all old acceptance deadlines have passed; then retry.",
+      "key": "security.migration_failed",
+      "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "升级未完成，原库未替换。请确认 daemon 已停止、目标和备份尚不存在、磁盘可写、原库为第 3 代且完整，并且旧接受记录的截止时间全部已过；修正后重试。"
+    },
+    "security.migration_old_results": {
+      "en": "Generation 3 acceptance records are not migrated. Old ID queries return unknown and are never reexecuted; check the session before deciding on a new operation.",
+      "key": "security.migration_old_results",
+      "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "第 3 代接受记录不会迁移。旧 ID 的结果查询将返回未知，绝不重新执行；请核对会话后再决定新操作。"
+    },
+    "security.migration_usage": {
+      "en": "Usage: go run ./scripts/migrate-security-v4 --home DIR [--dry-run] [--locale zh-CN|en]. Stop the daemon and check old operations first.",
+      "key": "security.migration_usage",
+      "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "用法：go run ./scripts/migrate-security-v4 --home DIR [--dry-run] [--locale zh-CN|en]。必须先停止 daemon；先核对旧操作。"
+    },
+    "security.request_identity_conflict": {
+      "en": "The request ID was reused with a different payload; the original result is unchanged.",
+      "key": "security.request_identity_conflict",
+      "notes": "电脑端已认证的请求身份冲突；不泄露原载荷或结果。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "同一请求 ID 对应不同载荷；原操作结果未改变。"
+    },
+    "security.result_body_unavailable": {
+      "en": "The operation is settled, but its result body is unavailable.",
+      "key": "security.result_body_unavailable",
+      "notes": "电脑端精简终局存在但未能保留正文；第 6 步 wire 接入前不作为客户端业务正文。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "操作已定案，但结果正文无法恢复。"
+    },
+    "security.storage_v4_required": {
+      "en": "Local security storage needs generation 4. Stop the daemon and run scripts/migrate-security-v4; pairing is preserved. Old request results cannot be recovered; check pending operations first.",
+      "key": "security.storage_v4_required",
+      "notes": "电脑端手动 v3→v4 升级工具及 daemon 的本地安全库升级提示；不含账户、路径或密钥变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "reviewed",
+        "zh-CN": "source"
+      },
+      "zh-CN": "本机安全库需要升级到第 4 代。请先停止 daemon，运行 scripts/migrate-security-v4；无需重新配对。旧请求结果无法恢复，请先核对在途操作。"
     }
   }
 }

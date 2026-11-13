@@ -15,6 +15,9 @@ import (
 // development environment and the distribution smoke test, and only in
 // binaries built with the dev build tag; release binaries do not contain it.
 func DevInit(ctx context.Context, server, setupToken string) (*Account, error) {
+	if err := CheckSecurityStorage(); err != nil {
+		return nil, err
+	}
 	authority, err := remoteclient.NewAuthority(ctx, server, setupToken)
 	if err != nil {
 		return nil, err

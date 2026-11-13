@@ -68,6 +68,9 @@ func runDaemon(args []string) error {
 	if max := time.Duration(agent.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
 		return fmt.Errorf("--approval-timeout must be at most %s", max)
 	}
+	if err := relay.CheckSecurityStorage(); err != nil {
+		return err
+	}
 	ensureUTF8()
 	agentBins := make(map[string]string)
 	for id, flagVal := range agentFlags {

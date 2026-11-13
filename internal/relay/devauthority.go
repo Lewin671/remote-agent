@@ -19,6 +19,9 @@ type AccountStatus struct {
 
 func AccountStatusInfo(a *Account) (AccountStatus, error) {
 	var out AccountStatus
+	if err := CheckSecurityStorage(); err != nil {
+		return out, err
+	}
 	if a.Security == nil {
 		return out, errors.New("this machine has no security state; join again from the phone")
 	}

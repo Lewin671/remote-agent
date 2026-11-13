@@ -2,14 +2,14 @@ package deviceauth
 
 import (
 	"bytes"
-	"container/heap"
+	"context"
 	"crypto/ed25519"
 	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
+
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,7 +19,7 @@ import (
 
 // The endpoint stores verified states, content keys, a time floor and the
 // at-most-once acceptance log in SQLite. Sealing does not write storage.
-const storageVersion = 3
+const storageVersion = 4
 
 const storeSchema = `
 CREATE TABLE IF NOT EXISTS security (
@@ -51,13 +51,17 @@ CREATE TABLE IF NOT EXISTS content_keys (
 	secret BLOB NOT NULL
 );
 CREATE TABLE IF NOT EXISTS accepted (
-	key BLOB PRIMARY KEY,
-	deadline INTEGER NOT NULL,
-	done INTEGER NOT NULL,
-	result BLOB,
-	failed INTEGER NOT NULL,
-	checksum BLOB NOT NULL
+ key BLOB PRIMARY KEY CHECK(length(key)=32),
+ payload_hash BLOB NOT NULL CHECK(length(payload_hash)=32),
+ deadline INTEGER NOT NULL,
+ retain_until INTEGER NOT NULL,
+ state INTEGER NOT NULL,
+ category INTEGER NOT NULL,
+ body_hash BLOB NOT NULL CHECK(length(body_hash)=32),
+ available INTEGER NOT NULL,
+ checksum BLOB NOT NULL CHECK(length(checksum)=32)
 );
+CREATE TABLE IF NOT EXISTS accepted_bodies (key BLOB PRIMARY KEY, result BLOB NOT NULL);
 CREATE TABLE IF NOT EXISTS accepted_meta (
 	id INTEGER PRIMARY KEY CHECK (id = 1),
 	cutoff INTEGER NOT NULL
@@ -89,15 +93,6 @@ type record struct {
 	AcceptedFloor uint64
 }
 
-type accepted struct {
-	Deadline  uint64
-	Done      bool
-	Result    []byte
-	Failed    bool
-	Persisted bool
-	Sum       Hash
-}
-
 type Endpoint struct {
 	execution      sync.Mutex
 	mu             sync.Mutex
@@ -106,243 +101,16 @@ type Endpoint struct {
 	closed         bool
 	data           record
 	acceptedBytes  int
+	acceptedBodies int
 	volatileExpiry acceptedHeap
 	durableExpiry  acceptedHeap
+	running        map[string]*runningCall
+	waiters        int
+	// Tests can shorten the production wait bound without sleeping.
+	waitTimeout time.Duration
 }
 
 func chainHead(r record) State { return r.States[r.HeadEpoch] }
-
-const (
-	maxAccepted      = 8192
-	maxAcceptedBytes = 16 << 20
-)
-
-func acceptedChecksum(key string, a accepted) []byte {
-	e := encoder{}
-	e.lp([]byte(key))
-	e.u64(a.Deadline)
-	if a.Done {
-		e.u32(1)
-	} else {
-		e.u32(0)
-	}
-	e.lp(a.Result)
-	if a.Failed {
-		e.u32(1)
-	} else {
-		e.u32(0)
-	}
-	h := digest("ra3/accepted-entry\x00", e.b)
-	return h[:]
-}
-
-func acceptedEntrySize(key string, a accepted) int {
-	return len(key) + len(a.Result) + 128
-}
-
-// Separate expiry queues let transient frames prune without changing durable
-// replay history. Entries and queue nodes change only after persistence succeeds.
-type acceptedExpiry struct {
-	key      string
-	deadline uint64
-}
-type acceptedHeap []acceptedExpiry
-
-func (h acceptedHeap) Len() int           { return len(h) }
-func (h acceptedHeap) Less(i, j int) bool { return h[i].deadline < h[j].deadline }
-func (h acceptedHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *acceptedHeap) Push(x any)        { *h = append(*h, x.(acceptedExpiry)) }
-func (h *acceptedHeap) Pop() any {
-	old := *h
-	x := old[len(old)-1]
-	old[len(old)-1] = acceptedExpiry{}
-	*h = old[:len(old)-1]
-	return x
-}
-
-// Visit only expired subtrees without mutating the queue while staging a write.
-func (h acceptedHeap) expired(i int, now uint64, visit func(string)) {
-	if i >= len(h) || h[i].deadline > now {
-		return
-	}
-	visit(h[i].key)
-	h.expired(2*i+1, now, visit)
-	h.expired(2*i+2, now, visit)
-}
-
-func (e *Endpoint) indexAccepted() {
-	e.acceptedBytes = 0
-	e.volatileExpiry, e.durableExpiry = nil, nil
-	for key, a := range e.data.Accepted {
-		e.acceptedBytes += acceptedEntrySize(key, a)
-		h := &e.volatileExpiry
-		if a.Persisted {
-			h = &e.durableExpiry
-		}
-		*h = append(*h, acceptedExpiry{key, a.Deadline})
-	}
-	heap.Init(&e.volatileExpiry)
-	heap.Init(&e.durableExpiry)
-}
-
-func (e *Endpoint) pruneAccepted(h *acceptedHeap, now uint64) {
-	for len(*h) > 0 && (*h)[0].deadline <= now {
-		key := heap.Pop(h).(acceptedExpiry).key
-		e.acceptedBytes -= acceptedEntrySize(key, e.data.Accepted[key])
-		delete(e.data.Accepted, key)
-	}
-}
-
-// loadAccepted reads the bounded accepted log and checks its manifest, so a
-// flipped bit cannot silently turn an accepted request into a new one.
-func loadAccepted(db *sql.DB, r *record) error {
-	rows, err := db.Query(`SELECT key, deadline, done, result, failed, checksum FROM accepted`)
-	if err != nil {
-		return ErrStorage
-	}
-	defer rows.Close()
-	totalBytes := 0
-	for rows.Next() {
-		var key, result, sum []byte
-		var deadline int64
-		var done, failed int
-		if err := rows.Scan(&key, &deadline, &done, &result, &failed, &sum); err != nil || len(key) > 1024 || deadline <= 0 || done < 0 || done > 1 || failed < 0 || failed > 1 || len(result) > MaxCipherBytes || len(sum) != 32 {
-			return ErrStorage
-		}
-		a := accepted{Deadline: uint64(deadline), Done: done == 1, Result: result, Failed: failed == 1, Persisted: true}
-		if !bytes.Equal(sum, acceptedChecksum(string(key), a)) {
-			return ErrStorage
-		}
-		copy(a.Sum[:], sum)
-		r.Accepted[string(key)] = a
-		totalBytes += acceptedEntrySize(string(key), a)
-		if len(r.Accepted) > maxAccepted || totalBytes > maxAcceptedBytes {
-			return ErrStorage
-		}
-	}
-	if rows.Err() != nil {
-		return ErrStorage
-	}
-	// Each entry carries its own checksum; the meta row only holds the
-	// pruning lower bound, so a command never rewrites the whole log.
-	var cutoff int64
-	if err := db.QueryRow(`SELECT cutoff FROM accepted_meta WHERE id=1`).Scan(&cutoff); err != nil || cutoff < 0 {
-		return ErrStorage
-	}
-	r.AcceptedFloor = uint64(cutoff)
-	return nil
-}
-
-// persistAccepted writes the changed entry, any pruned entries and the
-// cutoff in one transaction.
-func (e *Endpoint) persistAccepted(changed string, a accepted, pruned []string, cutoff uint64) error {
-	tx, err := e.db.Begin()
-	if err != nil {
-		return ErrStorage
-	}
-	defer tx.Rollback()
-	for _, key := range pruned {
-		if _, err := tx.Exec(`DELETE FROM accepted WHERE key=?`, []byte(key)); err != nil {
-			return ErrStorage
-		}
-	}
-	done, failed := 0, 0
-	if a.Done {
-		done = 1
-	}
-	if a.Failed {
-		failed = 1
-	}
-	if _, err := tx.Exec(`INSERT INTO accepted (key, deadline, done, result, failed, checksum) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (key) DO UPDATE SET deadline=excluded.deadline, done=excluded.done, result=excluded.result, failed=excluded.failed, checksum=excluded.checksum`,
-		[]byte(changed), a.Deadline, done, a.Result, failed, acceptedChecksum(changed, a)); err != nil {
-		return ErrStorage
-	}
-	if _, err := tx.Exec(`UPDATE accepted_meta SET cutoff=? WHERE id=1`, cutoff); err != nil {
-		return ErrStorage
-	}
-	return tx.Commit()
-}
-
-// startAccepted checks the log before the deadline (S1), prunes expired
-// entries and enforces the caps before the caller runs anything. Commands are
-// persisted before execution; other control frames stay in memory.
-func (e *Endpoint) startAccepted(key string, deadline, now uint64, persist bool) ([]byte, bool, error) {
-	if a, ok := e.data.Accepted[key]; ok {
-		if !a.Done {
-			return nil, false, ErrOutcomeUnknown
-		}
-		if a.Failed {
-			return nil, false, ErrBackend
-		}
-		return bytes.Clone(a.Result), false, nil
-	}
-	now = maxU64(now, e.data.AcceptedFloor)
-	if deadline <= now {
-		return nil, false, ErrExpired
-	}
-	var pruned []string
-	prunedCount, prunedBytes := 0, 0
-	count := func(k string) {
-		prunedCount++
-		prunedBytes += acceptedEntrySize(k, e.data.Accepted[k])
-	}
-	e.volatileExpiry.expired(0, now, count)
-	if persist {
-		e.durableExpiry.expired(0, now, func(k string) { count(k); pruned = append(pruned, k) })
-	}
-	if len(e.data.Accepted)-prunedCount >= maxAccepted {
-		return nil, false, ErrCapacity
-	}
-	a := accepted{Deadline: deadline, Persisted: persist}
-	size := acceptedEntrySize(key, a)
-	if e.acceptedBytes-prunedBytes+size > maxAcceptedBytes {
-		return nil, false, ErrCapacity
-	}
-	copy(a.Sum[:], acceptedChecksum(key, a))
-	cutoff := maxU64(e.data.AcceptedFloor, now)
-	if persist {
-		if err := e.persistAccepted(key, a, pruned, cutoff); err != nil {
-			return nil, false, err
-		}
-	}
-	e.pruneAccepted(&e.volatileExpiry, now)
-	h := &e.volatileExpiry
-	if persist {
-		e.pruneAccepted(&e.durableExpiry, now)
-		h = &e.durableExpiry
-	}
-	e.data.Accepted[key] = a
-	e.acceptedBytes += size
-	heap.Push(h, acceptedExpiry{key, deadline})
-	e.data.AcceptedFloor = cutoff
-	return nil, true, nil
-}
-
-func (e *Endpoint) finishAccepted(key string, result []byte, failed bool, persist bool) error {
-	a, ok := e.data.Accepted[key]
-	if !ok || a.Done {
-		return ErrInvalid
-	}
-	priorSize := acceptedEntrySize(key, a)
-	if len(result) > maxAcceptedBytes-e.acceptedBytes+priorSize-len(key)-128 {
-		// Keep the in-progress entry when the result cannot fit: retrying
-		// must report an unknown outcome rather than execute it again.
-		return ErrCapacity
-	}
-	a.Done = true
-	a.Result = bytes.Clone(result)
-	a.Failed = failed
-	copy(a.Sum[:], acceptedChecksum(key, a))
-	if persist {
-		if err := e.persistAccepted(key, a, nil, e.data.AcceptedFloor); err != nil {
-			return err
-		}
-	}
-	e.data.Accepted[key] = a
-	e.acceptedBytes += acceptedEntrySize(key, a) - priorSize
-	return nil
-}
 
 func verifyChain(pin Pin, states []State, proofs []*RecoveryStatement) error {
 	if len(states) == 0 || len(states) > MaxStates || len(proofs) != len(states) {
@@ -651,15 +419,16 @@ func (e *Endpoint) persistRecord(writeAccepted bool) error {
 		return nil
 	}
 	for key, a := range d.Accepted {
-		done, failed := 0, 0
-		if a.Done {
-			done = 1
+		if !a.Persisted {
+			continue
 		}
-		if a.Failed {
-			failed = 1
+		if err := writeSummary(tx, key, a); err != nil {
+			return err
 		}
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO accepted (key, deadline, done, result, failed, checksum) VALUES (?, ?, ?, ?, ?, ?)`, []byte(key), a.Deadline, done, a.Result, failed, acceptedChecksum(key, a)); err != nil {
-			return ErrStorage
+		if a.Available {
+			if _, err := tx.Exec(`INSERT OR REPLACE INTO accepted_bodies(key,result) VALUES(?,?)`, []byte(key), a.Result); err != nil {
+				return ErrStorage
+			}
 		}
 	}
 	if _, err := tx.Exec(`INSERT INTO accepted_meta (id, cutoff) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET cutoff=MAX(cutoff,excluded.cutoff)`, d.AcceptedFloor); err != nil {
@@ -703,7 +472,11 @@ func OpenEndpoint(path string) (*Endpoint, error) {
 		db.Close()
 		return nil, ErrStorage
 	}
-	if r.Version != storageVersion || len(pinDomain) != 32 || len(pinGenesis) != 32 || len(r.EdSeed) != 32 || len(r.XPrivate) != 32 {
+	if r.Version != storageVersion {
+		db.Close()
+		return nil, ErrStorageVersion
+	}
+	if len(pinDomain) != 32 || len(pinGenesis) != 32 || len(r.EdSeed) != 32 || len(r.XPrivate) != 32 {
 		db.Close()
 		return nil, ErrStorage
 	}
@@ -915,6 +688,9 @@ func (e *Endpoint) Close() error {
 	err := e.db.Close()
 	// Retain the closed handle so concurrent storage users receive SQL errors.
 	e.closed = true
+	for _, run := range e.running {
+		run.notify.Do(func() { close(run.done) })
+	}
 	return err
 }
 func (e *Endpoint) Snapshot() (Pin, State, string) {
@@ -1348,6 +1124,19 @@ func (e *Endpoint) prepare(h Header, sessionSeed, plain []byte, compress bool) (
 // require the head lease to be valid and the envelope's content epoch to be
 // the head's. Stored history is verified against its own state only.
 func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Header, []byte, error) {
+	h, plain, err := e.openAuthenticated(w, sessionSeed, live, now)
+	if err != nil {
+		return h, nil, err
+	}
+	if err := ValidateBody(h, plain); err != nil {
+		return h, nil, err
+	}
+	return h, plain, nil
+}
+
+// Acceptance compares authenticated payload identity before business structure
+// validation. Public history readers still use Open's full body checks.
+func (e *Endpoint) openAuthenticated(w Wire, sessionSeed []byte, live bool, now uint64) (Header, []byte, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	h, err := ParseHeader(w.Header)
@@ -1368,150 +1157,15 @@ func (e *Endpoint) Open(w Wire, sessionSeed []byte, live bool, now uint64) (Head
 	if err != nil {
 		return h, nil, err
 	}
-	h, plain, err := w.Open(secret, sessionSeed, s, head, live, maxU64(now, e.data.Floor))
-	return h, plain, err
+	if _, err := w.VerifyOrigin(s, head, live, maxU64(now, e.data.Floor)); err != nil {
+		return h, nil, err
+	}
+	return openCipher(secret, sessionSeed, w)
 }
 
-// Accept applies a control envelope at most once. The accepted table is
-// checked before the deadline, so an expired retry still learns the recorded
-// result. The gate covers admission and result recording, never fn or user I/O.
-// New command entries are persisted before fn runs; terminal and
-// other non-command frames stay in memory and are pruned by deadline.
+// Accept uses process-local running coordination and durable at-most-once admission.
 func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header, []byte) (Completion, error)) ([]byte, error) {
-	e.execution.Lock()
-	gateHeld := true
-	defer func() {
-		if gateHeld {
-			e.execution.Unlock()
-		}
-	}()
-	e.mu.Lock()
-	if e.closed {
-		e.mu.Unlock()
-		return nil, ErrStorage
-	}
-	h, err := ParseHeader(w.Header)
-	if err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	if !h.Purpose.Control() {
-		e.mu.Unlock()
-		return nil, ErrInvalid
-	}
-	key := acceptedKey(h)
-	e.mu.Unlock()
-
-	// Authenticate and decrypt against the envelope's own state before any
-	// accepted-log lookup. Forged headers cannot probe recorded results.
-	// Current membership and lease checks apply only to a new execution.
-	_, plain, err := e.Open(w, sessionSeed, false, now)
-	if err != nil {
-		return nil, err
-	}
-
-	persist := h.Purpose == Command
-	e.mu.Lock()
-	// The accepted log follows the verified envelope and precedes the
-	// deadline: an executed request still reports its recorded result after
-	// the deadline, while a forged header never reaches this lookup.
-	if result, cached, err := e.lookupAccepted(key); cached || err != nil {
-		e.mu.Unlock()
-		return result, err
-	}
-	// Only a new execution requires current membership, epoch and lease.
-	state := e.data.States[h.Epoch]
-	if err := leaseValid(e.data, maxU64(now, e.data.Floor)); err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	if _, err := w.VerifyOrigin(state, chainHead(e.data), true, maxU64(now, e.data.Floor)); err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	if now+MaxClockSkew < e.data.Floor {
-		e.mu.Unlock()
-		return nil, ErrStale
-	}
-	now = maxU64(now, e.data.Floor)
-	if h.Deadline <= now || h.Deadline-now > 10*60*1000 {
-		e.mu.Unlock()
-		return nil, ErrInvalid
-	}
-	if e.data.Floor < now {
-		d := e.data
-		d.Floor = now
-		if now-d.FloorSaved >= floorWriteInterval {
-			if err := e.saveFloorLocked(&d); err != nil {
-				e.mu.Unlock()
-				return nil, err
-			}
-		}
-		e.data = d
-	}
-	if h.Purpose == Command && ReadOnlyCommand(h, plain) {
-		e.mu.Unlock()
-		gateHeld = false
-		e.execution.Unlock()
-		completion, _ := fn(h, plain)
-		if !completion.final {
-			return nil, ErrOutcomeUnknown
-		}
-		return completion.result, nil
-	}
-	if _, _, err := e.startAccepted(key, h.Deadline, now, persist); err != nil {
-		e.mu.Unlock()
-		return nil, err
-	}
-	e.mu.Unlock()
-
-	// The durable accepted entry is the authorization/linearization point.
-	// Already-admitted work uses its backend's synchronization; revocation
-	// prevents new admission, without waiting on filesystem/CLI/user I/O.
-	gateHeld = false
-	e.execution.Unlock()
-	completion, _ := fn(h, plain)
-
-	e.execution.Lock()
-	gateHeld = true
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.closed {
-		// Close must not wait for a callback. Keep its durable in-progress
-		// entry unknown, so a reconnect/retry cannot execute it again.
-		return nil, ErrOutcomeUnknown
-	}
-	// Only explicit backend evidence can settle admission. A serialized body
-	// and a nil diagnostic error do not establish completion.
-	if !completion.final {
-		return nil, ErrOutcomeUnknown
-	}
-	if err := e.finishAccepted(key, completion.result, false, persist); err != nil {
-		return nil, err
-	}
-	return completion.result, nil
-}
-
-// acceptedKey names one logical request. The content epoch is deliberately
-// absent: after a key change a retry with the same request ID is the same
-// action and must not run twice.
-func acceptedKey(h Header) string {
-	return h.Sender + "/" + strconv.FormatUint(uint64(h.Purpose), 10) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + strconv.FormatUint(h.Seq, 10)
-}
-
-// lookupAccepted must be called with e.mu held.
-func (e *Endpoint) lookupAccepted(key string) ([]byte, bool, error) {
-	a, ok := e.data.Accepted[key]
-	if !ok {
-		return nil, false, nil
-	}
-	if !a.Done {
-		return nil, false, ErrOutcomeUnknown
-	}
-	if a.Failed {
-		return nil, false, ErrBackend
-	}
-	return bytes.Clone(a.Result), true, nil
+	return e.AcceptWith(context.Background(), w, sessionSeed, now, AcceptOptions{}, fn)
 }
 
 // CheckExtension preserves the complete local chain when a computer re-pairs.

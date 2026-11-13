@@ -1368,5 +1368,35 @@
     "path": "web/src/views/MachineRings.tsx",
     "literal": "ms-ring",
     "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "internal/deviceauth/accepted.go",
+    "literal": "en",
+    "reason": "Locale code passed to generated Go diagnostic wrappers, not displayed text."
+  },
+  {
+    "path": "scripts/migrate-security-v4/main.go",
+    "literal": "security",
+    "reason": "Exact SQLite identity table name used only by the offline migration integrity check; never displayed."
+  },
+  {
+    "path": "scripts/migrate-security-v4/main.go",
+    "literal": "states",
+    "reason": "Exact SQLite identity table name used only by the offline migration integrity check; never displayed."
+  },
+  {
+    "path": "scripts/migrate-security-v4/main.go",
+    "literal": "recovery",
+    "reason": "Exact SQLite identity table name used only by the offline migration integrity check; never displayed."
+  },
+  {
+    "path": "scripts/migrate-security-v4/main.go",
+    "literal": "content_keys",
+    "reason": "Exact SQLite identity table name used only by the offline migration integrity check; never displayed."
+  },
+  {
+    "path": "scripts/migrate-security-v4/main.go",
+    "literal": "migration validation failed",
+    "reason": "Internal sentinel handled by the localized migration_failed message; its text is never printed or returned as product copy."
   }
 ]

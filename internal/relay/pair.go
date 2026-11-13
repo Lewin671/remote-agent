@@ -80,6 +80,9 @@ func pairingClient(server, token string) remoteagentv1connect.PairingServiceClie
 // machine that already has an account it re-binds that account: the Ed25519
 // identity and any retained root are kept and the X25519 key is replaced.
 func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []string) bool) (*Account, error) {
+	if err := CheckSecurityStorage(); err != nil {
+		return nil, err
+	}
 	existing, err := LoadAccount()
 	if err != nil && !errors.Is(err, ErrNoAccount) {
 		return nil, err
@@ -108,9 +111,9 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	// Only an absent file permits bootstrap. A corrupt/unreadable store is
 	// still a trust anchor, even if account metadata no longer names it.
 	_, statErr := os.Stat(securityPath())
-	localV3 := !errors.Is(statErr, os.ErrNotExist)
+	localStore := !errors.Is(statErr, os.ErrNotExist)
 	localRemoved := false
-	if localV3 {
+	if localStore {
 		if ep, err := deviceauth.OpenEndpoint(securityPath()); err == nil {
 			localRemoved = ep.Removed()
 			ep.Close()
@@ -201,7 +204,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil || !bytes.Equal(e2e.PairDomainCommit(st.InitiatorPublic, st.Trust), commit) {
 		return nil, errors.New("the existing device's trust descriptor does not match its commitment; pairing stopped")
 	}
-	if err := checkJoiningAccount(existing, pin, localV3); err != nil {
+	if err := checkJoiningAccount(existing, pin, localStore); err != nil {
 		return nil, err
 	}
 	tr := e2e.PairDomainTranscript(id, st.InitiatorPublic, key.Public(), pub, xpub, int32(pb.DeviceKind_DEVICE_KIND_MACHINE), st.Trust)
@@ -247,7 +250,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	if localV3 {
+	if localStore {
 		local, err := deviceauth.OpenEndpoint(securityPath())
 		if err != nil {
 			return nil, errors.New("the local security chain cannot be read; manual handling is required before rejoining")
@@ -394,14 +397,14 @@ func joiningIdentity(existing *Account, removed bool) (ed25519.PublicKey, ed2551
 // relay could reply with a forged genesis for the same account. Only a
 // protocol 9 account has no such anchor yet: its upgrade rebuilds the domain,
 // so just the account identity has to match.
-func checkJoiningAccount(existing *Account, pin deviceauth.Pin, localV3 bool) error {
+func checkJoiningAccount(existing *Account, pin deviceauth.Pin, localStore bool) error {
 	if existing == nil || existing.Security == nil {
 		return nil
 	}
 	if pin.Account != existing.Security.Pin.Account {
 		return errors.New("the code belongs to a different account; existing keys were preserved")
 	}
-	if localV3 && pin != existing.Security.Pin {
+	if localStore && pin != existing.Security.Pin {
 		return errors.New("the code is for another security domain; the relay cannot replace this computer's pinned domain")
 	}
 	return nil

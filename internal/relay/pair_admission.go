@@ -90,6 +90,9 @@ func DiscardRegistration() error {
 
 // ResumeRegistration is called by daemon startup before it loads the account.
 func ResumeRegistration(ctx context.Context) error {
+	if err := CheckSecurityStorage(); err != nil {
+		return err
+	}
 	files, err := filepath.Glob(filepath.Join(paths.Dir(), "pair-admission-*.json"))
 	if err != nil {
 		return err
@@ -110,6 +113,9 @@ func ResumeRegistration(ctx context.Context) error {
 	return nil
 }
 func bootstrapAdmission(pending pairAdmission) error {
+	if err := CheckSecurityStorage(); err != nil {
+		return err
+	}
 	a := pending.Account
 	if a == nil || a.Security == nil || len(pending.States) == 0 {
 		return deviceauth.ErrInvalid

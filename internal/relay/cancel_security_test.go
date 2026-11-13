@@ -55,7 +55,9 @@ func TestInFlightDuplicateDoesNotSynchronizeSecurityState(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	_, err = c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+	duplicateCtx, cancelDuplicate := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancelDuplicate()
+	_, err = c.security.accept(duplicateCtx, wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
 		t.Error("duplicate executed")
 		return deviceauth.Final(nil), nil
 	})

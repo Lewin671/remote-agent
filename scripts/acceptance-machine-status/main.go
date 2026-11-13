@@ -96,7 +96,7 @@ func main() {
 	must(err)
 	must(updater.EnsureState(home))
 	must(os.Setenv("REMOTE_AGENT_HOME", home))
-	must(machine.Endpoint.Save(filepath.Join(home, "security-v3.db")))
+	must(machine.Endpoint.Save(filepath.Join(home, "security-v4.db")))
 	acct := &relay.Account{Server: server, Root: auth.Root, DeviceSeed: ed.Seed(), DeviceID: machine.ID, Security: &relay.SecurityConfig{Pin: auth.Pin, XPrivate: x}}
 	must(acct.Save())
 	machine.Endpoint.Close()

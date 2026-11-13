@@ -15,7 +15,7 @@ import (
 
 // dispatcher owns one endpoint for the entire daemon/account lifetime. Socket
 // readers may add work; only process shutdown cancels and drains admitted work.
-// Same-ID running coordination and persistent retention are separate later steps.
+// Its endpoint also owns the process running and bounded waiter tables.
 type dispatcher struct {
 	ctx             context.Context
 	cancel          context.CancelFunc

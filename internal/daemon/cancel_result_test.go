@@ -107,7 +107,7 @@ func startCancellationTestRelay(t *testing.T, backend relay.Backend, configure .
 	}
 	client := phone.Client(authority)
 	t.Cleanup(func() { client.Close() })
-	if err := machine.Endpoint.Save(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v3.db")); err != nil {
+	if err := machine.Endpoint.Save(filepath.Join(os.Getenv("REMOTE_AGENT_HOME"), "security-v4.db")); err != nil {
 		t.Fatal(err)
 	}
 	machine.Endpoint.Close()

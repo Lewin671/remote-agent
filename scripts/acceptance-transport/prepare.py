@@ -1,7 +1,7 @@
 """Prepare/build the opt-in local transport harness. Never runs remote-agent."""
 import argparse,json,os,shutil,subprocess
 from pathlib import Path
-parser=argparse.ArgumentParser();parser.add_argument('--copy-auth',action='store_true');args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--copy-auth',action='store_true');parser.add_argument('--v3-source',type=Path);args=parser.parse_args()
 root=Path(os.environ['RA_DEV_DIR']);assert root.is_absolute() and str(root.resolve()).startswith(('/tmp/','/private/tmp/'))
 assert os.environ['REMOTE_AGENT_HOME']==str(root/'bootstrap')
 repo=Path(__file__).resolve().parents[2]
@@ -29,8 +29,22 @@ source=repo/'cmd/remote-agent/commands.go';code=source.read_text();needle='relay
 (root/'observer-overlay.go').write_text((repo/'scripts/acceptance-transport/observer.go.txt').read_text())
 (root/'overlay.json').write_text(json.dumps({'Replace':{str(source):str(root/'commands-overlay.go'),str(repo/'cmd/remote-agent/transport_acceptance_overlay.go'):str(root/'observer-overlay.go')}}))
 env=dict(os.environ,CGO_ENABLED='0')
-for output,package,extra in [('controller','./scripts/acceptance-transport',[]),('remote-agent-server','./cmd/remote-agent-server',[]),('remote-agent','./cmd/remote-agent',['-overlay',str(root/'overlay.json')])]:
+for output,package,extra in [('controller','./scripts/acceptance-transport',[]),('migrate-security-v4','./scripts/migrate-security-v4',[]),('remote-agent-server','./cmd/remote-agent-server',[]),('remote-agent','./cmd/remote-agent',['-overlay',str(root/'overlay.json')])]:
     free=shutil.disk_usage('/System/Volumes/Data').free;print('DISK_FREE_BYTES',free,flush=True)
     if free<15*1024**3:raise SystemExit('Stopped: less than 15 GiB available')
     subprocess.run(['go','build',*extra,'-o',str(root/'bin'/output),package],cwd=repo,env=env,check=True)
 print('Built current checkout server, daemon with acceptance-only observer overlay, and controller.')
+
+if args.v3_source:
+    baseline=args.v3_source.resolve()
+    assert str(baseline).startswith(('/tmp/','/private/tmp/'))
+    assert 'const storageVersion = 3' in (baseline/'internal/deviceauth/endpoint.go').read_text()
+    fixture=baseline/'scripts/transport-v3-fixture';fixture.mkdir(exist_ok=True)
+    (fixture/'main.go').write_text((repo/'scripts/acceptance-transport/v3-fixture.go.txt').read_text())
+    old_source=baseline/'cmd/remote-agent/commands.go';old_code=old_source.read_text();assert old_code.count(needle)==1
+    (root/'v3-commands-overlay.go').write_text(old_code.replace(needle,'relay.New(transportAcceptanceBackend(backend{d})).Run(ctx)'))
+    (root/'v3-overlay.json').write_text(json.dumps({'Replace':{str(old_source):str(root/'v3-commands-overlay.go'),str(baseline/'cmd/remote-agent/transport_acceptance_overlay.go'):str(root/'observer-overlay.go')}}))
+    for output,package,extra in [('v3-fixture','./scripts/transport-v3-fixture',[]),('remote-agent-v3','./cmd/remote-agent',['-overlay',str(root/'v3-overlay.json')])]:
+        free=shutil.disk_usage('/System/Volumes/Data').free;print('DISK_FREE_BYTES',free,flush=True)
+        if free<15*1024**3:raise SystemExit('Stopped: less than 15 GiB available')
+        subprocess.run(['go','build',*extra,'-o',str(root/'bin'/output),package],cwd=baseline,env=env,check=True)

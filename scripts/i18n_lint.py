@@ -19,7 +19,7 @@ SINK = re.compile(r'(?:Text|Button|Btn|PillButton|TextLink|TextAction|LinkButton
 
 
 def sources(root):
-    roots = ['web/src','web/public','web/index.html','android/app/src/main','android/core/src/main','android/terminal/src/main','ios/RemoteAgent','ios/RemoteAgentCore/Sources','cmd','internal','scripts/install.sh','install.sh']
+    roots = ['web/src','web/public','web/index.html','android/app/src/main','android/core/src/main','android/terminal/src/main','ios/RemoteAgent','ios/RemoteAgentCore/Sources','cmd','internal','scripts/install.sh','scripts/migrate-security-v4','install.sh']
     for entry in roots:
         path = root/entry
         files = path.rglob('*') if path.is_dir() else [path]

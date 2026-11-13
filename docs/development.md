@@ -136,3 +136,17 @@ python3 -m unittest discover -s scripts -p 'i18n_test.py'
 新增 key 必须实际使用，lint 拒绝孤儿/未定义/不适用端调用。新增写死中英文命中时优先抽取；非产品内容在 `i18n/lint-allowlist.json` 精确写 path、literal 和 reason。基线是阶段 0 抽取前 HEAD 的历史债务，以路径、字串摘要和出现次数计数，移动行不新增债务、复制旧字串会失败；`lint --update-baseline` 只用于明确批准的债务重建，日常新增 key 不运行它。扫描是保守词法检查，覆盖 CJK 字串、JSX/HTML 文本以及已知原生 UI/错误/命令行输出入口的英文；不是完整语法解析器，动态拼接、间接英文变量和新 UI API 仍需代码审查并扩展扫描规则。
 
 语言入口仍关闭，不能用系统英文作为全端英文完成的验收。三端试点可显式 locale 做单测快照；Android 设置 `RA_I18N_SCREENSHOT_DIR` 后运行 `:app:testDebugUnitTest --tests '*MessageLocaleTest'`，iOS `MessageLocaleSnapshotTests` 在测试宿主 Documents 写入 i18n-<locale>.png。截图不代表配对、通知或真实 CLI 端到端验收。
+
+
+## 安全状态 v3 到 v4 的一次性手动升级
+
+这是传输 0a 第 4–5 步的手动工具，不编入产品二进制，也不会由 daemon 调用。第 6 步的 wire 升级另行发布。本步骤保留配对，不要求删除账户或会话。
+
+1. 停止该状态目录的 daemon，核对在途操作。旧接受记录的截止时间必须全部已过（最长为请求准入后 10 分钟）；工具发现未到期记录会直接退出，不自行等待。停止期间不要运行配对、账户变更或其他写该目录的命令。
+2. 在本版源码根目录运行 `CGO_ENABLED=0 go run ./scripts/migrate-security-v4 --home /path/to/state --dry-run --locale zh-CN`。路径必须明确指定；工具取得同一个 daemon 排他锁，验证 SQLite 完整性和身份安全链，演练不发布备份或新库。
+3. 同一命令去掉 `--dry-run`。工具先制作一致的 SQLite 备份（含已提交 WAL），在私有副本内升级，逐表核对身份、成员链、内容密钥和租约，再验证 v4 endpoint。成功发布 `security-v3.db.backup` 与 `security-v4.db`；已有目标或备份时拒绝覆盖。原 `security-v3.db`、账户文件和会话目录不修改。
+4. 启动新版 daemon，用原客户端验证连接和原会话操作。v3 接受记录没有原载荷 hash，全部丢弃；迁移后的旧 ID 查询返回未知，不恢复旧正文，也不重新执行旧授权。请结合会话内容核对旧操作，不能自动换 ID 重做。
+
+工具失败不会替换原库。若已发布备份而新库发布失败，先保留或移走该备份，再修正原因重试。需要回退且**尚未用 v4 接受新操作**时，保持 daemon 停止，移走 `security-v4.db` 及其 `-wal`、`-shm` 文件，再用旧二进制和原 v3 库启动。若 v4 已接受操作，旧 v3 库不包含它们的防重复记录；必须先核对这些操作，并让全部旧授权期限结束，不能直接降级继续重试。备份可以在停机状态下恢复 v3，但同样不能恢复 v4 执行期间新增的结果。
+
+工具不输出账户、密钥、会话内容或 SQL 错误原文。`--locale en` 提供英文操作提示；`--dry-run` 也会明确提示旧请求结果不可恢复。

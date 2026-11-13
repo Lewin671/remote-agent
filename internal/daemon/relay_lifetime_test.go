@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -44,6 +45,11 @@ func (l continuingModelLocal) SetModel(ctx context.Context, req *connect.Request
 // Real local server, encrypted WS, endpoint, and daemon native-menu handler.
 // Only the terminal/CLI is simulated; it is not a real-CLI acceptance claim.
 func TestMainWSLossDoesNotCancelNativeHandler(t *testing.T) {
+	for _, disconnect := range []bool{false, true} {
+		t.Run(fmt.Sprint("disconnect=", disconnect), func(t *testing.T) { testRunningNativeRetry(t, disconnect) })
+	}
+}
+func testRunningNativeRetry(t *testing.T, disconnect bool) {
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	h, footer := controlHarness(t)
 	h.d.sessions[h.s.meta.ID] = h.s
@@ -79,26 +85,50 @@ func TestMainWSLossDoesNotCancelNativeHandler(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("handler did not enter native I/O")
 	}
-	if err := first.Close(); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case err := <-firstReply:
-		if !remoteclient.Uncertain(err) {
-			t.Fatalf("lost path gave final result: %v", err)
+	if disconnect {
+		if err := first.Close(); err != nil {
+			t.Fatal(err)
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("old waiter did not retire")
+		select {
+		case err := <-firstReply:
+			if !remoteclient.Uncertain(err) {
+				t.Fatalf("lost path gave final result: %v", err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("old waiter did not retire")
+		}
+		select {
+		case <-streams:
+		case <-time.After(5 * time.Second):
+			t.Fatal("new WS waited for old execution")
+		}
+		// HTTP hijack precedes the encrypted authentication handshake. Observe
+		// the real relay's machine registration before issuing the retry.
+		eventually(t, "replacement machine authenticated", func() bool {
+			machines, err := client.Machines(context.Background())
+			if err != nil {
+				return false
+			}
+			for _, m := range machines {
+				if m.ID == machine && m.Online {
+					return true
+				}
+			}
+			return false
+		})
 	}
+	// The duplicate is submitted while the native handler is held, on either
+	// the original WS or the replacement WS. It waits for the same completion.
+	type reply struct {
+		result *pb.CommandResult
+		err    error
+	}
+	retry := make(chan reply, 1)
+	go func() { r, e := client.Forward(context.Background(), machine, env); retry <- reply{r, e} }()
 	select {
-	case <-streams:
-	case <-time.After(5 * time.Second):
-		t.Fatal("new WS waited for old execution")
-	}
-	// A retry during execution cannot start another native operation (bounded
-	// waiting/coalescing is intentionally deferred to step 5).
-	if _, err := client.Forward(context.Background(), machine, env); !remoteclient.Uncertain(err) {
-		t.Fatalf("running retry: %v", err)
+	case early := <-retry:
+		t.Fatalf("running retry returned before completion: %v", early.err)
+	case <-time.After(50 * time.Millisecond):
 	}
 	unblock.Do(func() { close(release) })
 	select {
@@ -110,16 +140,19 @@ func TestMainWSLossDoesNotCancelNativeHandler(t *testing.T) {
 		t.Fatal("native operation did not complete")
 	}
 	var result *pb.CommandResult
-	until := time.Now().Add(5 * time.Second)
-	for {
-		result, err = client.Forward(context.Background(), machine, env)
-		if err == nil {
-			break
-		}
-		if !remoteclient.Uncertain(err) || time.Now().After(until) {
+	select {
+	case out := <-retry:
+		result, err = out.result, out.err
+		if err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Millisecond)
+	case <-time.After(5 * time.Second):
+		t.Fatal("retry did not receive original result")
+	}
+	if !disconnect {
+		if err := <-firstReply; err != nil {
+			t.Fatal(err)
+		}
 	}
 	again, err := client.Forward(context.Background(), machine, env)
 	if err != nil || !proto.Equal(result, again) || result.GetSetModel() == nil {

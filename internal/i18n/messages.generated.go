@@ -244,3 +244,35 @@ func QuotaManaged(locale string) string {
 func QuotaReadFailed(locale string) string {
 	return render(locale, "quota.read_failed", map[string]any{})
 }
+
+func SecurityMigrationComplete(locale string) string {
+	return render(locale, "security.migration_complete", map[string]any{})
+}
+
+func SecurityMigrationDryRun(locale string) string {
+	return render(locale, "security.migration_dry_run", map[string]any{})
+}
+
+func SecurityMigrationFailed(locale string) string {
+	return render(locale, "security.migration_failed", map[string]any{})
+}
+
+func SecurityMigrationOldResults(locale string) string {
+	return render(locale, "security.migration_old_results", map[string]any{})
+}
+
+func SecurityMigrationUsage(locale string) string {
+	return render(locale, "security.migration_usage", map[string]any{})
+}
+
+func SecurityRequestIdentityConflict(locale string) string {
+	return render(locale, "security.request_identity_conflict", map[string]any{})
+}
+
+func SecurityResultBodyUnavailable(locale string) string {
+	return render(locale, "security.result_body_unavailable", map[string]any{})
+}
+
+func SecurityStorageV4Required(locale string) string {
+	return render(locale, "security.storage_v4_required", map[string]any{})
+}

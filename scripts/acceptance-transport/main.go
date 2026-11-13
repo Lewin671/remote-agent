@@ -20,9 +20,11 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -173,6 +175,9 @@ type run struct {
 	stopDaemon                             func()
 	native                                 map[string]string
 	results                                *os.File
+	usingV3                                bool
+	oldEnvelope                            *pb.Envelope
+	tmuxPID                                int
 }
 
 func (r *run) restart() {
@@ -304,9 +309,16 @@ func (r *run) rpc(ctx context.Context, q request) response {
 	if send := cmd.GetSend(); send != nil && send.RequestId == "" {
 		send.RequestId = id
 	}
-	env, e := r.client.Seal(r.machine, q.Session, id, time.Now().Add(3*time.Minute), cmd)
+	ttl := 3 * time.Minute
+	if r.usingV3 {
+		ttl = 30 * time.Second
+	}
+	env, e := r.client.Seal(r.machine, q.Session, id, time.Now().Add(ttl), cmd)
 	if e != nil {
 		return response{Error: e.Error(), Code: "driver_seal"}
+	}
+	if r.usingV3 && !deviceauth.IsReadOnlyCommand(cmd) {
+		r.oldEnvelope = env
 	}
 	var result *pb.CommandResult
 	verified := false
@@ -332,17 +344,23 @@ func (r *run) rpc(ctx context.Context, q request) response {
 		if e = poll(ctx, "replacement authenticated Ready", func() bool { return r.bridge.ready.Load() > before }); e != nil {
 			return response{Error: e.Error(), Code: "driver_ready"}
 		}
-		if _, err := r.client.Forward(ctx, r.machine, env); !remoteclient.Uncertain(err) {
-			return response{Error: "running retry was final", Code: "driver_duplicate"}
+		type retryReply struct {
+			result *pb.CommandResult
+			err    error
+		}
+		retried := make(chan retryReply, 1)
+		go func() { out, err := r.client.Forward(ctx, r.machine, env); retried <- retryReply{out, err} }()
+		select {
+		case early := <-retried:
+			return response{Error: fmt.Sprint("running retry returned before release: ", early.err), Code: "driver_duplicate"}
+		case <-time.After(100 * time.Millisecond):
 		}
 		os.Remove(prefix + ".hold")
-		var operationErr error
-		e = poll(ctx, "original signed result", func() bool {
-			result, operationErr = r.client.Forward(ctx, r.machine, env)
-			return !remoteclient.Uncertain(operationErr)
-		})
-		if e == nil {
-			e = operationErr
+		select {
+		case out := <-retried:
+			result, e = out.result, out.err
+		case <-ctx.Done():
+			e = ctx.Err()
 		}
 		if e == nil {
 			var err error
@@ -376,6 +394,13 @@ func (r *run) rpc(ctx context.Context, q request) response {
 			session = result.GetResumeSession().GetSession()
 		}
 		if session != nil {
+			if r.tmuxPID == 0 {
+				cmd := exec.Command("tmux", "-L", r.socket, "display-message", "-p", "#{pid}")
+				raw, err := cmd.Output()
+				if err == nil {
+					r.tmuxPID, _ = strconv.Atoi(strings.TrimSpace(string(raw)))
+				}
+			}
 			out.Session = session.Id
 			r.native[session.Id] = q.CLI
 		}
@@ -451,6 +476,14 @@ func (r *run) serve(w http.ResponseWriter, h *http.Request) {
 			out = append(out, b)
 		}
 		enc.Encode(out)
+	case "/stop-daemon":
+		if r.stopDaemon != nil {
+			r.stopDaemon()
+			r.stopDaemon = nil
+		}
+		enc.Encode(response{Code: "ok"})
+	case "/upgrade":
+		enc.Encode(r.upgrade(ctx))
 	case "/restart":
 		before := r.bridge.ready.Load()
 		r.restart()
@@ -519,7 +552,19 @@ func main() {
 	must(e)
 	machine, e := auth.Enroll(ctx, ed, x, deviceauth.Machine)
 	must(e)
-	must(machine.Endpoint.Save(filepath.Join(env["REMOTE_AGENT_HOME"], "security-v3.db")))
+	usingV3 := os.Getenv("RA_TRANSPORT_V3_BINARY") != ""
+	if usingV3 {
+		// The helper is compiled against the pristine v3 source, not v4 schema
+		// emulation. Only its own temporary identity material goes through stdin.
+		raw, err := json.Marshal(v3Identity{auth.Pin, auth.States, auth.Proofs, machine.ID, ed.Seed(), x, auth.Lease})
+		must(err)
+		init := exec.Command(filepath.Join(root, "bin/v3-fixture"))
+		init.Stdin = bytes.NewReader(raw)
+		guarded(init, env)
+		must(init.Run())
+	} else {
+		must(machine.Endpoint.Save(filepath.Join(env["REMOTE_AGENT_HOME"], "security-v4.db")))
+	}
 	machine.Endpoint.Close()
 	must(os.Setenv("REMOTE_AGENT_HOME", env["REMOTE_AGENT_HOME"]))
 	fmt.Println("ISOLATION verified before account save", env["REMOTE_AGENT_HOME"])
@@ -551,8 +596,19 @@ func main() {
 	must(e)
 	defer log.Close()
 	r := &run{root: root, project: filepath.Join(root, "candidate/project"), socket: env["REMOTE_AGENT_TMUX_SOCKET"], machine: machine.ID, binary: filepath.Join(root, "bin/remote-agent"), env: env, client: client, ctx: ctx, bridge: b, native: map[string]string{}, results: log}
+	r.usingV3 = usingV3
+	if usingV3 {
+		r.binary = os.Getenv("RA_TRANSPORT_V3_BINARY")
+	}
 	r.restart()
-	defer func() { r.stopDaemon(); _ = exec.Command("tmux", "-L", r.socket, "kill-server").Run() }()
+	defer func() {
+		if r.stopDaemon != nil {
+			r.stopDaemon()
+		}
+		if r.tmuxPID > 0 {
+			_ = syscall.Kill(r.tmuxPID, syscall.SIGTERM)
+		}
+	}()
 	must(poll(ctx, "machine Ready", func() bool { return b.ready.Load() > 0 }))
 	token := make([]byte, 16)
 	_, e = rand.Read(token)

@@ -1,11 +1,18 @@
 package deviceauth
 
 import (
-	"bytes"
+	"bufio"
+	"context"
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func checkAcceptedIndex(t *testing.T, e *Endpoint) {
@@ -15,187 +22,465 @@ func checkAcceptedIndex(t *testing.T, e *Endpoint) {
 		size += acceptedEntrySize(k, a)
 	}
 	if size != e.acceptedBytes || len(e.data.Accepted) != len(e.volatileExpiry)+len(e.durableExpiry) {
-		t.Fatalf("index: bytes=%d want=%d entries=%d queues=%d", e.acceptedBytes, size, len(e.data.Accepted), len(e.volatileExpiry)+len(e.durableExpiry))
+		t.Fatal("invalid acceptance indexes")
 	}
 }
+func testKey(s string) string { h := digest("test/key", []byte(s)); return string(h[:]) }
 
-func TestAcceptedIncrementalExpiryAndDuplicates(t *testing.T) {
+func TestAcceptedRetentionAndIndependentBudgets(t *testing.T) {
 	e := newCurrentChain(t).machineEndpoint(t, "")
 	defer e.Close()
-	for _, tc := range []struct {
-		key     string
-		durable bool
-	}{{"durable", true}, {"volatile", false}} {
-		if _, _, err := e.startAccepted(tc.key, 20, 10, tc.durable); err != nil {
-			t.Fatal(err)
-		}
-		if _, _, err := e.startAccepted(tc.key, 20, 10, tc.durable); err != ErrOutcomeUnknown {
-			t.Fatalf("in progress: %v", err)
-		}
-		if err := e.finishAccepted(tc.key, []byte(tc.key), false, tc.durable); err != nil {
-			t.Fatal(err)
-		}
-	}
-	// Expired retries still find their results before any pruning, and return copies.
-	out, fresh, err := e.startAccepted("durable", 20, 30, true)
-	if err != nil || fresh || string(out) != "durable" {
-		t.Fatalf("retry: %q %v %v", out, fresh, err)
-	}
-	out[0] = 'x'
-	if string(e.data.Accepted["durable"].Result) != "durable" {
-		t.Fatal("aliased result")
-	}
-	if _, _, err := e.startAccepted("new-volatile", 40, 20, false); err != nil {
+	k := testKey("durable")
+	if err := e.startAccepted(k, Hash{1}, 20, 10, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := e.data.Accepted["volatile"]; ok {
-		t.Fatal("expired transient retained")
-	}
-	if _, ok := e.data.Accepted["durable"]; !ok {
-		t.Fatal("transient pruned durable history")
-	}
-	if _, _, err := e.startAccepted("new-durable", 50, 25, true); err != nil {
+	if err := e.finishAccepted(k, Final([]byte("saved")), 21); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := e.data.Accepted["durable"]; ok {
-		t.Fatal("expired durable retained")
+	if err := e.startAccepted(testKey("transient"), Hash{}, 40, 20, false); err != nil {
+		t.Fatal(err)
 	}
-	if _, _, err := e.startAccepted("old", 25, 10, false); err != ErrExpired {
-		t.Fatalf("floor rollback: %v", err)
+	if _, ok := e.data.Accepted[k]; !ok {
+		t.Fatal("transient pruned durable")
+	}
+	// Exact grace boundary: only a fresh durable admission may prune history.
+	if err := e.startAccepted(testKey("before"), Hash{}, 20+acceptedGrace+10, 20+acceptedGrace-1, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := e.data.Accepted[k]; !ok {
+		t.Fatal("history removed early")
+	}
+	if err := e.startAccepted(testKey("at"), Hash{}, 20+acceptedGrace+10, 20+acceptedGrace, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := e.data.Accepted[k]; ok {
+		t.Fatal("history not pruned at boundary")
+	}
+	if err := e.startAccepted(k, Hash{}, 20, 10, true); err != ErrExpired {
+		t.Fatalf("rollback resurrected request: %v", err)
 	}
 	checkAcceptedIndex(t, e)
 }
-
-func TestAcceptedCapacityEdges(t *testing.T) {
+func TestAcceptedSummaryCapacityAndBodyLimit(t *testing.T) {
 	e := newCurrentChain(t).machineEndpoint(t, "")
 	defer e.Close()
 	for i := 0; i < maxAccepted; i++ {
-		e.data.Accepted[fmt.Sprint(i)] = accepted{Deadline: 20}
+		e.data.Accepted[testKey(fmt.Sprint(i))] = accepted{Deadline: 20, RetainUntil: 20 + acceptedGrace, Persisted: true}
 	}
 	e.indexAccepted()
-	if _, _, err := e.startAccepted("extra", 30, 10, false); err != ErrCapacity {
-		t.Fatalf("entry cap: %v", err)
+	if err := e.startAccepted(testKey("extra"), Hash{}, 30, 10, true); err != ErrCapacity {
+		t.Fatalf("summary cap: %v", err)
 	}
-	if _, _, err := e.startAccepted("extra", 30, 20, false); err != nil {
-		t.Fatalf("expiry at cap: %v", err)
-	}
-	// Fill to exactly the byte cap. A completion that cannot be retained must
-	// leave an unknown entry, never allow the operation to execute again.
-	result := bytes.Repeat([]byte{'x'}, maxAcceptedBytes-e.acceptedBytes)
-	if err := e.finishAccepted("extra", result, false, false); err != nil {
+	if err := e.startAccepted(testKey("extra"), Hash{}, acceptedGrace+40, acceptedGrace+20, true); err != nil {
 		t.Fatal(err)
 	}
-	if e.acceptedBytes != maxAcceptedBytes {
-		t.Fatalf("bytes: %d", e.acceptedBytes)
-	}
-	if _, _, err := e.startAccepted("over", 30, 20, false); err != ErrCapacity {
-		t.Fatalf("byte cap: %v", err)
-	}
-	if _, _, err := e.startAccepted("replacement", 40, 30, false); err != nil {
+	// Body budget is entirely separate from summary admission.
+	e.acceptedBytes = maxAcceptedBytes
+	if err := e.finishAccepted(testKey("extra"), Final([]byte("large")), acceptedGrace+20); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.finishAccepted("replacement", result, false, false); err != ErrCapacity {
-		t.Fatalf("result cap: %v", err)
+	a := e.data.Accepted[testKey("extra")]
+	_, err := acceptedResult(a)
+	var missing *ResultUnavailable
+	if !errors.As(err, &missing) || missing.Category != Executed || a.State != final {
+		t.Fatalf("lost category: %+v %v", a, err)
 	}
-	if _, _, err := e.startAccepted("replacement", 40, 30, false); err != ErrOutcomeUnknown {
-		t.Fatalf("lost unknown outcome: %v", err)
+	if err := e.startAccepted(testKey("next"), Hash{}, acceptedGrace+50, acceptedGrace+20, true); err != nil {
+		t.Fatalf("body cap blocked summary: %v", err)
 	}
-	checkAcceptedIndex(t, e)
 }
-
-func TestAcceptedPersistenceFailureRollsBackDeltas(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "endpoint.db")
+func TestAcceptedWriteFailures(t *testing.T) {
+	for _, failure := range []string{"admission", "body", "summary", "both"} {
+		t.Run(failure, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "security.db")
+			e := newCurrentChain(t).machineEndpoint(t, path)
+			defer func() { e.Close() }()
+			k := testKey("request")
+			if failure == "admission" {
+				before := e.data.AcceptedFloor
+				_, err := e.db.Exec(`CREATE TRIGGER fail BEFORE INSERT ON accepted BEGIN SELECT RAISE(ABORT,'test');END`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e.startAccepted(k, Hash{}, 100, 10, true) == nil {
+					t.Fatal("admission succeeded")
+				}
+				if len(e.data.Accepted) != 0 || e.data.AcceptedFloor != before {
+					t.Fatal("failed admission mutated indexes")
+				}
+				return
+			}
+			if err := e.startAccepted(k, Hash{1}, 100, 10, true); err != nil {
+				t.Fatal(err)
+			}
+			if failure == "body" || failure == "both" {
+				if _, err := e.db.Exec(`CREATE TRIGGER fail_body BEFORE INSERT ON accepted_bodies BEGIN SELECT RAISE(ABORT,'test');END`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if failure == "summary" || failure == "both" {
+				if _, err := e.db.Exec(`CREATE TRIGGER fail_summary BEFORE UPDATE ON accepted BEGIN SELECT RAISE(ABORT,'test');END`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			err := e.finishAccepted(k, FinalBusinessConflict([]byte("conflict")), 20)
+			if failure == "body" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, err = acceptedResult(e.data.Accepted[k])
+				var m *ResultUnavailable
+				if !errors.As(err, &m) || m.Category != BusinessConflict {
+					t.Fatalf("category: %v", err)
+				}
+			} else {
+				if !errors.Is(err, ErrOutcomeUnknown) || e.data.Accepted[k].State != endedUnknown {
+					t.Fatalf("summary failure: %v", err)
+				}
+			}
+			checkAcceptedIndex(t, e)
+			e.Close()
+			var openErr error
+			e, openErr = OpenEndpoint(path)
+			if openErr != nil {
+				t.Fatal(openErr)
+			}
+			_, err = acceptedResult(e.data.Accepted[k])
+			if failure == "body" {
+				var m *ResultUnavailable
+				if !errors.As(err, &m) {
+					t.Fatal(err)
+				}
+			} else if !errors.Is(err, ErrOutcomeUnknown) {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+func TestAcceptedChecksumAndBodyDamage(t *testing.T) {
+	for _, table := range []string{"accepted", "accepted_bodies"} {
+		t.Run(table, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "security.db")
+			e := newCurrentChain(t).machineEndpoint(t, path)
+			k := testKey("request")
+			if err := e.startAccepted(k, Hash{1}, 100, 10, true); err != nil {
+				t.Fatal(err)
+			}
+			if err := e.finishAccepted(k, Final([]byte("saved")), 20); err != nil {
+				t.Fatal(err)
+			}
+			query := `UPDATE accepted SET payload_hash=zeroblob(32)`
+			if table == "accepted_bodies" {
+				query = `UPDATE accepted_bodies SET result=X'00'`
+			}
+			if _, err := e.db.Exec(query); err != nil {
+				t.Fatal(err)
+			}
+			e.Close()
+			reopened, err := OpenEndpoint(path)
+			if table == "accepted" {
+				if err == nil {
+					reopened.Close()
+					t.Fatal("tampered summary loaded")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reopened.Close()
+			_, err = acceptedResult(reopened.data.Accepted[k])
+			var m *ResultUnavailable
+			if !errors.As(err, &m) || m.Category != Executed {
+				t.Fatal("body damage lost category")
+			}
+		})
+	}
+}
+func TestAcceptedHotPathAllocationsIndependentOfTableSize(t *testing.T) {
+	allocations := func(n int) float64 {
+		e := &Endpoint{data: record{Accepted: map[string]accepted{}}}
+		for i := 0; i < n; i++ {
+			e.data.Accepted[testKey(fmt.Sprint(i))] = accepted{Deadline: 100, RetainUntil: 100}
+		}
+		e.indexAccepted()
+		k := testKey("frame")
+		return testing.AllocsPerRun(20, func() {
+			if err := e.startAccepted(k, Hash{}, 100, 1, false); err != nil {
+				t.Fatal(err)
+			}
+			if err := e.finishAccepted(k, Final(nil), 2); err != nil {
+				t.Fatal(err)
+			}
+			e.acceptedBytes -= acceptedEntrySize(k, e.data.Accepted[k])
+			e.acceptedBodies--
+			delete(e.data.Accepted, k)
+			e.volatileExpiry = e.volatileExpiry[:n]
+		})
+	}
+	small, large := allocations(1), allocations(8191)
+	if large > small+2 {
+		t.Fatalf("scaled allocations: %g %g", small, large)
+	}
+}
+func TestIdentityConflictUsesOriginalUnpackedPayload(t *testing.T) {
+	c := newCurrentChain(t)
+	m := c.machineEndpoint(t, "")
+	defer m.Close()
+	cl := c.clientEndpoint(t)
+	defer cl.Close()
+	now := uint64(time.Now().UnixMilli())
+	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "payload-identity", Deadline: now + 60000}
+	plain := commandBody(t)
+	w, err := cl.Prepare(h, nil, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	called := 0
+	fn := func(_ Header, p []byte) (Completion, error) {
+		called++
+		p[0] ^= 1
+		return Final([]byte("original")), nil
+	}
+	if _, err = m.Accept(w, nil, now, fn); err != nil {
+		t.Fatal(err)
+	}
+	w, err = cl.PrepareUncompressed(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := m.Accept(w, nil, now, fn); err != nil || string(out) != "original" {
+		t.Fatalf("resealed: %q %v", out, err)
+	}
+	h.Deadline++
+	w, err = cl.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := m.Accept(w, nil, now, fn); !errors.Is(err, ErrIdentityConflict) || out != nil {
+		t.Fatalf("deadline conflict leaked result: %q %v", out, err)
+	}
+	if called != 1 {
+		t.Fatal("conflict executed")
+	}
+}
+func TestConcurrentDuplicateWaitsWithoutAcquiring(t *testing.T) {
+	c := newCurrentChain(t)
+	m := c.machineEndpoint(t, "")
+	defer m.Close()
+	cl := c.clientEndpoint(t)
+	defer cl.Close()
+	now := uint64(time.Now().UnixMilli())
+	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "wait-request-0001", Deadline: now + 60000}, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	var callbacks, slots atomic.Int32
+	options := AcceptOptions{Acquire: func() (func(), error) { slots.Add(1); return func() {}, nil }}
+	fn := func(Header, []byte) (Completion, error) {
+		callbacks.Add(1)
+		close(entered)
+		<-release
+		return Final([]byte("done")), nil
+	}
+	first := make(chan error, 1)
+	go func() { _, err := m.AcceptWith(context.Background(), w, nil, now, options, fn); first <- err }()
+	<-entered
+	var wg sync.WaitGroup
+	wg.Add(16)
+	results := make(chan error, 16)
+	for i := 0; i < 16; i++ {
+		go func() {
+			defer wg.Done()
+			out, err := m.AcceptWith(context.Background(), w, nil, now, options, fn)
+			if err == nil && string(out) != "done" {
+				err = fmt.Errorf("wrong result")
+			}
+			results <- err
+		}()
+	}
+	close(release)
+	wg.Wait()
+	close(results)
+	for err := range results {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+	if callbacks.Load() != 1 || slots.Load() != 1 {
+		t.Fatalf("callbacks=%d slots=%d", callbacks.Load(), slots.Load())
+	}
+}
+func TestWaitFullTimeoutAndEndedUnknown(t *testing.T) {
+	c := newCurrentChain(t)
+	m := c.machineEndpoint(t, "")
+	defer m.Close()
+	cl := c.clientEndpoint(t)
+	defer cl.Close()
+	now := uint64(time.Now().UnixMilli())
+	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "bounded-wait-request", Deadline: now + 60000}, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { close(entered); <-release; return Undetermined(), nil })
+		done <- err
+	}()
+	<-entered
+	m.mu.Lock()
+	m.waiters = maxWaiters
+	m.mu.Unlock()
+	start := time.Now()
+	_, err = m.Accept(w, nil, now, nil)
+	if !errors.Is(err, ErrOutcomeUnknown) || time.Since(start) > time.Second {
+		t.Fatal("full wait table blocked")
+	}
+	m.mu.Lock()
+	m.waiters = 0
+	m.waitTimeout = time.Millisecond
+	m.mu.Unlock()
+	_, err = m.Accept(w, nil, now, nil)
+	if !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatal(err)
+	}
+	close(release)
+	<-done
+	m.mu.Lock()
+	h, _ := ParseHeader(w.Header)
+	a := m.data.Accepted[acceptedKey(h)]
+	m.mu.Unlock()
+	if a.State != endedUnknown {
+		t.Fatalf("state=%d", a.State)
+	}
+	_, err = m.Accept(w, nil, now, nil)
+	if !errors.Is(err, ErrOutcomeUnknown) {
+		t.Fatal(err)
+	}
+}
+func TestCallbackPastRetentionNeverRebuilds(t *testing.T) {
+	c := newCurrentChain(t)
+	m := c.machineEndpoint(t, "")
+	defer m.Close()
+	cl := c.clientEndpoint(t)
+	defer cl.Close()
+	now := uint64(time.Now().UnixMilli())
+	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "late-request-0001", Deadline: now + 1}
+	w, err := cl.Prepare(h, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { close(entered); <-release; return Final([]byte("late")), nil })
+		done <- err
+	}()
+	<-entered
+	if err := m.Touch(h.Deadline + acceptedGrace); err != nil {
+		t.Fatal(err)
+	}
+	m.mu.Lock()
+	m.pruneAccepted(&m.durableExpiry, h.Deadline+acceptedGrace)
+	m.waitTimeout = time.Millisecond
+	m.mu.Unlock()
+	if _, err := m.Accept(w, nil, h.Deadline+acceptedGrace, func(Header, []byte) (Completion, error) { t.Error("executed twice"); return Final(nil), nil }); err != ErrOutcomeUnknown {
+		t.Fatal(err)
+	}
+	close(release)
+	if err := <-done; err != ErrOutcomeUnknown {
+		t.Fatal(err)
+	}
+	if _, err := m.Accept(w, nil, h.Deadline+acceptedGrace, nil); err != ErrExpired {
+		t.Fatal(err)
+	}
+	if len(m.data.Accepted) != 0 || len(m.running) != 0 {
+		t.Fatal("late callback resurrected entry")
+	}
+}
+func TestKilledRunningRecovery(t *testing.T) {
+	if path := os.Getenv("RA_KILL_STORAGE_PATH"); path != "" {
+		e, err := OpenEndpoint(path)
+		if err != nil {
+			panic(err)
+		}
+		if err = e.startAccepted(testKey("killed"), Hash{1}, 100, 10, true); err != nil {
+			panic(err)
+		}
+		fmt.Fprintln(os.Stdout, "ready")
+		select {} // parent deliberately kills this process after durable admission.
+	}
+	path := filepath.Join(t.TempDir(), "security.db")
 	e := newCurrentChain(t).machineEndpoint(t, path)
-	defer func() { e.Close() }()
-	if _, _, err := e.startAccepted("expired", 20, 10, true); err != nil {
+	e.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestKilledRunningRecovery$")
+	cmd.Env = append(os.Environ(), "RA_KILL_STORAGE_PATH="+path)
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.finishAccepted("expired", []byte("saved"), false, true); err != nil {
+	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	before := e.data.Accepted["expired"]
-	beforeBytes := e.acceptedBytes
-	beforeHeap := append(acceptedHeap(nil), e.durableExpiry...)
-	if _, err := e.db.Exec(`CREATE TRIGGER fail_accept BEFORE INSERT ON accepted BEGIN SELECT RAISE(ABORT, 'test'); END`); err != nil {
+	ready := make(chan bool, 1)
+	go func() { scanner := bufio.NewScanner(pipe); ready <- scanner.Scan() && scanner.Text() == "ready" }()
+	select {
+	case ok := <-ready:
+		if !ok {
+			cmd.Process.Kill()
+			cmd.Wait()
+			t.Fatal("child not ready")
+		}
+	case <-ctx.Done():
+		cmd.Process.Kill()
+		cmd.Wait()
+		t.Fatal("child readiness timed out")
+	}
+	if err := cmd.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := e.startAccepted("next", 40, 20, true); err == nil {
-		t.Fatal("write unexpectedly succeeded")
-	}
-	if len(e.data.Accepted) != 1 || !reflect.DeepEqual(e.data.Accepted["expired"], before) || e.acceptedBytes != beforeBytes || e.data.AcceptedFloor != 10 || !reflect.DeepEqual(e.durableExpiry, beforeHeap) {
-		t.Fatal("failed admission mutated live state")
-	}
-	var count int
-	if err := e.db.QueryRow(`SELECT count(*) FROM accepted WHERE key=?`, []byte("expired")).Scan(&count); err != nil || count != 1 {
-		t.Fatalf("prune was not rolled back: %d %v", count, err)
-	}
-	if _, err := e.db.Exec(`DROP TRIGGER fail_accept`); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := e.startAccepted("next", 40, 20, true); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.db.Exec(`CREATE TRIGGER fail_finish BEFORE UPDATE ON accepted BEGIN SELECT RAISE(ABORT, 'test'); END`); err != nil {
-		t.Fatal(err)
-	}
-	if err := e.finishAccepted("next", []byte("result"), true, true); err == nil {
-		t.Fatal("finish unexpectedly succeeded")
-	}
-	if e.data.Accepted["next"].Done {
-		t.Fatal("failed finish committed in memory")
-	}
-	checkAcceptedIndex(t, e)
-	if err := e.Close(); err != nil {
-		t.Fatal(err)
-	}
-	var err error
+	_ = cmd.Wait()
 	e, err = OpenEndpoint(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkAcceptedIndex(t, e)
-	if _, _, err := e.startAccepted("next", 40, 30, true); err != ErrOutcomeUnknown {
-		t.Fatalf("restart lost in-progress entry: %v", err)
+	defer e.Close()
+	a := e.data.Accepted[testKey("killed")]
+	if a.State != running || len(e.running) != 0 {
+		t.Fatalf("restart state: %+v", a)
 	}
-	if _, _, err := e.startAccepted("expired", 20, 10, false); err != ErrExpired {
-		t.Fatalf("restart lost pruning floor: %v", err)
-	}
-	if _, err := e.db.Exec(`DROP TRIGGER fail_finish`); err != nil {
+	_, err = acceptedResult(a)
+	if err != ErrOutcomeUnknown {
 		t.Fatal(err)
 	}
-	if err := e.finishAccepted("next", []byte("result"), true, true); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := e.startAccepted("next", 40, 30, true); err != ErrBackend {
-		t.Fatalf("failed outcome: %v", err)
-	}
-	checkAcceptedIndex(t, e)
 }
-
-func TestAcceptedHotPathAllocationsIndependentOfTableSize(t *testing.T) {
-	allocations := func(n int) float64 {
-		e := &Endpoint{data: record{Accepted: make(map[string]accepted, n+1)}}
-		for i := 0; i < n; i++ {
-			e.data.Accepted[fmt.Sprint(i)] = accepted{Deadline: 100}
-		}
-		e.indexAccepted()
-		size := e.acceptedBytes
-		return testing.AllocsPerRun(20, func() {
-			if _, _, err := e.startAccepted("frame", 100, 1, false); err != nil {
-				t.Fatal(err)
-			}
-			if err := e.finishAccepted("frame", nil, false, false); err != nil {
-				t.Fatal(err)
-			}
-			// Equal deadlines keep this frame at the end of the heap.
-			delete(e.data.Accepted, "frame")
-			e.volatileExpiry = e.volatileExpiry[:n]
-			e.acceptedBytes = size
-		})
+func TestAcceptedAdmissionFailureLeavesOriginalHistory(t *testing.T) {
+	e := newCurrentChain(t).machineEndpoint(t, "")
+	defer e.Close()
+	old := testKey("old")
+	if err := e.startAccepted(old, Hash{}, 20, 10, true); err != nil {
+		t.Fatal(err)
 	}
-	small, large := allocations(1), allocations(maxAccepted-1)
-	t.Logf("allocations per admission+finish: small=%.0f full=%.0f", small, large)
-	if large > small+2 {
-		t.Fatalf("hot-path allocations scale with table size: small=%g full=%g", small, large)
+	before := e.data.Accepted[old]
+	beforeHeap := append(acceptedHeap{}, e.durableExpiry...)
+	if _, err := e.db.Exec(`CREATE TRIGGER fail BEFORE INSERT ON accepted BEGIN SELECT RAISE(ABORT,'test');END`); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.startAccepted(testKey("next"), Hash{}, acceptedGrace+40, acceptedGrace+20, true); err == nil {
+		t.Fatal("admission succeeded")
+	}
+	if !reflect.DeepEqual(e.data.Accepted[old], before) || !reflect.DeepEqual(e.durableExpiry, beforeHeap) {
+		t.Fatal("failed admission pruned history")
+	}
+	var count int
+	if e.db.QueryRow(`SELECT count(*) FROM accepted`).Scan(&count) != nil || count != 1 {
+		t.Fatal("failed transaction pruned disk history")
 	}
 }

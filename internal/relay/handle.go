@@ -45,14 +45,20 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	raw := false
 	// An unknown state is fetched outside the acceptance gate and the gate is
 	// retried once; the endpoint re-verifies the exact state inside it.
-	result, err := c.security.accept(ctx, wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
+	// The path owns only admission/duplicate waiting. Once accepted, the
+	// callback below keeps the process execution context through a WS loss.
+	waiting := ctx
+	if c.pathLifetime != nil {
+		waiting = c.pathLifetime
+	}
+	result, err := c.security.acceptWith(waiting, wire, nil, uint64(time.Now().UnixMilli()), c.acquireCall, func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
 		cmd := &pb.Command{}
 		plain, err := deviceauth.Unpack(h, plain)
 		if err != nil || proto.Unmarshal(plain, cmd) != nil {
 			return deviceauth.Undetermined(), deviceauth.ErrInvalid
 		}
 		var res *pb.CommandResult
-		final := true
+		category := deviceauth.Executed
 		if cmd.ProtocolVersion != protocol.Version {
 			res = &pb.CommandResult{ErrorCode: connect.CodeFailedPrecondition.String(), ErrorMessage: protocol.Mismatch("the client", cmd.ProtocolVersion).(*connect.Error).Message()}
 		} else {
@@ -71,14 +77,17 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 			cancel := func() {}
 			callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
 			defer cancel()
-			res, final = c.executeEvidence(callCtx, h.Session, cmd)
+			res, category = c.executeEvidence(callCtx, h.Session, cmd)
 		}
-		if !final {
+		if category == deviceauth.NoCategory {
 			return deviceauth.Undetermined(), deviceauth.ErrOutcomeUnknown
 		}
 		body, err := proto.Marshal(res)
 		if err != nil {
 			return deviceauth.Undetermined(), err
+		}
+		if category == deviceauth.BusinessConflict {
+			return deviceauth.FinalBusinessConflict(body), nil
 		}
 		return deviceauth.Final(body), nil
 	})
@@ -86,11 +95,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("the command was refused or its outcome is unknown; it was not repeated")
 		return
 	}
-	seal := c.security.seal
-	if raw {
-		seal = c.security.sealRaw
-	}
-	env, err := seal(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, deviceauth.Result, nil, result)
+	env, err := c.security.sealResult(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, nil, result, raw)
 	if err != nil {
 		fail("cannot authorize the result")
 		return
@@ -105,7 +110,7 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 	return result
 }
 
-func (c *conn) executeEvidence(ctx context.Context, sessionID string, cmd *pb.Command) (*pb.CommandResult, bool) {
+func (c *conn) executeEvidence(ctx context.Context, sessionID string, cmd *pb.Command) (*pb.CommandResult, deviceauth.Category) {
 	r := c.r
 	l := r.backend.Local()
 	out := &pb.CommandResult{}
@@ -333,7 +338,15 @@ func (c *conn) executeEvidence(ctx context.Context, sessionID string, cmd *pb.Co
 	}
 	// Read-only failures cannot leave an unknown mutation. For mutations,
 	// a response or a marker set at the actual backend decision is required.
-	return out, err == nil || deviceauth.IsReadOnlyCommand(cmd) || outcome.IsFinalError(err)
+	if err != nil && !deviceauth.IsReadOnlyCommand(cmd) && !outcome.IsFinalError(err) {
+		return out, deviceauth.NoCategory
+	}
+	var revision *protocol.RevisionConflictError
+	var generation *protocol.GenerationConflictError
+	if errors.As(err, &revision) || errors.As(err, &generation) {
+		return out, deviceauth.BusinessConflict
+	}
+	return out, deviceauth.Executed
 }
 
 // call runs one local API method and hands its response to set.
@@ -344,4 +357,14 @@ func call[Q, R any](ctx context.Context, fn func(context.Context, *connect.Reque
 	}
 	set(res.Msg)
 	return nil
+}
+
+// Duplicate lookups and waiters never acquire an execution slot.
+func (c *conn) acquireCall() (func(), error) {
+	select {
+	case c.r.calls <- struct{}{}:
+		return func() { <-c.r.calls }, nil
+	default:
+		return nil, deviceauth.ErrCapacity
+	}
 }

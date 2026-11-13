@@ -488,7 +488,7 @@ func main() {
 			must(err)
 			machine, err := auth.Enroll(ctx, ed, x, deviceauth.Machine)
 			must(err)
-			must(machine.Endpoint.Save(filepath.Join(e["REMOTE_AGENT_HOME"], "security-v3.db")))
+			must(machine.Endpoint.Save(filepath.Join(e["REMOTE_AGENT_HOME"], "security-v4.db")))
 			machine.Endpoint.Close()
 			// Save uses only this explicitly isolated state, never the caller's account.
 			must(os.Setenv("REMOTE_AGENT_HOME", e["REMOTE_AGENT_HOME"]))

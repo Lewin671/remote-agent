@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"errors"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -19,8 +20,8 @@ func TestBackendEvidenceDoesNotFollowDiagnosticCode(t *testing.T) {
 			}
 			c := &conn{r: New(interruptedScheduleBackend{cause: err})}
 			_, got := c.executeEvidence(context.Background(), "", &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
-			if got != final {
-				t.Errorf("code=%s final=%v got=%v", code, final, got)
+			if (got != deviceauth.NoCategory) != final {
+				t.Errorf("code=%s category=%v got=%v", code, final, got)
 			}
 		}
 	}
