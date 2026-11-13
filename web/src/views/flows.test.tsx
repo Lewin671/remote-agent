@@ -3318,21 +3318,26 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
 
 it("abandons an unexpired unknown fork and starts with a new ID", async () => {
   const r = demo();
-  const row = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].find((b) => /分叉/.test(b.textContent ?? ""))!;
+  const rows = () => [...host.querySelectorAll<HTMLButtonElement>(".menu .mi")].filter((b) => /分叉/.test(b.textContent ?? ""));
+  const row = () => rows()[0]!;
+  const abandon = () => rows().find((b) => /^放弃上次的分叉/.test(b.textContent ?? ""))!;
   const s = r.sessions.get("s-idle")!;
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unknown_outcome", "不确定电脑有没有执行"));
   await click(row());
-  await vi.waitFor(() => expect(row().textContent).toMatch(/^放弃上次的分叉/));
+  // Frozen but not expired: the same request can still be retried, or given up.
+  await vi.waitFor(() => expect(abandon()).toBeTruthy());
+  expect(row().textContent).toContain(message("session.fork_unknown"));
   const slot = command.mock.calls[0][2];
   expect(slot).toBeTruthy();
   await click(host.querySelector<HTMLElement>(".overlay .dim")!);
   await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
-  expect(row().textContent).toMatch(/^放弃上次的分叉/);
-  await click(row());
+  expect(rows()).toHaveLength(2);
+  await click(abandon());
   expect(command).toHaveBeenCalledTimes(1);
+  expect(rows()).toHaveLength(1);
   expect(row().textContent).toBe(message("session.fork"));
   location.hash = "";
   await click(row());

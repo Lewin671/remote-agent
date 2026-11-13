@@ -540,9 +540,6 @@ export function SessionPage({
     setForkError("");
   };
   const forkWhy = forkBlocked(session, machine, d.running);
-  const forkUnknownNote = forkUnknown === "expired"
-    ? i18n.t("session.fork_expired")
-    : i18n.t("session.fork_unknown");
   const more = (
     <button
       className={"more" + (high ? " context-high" : "")}
@@ -761,42 +758,48 @@ export function SessionPage({
                 : []),
               ...(agentInfo(agent).forks && machine?.online && remote.conn === "online"
                 ? [
-                    forking
-                      ? {
+                    ...(forking
+                      ? [{
                           label: i18n.t("session.forking"),
                           busy: true,
                           keep: true,
                           group: 1,
                           onClick: () => undefined,
-                        }
+                        }]
                       : forkWhy
-                        ? {
+                        ? [{
                             label: i18n.t("session.fork"),
                             disabled: true,
                             note: forkWhy,
                             group: 1,
                             onClick: () => undefined,
-                          }
-                        : forkUnknown
-                          ? {
+                          }]
+                        : forkUnknown === "expired"
+                          ? [{
                               label: i18n.t("session.abandon_fork"),
                               keep: true,
-                              note: forkUnknownNote,
+                              note: i18n.t("session.fork_expired"),
                               noteRed: true,
                               group: 1,
                               onClick: abandonFork,
-                            }
-                          : {
-                              label: i18n.t("session.fork"),
-                              keep: true,
-                              // It may have happened: only the same request is sent again.
-                              note: forkUnknown
-                                ? i18n.t("session.fork_unknown")
-                                : forkError && i18n.t("session.fork_failed", { reason: forkError }),
-                              noteRed: true,
-                              group: 1,
-                              onClick: () => void fork(),
-                            },
+                            }]
+                          : [
+                              {
+                                label: i18n.t("session.fork"),
+                                keep: true,
+                                // It may have happened: only the same request is sent again.
+                                note: forkUnknown
+                                  ? i18n.t("session.fork_unknown")
+                                  : forkError && i18n.t("session.fork_failed", { reason: forkError }),
+                                noteRed: true,
+                                group: 1,
+                                onClick: () => void fork(),
+                              },
+                              // Frozen but not expired: retrying stays possible, and so does giving up.
+                              ...(forkUnknown
+                                ? [{ label: i18n.t("session.abandon_fork"), keep: true, group: 1, onClick: abandonFork }]
+                                : []),
+                            ]),
                   ]
                 : []),
               { label: i18n.t("session.schedule_send"), group: 1, disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? i18n.t("session.update_computer") : undefined, onClick: () => setScheduling(true) },
