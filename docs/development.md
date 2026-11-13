@@ -63,6 +63,21 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
 - Android 要复用编译缓存但完整重跑 JVM 测试，用 `cd android && ./gradlew --build-cache :core:test --rerun :terminal:testReleaseUnitTest --rerun :app:testDebugUnitTest --rerun :app:lintVitalRelease`。每个测试任务后的 `--rerun` 强制它执行，禁止复用该任务的增量结果或缓存；编译和 lint 仍可复用未变输入的结果，Go 集成夹具仍从当前 checkout 构建。Release 工作流也用这些任务选项，签名构建与公开扫描照常执行。
 
+### 迭代与交付检查
+
+四端统一入口是 `python3 scripts/dev/check.py <go|web|android|ios> <quick|full>`。每次创建 `/tmp` 下独立的 remote-agent 状态、tmux socket 名、Codex 和 Claude 配置目录；不继承个人会话和安装服务的 opt-in 测试开关。构建缓存保留，Go 的结果缓存和 Gradle 的测试结果缓存不用于全量验收。
+
+| 端 | quick（迭代） | full（交付） |
+|---|---|---|
+| Go | CLI 解析、调度、协议、加密向量等纯逻辑包；不跑 daemon、server、relay、PTY 和更新器集成测试 | `go test -count=1 -parallel=8 -timeout=5m ./...` |
+| 网页 | 类型检查和全部 Vitest projects | 同 quick，完整运行全部网页用例 |
+| Android | core 的 Attempt、Prefs、EventProjection、Schedules 和共享向量测试；不跑 App UI | core、terminal、app 的全部 JVM 测试，逐任务 `--rerun`，加 Release lint |
+| iOS | SwiftPM 的 Markdown、Attempt、PagedList、Prefs、Timeline、Project、Schedules 与向量测试；不启动模拟器 | `ios/scripts/check.sh`：文案生成、String Catalog 编译、全部 SwiftPM 测试、buf 核对、App 构建与全部单元测试；不含界面自动化 |
+
+quick 的整个命令预算为 60 秒，full 为 30 分钟；预算耗尽返回 124，不能记为通过。60 秒目标以依赖和编译缓存已预热为前提，冷编译或共享机器繁忙时可能超时。quick 的通过不能代替 full。Release 工作流仍运行原有全套检查，不因迭代档缩减覆盖；真实 CLI 的隔离端到端验收另按 AGENTS.md 执行。
+
+`ios/scripts/check.sh` 还可以带一个参数：`core` 只跑 SwiftPM 测试，`app` 只构建 App 并跑单元测试，`ui` 只跑界面自动化，`full` 是全部步骤加界面自动化。不带参数是交付检查：除界面自动化以外的全部步骤。界面自动化在模拟器里真实触摸，要几分钟，机器忙时会慢到超时，所以只在改了 `ios/RemoteAgent/UI` 下的视图或 `ios/RemoteAgentUITests` 时跑，以及提交 App Store 之前跑一次，并且同一台机器同一时间只让一个任务跑。每个用例有 180 秒的执行上限，超时算失败而不是一直等。没有按 Git 改动路径自动跳过步骤，避免漏掉共享资源、构建配置和目标之间的间接依赖。模拟器可通过 `IOS_DESTINATION` 指定，构建并行度默认 4。`IOS_SWIFT_BUILD_PATH` 和 `IOS_DERIVED_DATA_PATH` 可把 SwiftPM / Xcode 中间产物放到任务自己的临时目录。
+
 ## 任务开发工具
 
 位于 `scripts/dev/`，供日常开发与 peer 任务快速拉起环境、排查故障及生成测试素材：

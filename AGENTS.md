@@ -38,6 +38,11 @@
 - 推送前 `go test ./...` 必须通过；先 `git fetch`，远端有新提交就 rebase 到最新的 `main` 上，禁止 force push
 - 里程碑（如 P0、P1 完成）可以继续打里程碑 tag；产品发布用 `vMAJOR.MINOR.PATCH`
 
+### 迭代与全量检查
+
+- 四端入口：`python3 scripts/dev/check.py <go|web|android|ios> quick|full`，覆盖范围见 [开发文档](docs/development.md#迭代与交付检查)。quick 在已预热的构建缓存上提供 60 秒迭代预算；超时不算通过，交付仍跑 full。入口使用隔离状态和 tmux socket，不读取日常会话；全量强制重跑测试，发布检查不缩减。
+- iOS：`ios/scripts/check.sh` 不带参数跑除界面自动化以外的全部步骤（文案、SwiftPM 测试、协议生成核对、App 构建与单元测试），这是交付检查。界面自动化（`check.sh ui`，在模拟器里真实触摸）只在改了 `ios/RemoteAgent/UI` 下的视图或 `ios/RemoteAgentUITests` 时跑，以及提交 App Store 之前跑一次；同一台机器同一时间只让一个任务用模拟器跑它，机器忙时它会慢到超时。`core`、`app` 用于迭代，`full` 是全部。都不替代真实 CLI 端到端验收。
+
 ### 本地端到端测试
 
 - 端到端测试默认从当前 checkout 构建并启动本地 server 和 daemon，使用临时账户、独立数据库、状态目录和 tmux socket；只有用户要求验证线上环境时才连接线上，不使用日常账户或现有会话做测试
