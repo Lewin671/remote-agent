@@ -659,16 +659,86 @@
     <string name="list_state_running" formatted="false">"Running"</string>
     <string name="list_state_starting" formatted="false">"Starting"</string>
     <string name="list_state_unlinked" formatted="false">"Disconnected"</string>
+    <string name="machine_status_a11y_chart">"Last 2 minutes, peak %1$s, now %2$s"</string>
+    <string name="machine_status_a11y_cpu_card">"CPU, %1$s, make main chart"</string>
+    <string name="machine_status_a11y_disk_card">"Disk, %1$s free, %2$s"</string>
+    <string name="machine_status_a11y_memory_card">"Memory, %2$s used, %1$s, make main chart"</string>
+    <string name="machine_status_a11y_memory_card_plain">"Memory, %1$s used, make main chart"</string>
+    <string name="machine_status_a11y_next_sample" formatted="false">"Next sample"</string>
+    <string name="machine_status_a11y_prev_sample" formatted="false">"Previous sample"</string>
+    <string name="machine_status_a11y_ring">"%1$s, %2$s"</string>
+    <string name="machine_status_agent_usage" formatted="false">"remote-agent usage"</string>
+    <string name="machine_status_axis_1min" formatted="false">"1 min ago"</string>
+    <string name="machine_status_axis_2min" formatted="false">"2 min ago"</string>
+    <string name="machine_status_axis_now" formatted="false">"Now"</string>
+    <string name="machine_status_battery">"Battery %1$d%%"</string>
+    <string name="machine_status_battery_charging">"Battery %1$d%%, charging"</string>
+    <string name="machine_status_cleanup_action" formatted="false">"Ask the Agent to clean up"</string>
     <string name="machine_status_cleanup_prompt" formatted="false">"This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation."</string>
+    <plurals name="machine_status_cores">
+        <item quantity="one">"%1$d core"</item>
+        <item quantity="other">"%1$d cores"</item>
+    </plurals>
+    <string name="machine_status_cpu" formatted="false">"CPU"</string>
+    <string name="machine_status_disk" formatted="false">"Disk"</string>
+    <string name="machine_status_disk_available" formatted="false">"Disk free"</string>
+    <string name="machine_status_disk_critical" formatted="false">"Almost full"</string>
+    <string name="machine_status_disk_critical_hint" formatted="false">"New sessions may not start"</string>
     <string name="machine_status_disk_full" formatted="false">"This computer’s disk is full"</string>
+    <string name="machine_status_disk_low" formatted="false">"Space is low"</string>
+    <string name="machine_status_disk_ok" formatted="false">"Plenty of space"</string>
+    <string name="machine_status_disk_total_agent">"%1$s total, remote-agent uses %2$s"</string>
+    <string name="machine_status_duration_days_hours">"%1$d d %2$d hr"</string>
+    <plurals name="machine_status_duration_minutes">
+        <item quantity="one">"%1$d min"</item>
+        <item quantity="other">"%1$d min"</item>
+    </plurals>
+    <string name="machine_status_emergency_reserve" formatted="false">"Emergency reserve"</string>
+    <string name="machine_status_emergency_reserve_note" formatted="false">"Released automatically when the disk fills up, so you can still open a session to deal with it."</string>
+    <string name="machine_status_gb_available" formatted="false">"GB free"</string>
+    <string name="machine_status_gb_used" formatted="false">"GB used"</string>
+    <string name="machine_status_home_critical" formatted="false">"Disk is almost full"</string>
+    <string name="machine_status_home_critical_detail">"%1$s has only %2$s left; sessions may not start"</string>
     <string name="machine_status_home_warning" formatted="false">"Disk space is low"</string>
+    <string name="machine_status_home_warning_detail">"%1$s has %2$s left"</string>
+    <string name="machine_status_launch_failed_body" formatted="false">"The session could not start. Free up some space and try again."</string>
+    <string name="machine_status_live" formatted="false">"Live"</string>
+    <string name="machine_status_load">"%1$s load"</string>
+    <string name="machine_status_load_line">"Load %1$s"</string>
+    <string name="machine_status_memory" formatted="false">"Memory"</string>
+    <string name="machine_status_no_running_sessions" formatted="false">"No running sessions"</string>
     <string name="machine_status_notify_critical">"%1$s disk is almost full, only %2$s left"</string>
     <string name="machine_status_notify_critical_body" formatted="false">"Clean up now or sessions may not start."</string>
     <string name="machine_status_notify_warning">"%1$s has only %2$s of disk space left"</string>
     <string name="machine_status_notify_warning_body" formatted="false">"Sessions will not start when disk space runs out."</string>
+    <string name="machine_status_pressure_critical" formatted="false">"Pressure critical"</string>
+    <string name="machine_status_pressure_high" formatted="false">"Pressure high"</string>
+    <string name="machine_status_pressure_normal" formatted="false">"Pressure normal"</string>
+    <plurals name="machine_status_seconds_ago">
+        <item quantity="one">"%1$d sec ago"</item>
+        <item quantity="other">"%1$d sec ago"</item>
+    </plurals>
+    <string name="machine_status_show_processes" formatted="false">"Show processes"</string>
+    <string name="machine_status_show_sessions" formatted="false">"Show sessions"</string>
     <string name="machine_status_size_gb">"%1$s GB"</string>
+    <string name="machine_status_size_mb">"%1$s MB"</string>
+    <plurals name="machine_status_stale_minutes">
+        <item quantity="one">"Data from %1$d min ago"</item>
+        <item quantity="other">"Data from %1$d min ago"</item>
+    </plurals>
+    <plurals name="machine_status_stale_seconds">
+        <item quantity="one">"Data from %1$d sec ago"</item>
+        <item quantity="other">"Data from %1$d sec ago"</item>
+    </plurals>
     <string name="machine_status_storage_exhausted" formatted="false">"The storage quota is exhausted, or the write destination is out of space"</string>
+    <string name="machine_status_swap">"%1$s swap"</string>
+    <string name="machine_status_title" formatted="false">"Computer status"</string>
+    <string name="machine_status_top_usage" formatted="false">"Top usage"</string>
+    <string name="machine_status_total">"%1$s total"</string>
+    <string name="machine_status_total_swap">"%1$s total, %2$s swap"</string>
     <string name="machine_status_unavailable" formatted="false">"Could not read this computer’s status"</string>
+    <string name="machine_status_uptime">"Up %1$s"</string>
+    <string name="machine_status_view_usage" formatted="false">"View usage"</string>
     <string name="markdown_collapse" formatted="false">"Collapse"</string>
     <string name="markdown_copy_code" formatted="false">"Copy code"</string>
     <string name="markdown_copy_failed" formatted="false">"Copy failed"</string>

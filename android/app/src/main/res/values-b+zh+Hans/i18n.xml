@@ -621,16 +621,81 @@
     <string name="list_state_running" formatted="false">"运行中"</string>
     <string name="list_state_starting" formatted="false">"启动中"</string>
     <string name="list_state_unlinked" formatted="false">"未连接"</string>
+    <string name="machine_status_a11y_chart">"最近 2 分钟，最高 %1$s，现在 %2$s"</string>
+    <string name="machine_status_a11y_cpu_card">"CPU，%1$s，设为主图"</string>
+    <string name="machine_status_a11y_disk_card">"磁盘，%1$s 可用，%2$s"</string>
+    <string name="machine_status_a11y_memory_card">"内存，%2$s 已用，%1$s，设为主图"</string>
+    <string name="machine_status_a11y_memory_card_plain">"内存，%1$s 已用，设为主图"</string>
+    <string name="machine_status_a11y_next_sample" formatted="false">"下一个采样点"</string>
+    <string name="machine_status_a11y_prev_sample" formatted="false">"上一个采样点"</string>
+    <string name="machine_status_a11y_ring">"%1$s，%2$s"</string>
+    <string name="machine_status_agent_usage" formatted="false">"remote-agent 的占用"</string>
+    <string name="machine_status_axis_1min" formatted="false">"1 分钟前"</string>
+    <string name="machine_status_axis_2min" formatted="false">"2 分钟前"</string>
+    <string name="machine_status_axis_now" formatted="false">"现在"</string>
+    <string name="machine_status_battery">"电池 %1$d%%"</string>
+    <string name="machine_status_battery_charging">"电池 %1$d%%，充电中"</string>
+    <string name="machine_status_cleanup_action" formatted="false">"让 Agent 帮我清理"</string>
     <string name="machine_status_cleanup_prompt" formatted="false">"这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。"</string>
+    <plurals name="machine_status_cores">
+        <item quantity="other">"%1$d 核"</item>
+    </plurals>
+    <string name="machine_status_cpu" formatted="false">"CPU"</string>
+    <string name="machine_status_disk" formatted="false">"磁盘"</string>
+    <string name="machine_status_disk_available" formatted="false">"磁盘可用"</string>
+    <string name="machine_status_disk_critical" formatted="false">"快满了"</string>
+    <string name="machine_status_disk_critical_hint" formatted="false">"新会话可能启动不了"</string>
     <string name="machine_status_disk_full" formatted="false">"这台电脑磁盘满了"</string>
+    <string name="machine_status_disk_low" formatted="false">"空间不多了"</string>
+    <string name="machine_status_disk_ok" formatted="false">"空间充足"</string>
+    <string name="machine_status_disk_total_agent">"共 %1$s，remote-agent 用了 %2$s"</string>
+    <string name="machine_status_duration_days_hours">"%1$d 天 %2$d 小时"</string>
+    <plurals name="machine_status_duration_minutes">
+        <item quantity="other">"%1$d 分钟"</item>
+    </plurals>
+    <string name="machine_status_emergency_reserve" formatted="false">"应急预留"</string>
+    <string name="machine_status_emergency_reserve_note" formatted="false">"磁盘写满时自动释放，让你还能开会话处理。"</string>
+    <string name="machine_status_gb_available" formatted="false">"GB 可用"</string>
+    <string name="machine_status_gb_used" formatted="false">"GB 已用"</string>
+    <string name="machine_status_home_critical" formatted="false">"磁盘快满了"</string>
+    <string name="machine_status_home_critical_detail">"%1$s 只剩 %2$s，会话可能启动不了"</string>
     <string name="machine_status_home_warning" formatted="false">"磁盘空间不多了"</string>
+    <string name="machine_status_home_warning_detail">"%1$s 还剩 %2$s"</string>
+    <string name="machine_status_launch_failed_body" formatted="false">"会话没能启动。腾出一些空间后再试。"</string>
+    <string name="machine_status_live" formatted="false">"实时"</string>
+    <string name="machine_status_load">"%1$s 负载"</string>
+    <string name="machine_status_load_line">"负载 %1$s"</string>
+    <string name="machine_status_memory" formatted="false">"内存"</string>
+    <string name="machine_status_no_running_sessions" formatted="false">"没有正在运行的会话"</string>
     <string name="machine_status_notify_critical">"%1$s 磁盘快满了，只剩 %2$s"</string>
     <string name="machine_status_notify_critical_body" formatted="false">"现在清理，否则会话可能启动不了。"</string>
     <string name="machine_status_notify_warning">"%1$s 磁盘只剩 %2$s"</string>
     <string name="machine_status_notify_warning_body" formatted="false">"空间用完后会话会启动不了。"</string>
+    <string name="machine_status_pressure_critical" formatted="false">"压力紧张"</string>
+    <string name="machine_status_pressure_high" formatted="false">"压力偏高"</string>
+    <string name="machine_status_pressure_normal" formatted="false">"压力正常"</string>
+    <plurals name="machine_status_seconds_ago">
+        <item quantity="other">"%1$d 秒前"</item>
+    </plurals>
+    <string name="machine_status_show_processes" formatted="false">"显示进程"</string>
+    <string name="machine_status_show_sessions" formatted="false">"显示会话"</string>
     <string name="machine_status_size_gb">"%1$s GB"</string>
+    <string name="machine_status_size_mb">"%1$s MB"</string>
+    <plurals name="machine_status_stale_minutes">
+        <item quantity="other">"%1$d 分钟前的数据"</item>
+    </plurals>
+    <plurals name="machine_status_stale_seconds">
+        <item quantity="other">"%1$d 秒前的数据"</item>
+    </plurals>
     <string name="machine_status_storage_exhausted" formatted="false">"存储配额已用尽，或写入目标的空间不足"</string>
+    <string name="machine_status_swap">"交换 %1$s"</string>
+    <string name="machine_status_title" formatted="false">"电脑状态"</string>
+    <string name="machine_status_top_usage" formatted="false">"占用最多"</string>
+    <string name="machine_status_total">"共 %1$s"</string>
+    <string name="machine_status_total_swap">"共 %1$s，交换 %2$s"</string>
     <string name="machine_status_unavailable" formatted="false">"读不到这台电脑的状态"</string>
+    <string name="machine_status_uptime">"已开机 %1$s"</string>
+    <string name="machine_status_view_usage" formatted="false">"查看占用"</string>
     <string name="markdown_collapse" formatted="false">"收起"</string>
     <string name="markdown_copy_code" formatted="false">"复制代码"</string>
     <string name="markdown_copy_failed" formatted="false">"复制失败"</string>
