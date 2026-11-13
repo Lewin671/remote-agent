@@ -1,0 +1,4037 @@
+{
+  "protocol": 14,
+  "vectors": [
+    {
+      "source": "local",
+      "code": "",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "canceled",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "not_found",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "already_exists",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "aborted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "internal",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unavailable",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "data_loss",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "not_sent"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "local",
+      "code": "expired",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "canceled",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "not_found",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "already_exists",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "aborted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "internal",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unavailable",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "data_loss",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "server",
+      "code": "expired",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "canceled",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "invalid_argument",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "deadline_exceeded",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "not_found",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "already_exists",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "permission_denied",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "resource_exhausted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "failed_precondition",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "aborted",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "out_of_range",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unimplemented",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "internal",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unavailable",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "data_loss",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "unauthenticated",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "revision_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "generation_conflict",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "conflict"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "unknown_outcome",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": false,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": false,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": false,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": false,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": true,
+      "prior": false,
+      "readOnly": false,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": true,
+      "prior": false,
+      "readOnly": true,
+      "outcome": "executed"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": true,
+      "prior": true,
+      "readOnly": false,
+      "outcome": "unknown"
+    },
+    {
+      "source": "daemon",
+      "code": "expired",
+      "signed": true,
+      "prior": true,
+      "readOnly": true,
+      "outcome": "unknown"
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"google.golang.org/protobuf/proto"
 )
@@ -73,11 +74,8 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		}
 		// These codes cannot prove that no native side effect happened.
 		// Leave the accepted entry started and send no authenticated final result.
-		if !deviceauth.IsReadOnlyCommand(cmd) {
-			switch res.ErrorCode {
-			case "canceled", "deadline_exceeded", "aborted":
-				return nil, deviceauth.ErrOutcomeUnknown
-			}
+		if outcome.Classify(outcome.Evidence{Source: "daemon", Code: res.ErrorCode, Signed: true, ReadOnly: deviceauth.IsReadOnlyCommand(cmd)}) == outcome.Unknown {
+			return nil, deviceauth.ErrOutcomeUnknown
 		}
 		return proto.Marshal(res)
 	})

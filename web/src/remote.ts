@@ -1,4 +1,5 @@
 import { machineNotificationKinds } from "./machine-notifications";
+import { classifyOutcome } from "./outcome";
 import * as l10n from "./i18n";
 import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
@@ -259,7 +260,7 @@ export class CommandError extends Error {
  * the next attempt start afresh. */
 export function uncertain(e: unknown): boolean {
   if (e instanceof CommandError)
-    return e.code === "unknown_outcome" || (e.fromDaemon && !e.readOnly && ["canceled", "deadline_exceeded", "aborted"].includes(e.code));
+    return classifyOutcome({source: e.fromDaemon ? "daemon" : "local", code: e.code, signed: e.fromDaemon, prior: false, readOnly: e.readOnly}) === "unknown";
   return e instanceof ConnectError;
 }
 

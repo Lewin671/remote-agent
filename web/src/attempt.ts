@@ -4,6 +4,7 @@
 // (docs/architecture.md §10). Anything the page learns meanwhile, such as
 // the new session's own metadata, must not change what is retried.
 
+import { classifyOutcome } from "./outcome";
 import { CommandError, newSlot, uncertain, type RequestSlot } from "./remote";
 
 /** This device stopped dispatching a request past its deadline and clock allowance. */
@@ -17,14 +18,8 @@ export function expiredError(e: unknown): boolean {
  * deadline), not an offline machine or a network error. Only the daemon's
  * own answer for the request settles it. */
 export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
-  return (
-    uncertain(error) ||
-    (wasUnknown &&
-      (!(error instanceof CommandError) ||
-        !error.fromDaemon ||
-        expiredError(error) ||
-        error.code === "unavailable"))
-  );
+  if (!(error instanceof CommandError)) return wasUnknown || uncertain(error);
+  return classifyOutcome({source: error.fromDaemon ? "daemon" : "local", code: error.code, signed: error.fromDaemon, prior: wasUnknown, readOnly: error.readOnly}) === "unknown";
 }
 
 export class Attempt<P> {

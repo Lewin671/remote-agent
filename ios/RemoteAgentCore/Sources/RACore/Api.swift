@@ -295,7 +295,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     /// The command may or may not have run; retrying with the same request ID is safe.
     /// Authentication alone does not make an interrupted execution final.
     public var unknown: Bool {
-        code == CommandError.unknownOutcome || (fromDaemon && !readOnly && ["canceled", "deadline_exceeded", "aborted"].contains(code))
+        classifyOutcome(source: fromDaemon ? "daemon" : "local", code: code, signed: fromDaemon, readOnly: readOnly) == .unknown
     }
     public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.readOnly == rhs.readOnly && lhs.outcomeDetail == rhs.outcomeDetail }
     public var errorDescription: String? { message }

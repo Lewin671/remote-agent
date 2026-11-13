@@ -246,7 +246,7 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
      * The command may or may not have run; retrying with the same request ID is safe. Interrupted daemon execution does not supply a final result.
      */
     val unknown: Boolean
-        get() = code == UNKNOWN || (fromDaemon && !readOnly && code in setOf("canceled", "deadline_exceeded", "aborted"))
+        get() = classifyOutcome(if (fromDaemon) "daemon" else "local", code, fromDaemon, readOnly = readOnly) == Outcome.UNKNOWN
 
     companion object {
         const val UNKNOWN = "unknown_outcome"

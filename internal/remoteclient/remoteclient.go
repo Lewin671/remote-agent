@@ -20,6 +20,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
@@ -205,7 +206,11 @@ func Uncertain(err error) bool {
 	if !errors.As(err, &ce) {
 		return false
 	}
-	return ce.Code == "unknown_outcome" || (ce.FromDaemon && !ce.ReadOnly && (ce.Code == "canceled" || ce.Code == "deadline_exceeded" || ce.Code == "aborted"))
+	source := "local"
+	if ce.FromDaemon {
+		source = "daemon"
+	}
+	return outcome.Classify(outcome.Evidence{Source: source, Code: ce.Code, Signed: ce.FromDaemon, ReadOnly: ce.ReadOnly}) == outcome.Unknown
 }
 
 // Seal builds a sealed command for the given request ID and deadline.

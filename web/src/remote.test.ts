@@ -1175,8 +1175,15 @@ it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms"
   const slot = { requestId: newSlot().requestId, deadline: now + remaining };
   const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
   (r as unknown as { api: object }).api = { forward };
-  // Controlled backoff avoids advancing unrelated fixture timers.
-  const timeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void, ms: number) => { now += ms; fn(); return 0; }) as typeof setTimeout);
+  // Advance only this request's retry delay. Advancing the synthetic clock
+  // for fixture/network timers can consume the 1 ms boundary under load.
+  const realTimeout = globalThis.setTimeout.bind(globalThis);
+  const timeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void, ms: number) => {
+    if (ms !== 1000) return realTimeout(fn, ms);
+    now += ms;
+    queueMicrotask(fn);
+    return 0;
+  }) as typeof setTimeout);
   try {
     await expect(r.machineCommand(r.machine, { case: "listModels", value: {} }, slot)).rejects.toMatchObject({ code: "unknown_outcome" });
     expect(forward).toHaveBeenCalledTimes(remaining > 1000 ? 2 : 1);

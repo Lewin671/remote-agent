@@ -55,6 +55,8 @@ val buildTestFixtures by tasks.registering(Exec::class) {
 }
 tasks.test {
     timeout.set(Duration.ofMinutes(5))
+    inputs.file(rootProject.file("../testdata/transport/outcomes.json"))
+    systemProperty("outcomeVectors", rootProject.file("../testdata/transport/outcomes.json").absolutePath)
     inputs.dir(rootProject.file("../i18n/messages")).withPathSensitivity(PathSensitivity.RELATIVE)
     // Classes own isolated relay processes; keep each class ordered and overlap
     // two classes so real network/backoff waits do not serialize the whole JVM suite.
