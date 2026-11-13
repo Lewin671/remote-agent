@@ -140,6 +140,8 @@ import io.github.lewin671.remoteagent.core.supportsAlbumSave
 import io.github.lewin671.remoteagent.core.tileStyle
 import io.github.lewin671.remoteagent.core.typeMessage
 import io.github.lewin671.remoteagent.data.SharedFileManager
+import io.github.lewin671.remoteagent.data.isSharedTextFile
+import io.github.lewin671.remoteagent.data.readSharedTextFile
 import io.github.lewin671.remoteagent.proto.SharedFile
 import java.io.File
 import kotlin.math.roundToInt
@@ -221,13 +223,14 @@ internal data class SharedFileMenuRequest(
 )
 
 /** Where a downloaded file opens. */
-internal enum class SharedFileOpenRoute { IMAGE_VIEWER, VIDEO_PLAYER, AUDIO_PLAYER, SYSTEM_CHOOSER }
+internal enum class SharedFileOpenRoute { IMAGE_VIEWER, VIDEO_PLAYER, AUDIO_PLAYER, TEXT_VIEWER, SYSTEM_CHOOSER }
 
 private val PlayerVideoExts = setOf("mp4", "mov", "m4v", "webm", "mkv")
 private val PlayerAudioExts = setOf("mp3", "m4a", "wav", "aac", "flac", "ogg")
 
 internal fun sharedFileOpenRoute(name: String): SharedFileOpenRoute {
     if (classifySharedFile(name) == SharedFileKind.IMAGE) return SharedFileOpenRoute.IMAGE_VIEWER
+    if (isSharedTextFile(name)) return SharedFileOpenRoute.TEXT_VIEWER
     val ext = sanitizeSharedFileName(name).substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)
     return when (ext) {
         in PlayerVideoExts -> SharedFileOpenRoute.VIDEO_PLAYER
@@ -246,6 +249,8 @@ internal data class SharedFilePlayerTarget(
     val localFile: File,
     val video: Boolean,
 )
+
+internal data class SharedFileTextPreview(val file: SharedFile, val localFile: File, val text: String)
 
 internal class SharedFileHostState(
     val manager: SharedFileManager,
@@ -270,6 +275,8 @@ internal class SharedFileHostState(
     var sessionExited by mutableStateOf(initialSessionExited)
     var menuTarget by mutableStateOf<SharedFileMenuRequest?>(null)
     var imagePreview by mutableStateOf<SharedFileImagePreview?>(null)
+    var pendingTextPreview by mutableStateOf<SharedFileImagePreview?>(null)
+    var textPreview by mutableStateOf<SharedFileTextPreview?>(null)
     var playerTarget by mutableStateOf<SharedFilePlayerTarget?>(null)
     var unopenableTarget by mutableStateOf<SharedFileImagePreview?>(null)
     var pendingSaveAction by mutableStateOf<(() -> Unit)?>(null)
@@ -372,6 +379,28 @@ internal fun SharedFileHost(
                 }
             }
         }
+    }
+
+    LaunchedEffect(liveHost.pendingTextPreview) {
+        val pending = liveHost.pendingTextPreview ?: return@LaunchedEffect
+        val text = withContext(Dispatchers.IO) { readSharedTextFile(pending.localFile) }
+        if (text != null) {
+            liveHost.textPreview = SharedFileTextPreview(pending.file, pending.localFile, text)
+        } else if (!manager.openExternal(context, pending.localFile, pending.file.name)) {
+            liveHost.unopenableTarget = pending
+        }
+        liveHost.pendingTextPreview = null
+    }
+
+    liveHost.textPreview?.let { preview ->
+        SharedFileTextViewerDialog(
+            fileName = preview.file.name,
+            text = preview.text,
+            onDismiss = { liveHost.textPreview = null },
+            onAction = { action ->
+                handleMenuAction(action, preview.file, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
+            },
+        )
     }
 
     liveHost.imagePreview?.let { preview ->
@@ -521,6 +550,7 @@ internal fun openSharedFile(
     host: SharedFileHostState?,
 ) {
     when (val route = sharedFileOpenRoute(file.name)) {
+        SharedFileOpenRoute.TEXT_VIEWER -> host?.pendingTextPreview = SharedFileImagePreview(file, localFile)
         SharedFileOpenRoute.IMAGE_VIEWER -> host?.imagePreview = SharedFileImagePreview(file, localFile)
         SharedFileOpenRoute.VIDEO_PLAYER, SharedFileOpenRoute.AUDIO_PLAYER ->
             host?.playerTarget = SharedFilePlayerTarget(file, localFile, route == SharedFileOpenRoute.VIDEO_PLAYER)
@@ -866,7 +896,7 @@ private fun MiddleEllipsizedFileName(
     }
 }
 
-private fun fitMiddleEllipsizedName(
+internal fun fitMiddleEllipsizedName(
     name: String,
     style: TextStyle,
     maxWidthPx: Int,
@@ -888,23 +918,29 @@ private fun fitMiddleEllipsizedName(
 
     if (fits(name)) return name
 
-    val (head, tail) = splitMiddleTruncateName(name)
+    val (base, suffix) = splitMiddleTruncateName(name)
+    // Both the fixed suffix and the searched prefix must end on character boundaries.
+    val splitPair = base.lastOrNull()?.let(Character::isHighSurrogate) == true &&
+        suffix.firstOrNull()?.let(Character::isLowSurrogate) == true
+    val head = if (splitPair) base.dropLast(1) else base
+    val tail = if (splitPair) base.last() + suffix else suffix
     if (tail.isEmpty() || head.isEmpty()) return name
 
     var lo = 0
     var hi = head.length
     var best = "…$tail"
     while (lo <= hi) {
-        var mid = (lo + hi) ushr 1
+        val midpoint = (lo + hi) ushr 1
+        var mid = midpoint
         if (mid > 0 && mid < head.length && Character.isHighSurrogate(head[mid - 1])) {
             mid--
         }
         val candidate = "${head.substring(0, mid)}…$tail"
         if (fits(candidate)) {
             best = candidate
-            lo = mid + 1
+            lo = midpoint + 1
         } else {
-            hi = mid - 1
+            hi = midpoint - 1
         }
     }
     return best

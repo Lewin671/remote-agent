@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.data
 
 import android.content.ActivityNotFoundException
 import android.content.ContentValues
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -217,16 +218,27 @@ class SharedFileManager(
      */
     fun openExternal(activityContext: Context, file: File, displayName: String): Boolean {
         val uri = contentUri(file)
-        val mime = mimeTypeFor(displayName)
+        val mime = if (isSharedTextFile(displayName)) "text/plain" else mimeTypeFor(displayName)
         val view = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, mime)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         @Suppress("DEPRECATION")
         val handlers = activityContext.packageManager.queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY)
-        if (handlers.isEmpty()) return false
+        // Markdown-only readers are additional choices; wildcard/plain-text readers appear once.
+        val markdown = Intent(view).setDataAndType(uri, "text/markdown")
+        @Suppress("DEPRECATION")
+        val initial = if (isSharedMarkdownFile(displayName)) {
+            val plainPackages = handlers.map { it.activityInfo.packageName }.toSet()
+            activityContext.packageManager.queryIntentActivities(markdown, PackageManager.MATCH_DEFAULT_ONLY)
+                .filter { it.activityInfo.packageName !in plainPackages }
+                .distinctBy { it.activityInfo.packageName }
+                .map { Intent(markdown).setComponent(ComponentName(it.activityInfo.packageName, it.activityInfo.name)) }
+        } else emptyList()
+        if (handlers.isEmpty() && initial.isEmpty()) return false
         val chooser = Intent.createChooser(view, sanitizeSharedFileName(displayName))
             .putExtra(Intent.EXTRA_AUTO_LAUNCH_SINGLE_CHOICE, false)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (initial.isNotEmpty()) chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, initial.toTypedArray())
         return try {
             activityContext.startActivity(chooser)
             true
