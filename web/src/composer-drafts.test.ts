@@ -96,3 +96,15 @@ it("discards only the damaged outgoing record and cleans a deleted session's sou
   await store.removeSession("s"); expect(await store.read("s")).toBeUndefined(); expect(await store.readOutbox("s")).toEqual([]);
   expect((await store.read("other"))?.text).toBe("other");
 });
+
+
+it("persists the first prepared payload with its scope across store restart", async () => {
+  const f=await storedSecurity();const account={server:"https://relay.example.com",deviceId:f.memberID} as StoredAccount;
+  const fixture=(await import("../../testdata/transport/prepared-command.json")).default;
+  const plain=Uint8Array.from(atob(fixture.plain),c=>c.charCodeAt(0));
+  const outgoing:Outgoing={sendId:"message",requestId:"original-request",deadline:123456,text:"fixture",status:"sending",prepared:{machineId:"machine",sid:"",plain}};
+  await new ComposerDraftStore(account).saveOutbox("session",[outgoing]);
+  const [restored]=await new ComposerDraftStore(account).readOutbox("session");
+  expect(restored.prepared).toEqual(outgoing.prepared);expect(restored.requestId).toBe(outgoing.requestId);expect(restored.deadline).toBe(outgoing.deadline);
+  expect(restored.unknown).toBe(true);
+});

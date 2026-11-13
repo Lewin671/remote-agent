@@ -63,7 +63,7 @@ class Attempt {
         val EXPIRED_UNKNOWN = UiMessages.errorsAndroidThePreviousOutcomeIsUnknownTheRequestExpiredAndWill().messageText()
 
         private fun expiry(e: Throwable) =
-            e is CommandException && (e.code == CommandException.EXPIRED)
+            e is CommandException && e.outcome == Outcome.NOT_SENT && (e.code == CommandException.EXPIRED)
     }
 }
 

@@ -105,6 +105,20 @@ class OutgoingFailureRegressionTest {
         assertEquals(mainFeedback(fallback.error, true), feedback(fallback).text)
     }
 
+    @Test fun preparedBytesAndTheirBindingSurviveOutboxRestart() {
+        val files=MemoryFiles()
+        val command=io.github.lewin671.remoteagent.proto.Command.newBuilder().setProtocolVersion(PROTOCOL_VERSION)
+            .setCreateSession(io.github.lewin671.remoteagent.proto.CreateSessionRequest.newBuilder().putEnv("z","third").putEnv("a","first").putEnv("m","second")).build()
+        val original=command.toByteArray()
+        val outgoing=Outgoing("message","fixture",commandDeadlineMs=123456,targetMachineId="machine",commandRequestId="original-request",commandBytes=original)
+        OutgoingRecords(files).save("session",outgoing,false)
+        val restored=OutgoingRecords(files).load("session").single()
+        assertArrayEquals(original,restored.commandBytes())
+        assertEquals("original-request",restored.commandRequestId);assertEquals(123456L,restored.commandDeadlineMs)
+        assertEquals("machine",restored.targetMachineId)
+        restored.commandBytes()!!.fill(0);assertArrayEquals(original,restored.commandBytes())
+    }
+
     @Test fun diskRestorationAndRetryCannotRetainOrShortenAnEarlierFailure() = runBlocking {
         val files = MemoryFiles()
         val records = OutgoingRecords(files)

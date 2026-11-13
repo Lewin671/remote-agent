@@ -10,6 +10,7 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
     private let lock = NSLock()
     private var answers: [Error?] = []
     private var commands: [PBCommand] = []
+    private var sends: [String:PBCommand] = [:]
     private var forwards: [(id: String, retry: Bool)] = []
     private var made = 0
     private var reply = PBCommandResult()
@@ -31,6 +32,14 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
         return try next()
     }
 
+    func prepare(_ sid: String, _ cmd: PBCommand) async throws -> PreparedCommand {
+        lock.withLock {
+            made += 1
+            let id="r\(made)";sends[id]=cmd
+            return PreparedCommand(machineId:"fixture-machine",sessionId:sid,requestId:id,deadlineMs:0,command:cmd)
+        }
+    }
+
     func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand {
         lock.withLock {
             made += 1
@@ -40,7 +49,7 @@ final class FakeCommands: SessionCommands, @unchecked Sendable {
     }
 
     func forward(_ p: PreparedCommand, retryOfUnknown: Bool) async throws -> PBCommandResult {
-        lock.withLock { forwards.append((p.requestId, retryOfUnknown)) }
+        lock.withLock { forwards.append((p.requestId, retryOfUnknown)); if let cmd=sends[p.requestId] {commands.append(cmd)} }
         return try next()
     }
 }

@@ -215,7 +215,8 @@ func Uncertain(err error) bool {
 	return ce.Outcome == outcome.Unknown || ce.ConflictKind == "identity" || ce.Outcome == outcome.Executed && !ce.ResultAvailable
 }
 
-// Seal builds a sealed command for the given request ID and deadline.
+// Seal prepares a new authorization once. Retain its envelope for retries;
+// use Forward (or Reseal for a new content key), never encode the Command again.
 func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time, cmd *pb.Command) (*pb.Envelope, error) {
 	if cmd.ProtocolVersion == 0 {
 		cmd.ProtocolVersion = protocol.Version

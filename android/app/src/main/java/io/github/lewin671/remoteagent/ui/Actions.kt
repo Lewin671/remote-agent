@@ -79,7 +79,10 @@ class Outgoing(
     commandDeadlineMs: Long = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS,
     targetMachineId: String? = null,
     commandRequestId: String = newRequestId(),
+    commandBytes: ByteArray? = null,
 ) {
+    private var preparedBytes: ByteArray? = commandBytes?.copyOf()
+    internal fun commandBytes(): ByteArray? = preparedBytes?.copyOf()
     var commandRequestId: String = commandRequestId
         private set
     var commandDeadlineMs: Long = commandDeadlineMs
@@ -115,6 +118,7 @@ class Outgoing(
             // payload stay the same. Unknown outcomes never renew either command field.
             if (wasFailed) {
                 commandRequestId = newRequestId()
+                preparedBytes = null
                 commandDeadlineMs = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS
             }
             send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).addAllFileIds(fileIds).setMode(mode).build())
@@ -150,8 +154,9 @@ class Outgoing(
         val machine = targetMachineId ?: remote.state.value.sessions[sid]?.machineId
             ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         targetMachineId = machine
+        preparedBytes?.let { return io.github.lewin671.remoteagent.core.PreparedCommand(machine,sid,commandRequestId,commandDeadlineMs,io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance(),serializedCommand=it) }
         return remote.prepare(machine, sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() },
-            requestId = commandRequestId, deadlineMs = commandDeadlineMs)
+            requestId = commandRequestId, deadlineMs = commandDeadlineMs).also { preparedBytes=it.commandBytes() }
     }
 
     private var delivering = false
@@ -268,10 +273,13 @@ class OutgoingRecords(private val files: SealedFiles) {
                 ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
             val fileIds = files.get(f, "file-ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
             val intent = files.get(f, "intent") ?: io.github.lewin671.remoteagent.core.messageError(UiMessages.composerAndroidOutboxFormat().messageText())
-            val (commandId, deadline, machine) = java.io.DataInputStream(intent.inputStream()).use {
-                Triple(it.readUTF(), it.readLong(), it.readUTF().ifEmpty { null })
-            }
-            Outgoing(req, text, ids, images, original, mode, fileIds, deadline, machine, commandId).apply {
+            val input=java.io.DataInputStream(intent.inputStream())
+            require(input.readInt()==1)
+            val commandId=input.readUTF(); val deadline=input.readLong(); val machine=input.readUTF().ifEmpty {null}
+            val length=input.readInt();require(length in -1..(4 shl 20))
+            val payload=if(length<0)null else ByteArray(length).also(input::readFully)
+            require(input.available()==0)
+            Outgoing(req, text, ids, images, original, mode, fileIds, deadline, machine, commandId,payload).apply {
                 // From a run that ended: whether it reached the computer is not known.
                 restoreUnconfirmed()
             }
@@ -287,8 +295,12 @@ class OutgoingRecords(private val files: SealedFiles) {
     private fun writeIntent(folder: String, o: Outgoing) {
         val bytes = java.io.ByteArrayOutputStream()
         java.io.DataOutputStream(bytes).use {
+            it.writeInt(1)
             it.writeUTF(o.commandRequestId); it.writeLong(o.commandDeadlineMs); it.writeUTF(o.targetMachineId.orEmpty())
+            val payload=o.commandBytes();it.writeInt(payload?.size ?: -1);if(payload!=null)it.write(payload)
         }
+        // Binding metadata and optional first bytes land in one atomic sealed file.
+        // -1 explicitly denotes a current intent that has not been prepared yet.
         files.put(folder, "intent", bytes.toByteArray())
     }
 
@@ -464,11 +476,10 @@ object Outbox {
         scope.launch {
             if (account !== AccountMemory.token) return@launch
             val retry = o.state == Outgoing.State.UNKNOWN
-            val failed = o.state == Outgoing.State.FAILED
             o.deliver { request ->
                 val prepared = o.prepareDelivery(remote, sid, request)
                 remote.requireFileSupport(prepared.machineId, o.fileIds.isNotEmpty(), retry)
-                if (failed && o.images.isNotEmpty()) {
+                if (o.images.isNotEmpty()) {
                     val kept = records
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { kept.saveIntent(sid, o) }
                     if (account !== AccountMemory.token) throw kotlinx.coroutines.CancellationException("account changed")

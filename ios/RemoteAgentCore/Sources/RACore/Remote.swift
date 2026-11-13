@@ -15,6 +15,7 @@
 import Connect
 import Foundation
 import RAProto
+import SwiftProtobuf
 import os
 
 public let commandTTLMs: Int64 = 60_000
@@ -30,6 +31,23 @@ public final class PreparedCommand: @unchecked Sendable {
     public let deadlineMs: Int64
     /// Immutable plaintext intent stays local so every retry can recheck its requirements.
     let command: PBCommand
+    private let payload: Result<Data, Error>
+    public func commandBytes() throws -> Data { try payload.get() }
+    private struct Stored: Codable {
+        let machineId, sessionId, requestId: String
+        let deadlineMs: Int64
+        let payload: Data
+    }
+    /// Store this value only through the account's sealed local storage.
+    public func recordBytes() throws -> Data {
+        try JSONEncoder().encode(Stored(machineId:machineId,sessionId:sessionId,requestId:requestId,deadlineMs:deadlineMs,payload:commandBytes()))
+    }
+    public init(recordBytes: Data) throws {
+        let record=try JSONDecoder().decode(Stored.self,from:recordBytes)
+        machineId=record.machineId;sessionId=record.sessionId;requestId=record.requestId;deadlineMs=record.deadlineMs
+        payload = .success(record.payload)
+        command=try PBCommand(serializedBytes:record.payload)
+    }
     private let sealLock = NSLock()
     private var sealJob: Task<PBEnvelope, Error>?
     private var sealID: UUID?
@@ -86,6 +104,7 @@ public final class PreparedCommand: @unchecked Sendable {
         self.requestId = requestId
         self.deadlineMs = deadlineMs
         self.command = command
+        self.payload = Result { try command.serializedData() }
     }
 }
 

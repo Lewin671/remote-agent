@@ -1158,6 +1158,42 @@ extension SyncServerTests {
             }
         }
 
+        @Test func createPayloadSurvivesRekeyAndSealedRecordRestart() async throws {
+            try await world { w in
+                let fixture=try loadJSON("testdata/transport/prepared-command.json")
+                let raw=try #require(Data(base64Encoded:fixture.s("plain")))
+                let cmd=try PBCommand(serializedBytes:raw)
+                #expect(cmd.createSession.env.count==3)
+                #expect(try cmd.serializedData() != raw)
+                let r=try await w.client();r.start();let machine=w.daemon.id
+                _ = try await r.awaitState("online") {$0.conn == .online && $0.machines[machine]?.online == true}
+                await w.daemon.setAnswer { _, cmd in
+                    if case .createSession? = cmd.kind { return PBCommandResult.with { $0.createSession.session.id="fixture-created" } }
+                    return FakeDaemon.defaultResult(cmd)
+                }
+                // Restore a deliberately noncanonical payload, as a previous process prepared it.
+                let encoded=try JSONSerialization.data(withJSONObject:["machineId":machine,"sessionId":"","requestId":newRequestId(),"deadlineMs":Int64(Date().timeIntervalSince1970*1000)+60000,"payload":raw.base64EncodedString()])
+                let p=try PreparedCommand(recordBytes:encoded)
+                try await r.forward(p)
+                let old=try await r.securityIdentity().1.core.epoch
+                _ = try await w.join()
+                _ = try await r.securitySession().sync()
+                #expect(try await r.securityIdentity().1.core.epoch > old)
+                try await r.forward(p,retryOfUnknown:true)
+                let files=MemoryFiles()
+                try files.put(folder:"pending",name:"command",data:p.recordBytes())
+                r.close()
+                let restarted=try w.remote(r.account);restarted.start()
+                _ = try await restarted.awaitState("restarted") {$0.conn == .online && $0.machines[machine]?.online == true}
+                let restored=try PreparedCommand(recordBytes:#require(try files.get(folder:"pending",name:"command")))
+                try await restarted.forward(restored,retryOfUnknown:true)
+                for _ in 0..<3 {
+                    let(h,bytes)=try #require(await w.daemon.commandPayloads.poll(5000))
+                    #expect(h.requestID==p.requestId);#expect(h.deadlineMs==p.deadlineMs);#expect(bytes==raw)
+                }
+            }
+        }
+
         @Test func aFrozenAttemptResendsTheSameRequest() async throws {
             try await world { w in
                 let r = try await w.client()

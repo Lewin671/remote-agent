@@ -77,7 +77,7 @@ extension Remote {
         }
         return try await client.seal(
             purpose: .command, machine: p.machineId, session: p.sessionId, request: p.requestId,
-            deadline: UInt64(bitPattern: p.deadlineMs), plaintext: cmd.serializedData())
+            deadline: UInt64(bitPattern: p.deadlineMs), plaintext: p.commandBytes())
     }
     public func securityIdentity() throws -> (DeviceSecurity.Pin, DeviceSecurity.State) {
         guard let storage = securityStorage else { throw DeviceSecurity.Failure.storage }

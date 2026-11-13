@@ -1,0 +1,9 @@
+{
+  "protocol": 15,
+  "plain": "ogFDGg0KBHpldGESBXRoaXJkGg4KBWFscGhhEgVmaXJzdBoQCgZtaWRkbGUSBnNlY29uZAoQL2V4YW1wbGUvcHJvamVjdKAGDw==",
+  "env": {
+    "zeta": "third",
+    "alpha": "first",
+    "middle": "second"
+  }
+}

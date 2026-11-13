@@ -1523,5 +1523,20 @@
     "path": "ios/RemoteAgentCore/Sources/RACore/RemoteCommands.swift",
     "literal": "machine_offline",
     "reason": "Bound relay refusal reason selecting the existing offline message. Other queue/admission refusals keep their diagnostic cause; this identifier is not display copy."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionStore.swift",
+    "literal": "internal",
+    "reason": "Diagnostic code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteCommands.swift",
+    "literal": "not_found",
+    "reason": "Diagnostic code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "web/src/attempt.ts",
+    "literal": "not_sent",
+    "reason": "Authenticated outcome enum gates the diagnostic expired code; this is a protocol identifier, not display copy."
   }
 ]

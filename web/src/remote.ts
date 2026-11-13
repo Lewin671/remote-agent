@@ -235,9 +235,16 @@ export interface History {
 /** A command's request ID and deadline. Sealing a retry with the same
  * pair makes the daemon return its first answer instead of running the
  * command again. */
+export interface PreparedPayload {
+  machineId: string;
+  sid: string;
+  plain: Uint8Array<ArrayBuffer>;
+}
 export interface RequestSlot {
   requestId: string;
   deadline: number;
+  prepared?: PreparedPayload;
+  beforeDispatch?: (slot: RequestSlot) => Promise<void>;
 }
 
 export function newSlot(now = Date.now()): RequestSlot {
@@ -908,6 +915,7 @@ export class Remote {
   private outboxLoads = new Map<string, Promise<void>>();
   private outboxSaves = new Map<string, Promise<void>>();
   private outboxWriteFailed = new Set<string>();
+  private forwardingOutbox = new Set<string>();
   private localNotices = new Map<string, { message: string; kind: "draft" | "outbox_save" }>();
 
   private localNotice(key: string, message: string, kind: "draft" | "outbox_save" = "draft") {
@@ -1001,7 +1009,11 @@ export class Remote {
       }
     }, () => {
       if (this.outboxSaves.get(sid) === saved) this.outboxWriteFailed.add(sid);
-      this.localNotice(sid, l10n.t("errors.queued_records_could_not_be_saved_locally_messages_will"), "outbox_save");
+      // Only promise continued delivery after the prepared bytes were saved.
+      const forwarding = this.outbox(sid).some(o => this.forwardingOutbox.has(o.sendId));
+      this.localNotice(sid, forwarding
+        ? l10n.t("errors.queued_records_could_not_be_saved_locally_messages_will")
+        : l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the"), "outbox_save");
     });
     return saved;
   }
@@ -1334,6 +1346,7 @@ export class Remote {
     schema: D,
     msg: MessageShape<D>,
     beforeSign?: () => void,
+    preparedBytes?: Uint8Array<ArrayBuffer>,
   ) {
     let purpose = Number(h.kind) as Purpose;
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
@@ -1359,7 +1372,7 @@ export class Remote {
             : 0n),
         compression: 0,
       },
-      toBinary(schema, msg) as Uint8Array<ArrayBuffer>,
+      preparedBytes ?? toBinary(schema, msg) as Uint8Array<ArrayBuffer>,
       seed,
       beforeSign,
     );
@@ -3121,7 +3134,7 @@ export class Remote {
     cmd: CommandKind,
     slot = newSlot(),
   ): Promise<CommandResult> {
-    const authorized = this.authorizedCommands.get(slot);
+    const authorized = this.authorizedCommands.get(slot) ?? (slot.prepared && this.preparePayload("", "", cmd, slot));
     if (authorized)
       return this.forward(
         authorized.machineId,
@@ -3223,8 +3236,19 @@ export class Remote {
   // A retry may use a new content key but must reach the accepted log unchanged.
   private readonly authorizedCommands = new WeakMap<
     RequestSlot,
-    { machineId: string; sid: string; cmd: CommandKind }
+    { machineId: string; sid: string; requestId: string; deadline: number; cmd: CommandKind; plain: Uint8Array<ArrayBuffer> }
   >();
+
+  private preparePayload(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot) {
+    const previous = this.authorizedCommands.get(slot);
+    if (previous) return previous;
+    const saved = slot.prepared;
+    const plain = saved ? new Uint8Array(saved.plain) : toBinary(CommandSchema, create(CommandSchema, {kind:cmd,protocolVersion:PROTOCOL_VERSION}));
+    const prepared = {requestId:slot.requestId,deadline:slot.deadline,machineId:saved?.machineId ?? machineId,sid:saved?.sid ?? sid,plain:new Uint8Array(plain),cmd:fromBinary(CommandSchema,plain).kind};
+    this.authorizedCommands.set(slot,prepared);
+    slot.prepared={machineId:prepared.machineId,sid:prepared.sid,plain:new Uint8Array(plain)};
+    return prepared;
+  }
 
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
@@ -3243,14 +3267,9 @@ export class Remote {
     slot = newSlot(),
     signal?: AbortSignal,
   ): Promise<CommandResult> {
-    const authorized = this.authorizedCommands.get(slot);
-    if (authorized) ({ machineId, sid, cmd } = authorized);
-    else
-      cmd = fromBinary(
-        CommandSchema,
-        toBinary(CommandSchema, create(CommandSchema, { kind: cmd })),
-      ).kind;
-    const { requestId, deadline } = slot;
+    const prepared = this.preparePayload(machineId,sid,cmd,slot);
+    ({machineId,sid,cmd}=prepared);
+    const { requestId, deadline } = prepared;
     const priorOutcome: Outcome = this.dispatchedCommands.has(slot) ? "unknown" : "not_sent";
     if (!this.dispatchedCommands.has(slot) && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
       throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
@@ -3282,6 +3301,8 @@ export class Remote {
         },
         CommandSchema,
         create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
+        undefined,
+        prepared.plain,
       );
     } catch (e) {
       this.noteClock(e);
@@ -3300,7 +3321,10 @@ export class Remote {
         l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),false,false,priorOutcome,
       );
     }
-    this.authorizedCommands.set(slot, { machineId, sid, cmd });
+    // Persist a copy of the exact first authorization before any dispatch.
+    slot.requestId=requestId;slot.deadline=deadline;
+    slot.prepared={machineId,sid,plain:new Uint8Array(prepared.plain)};
+    await slot.beforeDispatch?.(slot);
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
     let mayHaveRun = this.dispatchedCommands.has(slot);
@@ -3338,7 +3362,7 @@ export class Remote {
             "unknown_outcome",
             l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
         }
-        const binding = await requestIdentity(parseHeader(new Uint8Array(env.securityHeader)), toBinary(CommandSchema, create(CommandSchema,{kind:cmd,protocolVersion:PROTOCOL_VERSION})));
+        const binding = await requestIdentity(parseHeader(new Uint8Array(env.securityHeader)), prepared.plain);
         const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && res.outcome===msg.outcome && res.reason===msg.reason && (msg.outcome==="conflict" || msg.conflictKind==="");
         let category = verifiedOutcome(msg,binding.key,binding.payload,res.outcome,res.reason,false);
         if(verified && category==="not_sent") {mayHaveRun=this.unsentAttempt(slot);if(mayHaveRun)category="unknown";}
@@ -3441,6 +3465,7 @@ export class Remote {
       )
         throw e;
       const fresh = newSlot();
+      fresh.beforeDispatch=slot.beforeDispatch;
       await this.command(sid, cmd, fresh);
       return fresh;
     }
@@ -3500,8 +3525,8 @@ export class Remote {
     };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
-    // Disk is a best-effort copy, never permission to forward a message.
-    // Start its write first so clearing the visible draft can wait for it.
+    // Start the pending write so clearing the visible draft can wait for it.
+    // The exact prepared authorization must also land before forwarding.
     void this.keepOutbox(sid).catch(() => undefined);
     void this.deliver(sid, o);
     return o.sendId;
@@ -3571,17 +3596,22 @@ export class Remote {
       missingImages: false,
     });
     try {
+      const sending: RequestSlot = {requestId: o.requestId, deadline: o.deadline, prepared: o.prepared, beforeDispatch: async slot => {
+        this.patchOut(sid,o.sendId,{requestId:slot.requestId,deadline:slot.deadline,prepared:slot.prepared});
+        await this.keepOutbox(sid);
+        this.forwardingOutbox.add(o.sendId);
+      }};
       const slot = await this.sendMessage(
         sid,
         o.text,
         o.sendId,
-        { requestId: o.requestId, deadline: o.deadline },
+        sending,
         o.unknown,
         o.imageIds,
         o.mode,
         o.files?.map((f) => f.fileId),
       );
-      this.patchOut(sid, o.sendId, { status: "sent", ...slot });
+      this.patchOut(sid, o.sendId, { status: "sent", requestId: slot.requestId, deadline: slot.deadline, prepared: slot.prepared });
     } catch (e) {
       // Once unknown, it stays unknown and keeps its request (attempt.ts);
       // the send ID also keeps the daemon from queueing the text twice.
@@ -3600,8 +3630,10 @@ export class Remote {
         missingImages,
         unknown: still,
         outcomeNotice: e instanceof CommandError && e.needsResultRefresh,
-        ...(still ? {} : newSlot()),
+        ...(still ? {} : {...newSlot(),prepared:undefined}),
       });
+    } finally {
+      this.forwardingOutbox.delete(o.sendId);
     }
   }
 

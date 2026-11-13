@@ -322,8 +322,12 @@ class PreparedCommand(
     val requestId: String,
     val deadlineMs: Long,
     val envelope: Envelope,
-    internal val command: Command? = null,
+    command: Command? = null,
+    serializedCommand: ByteArray? = null,
 ) {
+    private val payload = serializedCommand?.copyOf() ?: command?.toByteArray()
+    internal val command: Command? = payload?.let(Command::parseFrom)
+    fun commandBytes(): ByteArray? = payload?.copyOf()
     internal val sealMutex = kotlinx.coroutines.sync.Mutex()
     internal var authorizedEnvelope: Envelope? = null
     private var dispatchedAttempts = 0
@@ -3258,19 +3262,19 @@ class Remote(
      * with the same request ID, which the daemon runs at most once; when the outcome stays unknown
      * the error says so.
      */
-    suspend fun authorize(p: PreparedCommand): Envelope =
-        withContext(dispatcher) { authorizeOnWorker(p) }
+    suspend fun authorize(p: PreparedCommand, retryOfUnknown: Boolean = false): Envelope =
+        withContext(dispatcher) { authorizeOnWorker(p,retryOfUnknown) }
 
-    private suspend fun authorizeOnWorker(p: PreparedCommand): Envelope {
+    private suspend fun authorizeOnWorker(p: PreparedCommand,retryOfUnknown:Boolean): Envelope {
         try {
-            return authorizeIntent(p)
+            return authorizeIntent(p,retryOfUnknown)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             throw CommandException("authorization_unavailable", UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText())
         }
     }
 
-    private suspend fun authorizeIntent(p: PreparedCommand): Envelope =
+    private suspend fun authorizeIntent(p: PreparedCommand,retryOfUnknown:Boolean): Envelope =
         p.sealMutex.withLock {
             val head = security.head()
             val previous = p.authorizedEnvelope
@@ -3284,7 +3288,7 @@ class Remote(
                 if (p.command != null) {
                     // A retry keeps the exact original observation. The executor's
                     // durable request log settles it before considering a new action.
-                    if (previous == null && isObservedAction(p.command)) {
+                    if (previous == null && !retryOfUnknown && isObservedAction(p.command)) {
                         val fresh = fetchLiveSnapshot(p.sessionId)
                         if (observeAction(p.command, fresh) != p.command)
                             throw CommandException("failed_precondition", UiMessages.errorsAndroidTheCurrentRequestChangedReviewItAgain().messageText())
@@ -3299,7 +3303,7 @@ class Remote(
                         p.sessionId,
                         p.requestId,
                         deadline = p.deadlineMs.toULong(),
-                        plain = p.command.toByteArray(),
+                        plain = checkNotNull(p.commandBytes()),
                     )
                 } else {
                     DeviceSecurity.fromEnvelope(p.envelope)
@@ -3366,7 +3370,7 @@ class Remote(
                     checkFileCapability(p, mayHaveRun)
                     sentToken = currentToken()
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                    val authorized = authorize(p)
+                    val authorized = authorize(p,retryOfUnknown=mayHaveRun)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, mayHaveRun)
                     val binding = security.commandIdentity(authorized)

@@ -1422,6 +1422,7 @@ export function dockItems(
  * the daemon queue the text once; requestId and deadline seal the command,
  * and a retry reuses them so the daemon returns its first answer. */
 export interface Outgoing {
+  prepared?: import("./remote").PreparedPayload;
   sendId: string;
   requestId: string;
   deadline: number;

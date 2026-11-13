@@ -21,10 +21,13 @@ function setup() {
   Object.defineProperty(r, "localDrafts", { value: store });
   const tray = new Tray(async () => ({ bytes: new Uint8Array([1]), format: "png", width: 1, height: 1 }), async () => ({ imageId: "uploaded", expiresMs: Date.now() + 60000 }), () => { r.persistDraft("s"); });
   tray.machineId = "computer"; r.trays.set("s", tray);
-  const forward = vi.spyOn(r, "sendMessage").mockRejectedValue(new CommandError("unavailable", "offline"));
+  const forward = vi.spyOn(r, "sendMessage").mockImplementation(async (_sid, _text, _sendId, slot) => {
+    await slot.beforeDispatch?.(slot);
+    throw new CommandError("unavailable", "offline");
+  });
   return { r, store, tray, read, readOutbox, save, saveOutbox, forward };
 }
-it("forwards sends and retries despite failed outbox reads and writes, and retries a failed read", async () => {
+it("keeps sends retryable after failed outbox reads and writes, and retries a failed read", async () => {
   const t = setup(); t.readOutbox.mockRejectedValueOnce(new Error("temporary read failure"));
   t.saveOutbox.mockRejectedValue(new DOMException("full", "QuotaExceededError"));
   const id = t.r.send("s", "first");

@@ -49,6 +49,11 @@ extension Remote {
             command: versioned)
     }
 
+    public func prepare(_ sid: String, _ command: PBCommand) throws -> PreparedCommand {
+        guard let session=sessions[sid] else {throw CommandError("not_found",L10nMessage.errorsIosUnknownSession())}
+        return try prepare(machineId:session.machineId,sessionId:sid,command)
+    }
+
     /// Sends a command about a session.
     @discardableResult
     public func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
@@ -144,7 +149,7 @@ extension Remote {
                 req.command = try await p.authorizationTask(stateHash: stateHash) {
                     verifyObservation in
                     Task {
-                        try await self.authorizePrepared(p, verifyObservation: verifyObservation)
+                        try await self.authorizePrepared(p, verifyObservation: verifyObservation && !prior)
                     }
                 }.value
                 try Task.checkCancellation()

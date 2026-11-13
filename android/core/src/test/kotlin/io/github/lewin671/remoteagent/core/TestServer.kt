@@ -225,6 +225,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     private val sessionRevs = HashMap<String, Long>()
     private val lastSeq = HashMap<String, Long>()
     val commands = LinkedBlockingQueue<Pair<Header, Command>>()
+    val commandPayloads = LinkedBlockingQueue<Pair<Header,ByteArray>>()
     val termInput = LinkedBlockingQueue<TerminalFrame>()
 
     /** Seal results with a wrong key, as a corrupted relay would deliver them. */
@@ -402,7 +403,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                         val call = f.forwardCall
                         val (h, pt) = open(call.command)
                         val cmd = Command.parseFrom(pt)
-                        if (!cmd.hasGetLiveSnapshot()) commands += h to cmd
+                        if (!cmd.hasGetLiveSnapshot()) {commands += h to cmd; commandPayloads += h to pt.copyOf()}
                         if (cmd.hasOpenTerminal()) serveTerminal(h, cmd)
                         val result =
                             if (cmd.hasGetLiveSnapshot()) {

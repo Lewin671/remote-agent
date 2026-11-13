@@ -14,6 +14,7 @@ import io.github.lewin671.remoteagent.proto.SessionStatus
 import io.github.lewin671.remoteagent.proto.StoredEvent
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.UserMessage
+import kotlinx.serialization.json.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -296,6 +297,31 @@ class RemoteTest {
             assertEquals(first.requestId, retry.requestId)
             assertEquals(first.deadlineMs, retry.deadlineMs)
         }
+
+    @Test fun createRetryKeepsRawPayloadAcrossRekeyAndClientRestart() = runBlocking<Unit> {
+        val fixture=kotlinx.serialization.json.Json.parseToJsonElement(java.io.File(java.io.File(System.getProperty("outcomeVectors")).parentFile,"prepared-command.json").readText()).jsonObject
+        val raw=java.util.Base64.getDecoder().decode(fixture.getValue("plain").jsonPrimitive.content)
+        val command=Command.parseFrom(raw);assertEquals(3,command.createSession.envCount)
+        assertFalse(raw.contentEquals(command.toByteArray()))
+        val r=client();r.start();r.awaitState("online") {it.conn==ConnState.ONLINE&&it.machines[daemon.id]?.online==true}
+        daemon.answer={_,cmd -> if(cmd.hasCreateSession()) CommandResult.newBuilder().setCreateSession(CreateSessionResponse.newBuilder().setSession(Session.newBuilder().setId("fixture-created"))).build() else FakeDaemon.defaultResult(cmd)}
+        val p=PreparedCommand(daemon.id,"",newRequestId(),System.currentTimeMillis()+60000,Envelope.getDefaultInstance(),serializedCommand=raw)
+        r.forward(p)
+        val before=p.authorizedEnvelope!!
+        p.commandBytes()!!.fill(0)
+        approvedClient(daemon.phone,http);r.syncSecurity()
+        r.forward(p,retryOfUnknown=true)
+        assertFalse(before==p.authorizedEnvelope)
+        val saved=checkNotNull(p.commandBytes())
+        r.close()
+        val next=fixtureRemote(r.account,http);closers+=AutoCloseable{next.close()};next.start()
+        next.awaitState("restarted") {it.conn==ConnState.ONLINE&&it.machines[daemon.id]?.online==true}
+        val restored=PreparedCommand(p.machineId,p.sessionId,p.requestId,p.deadlineMs,Envelope.getDefaultInstance(),serializedCommand=saved)
+        next.forward(restored,retryOfUnknown=true)
+        val rows=mutableListOf<Pair<Header,ByteArray>>();daemon.commandPayloads.drainTo(rows)
+        val matching=rows.filter{it.first.requestId==p.requestId};assertEquals(3,matching.size)
+        matching.forEach {org.junit.Assert.assertArrayEquals(raw,it.second);assertEquals(p.deadlineMs,it.first.deadlineMs)}
+    }
 
     @Test
     fun authorizedActionsResealWithoutReobservingCompletedActions() =

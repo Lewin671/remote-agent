@@ -67,7 +67,7 @@ public final class Attempt {
     public static var expiredUnknown: LocalizedMessage { L10nMessage.errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt() }
 
     private static func expiry(_ e: CommandError) -> Bool {
-        e.code == CommandError.expired
+        e.outcome == .notSent && e.code == CommandError.expired
     }
 }
 

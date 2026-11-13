@@ -640,6 +640,7 @@ public final class Outgoing: Identifiable {
 
     public var state = State.sending
     public var outcomeNotice = false
+    public var prepared: PreparedCommand?
     private var rawError = ""
     public var error: String {
         get {
@@ -673,7 +674,7 @@ public final class Outgoing: Identifiable {
     public var record: OutgoingRecord {
         OutgoingRecord(
             requestId: requestId, text: text, imageIds: imageIds, fileIds: fileIds,
-            images: images.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed, file: $0.file, needsProcessing: $0.needsProcessing) }, original: original, mode: mode)
+            images: images.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed, file: $0.file, needsProcessing: $0.needsProcessing) }, original: original, mode: mode,prepared:prepared)
     }
 }
 
@@ -686,6 +687,7 @@ public struct OutgoingRecord: Sendable {
     var images: [StoredImage]
     public var original: Bool
     public var mode: PBSendMode
+    public var prepared: PreparedCommand? = nil
 }
 
 /// The names Android's enum gives the modes, which the store's files hold.
@@ -744,11 +746,18 @@ public struct OutgoingRecords: Sendable {
                 try files.put(folder: f, name: "file-ids", data: utf8(o.fileIds.joined(separator: "\n")))
                 try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
                 try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))
+                try files.put(folder:f,name:"prepared-command",data:o.prepared?.recordBytes() ?? Data("null".utf8))
                 if !idx.contains(line) { try writeIndex(idx + [line]) }
             } catch {
                 if !idx.contains(line) { try? files.clearFolder(f) }
                 throw error
             }
+        }
+    }
+
+    public func savePrepared(sid: String, requestId: String, bytes: Data) throws {
+        try Self.indexLock.withLock {
+            try files.put(folder:folder(sid,requestId),name:"prepared-command",data:bytes)
         }
     }
 
@@ -763,7 +772,9 @@ public struct OutgoingRecords: Sendable {
             let fileIds = try files.get(folder: f, name: "file-ids").map { text($0).split(ascii: 0x0A).filter { !$0.isEmpty } } ?? []
             let (images, original) = try loadStored(files, folder: f)
             let mode = try files.get(folder: f, name: "mode").flatMap { modeNamed(text($0)) } ?? .steer
-            return OutgoingRecord(requestId: parts[1], text: text(body), imageIds: ids, fileIds: fileIds, images: images, original: original, mode: mode)
+            guard let prepared=try files.get(folder:f,name:"prepared-command") else {throw DeviceSecurity.Failure.storage}
+            let authorization=prepared == Data("null".utf8) ? nil : try PreparedCommand(recordBytes:prepared)
+            return OutgoingRecord(requestId: parts[1], text: text(body), imageIds: ids, fileIds: fileIds, images: images, original: original, mode: mode,prepared:authorization)
         }
     }
 
@@ -774,6 +785,7 @@ public struct OutgoingRecords: Sendable {
     public static func revive(_ r: OutgoingRecord) -> Outgoing {
         let o = Outgoing(requestId: r.requestId, text: r.text, imageIds: r.imageIds, fileIds: r.fileIds, images: reviveStored(r.images), original: r.original, mode: r.mode)
         for img in o.images { img.protectFiles(r.fileIds, requestId: r.requestId) }
+        o.prepared = r.prepared
         o.state = .unknown
         o.error = L10n.attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed()
         return o

@@ -207,6 +207,7 @@ actor FakeDaemon {
     private var info: [String: PBSession] = [:]
     private var history: [String: [PBEvent]] = [:]
     nonisolated let commands = Mailbox<(PBHeader, PBCommand)>()
+    nonisolated let commandPayloads = Mailbox<(PBHeader, Data)>()
     nonisolated let termInput = Mailbox<PBTerminalFrame>()
 
     /// Seal results with a wrong key, as a corrupted relay would deliver them.
@@ -390,6 +391,7 @@ actor FakeDaemon {
             result = r
         } else {
             commands.put((h, cmd))
+            commandPayloads.put((h,pt))
             if case .openTerminal(let open)? = cmd.kind { serveTerminal(open) }
             result = await answer(h, cmd)
         }

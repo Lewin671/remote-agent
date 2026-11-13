@@ -3,7 +3,7 @@ import fixture from "../../testdata/transport/outcomes.json";
 import { create, fromJson } from "@bufbuild/protobuf";
 import { CommandSchema } from "./gen/remoteagent/v1/remote_pb";
 import { readOnlyCommand, CommandError, uncertain } from "./remote";
-import { stillUnknown } from "./attempt";
+import { Attempt, stillUnknown } from "./attempt";
 import { classifyOutcome, type Outcome } from "./outcome";
 test.each(fixture.vectors)("outcome $source/$code signed=$signed prior=$prior readOnly=$readOnly", v => {
  expect(classifyOutcome(v)).toBe(v.outcome);
@@ -12,6 +12,16 @@ test.each(fixture.vectors)("outcome $source/$code signed=$signed prior=$prior re
  const frozen=category==="unknown" || category==="conflict"&&v.conflictKind==="identity" || category==="executed"&&!v.resultAvailable;
  expect(uncertain(error)).toBe(frozen);
  expect(stillUnknown(error,v.prior)).toBe(frozen);
+ const attempt = new Attempt<string>();
+ const first = attempt.next("first");
+ if (v.prior) {
+  attempt.settle(new CommandError("unknown_outcome", "fixture", false, false, "unknown"));
+  attempt.next("ignored");
+ }
+ attempt.settle(error);
+ expect(attempt.frozen).toBe(frozen);
+ expect(attempt.expired).toBe(false);
+ if (frozen) expect(attempt.next("changed").slot).toBe(first.slot);
 
 });
 test("protocol 15 coverage", () => {expect(fixture.protocol).toBe(15); expect(fixture.vectors).toHaveLength(3432);});

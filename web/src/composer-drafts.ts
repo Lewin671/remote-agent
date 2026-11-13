@@ -113,6 +113,8 @@ export class ComposerDraftStore {
     const source = (blob?: Blob) => { if (!blob) return undefined; blobs.push(blob); return blobs.length - 1; };
     const records = outgoing.map(o => ({
       sendId: o.sendId, requestId: o.requestId, deadline: o.deadline, text: o.text, mode: o.mode,
+      authorizationVersion: 1,
+      prepared: o.prepared ? {...o.prepared,plain:Array.from(o.prepared.plain)} : null,
       imageIds: o.imageIds, imageSizes: o.imageSizes, status: o.status, error: o.error, unknown: o.unknown,
       thumbs: o.thumbs?.map(source),
       attachments: o.attachments && { original: o.attachments.original, sources: o.attachments.files.map(source) },
@@ -130,6 +132,9 @@ export class ComposerDraftStore {
     let records: unknown;
     try { records = JSON.parse(kept.draft.text); } catch { await this.remove(key); return []; }
     if (!Array.isArray(records)) { await this.remove(key); return []; }
+    // An old record cannot recover the bytes of an already prepared request.
+    // Leave it untouched for explicit user handling instead of re-encoding it.
+    if (records.some(o => !o || o.authorizationVersion !== 1 || !("prepared" in o))) throw new CorruptLocalContent();
     const source = (i: number) => {
       if (!Number.isInteger(i) || !kept.items[i]) throw new CorruptLocalContent();
       return kept.items[i]!.file;
@@ -138,8 +143,10 @@ export class ComposerDraftStore {
     for (const o of records) {
       try {
         if (!o || typeof o.sendId !== "string" || !o.sendId || typeof o.requestId !== "string" || !o.requestId || typeof o.text !== "string" || !Number.isFinite(o.deadline) || !["sending", "sent", "failed"].includes(o.status) || o.imageIds !== undefined && (!Array.isArray(o.imageIds) || o.imageIds.some((id: unknown) => typeof id !== "string")) || o.attachments !== undefined && typeof o.attachments.original !== "boolean") throw new CorruptLocalContent();
+        if (o.prepared && (typeof o.prepared.machineId !== "string" || typeof o.prepared.sid !== "string" || !Array.isArray(o.prepared.plain) || !o.prepared.plain.length || o.prepared.plain.some((b:unknown)=>!Number.isInteger(b)||Number(b)<0||Number(b)>255))) throw new CorruptLocalContent();
         result.push({
           ...o,
+          prepared:o.prepared && {...o.prepared,plain:new Uint8Array(o.prepared.plain)},
           status: o.status === "sending" ? "failed" : o.status,
           unknown: o.status === "sending" || o.unknown,
           error: o.status === "sending" ? l10n.t("errors.connection_dropped_midway") : o.error,

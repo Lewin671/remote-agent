@@ -31,6 +31,7 @@ import RAProto
 protocol SessionCommands: Sendable {
     @discardableResult func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult
     func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand
+    func prepare(_ sid: String, _ cmd: PBCommand) async throws -> PreparedCommand
     @discardableResult func forward(_ p: PreparedCommand, retryOfUnknown: Bool) async throws -> PBCommandResult
 }
 
@@ -252,6 +253,7 @@ final class SessionStore {
         // One try at a time: a second tap while the first is on its way adds nothing.
         guard delivering.insert(o.requestId).inserted else { return Task {} }
         let wasUnknown = o.state == .unknown
+        if o.state == .failed { o.prepared = nil }
         o.state = .sending
         o.error = ""
         o.outcomeNotice = false
@@ -268,7 +270,13 @@ final class SessionStore {
         // Not tied to the page: a message keeps going when its page is left.
         return Task { [cmd] in
             do {
-                try await commands.command(sid, cmd)
+                if o.prepared == nil {o.prepared = try await commands.prepare(sid,cmd)}
+                guard let prepared=o.prepared else {throw CommandError("internal",L10nMessage.newSessionUnexpectedReply())}
+                if let draftFiles, !o.images.isEmpty {
+                    let bytes=try prepared.recordBytes(),requestId=o.requestId
+                    try await Task.detached {try OutgoingRecords(files:draftFiles).savePrepared(sid:sid,requestId:requestId,bytes:bytes)}.value
+                }
+                try await commands.forward(prepared,retryOfUnknown:wasUnknown)
                 o.state = .sent
             } catch {
                 let ce = error as? CommandError

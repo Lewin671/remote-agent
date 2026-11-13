@@ -8,7 +8,7 @@ import { CommandError, newSlot, uncertain, type RequestSlot } from "./remote";
 
 /** This device stopped dispatching a request past its deadline and clock allowance. */
 function expiredError(e: unknown): boolean {
-  return e instanceof CommandError && e.code === "expired";
+  return e instanceof CommandError && e.outcome === "not_sent" && e.code === "expired";
 }
 
 /** Whether an attempt's outcome stays unknown after error. Once a

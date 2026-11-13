@@ -53,6 +53,21 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
 
     private func draft(_ key: String, _ files: MemoryFiles) -> ImageDraft { ImageDraft(key: key, files: files, saves: nil) }
 
+    @Test func preparedAuthorizationSurvivesOutboxRestart() throws {
+        let files=MemoryFiles()
+        let raw=try #require(Data(base64Encoded:loadJSON("testdata/transport/prepared-command.json").s("plain")))
+        let encoded=try JSONSerialization.data(withJSONObject:["machineId":"machine","sessionId":"","requestId":"original-request","deadlineMs":123456,"payload":raw.base64EncodedString()])
+        let outgoing=Outgoing(requestId:"message",text:"fixture")
+        let store=OutgoingRecords(files:files)
+        try store.save(sid:"session",outgoing.record,original:false)
+        try store.savePrepared(sid:"session",requestId:outgoing.requestId,bytes:encoded)
+        let loaded=try #require(OutgoingRecords(files:files).load(sid:"session").first?.prepared)
+        #expect(try loaded.commandBytes()==raw);#expect(loaded.requestId=="original-request");#expect(loaded.deadlineMs==123456)
+        #expect(loaded.machineId=="machine")
+        try files.remove(folder:"out:session:message",name:"prepared-command")
+        #expect(throws:DeviceSecurity.Failure.self) {try OutgoingRecords(files:files).loadRecords(sid:"session")}
+    }
+
     @Test func aRestoredDraftKeepsThePickOrder() throws {
         let files = MemoryFiles()
         // Random-looking IDs in an order no listing would give back.
