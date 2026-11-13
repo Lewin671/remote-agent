@@ -70,8 +70,19 @@ func TestRunWaitsForStartedBeforeUnlock(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		t.Fatal(err)
+	// Run has closed its descriptor. A child forked by a concurrent test may
+	// briefly hold an inherited copy until its exec closes it (CLOEXEC), so
+	// the lock must become free promptly rather than at this exact instant.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if err != syscall.EWOULDBLOCK || time.Now().After(deadline) {
+			t.Fatal(err)
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 
