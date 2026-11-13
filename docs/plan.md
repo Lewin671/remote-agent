@@ -10,7 +10,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 | 部分 | 已实现 | 验证到哪 | 还缺什么 |
 |---|---|---|---|
-| 电脑状态与磁盘保护（协议 14，未合入/未发布） | daemon/macOS/Linux 采样、磁盘保护、四端轮询与通知接收逻辑 | 自动测试和隔离原生 CLI 取数，见 [验收记录](acceptance-notes.md#电脑状态核心复核2026-11-13)；约束见 [architecture §21](architecture.md#21-电脑状态与磁盘保护) | iOS 状态视图、直接界面与真机验收；网页和 Android 的状态视图、主页提醒、启动失败卡和附件存储的应急预留行已按界面稿接好（本地提交，网页只在演示数据上验过、Android 为 Robolectric 渲染与自动测试，都没连真实电脑或推送）；iOS 系统推送传输适配仍未实现 |
+| 电脑状态与磁盘保护（协议 14，v0.73.0） | daemon/macOS/Linux 采样、磁盘保护、四端轮询与通知接收逻辑 | 自动测试和隔离原生 CLI 取数，见 [验收记录](acceptance-notes.md#电脑状态核心复核2026-11-13)；约束见 [architecture §21](architecture.md#21-电脑状态与磁盘保护) | iOS 状态视图、直接界面与真机验收；网页和 Android 的状态视图、主页提醒、启动失败卡和附件存储的应急预留行已按界面稿接好（网页只在演示数据上验过、Android 为 Robolectric 渲染与自动测试，都没连真实电脑或推送）；iOS 系统推送传输适配仍未实现 |
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor`；事件提交错误返回调用方，存储故障与持久解析诊断仅本机可查询 | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 的模型目录（它自己的缓存和编进 daemon 的副本取较新的），模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
 | Antigravity（agy） | daemon 与协议 14、网页/Android/iOS 的多 CLI 界面已整合完成（[architecture §19](architecture.md#19-接入-antigravity)） | agy 1.5.0 真实加密端到端与 doctor；本机 Chrome 直接操作的新建、消息、审批、额度及会话设置；三端自动检查，见[整合验收](acceptance-notes.md#antigravity-三端整合与网页直接验收2026-11-04) | 原生客户端真机与直接界面操作；源会话退出后的 MCP 定时派发、API 计费来源仍待验证。审计修复的真实双图与自然计划流程见[复验](acceptance-notes.md#antigravity-审计修复复验2026-11-04) |
@@ -20,18 +20,18 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | iOS App | 界面稿 v58 的手机和 iPad 画面，界面层用系统组件；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 0.55.0 已于 2026-11-06 在美区 App Store 上架；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
 | 客户端文件附件 | 协议、daemon 与网页、Android、iOS 三端已整合：文件选择、原样上传、文件条目、草稿恢复和逐请求能力检查；尚未发布 | [网页](acceptance-notes.md#文件附件phase-a2026-10-28)、[Android](acceptance-notes.md#文件附件androidphase-b2026-10-28)、[iOS](acceptance-notes.md#文件附件iosphase-b2026-10-28) 的自动测试与隔离真实 CLI；原生模拟器的系统文件选择器已操作 | 真机、云文件提供器、大文件内存与故障恢复的联合验收，见「待确认 › 文件附件」 |
-| Agent 发文件 | 协议、daemon、`send_file` 工具和网页/Android 文件卡及下载已随 v0.72.0 发布；iOS 尚无下载管理器（[设计](session-files.md)） | 自动测试；隔离真实 CLI 的电脑端链路见[记录](acceptance-notes.md#agent-发文件电脑端整合2026-11-12未发布分支)，网页/Android 下载状态的自动回归见[传输验收边界](acceptance-notes.md#传输-0a-前三步本地实现2026-11-13) | iOS 条目和下载；三端直接界面与真机的下载恢复/大文件联合验收；Antigravity 自然工具发现及远程审批 |
+| Agent 发文件 | 协议、daemon、`send_file` 工具及三端文件卡和下载已整合，iOS 文件界面随 v0.73.0 合入（[设计](session-files.md)） | 自动测试；隔离真实 CLI 的电脑端链路见[记录](acceptance-notes.md#agent-发文件电脑端整合2026-11-12未发布分支)，网页/Android 下载状态的自动回归见[传输验收边界](acceptance-notes.md#传输-0a-前三步本地实现2026-11-13) | 三端直接界面与真机的下载恢复/大文件联合验收；Antigravity 自然工具发现及远程审批 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；任务级完成通知与接管说明已实现；网页按运行显示未读，打开详情或对应对话已读，界面按 client-v54 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)和 v52 改版记录 | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
-| 传输模块与直连 | [设计已定](transport.md)，0a 前三步已在本地实现：显式完成证据、进程所有权、独立认证同步与成员流撤销；产品仍只有中继，未实现 Link/DirectPath、热备或逻辑流恢复 | [本地自动化覆盖与未覆盖范围](acceptance-notes.md#传输-0a-前三步本地实现2026-11-13)；原型和旧基线见 [transport-notes.md](transport-notes.md)，不算直连验收 | 下列 0a/0b/0c–4 期、界面稿更新，以及「待确认 › 传输模块与直连」 |
+| 传输模块与直连 | [设计已定](transport.md)，0a 前三步已在本地实现：显式完成证据、进程所有权、独立认证同步与成员流撤销；产品仍只有中继，未实现 Link/DirectPath、热备或逻辑流恢复 | [自动化与真实 CLI 逻辑回归](acceptance-notes.md#传输-0a-新路径接入与真实-cli-回归2026-11-13)；原型和旧基线见 [transport-notes.md](transport-notes.md)，不算直连验收 | 下列 0a/0b/0c–4 期、界面稿更新，以及「待确认 › 传输模块与直连」 |
 | 测试与开发夹具 | 实例状态目录、共享准备步骤、受限并行与正确的增量输入依赖 | 各端完整前后对照与五轮 CPU 高负载复跑，用例和断言保留，见[第二轮记录](acceptance-notes.md#测试提速第二轮2026-11-04) | 改动仍在任务分支；机制审计候选尚未决定，未自动改隐私、协议或存储格式 |
 
 当前协议为 14，daemon、server、网页和 App 需要一起升级；不同协议版本互相拒绝。定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
 
 ## 下一步
 
-电脑状态核心已就绪但未整合；后续按 [architecture §21](architecture.md#21-电脑状态与磁盘保护) 接状态页、主页提醒和附件存储，直接界面操作验证离线/恢复、清理和多机器通知，不把核心单测当成真机验收。
+电脑状态核心及网页/Android 界面已整合；iOS 状态视图和联合实测仍按 [architecture §21](architecture.md#21-电脑状态与磁盘保护) 接状态页、主页提醒和附件存储，直接界面操作验证离线/恢复、清理和多机器通知，不把核心单测当成真机验收。
 
 
 按顺序做；第一项是当前的主要工作。
