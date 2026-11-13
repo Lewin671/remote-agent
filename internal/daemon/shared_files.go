@@ -18,6 +18,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -62,18 +63,18 @@ func (u *uploads) sharedDir(session string) string {
 
 func (u *uploads) loadShared(session, id string) (*sharedRecord, error) {
 	if !validSessionDir(session) || !validHexID(id) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a shared file ID is 32 hex digits"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New(i18n.AttachmentSharedInvalidId("zh-CN")))
 	}
 	b, err := os.ReadFile(filepath.Join(u.sharedDir(session), id, sharedRecordName))
 	if os.IsNotExist(err) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the file is no longer on the computer; shared files are removed when their session ends"))
+		return nil, connect.NewError(connect.CodeNotFound, errors.New(i18n.AttachmentSharedGone("zh-CN")))
 	}
 	if err != nil {
 		return nil, err
 	}
 	r := &sharedRecord{}
 	if err := json.Unmarshal(b, r); err != nil || r.ID != id {
-		return nil, connect.NewError(connect.CodeDataLoss, errors.New("the shared file's record on the computer is damaged"))
+		return nil, connect.NewError(connect.CodeDataLoss, errors.New(i18n.AttachmentSharedRecordDamaged("zh-CN")))
 	}
 	return r, nil
 }
@@ -259,20 +260,20 @@ func (u *uploads) sharedChunk(session, id string, offset int64) (*pb.GetSharedFi
 	}
 	switch {
 	case offset < 0 || offset%sharedChunkBytes != 0:
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("offset must be a multiple of %d", sharedChunkBytes))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New(i18n.AttachmentSharedOffset("zh-CN")))
 	case offset >= r.Size && !(offset == 0 && r.Size == 0):
-		return nil, connect.NewError(connect.CodeOutOfRange, fmt.Errorf("the file has %d bytes", r.Size))
+		return nil, connect.NewError(connect.CodeOutOfRange, errors.New(i18n.AttachmentSharedRange("zh-CN")))
 	}
 	f, err := os.Open(filepath.Join(u.sharedDir(session), id, sharedDataName))
 	if os.IsNotExist(err) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the file is no longer on the computer; shared files are removed when their session ends"))
+		return nil, connect.NewError(connect.CodeNotFound, errors.New(i18n.AttachmentSharedGone("zh-CN")))
 	}
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	if fi, err := f.Stat(); err != nil || fi.Size() != r.Size {
-		return nil, connect.NewError(connect.CodeDataLoss, errors.New("the shared copy on the computer is damaged"))
+		return nil, connect.NewError(connect.CodeDataLoss, errors.New(i18n.AttachmentSharedCopyDamaged("zh-CN")))
 	}
 	data := make([]byte, sharedChunkBytes)
 	want := min(int64(sharedChunkBytes), r.Size-offset)

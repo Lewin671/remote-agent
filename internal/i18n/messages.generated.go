@@ -121,6 +121,38 @@ func render(locale, key string, args map[string]any) string {
 	})
 }
 
+func AttachmentSharedClientsOnly(locale string) string {
+	return render(locale, "attachment.shared_clients_only", map[string]any{})
+}
+
+func AttachmentSharedCopyDamaged(locale string) string {
+	return render(locale, "attachment.shared_copy_damaged", map[string]any{})
+}
+
+func AttachmentSharedFailed(locale string) string {
+	return render(locale, "attachment.shared_failed", map[string]any{})
+}
+
+func AttachmentSharedGone(locale string) string {
+	return render(locale, "attachment.shared_gone", map[string]any{})
+}
+
+func AttachmentSharedInvalidId(locale string) string {
+	return render(locale, "attachment.shared_invalid_id", map[string]any{})
+}
+
+func AttachmentSharedOffset(locale string) string {
+	return render(locale, "attachment.shared_offset", map[string]any{})
+}
+
+func AttachmentSharedRange(locale string) string {
+	return render(locale, "attachment.shared_range", map[string]any{})
+}
+
+func AttachmentSharedRecordDamaged(locale string) string {
+	return render(locale, "attachment.shared_record_damaged", map[string]any{})
+}
+
 func CommonBack(locale string) string {
 	return render(locale, "common.back", map[string]any{})
 }

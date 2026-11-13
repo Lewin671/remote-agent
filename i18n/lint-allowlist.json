@@ -758,5 +758,150 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
     "literal": "window:$name",
     "reason": "Stable quota-pool identity, separate from the translated section title; never rendered as product copy."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "zh-CN",
+    "reason": "Explicit stage-0 display locale code for generated messages; not rendered text."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "at most %d files can be sent in one turn",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "invalid session",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the session ended while the file was being copied",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the file changed while it was being copied; send it again once it is complete",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "remove shared file staging",
+    "reason": "Internal log operation name or structured log key; contains no file paths or content and is not UI text."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "err",
+    "reason": "Internal log operation name or structured log key; contains no file paths or content and is not UI text."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "that is already a copy sent to the user",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "only files inside the project directory, this session's uploaded files or the system temporary directory can be sent; copy the file into the project directory first if the user wants it",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "this location holds credentials, keys or Remote Agent's own state and is never sent",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "path is required",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "path is not a valid file path",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "give an absolute path",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "no file at that path",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the path cannot be read",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the file cannot be read",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the file changed while it was being checked; try again",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the file has %d bytes; at most %d bytes (100 MiB) can be sent",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "that is a directory; put it in a zip archive and send the archive",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "only regular files can be sent",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "send_file requires this session's Remote Agent MCP",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "no such session",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/shared_files.go",
+    "literal": "the session has ended",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/rpc.go",
+    "literal": "err",
+    "reason": "Internal log operation name or structured log key; contains no file paths or content and is not UI text."
+  },
+  {
+    "path": "internal/daemon/rpc.go",
+    "literal": "send_file is only for the session's local MCP",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/daemon/rpc.go",
+    "literal": "zh-CN",
+    "reason": "Explicit stage-0 display locale code for generated messages; not rendered text."
+  },
+  {
+    "path": "internal/daemon/rpc.go",
+    "literal": "shared file",
+    "reason": "Internal log operation name or structured log key; contains no file paths or content and is not UI text."
+  },
+  {
+    "path": "internal/schedulemcp/server.go",
+    "literal": "cannot reach the Remote Agent daemon",
+    "reason": "Session-local MCP send_file diagnostic or tool protocol value; not client UI text. Tool errors remain English for the model."
+  },
+  {
+    "path": "internal/schedulemcp/server.go",
+    "literal": "status",
+    "reason": "Stable MCP structured-result field name; not UI text."
   }
 ]

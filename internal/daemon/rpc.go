@@ -10,6 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
@@ -443,7 +444,7 @@ func (h *handler) GetSharedFileChunk(ctx context.Context, req *connect.Request[p
 	case o.GetKind() == pb.OriginKind_ORIGIN_KIND_LOCAL:
 	case o.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT && o.DeviceId != "":
 	default:
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("shared files are only for the account's client devices"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New(i18n.AttachmentSharedClientsOnly("zh-CN")))
 	}
 	res, err := h.d.uploads.sharedChunk(req.Msg.SessionId, req.Msg.FileId, req.Msg.Offset)
 	if err != nil {
@@ -460,5 +461,5 @@ func sharedErr(err error) error {
 		return rpcErr(err)
 	}
 	slog.Error("shared file", "err", errClass(err))
-	return connect.NewError(connect.CodeInternal, errors.New("the computer could not handle the shared file"))
+	return connect.NewError(connect.CodeInternal, errors.New(i18n.AttachmentSharedFailed("zh-CN")))
 }

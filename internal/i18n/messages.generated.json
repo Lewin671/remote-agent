@@ -36,6 +36,118 @@
     "source": "zh-CN"
   },
   "messages": {
+    "attachment.shared_clients_only": {
+      "en": "shared files are only for the account's client devices",
+      "key": "attachment.shared_clients_only",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "只有本账户的客户端设备能下载共享文件"
+    },
+    "attachment.shared_copy_damaged": {
+      "en": "the shared copy on the computer is damaged",
+      "key": "attachment.shared_copy_damaged",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "电脑上的文件副本已损坏"
+    },
+    "attachment.shared_failed": {
+      "en": "the computer could not handle the shared file",
+      "key": "attachment.shared_failed",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "电脑未能处理此共享文件"
+    },
+    "attachment.shared_gone": {
+      "en": "the file is no longer on the computer; shared files are removed when their session ends",
+      "key": "attachment.shared_gone",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "文件已不在电脑上；会话结束后会删除共享文件"
+    },
+    "attachment.shared_invalid_id": {
+      "en": "a shared file ID is 32 hex digits",
+      "key": "attachment.shared_invalid_id",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "文件标识无效，应为 32 位十六进制字符"
+    },
+    "attachment.shared_offset": {
+      "en": "download offset must be a multiple of the block size",
+      "key": "attachment.shared_offset",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "下载偏移必须为块大小的整数倍"
+    },
+    "attachment.shared_range": {
+      "en": "download offset is outside the file",
+      "key": "attachment.shared_range",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "下载偏移超出文件范围"
+    },
+    "attachment.shared_record_damaged": {
+      "en": "the shared file's record on the computer is damaged",
+      "key": "attachment.shared_record_damaged",
+      "notes": "电脑端共享文件下载错误；按当前阶段默认中文返回，不改变协议或 CLI 子进程语言。英文待审。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "电脑上的共享文件记录已损坏"
+    },
     "common.back": {
       "en": "Back",
       "key": "common.back",
