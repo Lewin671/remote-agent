@@ -22,7 +22,6 @@ export const MAX_STATES = 4096;
 export const MAX_PAIR_STATES = 256;
 export const MAX_PAIR_CHAIN_BYTES = 800 << 10;
 export const LEASE = 72 * 60 * 60 * 1000;
-export const MAX_LEASE = LEASE;
 /** How far ahead of the local clock a state's IssuedAt may be. */
 export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
 export class SecurityError extends Error {
@@ -833,13 +832,6 @@ export interface SecurityHeader {
   deadline: bigint;
   compression: number;
 }
-const mutable = (p: Purpose) =>
-  [
-    Purpose.SessionMeta,
-    Purpose.MachineMeta,
-    Purpose.DeviceMeta,
-    Purpose.Prefs,
-  ].includes(p);
 export const control = (p: Purpose) =>
   [
     Purpose.Command,
@@ -1217,7 +1209,6 @@ export function parseWire(b: B): SecureWire {
   wireBytes(w);
   return w;
 }
-export const isMutable = mutable;
 
 export function b64(b: Uint8Array): string {
   let s = "";
@@ -1236,15 +1227,6 @@ export function unb64(s: string): B {
   requireOK(b64(out) === s);
   return out;
 }
-export function jsonHash(v: unknown): B {
-  requireOK(
-    Array.isArray(v) &&
-      v.length === 32 &&
-      v.every((n) => Number.isInteger(n) && n >= 0 && n <= 255),
-  );
-  return new Uint8Array(v);
-}
-
 export interface PairTrust {
   pin: Pin;
   approver: string;
@@ -1373,7 +1355,6 @@ export async function signLease(
   await verifyLease(lease, head);
   return lease;
 }
-export const HeadLease = { sign: signLease };
 export async function validLease(
   l: LeaseCertificate | undefined,
   head: SecurityState,

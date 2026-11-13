@@ -53,7 +53,7 @@ function leftText(pct: number): string {
   return pct >= 100 ? l10n.t("quota.exhausted_quota") : l10n.t("quota.left", { value: String(100 - Math.floor(pct)) });
 }
 
-export function windowLabel(minutes: number): string {
+function windowLabel(minutes: number): string {
   if (minutes >= 24 * 60 && minutes % (24 * 60) === 0) return l10n.t("quota.days", { count: minutes / (24 * 60) });
   if (minutes >= 60) return l10n.t("quota.hr", { count: Math.round(minutes / 60) });
   return l10n.t("quota.min", { count: minutes });
@@ -79,7 +79,7 @@ export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: n
 
 // --- MachineMeta.quotas (daemons since ed1a14d) ---
 
-export interface QuotaGroup {
+interface QuotaGroup {
   title: string;
   rows: (QuotaRow & { key: string })[];
 }
@@ -114,7 +114,7 @@ function received(ms: number, now: number, failed: boolean): string {
 }
 
 /** An observation without a timestamp cannot establish current availability. */
-export function quotaFreshness(ms: number, now: number): string {
+function quotaFreshness(ms: number, now: number): string {
   if (ms <= 0) return t("quota.unknown_time");
   const minutes = Math.floor(Math.max(0, now - ms) / 60_000);
   if (minutes < 30) return "";

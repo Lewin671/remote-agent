@@ -278,7 +278,7 @@ function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Re
   );
 }
 
-export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }: { remote: Remote; sid: string; full?: boolean; shared?: ReturnType<typeof usePlan>; terminalOnly?: boolean }) {
+function PlanButtons({ remote, sid, full, shared, terminalOnly = false }: { remote: Remote; sid: string; full?: boolean; shared?: ReturnType<typeof usePlan>; terminalOnly?: boolean }) {
   // Claude Code has no "clear the context, then implement".
   const own = usePlan(remote, sid, terminalOnly);
   const plan = shared ?? own;
@@ -383,7 +383,7 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
 
 /** The least room, in pixels, an item needs to open in the dock: its line,
  * some of its content and its actions. With less it opens as a page. */
-export const DOCK_MIN_ROOM = 200;
+const DOCK_MIN_ROOM = 200;
 
 /** What an open dock's content may take: about 60% of the chat column's
  * height, 240 at the least, and never more than the room under its line. */

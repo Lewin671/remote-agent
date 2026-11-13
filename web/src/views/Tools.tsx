@@ -14,7 +14,6 @@ import { ImageStrip } from "./Images";
 import { Check, LoaderCircle, X } from "../icons";
 
 export type Short = { text: (title: string) => string; path: (path: string) => string };
-export const asIs: Short = { text: (x) => x, path: (x) => x };
 export function toolTitle(t: Pick<ToolCall, "kind" | "title">, short: Short): string {
   return t.kind === ToolKind.FILE_CHANGE ? i18n.t("tools.edit_file", { path: short.path(t.title || i18n.t("attachment.file")) }) : short.text(t.title || (t.kind === ToolKind.COMMAND ? i18n.t("tools.command") : i18n.t("tools.tool")));
 }
@@ -60,7 +59,7 @@ function runningPreview(t: RunningTool): string {
   }
   return t.title || (t.kind === ToolKind.COMMAND ? i18n.t("tools.command") : i18n.t("tools.tool"));
 }
-export function awaitingApproval(t: RunningTool, approvals: Iterable<ApprovalRequested>): boolean {
+function awaitingApproval(t: RunningTool, approvals: Iterable<ApprovalRequested>): boolean {
   for (const a of approvals) {
     if (t.inputDigest ? a.inputDigest === t.inputDigest : !!a.command && (a.command === t.input || a.command === t.title)) return true;
   }

@@ -8,7 +8,7 @@ import { classifyOutcome } from "./outcome";
 import { CommandError, newSlot, uncertain, type RequestSlot } from "./remote";
 
 /** This device stopped dispatching a request past its deadline and clock allowance. */
-export function expiredError(e: unknown): boolean {
+function expiredError(e: unknown): boolean {
   return e instanceof CommandError && e.code === "expired";
 }
 

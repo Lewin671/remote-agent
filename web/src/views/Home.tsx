@@ -81,7 +81,7 @@ function metaOf(remote: Remote, s: SessionView, cols: Cols): string {
 
 /** The columns of a list of sessions: the CLI when they used more than
  * one, the machine when the account has more than one. */
-export function colsOf(remote: Remote, sessions: SessionView[], project: boolean): Cols {
+function colsOf(remote: Remote, sessions: SessionView[], project: boolean): Cols {
   return {
     project,
     agent: new Set(sessions.map(agentOf)).size > 1,
@@ -229,7 +229,7 @@ export function SessionRow({
 
 /** An ended session: one line with no state graphic, under the date
  * group that says when; under all projects the time names the project. */
-export function EndedRow({
+function EndedRow({
   s,
   go,
   selected,
@@ -773,7 +773,7 @@ function HomeBanners({ remote, go, prefs }: { remote: Remote; go: Go; prefs?: bo
 
 /** Whether a new session can be started from here now: not out of reach
  * of the server, and with a computer to run it on. */
-export function canStart(remote: Remote): boolean {
+function canStart(remote: Remote): boolean {
   return !remote.unlinked && remote.machines.size > 0;
 }
 
