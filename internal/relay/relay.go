@@ -161,6 +161,7 @@ func sleep(ctx context.Context, d time.Duration) {
 
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
+	nextDiskAlert     time.Time       // volatile notification retry deadline; syncLoop owns it
 	terminals         sync.WaitGroup  // added by command handlers, joined after readLoop drains
 	lifetime          context.Context // stream lifetime, independent of one command deadline
 	writes            connectionWrites

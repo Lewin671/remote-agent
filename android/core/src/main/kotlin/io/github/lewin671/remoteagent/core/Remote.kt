@@ -3196,6 +3196,12 @@ class Remote(
         }
     }
 
+    suspend fun getMachineStatus(machineId: String): io.github.lewin671.remoteagent.proto.MachineStatus {
+        val result = machineCommand(machineId, Command.newBuilder().setGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.getDefaultInstance()).build())
+        check(result.hasMachineStatus()) { UiMessages.machineStatusUnavailable().messageText() }
+        return result.machineStatus
+    }
+
     /** Sends a command about a machine, such as starting a session. */
     suspend fun machineCommand(machineId: String, cmd: Command): CommandResult =
         forward(prepare(machineId, "", cmd))
@@ -4027,5 +4033,5 @@ class Remote(
 
 /** Keep in step with deviceauth.IsReadOnlyCommand; unrecognized kinds mutate. */
 internal fun io.github.lewin671.remoteagent.proto.Command.isReadOnlyCommand(): Boolean =
-    hasGetSettings() || hasListModels() || hasListDirectories() || hasGetLiveSnapshot() || hasGetImageUploadStatus() ||
+    hasGetMachineStatus() || hasGetSettings() || hasListModels() || hasListDirectories() || hasGetLiveSnapshot() || hasGetImageUploadStatus() ||
         hasSchedule() && schedule.operation in setOf("list", "get")

@@ -933,5 +933,95 @@
     "path": "internal/schedulemcp/server.go",
     "literal": "status",
     "reason": "Stable MCP structured-result field name; not UI text."
+  },
+  {
+    "path": "internal/machinestatus/reader_darwin.go",
+    "literal": "host cpu counters unavailable",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/machinestatus/reader_darwin.go",
+    "literal": "host memory counters unavailable",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/machinestatus/linux_parse.go",
+    "literal": "invalid proc counters",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/machinestatus/linux_parse.go",
+    "literal": "SwapTotal",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/machinestatus/linux_parse.go",
+    "literal": "invalid process stat",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/machinestatus/linux_parse.go",
+    "literal": "short process stat",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/MachineStatus.swift",
+    "literal": "unavailable",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/relay/machine_status.go",
+    "literal": "zh-CN",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/relay/machine_status.go",
+    "literal": "disk:%d:%d",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/machinestatus/collector.go",
+    "literal": "machine sampler unavailable",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "zh-CN",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "emergency reserve",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "err",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "machine write failed",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/daemon/machine_status.go",
+    "literal": "release emergency reserve",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/remoteclient/machine_status.go",
+    "literal": "missing machine status",
+    "reason": "电脑状态内部采样/解析诊断、结构化标识或本机日志字段，不作产品文案展示；状态 RPC 对外失败统一使用 machine_status.unavailable，磁盘错误使用 disk_full。"
+  },
+  {
+    "path": "internal/daemon/images.go",
+    "literal": "deferred image cache write",
+    "reason": "暂停缓存写入的内部 sentinel，供本机日志和控制流使用，不作为用户可见错误。"
+  },
+  {
+    "path": "internal/machinestatus/reader_darwin.go",
+    "literal": "mach timebase unavailable",
+    "reason": "系统 Mach 计时基准读取的内部诊断，状态 RPC 对外统一使用 machine_status.unavailable，不展示此诊断。"
   }
 ]

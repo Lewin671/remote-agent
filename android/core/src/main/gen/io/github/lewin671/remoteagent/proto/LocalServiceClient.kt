@@ -19,6 +19,18 @@ import com.connectrpc.StreamType
 public class LocalServiceClient(
   private val client: ProtocolClientInterface,
 ) : LocalServiceClientInterface {
+  override suspend fun getMachineStatus(request: GetMachineStatusRequest, headers: Headers): ResponseMessage<MachineStatus> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/GetMachineStatus",
+      io.github.lewin671.remoteagent.proto.GetMachineStatusRequest::class,
+      io.github.lewin671.remoteagent.proto.MachineStatus::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   /**
    *  Schedule manages daemon-owned tasks. It is also used by the local MCP.
    */

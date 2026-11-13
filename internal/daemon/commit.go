@@ -183,6 +183,9 @@ func (s *session) saveQueueLocked(evs ...*pb.Event) (saved bool, err error) {
 }
 
 func (s *session) noteStorageLocked(err error) {
+	if s.d != nil {
+		_ = s.d.diskError(err)
+	}
 	if err == nil {
 		if s.storageFault != "" {
 			s.storageFault = ""

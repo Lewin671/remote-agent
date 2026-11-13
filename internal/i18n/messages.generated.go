@@ -197,6 +197,42 @@ func ImageAttachFailed(locale string, count int) string {
 	return render(locale, "image.attach_failed", map[string]any{"count": count})
 }
 
+func MachineStatusCleanupPrompt(locale string) string {
+	return render(locale, "machine_status.cleanup_prompt", map[string]any{})
+}
+
+func MachineStatusDiskFull(locale string) string {
+	return render(locale, "machine_status.disk_full", map[string]any{})
+}
+
+func MachineStatusHomeWarning(locale string) string {
+	return render(locale, "machine_status.home_warning", map[string]any{})
+}
+
+func MachineStatusNotifyCritical(locale string, computer string, size string) string {
+	return render(locale, "machine_status.notify_critical", map[string]any{"computer": computer, "size": size})
+}
+
+func MachineStatusNotifyCriticalBody(locale string) string {
+	return render(locale, "machine_status.notify_critical_body", map[string]any{})
+}
+
+func MachineStatusNotifyWarning(locale string, computer string, size string) string {
+	return render(locale, "machine_status.notify_warning", map[string]any{"computer": computer, "size": size})
+}
+
+func MachineStatusNotifyWarningBody(locale string) string {
+	return render(locale, "machine_status.notify_warning_body", map[string]any{})
+}
+
+func MachineStatusSizeGb(locale string, size string) string {
+	return render(locale, "machine_status.size_gb", map[string]any{"size": size})
+}
+
+func MachineStatusUnavailable(locale string) string {
+	return render(locale, "machine_status.unavailable", map[string]any{})
+}
+
 func QuotaManaged(locale string) string {
 	return render(locale, "quota.managed", map[string]any{})
 }

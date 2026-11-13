@@ -135,3 +135,25 @@ func TestScheduleQueriesDoNotPersistResultsButMutationsDo(t *testing.T) {
 		})
 	}
 }
+
+func TestMachineStatusResultsDoNotFillAcceptedLog(t *testing.T) {
+	c := newCurrentChain(t)
+	m := c.machineEndpoint(t, "")
+	defer m.Close()
+	cl := c.clientEndpoint(t)
+	defer cl.Close()
+	now := uint64(time.Now().UnixMilli())
+	body, _ := proto.Marshal(&pb.Command{Kind: &pb.Command_GetMachineStatus{GetMachineStatus: &pb.GetMachineStatusRequest{}}})
+	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "readonly-request-123", Deadline: now + 60000}, nil, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		if _, err := m.Accept(w, nil, now, func(Header, []byte) ([]byte, error) { return bytes.Repeat([]byte{1}, 4<<20), nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(m.data.Accepted) != 0 {
+		t.Fatal("read-only result entered accepted log")
+	}
+}

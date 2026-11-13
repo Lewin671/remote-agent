@@ -440,6 +440,54 @@ public  final class NotifyContent extends
     sharedFileCount_ = 0;
   }
 
+  public static final int DISK_STATUS_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.proto.DiskStatus diskStatus_;
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDiskStatus() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus() {
+    return diskStatus_ == null ? io.github.lewin671.remoteagent.proto.DiskStatus.getDefaultInstance() : diskStatus_;
+  }
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+    value.getClass();  // minimal bytecode null check
+    diskStatus_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+    value.getClass();  // minimal bytecode null check
+    if (diskStatus_ != null &&
+        diskStatus_ != io.github.lewin671.remoteagent.proto.DiskStatus.getDefaultInstance()) {
+      diskStatus_ =
+        io.github.lewin671.remoteagent.proto.DiskStatus.newBuilder(diskStatus_).mergeFrom(value).buildPartial();
+    } else {
+      diskStatus_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   */
+  private void clearDiskStatus() {
+    diskStatus_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.proto.NotifyContent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -972,6 +1020,53 @@ public  final class NotifyContent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDiskStatus() {
+      return instance.hasDiskStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus() {
+      return instance.getDiskStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+     */
+    public Builder setDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+      copyOnWrite();
+      instance.setDiskStatus(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+     */
+    public Builder setDiskStatus(
+        io.github.lewin671.remoteagent.proto.DiskStatus.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDiskStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+     */
+    public Builder mergeDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+      copyOnWrite();
+      instance.mergeDiskStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+     */
+    public Builder clearDiskStatus() {  copyOnWrite();
+      instance.clearDiskStatus();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotifyContent)
   }
   @java.lang.Override
@@ -997,10 +1092,11 @@ public  final class NotifyContent extends
             "approval_",
             "sourceEventSeq_",
             "sharedFileCount_",
+            "diskStatus_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\f" +
-              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003\b\u000b";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\f" +
+              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0003\b\u000b\t\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

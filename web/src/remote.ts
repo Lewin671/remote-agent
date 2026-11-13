@@ -248,7 +248,7 @@ export class CommandError extends Error {
     readonly fromDaemon = false,
     readonly readOnly = false,
   ) {
-    super(message);
+    super(code === "disk_full" ? l10n.t("machine_status.disk_full") : message);
   }
 }
 
@@ -306,7 +306,7 @@ export const COMMAND_TTL_MS = 60_000;
 export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
 
 function readOnlyCommand(cmd: CommandKind): boolean {
-  return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getImageUploadStatus"].includes(cmd.case ?? "") ||
+  return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getImageUploadStatus"].includes(cmd.case ?? "") ||
     cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""));
 }
 
@@ -3191,6 +3191,12 @@ export class Remote {
       }
     }
     return this.forward(s.machineId, sid, cmd, slot);
+  }
+
+  async getMachineStatus(machineId: string) {
+    const r = await this.machineCommand(machineId, { case: "getMachineStatus", value: {} });
+    if (r.kind.case !== "machineStatus") throw new Error(l10n.t("machine_status.unavailable"));
+    return r.kind.value;
   }
 
   /** Sends a command about a machine, such as starting a session. */

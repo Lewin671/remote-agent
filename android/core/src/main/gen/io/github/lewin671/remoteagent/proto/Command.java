@@ -53,6 +53,7 @@ public  final class Command extends
     SCHEDULE(30),
     GET_LIVE_SNAPSHOT(31),
     GET_SHARED_FILE_CHUNK(32),
+    GET_MACHINE_STATUS(33),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -96,6 +97,7 @@ public  final class Command extends
         case 30: return SCHEDULE;
         case 31: return GET_LIVE_SNAPSHOT;
         case 32: return GET_SHARED_FILE_CHUNK;
+        case 33: return GET_MACHINE_STATUS;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1613,6 +1615,58 @@ public  final class Command extends
    */
   private void clearGetSharedFileChunk() {
     if (kindCase_ == 32) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int GET_MACHINE_STATUS_FIELD_NUMBER = 33;
+  /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasGetMachineStatus() {
+    return kindCase_ == 33;
+  }
+  /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.GetMachineStatusRequest getGetMachineStatus() {
+    if (kindCase_ == 33) {
+       return (io.github.lewin671.remoteagent.proto.GetMachineStatusRequest) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 33;
+  }
+  /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 33 &&
+        kind_ != io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.newBuilder((io.github.lewin671.remoteagent.proto.GetMachineStatusRequest) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 33;
+  }
+  /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   */
+  private void clearGetMachineStatus() {
+    if (kindCase_ == 33) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -3173,6 +3227,54 @@ public  final class Command extends
     }
 
     /**
+     * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasGetMachineStatus() {
+      return instance.hasGetMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.GetMachineStatusRequest getGetMachineStatus() {
+      return instance.getGetMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+     */
+    public Builder setGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest value) {
+      copyOnWrite();
+      instance.setGetMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+     */
+    public Builder setGetMachineStatus(
+        io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setGetMachineStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+     */
+    public Builder mergeGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest value) {
+      copyOnWrite();
+      instance.mergeGetMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+     */
+    public Builder clearGetMachineStatus() {
+      copyOnWrite();
+      instance.clearGetMachineStatus();
+      return this;
+    }
+
+    /**
      * <pre>
      * The protocol version the client speaks (internal/protocol). A daemon
      * of another version refuses the command and says which side to update.
@@ -3261,14 +3363,15 @@ public  final class Command extends
             io.github.lewin671.remoteagent.proto.ScheduleRequest.class,
             io.github.lewin671.remoteagent.proto.GetLiveSnapshotRequest.class,
             io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest.class,
+            io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.class,
             "protocolVersion_",
           };
           java.lang.String info =
-              "\u0000\u001d\u0001\u0000\u0001d\u001d\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u001e\u0001\u0000\u0001d\u001e\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000" +
               "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0014<\u0000\u0015" +
               "<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000" +
-              "\u001c<\u0000\u001d<\u0000\u001e<\u0000\u001f<\u0000 <\u0000d\u000b";
+              "\u001c<\u0000\u001d<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000d\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

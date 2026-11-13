@@ -96,7 +96,7 @@ func TestWebPushScheduledAndTurnEndedCarryCiphertext(t *testing.T) {
 		if err := json.Unmarshal(payload, &data); err != nil {
 			t.Fatal(err)
 		}
-		if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED {
+		if kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED || kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK {
 			raw, err := base64.StdEncoding.DecodeString(data["content"])
 			if err != nil || !bytes.Equal(raw, content) {
 				t.Fatal("push lost opaque envelope")

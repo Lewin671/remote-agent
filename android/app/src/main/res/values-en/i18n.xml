@@ -659,6 +659,15 @@
     <string name="list_state_running" formatted="false">"Running"</string>
     <string name="list_state_starting" formatted="false">"Starting"</string>
     <string name="list_state_unlinked" formatted="false">"Disconnected"</string>
+    <string name="machine_status_cleanup_prompt" formatted="false">"This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation."</string>
+    <string name="machine_status_disk_full" formatted="false">"This computer’s disk is full"</string>
+    <string name="machine_status_home_warning" formatted="false">"Disk space is low"</string>
+    <string name="machine_status_notify_critical">"%1$s disk is almost full, only %2$s left"</string>
+    <string name="machine_status_notify_critical_body" formatted="false">"Clean up now or sessions may not start."</string>
+    <string name="machine_status_notify_warning">"%1$s has only %2$s of disk space left"</string>
+    <string name="machine_status_notify_warning_body" formatted="false">"Sessions will not start when disk space runs out."</string>
+    <string name="machine_status_size_gb">"%1$s GB"</string>
+    <string name="machine_status_unavailable" formatted="false">"Could not read this computer’s status"</string>
     <string name="markdown_collapse" formatted="false">"Collapse"</string>
     <string name="markdown_copy_code" formatted="false">"Copy code"</string>
     <string name="markdown_copy_failed" formatted="false">"Copy failed"</string>

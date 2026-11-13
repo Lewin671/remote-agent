@@ -249,6 +249,10 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		queueLost:    err != nil,
 		images:       openImageStore(dir),
 	}
+	if d.diskGuard != nil {
+		s.images.paused = d.diskGuard.Paused
+		s.images.writeFailed = func(err error) { _ = d.diskError(err) }
+	}
 	s.claimQueuedHumanOwnershipLocked()
 	if h, err := loadParseHealth(dir); err != nil {
 		// Diagnostics are not recovery state. A damaged or unreadable file

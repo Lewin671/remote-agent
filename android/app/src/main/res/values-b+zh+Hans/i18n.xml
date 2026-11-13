@@ -621,6 +621,15 @@
     <string name="list_state_running" formatted="false">"运行中"</string>
     <string name="list_state_starting" formatted="false">"启动中"</string>
     <string name="list_state_unlinked" formatted="false">"未连接"</string>
+    <string name="machine_status_cleanup_prompt" formatted="false">"这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。"</string>
+    <string name="machine_status_disk_full" formatted="false">"这台电脑磁盘满了"</string>
+    <string name="machine_status_home_warning" formatted="false">"磁盘空间不多了"</string>
+    <string name="machine_status_notify_critical">"%1$s 磁盘快满了，只剩 %2$s"</string>
+    <string name="machine_status_notify_critical_body" formatted="false">"现在清理，否则会话可能启动不了。"</string>
+    <string name="machine_status_notify_warning">"%1$s 磁盘只剩 %2$s"</string>
+    <string name="machine_status_notify_warning_body" formatted="false">"空间用完后会话会启动不了。"</string>
+    <string name="machine_status_size_gb">"%1$s GB"</string>
+    <string name="machine_status_unavailable" formatted="false">"读不到这台电脑的状态"</string>
     <string name="markdown_collapse" formatted="false">"收起"</string>
     <string name="markdown_copy_code" formatted="false">"复制代码"</string>
     <string name="markdown_copy_failed" formatted="false">"复制失败"</string>

@@ -249,6 +249,10 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 				out.Kind = &pb.CommandResult_AbortImageUpload{AbortImageUpload: m}
 			})
 		})
+	case *pb.Command_GetMachineStatus:
+		err = machine(func() error {
+			return call(ctx, l.GetMachineStatus, k.GetMachineStatus, func(m *pb.MachineStatus) { out.Kind = &pb.CommandResult_MachineStatus{MachineStatus: m} })
+		})
 	case *pb.Command_GetLiveSnapshot:
 		err = on(k.GetLiveSnapshot.SessionId, func() error {
 			owner, ok := r.backend.(interface {
@@ -311,6 +315,9 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 			// A rejected schedule CAS is a trustworthy, final conflict, not an
 			// interrupted execution. Keep that distinction on the wire.
 			out.ErrorCode = "revision_conflict"
+		}
+		if code := protocol.MachineErrorCode(err); code != "" && connect.CodeOf(err) != connect.CodeAborted {
+			out.ErrorCode = code
 		}
 		var ce *connect.Error
 		if errors.As(err, &ce) {

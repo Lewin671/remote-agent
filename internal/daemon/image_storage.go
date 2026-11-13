@@ -348,6 +348,7 @@ func (d *Daemon) imageStorage(clean bool) (*pb.ImageStorageUsage, error) {
 	if clean {
 		limit = 0
 	}
+	usage.EmergencyReserveBytes = int64(d.reserveSize())
 	usage.CacheBytes, err = d.trimImageCache(limit)
 	return usage, err
 }

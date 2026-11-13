@@ -150,8 +150,9 @@ const (
 	NotifyKind_NOTIFY_KIND_TURN_ENDED NotifyKind = 2
 	// A recovery is pending on the account's authority client. Generic text
 	// only; the app opens the device page.
-	NotifyKind_NOTIFY_KIND_SECURITY  NotifyKind = 3
-	NotifyKind_NOTIFY_KIND_SCHEDULED NotifyKind = 4
+	NotifyKind_NOTIFY_KIND_SECURITY     NotifyKind = 3
+	NotifyKind_NOTIFY_KIND_SCHEDULED    NotifyKind = 4
+	NotifyKind_NOTIFY_KIND_MACHINE_DISK NotifyKind = 5
 )
 
 // Enum value maps for NotifyKind.
@@ -162,13 +163,15 @@ var (
 		2: "NOTIFY_KIND_TURN_ENDED",
 		3: "NOTIFY_KIND_SECURITY",
 		4: "NOTIFY_KIND_SCHEDULED",
+		5: "NOTIFY_KIND_MACHINE_DISK",
 	}
 	NotifyKind_value = map[string]int32{
-		"NOTIFY_KIND_UNSPECIFIED": 0,
-		"NOTIFY_KIND_ATTENTION":   1,
-		"NOTIFY_KIND_TURN_ENDED":  2,
-		"NOTIFY_KIND_SECURITY":    3,
-		"NOTIFY_KIND_SCHEDULED":   4,
+		"NOTIFY_KIND_UNSPECIFIED":  0,
+		"NOTIFY_KIND_ATTENTION":    1,
+		"NOTIFY_KIND_TURN_ENDED":   2,
+		"NOTIFY_KIND_SECURITY":     3,
+		"NOTIFY_KIND_SCHEDULED":    4,
+		"NOTIFY_KIND_MACHINE_DISK": 5,
 	}
 )
 
@@ -6532,14 +6535,15 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x16PAIRING_STATE_REVEALED\x10\x03\x12\x1a\n" +
 	"\x16PAIRING_STATE_APPROVED\x10\x04\x12\x1a\n" +
 	"\x16PAIRING_STATE_CANCELED\x10\x05\x12\x1b\n" +
-	"\x17PAIRING_STATE_DELIVERED\x10\x06*\x95\x01\n" +
+	"\x17PAIRING_STATE_DELIVERED\x10\x06*\xb3\x01\n" +
 	"\n" +
 	"NotifyKind\x12\x1b\n" +
 	"\x17NOTIFY_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15NOTIFY_KIND_ATTENTION\x10\x01\x12\x1a\n" +
 	"\x16NOTIFY_KIND_TURN_ENDED\x10\x02\x12\x18\n" +
 	"\x14NOTIFY_KIND_SECURITY\x10\x03\x12\x19\n" +
-	"\x15NOTIFY_KIND_SCHEDULED\x10\x04*P\n" +
+	"\x15NOTIFY_KIND_SCHEDULED\x10\x04\x12\x1c\n" +
+	"\x18NOTIFY_KIND_MACHINE_DISK\x10\x05*P\n" +
 	"\bPushType\x12\x19\n" +
 	"\x15PUSH_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12PUSH_TYPE_WEB_PUSH\x10\x01\x12\x11\n" +

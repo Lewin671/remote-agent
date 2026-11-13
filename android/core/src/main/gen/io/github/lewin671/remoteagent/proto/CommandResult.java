@@ -54,6 +54,7 @@ public  final class CommandResult extends
     SCHEDULE(40),
     LIVE_SNAPSHOT(41),
     GET_SHARED_FILE_CHUNK(42),
+    MACHINE_STATUS(43),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -97,6 +98,7 @@ public  final class CommandResult extends
         case 40: return SCHEDULE;
         case 41: return LIVE_SNAPSHOT;
         case 42: return GET_SHARED_FILE_CHUNK;
+        case 43: return MACHINE_STATUS;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1695,6 +1697,58 @@ public  final class CommandResult extends
     }
   }
 
+  public static final int MACHINE_STATUS_FIELD_NUMBER = 43;
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatus() {
+    return kindCase_ == 43;
+  }
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.MachineStatus getMachineStatus() {
+    if (kindCase_ == 43) {
+       return (io.github.lewin671.remoteagent.proto.MachineStatus) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.MachineStatus.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatus(io.github.lewin671.remoteagent.proto.MachineStatus value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 43;
+  }
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatus(io.github.lewin671.remoteagent.proto.MachineStatus value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 43 &&
+        kind_ != io.github.lewin671.remoteagent.proto.MachineStatus.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.MachineStatus.newBuilder((io.github.lewin671.remoteagent.proto.MachineStatus) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 43;
+  }
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   */
+  private void clearMachineStatus() {
+    if (kindCase_ == 43) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.proto.CommandResult parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3276,6 +3330,54 @@ public  final class CommandResult extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatus() {
+      return instance.hasMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.MachineStatus getMachineStatus() {
+      return instance.getMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+     */
+    public Builder setMachineStatus(io.github.lewin671.remoteagent.proto.MachineStatus value) {
+      copyOnWrite();
+      instance.setMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+     */
+    public Builder setMachineStatus(
+        io.github.lewin671.remoteagent.proto.MachineStatus.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+     */
+    public Builder mergeMachineStatus(io.github.lewin671.remoteagent.proto.MachineStatus value) {
+      copyOnWrite();
+      instance.mergeMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+     */
+    public Builder clearMachineStatus() {
+      copyOnWrite();
+      instance.clearMachineStatus();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CommandResult)
   }
   @java.lang.Override
@@ -3324,13 +3426,14 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.ScheduleResponse.class,
             io.github.lewin671.remoteagent.proto.LiveSnapshot.class,
             io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.class,
+            io.github.lewin671.remoteagent.proto.MachineStatus.class,
           };
           java.lang.String info =
-              "\u0000\u001e\u0001\u0000\u0001*\u001e\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
+              "\u0000\u001f\u0001\u0000\u0001+\u001f\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
               "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
               "\u0018<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000" +
-              "%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000*<\u0000";
+              "%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000*<\u0000+<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

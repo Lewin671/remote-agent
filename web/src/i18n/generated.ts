@@ -414,6 +414,15 @@ export interface MessageArgs {
   "list_state.running": { [name: string]: never };
   "list_state.starting": { [name: string]: never };
   "list_state.unlinked": { [name: string]: never };
+  "machine_status.cleanup_prompt": { [name: string]: never };
+  "machine_status.disk_full": { [name: string]: never };
+  "machine_status.home_warning": { [name: string]: never };
+  "machine_status.notify_critical": { computer: string; size: string };
+  "machine_status.notify_critical_body": { [name: string]: never };
+  "machine_status.notify_warning": { computer: string; size: string };
+  "machine_status.notify_warning_body": { [name: string]: never };
+  "machine_status.size_gb": { size: string };
+  "machine_status.unavailable": { [name: string]: never };
   "markdown.collapse": { [name: string]: never };
   "markdown.copy_code": { [name: string]: never };
   "markdown.copy_failed": { [name: string]: never };
@@ -1951,6 +1960,15 @@ export const messages = {
     "list_state.running": "Running",
     "list_state.starting": "Starting",
     "list_state.unlinked": "Disconnected",
+    "machine_status.cleanup_prompt": "This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation.",
+    "machine_status.disk_full": "This computer’s disk is full",
+    "machine_status.home_warning": "Disk space is low",
+    "machine_status.notify_critical": "{computer} disk is almost full, only {size} left",
+    "machine_status.notify_critical_body": "Clean up now or sessions may not start.",
+    "machine_status.notify_warning": "{computer} has only {size} of disk space left",
+    "machine_status.notify_warning_body": "Sessions will not start when disk space runs out.",
+    "machine_status.size_gb": "{size} GB",
+    "machine_status.unavailable": "Could not read this computer’s status",
     "markdown.collapse": "Collapse",
     "markdown.copy_code": "Copy code",
     "markdown.copy_failed": "Copy failed",
@@ -3736,6 +3754,15 @@ export const messages = {
     "list_state.running": "运行中",
     "list_state.starting": "启动中",
     "list_state.unlinked": "未连接",
+    "machine_status.cleanup_prompt": "这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。",
+    "machine_status.disk_full": "这台电脑磁盘满了",
+    "machine_status.home_warning": "磁盘空间不多了",
+    "machine_status.notify_critical": "{computer} 磁盘快满了，只剩 {size}",
+    "machine_status.notify_critical_body": "现在清理，否则会话可能启动不了。",
+    "machine_status.notify_warning": "{computer} 磁盘只剩 {size}",
+    "machine_status.notify_warning_body": "空间用完后会话会启动不了。",
+    "machine_status.size_gb": "{size} GB",
+    "machine_status.unavailable": "读不到这台电脑的状态",
     "markdown.collapse": "收起",
     "markdown.copy_code": "复制代码",
     "markdown.copy_failed": "复制失败",

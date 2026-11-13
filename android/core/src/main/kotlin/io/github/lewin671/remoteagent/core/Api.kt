@@ -236,7 +236,7 @@ enum class CommandFailureKind { RAW, CONNECTION_DROPPED, REPLY_UNVERIFIED, UNKNO
 
 class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW, override val imageKind: ImageFailureKind? = null, val readOnly: Boolean = false) :
     Exception(message), MessageFailure {
-    override var display: MessageText = message.messageText()
+    override var display: MessageText = if (code == "disk_full") UiMessages.machineStatusDiskFull().messageText() else message.messageText()
         private set
     constructor(code: String, message: MessageText, fromDaemon: Boolean = false, failureKind: CommandFailureKind = CommandFailureKind.RAW, imageKind: ImageFailureKind? = null) : this(code, "command_failure", fromDaemon, failureKind, imageKind) { display = message }
     // fromDaemon: the daemon's own answer for this request, the final word

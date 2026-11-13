@@ -220,4 +220,23 @@ public interface MachineMetaOrBuilder extends
    * @return The scheduleRevision.
    */
   long getScheduleRevision();
+
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   * @return Whether the diskStatus field is set.
+   */
+  boolean hasDiskStatus();
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   * @return The diskStatus.
+   */
+  io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus();
 }

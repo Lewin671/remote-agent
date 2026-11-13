@@ -72,6 +72,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 	defer t.Stop()
 	endedRunning := 0
 	for {
+		_ = c.syncDiskAlerts(ctx)
 		if meta := c.r.backend.MachineMeta(); !proto.Equal(meta, sentMeta) {
 			if err := c.putMachine(ctx, meta); err != nil {
 				return fmt.Errorf("put machine: %w", err)

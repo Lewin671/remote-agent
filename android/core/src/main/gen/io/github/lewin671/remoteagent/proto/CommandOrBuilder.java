@@ -337,6 +337,17 @@ public interface CommandOrBuilder extends
   io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest getGetSharedFileChunk();
 
   /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   * @return Whether the getMachineStatus field is set.
+   */
+  boolean hasGetMachineStatus();
+  /**
+   * <code>.remoteagent.v1.GetMachineStatusRequest get_machine_status = 33 [json_name = "getMachineStatus"];</code>
+   * @return The getMachineStatus.
+   */
+  io.github.lewin671.remoteagent.proto.GetMachineStatusRequest getGetMachineStatus();
+
+  /**
    * <pre>
    * The protocol version the client speaks (internal/protocol). A daemon
    * of another version refuses the command and says which side to update.

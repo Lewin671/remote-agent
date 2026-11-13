@@ -600,6 +600,32 @@ public  final class MachineCapabilities extends
     sharedFileChunkBytes_ = 0;
   }
 
+  public static final int MACHINE_STATUS_FIELD_NUMBER = 19;
+  private boolean machineStatus_;
+  /**
+   * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+   * @return The machineStatus.
+   */
+  @java.lang.Override
+  public boolean getMachineStatus() {
+    return machineStatus_;
+  }
+  /**
+   * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+   * @param value The machineStatus to set.
+   */
+  private void setMachineStatus(boolean value) {
+    
+    machineStatus_ = value;
+  }
+  /**
+   * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+   */
+  private void clearMachineStatus() {
+
+    machineStatus_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1290,6 +1316,34 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+     * @return The machineStatus.
+     */
+    @java.lang.Override
+    public boolean getMachineStatus() {
+      return instance.getMachineStatus();
+    }
+    /**
+     * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+     * @param value The machineStatus to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMachineStatus(boolean value) {
+      copyOnWrite();
+      instance.setMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMachineStatus() {
+      copyOnWrite();
+      instance.clearMachineStatus();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -1319,11 +1373,12 @@ public  final class MachineCapabilities extends
             "sharedFiles_",
             "maxSharedFileBytes_",
             "sharedFileChunkBytes_",
+            "machineStatus_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0000\u0002\u0012\r\u0000\u0001\u0000\u0002\u0007\u0003\u0004\u0004" +
-              "\u0002\u0005\u0004\u0006,\n\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0004\u0010\u0007" +
-              "\u0011\u0002\u0012\u0004";
+              "\u0000\u000e\u0000\u0000\u0002\u0013\u000e\u0000\u0001\u0000\u0002\u0007\u0003\u0004" +
+              "\u0004\u0002\u0005\u0004\u0006,\n\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0004\u0010" +
+              "\u0007\u0011\u0002\u0012\u0004\u0013\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

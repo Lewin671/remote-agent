@@ -160,4 +160,10 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The sharedFileChunkBytes.
    */
   int getSharedFileChunkBytes();
+
+  /**
+   * <code>bool machine_status = 19 [json_name = "machineStatus"];</code>
+   * @return The machineStatus.
+   */
+  boolean getMachineStatus();
 }

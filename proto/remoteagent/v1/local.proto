@@ -9,6 +9,7 @@ import "remoteagent/v1/event.proto";
 // the Codex hooks use it; in P1 the same session operations are reached
 // from clients through the server.
 service LocalService {
+  rpc GetMachineStatus(GetMachineStatusRequest) returns (MachineStatus);
   // Schedule manages daemon-owned tasks. It is also used by the local MCP.
   rpc Schedule(ScheduleRequest) returns (ScheduleResponse);
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
@@ -592,6 +593,8 @@ message AbortImageUploadResponse {}
 // always protected until session cleanup, never reclaimable. Collected locally
 // and sealed with the settings reply; the server sees no usage.
 message ImageStorageUsage {
+  // Physically reserved emergency space, not reclaimable attachment storage.
+  int64 emergency_reserve_bytes = 7;
   int64 upload_bytes = 1;
   int64 reserved_bytes = 2;
   int64 protected_bytes = 3;
@@ -628,3 +631,55 @@ message ScheduleResponse {
   // notify_user returns {"notified":true} after durable event recording.
   bytes result_json = 1;
 }
+
+// Volatile, read-only machine telemetry. Bytes are decimal units at display time.
+message GetMachineStatusRequest {}
+enum ResourcePressure {
+  RESOURCE_PRESSURE_UNSPECIFIED = 0;
+  RESOURCE_PRESSURE_NORMAL = 1;
+  RESOURCE_PRESSURE_WARNING = 2;
+  RESOURCE_PRESSURE_CRITICAL = 3;
+}
+message DiskStatus {
+  int64 observed_ms = 1;
+  uint64 total_bytes = 2;
+  uint64 available_bytes = 3;
+  ResourcePressure pressure = 4;
+  uint64 emergency_reserve_bytes = 5;
+  bool deferred_writes_paused = 6;
+}
+message MachineSample {
+  int64 time_ms = 1;
+  double cpu_percent = 2; // Total machine: 0..100.
+  uint64 memory_used_bytes = 3;
+}
+message ResourceUsage {
+  string id = 1; // Session ID, or PID plus start identity for a process.
+  string executable = 2; // Basename only, never argv, environment or cwd.
+  string session_id = 3;
+  double cpu_percent = 4; // One fully busy core = 100; can exceed 100.
+  uint64 memory_bytes = 5; // RSS, summed for session trees (shared pages may count twice).
+}
+message MachineBattery { double percent = 1; bool charging = 2; }
+message MachineStatus {
+  int64 observed_ms = 1;
+  double cpu_percent = 2;
+  uint32 cores = 3;
+  optional double load_one = 4;
+  uint64 memory_used_bytes = 5;
+  uint64 memory_total_bytes = 6;
+  ResourcePressure memory_pressure = 7; // UNSPECIFIED: hide pressure UI.
+  optional double memory_pressure_position = 8; // 0..1, same scale as level.
+  optional uint64 swap_used_bytes = 9;
+  DiskStatus disk = 10;
+  optional uint64 agent_bytes = 11; // Allocated bytes under state root, including reserve.
+  repeated ResourceUsage sessions = 12;
+  // Union of top 8 by CPU and top 8 by RSS, so both client rankings are correct.
+  repeated ResourceUsage processes = 13;
+  uint64 uptime_seconds = 14;
+  MachineBattery battery = 15; // Absent when unavailable.
+  repeated MachineSample samples = 16; // At most 60 real points, 2s apart.
+}
+
+// Structured failure detail, independent of translated human text.
+message MachineError { string code = 1; }

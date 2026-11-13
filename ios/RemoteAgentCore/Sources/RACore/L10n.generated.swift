@@ -2301,6 +2301,42 @@ public enum L10n {
         let key = "list_state_unlinked"
         return format(key, locale: locale, args: [])
     }
+    public static func machineStatusCleanupPrompt(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_cleanup_prompt"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusDiskFull(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_disk_full"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusHomeWarning(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_home_warning"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusNotifyCritical(computer: String, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_notify_critical"
+        return format(key, locale: locale, args: [computer, size])
+    }
+    public static func machineStatusNotifyCriticalBody(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_notify_critical_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusNotifyWarning(computer: String, size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_notify_warning"
+        return format(key, locale: locale, args: [computer, size])
+    }
+    public static func machineStatusNotifyWarningBody(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_notify_warning_body"
+        return format(key, locale: locale, args: [])
+    }
+    public static func machineStatusSizeGb(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_size_gb"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func machineStatusUnavailable(locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_unavailable"
+        return format(key, locale: locale, args: [])
+    }
     public static func markdownCollapse(locale: String = MessageLocale.current) -> String {
         let key = "markdown_collapse"
         return format(key, locale: locale, args: [])
@@ -9787,6 +9823,42 @@ public enum L10nMessage {
     }
     public static func listStateUnlinked() -> LocalizedMessage {
         let key = "list_state_unlinked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusCleanupPrompt() -> LocalizedMessage {
+        let key = "machine_status_cleanup_prompt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusDiskFull() -> LocalizedMessage {
+        let key = "machine_status_disk_full"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusHomeWarning() -> LocalizedMessage {
+        let key = "machine_status_home_warning"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusNotifyCritical(computer: String, size: String) -> LocalizedMessage {
+        let key = "machine_status_notify_critical"
+        return LocalizedMessage(key: key, arguments: [.string(computer), .string(size)])
+    }
+    public static func machineStatusNotifyCriticalBody() -> LocalizedMessage {
+        let key = "machine_status_notify_critical_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusNotifyWarning(computer: String, size: String) -> LocalizedMessage {
+        let key = "machine_status_notify_warning"
+        return LocalizedMessage(key: key, arguments: [.string(computer), .string(size)])
+    }
+    public static func machineStatusNotifyWarningBody() -> LocalizedMessage {
+        let key = "machine_status_notify_warning_body"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func machineStatusSizeGb(size: String) -> LocalizedMessage {
+        let key = "machine_status_size_gb"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func machineStatusUnavailable() -> LocalizedMessage {
+        let key = "machine_status_unavailable"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func markdownCollapse() -> LocalizedMessage {

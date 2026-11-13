@@ -55,7 +55,7 @@ func (d *Daemon) imageStorageSnapshotUsing(ctx context.Context, readDir func(str
 	uploadsDir := d.uploads.dir
 	sessionsDir := d.sessionsDir()
 	return contextio.Read(ctx, func() (*pb.ImageStorageUsage, error) {
-		usage := &pb.ImageStorageUsage{}
+		usage := &pb.ImageStorageUsage{EmergencyReserveBytes: int64(d.reserveSize())}
 		sessions := map[string]*pb.ImageSessionStorage{}
 		known := map[string]bool{}
 		row := func(id string) *pb.ImageSessionStorage {

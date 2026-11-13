@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/i18n"
+	"github.com/Lewin671/remote-agent/internal/machinestatus"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
@@ -53,12 +54,15 @@ func (h *handler) CreateSession(ctx context.Context, req *connect.Request[pb.Cre
 	terminal := len(req.Msg.Env) > 0
 	s, err := h.d.createByContext(ctx, req.Msg, originOf(ctx), !terminal, terminal, "the terminal's PATH")
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
+	}
+	if machinestatus.NoSpace(err) {
+		return nil, h.d.rpcErr(err)
 	}
 	if err != nil && queueAccepted(err) {
 		// The error names the live session and its accepted first request.
 		// Do not misclassify a recording failure as invalid creation input.
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	var ce *connect.Error
 	if errors.As(err, &ce) {
@@ -77,7 +81,7 @@ func (h *handler) ListSessions(ctx context.Context, req *connect.Request[pb.List
 func (h *handler) GetSession(ctx context.Context, req *connect.Request[pb.GetSessionRequest]) (*connect.Response[pb.GetSessionResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.GetSessionResponse{Session: s.info()}), nil
 }
@@ -88,7 +92,7 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 	}
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	origin := originOf(ctx)
 	pos, err := s.enqueueInputContext(ctx, req.Msg.Text, req.Msg.RequestId, nil, nil, origin, req.Msg.Mode, nil, func(id string) (messageUploads, error) {
@@ -102,7 +106,7 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 		return s.d.uploads.takeUploads(req.Msg.ImageIds, req.Msg.FileIds, owner, s.meta.ID, id)
 	})
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SendResponse{QueuePosition: int32(pos)}), nil
 }
@@ -110,10 +114,10 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 func (h *handler) ResumeInput(ctx context.Context, req *connect.Request[pb.ResumeInputRequest]) (*connect.Response[pb.ResumeInputResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.resumeInputBy(req.Msg.RequestId, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResumeInputResponse{}), nil
 }
@@ -121,11 +125,11 @@ func (h *handler) ResumeInput(ctx context.Context, req *connect.Request[pb.Resum
 func (h *handler) Interrupt(ctx context.Context, req *connect.Request[pb.InterruptRequest]) (*connect.Response[pb.InterruptResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	ok, err := s.interruptBy(ctx, originOf(ctx))
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.InterruptResponse{Interrupted: ok}), nil
 }
@@ -133,10 +137,10 @@ func (h *handler) Interrupt(ctx context.Context, req *connect.Request[pb.Interru
 func (h *handler) StopSession(ctx context.Context, req *connect.Request[pb.StopSessionRequest]) (*connect.Response[pb.StopSessionResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.killContext(ctx); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.StopSessionResponse{}), nil
 }
@@ -144,10 +148,10 @@ func (h *handler) StopSession(ctx context.Context, req *connect.Request[pb.StopS
 func (h *handler) ResolveApproval(ctx context.Context, req *connect.Request[pb.ResolveApprovalRequest]) (*connect.Response[pb.ResolveApprovalResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.resolveBy(ctx, req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Always, req.Msg.Message, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResolveApprovalResponse{}), nil
 }
@@ -155,14 +159,14 @@ func (h *handler) ResolveApproval(ctx context.Context, req *connect.Request[pb.R
 func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.AnswerQuestionRequest]) (*connect.Response[pb.AnswerQuestionResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	options := req.Msg.Options
 	if len(options) == 0 {
 		options = []int32{req.Msg.Option}
 	}
 	if err := s.answerBy(ctx, req.Msg.QuestionId, options, req.Msg.QuestionIndex, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil
 }
@@ -198,7 +202,7 @@ func (h *handler) WatchEvents(ctx context.Context, req *connect.Request[pb.Watch
 func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]) (*connect.Response[pb.HookResponse], error) {
 	s, err := h.d.hookSession(ctx, req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	p, err := s.ag.DecodeHook(req.Msg.Payload)
 	if err != nil {
@@ -206,7 +210,7 @@ func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]
 	}
 	out, err := s.hook(ctx, p)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.HookResponse{Output: out}), nil
 }
@@ -214,10 +218,10 @@ func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]
 func (h *handler) CancelInput(ctx context.Context, req *connect.Request[pb.CancelInputRequest]) (*connect.Response[pb.CancelInputResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.cancelInputBy(req.Msg.RequestId, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.CancelInputResponse{}), nil
 }
@@ -225,10 +229,10 @@ func (h *handler) CancelInput(ctx context.Context, req *connect.Request[pb.Cance
 func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModelRequest]) (*connect.Response[pb.SetModelResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.setModelBy(ctx, req.Msg.Model, req.Msg.Effort, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetModelResponse{}), nil
 }
@@ -236,7 +240,7 @@ func (h *handler) SetModel(ctx context.Context, req *connect.Request[pb.SetModel
 func (h *handler) ListModels(ctx context.Context, req *connect.Request[pb.ListModelsRequest]) (*connect.Response[pb.ListModelsResponse], error) {
 	res, err := contextio.Read(ctx, func() (*pb.ListModelsResponse, error) { return h.d.listModels(req.Msg.Agent) })
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if errors.Is(err, agent.ErrUnsupported) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -250,10 +254,10 @@ func (h *handler) ListModels(ctx context.Context, req *connect.Request[pb.ListMo
 func (h *handler) SetApprovalMode(ctx context.Context, req *connect.Request[pb.SetApprovalModeRequest]) (*connect.Response[pb.SetApprovalModeResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.setApprovalModeBy(ctx, req.Msg.Mode, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.SetApprovalModeResponse{}), nil
 }
@@ -261,10 +265,10 @@ func (h *handler) SetApprovalMode(ctx context.Context, req *connect.Request[pb.S
 func (h *handler) RenameSession(ctx context.Context, req *connect.Request[pb.RenameSessionRequest]) (*connect.Response[pb.RenameSessionResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.rename(req.Msg.Title); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.RenameSessionResponse{}), nil
 }
@@ -272,10 +276,10 @@ func (h *handler) RenameSession(ctx context.Context, req *connect.Request[pb.Ren
 func (h *handler) Compact(ctx context.Context, req *connect.Request[pb.CompactRequest]) (*connect.Response[pb.CompactResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.compactContext(ctx); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.CompactResponse{}), nil
 }
@@ -283,10 +287,10 @@ func (h *handler) Compact(ctx context.Context, req *connect.Request[pb.CompactRe
 func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.AnswerPlanRequest]) (*connect.Response[pb.AnswerPlanResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err := s.answerPlanBy(ctx, req.Msg.Choice, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerPlanResponse{}), nil
 }
@@ -294,7 +298,7 @@ func (h *handler) AnswerPlan(ctx context.Context, req *connect.Request[pb.Answer
 func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.ListDirectoriesRequest]) (*connect.Response[pb.ListDirectoriesResponse], error) {
 	res, err := listDirectories(ctx, req.Msg.Path, h.openDir)
 	if connect.CodeOf(err) == connect.CodeResourceExhausted || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -305,11 +309,11 @@ func (h *handler) ListDirectories(ctx context.Context, req *connect.Request[pb.L
 func (h *handler) GetSettings(ctx context.Context, req *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
 	settings, err := h.d.settingsContext(ctx)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	usage, err := h.d.imageStorageSnapshot(ctx)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.GetSettingsResponse{Settings: settings, ImageStorage: usage}), nil
 }
@@ -320,11 +324,14 @@ func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.Up
 	}
 	st, err := h.d.updateSettings(req.Msg.Settings)
 	if err != nil {
+		if e := h.d.diskError(err); e != nil {
+			return nil, e
+		}
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	usage, err := h.d.imageStorage(req.Msg.CleanImages)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.UpdateSettingsResponse{Settings: st, ImageStorage: usage}), nil
 }
@@ -332,10 +339,10 @@ func (h *handler) UpdateSettings(ctx context.Context, req *connect.Request[pb.Up
 func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.ResumeSessionRequest]) (*connect.Response[pb.ResumeSessionResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	if _, err := h.d.resumeContextBy(ctx, s.meta.ID, originOf(ctx)); err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResumeSessionResponse{Session: s.info()}), nil
 }
@@ -343,11 +350,11 @@ func (h *handler) ResumeSession(ctx context.Context, req *connect.Request[pb.Res
 func (h *handler) ForkSession(ctx context.Context, req *connect.Request[pb.ForkSessionRequest]) (*connect.Response[pb.ForkSessionResponse], error) {
 	s, err := h.d.session(req.Msg.SessionId)
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	fork, err := h.d.forkContext(ctx, s.meta.ID, originOf(ctx))
 	if err != nil {
-		return nil, rpcErr(err)
+		return nil, h.d.rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ForkSessionResponse{Session: fork.info()}), nil
 }
@@ -359,7 +366,7 @@ func (h *handler) BeginImageUpload(ctx context.Context, req *connect.Request[pb.
 	}
 	st, err := h.d.uploads.begin(req.Msg, owner)
 	if err != nil {
-		return nil, uploadErr(err)
+		return nil, h.d.uploadErr(err)
 	}
 	return connect.NewResponse(&pb.BeginImageUploadResponse{Status: st}), nil
 }
@@ -371,7 +378,7 @@ func (h *handler) PutImageChunk(ctx context.Context, req *connect.Request[pb.Put
 	}
 	st, err := h.d.uploads.put(req.Msg, owner)
 	if err != nil {
-		return nil, uploadErr(err)
+		return nil, h.d.uploadErr(err)
 	}
 	return connect.NewResponse(&pb.PutImageChunkResponse{Status: st}), nil
 }
@@ -384,9 +391,9 @@ func (h *handler) GetImageUploadStatus(ctx context.Context, req *connect.Request
 	st, err := h.d.uploads.status(ctx, req.Msg.TransferId, owner)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return nil, rpcErr(err)
+			return nil, h.d.rpcErr(err)
 		}
-		return nil, uploadErr(err)
+		return nil, h.d.uploadErr(err)
 	}
 	return connect.NewResponse(&pb.GetImageUploadStatusResponse{Status: st}), nil
 }
@@ -398,7 +405,7 @@ func (h *handler) CompleteImageUpload(ctx context.Context, req *connect.Request[
 	}
 	st, err := h.d.uploads.complete(req.Msg.TransferId, owner)
 	if err != nil {
-		return nil, uploadErr(err)
+		return nil, h.d.uploadErr(err)
 	}
 	return connect.NewResponse(&pb.CompleteImageUploadResponse{Status: st}), nil
 }
@@ -409,7 +416,7 @@ func (h *handler) AbortImageUpload(ctx context.Context, req *connect.Request[pb.
 		return nil, err
 	}
 	if err := h.d.uploads.abort(req.Msg.TransferId, owner); err != nil {
-		return nil, uploadErr(err)
+		return nil, h.d.uploadErr(err)
 	}
 	return connect.NewResponse(&pb.AbortImageUploadResponse{}), nil
 }
@@ -433,6 +440,9 @@ func (h *handler) SendFile(ctx context.Context, req *connect.Request[pb.SendFile
 	}
 	f, err := h.d.sendFile(ctx, req.Msg.SessionId, req.Header().Get(schedule.MCPScopeHeader), req.Msg.Path)
 	if err != nil {
+		if e := h.d.diskError(err); e != nil {
+			return nil, e
+		}
 		return nil, sharedErr(err)
 	}
 	return connect.NewResponse(&pb.SendFileResponse{File: f}), nil

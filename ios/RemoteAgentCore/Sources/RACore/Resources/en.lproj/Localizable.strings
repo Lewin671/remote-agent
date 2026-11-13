@@ -530,6 +530,15 @@
 "list_state_running" = "Running";
 "list_state_starting" = "Starting";
 "list_state_unlinked" = "Disconnected";
+"machine_status_cleanup_prompt" = "This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation.";
+"machine_status_disk_full" = "This computer’s disk is full";
+"machine_status_home_warning" = "Disk space is low";
+"machine_status_notify_critical" = "%1$@ disk is almost full, only %2$@ left";
+"machine_status_notify_critical_body" = "Clean up now or sessions may not start.";
+"machine_status_notify_warning" = "%1$@ has only %2$@ of disk space left";
+"machine_status_notify_warning_body" = "Sessions will not start when disk space runs out.";
+"machine_status_size_gb" = "%1$@ GB";
+"machine_status_unavailable" = "Could not read this computer’s status";
 "markdown_collapse" = "Collapse";
 "markdown_copy_code" = "Copy code";
 "markdown_copy_failed" = "Copy failed";

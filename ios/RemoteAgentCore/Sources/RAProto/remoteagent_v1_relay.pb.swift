@@ -143,6 +143,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   /// only; the app opens the device page.
   case security // = 3
   case scheduled // = 4
+  case machineDisk // = 5
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -156,6 +157,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 2: self = .turnEnded
     case 3: self = .security
     case 4: self = .scheduled
+    case 5: self = .machineDisk
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -167,6 +169,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .turnEnded: return 2
     case .security: return 3
     case .scheduled: return 4
+    case .machineDisk: return 5
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -178,6 +181,7 @@ public enum PBNotifyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .turnEnded,
     .security,
     .scheduled,
+    .machineDisk,
   ]
 
 }
@@ -2292,7 +2296,7 @@ extension PBPairingState: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBNotifyKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTIFY_KIND_UNSPECIFIED\0\u{1}NOTIFY_KIND_ATTENTION\0\u{1}NOTIFY_KIND_TURN_ENDED\0\u{1}NOTIFY_KIND_SECURITY\0\u{1}NOTIFY_KIND_SCHEDULED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0NOTIFY_KIND_UNSPECIFIED\0\u{1}NOTIFY_KIND_ATTENTION\0\u{1}NOTIFY_KIND_TURN_ENDED\0\u{1}NOTIFY_KIND_SECURITY\0\u{1}NOTIFY_KIND_SCHEDULED\0\u{1}NOTIFY_KIND_MACHINE_DISK\0")
 }
 
 extension PBPushType: SwiftProtobuf._ProtoNameProviding {

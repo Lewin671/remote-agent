@@ -44,6 +44,10 @@ public enum NotifyKind
    * <code>NOTIFY_KIND_SCHEDULED = 4;</code>
    */
   NOTIFY_KIND_SCHEDULED(4),
+  /**
+   * <code>NOTIFY_KIND_MACHINE_DISK = 5;</code>
+   */
+  NOTIFY_KIND_MACHINE_DISK(5),
   UNRECOGNIZED(-1),
   ;
 
@@ -80,6 +84,10 @@ public enum NotifyKind
    * <code>NOTIFY_KIND_SCHEDULED = 4;</code>
    */
   public static final int NOTIFY_KIND_SCHEDULED_VALUE = 4;
+  /**
+   * <code>NOTIFY_KIND_MACHINE_DISK = 5;</code>
+   */
+  public static final int NOTIFY_KIND_MACHINE_DISK_VALUE = 5;
 
 
   @java.lang.Override
@@ -108,6 +116,7 @@ public enum NotifyKind
       case 2: return NOTIFY_KIND_TURN_ENDED;
       case 3: return NOTIFY_KIND_SECURITY;
       case 4: return NOTIFY_KIND_SCHEDULED;
+      case 5: return NOTIFY_KIND_MACHINE_DISK;
       default: return null;
     }
   }

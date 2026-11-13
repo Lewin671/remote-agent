@@ -18,6 +18,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/imageproc"
+	"github.com/Lewin671/remote-agent/internal/machinestatus"
 	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/proto"
 )
@@ -74,7 +75,9 @@ type storedRefInfo struct {
 
 // imageStore is a session's images.
 type imageStore struct {
-	dir string // <session>/images
+	paused      func() bool
+	writeFailed func(error)
+	dir         string // <session>/images
 
 	mu    sync.Mutex
 	key   []byte
@@ -115,7 +118,7 @@ func (st *imageStore) ensure() error {
 	if _, err := rand.Read(key); err != nil {
 		return err
 	}
-	if err := writeFileSync(path, key); err != nil {
+	if err := st.write(path, key); err != nil {
 		return err
 	}
 	st.key = key
@@ -132,7 +135,7 @@ func (st *imageStore) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	return writeFileSync(filepath.Join(st.dir, "index.json"), b)
+	return st.write(filepath.Join(st.dir, "index.json"), b)
 }
 
 func (st *imageStore) displayPath(id string) string { return filepath.Join(st.dir, id+".display") }
@@ -169,6 +172,10 @@ func decodeImageData(data, transcript string) ([]byte, error) {
 // making and keeping its display copy for the relay. Whatever fails, the
 // ref says what is left (a preview, or only its name).
 func (st *imageStore) process(f agent.FoundImage, transcript string) {
+	if st.paused != nil && st.paused() {
+		f.Ref.Sync = pb.ImageSync_IMAGE_SYNC_NAME_ONLY
+		return
+	}
 	permit := imageproc.Acquire()
 	defer permit.Release()
 	ref := f.Ref
@@ -207,14 +214,14 @@ func (st *imageStore) process(f agent.FoundImage, transcript string) {
 	im := &storedImage{ID: newID(16), HMAC: sum, Ref: &storedRefInfo{
 		Format: ref.Format, Width: int32(pr.Width), Height: int32(pr.Height), Bytes: int64(len(raw)),
 	}}
-	if p := pr.Preview; pr.PreviewErr == nil && writeFileSync(st.previewPath(im.ID), p.Data) == nil {
+	if p := pr.Preview; pr.PreviewErr == nil && st.write(st.previewPath(im.ID), p.Data) == nil {
 		im.Ref.PreviewFormat, im.Ref.PreviewWidth, im.Ref.PreviewHeight = p.Format, int32(p.Width), int32(p.Height)
 	}
 	im.State = imageFailed
 	d, err := pr.Display, pr.DisplayErr
 	if err == nil {
 		payload, _ := proto.Marshal(&pb.ImagePayload{Format: d.Format, Width: int32(d.Width), Height: int32(d.Height), Data: d.Data})
-		if err = writeFileSync(st.displayPath(im.ID), payload); err == nil {
+		if err = st.write(st.displayPath(im.ID), payload); err == nil {
 			im.State = imagePending
 			im.Ref.DisplayWidth, im.Ref.DisplayHeight, im.Ref.DisplayFormat = int32(d.Width), int32(d.Height), d.Format
 		}
@@ -312,7 +319,7 @@ func (st *imageStore) uploaded(id string, ok bool, expiresMs int64) {
 
 // capabilities says what this daemon offers that depends on the machine.
 func (d *Daemon) capabilities() *pb.MachineCapabilities {
-	c := &pb.MachineCapabilities{ScheduledTasks: true, SharedFiles: true, MaxSharedFileBytes: maxSharedFileBytes, SharedFileChunkBytes: sharedChunkBytes}
+	c := &pb.MachineCapabilities{MachineStatus: true, ScheduledTasks: true, SharedFiles: true, MaxSharedFileBytes: maxSharedFileBytes, SharedFileChunkBytes: sharedChunkBytes}
 	if d.uploads.usable() {
 		c.ImageUpload = true
 		c.FileUpload = true
@@ -332,4 +339,17 @@ func (st *imageStore) hasPreview(im *storedImage) bool {
 	}
 	_, err := os.Stat(st.previewPath(im.ID))
 	return err == nil
+}
+
+var errDeferredImageWrite = errors.New("deferred image cache write")
+
+func (st *imageStore) write(path string, b []byte) error {
+	if st.paused != nil && st.paused() {
+		return errDeferredImageWrite
+	}
+	err := writeFileSync(path, b)
+	if machinestatus.NoSpace(err) && st.writeFailed != nil {
+		st.writeFailed(err)
+	}
+	return err
 }

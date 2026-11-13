@@ -538,6 +538,7 @@ enum NotifyKind {
   // only; the app opens the device page.
   NOTIFY_KIND_SECURITY = 3;
   NOTIFY_KIND_SCHEDULED = 4;
+  NOTIFY_KIND_MACHINE_DISK = 5;
 }
 
 message SetPushSubscriptionRequest {

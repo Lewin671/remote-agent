@@ -236,6 +236,16 @@ public struct PBMachineMeta: @unchecked Sendable {
     set {_uniqueStorage()._scheduleRevision = newValue}
   }
 
+  /// Last minute disk check; clients use only while online.
+  public var diskStatus: PBDiskStatus {
+    get {return _storage._diskStatus ?? PBDiskStatus()}
+    set {_uniqueStorage()._diskStatus = newValue}
+  }
+  /// Returns true if `diskStatus` has been explicitly set.
+  public var hasDiskStatus: Bool {return _storage._diskStatus != nil}
+  /// Clears the value of `diskStatus`. Subsequent reads from it will return its default value.
+  public mutating func clearDiskStatus() {_uniqueStorage()._diskStatus = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -376,6 +386,8 @@ public struct PBMachineCapabilities: Sendable {
 
   /// Every GetSharedFileChunkResponse.data is exactly this long.
   public var sharedFileChunkBytes: Int32 = 0
+
+  public var machineStatus: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -652,6 +664,14 @@ public struct PBCommand: Sendable {
     set {kind = .getSharedFileChunk(newValue)}
   }
 
+  public var getMachineStatus: PBGetMachineStatusRequest {
+    get {
+      if case .getMachineStatus(let v)? = kind {return v}
+      return PBGetMachineStatusRequest()
+    }
+    set {kind = .getMachineStatus(newValue)}
+  }
+
   /// The protocol version the client speaks (internal/protocol). A daemon
   /// of another version refuses the command and says which side to update.
   public var protocolVersion: UInt32 = 0
@@ -690,6 +710,7 @@ public struct PBCommand: Sendable {
     case getLiveSnapshot(PBGetLiveSnapshotRequest)
     /// A session command: its header names the session.
     case getSharedFileChunk(PBGetSharedFileChunkRequest)
+    case getMachineStatus(PBGetMachineStatusRequest)
 
   }
 
@@ -935,6 +956,14 @@ public struct PBCommandResult: Sendable {
     set {kind = .getSharedFileChunk(newValue)}
   }
 
+  public var machineStatus: PBMachineStatus {
+    get {
+      if case .machineStatus(let v)? = kind {return v}
+      return PBMachineStatus()
+    }
+    set {kind = .machineStatus(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -966,6 +995,7 @@ public struct PBCommandResult: Sendable {
     case schedule(PBScheduleResponse)
     case liveSnapshot(PBLiveSnapshot)
     case getSharedFileChunk(PBGetSharedFileChunkResponse)
+    case machineStatus(PBMachineStatus)
 
   }
 
@@ -1185,45 +1215,75 @@ public struct PBPairingPayload: Sendable {
 
 /// NotifyContent is what a daemon tells clients in a push, sealed
 /// with the notify key so that the server and FCM only see ciphertext.
-public struct PBNotifyContent: Sendable {
+public struct PBNotifyContent: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var machineID: String = String()
+  public var machineID: String {
+    get {return _storage._machineID}
+    set {_uniqueStorage()._machineID = newValue}
+  }
 
-  public var sessionID: String = String()
+  public var sessionID: String {
+    get {return _storage._sessionID}
+    set {_uniqueStorage()._sessionID = newValue}
+  }
 
-  public var kind: PBNotifyKind = .unspecified
+  public var kind: PBNotifyKind {
+    get {return _storage._kind}
+    set {_uniqueStorage()._kind = newValue}
+  }
 
   /// The session's title.
-  public var title: String = String()
+  public var title: String {
+    get {return _storage._title}
+    set {_uniqueStorage()._title = newValue}
+  }
 
   /// One line about what happened, e.g. the question asked.
-  public var text: String = String()
+  public var text: String {
+    get {return _storage._text}
+    set {_uniqueStorage()._text = newValue}
+  }
 
   /// Set for a permission request, so that it can be decided from the
   /// notification.
   public var approval: PBNotifyApproval {
-    get {return _approval ?? PBNotifyApproval()}
-    set {_approval = newValue}
+    get {return _storage._approval ?? PBNotifyApproval()}
+    set {_uniqueStorage()._approval = newValue}
   }
   /// Returns true if `approval` has been explicitly set.
-  public var hasApproval: Bool {return self._approval != nil}
+  public var hasApproval: Bool {return _storage._approval != nil}
   /// Clears the value of `approval`. Subsequent reads from it will return its default value.
-  public mutating func clearApproval() {self._approval = nil}
+  public mutating func clearApproval() {_uniqueStorage()._approval = nil}
 
-  public var sourceEventSeq: UInt64 = 0
+  public var sourceEventSeq: UInt64 {
+    get {return _storage._sourceEventSeq}
+    set {_uniqueStorage()._sourceEventSeq = newValue}
+  }
 
   /// Successful send_file offers in this turn, deduplicated by file_id.
   /// Only set for TURN_ENDED; no names or paths are included.
-  public var sharedFileCount: UInt32 = 0
+  public var sharedFileCount: UInt32 {
+    get {return _storage._sharedFileCount}
+    set {_uniqueStorage()._sharedFileCount = newValue}
+  }
+
+  public var diskStatus: PBDiskStatus {
+    get {return _storage._diskStatus ?? PBDiskStatus()}
+    set {_uniqueStorage()._diskStatus = newValue}
+  }
+  /// Returns true if `diskStatus` has been explicitly set.
+  public var hasDiskStatus: Bool {return _storage._diskStatus != nil}
+  /// Clears the value of `diskStatus`. Subsequent reads from it will return its default value.
+  public mutating func clearDiskStatus() {_uniqueStorage()._diskStatus = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _approval: PBNotifyApproval? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBNotifyApproval: Sendable {
@@ -1466,7 +1526,7 @@ extension PBDefaultModeSource: SwiftProtobuf._ProtoNameProviding {
 
 extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineMeta"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hostname\0\u{1}os\0\u{2}\u{4}home\0\u{3}codex_version\0\u{3}codex_verified\0\u{1}agents\0\u{1}capabilities\0\u{1}quotas\0\u{3}protocol_version\0\u{1}projects\0\u{3}schedule_revision\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hostname\0\u{1}os\0\u{2}\u{4}home\0\u{3}codex_version\0\u{3}codex_verified\0\u{1}agents\0\u{1}capabilities\0\u{1}quotas\0\u{3}protocol_version\0\u{1}projects\0\u{3}schedule_revision\0\u{3}disk_status\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
 
   fileprivate class _StorageClass {
     var _hostname: String = String()
@@ -1480,6 +1540,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     var _protocolVersion: UInt32 = 0
     var _projects: [PBProjectSummary] = []
     var _scheduleRevision: UInt64 = 0
+    var _diskStatus: PBDiskStatus? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1501,6 +1562,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       _protocolVersion = source._protocolVersion
       _projects = source._projects
       _scheduleRevision = source._scheduleRevision
+      _diskStatus = source._diskStatus
     }
   }
 
@@ -1530,6 +1592,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         case 12: try { try decoder.decodeSingularUInt32Field(value: &_storage._protocolVersion) }()
         case 13: try { try decoder.decodeRepeatedMessageField(value: &_storage._projects) }()
         case 14: try { try decoder.decodeSingularUInt64Field(value: &_storage._scheduleRevision) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._diskStatus) }()
         default: break
         }
       }
@@ -1575,6 +1638,9 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       if _storage._scheduleRevision != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._scheduleRevision, fieldNumber: 14)
       }
+      try { if let v = _storage._diskStatus {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1595,6 +1661,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         if _storage._protocolVersion != rhs_storage._protocolVersion {return false}
         if _storage._projects != rhs_storage._projects {return false}
         if _storage._scheduleRevision != rhs_storage._scheduleRevision {return false}
+        if _storage._diskStatus != rhs_storage._diskStatus {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1770,7 +1837,7 @@ extension PBQuotaWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCapabilities"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{3}shared_files\0\u{3}max_shared_file_bytes\0\u{3}shared_file_chunk_bytes\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{3}shared_files\0\u{3}max_shared_file_bytes\0\u{3}shared_file_chunk_bytes\0\u{3}machine_status\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1791,6 +1858,7 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 16: try { try decoder.decodeSingularBoolField(value: &self.sharedFiles) }()
       case 17: try { try decoder.decodeSingularInt64Field(value: &self.maxSharedFileBytes) }()
       case 18: try { try decoder.decodeSingularInt32Field(value: &self.sharedFileChunkBytes) }()
+      case 19: try { try decoder.decodeSingularBoolField(value: &self.machineStatus) }()
       default: break
       }
     }
@@ -1836,6 +1904,9 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.sharedFileChunkBytes != 0 {
       try visitor.visitSingularInt32Field(value: self.sharedFileChunkBytes, fieldNumber: 18)
     }
+    if self.machineStatus != false {
+      try visitor.visitSingularBoolField(value: self.machineStatus, fieldNumber: 19)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1853,6 +1924,7 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.sharedFiles != rhs.sharedFiles {return false}
     if lhs.maxSharedFileBytes != rhs.maxSharedFileBytes {return false}
     if lhs.sharedFileChunkBytes != rhs.sharedFileChunkBytes {return false}
+    if lhs.machineStatus != rhs.machineStatus {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1915,7 +1987,7 @@ extension PBAgentInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
 
 extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Command"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{3}get_shared_file_chunk\0\u{4}D\u{1}protocol_version\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}get_machine_status\0\u{4}C\u{1}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2287,6 +2359,19 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
           self.kind = .getSharedFileChunk(v)
         }
       }()
+      case 33: try {
+        var v: PBGetMachineStatusRequest?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .getMachineStatus(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .getMachineStatus(v)
+        }
+      }()
       case 100: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
@@ -2411,6 +2496,10 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       guard case .getSharedFileChunk(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
     }()
+    case .getMachineStatus?: try {
+      guard case .getMachineStatus(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 33)
+    }()
     case nil: break
     }
     if self.protocolVersion != 0 {
@@ -2429,7 +2518,7 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
 
 extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CommandResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0\u{3}machine_status\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2803,6 +2892,19 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.kind = .getSharedFileChunk(v)
         }
       }()
+      case 43: try {
+        var v: PBMachineStatus?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .machineStatus(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .machineStatus(v)
+        }
+      }()
       default: break
       }
     }
@@ -2931,6 +3033,10 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .getSharedFileChunk?: try {
       guard case .getSharedFileChunk(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 42)
+    }()
+    case .machineStatus?: try {
+      guard case .machineStatus(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 43)
     }()
     case nil: break
     }
@@ -3354,68 +3460,125 @@ extension PBPairingPayload: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
 
 extension PBNotifyContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NotifyContent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0\u{3}shared_file_count\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}kind\0\u{1}title\0\u{1}text\0\u{1}approval\0\u{3}source_event_seq\0\u{3}shared_file_count\0\u{3}disk_status\0")
+
+  fileprivate class _StorageClass {
+    var _machineID: String = String()
+    var _sessionID: String = String()
+    var _kind: PBNotifyKind = .unspecified
+    var _title: String = String()
+    var _text: String = String()
+    var _approval: PBNotifyApproval? = nil
+    var _sourceEventSeq: UInt64 = 0
+    var _sharedFileCount: UInt32 = 0
+    var _diskStatus: PBDiskStatus? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _machineID = source._machineID
+      _sessionID = source._sessionID
+      _kind = source._kind
+      _title = source._title
+      _text = source._text
+      _approval = source._approval
+      _sourceEventSeq = source._sourceEventSeq
+      _sharedFileCount = source._sharedFileCount
+      _diskStatus = source._diskStatus
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 3: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.title) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.text) }()
-      case 6: try { try decoder.decodeSingularMessageField(value: &self._approval) }()
-      case 7: try { try decoder.decodeSingularUInt64Field(value: &self.sourceEventSeq) }()
-      case 8: try { try decoder.decodeSingularUInt32Field(value: &self.sharedFileCount) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._machineID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 3: try { try decoder.decodeSingularEnumField(value: &_storage._kind) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._title) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._text) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._approval) }()
+        case 7: try { try decoder.decodeSingularUInt64Field(value: &_storage._sourceEventSeq) }()
+        case 8: try { try decoder.decodeSingularUInt32Field(value: &_storage._sharedFileCount) }()
+        case 9: try { try decoder.decodeSingularMessageField(value: &_storage._diskStatus) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
-    }
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 2)
-    }
-    if self.kind != .unspecified {
-      try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 3)
-    }
-    if !self.title.isEmpty {
-      try visitor.visitSingularStringField(value: self.title, fieldNumber: 4)
-    }
-    if !self.text.isEmpty {
-      try visitor.visitSingularStringField(value: self.text, fieldNumber: 5)
-    }
-    try { if let v = self._approval {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
-    } }()
-    if self.sourceEventSeq != 0 {
-      try visitor.visitSingularUInt64Field(value: self.sourceEventSeq, fieldNumber: 7)
-    }
-    if self.sharedFileCount != 0 {
-      try visitor.visitSingularUInt32Field(value: self.sharedFileCount, fieldNumber: 8)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._machineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machineID, fieldNumber: 1)
+      }
+      if !_storage._sessionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 2)
+      }
+      if _storage._kind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._kind, fieldNumber: 3)
+      }
+      if !_storage._title.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._title, fieldNumber: 4)
+      }
+      if !_storage._text.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._text, fieldNumber: 5)
+      }
+      try { if let v = _storage._approval {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      if _storage._sourceEventSeq != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._sourceEventSeq, fieldNumber: 7)
+      }
+      if _storage._sharedFileCount != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._sharedFileCount, fieldNumber: 8)
+      }
+      try { if let v = _storage._diskStatus {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBNotifyContent, rhs: PBNotifyContent) -> Bool {
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.kind != rhs.kind {return false}
-    if lhs.title != rhs.title {return false}
-    if lhs.text != rhs.text {return false}
-    if lhs._approval != rhs._approval {return false}
-    if lhs.sourceEventSeq != rhs.sourceEventSeq {return false}
-    if lhs.sharedFileCount != rhs.sharedFileCount {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._machineID != rhs_storage._machineID {return false}
+        if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._kind != rhs_storage._kind {return false}
+        if _storage._title != rhs_storage._title {return false}
+        if _storage._text != rhs_storage._text {return false}
+        if _storage._approval != rhs_storage._approval {return false}
+        if _storage._sourceEventSeq != rhs_storage._sourceEventSeq {return false}
+        if _storage._sharedFileCount != rhs_storage._sharedFileCount {return false}
+        if _storage._diskStatus != rhs_storage._diskStatus {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

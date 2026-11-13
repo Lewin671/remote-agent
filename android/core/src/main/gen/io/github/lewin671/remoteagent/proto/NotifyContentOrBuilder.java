@@ -122,4 +122,15 @@ public interface NotifyContentOrBuilder extends
    * @return The sharedFileCount.
    */
   int getSharedFileCount();
+
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   * @return Whether the diskStatus field is set.
+   */
+  boolean hasDiskStatus();
+  /**
+   * <code>.remoteagent.v1.DiskStatus disk_status = 9 [json_name = "diskStatus"];</code>
+   * @return The diskStatus.
+   */
+  io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus();
 }

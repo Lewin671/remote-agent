@@ -1,0 +1,1 @@
+{"stat":"cpu  100 0 50 800 50 0 0 0 0 0\ncpu0 50 0 25 400 25 0 0 0 0 0\ncpu1 50 0 25 400 25 0 0 0 0 0\n","mem":"MemTotal: 1000000 kB\nMemAvailable: 150000 kB\nSwapTotal: 200000 kB\nSwapFree: 50000 kB\n","load":"1.25 1 1 1/10 100","uptime":"1234.50 2000","process":"42 (worker ) name) S 7 0 0 0 0 0 0 0 0 0 200 100 0 0 0 0 0 0 9876 0 100"}

@@ -25,6 +25,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
+	"github.com/Lewin671/remote-agent/internal/machinestatus"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/schedule"
@@ -147,6 +148,9 @@ type Daemon struct {
 	settingsMu       sync.Mutex
 	cached           *pb.DaemonSettings
 
+	statusCollector *machinestatus.Collector
+	diskGuard       *machinestatus.DiskGuard
+
 	cacheMu sync.Mutex
 }
 
@@ -162,6 +166,8 @@ func New(dir string, cfg Config) *Daemon {
 		agents:   map[pb.Agent]agent.Adapter{},
 		uploads:  newUploads(dir),
 	}
+	d.diskGuard = machinestatus.NewDiskGuard(dir)
+	d.statusCollector = machinestatus.New(dir, d.machineRoots)
 	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
 	d.uploads.pins = d.protectedImageSessions
 	d.adapters = Adapters(cfg)
@@ -266,6 +272,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := updater.EnsureState(d.dir); err != nil {
 		return err
 	}
+	background.Go(func() { d.statusCollector.Run(ctx) })
+	background.Go(func() { d.diskLoop(ctx) })
 	d.loadQuotas()
 	// Finish transfer intents before restoring queue refs, without treating
 	// persisted Exited as final: tmux may still be alive and reattach below.
@@ -813,6 +821,9 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	m.Agents = d.installed()
 	m.Capabilities = d.capabilities()
 	m.ProtocolVersion = protocol.Version
+	if d.diskGuard != nil {
+		m.DiskStatus = d.diskGuard.Snapshot()
+	}
 	d.mu.Lock()
 	m.Quotas = d.quotaEntriesLocked()
 	sessions := make([]*session, 0, len(d.sessions))

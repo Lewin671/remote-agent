@@ -18,6 +18,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"google.golang.org/protobuf/proto"
 )
@@ -135,7 +136,7 @@ func newPusher(s *Server) (*pusher, error) {
 
 func kindBit(k pb.NotifyKind) int {
 	switch k {
-	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, pb.NotifyKind_NOTIFY_KIND_SECURITY, pb.NotifyKind_NOTIFY_KIND_SCHEDULED:
+	case pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED, pb.NotifyKind_NOTIFY_KIND_SECURITY, pb.NotifyKind_NOTIFY_KIND_SCHEDULED, pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK:
 		return 1 << int(k)
 	default:
 		return 0
@@ -221,10 +222,11 @@ func (p *pusher) setFCM(ctx context.Context, t *tstore, deviceID, token string, 
 }
 
 var pushText = map[pb.NotifyKind]string{
-	pb.NotifyKind_NOTIFY_KIND_SCHEDULED:  "定时任务有新结果",
-	pb.NotifyKind_NOTIFY_KIND_ATTENTION:  "有会话在等你处理",
-	pb.NotifyKind_NOTIFY_KIND_TURN_ENDED: "一轮对话结束了",
-	pb.NotifyKind_NOTIFY_KIND_SECURITY:   "有设备申请接管管理权",
+	pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK: i18n.MachineStatusHomeWarning("zh-CN"),
+	pb.NotifyKind_NOTIFY_KIND_SCHEDULED:    "定时任务有新结果",
+	pb.NotifyKind_NOTIFY_KIND_ATTENTION:    "有会话在等你处理",
+	pb.NotifyKind_NOTIFY_KIND_TURN_ENDED:   "一轮对话结束了",
+	pb.NotifyKind_NOTIFY_KIND_SECURITY:     "有设备申请接管管理权",
 }
 
 // notify pushes a notification to subscribed clients. content is a
@@ -396,7 +398,7 @@ const webPushMaxPayload = 3993
 func webPushPayload(sessionID string, kind pb.NotifyKind, content []byte, dedupeKey string) []byte {
 	data := map[string]string{"title": "remote-agent", "body": pushText[kind], "tag": pushNotificationTag(sessionID, kind, dedupeKey), "session": sessionID}
 	generic, _ := json.Marshal(data)
-	if (kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED) && len(content) > 0 && base64.StdEncoding.EncodedLen(len(content)) <= webPushMaxPayload {
+	if (kind == pb.NotifyKind_NOTIFY_KIND_SCHEDULED || kind == pb.NotifyKind_NOTIFY_KIND_TURN_ENDED || kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK) && len(content) > 0 && base64.StdEncoding.EncodedLen(len(content)) <= webPushMaxPayload {
 		data["content"] = base64.StdEncoding.EncodeToString(content)
 		payload, _ := json.Marshal(data)
 		if len(payload) <= webPushMaxPayload {
@@ -496,9 +498,15 @@ func (m *machineService) Notify(ctx context.Context, req *connect.Request[pb.Not
 		return nil, err
 	}
 	t := m.s.tenantFrom(ctx)
-	owner, err := t.store.sessionMachine(ctx, req.Msg.SessionId)
-	if err != nil || owner != id {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown session"))
+	if req.Msg.Kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK {
+		if req.Msg.SessionId != "" || req.Msg.Content == nil {
+			return nil, invalid("invalid machine notification scope")
+		}
+	} else {
+		owner, err := t.store.sessionMachine(ctx, req.Msg.SessionId)
+		if err != nil || owner != id {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("unknown session"))
+		}
 	}
 	var content []byte
 	if req.Msg.Content != nil {

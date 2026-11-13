@@ -9,6 +9,7 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/coder/websocket v1.8.15
 	github.com/creack/pty v1.1.24
+	github.com/ebitengine/purego v0.9.1
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260929172509-b39ff6d641ec
 	golang.org/x/image v0.46.0

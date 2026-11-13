@@ -348,7 +348,7 @@ internal fun validateSecurityBody(h: DeviceSecurity.Header, m: MessageLite) {
                     m.sessionId == h.session &&
                     (m.kind == NotifyKind.NOTIFY_KIND_ATTENTION ||
                         m.kind == NotifyKind.NOTIFY_KIND_TURN_ENDED ||
-                        m.kind == NotifyKind.NOTIFY_KIND_SCHEDULED)
+                        m.kind == NotifyKind.NOTIFY_KIND_SCHEDULED || m.kind == NotifyKind.NOTIFY_KIND_MACHINE_DISK)
             DeviceSecurity.Purpose.SESSION_KEY -> false
             DeviceSecurity.Purpose.TERMINAL_INPUT ->
                 m is TerminalFrame && m.kindCase == TerminalFrame.KindCase.INPUT

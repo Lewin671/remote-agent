@@ -40,6 +40,8 @@ message MachineMeta {
   repeated ProjectSummary projects = 13;
   // Persistent task/run change counter; publication coalesces short bursts.
   uint64 schedule_revision = 14;
+  // Last minute disk check; clients use only while online.
+  DiskStatus disk_status = 15;
 }
 
 // ProjectSummary is what a machine knows of a project beyond its live
@@ -133,6 +135,7 @@ message MachineCapabilities {
   int64 max_shared_file_bytes = 17;
   // Every GetSharedFileChunkResponse.data is exactly this long.
   int32 shared_file_chunk_bytes = 18;
+  bool machine_status = 19;
 }
 
 message AgentInfo {
@@ -198,6 +201,7 @@ message Command {
     GetLiveSnapshotRequest get_live_snapshot = 31;
     // A session command: its header names the session.
     GetSharedFileChunkRequest get_shared_file_chunk = 32;
+    GetMachineStatusRequest get_machine_status = 33;
   }
   // The protocol version the client speaks (internal/protocol). A daemon
   // of another version refuses the command and says which side to update.
@@ -241,6 +245,7 @@ message CommandResult {
     ScheduleResponse schedule = 40;
     LiveSnapshot live_snapshot = 41;
     GetSharedFileChunkResponse get_shared_file_chunk = 42;
+    MachineStatus machine_status = 43;
   }
 }
 
@@ -333,6 +338,7 @@ message NotifyContent {
   // Successful send_file offers in this turn, deduplicated by file_id.
   // Only set for TURN_ENDED; no names or paths are included.
   uint32 shared_file_count = 8;
+  DiskStatus disk_status = 9;
 }
 
 message NotifyApproval {

@@ -351,6 +351,182 @@
         "plural": "count"
       }
     },
+    "machine_status.cleanup_prompt": {
+      "en": "This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation.",
+      "key": "machine_status.cleanup_prompt",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。"
+    },
+    "machine_status.disk_full": {
+      "en": "This computer’s disk is full",
+      "key": "machine_status.disk_full",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "这台电脑磁盘满了"
+    },
+    "machine_status.home_warning": {
+      "en": "Disk space is low",
+      "key": "machine_status.home_warning",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "磁盘空间不多了"
+    },
+    "machine_status.notify_critical": {
+      "en": "{computer} disk is almost full, only {size} left",
+      "key": "machine_status.notify_critical",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {
+        "computer": {
+          "example": "Example",
+          "type": "string"
+        },
+        "size": {
+          "example": "Example",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "{computer} 磁盘快满了，只剩 {size}"
+    },
+    "machine_status.notify_critical_body": {
+      "en": "Clean up now or sessions may not start.",
+      "key": "machine_status.notify_critical_body",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "现在清理，否则会话可能启动不了。"
+    },
+    "machine_status.notify_warning": {
+      "en": "{computer} has only {size} of disk space left",
+      "key": "machine_status.notify_warning",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {
+        "computer": {
+          "example": "Example",
+          "type": "string"
+        },
+        "size": {
+          "example": "Example",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "{computer} 磁盘只剩 {size}"
+    },
+    "machine_status.notify_warning_body": {
+      "en": "Sessions will not start when disk space runs out.",
+      "key": "machine_status.notify_warning_body",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "空间用完后会话会启动不了。"
+    },
+    "machine_status.size_gb": {
+      "en": "{size} GB",
+      "key": "machine_status.size_gb",
+      "notes": "规范中的大小占位值，按十进制 GB 格式化。size 为已格式化的数值；数字和单位的顺序由完整模板决定。英文初稿待审。",
+      "params": {
+        "size": {
+          "example": "2.0",
+          "type": "string"
+        }
+      },
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "{size} GB"
+    },
+    "machine_status.unavailable": {
+      "en": "Could not read this computer’s status",
+      "key": "machine_status.unavailable",
+      "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "读不到这台电脑的状态"
+    },
     "quota.managed": {
       "en": "Managed settings override the status line, so quota cannot be read.",
       "key": "quota.managed",

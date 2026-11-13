@@ -11,6 +11,16 @@ public interface ImageStorageUsageOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
+   * <pre>
+   * Physically reserved emergency space, not reclaimable attachment storage.
+   * </pre>
+   *
+   * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+   * @return The emergencyReserveBytes.
+   */
+  long getEmergencyReserveBytes();
+
+  /**
    * <code>int64 upload_bytes = 1 [json_name = "uploadBytes"];</code>
    * @return The uploadBytes.
    */

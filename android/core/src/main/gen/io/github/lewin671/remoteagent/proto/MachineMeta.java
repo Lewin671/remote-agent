@@ -938,6 +938,74 @@ public  final class MachineMeta extends
     scheduleRevision_ = 0L;
   }
 
+  public static final int DISK_STATUS_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.proto.DiskStatus diskStatus_;
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDiskStatus() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus() {
+    return diskStatus_ == null ? io.github.lewin671.remoteagent.proto.DiskStatus.getDefaultInstance() : diskStatus_;
+  }
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+    value.getClass();  // minimal bytecode null check
+    diskStatus_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+    value.getClass();  // minimal bytecode null check
+    if (diskStatus_ != null &&
+        diskStatus_ != io.github.lewin671.remoteagent.proto.DiskStatus.getDefaultInstance()) {
+      diskStatus_ =
+        io.github.lewin671.remoteagent.proto.DiskStatus.newBuilder(diskStatus_).mergeFrom(value).buildPartial();
+    } else {
+      diskStatus_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Last minute disk check; clients use only while online.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+   */
+  private void clearDiskStatus() {
+    diskStatus_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1996,6 +2064,77 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Last minute disk check; clients use only while online.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDiskStatus() {
+      return instance.hasDiskStatus();
+    }
+    /**
+     * <pre>
+     * Last minute disk check; clients use only while online.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DiskStatus getDiskStatus() {
+      return instance.getDiskStatus();
+    }
+    /**
+     * <pre>
+     * Last minute disk check; clients use only while online.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+     */
+    public Builder setDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+      copyOnWrite();
+      instance.setDiskStatus(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Last minute disk check; clients use only while online.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+     */
+    public Builder setDiskStatus(
+        io.github.lewin671.remoteagent.proto.DiskStatus.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDiskStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Last minute disk check; clients use only while online.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+     */
+    public Builder mergeDiskStatus(io.github.lewin671.remoteagent.proto.DiskStatus value) {
+      copyOnWrite();
+      instance.mergeDiskStatus(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Last minute disk check; clients use only while online.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.DiskStatus disk_status = 15 [json_name = "diskStatus"];</code>
+     */
+    public Builder clearDiskStatus() {  copyOnWrite();
+      instance.clearDiskStatus();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -2027,11 +2166,12 @@ public  final class MachineMeta extends
             "projects_",
             io.github.lewin671.remoteagent.proto.ProjectSummary.class,
             "scheduleRevision_",
+            "diskStatus_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000e\u000b\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
-              "\u0006\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b" +
-              "\u000e\u0003";
+              "\u0000\f\u0000\u0001\u0001\u000f\f\u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0006" +
+              "\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b\u000e" +
+              "\u0003\u000f\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

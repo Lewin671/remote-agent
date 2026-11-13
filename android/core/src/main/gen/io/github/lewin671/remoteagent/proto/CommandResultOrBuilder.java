@@ -352,5 +352,16 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse getGetSharedFileChunk();
 
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   * @return Whether the machineStatus field is set.
+   */
+  boolean hasMachineStatus();
+  /**
+   * <code>.remoteagent.v1.MachineStatus machine_status = 43 [json_name = "machineStatus"];</code>
+   * @return The machineStatus.
+   */
+  io.github.lewin671.remoteagent.proto.MachineStatus getMachineStatus();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

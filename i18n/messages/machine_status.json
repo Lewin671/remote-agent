@@ -1,0 +1,178 @@
+[
+  {
+    "key": "machine_status.unavailable",
+    "zh-CN": "读不到这台电脑的状态",
+    "en": "Could not read this computer’s status",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.notify_warning",
+    "zh-CN": "{computer} 磁盘只剩 {size}",
+    "en": "{computer} has only {size} of disk space left",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {
+      "computer": {
+        "type": "string",
+        "example": "Example"
+      },
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.notify_warning_body",
+    "zh-CN": "空间用完后会话会启动不了。",
+    "en": "Sessions will not start when disk space runs out.",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.notify_critical",
+    "zh-CN": "{computer} 磁盘快满了，只剩 {size}",
+    "en": "{computer} disk is almost full, only {size} left",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {
+      "computer": {
+        "type": "string",
+        "example": "Example"
+      },
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.notify_critical_body",
+    "zh-CN": "现在清理，否则会话可能启动不了。",
+    "en": "Clean up now or sessions may not start.",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.home_warning",
+    "zh-CN": "磁盘空间不多了",
+    "en": "Disk space is low",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_full",
+    "zh-CN": "这台电脑磁盘满了",
+    "en": "This computer’s disk is full",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.cleanup_prompt",
+    "zh-CN": "这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。",
+    "en": "This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation.",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.size_gb",
+    "zh-CN": "{size} GB",
+    "en": "{size} GB",
+    "notes": "规范中的大小占位值，按十进制 GB 格式化。size 为已格式化的数值；数字和单位的顺序由完整模板决定。英文初稿待审。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "2.0"
+      }
+    },
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

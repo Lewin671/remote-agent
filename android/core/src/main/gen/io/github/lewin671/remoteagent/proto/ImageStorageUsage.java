@@ -23,6 +23,44 @@ public  final class ImageStorageUsage extends
   private ImageStorageUsage() {
     sessions_ = emptyProtobufList();
   }
+  public static final int EMERGENCY_RESERVE_BYTES_FIELD_NUMBER = 7;
+  private long emergencyReserveBytes_;
+  /**
+   * <pre>
+   * Physically reserved emergency space, not reclaimable attachment storage.
+   * </pre>
+   *
+   * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+   * @return The emergencyReserveBytes.
+   */
+  @java.lang.Override
+  public long getEmergencyReserveBytes() {
+    return emergencyReserveBytes_;
+  }
+  /**
+   * <pre>
+   * Physically reserved emergency space, not reclaimable attachment storage.
+   * </pre>
+   *
+   * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+   * @param value The emergencyReserveBytes to set.
+   */
+  private void setEmergencyReserveBytes(long value) {
+    
+    emergencyReserveBytes_ = value;
+  }
+  /**
+   * <pre>
+   * Physically reserved emergency space, not reclaimable attachment storage.
+   * </pre>
+   *
+   * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+   */
+  private void clearEmergencyReserveBytes() {
+
+    emergencyReserveBytes_ = 0L;
+  }
+
   public static final int UPLOAD_BYTES_FIELD_NUMBER = 1;
   private long uploadBytes_;
   /**
@@ -354,6 +392,46 @@ public  final class ImageStorageUsage extends
 
 
     /**
+     * <pre>
+     * Physically reserved emergency space, not reclaimable attachment storage.
+     * </pre>
+     *
+     * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+     * @return The emergencyReserveBytes.
+     */
+    @java.lang.Override
+    public long getEmergencyReserveBytes() {
+      return instance.getEmergencyReserveBytes();
+    }
+    /**
+     * <pre>
+     * Physically reserved emergency space, not reclaimable attachment storage.
+     * </pre>
+     *
+     * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+     * @param value The emergencyReserveBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEmergencyReserveBytes(long value) {
+      copyOnWrite();
+      instance.setEmergencyReserveBytes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Physically reserved emergency space, not reclaimable attachment storage.
+     * </pre>
+     *
+     * <code>int64 emergency_reserve_bytes = 7 [json_name = "emergencyReserveBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEmergencyReserveBytes() {
+      copyOnWrite();
+      instance.clearEmergencyReserveBytes();
+      return this;
+    }
+
+    /**
      * <code>int64 upload_bytes = 1 [json_name = "uploadBytes"];</code>
      * @return The uploadBytes.
      */
@@ -618,10 +696,11 @@ public  final class ImageStorageUsage extends
             "cacheBytes_",
             "sessions_",
             io.github.lewin671.remoteagent.proto.ImageSessionStorage.class,
+            "emergencyReserveBytes_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0002\u0002\u0002" +
-              "\u0003\u0002\u0004\u0002\u0005\u0002\u0006\u001b";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0001\u0000\u0001\u0002\u0002\u0002" +
+              "\u0003\u0002\u0004\u0002\u0005\u0002\u0006\u001b\u0007\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

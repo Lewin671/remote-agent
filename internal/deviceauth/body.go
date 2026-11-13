@@ -179,7 +179,7 @@ func ValidateBody(h Header, p []byte) error {
 			}
 		}
 	case *pb.NotifyContent:
-		if v.MachineId != h.Machine || v.SessionId != h.Session || (v.Kind != pb.NotifyKind_NOTIFY_KIND_ATTENTION && v.Kind != pb.NotifyKind_NOTIFY_KIND_TURN_ENDED && v.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED) {
+		if v.MachineId != h.Machine || v.SessionId != h.Session || (v.Kind != pb.NotifyKind_NOTIFY_KIND_ATTENTION && v.Kind != pb.NotifyKind_NOTIFY_KIND_TURN_ENDED && v.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED && v.Kind != pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK) {
 			return ErrInvalid
 		}
 	case *pb.ProjectPrefs:
@@ -208,7 +208,7 @@ func ReadOnlyCommand(h Header, plain []byte) bool {
 // command kinds are mutations, so future additions cannot bypass at-most-once.
 func IsReadOnlyCommand(cmd *pb.Command) bool {
 	switch k := cmd.Kind.(type) {
-	case *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus, *pb.Command_GetSharedFileChunk:
+	case *pb.Command_GetMachineStatus, *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus, *pb.Command_GetSharedFileChunk:
 		return true
 	case *pb.Command_Schedule:
 		return k.Schedule.GetOperation() == "list" || k.Schedule.GetOperation() == "get"
