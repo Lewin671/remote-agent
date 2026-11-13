@@ -191,5 +191,1015 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "machine_status.title",
+    "zh-CN": "电脑状态",
+    "en": "Computer status",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.cpu",
+    "zh-CN": "CPU",
+    "en": "CPU",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.memory",
+    "zh-CN": "内存",
+    "en": "Memory",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk",
+    "zh-CN": "磁盘",
+    "en": "Disk",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_available",
+    "zh-CN": "磁盘可用",
+    "en": "Disk free",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.live",
+    "zh-CN": "实时",
+    "en": "Live",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.stale_seconds",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 秒前的数据"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Data from {count} sec ago",
+        "other": "Data from {count} sec ago"
+      }
+    },
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 30
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.stale_minutes",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟前的数据"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Data from {count} min ago",
+        "other": "Data from {count} min ago"
+      }
+    },
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.seconds_ago",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 秒前"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} sec ago",
+        "other": "{count} sec ago"
+      }
+    },
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 4
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.load",
+    "zh-CN": "{load} 负载",
+    "en": "{load} load",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "load": {
+        "type": "string",
+        "example": "3.2"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.load_line",
+    "zh-CN": "负载 {load}",
+    "en": "Load {load}",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "load": {
+        "type": "string",
+        "example": "3.2"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.cores",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 核"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} core",
+        "other": "{count} cores"
+      }
+    },
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 10
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.gb_used",
+    "zh-CN": "GB 已用",
+    "en": "GB used",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.gb_available",
+    "zh-CN": "GB 可用",
+    "en": "GB free",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.pressure_normal",
+    "zh-CN": "压力正常",
+    "en": "Pressure normal",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.pressure_high",
+    "zh-CN": "压力偏高",
+    "en": "Pressure high",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.pressure_critical",
+    "zh-CN": "压力紧张",
+    "en": "Pressure critical",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.total",
+    "zh-CN": "共 {size}",
+    "en": "{size} total",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "16 GB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.total_swap",
+    "zh-CN": "共 {size}，交换 {swap}",
+    "en": "{size} total, {swap} swap",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "16 GB"
+      },
+      "swap": {
+        "type": "string",
+        "example": "1.3 GB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.swap",
+    "zh-CN": "交换 {size}",
+    "en": "{size} swap",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "1.3 GB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_ok",
+    "zh-CN": "空间充足",
+    "en": "Plenty of space",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_low",
+    "zh-CN": "空间不多了",
+    "en": "Space is low",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_critical",
+    "zh-CN": "快满了",
+    "en": "Almost full",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_critical_hint",
+    "zh-CN": "新会话可能启动不了",
+    "en": "New sessions may not start",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.cleanup_action",
+    "zh-CN": "让 Agent 帮我清理",
+    "en": "Ask the Agent to clean up",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.agent_usage",
+    "zh-CN": "remote-agent 的占用",
+    "en": "remote-agent usage",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.top_usage",
+    "zh-CN": "占用最多",
+    "en": "Top usage",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.show_processes",
+    "zh-CN": "显示进程",
+    "en": "Show processes",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.show_sessions",
+    "zh-CN": "显示会话",
+    "en": "Show sessions",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.no_running_sessions",
+    "zh-CN": "没有正在运行的会话",
+    "en": "No running sessions",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.axis_2min",
+    "zh-CN": "2 分钟前",
+    "en": "2 min ago",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.axis_1min",
+    "zh-CN": "1 分钟前",
+    "en": "1 min ago",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.axis_now",
+    "zh-CN": "现在",
+    "en": "Now",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.uptime",
+    "zh-CN": "已开机 {duration}",
+    "en": "Up {duration}",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "duration": {
+        "type": "string",
+        "example": "3 天 4 小时"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.duration_days_hours",
+    "zh-CN": "{days} 天 {hours} 小时",
+    "en": "{days} d {hours} hr",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "days": {
+        "type": "integer",
+        "example": 3
+      },
+      "hours": {
+        "type": "integer",
+        "example": 4
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.duration_minutes",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} min",
+        "other": "{count} min"
+      }
+    },
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 5
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.battery",
+    "zh-CN": "电池 {percent}%",
+    "en": "Battery {percent}%",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 81
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.battery_charging",
+    "zh-CN": "电池 {percent}%，充电中",
+    "en": "Battery {percent}%, charging",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 81
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.size_mb",
+    "zh-CN": "{size} MB",
+    "en": "{size} MB",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "380"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.home_warning_detail",
+    "zh-CN": "{computer} 还剩 {size}",
+    "en": "{computer} has {size} left",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "computer": {
+        "type": "string",
+        "example": "Example"
+      },
+      "size": {
+        "type": "string",
+        "example": "8.2 GB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.home_critical",
+    "zh-CN": "磁盘快满了",
+    "en": "Disk is almost full",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.home_critical_detail",
+    "zh-CN": "{computer} 只剩 {size}，会话可能启动不了",
+    "en": "{computer} has only {size} left; sessions may not start",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "computer": {
+        "type": "string",
+        "example": "Example"
+      },
+      "size": {
+        "type": "string",
+        "example": "1.2 GB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.launch_failed_body",
+    "zh-CN": "会话没能启动。腾出一些空间后再试。",
+    "en": "The session could not start. Free up some space and try again.",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.view_usage",
+    "zh-CN": "查看占用",
+    "en": "View usage",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.emergency_reserve",
+    "zh-CN": "应急预留",
+    "en": "Emergency reserve",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.emergency_reserve_note",
+    "zh-CN": "磁盘写满时自动释放，让你还能开会话处理。",
+    "en": "Released automatically when the disk fills up, so you can still open a session to deal with it.",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_ring",
+    "zh-CN": "{name}，{value}",
+    "en": "{name}, {value}",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      },
+      "value": {
+        "type": "string",
+        "example": "23%"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_chart",
+    "zh-CN": "最近 2 分钟，最高 {max}，现在 {now}",
+    "en": "Last 2 minutes, peak {max}, now {now}",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "max": {
+        "type": "string",
+        "example": "41%"
+      },
+      "now": {
+        "type": "string",
+        "example": "23%"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_prev_sample",
+    "zh-CN": "上一个采样点",
+    "en": "Previous sample",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_next_sample",
+    "zh-CN": "下一个采样点",
+    "en": "Next sample",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_memory_card",
+    "zh-CN": "内存，{used} 已用，{pressure}，设为主图",
+    "en": "Memory, {used} used, {pressure}, make main chart",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "used": {
+        "type": "string",
+        "example": "11.2 GB"
+      },
+      "pressure": {
+        "type": "string",
+        "example": "压力正常"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_memory_card_plain",
+    "zh-CN": "内存，{used} 已用，设为主图",
+    "en": "Memory, {used} used, make main chart",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "used": {
+        "type": "string",
+        "example": "11.2 GB"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_cpu_card",
+    "zh-CN": "CPU，{value}，设为主图",
+    "en": "CPU, {value}, make main chart",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "23%"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.a11y_disk_card",
+    "zh-CN": "磁盘，{size} 可用，{state}",
+    "en": "Disk, {size} free, {state}",
+    "notes": "电脑状态规范 A7/B 原文；英文初稿待审。参数为已经本地化的数字、大小、时长或电脑名；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "42 GB"
+      },
+      "state": {
+        "type": "string",
+        "example": "空间充足"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_total",
+    "zh-CN": "共 {size}",
+    "en": "{size} total",
+    "notes": "电脑状态规范与负责人裁定第 1 批；英文初稿待审。参数为已经本地化的大小；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.disk_agent_share",
+    "zh-CN": "remote-agent 占 {size}",
+    "en": "remote-agent uses {size}",
+    "notes": "电脑状态规范与负责人裁定第 1 批；英文初稿待审。参数为已经本地化的大小；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "machine_status.loading",
+    "zh-CN": "正在读取",
+    "en": "Loading",
+    "notes": "电脑状态规范与负责人裁定第 1 批；英文初稿待审。参数为已经本地化的大小；整句翻译，不拼接。 空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

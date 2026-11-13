@@ -414,16 +414,73 @@ export interface MessageArgs {
   "list_state.running": { [name: string]: never };
   "list_state.starting": { [name: string]: never };
   "list_state.unlinked": { [name: string]: never };
+  "machine_status.a11y_chart": { max: string; now: string };
+  "machine_status.a11y_cpu_card": { value: string };
+  "machine_status.a11y_disk_card": { size: string; state: string };
+  "machine_status.a11y_memory_card": { pressure: string; used: string };
+  "machine_status.a11y_memory_card_plain": { used: string };
+  "machine_status.a11y_next_sample": { [name: string]: never };
+  "machine_status.a11y_prev_sample": { [name: string]: never };
+  "machine_status.a11y_ring": { name: string; value: string };
+  "machine_status.agent_usage": { [name: string]: never };
+  "machine_status.axis_1min": { [name: string]: never };
+  "machine_status.axis_2min": { [name: string]: never };
+  "machine_status.axis_now": { [name: string]: never };
+  "machine_status.battery": { percent: number };
+  "machine_status.battery_charging": { percent: number };
+  "machine_status.cleanup_action": { [name: string]: never };
   "machine_status.cleanup_prompt": { [name: string]: never };
+  "machine_status.cores": { count: number };
+  "machine_status.cpu": { [name: string]: never };
+  "machine_status.disk": { [name: string]: never };
+  "machine_status.disk_agent_share": { size: string };
+  "machine_status.disk_available": { [name: string]: never };
+  "machine_status.disk_critical": { [name: string]: never };
+  "machine_status.disk_critical_hint": { [name: string]: never };
   "machine_status.disk_full": { [name: string]: never };
+  "machine_status.disk_low": { [name: string]: never };
+  "machine_status.disk_ok": { [name: string]: never };
+  "machine_status.disk_total": { size: string };
+  "machine_status.duration_days_hours": { days: number; hours: number };
+  "machine_status.duration_minutes": { count: number };
+  "machine_status.emergency_reserve": { [name: string]: never };
+  "machine_status.emergency_reserve_note": { [name: string]: never };
+  "machine_status.gb_available": { [name: string]: never };
+  "machine_status.gb_used": { [name: string]: never };
+  "machine_status.home_critical": { [name: string]: never };
+  "machine_status.home_critical_detail": { computer: string; size: string };
   "machine_status.home_warning": { [name: string]: never };
+  "machine_status.home_warning_detail": { computer: string; size: string };
+  "machine_status.launch_failed_body": { [name: string]: never };
+  "machine_status.live": { [name: string]: never };
+  "machine_status.load": { load: string };
+  "machine_status.load_line": { load: string };
+  "machine_status.loading": { [name: string]: never };
+  "machine_status.memory": { [name: string]: never };
+  "machine_status.no_running_sessions": { [name: string]: never };
   "machine_status.notify_critical": { computer: string; size: string };
   "machine_status.notify_critical_body": { [name: string]: never };
   "machine_status.notify_warning": { computer: string; size: string };
   "machine_status.notify_warning_body": { [name: string]: never };
+  "machine_status.pressure_critical": { [name: string]: never };
+  "machine_status.pressure_high": { [name: string]: never };
+  "machine_status.pressure_normal": { [name: string]: never };
+  "machine_status.seconds_ago": { count: number };
+  "machine_status.show_processes": { [name: string]: never };
+  "machine_status.show_sessions": { [name: string]: never };
   "machine_status.size_gb": { size: string };
+  "machine_status.size_mb": { size: string };
+  "machine_status.stale_minutes": { count: number };
+  "machine_status.stale_seconds": { count: number };
   "machine_status.storage_exhausted": { [name: string]: never };
+  "machine_status.swap": { size: string };
+  "machine_status.title": { [name: string]: never };
+  "machine_status.top_usage": { [name: string]: never };
+  "machine_status.total": { size: string };
+  "machine_status.total_swap": { size: string; swap: string };
   "machine_status.unavailable": { [name: string]: never };
+  "machine_status.uptime": { duration: string };
+  "machine_status.view_usage": { [name: string]: never };
   "markdown.collapse": { [name: string]: never };
   "markdown.copy_code": { [name: string]: never };
   "markdown.copy_failed": { [name: string]: never };
@@ -1961,16 +2018,103 @@ export const messages = {
     "list_state.running": "Running",
     "list_state.starting": "Starting",
     "list_state.unlinked": "Disconnected",
+    "machine_status.a11y_chart": "Last 2 minutes, peak {max}, now {now}",
+    "machine_status.a11y_cpu_card": "CPU, {value}, make main chart",
+    "machine_status.a11y_disk_card": "Disk, {size} free, {state}",
+    "machine_status.a11y_memory_card": "Memory, {used} used, {pressure}, make main chart",
+    "machine_status.a11y_memory_card_plain": "Memory, {used} used, make main chart",
+    "machine_status.a11y_next_sample": "Next sample",
+    "machine_status.a11y_prev_sample": "Previous sample",
+    "machine_status.a11y_ring": "{name}, {value}",
+    "machine_status.agent_usage": "remote-agent usage",
+    "machine_status.axis_1min": "1 min ago",
+    "machine_status.axis_2min": "2 min ago",
+    "machine_status.axis_now": "Now",
+    "machine_status.battery": "Battery {percent}%",
+    "machine_status.battery_charging": "Battery {percent}%, charging",
+    "machine_status.cleanup_action": "Ask the Agent to clean up",
     "machine_status.cleanup_prompt": "This computer is running low on disk space. Check what is taking up space, list it from largest to smallest, and explain what can be safely cleaned up. Do not delete anything yet; wait for my confirmation.",
+    "machine_status.cores": {
+      "forms": {
+        "one": "{count} core",
+        "other": "{count} cores"
+      },
+      "plural": "count"
+    },
+    "machine_status.cpu": "CPU",
+    "machine_status.disk": "Disk",
+    "machine_status.disk_agent_share": "remote-agent uses {size}",
+    "machine_status.disk_available": "Disk free",
+    "machine_status.disk_critical": "Almost full",
+    "machine_status.disk_critical_hint": "New sessions may not start",
     "machine_status.disk_full": "This computer’s disk is full",
+    "machine_status.disk_low": "Space is low",
+    "machine_status.disk_ok": "Plenty of space",
+    "machine_status.disk_total": "{size} total",
+    "machine_status.duration_days_hours": "{days} d {hours} hr",
+    "machine_status.duration_minutes": {
+      "forms": {
+        "one": "{count} min",
+        "other": "{count} min"
+      },
+      "plural": "count"
+    },
+    "machine_status.emergency_reserve": "Emergency reserve",
+    "machine_status.emergency_reserve_note": "Released automatically when the disk fills up, so you can still open a session to deal with it.",
+    "machine_status.gb_available": "GB free",
+    "machine_status.gb_used": "GB used",
+    "machine_status.home_critical": "Disk is almost full",
+    "machine_status.home_critical_detail": "{computer} has only {size} left; sessions may not start",
     "machine_status.home_warning": "Disk space is low",
+    "machine_status.home_warning_detail": "{computer} has {size} left",
+    "machine_status.launch_failed_body": "The session could not start. Free up some space and try again.",
+    "machine_status.live": "Live",
+    "machine_status.load": "{load} load",
+    "machine_status.load_line": "Load {load}",
+    "machine_status.loading": "Loading",
+    "machine_status.memory": "Memory",
+    "machine_status.no_running_sessions": "No running sessions",
     "machine_status.notify_critical": "{computer} disk is almost full, only {size} left",
     "machine_status.notify_critical_body": "Clean up now or sessions may not start.",
     "machine_status.notify_warning": "{computer} has only {size} of disk space left",
     "machine_status.notify_warning_body": "Sessions will not start when disk space runs out.",
+    "machine_status.pressure_critical": "Pressure critical",
+    "machine_status.pressure_high": "Pressure high",
+    "machine_status.pressure_normal": "Pressure normal",
+    "machine_status.seconds_ago": {
+      "forms": {
+        "one": "{count} sec ago",
+        "other": "{count} sec ago"
+      },
+      "plural": "count"
+    },
+    "machine_status.show_processes": "Show processes",
+    "machine_status.show_sessions": "Show sessions",
     "machine_status.size_gb": "{size} GB",
+    "machine_status.size_mb": "{size} MB",
+    "machine_status.stale_minutes": {
+      "forms": {
+        "one": "Data from {count} min ago",
+        "other": "Data from {count} min ago"
+      },
+      "plural": "count"
+    },
+    "machine_status.stale_seconds": {
+      "forms": {
+        "one": "Data from {count} sec ago",
+        "other": "Data from {count} sec ago"
+      },
+      "plural": "count"
+    },
     "machine_status.storage_exhausted": "The storage quota is exhausted, or the write destination is out of space",
+    "machine_status.swap": "{size} swap",
+    "machine_status.title": "Computer status",
+    "machine_status.top_usage": "Top usage",
+    "machine_status.total": "{size} total",
+    "machine_status.total_swap": "{size} total, {swap} swap",
     "machine_status.unavailable": "Could not read this computer’s status",
+    "machine_status.uptime": "Up {duration}",
+    "machine_status.view_usage": "View usage",
     "markdown.collapse": "Collapse",
     "markdown.copy_code": "Copy code",
     "markdown.copy_failed": "Copy failed",
@@ -3756,16 +3900,98 @@ export const messages = {
     "list_state.running": "运行中",
     "list_state.starting": "启动中",
     "list_state.unlinked": "未连接",
+    "machine_status.a11y_chart": "最近 2 分钟，最高 {max}，现在 {now}",
+    "machine_status.a11y_cpu_card": "CPU，{value}，设为主图",
+    "machine_status.a11y_disk_card": "磁盘，{size} 可用，{state}",
+    "machine_status.a11y_memory_card": "内存，{used} 已用，{pressure}，设为主图",
+    "machine_status.a11y_memory_card_plain": "内存，{used} 已用，设为主图",
+    "machine_status.a11y_next_sample": "下一个采样点",
+    "machine_status.a11y_prev_sample": "上一个采样点",
+    "machine_status.a11y_ring": "{name}，{value}",
+    "machine_status.agent_usage": "remote-agent 的占用",
+    "machine_status.axis_1min": "1 分钟前",
+    "machine_status.axis_2min": "2 分钟前",
+    "machine_status.axis_now": "现在",
+    "machine_status.battery": "电池 {percent}%",
+    "machine_status.battery_charging": "电池 {percent}%，充电中",
+    "machine_status.cleanup_action": "让 Agent 帮我清理",
     "machine_status.cleanup_prompt": "这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。",
+    "machine_status.cores": {
+      "forms": {
+        "other": "{count} 核"
+      },
+      "plural": "count"
+    },
+    "machine_status.cpu": "CPU",
+    "machine_status.disk": "磁盘",
+    "machine_status.disk_agent_share": "remote-agent 占 {size}",
+    "machine_status.disk_available": "磁盘可用",
+    "machine_status.disk_critical": "快满了",
+    "machine_status.disk_critical_hint": "新会话可能启动不了",
     "machine_status.disk_full": "这台电脑磁盘满了",
+    "machine_status.disk_low": "空间不多了",
+    "machine_status.disk_ok": "空间充足",
+    "machine_status.disk_total": "共 {size}",
+    "machine_status.duration_days_hours": "{days} 天 {hours} 小时",
+    "machine_status.duration_minutes": {
+      "forms": {
+        "other": "{count} 分钟"
+      },
+      "plural": "count"
+    },
+    "machine_status.emergency_reserve": "应急预留",
+    "machine_status.emergency_reserve_note": "磁盘写满时自动释放，让你还能开会话处理。",
+    "machine_status.gb_available": "GB 可用",
+    "machine_status.gb_used": "GB 已用",
+    "machine_status.home_critical": "磁盘快满了",
+    "machine_status.home_critical_detail": "{computer} 只剩 {size}，会话可能启动不了",
     "machine_status.home_warning": "磁盘空间不多了",
+    "machine_status.home_warning_detail": "{computer} 还剩 {size}",
+    "machine_status.launch_failed_body": "会话没能启动。腾出一些空间后再试。",
+    "machine_status.live": "实时",
+    "machine_status.load": "{load} 负载",
+    "machine_status.load_line": "负载 {load}",
+    "machine_status.loading": "正在读取",
+    "machine_status.memory": "内存",
+    "machine_status.no_running_sessions": "没有正在运行的会话",
     "machine_status.notify_critical": "{computer} 磁盘快满了，只剩 {size}",
     "machine_status.notify_critical_body": "现在清理，否则会话可能启动不了。",
     "machine_status.notify_warning": "{computer} 磁盘只剩 {size}",
     "machine_status.notify_warning_body": "空间用完后会话会启动不了。",
+    "machine_status.pressure_critical": "压力紧张",
+    "machine_status.pressure_high": "压力偏高",
+    "machine_status.pressure_normal": "压力正常",
+    "machine_status.seconds_ago": {
+      "forms": {
+        "other": "{count} 秒前"
+      },
+      "plural": "count"
+    },
+    "machine_status.show_processes": "显示进程",
+    "machine_status.show_sessions": "显示会话",
     "machine_status.size_gb": "{size} GB",
+    "machine_status.size_mb": "{size} MB",
+    "machine_status.stale_minutes": {
+      "forms": {
+        "other": "{count} 分钟前的数据"
+      },
+      "plural": "count"
+    },
+    "machine_status.stale_seconds": {
+      "forms": {
+        "other": "{count} 秒前的数据"
+      },
+      "plural": "count"
+    },
     "machine_status.storage_exhausted": "存储配额已用尽，或写入目标的空间不足",
+    "machine_status.swap": "交换 {size}",
+    "machine_status.title": "电脑状态",
+    "machine_status.top_usage": "占用最多",
+    "machine_status.total": "共 {size}",
+    "machine_status.total_swap": "共 {size}，交换 {swap}",
     "machine_status.unavailable": "读不到这台电脑的状态",
+    "machine_status.uptime": "已开机 {duration}",
+    "machine_status.view_usage": "查看占用",
     "markdown.collapse": "收起",
     "markdown.copy_code": "复制代码",
     "markdown.copy_failed": "复制失败",

@@ -1173,5 +1173,165 @@
     "path": "internal/daemon/images.go",
     "literal": "no display copy for image",
     "reason": "图片缓存派生副本失败的既有本机诊断，空间不足错误交给限频日志，不是用户可见文案。"
+  },
+  {
+    "path": "web/src/machine-status-view.ts",
+    "literal": "memory",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/machine-status-view.ts",
+    "literal": "disk",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "; else if (kind === \"machine-status\") page =",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/dev/machine-status-demo.ts",
+    "literal": "tight",
+    "reason": "Development demo data (?demo), compiled out of builds: an error code, a query flag or a made-up error."
+  },
+  {
+    "path": "web/src/dev/machine-status-demo.ts",
+    "literal": "unavailable",
+    "reason": "Development demo data (?demo), compiled out of builds: an error code, a query flag or a made-up error."
+  },
+  {
+    "path": "web/src/dev/machine-status-demo.ts",
+    "literal": "demo",
+    "reason": "Development demo data (?demo), compiled out of builds: an error code, a query flag or a made-up error."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "disk-full",
+    "reason": "Development demo data (?demo), compiled out of builds: an error code, a query flag or a made-up error."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "disk_full",
+    "reason": "Development demo data (?demo), compiled out of builds: an error code, a query flag or a made-up error."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "mkdir /Users/me/.remote-agent/sessions: no space left on device",
+    "reason": "Development demo data (?demo), compiled out of builds: an error code, a query flag or a made-up error."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "hint",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "0n && (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "horizontal",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-kick",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-card ms-tile",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-say",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "sessions",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "processes",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-rm",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-title",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "chev",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "p.t === s.keyT); if (hit && xOf(hit.t, at, s.width)",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "p.t === looking.t) : points.length - 1; return (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "p.v), 0); return (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "; return (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "); const cls = \"ms-u\" + (i === 0 ? \" top\" : \"\") + (stale ? \" off\" : \"\"); return kind === \"sessions\" && owner ? (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "); if (!last) return (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/machine-status-hooks.tsx",
+    "literal": "= (parseFloat(old.replace(/[^\\d.-]/g, \"\")) || 0); const chars = [...now]; const before = [...old]; return (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/machine-status-hooks.tsx",
+    "literal": "; return (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/machine-status-hooks.tsx",
+    "literal": "(); for (const el of root.querySelectorAll",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/NewSession.tsx",
+    "literal": ") : ns.diskFull ? (",
+    "reason": "Not product text: the lint reads the stretch of code between a closing tag and the next opening tag as text."
+  },
+  {
+    "path": "web/src/views/DiskReminders.tsx",
+    "literal": "ms-alert",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
+  },
+  {
+    "path": "web/src/views/MachineRings.tsx",
+    "literal": "ms-ring",
+    "reason": "Not product text: a CSS class name, a route name or an enum value written near a label prop."
   }
 ]
