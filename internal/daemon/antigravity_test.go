@@ -18,8 +18,13 @@ import (
 	"github.com/Lewin671/remote-agent/internal/antigravity"
 )
 
-func agyHarness(t *testing.T) *harness {
-	h := newHarness(t, Config{ApprovalTimeout: 200 * time.Millisecond})
+// agyHarness uses a long approval timeout: these tests run in parallel and a
+// short real-time timeout expired cards under load before they were resolved.
+// Tests that exercise expiry pass their own timeout to agyHarnessWithTimeout.
+func agyHarness(t *testing.T) *harness { return agyHarnessWithTimeout(t, time.Minute) }
+
+func agyHarnessWithTimeout(t *testing.T, timeout time.Duration) *harness {
+	h := newHarness(t, Config{ApprovalTimeout: timeout})
 	a := antigravity.New("/bin/true", t.TempDir())
 	h.d.agents[a.Kind()] = a
 	h.s.ag = a
@@ -100,7 +105,7 @@ func TestAgyNativeApprovalDoesNotAnswerChangedScreen(t *testing.T) {
 }
 func TestAgyNativeApprovalTimeoutDenies(t *testing.T) {
 	t.Parallel()
-	h := agyHarness(t)
+	h := agyHarnessWithTimeout(t, 200*time.Millisecond)
 	h.term.onWrite = func(f *fakeTerm, b string) {
 		if b == "4" {
 			f.screen = agyScreen(t, "idle-empty-box.txt")
