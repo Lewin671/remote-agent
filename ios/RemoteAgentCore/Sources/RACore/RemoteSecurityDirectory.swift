@@ -24,20 +24,20 @@ extension Remote {
     private func refreshTrustedDirectory(updateMachine: String?, envelopes: [PBEnvelope]) async throws {
         let client = try securitySession()
         while !closed {
+            try Task.checkCancellation()
             // Even a reusable directory must first verify the latest security chain.
             let existing = directoryLoad
             let record = try await client.sync()
             let head = try DeviceSecurity.stateHash(record.state)
             guard try await client.headStateHash() == head else { continue }
             if let job = existing ?? directoryLoad {
-                do { try await job.task.value }
+                do { try await job.result.value }
                 catch {
-                    if directoryLoad?.id == job.id { directoryLoad = nil }
+                    try Task.checkCancellation()
                     if job.version != directoryVersion { continue }
                     if try await client.headStateHash() != job.head { continue }
                     throw error
                 }
-                if directoryLoad?.id == job.id { directoryLoad = nil }
                 let installed = try await client.headStateHash()
                 if job.version != directoryVersion || installed != directoryHead { continue }
                 return
@@ -58,17 +58,24 @@ extension Remote {
             }
             directoryVersion += 1
             let version = directoryVersion
-            let job = DirectoryLoad(head: head, version: version, task: Task { try await self.readTrustedDirectory(record, version: version) })
+            let id=UUID(), result=SharedResult<Void>()
+            let task=Task {
+                let outcome: Result<Void,Error>
+                do {try await self.readTrustedDirectory(record,version:version);outcome = .success(())}
+                catch {outcome = .failure(error)}
+                if self.directoryLoad?.id==id {self.directoryLoad=nil}
+                result.resolve(outcome)
+            }
+            let job = DirectoryLoad(id:id,head:head,version:version,task:task,result:result)
             directoryLoad = job
-            do { try await job.task.value }
+            do { try await job.result.value }
             catch {
-                if directoryLoad?.id == job.id { directoryLoad = nil }
+                try Task.checkCancellation()
                 if version != directoryVersion { continue }
                 if try await client.headStateHash() != head { continue }
                 throw error
             }
             // Metadata publication may reload the directory; it runs outside this job.
-            if directoryLoad?.id == job.id { directoryLoad = nil }
             let installed = try await client.headStateHash()
             if version == directoryVersion && installed == directoryHead { return }
         }
@@ -238,8 +245,11 @@ extension Remote {
             if let expiration = try? await client.leaseExpiration() { await self.updateLeaseExpiration(expiration) }
             if await self.needsDirectoryRefresh(head) { try? await self.refreshTrustedDirectory() }
         }
-        Task {
+        let previous=securityNetworkReset?.1
+        let task=Task {
+            await previous?.value
             await client.startPolling(everyMs: everyMs, onChange: onChange)
         }
+        securityNetworkReset=(networkGeneration,task)
     }
 }

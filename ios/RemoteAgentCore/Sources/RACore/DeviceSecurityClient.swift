@@ -21,7 +21,7 @@ public actor DeviceSecurityClient {
     private let fetchStates: StateFetch
     private let clock: @Sendable () -> UInt64
     private var current: DeviceSecurity.Record?
-    private struct Pull: Sendable { let id: UUID; let generation: UInt64; let task: Task<DeviceSecurity.Record, Error> }
+    private struct Pull: Sendable { let id: UUID; let generation: UInt64; let task: Task<Void, Never>; let result: SharedResult<DeviceSecurity.Record> }
     private var syncJob: Pull?
     private var syncGeneration: UInt64 = 0
     private var pollJob: Task<Void, Never>?
@@ -106,6 +106,7 @@ public actor DeviceSecurityClient {
                     // The consumer acknowledges successful application, not a
                     // change within this particular pull. Failed/pending work
                     // must get another opportunity on an unchanged head.
+                    try Task.checkCancellation()
                     if let onChange { await onChange() }
                 } catch {}
                 guard (try? await Task.sleep(nanoseconds: everyMs * 1_000_000)) != nil else {
@@ -133,11 +134,18 @@ public actor DeviceSecurityClient {
             if let existing=syncJob { flight=existing }
             else {
                 let generation=syncGeneration
-                flight=Pull(id:UUID(),generation:generation,task:Task {try await self.syncLoop(generation)})
+                let id = UUID(), result = SharedResult<DeviceSecurity.Record>()
+                let task = Task {
+                    let outcome: Result<DeviceSecurity.Record, Error>
+                    do { outcome = .success(try await self.syncLoop(generation)) }
+                    catch { outcome = .failure(error) }
+                    if self.syncJob?.id == id { self.syncJob = nil }
+                    result.resolve(outcome)
+                }
+                flight=Pull(id:id,generation:generation,task:task,result:result)
                 syncJob=flight
             }
-            defer {if syncJob?.id==flight.id {syncJob=nil}}
-            do {return try await flight.task.value}
+            do {return try await flight.result.value}
             catch {
                 if flight.generation != syncGeneration && !Task.isCancelled && !closed {continue}
                 throw error

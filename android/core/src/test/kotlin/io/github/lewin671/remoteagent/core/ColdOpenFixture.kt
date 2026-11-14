@@ -95,6 +95,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     var before: suspend (String, UnaryHTTPRequest) -> Unit = { _, _ -> }
     var rejectNextHistory = false
     var offline = false
+    var denyLogin = false
     var unavailableMethods = setOf("Forward")
     var anonymous = 0
     var refused = 0
@@ -125,11 +126,12 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             val auth = name in setOf("GetChallenge", "Login")
             if (!auth && bearer.isNullOrEmpty()) anonymous++
             val unavailable = offline || name in unavailableMethods
-            if (unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
+            val denied = denyLogin && name == "Login"
+            if (denied || unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
                 rejectNextHistory = false
-                onResult(HTTPResponse(trailers = emptyMap(), status = if (unavailable) 503 else 401,
+                onResult(HTTPResponse(trailers = emptyMap(), status = if (denied) 403 else if (unavailable) 503 else 401,
                     headers = mapOf("content-type" to listOf("application/json"), "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch")),
-                    message = Buffer().writeUtf8(if (unavailable) "{\"code\":\"unavailable\"}" else "{\"code\":\"unauthenticated\"}")))
+                    message = Buffer().writeUtf8(if (denied) "{\"code\":\"permission_denied\"}" else if (unavailable) "{\"code\":\"unavailable\"}" else "{\"code\":\"unauthenticated\"}")))
                 return@launch
             }
             val response: com.google.protobuf.MessageLite = response(name, request) ?: when (name) {

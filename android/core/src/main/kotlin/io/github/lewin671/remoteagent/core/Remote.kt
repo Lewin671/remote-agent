@@ -628,7 +628,7 @@ class Remote(
             if (running || removed) return@launch
             running = true
             if (!authorityJob.isActive) authorityJob = SupervisorJob(scope.coroutineContext[Job])
-            stateJob = scope.launch {
+            if (stateJob?.isActive != true) stateJob = scope.launch {
                 // The first pull follows the connection; a fresh login is not
                 // needed before it and would be a second login.
                 delay(5_000)
@@ -700,9 +700,9 @@ class Remote(
             grace?.cancel()
             grace = null
             waited = false
+            networkGeneration++
+            retireCandidate()
             if (running && !removed) {
-                networkGeneration++
-                retireCandidate()
                 try { security.touch() } catch (e: Exception) { report(e) }
                 beginConnect()
             } else publish()
@@ -741,8 +741,8 @@ class Remote(
                 network = available
                 if (!changed) { publish(); continue }
                 networkGeneration++
+                retireCandidate()
                 if (running && !removed) {
-                    retireCandidate()
                     try { security.touch() } catch (e: Exception) { report(e) }
                     beginConnect()
                 } else publish()
@@ -862,10 +862,15 @@ class Remote(
                         removed = true
                         running = false
                         generation++
-                        reconnect?.cancel()
-                        reconnect = null
-                        ws?.close()
-                        ws = null
+                        val setup = connecting; connecting = null
+                        val pending = candidate; candidate = null
+                        val active = ws; ws = null
+                        setup?.cancel()
+                        opening?.cancel(); opening = null
+                        liveness?.cancel(); liveness = null
+                        reconnect?.cancel(); reconnect = null
+                        pending?.let { retireMainLeg(it) }
+                        active?.let { retireMainLeg(it) }
                         conn = ConnState.OFFLINE
                         clearConnProgress()
                         connError = "".messageText()

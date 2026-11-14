@@ -1853,7 +1853,7 @@ export class Remote {
       if (latest === undefined || latest === this.networkSignature) return;
       this.networkSignature = latest;
       this.networkGeneration++;
-      if (this.closed || !this.foreground) return;
+      if (this.closed || !this.foreground) { this.retireNetworkIO(); return; }
       this.touchAfterWake();
       this.retireCandidate(new Error(l10n.t("errors.network_changed_reconnecting")));
       this.reconnectNow(true);
@@ -2128,6 +2128,7 @@ export class Remote {
 
   private openStream(generation: number, timeout = 3000) {
     const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
+    const token = this.token;
     const ws = this.deviceLink.openPathStream(url);
     this.candidate = ws;
     const networkGeneration = this.networkGeneration;
@@ -2139,7 +2140,7 @@ export class Remote {
       if (this.candidate === ws) this.candidate = undefined;
       if (this.ws === ws) this.ws = undefined;
       cleanup(
-        () => { if (code === 1008) this.discardToken(); },
+        () => { if (code === 1008 && this.token === token) this.discardToken(); },
         () => ws.close(),
         () => this.fail(e),
       );
@@ -2147,7 +2148,7 @@ export class Remote {
     opening = this.openTimer = setTimeout(() => drop(new Error(l10n.t("errors.connection_timed_out_reconnecting"))), timeout);
     ws.onOpen = () => {
       if (!current()) return;
-      const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token: this.token } } });
+      const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token } } });
       ws.send(toBinary(PeerFrameSchema, hello));
     };
     let processing = Promise.resolve(), queuedBytes = 0, queuedFrames = 0;

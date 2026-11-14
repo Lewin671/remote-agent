@@ -295,7 +295,7 @@ extension Remote {
 
     /// The bearer token of the current login, for services used outside this class.
     public func currentToken() async throws -> String {
-        if token.isEmpty { token = try await signIn() }
+        if token.isEmpty { return try await signIn() }
         return token
     }
 

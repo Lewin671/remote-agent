@@ -162,10 +162,10 @@ public actor Remote {
             try await self.renewRelayAttempt(prior)
         }))
     private func prepareRelayAttempt(_ prior: Bool) async throws {
-        if token.isEmpty { token = try await relogin(prior) }
+        if token.isEmpty { _ = try await relogin(prior) }
     }
     private func relayToken() -> String { token }
-    private func renewRelayAttempt(_ prior: Bool) async throws { token = try await relogin(prior) }
+    private func renewRelayAttempt(_ prior: Bool) async throws { _ = try await relogin(prior) }
     public nonisolated func peer(_ machineId: String?) -> PeerState { state.value.peer(machineId) }
     /// Machines, sessions, devices and the connection, as far as they are known.
     public nonisolated let state: Feed<RemoteState>
@@ -217,11 +217,12 @@ public actor Remote {
     var archiveMachines: Set<String> = []
     var trustedMembers: [String: DeviceSecurity.Member] = [:]
     var trustedMetadata: [String: PBEnvelope] = [:]
-    struct DirectoryLoad {
-        let id = UUID()
+    struct DirectoryLoad: Sendable {
+        let id: UUID
         let head: Data
         let version: Int
-        let task: Task<Void, Error>
+        let task: Task<Void, Never>
+        let result: SharedResult<Void>
     }
     var directoryLoad: DirectoryLoad?
     var directoryVersion = 0
@@ -246,6 +247,18 @@ public actor Remote {
     /// Hears of every login the server gives and of the one in use being refused (`keepLogin`).
     var onLogin: (@Sendable (SavedLogin?) -> Void)?
     var ws: (any FrameStream)?
+    struct MainLeg: Sendable {
+        let receive: Task<Void,Never>
+        let process: Task<Void,Never>
+        let queue: AsyncStream<Data>.Continuation
+    }
+    var mainLegs: [ObjectIdentifier: MainLeg] = [:]
+    func retireMainLeg(_ socket: any FrameStream) {
+        if let leg=mainLegs.removeValue(forKey:ObjectIdentifier(socket)) {
+            leg.queue.finish();leg.receive.cancel();leg.process.cancel()
+        }
+        socket.cancel()
+    }
     var candidate: (any FrameStream)?
     var dialing = false
     var wantedConnection = false
@@ -259,7 +272,7 @@ public actor Remote {
     var removed = false
     var closed = false
     let signingIn = Gate()
-    struct LoginFlight: Sendable {let id:UUID;let generation:UInt64;let task:Task<String,Error>}
+    struct LoginFlight: Sendable {let id:UUID;let generation:UInt64;let task:Task<Void,Never>;let result:SharedResult<String>}
     var loginFlight:LoginFlight?
     var loginGeneration:UInt64=0
     var securityNetworkReset:(UInt64,Task<Void,Never>)?
@@ -273,6 +286,7 @@ public actor Remote {
     var generation = 0
     /// Putting what the cache holds in place, started once; no connection is made before it is done.
     var restoring: Task<Void, Never>?
+    var restoredResult: SharedResult<Void>?
     var historySweep: Task<Void, Never>?
     var useSeq = 0
     var timerSeq = 0
@@ -520,6 +534,8 @@ public actor Remote {
             onLogin = nil
             historySweep?.cancel()
             historySweep = nil
+            restoring?.cancel()
+            directoryLoad?.task.cancel()
             ops.finish()
         case .setNetwork(let available):
             if network == available { return }
@@ -572,9 +588,13 @@ public actor Remote {
         running = false
         retireLogin()
         liveness?.cancel();liveness=nil
-        candidate?.cancel();candidate=nil
+        if let candidate {retireMainLeg(candidate)};candidate=nil
         dialing=false
-        if let deviceSecurity { Task { await deviceSecurity.stopPolling() } }
+        if let deviceSecurity {
+            let previous=securityNetworkReset?.1
+            let task=Task {await previous?.value;await deviceSecurity.stopPolling()}
+            securityNetworkReset=(networkGeneration,task)
+        }
         generation += 1
         reconnect?.task.cancel()
         reconnect = nil
@@ -586,7 +606,7 @@ public actor Remote {
         connecting = nil
         opening?.task.cancel()
         opening = nil
-        ws?.cancel()
+        if let ws {retireMainLeg(ws)}
         ws = nil
         conn = .offline
         error = ""
@@ -701,11 +721,18 @@ public actor Remote {
             if let existing=loginFlight {flight=existing}
             else {
                 let generation=loginGeneration
-                flight=LoginFlight(id:UUID(),generation:generation,task:Task {try await self.performSignIn()})
+                let id = UUID(), result = SharedResult<String>()
+                let task = Task {
+                    let outcome: Result<String, Error>
+                    do { outcome = .success(try await self.performSignIn()) }
+                    catch { outcome = .failure(error) }
+                    if self.loginFlight?.id == id { self.loginFlight = nil }
+                    result.resolve(outcome)
+                }
+                flight=LoginFlight(id:id,generation:generation,task:task,result:result)
                 loginFlight=flight
             }
-            defer {if loginFlight?.id==flight.id {loginFlight=nil}}
-            do {return try await flight.task.value}
+            do {return try await flight.result.value}
             catch {
                 if flight.generation != loginGeneration && !Task.isCancelled && !closed {continue}
                 throw error
@@ -721,7 +748,8 @@ public actor Remote {
         if let current=securityNetworkReset,current.0==gen {task=current.1}
         else {
             let client=try securitySession()
-            task=Task {await client.networkChanged()}
+            let previous=securityNetworkReset?.1
+            task=Task {await previous?.value;await client.networkChanged()}
             securityNetworkReset=(gen,task)
         }
         await task.value
@@ -752,13 +780,14 @@ public actor Remote {
                 dropToken()
                 removed = true
                 running = false
-                dialing = false; connecting = nil
-                candidate?.cancel(); candidate = nil
+                connecting?.cancel();dialing = false; connecting = nil
+                if let candidate {retireMainLeg(candidate)}; candidate = nil
+                opening?.task.cancel();opening=nil
                 liveness?.cancel(); liveness = nil
                 generation += 1
                 reconnect?.task.cancel()
                 reconnect = nil
-                ws?.close()
+                if let ws {retireMainLeg(ws)}
                 ws = nil
                 conn = .offline
                 publish()
@@ -768,9 +797,12 @@ public actor Remote {
     }
 
     private func signedIn(_ res: PBLoginResponse) -> String {
-        tokenExpires = res.expiresMs
         // A Remote closed while the login was on its way keeps nothing: the account may be gone from this device.
-        if !closed { onLogin?(SavedLogin(token: res.token, expiresMs: res.expiresMs)) }
+        if !closed {
+            token = res.token
+            tokenExpires = res.expiresMs
+            onLogin?(SavedLogin(token: res.token, expiresMs: res.expiresMs))
+        }
         return res.token
     }
 
@@ -784,10 +816,13 @@ public actor Remote {
     /// Waits until what the cache holds is in place. It is read once, however
     /// many connections wait: one made while it was still being read would
     /// have its lists overwritten by what was cached before them.
-    private func restored() async {
+    private func restored() async throws {
         guard let cache else { return }
-        if restoring == nil { restoring = Task { await self.readCache(cache) } }
-        await restoring?.value
+        if restoring == nil {
+            let result=SharedResult<Void>();restoredResult=result
+            restoring=Task {await self.readCache(cache);result.resolve(.success(()))}
+        }
+        try await restoredResult?.value
     }
 
     private func readCache(_ cache: any CipherCache) async {
@@ -834,8 +869,8 @@ public actor Remote {
             return
         }
         generation += 1;dialing=true;wantedConnection=false
-        if token.isEmpty || tokenExpires < clock()+86_400_000 {retireLogin()}
-        connecting=Task {await self.connect()}
+        let gen = generation, networkGen = networkGeneration
+        connecting=Task {await self.connect(gen, networkGen)}
     }
 
     func retireCandidate() {
@@ -843,8 +878,14 @@ public actor Remote {
         wantedConnection=true
         let old=candidate;candidate=nil
         opening?.task.cancel();opening=nil
-        connecting?.cancel()
-        old?.cancel()
+        let setup=connecting;connecting=nil;dialing=false
+        setup?.cancel()
+        if let client=deviceSecurity {
+            let gen=networkGeneration, previous=securityNetworkReset?.1
+            let reset=Task {await previous?.value;await client.networkChanged()}
+            securityNetworkReset=(gen,reset)
+        }
+        if let old {retireMainLeg(old)}
     }
 
     func startLiveness() {
@@ -872,13 +913,11 @@ public actor Remote {
         return now
     }
 
-    private func connect() async {
-        if !running { return }
-        let gen = generation
-        let networkGen = networkGeneration
+    private func connect(_ gen: Int, _ networkGen: UInt64) async {
+        if !running || gen != generation || networkGen != networkGeneration || Task.isCancelled { return }
         let started = monotonic()
         defer {
-            if generation == gen {
+            if generation == gen && !Task.isCancelled {
                 dialing=false;connecting=nil
                 if candidate == nil && running && (ws == nil || wantedConnection) {beginConnect()}
             }
@@ -889,9 +928,9 @@ public actor Remote {
             if networkGen != verifiedNetworkGeneration {try await refreshNetworkSecurity()}
             try await securitySession().touchAfterWake()
         }
-        catch { if running && gen == generation {fail(error)};return }
-        await restored()
-        if !running || gen != generation { return }
+        catch { if running && gen == generation && !Task.isCancelled {fail(error)};return }
+        do {try await restored()} catch {return}
+        if !running || gen != generation || Task.isCancelled { return }
         do {
             let budget = (everReady || networkGen > 0) ? min(streamOpenMs,3000) : streamOpenMs
             try await withTimeout(budget,sleep:sleep) {
@@ -904,10 +943,11 @@ public actor Remote {
             }
             return
         }
-        if !running || gen != generation { return }
+        if !running || gen != generation || Task.isCancelled { return }
         if networkGen != networkGeneration {wantedConnection=true;return}
+        let credential = token
         var frame = PBPeerFrame()
-        frame.hello.token = token
+        frame.hello.token = credential
         guard let hello: Data = try? frame.serializedData() else { return }
         let socket = deviceLink.router.path.openStream("/v1/stream", hello: hello)
         candidate = socket
@@ -919,7 +959,7 @@ public actor Remote {
         let (frames, queue) = AsyncStream<Data>.makeStream(
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
         let budget = StreamByteBudget(limit: frameQueueBytes)
-        Task.detached {
+        let receive = Task.detached {
             while let bytes = try? await socket.receive() {
                 activity.received(monotonic())
                 guard budget.reserve(bytes.count) else {
@@ -939,15 +979,17 @@ public actor Remote {
             me.opening = nil
             if me.candidate === socket {
                 me.candidate = nil
-                socket.cancel()
+                me.retireMainLeg(socket)
                 me.fail(UserError(L10nMessage.errorsConnectionTimedOutReconnecting()))
             }
         }
-        Task { await self.follow(socket, frames, gen, networkGen, activity, budget) }
+        let process = Task { await self.follow(socket, frames, gen, networkGen, activity, budget, credential) }
+        mainLegs[ObjectIdentifier(socket)] = MainLeg(receive:receive,process:process,queue:queue)
     }
 
     /// Handles a stream's frames in order until it ends or is replaced.
-    private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ networkGen: UInt64, _ activity: PathActivity, _ budget: StreamByteBudget) async {
+    private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ networkGen: UInt64, _ activity: PathActivity, _ budget: StreamByteBudget, _ credential: String) async {
+        defer { mainLegs.removeValue(forKey:ObjectIdentifier(socket)) }
         for await bytes in frames {
             defer { budget.release(bytes.count) }
             if ws !== socket && candidate !== socket { break }
@@ -958,23 +1000,24 @@ public actor Remote {
                     opening?.task.cancel();opening=nil;candidate=nil
                     guard gen == generation && networkGen == networkGeneration else {socket.cancel();beginConnect();break}
                     let old=ws;ws=socket;self.activity=activity;everReady=true
-                    recovery.ready();old?.cancel()
+                    recovery.ready();if let old {retireMainLeg(old)}
                 }
                 if conn == .connecting && networkGen == networkGeneration, case .heartbeat? = f.kind {conn = .online;publish()}
                 await onFrame(f)
             } catch {
-                report(error)
+                if !Task.isCancelled && (ws === socket || candidate === socket) { report(error) }
                 break
             }
             if ws !== socket { break }
         }
         socket.cancel()
+        guard ws === socket || candidate === socket else { return }
         let end = await socket.ended()
         guard ws === socket || candidate === socket else { return }
         if ws === socket {ws=nil}
         if candidate === socket {candidate=nil;opening?.task.cancel();opening=nil}
         // Only an explicit refusal invalidates the token.
-        if end.closeCode == policyViolation { dropToken() }
+        if end.closeCode == policyViolation && token == credential { dropToken() }
         fail(end.error ?? UserError(L10nMessage.errorsDisconnectedFromServer()))
     }
 
@@ -994,7 +1037,10 @@ public actor Remote {
     }
 
     func prepareMain(_ networkGen: UInt64) async throws {
-        if token.isEmpty || tokenExpires < clock()+86_400_000 {token=try await signIn()}
+        if token.isEmpty || tokenExpires < clock()+86_400_000 {
+            _ = try await signIn();try Task.checkCancellation()
+            guard networkGen==networkGeneration else {throw PathChanged()}
+        }
         if networkGen != verifiedNetworkGeneration {
             _ = try await securitySession().sync()
             if networkGen == networkGeneration {verifiedNetworkGeneration=networkGen}
@@ -1012,7 +1058,7 @@ public actor Remote {
             publish()
             // Subscribed first, then catch up: nothing falls in between.
             _ = await refresh()
-            if !running || gen != generation { return }
+            if !running || gen != generation || Task.isCancelled { return }
             let followed = eventFeeds.withLock { feeds in
                 feeds.filter { $0.value.followers > 0 }.map(\.key)
             }

@@ -110,18 +110,21 @@ final class StreamBlackhole: @unchecked Sendable {
     let url: String
     let attempts = Counter()
 
-    init(firstClose: Int? = nil, firstReady: Bool = false) throws {
+    init(firstClose: Int? = nil, firstReady: Bool = false, firstCloseAfter: DispatchSemaphore? = nil) throws {
         listener = try Listener()
         url = "http://127.0.0.1:\(listener.port)"
         let attempts = self.attempts
         listener.serve { fd in
             guard let head = readHead(fd), acceptUpgrade(fd, head) else { return }
-            if attempts.increment() > 1 || firstReady {
+            let attempt = attempts.increment()
+            if attempt > 1 || firstReady {
                 var ready = PBServerFrame()
                 ready.ready = PBReady.with { $0.serverTimeMs = Int64(Date().timeIntervalSince1970 * 1000) }
                 let bytes: Data = (try? ready.serializedData()) ?? Data()
                 writeAll(fd, Data([0x82, UInt8(bytes.count)]) + bytes)
-            } else if let code = firstClose {
+            }
+            if attempt == 1, let code = firstClose {
+                _ = firstCloseAfter?.wait(timeout: .now()+10)
                 // A close frame: its payload is the code.
                 writeAll(fd, Data([0x88, 2, UInt8(code >> 8), UInt8(code & 0xff)]))
             }

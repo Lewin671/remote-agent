@@ -49,3 +49,15 @@ test.each([false,true])("a retired settings read cannot clear or overwrite its r
  if(!failure){old.resolve(create(CommandResultSchema,{kind:{case:"getSettings",value:{settings:create(DaemonSettingsSchema)}}}));await first;}
  expect(r.cachedSettings(r.machine)).toBe(settings);expect(r.settings(r.machine)).toBe(second);
 });
+
+test("a hidden main loop still retires the old network of an independent login",async()=>{
+ const r=await remote(),rt=r as any,old=deferred<void>();let signal!:AbortSignal;
+ const connect=vi.spyOn(rt,"connect").mockResolvedValue(undefined);
+ vi.spyOn(rt,"signIn").mockImplementationOnce((...args:unknown[])=>{signal=args[0] as AbortSignal;return old.promise}).mockResolvedValue(undefined);
+ const caller=rt.login() as Promise<void>;
+ try {
+  r.setForeground(false);r.networkChanged("new-hidden-route");await Promise.resolve();
+  expect(signal.aborted).toBe(true);expect(connect).not.toHaveBeenCalled();
+  old.reject(new DOMException("retired","AbortError"));await caller;
+ } finally {r.stop();old.reject(new Error("fixture stopped"));await caller.catch(()=>undefined);}
+});

@@ -25,10 +25,11 @@ extension Remote {
                 do {
                     let token = try await self.currentToken()
                     let result = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: token)).value()
+                    try Task.checkCancellation()
                     await self.receivedRecoveryStatus(result)
                     return result
                 } catch {
-                    await self.markRecoveryStatusStale()
+                    if !Task.isCancelled {await self.markRecoveryStatusStale()}
                     throw error
                 }
             })

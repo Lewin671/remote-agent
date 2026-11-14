@@ -444,3 +444,13 @@ it("a scheduling gap retires every job of the old candidate and keeps the health
   Socket.all[1].onclose?.({code:1006});await flush();
   Socket.all[2].frame("ready");await flush();expect(r.conn).toBe("online");
 });
+
+it("a refusal for the main leg cannot discard a newer independent login", async () => {
+  const r=await probe();vi.useFakeTimers();
+  const runtime=r as unknown as {token:string;tokenExpires:number};
+  runtime.token="original";runtime.tokenExpires=Date.now()+3*86_400_000;
+  r.start();await flush();const old=Socket.all[0];old.onopen?.();
+  runtime.token="refreshed";
+  old.onclose?.({code:1008});await flush();
+  expect(r.authHeader()).toBe("Bearer refreshed");
+});
