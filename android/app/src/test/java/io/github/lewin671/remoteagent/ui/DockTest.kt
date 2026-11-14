@@ -60,6 +60,9 @@ class DockTest {
             dockHeadLine(approval, "Codex", true, 1, left = "剩 4 分钟", openLabel = "请求执行"),
         )
         assertEquals("请求执行" to "", dockHeadLine(approval, "Codex", true, 0))
+        for (detail in listOf("unknown panel", "trust folder", "model picker", "Native unrecognized panel")) {
+            assertEquals("终端里有弹窗" to "终端里有弹窗", dockHeadLine(DockItem.Popup(detail), "Antigravity", false, 0))
+        }
         val popup = DockItem.Popup("Trust this folder?")
         assertEquals("终端里有弹窗" to "Codex 在等你", dockHeadLine(popup, "Codex", true, 0, meta = "Codex 在等你"))
     }

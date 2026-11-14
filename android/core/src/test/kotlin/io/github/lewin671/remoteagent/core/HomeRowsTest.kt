@@ -233,7 +233,7 @@ class HomeRowsTest {
         val plan = pendingRowText(st, session("p", plan = true), HomeScope.All, null, null, zone, copy = ::messageTextForTest)
         assertTrue(messageTextForTest(UiMessages.listStatePlan()) == plan.kind.testText() && plan.summary.isEmpty())
         val popup = session("t", status = SessionStatus.SESSION_STATUS_BLOCKED, detail = "Trust this folder?")
-        assertEquals(PendingRowText("t".messageText(), UiMessages.listStatePopup().messageText(), "Trust this folder?".messageText()), pendingRowText(st, popup, HomeScope.All, null, null, zone, copy = ::messageTextForTest))
+        assertEquals(PendingRowText("t".messageText(), UiMessages.listStatePopup().messageText(), UiMessages.listStatePopup().messageText()), pendingRowText(st, popup, HomeScope.All, null, null, zone, copy = ::messageTextForTest))
     }
 
     @Test fun theDarkCardSaysWhatAndUntilWhenAndWhere() {

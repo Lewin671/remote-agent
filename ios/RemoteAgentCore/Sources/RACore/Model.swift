@@ -84,6 +84,11 @@ public func statusOf(_ s: SessionView, machine: MachineView?) -> Status {
     return .idle
 }
 
+/// Adapter diagnostics and native titles are not user-facing copy.
+public func popupTitle(_ detail: String) -> String {
+    detail.isEmpty ? "" : L10n.listStatePopup()
+}
+
 /// A hint for a popup in the terminal. Claude Code's trust dialog has its
 /// cursor on "No, exit", so Enter alone ends the session
 /// (claude-code-notes.md §1); Codex's needs none. Same text as the web.
@@ -191,7 +196,7 @@ public func previewOf(_ s: SessionView, status: Status) -> String {
     guard let i = s.info else { return "" }
     switch status {
     case .plan: return L10n.listStatePlan()
-    case .popup: return i.statusDetail.ifEmpty(L10n.listStatePopup())
+    case .popup: return L10n.listStatePopup()
     default: return plain(i.preview).ifEmpty(i.title.isEmpty ? L10n.listStateNoMessage() : "")
     }
 }

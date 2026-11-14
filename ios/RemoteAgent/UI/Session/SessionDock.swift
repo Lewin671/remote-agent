@@ -686,7 +686,7 @@ struct PopupDock: View {
         PendingDock(
             .popup(title: title), agent: agent, more: more, note: DockNote(text: L10n.dockAgentWaiting(agent: agent)), open: $open, onOpen: onOpen
         ) {
-            if !title.isEmpty { Text(title).font(.body.weight(.medium)).foregroundStyle(DS.ink).padding(.bottom, 6) }
+            if !title.isEmpty { Text(popupTitle(title)).font(.body.weight(.medium)).foregroundStyle(DS.ink).padding(.bottom, 6) }
             let hint = popupHint(agent: session.agent, detail: title)
             if !hint.isEmpty { Text(hint).font(.footnote).foregroundStyle(DS.orangeInk) }
         } actions: {

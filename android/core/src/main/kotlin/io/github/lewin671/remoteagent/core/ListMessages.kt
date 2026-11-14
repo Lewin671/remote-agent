@@ -36,7 +36,7 @@ fun listPreview(s: SessionView, status: Status): MessageText {
     val info = s.info ?: return "".messageText()
     return when (status) {
         Status.PLAN -> UiMessages.listStatePlan().messageText()
-        Status.POPUP -> info.statusDetail.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.listStatePopup().messageText()
+        Status.POPUP -> UiMessages.listStatePopup().messageText()
         else -> plain(info.preview).takeIf { it.isNotEmpty() }?.messageText()
             ?: if (info.title.isEmpty()) UiMessages.listStateNoMessage().messageText() else "".messageText()
     }

@@ -38,7 +38,7 @@ public func dockSummary(_ item: DockItem, agent: String) -> (label: String, brie
         if isSkeleton(q) { return (skeletonMessage, "") }
         return (L10n.listStateAgentAsking(agent: agent), q.questions.first?.text.jvmLines()[0] ?? "")
     case .plan(let text): return (isSkeleton(text) ? skeletonMessage : L10n.listStatePlan(), "")
-    case .popup(let title): return (L10n.listStatePopup(), title)
+    case .popup(let title): return (L10n.listStatePopup(), popupTitle(title))
     }
 }
 

@@ -311,6 +311,10 @@ fun statusOf(s: SessionView, machine: MachineView?): Status {
     return Status.IDLE
 }
 
+// Raw popup details are adapter diagnostics, not user-facing copy.
+fun popupTitle(detail: String): MessageText =
+    if (detail.isNotEmpty()) UiMessages.listStatePopup().messageText() else "".messageText()
+
 /**
  * A hint for a popup in the terminal. Claude Code's trust dialog has its cursor on "No, exit", so
  * Enter alone ends the session (claude-code-notes.md §1); Codex's needs none. Same text as the web.
@@ -492,7 +496,7 @@ fun previewOf(s: SessionView, status: Status, copy: MessageResolver): String {
     val i = s.info ?: return ""
     return when (status) {
         Status.PLAN -> copy(UiMessages.listStatePlan())
-        Status.POPUP -> i.statusDetail.ifEmpty { copy(UiMessages.listStatePopup()) }
+        Status.POPUP -> copy(UiMessages.listStatePopup())
         else -> plain(i.preview).ifEmpty { if (i.title.isEmpty()) copy(UiMessages.listStateNoMessage()) else "" }
     }
 }

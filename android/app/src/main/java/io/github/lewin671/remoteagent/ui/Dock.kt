@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.popupTitle
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.approvalDisplay
 import io.github.lewin671.remoteagent.core.approvalHead
@@ -112,7 +113,7 @@ fun dockSummary(item: DockItem, agent: String, copy: (io.github.lewin671.remotea
                 copy(UiMessages.listStateAgentAsking(agent = agent)) to
                     item.q.questionsList.firstOrNull()?.text?.lines()?.firstOrNull().orEmpty()
         is DockItem.Plan -> if (isSkeleton(item.text)) copy(UiMessages.sessionSkeleton()) to "" else copy(UiMessages.listStatePlan()) to ""
-        is DockItem.Popup -> copy(UiMessages.listStatePopup()) to item.title
+        is DockItem.Popup -> copy(UiMessages.listStatePopup()) to popupTitle(item.title).resolve(copy)
     }
 
 /**
@@ -840,7 +841,7 @@ fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) 
         meta = copy(UiMessages.dockAgentWaiting(agent = (agentName(s.agent(), copy = copy)).toString())),
         body = {
             if (title.isNotEmpty())
-                Text(title, style = T.mono13.copy(fontSize = 15.sp, lineHeight = 22.sp), color = CardColors.text, modifier = Modifier.padding(top = 12.dp))
+                Text(uiText(popupTitle(title)), style = T.mono13.copy(fontSize = 15.sp, lineHeight = 22.sp), color = CardColors.text, modifier = Modifier.padding(top = 12.dp))
             val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
             if (hint.isNotEmpty()) Text(uiText(hint), style = T.s13, color = CardColors.orange, modifier = Modifier.padding(top = 8.dp))
         },

@@ -283,7 +283,7 @@ fun pendingRowText(
         // One line: the row is a summary, the card and the dock show the command whole.
         Status.APPROVAL -> (approval?.let { if (it.command.isNotEmpty()) UiMessages.listStateAndroidRequestCommand() else if (it.toolName.isNotEmpty()) UiMessages.listStateRequestPermission(approvalDisplay(it.toolName)) else UiMessages.listStateAndroidRequestPermission() } ?: listStatus(st)).messageText() to (approval?.let { approvalBody(it).split(Regex("\\s+")).filter(String::isNotEmpty).joinToString(" ") } ?: "")
         Status.QUESTION -> UiMessages.listStateAgentAsking(agentName(s.agent(), copy = copy)).messageText() to question.orEmpty()
-        Status.POPUP -> listStatus(st).messageText() to s.info?.statusDetail.orEmpty()
+        Status.POPUP -> listStatus(st).messageText() to popupTitle(s.info?.statusDetail.orEmpty()).resolve(copy)
         else -> listStatus(st).messageText() to ""
     }
     val other = if (outsideScope(s, scope)) listProjectName(projectKey(s)) else "".messageText()

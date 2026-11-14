@@ -306,7 +306,7 @@ public func pendingRowText(
         about = question ?? ""
     case .popup:
         kind = st.text
-        about = s.info?.statusDetail ?? ""
+        about = popupTitle(s.info?.statusDetail ?? "")
     default:
         kind = st.text
         about = ""

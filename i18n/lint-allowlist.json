@@ -1673,5 +1673,15 @@
     "path": "internal/antigravity/transcript.go",
     "literal": "remote_agent/send_file",
     "reason": "Canonical MCP tool identity shared with the file-result matcher, not a translatable product label."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "trust folder",
+    "reason": "Internal adapter popup identifier used only to select an existing localized trust hint; never displayed."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "remote.retainHistory(s.id), [remote, s.id]); const st = stateOf(s, remote.presence.get(s.machineId)); const p = pendingOf(remote, s.id); const kind = st.kind === \"approval\" ? p.approval ? approvalTitle(p.approval) : st.text : st.kind === \"question\" ? askTitle(agentOf(s)) : st.text; const about = st.kind === \"approval\" ? p.approval?.command ? approvalDisplay(p.approval.command).replace(/\\s+/g, \" \") : \"\" : st.kind === \"question\" ? p.question?.questions[0]?.text ?? \"\" : st.kind === \"popup\" ? popupTitle(s.info?.statusDetail ?? \"\") : \"\"; const other = scope !== ALL && projectKey(s) !== scope ? projectName(projectKey(s)) : \"\"; const rest = [other, about].filter(Boolean).join(\" · \"); return (",
+    "reason": "Lexical JSX scanner false positive spanning the existing home-row expression; popupTitle resolves only existing localized copy."
   }
 ]

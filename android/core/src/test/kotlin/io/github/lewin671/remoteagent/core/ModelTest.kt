@@ -27,6 +27,13 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 class ModelTest {
+    @Test fun popupDiagnosticsAreLocalized() {
+        for (detail in listOf("trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel")) {
+            assertEquals(UiMessages.listStatePopup().messageText(), popupTitle(detail))
+        }
+        assertTrue(popupTitle("").isEmpty())
+    }
+
     @Test fun markdownTablePreviewMatchesSharedVectors() {
         val vectors = kotlinx.serialization.json.Json.parseToJsonElement(
             java.io.File(System.getProperty("previewTableVectors")).readText()) as kotlinx.serialization.json.JsonArray

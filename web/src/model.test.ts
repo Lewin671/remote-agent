@@ -1,4 +1,4 @@
-import { t as message } from "./i18n";
+import { t as message, localeStore } from "./i18n";
 import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -19,6 +19,7 @@ import {
   findModel,
   modelLabel,
   pathCrumbs,
+  popupTitle,
   defaultModeOf,
   inheritConfig,
   modeLabel,
@@ -1057,4 +1058,16 @@ describe("the folder picker's path", () => {
 import previewVectors from "../../testdata/preview-plain.json";
 it.each(previewVectors)("plain preview: $name", ({ input, expected }) => {
   expect(plain(input)).toBe(expected);
+});
+
+// Every diagnostic emitted by Codex/Claude/agy, plus native/unknown titles.
+it("localizes popup diagnostics without exposing native titles", () => {
+  try { for (const locale of ["zh-CN", "en"] as const) {
+  localeStore.overrideForTesting(locale);
+  for (const detail of ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"]) {
+    expect(popupTitle(detail)).toBe(t("list_state.popup"));
+    expect(previewOf(sess({ status: SessionStatus.BLOCKED, statusDetail: detail }), { kind: "popup", tone: "wait", text: t("list_state.popup") })).toBe(t("list_state.popup"));
+  }
+  expect(popupTitle("")).toBe("");
+  } } finally { localeStore.overrideForTesting(); }
 });

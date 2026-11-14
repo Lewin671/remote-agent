@@ -224,7 +224,7 @@ import Testing
         #expect(plan.kind == L10n.listStatePlan() && plan.summary.isEmpty)
         var popup = session("t", status: .blocked)
         popup.info?.statusDetail = "Trust this folder?"
-        #expect(pendingRowText(st, popup, scope: .all, approval: nil, question: nil, zone: zone) == PendingRowText(title: "t", kind: L10n.listStatePopup(), summary: "Trust this folder?"))
+        #expect(pendingRowText(st, popup, scope: .all, approval: nil, question: nil, zone: zone) == PendingRowText(title: "t", kind: L10n.listStatePopup(), summary: L10n.listStatePopup()))
     }
 
     @Test func theDarkCardSaysWhatAndUntilWhenAndWhere() {

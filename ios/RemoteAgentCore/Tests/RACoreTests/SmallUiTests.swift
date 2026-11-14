@@ -45,7 +45,7 @@ import Testing
         let q = PBQuestionAsked.with { $0.questionID = "q1"; $0.questions = [.with { $0.text = "用哪个数据库？\n第二行" }] }
         #expect(dockSummary(.question(q), agent: "Claude Code") == ("Claude Code 在问你", "用哪个数据库？"))
         #expect(dockSummary(.plan(text: "x"), agent: "Codex") == (L10n.listStatePlan(), ""))
-        #expect(dockSummary(.popup(title: "trust folder"), agent: "Codex") == (L10n.listStatePopup(), "trust folder"))
+        #expect(dockSummary(.popup(title: "trust folder"), agent: "Codex") == (L10n.listStatePopup(), L10n.listStatePopup()))
         #expect(DockItem.question(q).id == "q:q1")
         #expect(!longQuestion(.with { $0.text = String(repeating: "字", count: 120) }))
         #expect(longQuestion(.with { $0.text = String(repeating: "字", count: 121) }))
@@ -140,4 +140,15 @@ import Testing
         #expect(aspect(PBImageRef()) == 4.0 / 3.0)
         #expect(modeHelp(.full) == L10n.modesSkipAll())
     }
+}
+
+@Test func popupDiagnosticsNeverBecomeUserCopy() {
+    for detail in ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"] {
+        #expect(popupTitle(detail) == L10n.listStatePopup())
+        #expect(dockSummary(.popup(title: detail), agent: "Antigravity").brief == L10n.listStatePopup())
+        var session = SessionView(id: "popup-test", machineId: "machine")
+        session.info = .with { $0.status = .blocked; $0.statusDetail = detail }
+        #expect(previewOf(session, status: .popup) == L10n.listStatePopup())
+    }
+    #expect(popupTitle("").isEmpty)
 }

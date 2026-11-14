@@ -12,7 +12,7 @@ import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { approvalDisplay } from "../approval-display";
 import { Markdown } from "../markdown";
 import { agentInfo } from "../agents";
-import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
+import { agentName, agentOf, askTitle, popupTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
 import { Banner, Exp, NavBar, useNow } from "../ui";
 import { deadlineOf, useAnswer, usePlan } from "./actions";
@@ -354,16 +354,16 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
     <Pending
       frame={frame}
       label={i18n.t("list_state.popup")}
-      brief={title}
+      brief={popupTitle(title)}
       meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), i18n.t("dock.agent_waiting", { agent: agentName(agent) }))}
       body={
         title && (
           <>
-            <div className="q mono">{title}</div>
+            <div className="q mono">{popupTitle(title)}</div>
             {/* Claude Code's trust prompt starts on "No, exit": Enter alone
                 ends the session (claude-code-notes §1). Trusting stays the
                 user's choice, made in the terminal. */}
-            {agentInfo(agent).trustFolderHint && /trust/i.test(title) && (
+            {agentInfo(agent).trustFolderHint && title === "trust folder" && (
               <div className="y">
                 {formatTrustHint(agentInfo(agent).trustFolderHint!)}
               </div>

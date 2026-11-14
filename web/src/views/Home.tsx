@@ -22,6 +22,7 @@ import {
   machineName,
   needsAttention,
   previewOf,
+  popupTitle,
   projectKey,
   projectName,
   shortPath,
@@ -153,7 +154,7 @@ function PendingRow({ remote, s, go, scope }: { remote: Remote; s: SessionView; 
       : st.kind === "question"
         ? p.question?.questions[0]?.text ?? ""
         : st.kind === "popup"
-          ? s.info?.statusDetail ?? ""
+          ? popupTitle(s.info?.statusDetail ?? "")
           : "";
   const other = scope !== ALL && projectKey(s) !== scope ? projectName(projectKey(s)) : "";
   const rest = [other, about].filter(Boolean).join(" · ");

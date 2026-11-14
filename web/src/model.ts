@@ -376,7 +376,7 @@ export function previewOf(
     case "plan":
       return t("list_state.plan");
     case "popup":
-      return s.info?.statusDetail || st.text;
+      return popupTitle(s.info?.statusDetail ?? "") || st.text;
   }
   const p = plain(s.info?.preview || "");
   if (p) return p;
@@ -619,6 +619,12 @@ export function tailPath(p: string, max = 28): string {
   )
     out = parts.pop() + "/" + out;
   return "…/" + out;
+}
+
+// Popup details are adapter diagnostics or native CLI text, never UI copy.
+// Keep the raw value for identity and trust hints; display existing localized copy.
+export function popupTitle(detail: string): string {
+  return detail ? t("list_state.popup") : "";
 }
 
 // --- modes and chips ---
