@@ -62,7 +62,6 @@
 "attachment_ios_preparing" = " · Preparing";
 "attachment_ios_restore_unavailable" = "Pending attachments have not been restored. Retry before putting them back.";
 "attachment_ios_signed_out_of_the_account" = "Signed out of the account";
-"attachment_ios_source_unreadable" = "Cannot read the source file. Choose it again.";
 "attachment_ios_the_app_restarted_delivery_of_this_message_is_unconfirmed" = "The app restarted. Delivery of this message is unconfirmed.";
 "attachment_ios_the_computer_did_not_confirm_upload_completion_retry" = "The computer did not confirm upload completion. Retry.";
 "attachment_ios_the_computer_did_not_provide_a_file_id" = "The computer did not provide a file ID";

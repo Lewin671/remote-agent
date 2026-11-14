@@ -212,7 +212,7 @@ struct SessionComposer: View {
                 focus: focus,
                 sendHint: online ? "" : L10n.composerIosConnectSend()
             ) {
-                images.strip(session: (sid, store))
+                images.strip(focus: focus, session: (sid, store))
             }
             Color.clear.frame(height: 0)
                 .debugSignal("session.draft") { store.setDraft(sid, SessionDebug.text) }

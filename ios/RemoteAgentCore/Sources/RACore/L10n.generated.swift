@@ -289,10 +289,6 @@ public enum L10n {
         let key = "attachment_ios_signed_out_of_the_account"
         return format(key, locale: locale, args: [])
     }
-    public static func attachmentIosSourceUnreadable(locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_source_unreadable"
-        return format(key, locale: locale, args: [])
-    }
     public static func attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_the_app_restarted_delivery_of_this_message_is_unconfirmed"
         return format(key, locale: locale, args: [])
@@ -8211,10 +8207,6 @@ public enum L10nMessage {
     }
     public static func attachmentIosSignedOutOfTheAccount() -> LocalizedMessage {
         let key = "attachment_ios_signed_out_of_the_account"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func attachmentIosSourceUnreadable() -> LocalizedMessage {
-        let key = "attachment_ios_source_unreadable"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed() -> LocalizedMessage {

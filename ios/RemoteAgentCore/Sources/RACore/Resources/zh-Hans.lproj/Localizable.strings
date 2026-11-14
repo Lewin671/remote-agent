@@ -62,7 +62,6 @@
 "attachment_ios_preparing" = " · 准备中";
 "attachment_ios_restore_unavailable" = "待发附件尚未恢复，请重试后再放回";
 "attachment_ios_signed_out_of_the_account" = "已退出账户";
-"attachment_ios_source_unreadable" = "读不到源文件，请重新选择";
 "attachment_ios_the_app_restarted_delivery_of_this_message_is_unconfirmed" = "App 重启过，不确定这条有没有送到";
 "attachment_ios_the_computer_did_not_confirm_upload_completion_retry" = "电脑没有确认文件上传完成，请重试";
 "attachment_ios_the_computer_did_not_provide_a_file_id" = "电脑没有给出文件 ID";

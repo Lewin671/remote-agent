@@ -133,7 +133,7 @@ struct NewSessionBox: View {
                 text: Bindable(draft).text, placeholder: L10n.newSessionIosDescribe(), label: L10n.newSessionIosDescribe(), identifier: "new-session-text",
                 focus: $focused
             ) {
-                images.strip()
+                images.strip(focus: $focused)
             } plus: {
                 Button { images.pick() } label: { PlusCircle(dimmed: images.blocked != nil) }
                     .buttonStyle(.plain)
@@ -166,7 +166,7 @@ struct NewSessionBox: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 MessageCard(text: Bindable(draft).text, placeholder: L10n.newSessionPrompt(), label: L10n.newSessionIosPromptLabel(), identifier: "new-session-text", focus: $focused) {
-                    images.strip()
+                    images.strip(focus: $focused)
                 } accessories: {
                     AttachMenu(images: images)
                     if let c = config, let parts = sheet.parts {

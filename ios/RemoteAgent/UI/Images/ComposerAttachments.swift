@@ -49,8 +49,8 @@ struct ComposerAttachments {
     func refresh() { center.aim(key, at: machineId, blocked: blocked != nil, machine: machine) }
     func used(_ images: [PendingImage]) { center.used(key, images, machineId: machineId) }
 
-    func strip(session: (id: String, store: SessionStore)? = nil) -> some View {
-        ImageStrip(center: center, key: key, machineId: machineId, blocked: blocked, max: limit, machine: machine)
+    func strip(focus: FocusState<Bool>.Binding? = nil, session: (id: String, store: SessionStore)? = nil) -> some View {
+        ImageStrip(center: center, key: key, machineId: machineId, blocked: blocked, max: limit, machine: machine, focus: focus)
             .imageDraftDebug(self, session: session)
     }
 }

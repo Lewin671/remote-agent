@@ -17,7 +17,7 @@
 // One exists per sync engine: made when the account comes into use and
 // dropped with it, so nothing of one account is shown to the next.
 import Observation
-import PhotosUI
+import CoreTransferable
 import RACore
 import RAProto
 import SwiftUI
@@ -70,7 +70,7 @@ final class ImageCenter {
     /// Where the bytes of a picked image come from.
     enum Source {
         case data(Data)
-        case item(PhotosPickerItem)
+        case library(NSItemProvider)
         case provider(NSItemProvider)
     }
 
@@ -435,13 +435,15 @@ final class ImageCenter {
     /// library into this app's temporary folder, and that copy is what the
     /// draft keeps and uploads. One past the size limit is refused here, as
     /// a picked document is, before anything is sent.
-    func addVideos(_ key: String, _ items: [PhotosPickerItem], machine: MachineView?, online: Bool) {
+    func addVideos(_ key: String, _ items: [NSItemProvider], machine: MachineView?, online: Bool) {
         if let blocked = fileUploadBlocked(machine, online: online) { return say(key, blocked) }
         Task {
             var urls: [URL] = []
             for item in items {
                 do {
-                    guard let video = try await item.loadTransferable(type: LibraryVideo.self) else { throw PickedFile.unreadable }
+                    let video: LibraryVideo = try await withCheckedThrowingContinuation { done in
+                        _ = item.loadTransferable(type: LibraryVideo.self) { done.resume(with: $0) }
+                    }
                     urls.append(video.url)
                 } catch {
                     say(key, L10n.imageIosCannotReadThisVideoSelectItAgain())
@@ -520,9 +522,11 @@ final class ImageCenter {
         let data: Data
         switch source {
         case .data(let d): return d
-        case .item(let item):
+        case .library(let item):
             do {
-                guard let photo = try await item.loadTransferable(type: PickedPhoto.self) else { throw unreadable }
+                let photo: PickedPhoto = try await withCheckedThrowingContinuation { done in
+                    _ = item.loadTransferable(type: PickedPhoto.self) { done.resume(with: $0) }
+                }
                 data = try photo.read.get()
             } catch { throw AttachmentFailure.reading(error) }
         case .provider(let provider):
@@ -885,9 +889,4 @@ enum LibraryVideos {
     static func discardAll(root: URL = root) {
         try? FileManager.default.removeItem(at: root)
     }
-}
-
-extension PhotosPickerItem {
-    /// The item is a video (a movie of any kind), which goes as a file.
-    var isVideo: Bool { supportedContentTypes.contains { $0.conforms(to: .movie) } }
 }

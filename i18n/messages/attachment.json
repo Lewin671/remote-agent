@@ -976,20 +976,6 @@
     }
   },
   {
-    "key": "attachment.ios_source_unreadable",
-    "zh-CN": "读不到源文件，请重新选择",
-    "en": "Cannot read the source file. Choose it again.",
-    "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.ios_the_app_restarted_delivery_of_this_message_is_unconfirmed",
     "zh-CN": "App 重启过，不确定这条有没有送到",
     "en": "The app restarted. Delivery of this message is unconfirmed.",

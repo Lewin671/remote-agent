@@ -9,6 +9,7 @@
 import PhotosUI
 import RACore
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ImageStrip: View {
     let center: ImageCenter
@@ -20,6 +21,7 @@ struct ImageStrip: View {
     let blocked: String?
     let max: Int
     var machine: MachineView? = nil
+    var focus: FocusState<Bool>.Binding? = nil
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewing: DraftImageSelection?
@@ -76,7 +78,7 @@ struct ImageStrip: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(ImagePickerHost(center: center, key: key, max: max, machine: machine, blocked: blocked))
+        .modifier(ImagePickerHost(center: center, key: key, max: max, machine: machine, blocked: blocked, focus: focus))
         .fullScreenCover(item: $viewing) { pick in DraftImageViewer(center: center, key: key, start: pick.index) { viewing = nil } }
         .debugSignal("images.preview") { if !draft.photos.isEmpty { viewing = DraftImageSelection(index: 0) } }
         .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count, filesSupported: fileSupported(machine), fileLimit: fileLimit(for: machine), byteLimit: fileByteLimit(for: machine)), initial: true) { _, aim in
@@ -260,11 +262,29 @@ private struct ImagePickerHost: ViewModifier {
     let max: Int
     let machine: MachineView?
     let blocked: String?
-    @State private var picked: [PhotosPickerItem] = []
+    let focus: FocusState<Bool>.Binding?
+    // Native pickers can resign the editor without reliably restoring it.
+    // Keep the pre-presentation intent, including an intentionally hidden keyboard.
+    @State private var focusBeforePicker: Bool?
     /// 从相册选择 was chosen in the menu: the picker comes up once the menu is down.
     @State private var next: ImageCenter.Pick?
 
+    private enum NativePicker: String, Identifiable {
+        case photos, documents
+        var id: String { rawValue }
+    }
+
+    private func restoreEditor() {
+        guard center.picking[key] == nil else { return }
+        let restore = focusBeforePicker == true
+        focusBeforePicker = nil
+        if restore, let focus { focus.wrappedValue = true }
+    }
+
     func body(content: Content) -> some View {
+        // Observe focus during rendering, before the presentation modifier
+        // transfers first-responder ownership to a native picker.
+        let editorFocused = focus?.wrappedValue ?? false
         let draft = center.draft(key)
         // Videos go as files where the computer takes files (session-files.md 「从相册选视频」).
         let videos = fileSupported(machine)
@@ -286,36 +306,49 @@ private struct ImagePickerHost: ViewModifier {
                     SheetAction(L10n.attachmentIosPasteClipboard()) { center.paste(key, max: max) },
                 ]
             )
-            .onChange(of: center.picking[key]) { _, now in
-                guard now == nil, let show = next else { return }
-                next = nil
-                Task {
-                    // One presentation at a time: the menu's cover has to be gone first.
-                    try? await Task.sleep(for: .milliseconds(350))
-                    center.picking[key] = show
+            .onChange(of: center.picking[key]) { previous, now in
+                if now != nil {
+                    if focusBeforePicker == nil, focus != nil {
+                        focusBeforePicker = editorFocused
+                    }
+                    if now == .photos || now == .documents, let focus { focus.wrappedValue = false }
+                } else if let show = next {
+                    next = nil
+                    Task {
+                        // One presentation at a time: the menu's cover has to be gone first.
+                        try? await Task.sleep(for: .milliseconds(350))
+                        center.picking[key] = show
+                    }
+                } else if previous != .photos && previous != .documents {
+                    restoreEditor()
                 }
             }
-            .fileImporter(
-                isPresented: Binding(get: { center.picking[key] == .documents }, set: { if !$0, center.picking[key] == .documents { center.picking[key] = nil } }),
-                allowedContentTypes: [.item], allowsMultipleSelection: true
-            ) { result in
-                switch result {
-                case .success(let urls): center.addFiles(key, urls, machine: machine, online: blocked == nil)
-                case .failure: center.say(key, L10n.attachmentIosSourceUnreadable())
+            .sheet(item: Binding(
+                get: {
+                    switch center.picking[key] {
+                    case .photos: NativePicker.photos
+                    case .documents: NativePicker.documents
+                    default: nil
+                    }
+                },
+                set: { if $0 == nil, center.picking[key] == .photos || center.picking[key] == .documents { center.picking[key] = nil } }
+            ), onDismiss: restoreEditor) { picker in
+                switch picker {
+                case .photos:
+                    LibraryPicker(limit: room, videos: videos) { items in
+                        center.picking[key] = nil
+                        let providers = items.map(\.itemProvider)
+                        let moving = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.movie.identifier) }
+                        let still = providers.filter { !$0.hasItemConformingToTypeIdentifier(UTType.movie.identifier) }
+                        if !still.isEmpty { center.add(key, still.map { .library($0) }, max: max) }
+                        if !moving.isEmpty { center.addVideos(key, moving, machine: machine, online: blocked == nil) }
+                    }.ignoresSafeArea()
+                case .documents:
+                    DocumentPicker { urls in
+                        center.picking[key] = nil
+                        if !urls.isEmpty { center.addFiles(key, urls, machine: machine, online: blocked == nil) }
+                    }.ignoresSafeArea()
                 }
-            }
-            .photosPicker(
-                isPresented: Binding(get: { center.picking[key] == .photos }, set: { if !$0, center.picking[key] == .photos { center.picking[key] = nil } }),
-                selection: $picked, maxSelectionCount: room, selectionBehavior: .ordered, matching: videos ? .any(of: [.images, .videos]) : .images,
-                // The file as it is: nothing is converted before this app has taken its metadata out.
-                preferredItemEncoding: .current
-            )
-            .onChange(of: picked) { _, items in
-                guard !items.isEmpty else { return }
-                picked = []
-                let (moving, still) = (items.filter(\.isVideo), items.filter { !$0.isVideo })
-                if !still.isEmpty { center.add(key, still.map { .item($0) }, max: max) }
-                if !moving.isEmpty { center.addVideos(key, moving, machine: machine, online: blocked == nil) }
             }
     }
 }
@@ -354,5 +387,53 @@ struct OutgoingImageThumbs: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(L10n.imageCount(count: Int(photos.count)))
         }
+    }
+}
+
+/// Keep native picker contents while owning their dismissal lifecycle. The
+/// sheet's onDismiss runs after UIKit releases the picker, unlike its binding.
+private struct LibraryPicker: UIViewControllerRepresentable {
+    let limit: Int
+    let videos: Bool
+    let picked: ([PHPickerResult]) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(picked) }
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var configuration = PHPickerConfiguration()
+        configuration.selectionLimit = limit
+        configuration.selection = .ordered
+        configuration.filter = videos ? .any(of: [.images, .videos]) : .images
+        configuration.preferredAssetRepresentationMode = .current
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = context.coordinator
+        return picker
+    }
+    func updateUIViewController(_ picker: PHPickerViewController, context: Context) {
+        context.coordinator.picked = picked
+    }
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        var picked: ([PHPickerResult]) -> Void
+        init(_ picked: @escaping ([PHPickerResult]) -> Void) { self.picked = picked }
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) { picked(results) }
+    }
+}
+
+private struct DocumentPicker: UIViewControllerRepresentable {
+    let picked: ([URL]) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(picked) }
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: false)
+        picker.allowsMultipleSelection = true
+        picker.delegate = context.coordinator
+        return picker
+    }
+    func updateUIViewController(_ picker: UIDocumentPickerViewController, context: Context) {
+        context.coordinator.picked = picked
+    }
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        var picked: ([URL]) -> Void
+        init(_ picked: @escaping ([URL]) -> Void) { self.picked = picked }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { picked(urls) }
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { picked([]) }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import CoreTransferable
 import RACore
 import RAProto
 import Testing
@@ -29,6 +30,23 @@ import Testing
         let remote = try Remote(account: account, http: AppModel.http)
         ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
         return (remote, ImageCenter.of(remote))
+    }
+
+    @Test func aLibraryProviderKeepsOriginalVideoBytesBeyondThePicker() async throws {
+        let source = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        let bytes = Data(repeating: 7, count: 128)
+        try bytes.write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let provider = try #require(NSItemProvider(contentsOf: source))
+        // A provider supplies the name separately from its file representation.
+        provider.suggestedName = source.lastPathComponent
+        let copied: LibraryVideo = try await withCheckedThrowingContinuation { done in
+            _ = provider.loadTransferable(type: LibraryVideo.self) { done.resume(with: $0) }
+        }
+        defer { LibraryVideos.discard(copied.url) }
+        try FileManager.default.removeItem(at: source)
+        #expect(copied.url.lastPathComponent == source.lastPathComponent)
+        #expect(try Data(contentsOf: copied.url) == bytes)
     }
 
     @Test func aVideosCopyGoesWithItsFolderAndNothingElseIsTouched() throws {
