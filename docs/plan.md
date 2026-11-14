@@ -24,7 +24,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；任务级完成通知与接管说明已实现；网页按运行显示未读，打开详情或对应对话已读，界面按 client-v54 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)和 v52 改版记录 | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
-| 传输模块与直连 | 协议 15 的 0a 已发布；0b 四端 Link/Router/RelayPath 已本地实现，保留原结果证据与纯 relay 策略；尚无 DirectPath、热备或流恢复 | [0b 自动化与隔离真实 CLI 验收](acceptance-notes.md#传输-0b-linkrouterrelaypath2026-11-14)；iOS UI 有一项基线同样失败，iMac 正式性能待测 | 下列 0b 收尾及 0c–4 期、界面稿更新，以及「待确认 › 传输模块与直连」 |
+| 传输模块与直连 | 协议 15 的 0a 已发布；0b 四端 Link/Router/RelayPath 已本地实现，保留原结果证据与纯 relay 策略；尚无 DirectPath、热备或流恢复 | [0b 自动化与隔离真实 CLI 验收](acceptance-notes.md#传输-0b-linkrouterrelaypath2026-11-14)；iOS UI 基线问题已由独立任务处理、不属 0b；iMac 正式性能在复核干净后安排 | 下列 0b 收尾及 0c–4 期、界面稿更新，以及「待确认 › 传输模块与直连」 |
 | 测试与开发夹具 | 实例状态目录、共享准备步骤、受限并行与正确的增量输入依赖 | 各端完整前后对照与五轮 CPU 高负载复跑，用例和断言保留，见[第二轮记录](acceptance-notes.md#测试提速第二轮2026-11-04) | 改动仍在任务分支；机制审计候选尚未决定，未自动改隐私、协议或存储格式 |
 
 当前协议为 15，daemon、server、网页和 App 需要一起升级；不同协议版本互相拒绝。14→15 的安全状态手动升级见[开发说明](development.md#安全状态-v3-到-v4-的一次性手动升级)；0b 不改变协议或存储格式。定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
@@ -55,7 +55,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 期次 | 当前状态与下一步 | 验收标准 |
 |---|---|---|
 | 0a：正确性前提 | 已完成并随协议 15 发布；四端核心、iOS App 与 UI 检查及真实链路已补齐，历史记录见[验收记录](acceptance-notes.md#传输-0a-最终结果-wire2026-11-13未发布本地分支)；v3→v4 手动迁移保留配对，见[开发说明](development.md#安全状态-v3-到-v4-的一次性手动升级) | 按 [证据矩阵](transport.md#结果类别与证据矩阵第-0a-期最终契约) 覆盖本地/server/daemon、所有错误码和此前尝试组合，签名 unknown、identity/business 冲突、离线/队列满/配额未转发均四端一致；瞬时拒绝后迟到副本不能被签为 rejected，原 ID 最多执行一次，同 ID 异载荷 conflict 不泄露/覆盖原结果；取消/超时/关闭、等待表满/超时、过期缺记录与无效信封分开测。验证截止+10 分钟前可查类别、正文驱逐、精简 65,536 条/16 MiB 满时不提前驱逐且不执行；过期缺记录永久 unknown；回调越过保留期、结果超限、写盘失败、kill -9 残留立即 unknown 且不进等待表。主 WS 断开仍独立登录/续 token、同步不被慢发布阻塞；协议四处同值，手动迁移安全状态、保留配对并丢弃旧接受记录的升级说明可执行。先通过再缩短活性预算 |
-| 0b：只有 RelayPath 的重构 | 四端分层及连接依赖迁移已本地完成，不改协议/界面/文案；检查与真实 CLI 结果见[验收记录](acceptance-notes.md#传输-0b-linkrouterrelaypath2026-11-14)。本机性能仅作参考；负责人安排 iMac 正式测量，另处理基线同样失败的 iOS UI 检查 | 三端操作/按钮不直接依赖主连接与 server machine online，能力经 Link；socket cleanup 与产品终端生命周期隔离；daemon session/workers/terminals 不再拥有执行和安全状态。纯 relay 下真实 CLI、历史先存后推、通知和图片语义不变，同环境全链路 p95 增量 <5 ms |
+| 0b：只有 RelayPath 的重构 | 四端分层及连接依赖迁移已本地完成，不改协议/界面/文案；检查与真实 CLI 结果见[验收记录](acceptance-notes.md#传输-0b-linkrouterrelaypath2026-11-14)。本机性能仅作参考；负责人在复核干净后安排 iMac 正式测量；原 iOS UI 基线问题由独立任务处理 | 三端操作/按钮不直接依赖主连接与 server machine online，能力经 Link；socket cleanup 与产品终端生命周期隔离；daemon session/workers/terminals 不再拥有执行和安全状态。纯 relay 下真实 CLI、历史先存后推、通知和图片语义不变，同环境全链路 p95 增量 <5 ms |
 | 0c：中继活性与换网 | 四端网络代次、客户端前台活性、daemon 进程活性、原 ID Forward 恢复、令牌桶/抖动；新 daemon 连接不等旧会话排空 | RST、静默黑洞、重复通知、同接口 DHCP、daemon 换网验证发现/恢复；按 [恢复目标](transport.md#可测的恢复承诺) 验 relay ≤3 秒的认证 Ready +真实调用，旧代次不接管。3% 丢包、调度暂停及 bulk 下测误试探和限流，不能取消已准入执行/结束健康逻辑流；长 handler 未排空时新 relay 仍能建成。长断网呈现结果待核对、原 ID 查询及宽限外永久 unknown |
 | 1：验证及冻结协议、只读与分块 | **先四端实际 SDK** 验信令/SDP/候选并冻结 [wire](transport.md#第-1-期验证后冻结的-wire-契约)；假路径提前跑第 3 期终端重组/ACK/replay/InputStatus/barrier；双向信令回执/重试、设备对加密、STUN、DirectPath；分类队列与消费侧先槽后受理、2/4/2 池；成员同步固定 15 秒/整轮 5 秒并安装失效闸门；整合共享文件最终接口及网页/Android/iOS 下载 | SDK 正负向量覆盖 SDP 原串/继承指纹、候选合并、glare/restart；假路径验证终端序号/失败状态和未知类型认证 unsupported。定向帧 delivered/offline/limited、丢回执、FIFO/跨类乱序、500 ms/1 秒重试与总 10 秒超时可测；洪泛只丢信令不断主 WS，8 客户端×2 PC 同时重建满足帧数/字节预算并在条件内 ≤10 秒。实例公告/探测、旧 nonce Challenge、重启旧 Control 拒绝；重放/拼接/head 差异/伪指纹/额外通道与 fuzz。撤销 **21 秒、已 Install 1 秒**及租约关闭门槛；负面用例为整轮同步超时（含多页）、server 不可达、发布耗时 60 秒，分别验暂停/不误报成功/不阻塞。审批 p99 入队至获槽或背压 ≤100 ms，健康无洪泛时须成功；无槽不留 in-progress，违反后端期限不假释放槽。下载三端端到端覆盖、连续 >16 MiB 不进接受日志、过期块换 ID 与 offset/哈希正确；本期开始必须达到下列吞吐/交互隔离门槛 |
 | 2：有副作用指令热备 | 在 0a 已有协调器上启用双路、同 ID、同密文指令，保留 unknown | **同 ID 跨路至少 10,000 次故障注入**：创建、消息/输入、Interrupt/审批、丢结果、两路反序、密钥轮换与 daemon 重连均无重复副作用；不能用只读代替。一条路 unknown 而另一条仍执行就继续等；日志/精简表/等待表与槽边界、审批 **p99 ≤100 ms**（含获槽/背压与成功比例）在双路+bulk 压力下继续满足，交互单会话上限及 5 秒占槽上限不得失效 |
@@ -90,7 +90,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 ### 传输模块与直连
 
-- **0b 验收余项**：负责人在 iMac 使用[同一测量脚本](../scripts/measure-relay/README.md)复验纯 relay 首条 p95 增量 <5 ms。本机 iOS UI 的附件菜单测试与固定基线同样出现系统预测栏消失导致的 27 点布局变化；0b 不修改界面，另行决定该既有问题的处理范围，详见[验收记录](acceptance-notes.md#传输-0b-linkrouterrelaypath2026-11-14)。
+- **0b 验收余项**：负责人在复核干净后安排 iMac 使用[同一测量脚本](../scripts/measure-relay/README.md)复验纯 relay 首条 p95 增量 <5 ms。原 iOS UI 基线问题已在独立任务处理，保持在 0b 范围外；本轮检查边界见[验收记录](acceptance-notes.md#传输-0b-linkrouterrelaypath2026-11-14)。
 - **接受记录完整性**：本期仅逐条校验和与时间水位，不能检测整行删除或整库回滚；全表 manifest/额外完整性证明另行实现和验证，边界见 [transport](transport.md#接受记录保留与时序)。
 
 以下按阻塞程度排序；设计已确定的事项不在此重议。

@@ -2409,3 +2409,14 @@ iOS UI 9 项中 8 项通过；`ComposerHitTests.testShortDraftImageTouchesMenusA
 纯 relay 性能使用[可复跑脚本](../scripts/measure-relay/README.md)：同一驱动比较固定基线与候选提交，ABBA 顺序，每批丢弃 20 条预热、保留全部 200 条测量，每提交共 400 条；报告最近秩 p50/p95 和样本数。每条为已认证临时身份的新 Web Remote 首次 GetSettings，包含签名、本地转发、真实 daemon 处理和签名结果校验，排除登录、启动、UI 渲染和模型响应。本机数字仅作参考，不能替代负责人安排的 iMac 正式测量。
 
 结束后已按记录的 PID 和启动时间停止全部原生验收进程，无强制按名称结束；tmux 与 Web 调试入口消失，临时认证副本、原始日志、数据库和二进制已删除。没有 push、发版、部署、操作手机或连接线上服务。
+
+
+### 第 1 轮复核：注册与关闭（2026-11-14）
+
+在 0b 首次交付上扫描网页、Android、iOS、Go remoteclient 与 daemon 的对象发布、回调和清理顺序。确认 Android 终端先入 Link registry、再赋给局部 lateinit 的关闭竞争；同时修复 Android/iOS owner 关闭后的晚到注册，以及 Android/网页因单个 socket、存储或监听器异常而跳过后续清理的路径。Go 路径未发现同类问题，未改 Go。只改客户端生命周期与测试，不变更协议、文案或界面布局。
+
+Android 新回归用两个线程和 registry 原 monitor，将关闭固定在“已注册但调用未返回”的窗口；撤掉修复后重现 UninitializedPropertyAccessException。其余注入检查所有流、打开等待者、安全/cache、scope、主连接队列、恢复调度、状态通知和 App 引用都完成收尾。iOS 检查关闭 owner 后晚到的完整流立即释放。15 组有效撤销对照覆盖 16 项新增回归，均以运行时断言失败检出，源码恢复后检查通过；编译失败不计。
+
+本轮 Android full：core 562、App 791、terminal 7，全通过，lintVitalRelease 通过；恢复撤销对照后另复验 core 17、App 2 项。网页 full：5,376 通过、1 项既有 opt-in 跳过，类型检查通过。SwiftPM：RACore 781、Markdown 17 项通过。iOS full 在本轮新建的模拟器上通过 App 485 项，零失败/跳过，并完成协议生成核对和文案编译。模拟器已 shutdown/delete 并查询确认无残留，DerivedData、xcresult 和 Swift scratch 已删除。
+
+原附件菜单的 UI 失败保持在 0b 范围外，负责人已在独立任务调整为菜单关闭后的布局断言；本轮不修改该代码，也未运行 UI 自动化。没有重跑真实 CLI 或首条性能，首次交付的记录只代表当时提交；负责人在复核干净后安排 iMac 测量，进度见 [plan](plan.md#传输模块与直连)。本轮只有本地提交，没有推送、发版或部署。
