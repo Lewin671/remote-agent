@@ -15,6 +15,9 @@ import (
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
+// These CLI-path tests write scripts and then exec them. Keep them serial to
+// avoid ETXTBSY from write descriptors inherited by concurrent forks.
+
 // terminalPath builds a PATH the way a terminal may have it, with entries
 // a shell passes over before the codex it runs: an empty entry, a relative
 // directory holding a codex (the current one), a codex that is not
@@ -238,7 +241,6 @@ func TestResumeAndForkFindTheCLIInTheSavedPATH(t *testing.T) {
 // Resuming or forking starts the CLI the session's saved PATH holds, and
 // fails when it holds none rather than running the daemon's.
 func TestResumeAndForkFailWithoutTheCLIInTheSavedPATH(t *testing.T) {
-	t.Parallel()
 	missing := t.TempDir()
 	for _, tc := range []struct {
 		name string

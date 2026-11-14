@@ -14,6 +14,7 @@ import (
 )
 
 func TestScheduledClientEnvironmentSurvivesDaemonRestart(t *testing.T) {
+	// This changes PATH and executes fresh scripts; keep the whole matrix serial.
 	for _, cli := range []string{"codex", "claude"} {
 		for _, source := range []string{"", "client-source"} {
 			for _, saved := range []string{"stale", "missing"} {

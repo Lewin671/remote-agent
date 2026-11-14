@@ -29,6 +29,7 @@ func (b outcomeAuditBackend) Local() remoteagentv1connect.LocalServiceHandler {
 // Each failure travels through the real server/WS/handler/acceptance log,
 // including a same-ID retry. The terminal and its catalogue are isolated fakes.
 func TestV072DeterministicFailuresStayFinal(t *testing.T) {
+	// This matrix changes process state and executes fresh CLI/tmux scripts; keep it serial.
 	for _, name := range []string{"exited-send", "empty-send", "missing-session", "input-capacity", "attachment-capacity", "invalid-create", "invalid-settings", "invalid-model", "invalid-effort", "invalid-mode", "long-title", "invalid-schedule", "missing-upload", "missing-shared-file", "invalid-shared-offset", "invalid-question", "resume-directory", "resume-cli", "resume-env", "auto-directory", "auto-cli", "auto-env", "fork-directory", "fork-cli", "fork-env", "create-directory", "create-cli", "resume-cached-cli", "auto-cached-cli", "fork-cached-cli", "create-cached-cli", "stopped-interrupt", "stopped-compact", "missing-cancel", "missing-stop", "truncated-question", "queue-disk-full", "queue-storage-exhausted", "queue-storage-unverified"} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
