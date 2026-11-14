@@ -7,8 +7,9 @@ import * as i18n from "../i18n";
 import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import type { Tray } from "../attach";
-import type { Derived } from "../model";
-import { SendMode } from "../gen/remoteagent/v1/event_pb";
+import { agentOf, type Derived } from "../model";
+import { agentInfo, sendModeFor } from "../agents";
+import { SendMode, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
 import { Alert, sendKeys, usePointerFine } from "../ui";
 import { ArrowUp, Square } from "../icons";
@@ -123,7 +124,8 @@ export function Composer({
   const hold = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const held = useRef(false);
   const sendWrap = useRef<HTMLDivElement>(null);
-  useComposerMenuDismiss(sendMenu, sendWrap, () => setSendMenu(false));
+  const canChooseSendMode = d.running && agentInfo(agentOf(session)).steersDuringTurn;
+  useComposerMenuDismiss(sendMenu && canChooseSendMode, sendWrap, () => setSendMenu(false));
   useEffect(() => () => clearTimeout(hold.current), []);
   const input = ref;
   useAutoGrow(input, text);
@@ -136,6 +138,7 @@ export function Composer({
   const images = tray?.items.length ?? 0;
   const canSend = online && (images ? tray!.ready() : !!t);
   const submit = (force = false, sendMode = SendMode.STEER) => {
+    sendMode = sendModeFor(agentOf(session), sendMode, d.running || session.info?.status === SessionStatus.RUNNING);
     tray?.refreshExpired();
     if (!canSend || (images && !tray!.ready())) return;
     // Slash commands typed as text go to the model; menus they would open
@@ -161,17 +164,17 @@ export function Composer({
         className={"snd" + (canSend ? "" : " off")}
         disabled={!canSend}
         onMouseDown={(e) => e.preventDefault()}
-        onPointerDown={(e) => { keepComposerFocus(e); held.current = false; if (canQueue && !sendMenu) hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); }}
+        onPointerDown={(e) => { keepComposerFocus(e); held.current = false; if (canChooseSendMode && !sendMenu) hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); }}
         onPointerUp={() => clearTimeout(hold.current)}
         onPointerLeave={() => clearTimeout(hold.current)}
         onPointerCancel={() => clearTimeout(hold.current)}
-        onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }}
-        onClick={() => { if (held.current) { held.current = false; return; } if (sendMenu) setSendMenu(false); else submit(); }}
+        onContextMenu={(e) => { if (canChooseSendMode) { e.preventDefault(); setSendMenu(true); held.current = true; } }}
+        onClick={() => { if (held.current) { held.current = false; return; } if (sendMenu && canChooseSendMode) setSendMenu(false); else submit(); }}
         aria-label={i18n.t("composer.send")}
       >
         <ArrowUp />
       </button>
-      {sendMenu && (
+      {sendMenu && canChooseSendMode && (
         <div className="send-menu">
           <button onClick={() => submit()}><b>{i18n.t("composer.insert_now")}</b><small>{i18n.t("composer.insert_hint")}</small></button>
           <button onClick={() => submit(false, SendMode.QUEUE)}><b>{i18n.t("composer.after_turn")}</b><small>{i18n.t("composer.queue_hint")}</small></button>

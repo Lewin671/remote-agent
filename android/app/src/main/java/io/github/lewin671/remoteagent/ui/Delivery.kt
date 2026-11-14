@@ -41,6 +41,7 @@ internal fun pendingInputLabel(
     cancel: Cancels.State?,
     resuming: Boolean,
     resumeFailed: Boolean,
+    agent: Agent = Agent.AGENT_UNSPECIFIED,
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
 ): String = when {
     cancel == Cancels.State.Canceling -> copy(UiMessages.queueCanceling())
@@ -48,10 +49,7 @@ internal fun pendingInputLabel(
     resuming -> copy(UiMessages.queueResuming())
     resumeFailed -> copy(UiMessages.queueResumeFailed())
     pending.paused -> copy(UiMessages.queuePaused())
-    pending.held -> copy(UiMessages.queueInsert())
-    pending.mode == SendMode.SEND_MODE_QUEUE -> copy(UiMessages.queueAfterTurn())
-    starting != null -> copy(UiMessages.queueAgentReady(agent = starting))
-    else -> copy(UiMessages.queueInsert())
+    else -> copy(io.github.lewin671.remoteagent.core.inputTimingLabel(agent, pending.mode, pending.held, starting))
 }
 
 internal fun pendingInputCaption(label: String, index: Int, total: Int, origin: ChatSource?, showPosition: Boolean = true, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =

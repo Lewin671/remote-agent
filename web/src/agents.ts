@@ -1,6 +1,6 @@
 import * as l10n from "./i18n";
 import * as i18n from "./i18n";
-import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, SendMode } from "./gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings } from "./gen/remoteagent/v1/local_pb";
 import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
@@ -31,6 +31,7 @@ export interface AgentEntry {
   readonly sessionNeedsModelList: boolean;
   readonly switchesModelInSession: boolean;
   readonly forks: boolean;
+  readonly steersDuringTurn: boolean;
   defaults(settings?: DaemonSettings): { model: string; effort: string; mode: ApprovalMode };
   withDefaults(
     settings: DaemonSettings,
@@ -110,6 +111,7 @@ const CODEX_ENTRY: AgentEntry = {
   sessionNeedsModelList: false,
   switchesModelInSession: true,
   forks: true,
+  steersDuringTurn: true,
   defaults(settings?: DaemonSettings) {
     return {
       model: settings?.defaultModel ?? "",
@@ -158,6 +160,7 @@ const CLAUDE_ENTRY: AgentEntry = {
   sessionNeedsModelList: true,
   switchesModelInSession: true,
   forks: true,
+  steersDuringTurn: true,
   defaults(settings?: DaemonSettings) {
     return {
       model: settings?.claude?.model ?? "",
@@ -205,6 +208,7 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
   sessionNeedsModelList: true,
   switchesModelInSession: false,
   forks: false,
+  steersDuringTurn: false,
   defaults(settings?: DaemonSettings) {
     return {
       model: settings?.antigravity?.model ?? "",
@@ -252,6 +256,7 @@ const UNKNOWN_ENTRY: AgentEntry = {
   sessionNeedsModelList: false,
   switchesModelInSession: false,
   forks: false,
+  steersDuringTurn: false,
   defaults() {
     return {
       model: "",
@@ -327,4 +332,9 @@ export function machineVersions(meta?: MachineMeta): {
     primary,
     ...(meta?.agents.filter((a) => a.agent !== CODEX_ENTRY.agent) ?? []),
   ].filter((v): v is NonNullable<typeof v> => !!v?.version);
+}
+
+/** Running next-turn-only CLIs use the existing queue operation. */
+export function sendModeFor(agent: Agent, requested: SendMode, running: boolean): SendMode {
+  return running && !agentInfo(agent).steersDuringTurn ? SendMode.QUEUE : requested;
 }

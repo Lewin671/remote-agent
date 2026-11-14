@@ -1,3 +1,4 @@
+import { sendModeFor } from "./agents";
 import { t as message, localeStore } from "./i18n";
 import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
@@ -24,6 +25,7 @@ import {
   inheritConfig,
   modeLabel,
   inputFailure,
+  inputTimingLabel,
   newConfigIssue,
   switchMachine,
   machineAgents,
@@ -1078,4 +1080,20 @@ it("hides unconfirmed startup modes and preserves confirmed unknown modes", () =
   }
   expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.IDLE, permissionMode: "未知审批模式" }))?.text).toBe("未知审批模式");
   expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.IDLE, mode: ApprovalMode.ASK }))?.mode).toBe(ApprovalMode.ASK);
+});
+
+it("uses native send capabilities for operations and pending captions", () => {
+  for (const agent of [Agent.CODEX, Agent.CLAUDE]) {
+    expect(sendModeFor(agent, SendMode.STEER, true)).toBe(SendMode.STEER);
+    expect(sendModeFor(agent, SendMode.QUEUE, true)).toBe(SendMode.QUEUE);
+    expect(inputTimingLabel(agent, SendMode.STEER, false)).toBe(t("queue.insert"));
+  }
+  for (const mode of [SendMode.UNSPECIFIED, SendMode.STEER, SendMode.QUEUE]) {
+    expect(sendModeFor(Agent.ANTIGRAVITY, mode, true)).toBe(SendMode.QUEUE);
+    for (const held of [false, true]) {
+      expect(inputTimingLabel(Agent.ANTIGRAVITY, mode, held)).toBe(t("queue.after_turn"));
+    }
+  }
+  expect(sendModeFor(Agent.ANTIGRAVITY, SendMode.STEER, false)).toBe(SendMode.STEER);
+  expect(inputTimingLabel(Agent.ANTIGRAVITY, SendMode.STEER, false, "Antigravity")).toBe(t("queue.agent_ready", {agent: "Antigravity"}));
 });

@@ -619,3 +619,10 @@ private func usagePercent(_ u: PBTokenUsage?) -> Int? {
     guard let u, u.contextWindow > 0 else { return nil }
     return min(100, Int((u.lastTotalTokens * 100) / u.contextWindow))
 }
+
+public func inputTimingLabel(agent: PBAgent, mode: PBSendMode, held: Bool, starting: String?) -> String {
+    if !agentInfo(agent).steersDuringTurn { return starting.map { L10n.queueAgentReady(agent: $0) } ?? L10n.queueAfterTurn() }
+    if held { return L10n.queueInsert() }
+    if mode == .queue { return L10n.queueAfterTurn() }
+    return starting.map { L10n.queueAgentReady(agent: $0) } ?? L10n.queueInsert()
+}

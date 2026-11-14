@@ -81,6 +81,7 @@ import io.github.lewin671.remoteagent.proto.InputStatus
 import io.github.lewin671.remoteagent.proto.InterruptRequest
 import io.github.lewin671.remoteagent.proto.ResumeInputRequest
 import io.github.lewin671.remoteagent.proto.ResumeSessionRequest
+import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
@@ -856,7 +857,7 @@ private fun PendingBubble(
     val cancel = Cancels.states[pending.id]
     val resume = rememberAction()
     val online = state.peer(state.sessions[sid]?.machineId).ready
-    val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty(), copy = copy)
+    val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty(), agent = state.sessions[sid]?.agent() ?: Agent.AGENT_UNSPECIFIED, copy = copy)
     val origin =
         chatSource(
             pending.origin,
@@ -1198,7 +1199,8 @@ internal fun Composer(
     // Images picked before the machine went away go there again once it is back.
     RefreshDraftUploads(images, remote, s.machineId, blocked)
     val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg, videos = io.github.lewin671.remoteagent.core.filesSupported(machine))
-    fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
+    fun send(requestedMode: SendMode = SendMode.SEND_MODE_STEER) {
+        val mode = io.github.lewin671.remoteagent.core.sendModeFor(s.agent(), requestedMode, running)
         val msg = text.trim()
         if (images.restoring || images.readingFiles || fileDraftBlocked(images, machine, copy = copy) != null || (msg.isEmpty() && images.images.isEmpty())) return
         images.sendAllTo(remote, s.machineId)
@@ -1253,7 +1255,7 @@ internal fun Composer(
         onPlus = pick,
         onFile = rememberDocumentPicker(images, remote, s.machineId),
         plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine) && online && machine?.pathState?.reachable == true),
-        onQueue = if (running) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
+        onQueue = if (running && agentInfo(s.agent()).steersDuringTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt =
             if (running)
                 ({

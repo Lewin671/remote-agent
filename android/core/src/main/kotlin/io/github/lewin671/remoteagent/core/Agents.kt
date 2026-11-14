@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.AgentDefaults
 import io.github.lewin671.remoteagent.proto.AgentInfo
 import io.github.lewin671.remoteagent.proto.ApprovalMode
@@ -35,6 +36,7 @@ interface AgentEntry {
     val sessionNeedsModelList: Boolean
     val switchesModelInSession: Boolean
     val forks: Boolean
+    val steersDuringTurn: Boolean
     fun defaults(settings: DaemonSettings?): AgentDefaults
     fun withDefaults(
         settings: DaemonSettings,
@@ -102,6 +104,7 @@ private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
     override val sessionNeedsModelList: Boolean = false
     override val switchesModelInSession: Boolean = true
     override val forks: Boolean = true
+    override val steersDuringTurn: Boolean = true
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         if (settings == null) AgentDefaults.getDefaultInstance()
@@ -150,6 +153,7 @@ private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
     override val sessionNeedsModelList: Boolean = true
     override val switchesModelInSession: Boolean = true
     override val forks: Boolean = true
+    override val steersDuringTurn: Boolean = true
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         if (settings != null && settings.hasClaude()) settings.claude
@@ -196,6 +200,7 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
     override val sessionNeedsModelList: Boolean = true
     override val switchesModelInSession: Boolean = false
     override val forks: Boolean = false
+    override val steersDuringTurn: Boolean = false
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         if (settings != null && settings.hasAntigravity()) settings.antigravity
@@ -241,6 +246,7 @@ private class UnknownAgentEntry(override val agent: Agent) : AgentEntry {
     override val sessionNeedsModelList: Boolean = false
     override val switchesModelInSession: Boolean = false
     override val forks: Boolean = false
+    override val steersDuringTurn: Boolean = false
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         AgentDefaults.getDefaultInstance()
@@ -299,3 +305,6 @@ fun machineVersions(meta: MachineMeta?): List<AgentInfo> {
     val others = meta.agentsList.filter { it.agent != CODEX_ENTRY.agent }
     return listOfNotNull(primary) + others
 }
+
+fun sendModeFor(agent: Agent, requested: SendMode = SendMode.SEND_MODE_STEER, running: Boolean): SendMode =
+    if (running && !agentInfo(agent).steersDuringTurn) SendMode.SEND_MODE_QUEUE else requested

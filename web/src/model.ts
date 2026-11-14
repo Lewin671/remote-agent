@@ -1847,3 +1847,10 @@ export function exitReason(
 export function askTitle(a: Agent): string {
   return t("list_state.agent_asking", { agent: agentName(a) });
 }
+
+export function inputTimingLabel(agent: Agent, mode: SendMode | undefined, held: boolean, starting?: string): string {
+  if (!agentInfo(agent).steersDuringTurn) return starting ? t("queue.agent_ready", { agent: starting }) : t("queue.after_turn");
+  if (held) return t("queue.insert");
+  if (mode === SendMode.QUEUE) return t("queue.after_turn");
+  return starting ? t("queue.agent_ready", { agent: starting }) : t("queue.insert");
+}

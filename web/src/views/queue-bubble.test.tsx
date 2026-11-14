@@ -9,7 +9,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { DemoRemote } from "../dev/demo";
-import { EventSchema, InputStatus } from "../gen/remoteagent/v1/event_pb";
+import { Agent, EventSchema, InputStatus } from "../gen/remoteagent/v1/event_pb";
 import { SessionPage } from "./Session";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -22,10 +22,11 @@ afterEach(() => {
   root = undefined;
 });
 
-function open(sid: string, text: string, states: InputStatus[]) {
+function open(sid: string, text: string, states: InputStatus[], agent = Agent.CODEX) {
   const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
   r.start();
   const s = r.sessions.get(sid)!;
+  s.info!.agent = agent;
   const push = (kind: object) => r.events(sid).push(create(EventSchema, { seq: BigInt(r.events(sid).length + 1), kind: kind as never }));
   (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set(sid, [{ sendId: "m1", requestId: "x", deadline: 0, text, status: "sent" }]);
   for (const status of states) push({ case: "inputState", value: { requestId: "m1", status, text } });
@@ -80,4 +81,10 @@ it("takes the queue's look at once while a turn runs, and is not drawn twice", (
   expect(bubbles("运行中排队的一句")).toHaveLength(1);
   expect(bubbles("运行中排队的一句")[0].classList.contains("pending-bubble")).toBe(true);
   expect(host.querySelector(".pending-meta > span")?.textContent).toContain(message("queue.insert"));
+});
+
+it("shows agy held input as next-turn work even from an older steer sender", () => {
+  open("s-run", "Agy held message", [InputStatus.HELD_BY_CLI], Agent.ANTIGRAVITY);
+  expect(host.querySelector(".pending-meta > span")?.textContent).toContain(message("queue.after_turn"));
+  expect(host.querySelector(".pending-meta > span")?.textContent).not.toContain(message("queue.insert"));
 });

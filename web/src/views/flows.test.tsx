@@ -10,7 +10,7 @@ import { ANDROID, DemoRemote } from "../dev/demo";
 import { create } from "@bufbuild/protobuf";
 import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { derive, dockItems, projects, stateOf } from "../model";
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
@@ -4247,4 +4247,42 @@ it.each(["errors.executed_result_unavailable", "errors.request_identity_conflict
   (r as unknown as {outboxes:Map<string,unknown[]>}).outboxes.set("s-idle",[{sendId:"outcome-fixture",requestId:"outcome-fixture",deadline:Date.now()+60000,text:"fixture",status:"failed",unknown:true,outcomeNotice:true,error:message(key)}]);
   mount(<SessionPage remote={r} session={session} onBack={()=>undefined} wide={false}/>);
   expect(host.querySelector(".me.warn small")?.firstChild?.textContent).toBe(message(key));
+});
+
+it.each([false, true])("queues agy sends without an insert menu (attachments=%s)", async (attached) => {
+  const r = demo(); const s = r.sessions.get("s-run")!;
+  s.info!.agent = Agent.ANTIGRAVITY;
+  const sent = vi.spyOn(r, "send").mockReturnValue("queued-test");
+  r.drafts.set(s.id, "Agy next-turn message");
+  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+  r.uploadImage = async () => ({ imageId: "uploaded", expiresMs: Number.MAX_SAFE_INTEGER });
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  if (attached) {
+    await act(async () => {
+      const picker = host.querySelector<HTMLInputElement>("input[type=file]")!;
+      Object.defineProperty(picker, "files", { value: [new File(["image"], "sample.png", {type: "image/png"})], configurable: true });
+      picker.dispatchEvent(new Event("change", {bubbles: true}));
+    });
+  }
+  const send = sendButton()!;
+  act(() => send.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
+  expect(host.querySelector(".send-menu")).toBeNull();
+  await click(send);
+  expect(sent).toHaveBeenCalled();
+  expect(sent.mock.calls[0][4]).toBe(SendMode.QUEUE);
+});
+
+it("does not consume a send to close an unavailable insert menu", async () => {
+  const r = demo(); const s = r.sessions.get("s-run")!;
+  r.drafts.set(s.id, "Keep the next-turn draft");
+  const sent = vi.spyOn(r, "send").mockReturnValue("queued-test");
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  act(() => sendButton()!.dispatchEvent(new MouseEvent("contextmenu", {bubbles: true, cancelable: true})));
+  await click(sendButton()!); // consume the original long-press release
+  expect(host.querySelector(".send-menu")).not.toBeNull();
+  act(() => { s.info!.agent = Agent.ANTIGRAVITY; r.touch(); });
+  expect(host.querySelector(".send-menu")).toBeNull();
+  await click(sendButton()!);
+  expect(sent).toHaveBeenCalledTimes(1);
+  expect(sent.mock.calls[0][4]).toBe(SendMode.QUEUE);
 });

@@ -1,4 +1,6 @@
 import * as i18n from "../i18n";
+import { inputTimingLabel } from "../model";
+import { agentInfo } from "../agents";
 import { clockTime } from "../schedules";
 import { FileChips } from "./Files";
 import { isSkeleton, skeletonMessage } from "../skeleton";
@@ -68,11 +70,12 @@ export function queueLine(remote: Remote, session: SessionView, d: Derived, id: 
   const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
   const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
   const mode = a?.mode ?? o?.mode;
+  const queueOnly = !agentInfo(agentOf(session)).steersDuringTurn;
   const starting = session.info?.status === SessionStatus.STARTING;
   const queuedTime = a?.origin?.scheduledTaskId ? remote.events(sid).find(e => e.kind.case === "inputState" && e.kind.value.requestId === id && e.time)?.time : undefined;
   const scheduleLabel = a?.origin?.scheduledTaskId ? i18n.t("queue.scheduled", { time: queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : "" }) : "";
-  const status = c?.state === "canceling" ? i18n.t("queue.canceling") : c?.state === "failed" ? i18n.t("queue.cancel_failed") : resume?.state === "failed" ? i18n.t("queue.resume_failed") : resume?.state === "sending" ? i18n.t("queue.resuming") : paused ? i18n.t("queue.paused") : held ? i18n.t("queue.insert") : mode === SendMode.QUEUE ? i18n.t("queue.after_turn") : starting ? i18n.t("queue.agent_ready", { agent: agentName(agentOf(session)) }) : i18n.t("queue.insert");
-  const needed = queueReason(session, d) !== "" || paused || held || !!c?.state || !!resume?.state || mode === SendMode.QUEUE || starting;
+  const status = c?.state === "canceling" ? i18n.t("queue.canceling") : c?.state === "failed" ? i18n.t("queue.cancel_failed") : resume?.state === "failed" ? i18n.t("queue.resume_failed") : resume?.state === "sending" ? i18n.t("queue.resuming") : paused ? i18n.t("queue.paused") : inputTimingLabel(agentOf(session), mode, held, starting ? agentName(agentOf(session)) : undefined);
+  const needed = queueReason(session, d) !== "" || paused || held || !!c?.state || !!resume?.state || mode === SendMode.QUEUE || starting || (queueOnly && d.running);
   const text = scheduleLabel + status + (count > 1 && !paused && !held && !c?.state ? i18n.t("queue.rank", { rank }) : "") + (from ? ` · ${from}` : "");
   const buttons = (
     <>

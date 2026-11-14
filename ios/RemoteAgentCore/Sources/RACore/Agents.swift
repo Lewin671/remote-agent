@@ -83,6 +83,7 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
     public let sessionNeedsModelList: Bool
     public let switchesModelInSession: Bool
     public let forks: Bool
+    public let steersDuringTurn: Bool
 
     private let _planName: @Sendable (String) -> String
     private let _modelLabel: @Sendable (String) -> String
@@ -106,6 +107,7 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
         sessionNeedsModelList: Bool,
         switchesModelInSession: Bool,
         forks: Bool,
+        steersDuringTurn: Bool,
         planKeepLabel: LocalizedMessage = L10nMessage.dockIosKeepPlanning(),
         planApproveLabel: LocalizedMessage = L10nMessage.approvalApproveExecute(),
         planName: @escaping @Sendable (String) -> String,
@@ -131,6 +133,7 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
         self.sessionNeedsModelList = sessionNeedsModelList
         self.switchesModelInSession = switchesModelInSession
         self.forks = forks
+        self.steersDuringTurn = steersDuringTurn
         self._planName = planName
         self._modelLabel = modelLabel
         self._defaults = defaults
@@ -194,6 +197,7 @@ private var CODEX_ENTRY: AgentEntry { AgentEntry(
     sessionNeedsModelList: false,
     switchesModelInSession: true,
     forks: true,
+    steersDuringTurn: true,
     planName: { normalizePlanName($0) },
     modelLabel: { gptSlugLabel($0) },
     defaults: { settings in
@@ -230,6 +234,7 @@ private var CLAUDE_ENTRY: AgentEntry { AgentEntry(
     sessionNeedsModelList: true,
     switchesModelInSession: true,
     forks: true,
+    steersDuringTurn: true,
     planKeepLabel: L10nMessage.modesPlanEdit(),
     planApproveLabel: L10nMessage.approvalApprove(),
     planName: { normalizePlanName($0) },
@@ -267,6 +272,7 @@ private var ANTIGRAVITY_ENTRY: AgentEntry { AgentEntry(
     sessionNeedsModelList: true,
     switchesModelInSession: false,
     forks: false,
+    steersDuringTurn: false,
     planKeepLabel: L10nMessage.modesPlanEdit(),
     planApproveLabel: L10nMessage.approvalApprove(),
     planName: { $0 },
@@ -303,6 +309,7 @@ private func unknownEntry(agent: PBAgent) -> AgentEntry {
         sessionNeedsModelList: false,
         switchesModelInSession: false,
         forks: false,
+    steersDuringTurn: false,
         planName: { $0 },
         modelLabel: { $0 },
         defaults: { _ in PBAgentDefaults() },
@@ -388,4 +395,8 @@ extension PBDaemonSettings {
     public func with(mode: Mode?, for agent: PBAgent) -> PBDaemonSettings {
         withDefaults(self, agent: agent, mode: mode)
     }
+}
+
+public func sendModeFor(agent: PBAgent, requested: PBSendMode = .steer, running: Bool) -> PBSendMode {
+    running && !agentInfo(agent).steersDuringTurn ? .queue : requested
 }

@@ -13,6 +13,7 @@ import io.github.lewin671.remoteagent.proto.MachineMeta
 import io.github.lewin671.remoteagent.proto.Origin
 import io.github.lewin671.remoteagent.proto.OriginKind
 import io.github.lewin671.remoteagent.proto.Session
+import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import io.github.lewin671.remoteagent.proto.SettingsChanged
 import io.github.lewin671.remoteagent.proto.ToolCall
@@ -35,6 +36,18 @@ class ModelTest {
         assertEquals("未知审批模式", modeLabel(s { permissionMode = "未知审批模式" }, copy = ::messageTextForTest)?.text)
     }
 
+    @Test fun nativeSendCapabilityControlsOperationAndCaption() {
+        for (agent in listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)) {
+            assertEquals(SendMode.SEND_MODE_STEER, sendModeFor(agent, running = true))
+            assertEquals(UiMessages.queueInsert(), inputTimingLabel(agent, SendMode.SEND_MODE_STEER, false, null))
+        }
+        for (mode in listOf(SendMode.SEND_MODE_UNSPECIFIED, SendMode.SEND_MODE_STEER, SendMode.SEND_MODE_QUEUE)) {
+            assertEquals(SendMode.SEND_MODE_QUEUE, sendModeFor(Agent.AGENT_ANTIGRAVITY, mode, true))
+            for (held in listOf(false, true)) assertEquals(UiMessages.queueAfterTurn(), inputTimingLabel(Agent.AGENT_ANTIGRAVITY, mode, held, null))
+        }
+        assertEquals(SendMode.SEND_MODE_STEER, sendModeFor(Agent.AGENT_ANTIGRAVITY, SendMode.SEND_MODE_STEER, false))
+        assertEquals(UiMessages.queueAgentReady("Antigravity"), inputTimingLabel(Agent.AGENT_ANTIGRAVITY, SendMode.SEND_MODE_STEER, false, "Antigravity"))
+    }
 
     @Test fun popupDiagnosticsAreLocalized() {
         for (detail in listOf("trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel")) {

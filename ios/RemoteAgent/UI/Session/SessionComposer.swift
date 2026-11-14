@@ -150,6 +150,7 @@ struct SessionComposer: View {
     }
 
     private func send(_ mode: PBSendMode) {
+        let mode = sendModeFor(agent: session.agent, requested: mode, running: status == .running || derived.running)
         let store = context.sessionStore
         let sid = session.id
         let message = store.draft(sid).jvmTrim()
@@ -197,7 +198,7 @@ struct SessionComposer: View {
                     refused: refused),
                 onSend: { send(.steer) },
                 attach: AttachMenu(images: images),
-                onQueue: running ? { send(.queue) } : nil,
+                onQueue: running && agentInfo(session.agent).steersDuringTurn ? { send(.queue) } : nil,
                 onInterrupt: running
                     ? {
                         interrupt.run {

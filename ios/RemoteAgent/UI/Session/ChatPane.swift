@@ -714,7 +714,7 @@ private struct PendingBubble: View {
         let cancelFailed = cancel != nil && !canceling
         let label = pendingLabel(
             pending, cancel: cancel, resuming: resume.running, resumeFailed: !resume.error.isEmpty,
-            starting: starting)
+            starting: starting, agent: session.agent)
         let origin = originLabel(pending.origin, state: model.state, me: context.me, machine: "")
         if isSkeleton(pending.id) || isSkeleton(pending.text) {
             Text(skeletonMessage).font(.subheadline).ink(DS.ink2)

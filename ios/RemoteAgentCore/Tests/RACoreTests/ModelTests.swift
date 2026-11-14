@@ -13,6 +13,20 @@ import Testing
         #expect(modeLabel(s { $0.permissionMode = "未知审批模式" })?.text == "未知审批模式")
     }
 
+    @Test func nativeSendCapabilityControlsOperationAndCaption() {
+        for agent in [PBAgent.codex, .claude] {
+            #expect(sendModeFor(agent: agent, running: true) == .steer)
+            #expect(inputTimingLabel(agent: agent, mode: .steer, held: false, starting: nil) == L10n.queueInsert())
+        }
+        for mode in [PBSendMode.unspecified, .steer, .queue] {
+            #expect(sendModeFor(agent: .antigravity, requested: mode, running: true) == .queue)
+            for held in [false, true] {
+                #expect(inputTimingLabel(agent: .antigravity, mode: mode, held: held, starting: nil) == L10n.queueAfterTurn())
+            }
+        }
+        #expect(sendModeFor(agent: .antigravity, requested: .steer, running: false) == .steer)
+        #expect(inputTimingLabel(agent: .antigravity, mode: .steer, held: false, starting: "Antigravity") == L10n.queueAgentReady(agent: "Antigravity"))
+    }
 
     private func s(_ fill: (inout PBSession) -> Void = { _ in }) -> SessionView { Mk.session("s", fill) }
 

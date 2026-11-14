@@ -1758,3 +1758,11 @@ fun currentState(snapshot: SessionEvents, agent: Agent = DEFAULT_AGENT): Derived
     snapshot.stateEvents.let {
         currentActions(derive(it, agent), snapshot.live, it)
     }
+
+fun inputTimingLabel(agent: Agent, mode: SendMode, held: Boolean, starting: String?): UiMessage = when {
+    !agentInfo(agent).steersDuringTurn -> starting?.let { UiMessages.queueAgentReady(it) } ?: UiMessages.queueAfterTurn()
+    held -> UiMessages.queueInsert()
+    mode == SendMode.SEND_MODE_QUEUE -> UiMessages.queueAfterTurn()
+    starting != null -> UiMessages.queueAgentReady(starting)
+    else -> UiMessages.queueInsert()
+}

@@ -59,18 +59,14 @@ struct ChatScroll: Equatable, Sendable {
 /// What stands under a message the model has not received yet: what it
 /// waits for, in a few words, or how taking it back stands.
 func pendingLabel(
-    _ p: PendingInput, cancel: SessionStore.CancelState?, resuming: Bool, resumeFailed: Bool, starting: String?
+    _ p: PendingInput, cancel: SessionStore.CancelState?, resuming: Bool, resumeFailed: Bool, starting: String?, agent: PBAgent = .unspecified
 ) -> String {
     if cancel == .canceling { return L10n.queueCanceling() }
     if case .failed = cancel { return L10n.queueCancelFailed() }
     if resuming { return L10n.queueResuming() }
     if resumeFailed { return L10n.queueResumeFailed() }
     if p.paused { return L10n.queuePaused() }
-    if p.held { return L10n.queueInsert() }
-    if p.mode == .queue { return L10n.queueAfterTurn() }
-    // No turn to insert into yet: the CLI is still coming up.
-    if let starting { return L10n.queueAgentReady(agent: starting) }
-    return L10n.queueInsert()
+    return inputTimingLabel(agent: agent, mode: p.mode, held: p.held, starting: starting)
 }
 
 func scheduledPendingLabel(_ pending: PendingInput, label: String) -> String? {
