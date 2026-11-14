@@ -11,14 +11,14 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TerminalOpenCleanupTest {
-    private class Socket(private val req: Request) : WebSocket {
+    private class Socket(private val req: Request, private val failCancel: Boolean = false) : WebSocket {
         var cancelled = false
         override fun request() = req
         override fun queueSize() = 0L
         override fun send(text: String) = true
         override fun send(bytes: okio.ByteString) = true
         override fun close(code: Int, reason: String?) = true
-        override fun cancel() { cancelled = true }
+        override fun cancel() { cancelled = true; if (failCancel) throw java.io.IOException("injected cancel") }
     }
 
     private fun children(remote: Remote): Int {
@@ -65,6 +65,35 @@ class TerminalOpenCleanupTest {
             assertEquals("reader retained after $mode", baseline, children(remote))
             socket?.let { assertTrue(it.cancelled) }
             assertTrue(closes <= 1)
+        } finally { remote.close(); runCurrent() }
+    }
+
+    @Test fun throwingCancelStillSettlesOpeningAndUnregistersStream() = runTest {
+        val peer = ColdOpenPeer(ColdOpenFixture(2), this)
+        lateinit var socket: Socket
+        lateinit var events: WebSocketListener
+        val factory = WebSocket.Factory { request, listener ->
+            if (request.url.encodedPath != "/v1/term") peer.newWebSocket(request, listener)
+            else Socket(request, failCancel = true).also { socket = it; events = listener }
+        }
+        val remote = peer.remote(sockets = factory)
+        try {
+            remote.start(); runCurrent()
+            val baseline = children(remote)
+            var closes = 0
+            val opening = async { runCatching { remote.openTerminal("short", object : TermListener {
+                override fun onFrame(frame: TerminalFrame) {}
+                override fun onClose(reason: MessageText) { closes++ }
+            }) } }
+            runCurrent()
+            assertTrue(runCatching { events.onClosed(socket, 1000, "closed") }.isFailure)
+            runCurrent()
+            assertTrue("opening waiter retained after cancel failure", opening.isCompleted)
+            assertTrue(opening.await().isFailure)
+            assertTrue(socket.cancelled)
+            assertEquals(1, closes)
+            assertEquals(baseline, children(remote))
+            assertTrue(runCatching { remote.deviceLink.closeStreams() }.isSuccess)
         } finally { remote.close(); runCurrent() }
     }
 

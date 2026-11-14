@@ -11,7 +11,6 @@ import io.github.lewin671.remoteagent.core.transport.PeerState
 import io.github.lewin671.remoteagent.core.transport.FrameStream
 import io.github.lewin671.remoteagent.core.transport.FrameListener
 
-
 import io.github.lewin671.remoteagent.core.transport.DispatchState
 
 import com.connectrpc.Code
@@ -367,8 +366,7 @@ internal constructor(
     }
 
     fun close() {
-        closeLocal()
-        ws.close()
+        cleanup(closeLocal, { ws.close() })
     }
 }
 
@@ -632,29 +630,30 @@ class Remote(
     }
 
     /** Disconnects, e.g. when the app goes to the background. */
-    fun stop() {
-        scope.launch {
-            // Off the caller's (main) thread: clearing waits for any read holding the locks.
-            security.clearCache()
-            running = false
-            liveJobs.values.forEach { it.cancel() }
-            liveJobs.clear()
-            authorityJob.cancel()
-            stateJob?.cancel()
-            stateJob = null
-            generation++
-            reconnect?.cancel()
-            reconnect = null
-            listRetry?.cancel()
-            listRetry = null
-            prefsRetry?.cancel()
-            prefsRetry = null
-            connecting?.cancel()
-            connecting = null
-            opening?.cancel()
-            opening = null
-            ws?.cancel()
-            ws = null
+    fun stop() { scope.launch { stopOnWorker() } }
+
+    private fun stopOnWorker() {
+        // Off the caller's (main) thread: clearing waits for any read holding the locks.
+        running = false
+        liveJobs.values.forEach { it.cancel() }
+        liveJobs.clear()
+        authorityJob.cancel()
+        stateJob?.cancel()
+        stateJob = null
+        generation++
+        reconnect?.cancel()
+        reconnect = null
+        listRetry?.cancel()
+        listRetry = null
+        prefsRetry?.cancel()
+        prefsRetry = null
+        connecting?.cancel()
+        connecting = null
+        opening?.cancel()
+        opening = null
+        val socket = ws
+        ws = null
+        cleanup({ security.clearCache() }, { socket?.cancel() }, {
             conn = ConnState.OFFLINE
             clearConnProgress()
             connError = "".messageText()
@@ -662,7 +661,7 @@ class Remote(
             errorDetail = ""
             unresolved = false
             publish()
-        }
+        })
     }
 
     /**
@@ -686,11 +685,12 @@ class Remote(
 
     /** Ends this Remote for good. */
     fun close() {
-        deviceLink.closeStreams()
-        security.close()
-        cache?.close()
-        stop()
-        scope.launch { scope.cancel() }
+        cleanup(
+            { deviceLink.closeStreams() },
+            { security.close() },
+            { cache?.close() },
+            { scope.launch { try { stopOnWorker() } finally { scope.cancel() } } },
+        )
     }
 
     /** Reconnects now instead of waiting for the backoff, e.g. after the network came back. */
@@ -857,8 +857,7 @@ class Remote(
         opening = null
         val old = ws
         ws = null
-        old?.cancel()
-        connecting = scope.launch { connect() }
+        cleanup({ old?.cancel() }, { connecting = scope.launch { connect() } })
     }
 
     private suspend fun connect() {
@@ -908,27 +907,23 @@ class Remote(
 
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
                         if (bytes.size > STREAM_FRAME_BYTES) {
-                            stream.cancel()
-                            frames.cancel()
+                            cleanup({ stream.cancel() }, { frames.cancel() })
                             return
                         }
                         if (queuedBytes.addAndGet(bytes.size.toLong()) > STREAM_QUEUE_BYTES) {
                             queuedBytes.addAndGet(-bytes.size.toLong())
-                            stream.cancel()
-                            frames.cancel()
+                            cleanup({ stream.cancel() }, { frames.cancel() })
                             return
                         }
                         if (frames.trySend(bytes).isFailure) {
                             queuedBytes.addAndGet(-bytes.size.toLong())
-                            stream.cancel()
-                            frames.cancel()
+                            cleanup({ stream.cancel() }, { frames.cancel() })
                         }
                     }
 
                     override fun onClosing(stream: FrameStream, code: Int) {
                         if (code == POLICY_VIOLATION) refused.set(true)
-                        stream.close()
-                        frames.close()
+                        cleanup({ stream.close() }, { frames.close() })
                     }
 
                     override fun onEnd(stream: FrameStream, code: Int) {
@@ -951,9 +946,9 @@ class Remote(
             if (ws === socket && gen == generation && conn != ConnState.ONLINE) {
                 ws = null
                 generation++
-                socket.cancel()
-                frames.cancel()
-                fail(MessageException(UiMessages.errorsConnectionTimedOutReconnecting().messageText()))
+                cleanup({ socket.cancel() }, { frames.cancel() }, {
+                    fail(MessageException(UiMessages.errorsConnectionTimedOutReconnecting().messageText()))
+                })
             }
         }
         scope.launch {
@@ -981,16 +976,17 @@ class Remote(
                 if (e is CancellationException) throw e
                 report(e)
             } finally {
-                frames.cancel()
-                socket.cancel()
-                if (ws === socket) {
-                    ws = null
-                    generation++
-                    opening?.cancel()
-                    opening = null
-                    // Only an explicit refusal invalidates the token.
-                    if (refused.get()) loginTokens.discard(token)
-                    fail(broken.get() ?: MessageException(UiMessages.errorsDisconnectedFromServer().messageText()))
+                try { cleanup({ frames.cancel() }, { socket.cancel() }) }
+                finally {
+                    if (ws === socket) {
+                        ws = null
+                        generation++
+                        opening?.cancel()
+                        opening = null
+                        // Only an explicit refusal invalidates the token.
+                        try { if (refused.get()) loginTokens.discard(token) }
+                        finally { fail(broken.get() ?: MessageException(UiMessages.errorsDisconnectedFromServer().messageText())) }
+                    }
                 }
             }
         }
@@ -3759,17 +3755,20 @@ class Remote(
         val terminalJob = SupervisorJob(scope.coroutineContext[Job])
         val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
         val socket = java.util.concurrent.atomic.AtomicReference<FrameStream?>()
-        lateinit var stream: DeviceLink.Stream
-        fun cleanup(reason: MessageText? = null) {
-            if (!closed.compareAndSet(false, true)) return
-            incoming.cancel()
-            outgoing.cancel()
-            terminalJob.cancel()
-            socket.get()?.cancel()
-            opened.completeExceptionally(MessageException(reason ?: UiMessages.terminalAndroidClosed().messageText()))
-            stream.end(reason)
-        }
-        stream = deviceLink.openStream(stop = { cleanup() }, onClose = listener::onClose)
+        // The registered stop owns only already-initialized resources. It
+        // must be safe even if Remote.close runs before openStream returns.
+        val stream = deviceLink.openStream(stop = { reason ->
+            if (closed.compareAndSet(false, true)) {
+                cleanup(
+                    { incoming.cancel() },
+                    { outgoing.cancel() },
+                    { terminalJob.cancel() },
+                    { socket.get()?.cancel() },
+                    { opened.completeExceptionally(MessageException(reason ?: UiMessages.terminalAndroidClosed().messageText())) },
+                )
+            }
+        }, onClose = listener::onClose)
+        fun finish(reason: MessageText? = null) { stream.end(reason) }
         terminalScope.launch {
             try {
                 for (raw in incoming) {
@@ -3794,7 +3793,7 @@ class Remote(
                     }
                 }
             } catch (e: Exception) {
-                cleanup(errorText(e, state.value))
+                finish(errorText(e, state.value))
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
@@ -3822,19 +3821,18 @@ class Remote(
                                     queuedBytes.addAndGet(raw.size.toLong()) > 2L * 1024 * 1024 ||
                                     incoming.trySend(raw).isFailure
                             ) {
-                                cleanup(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
+                                finish(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
                             }
                         }
 
                         override fun onClosing(stream: FrameStream, code: Int) {
                             if (code == POLICY_VIOLATION) rejectToken(tok)
-                            stream.close()
-                            cleanup(UiMessages.errorsTerminalConnectionDropped().messageText())
+                            cleanup({ stream.close() }, { finish(UiMessages.errorsTerminalConnectionDropped().messageText()) })
                         }
 
                         override fun onEnd(stream: FrameStream, code: Int) {
                             if (code == POLICY_VIOLATION) rejectToken(tok)
-                            cleanup(UiMessages.errorsTerminalConnectionDropped().messageText())
+                            finish(UiMessages.errorsTerminalConnectionDropped().messageText())
                         }
 
                         override fun onFailure(
@@ -3842,7 +3840,7 @@ class Remote(
                             error: Throwable,
                             ) {
                             opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
-                            cleanup(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, state.value).resolve(copy))) })
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, state.value).resolve(copy))) })
                         }
                     },
                 )
@@ -3884,7 +3882,7 @@ class Remote(
                         if (!closed.get()) ws.send(env.toByteArray())
                     }
                 } catch (e: Exception) {
-                    cleanup(errorText(e, state.value))
+                    finish(errorText(e, state.value))
                 }
             }
             return TermConn(
@@ -3894,15 +3892,15 @@ class Remote(
                         frame.serializedSize > 64 * 1024 ||
                             outgoing.trySend(QueuedInput(frame, clock() + 60_000)).isFailure
                     ) {
-                        cleanup(UiMessages.errorsAndroidTerminalInputPausedWhileWaitingForAuthorization().messageText())
+                        finish(UiMessages.errorsAndroidTerminalInputPausedWhileWaitingForAuthorization().messageText())
                     }
                 },
                 closeLocal = {
-                    cleanup()
+                    finish()
                 },
             )
         } catch (e: Exception) {
-            cleanup()
+            finish()
             throw e
         }
     }

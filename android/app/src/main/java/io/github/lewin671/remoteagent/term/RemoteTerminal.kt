@@ -95,10 +95,11 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         history.close()
         if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
         job?.cancel()
-        conn?.close()
+        val previous = conn
         conn = null
         val gen = ++generation
         frames.close()
+        previous?.close()
         val queue = TerminalFrames(MAX_BACKLOG)
         frames = queue
         fun flush() {
@@ -231,8 +232,9 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         frames.close()
         _state.value = State.Closed(UiMessages.terminalAndroidPaused().messageText())
         job?.cancel()
-        conn?.close()
+        val previous = conn
         conn = null
+        previous?.close()
     }
 
     private inner class SessionClient : TerminalSessionClient {
