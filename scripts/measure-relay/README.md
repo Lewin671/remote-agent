@@ -12,7 +12,13 @@ python3 scripts/measure-relay.py \
 ```
 
 On the designated iMac use the same command, optionally labeling the output
-`--label imac`. The label is descriptive; it does not certify acceptance.
+`--label imac`. After a rebase, pass the exact commit beneath the task commits
+as `--baseline`, and record both resolved hashes; a moving branch name is not
+a frozen baseline. For a shared measurement host, add `--settle-seconds 60`
+to leave an idle minute after both builds and before the first batch. Acquire
+the host's scheduling lock and verify that other work does not disturb the
+settling interval or the measured batches. The label is descriptive; it does
+not certify acceptance.
 Go, pnpm, tmux and the usual Claude/Codex CLI prerequisites must be on PATH.
 If these are HOME-relative wrapper scripts, set `RA_REAL_CODEX` and
 `RA_REAL_CLAUDE` to the actual installed executables before running. The isolated

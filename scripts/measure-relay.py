@@ -139,11 +139,14 @@ def main():
     parser.add_argument("--samples", type=int, default=200)
     parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--rounds", type=int, default=2)
+    parser.add_argument("--settle-seconds", type=int, default=0, help="Idle after both builds and before measurement")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--label", default="local-reference")
     args = parser.parse_args()
     if not (1 <= args.samples <= 10000 and 0 <= args.warmup <= 1000 and 1 <= args.rounds <= 6):
         parser.error("invalid sample/warmup/round count")
+    if not 0 <= args.settle_seconds <= 600:
+        parser.error("invalid settling interval")
     repo = args.repo.resolve()
     commits = {label: checked(["git", "rev-parse", "--verify", "--end-of-options", ref+"^{commit}"], cwd=repo) for label, ref in [("baseline", args.baseline), ("candidate", args.candidate)]}
     assert all(re.fullmatch(r"[0-9a-f]{40}", commit) for commit in commits.values())
@@ -195,6 +198,9 @@ func benchmarkRecordProcess(root string, pid int) {
                 extra = ["-overlay", str(overlay)] if output == "controller" else []
                 checked(["go", "build", "-mod=readonly", "-trimpath", "-ldflags", flags, *extra, "-o", str(build/"bin"/output), package], cwd=checkout, env=env, log=build/(output+"-build.log"))
             binaries[label] = build/"bin"
+        if args.settle_seconds:
+            print(json.dumps({"phase": "settle", "seconds": args.settle_seconds}), flush=True)
+            time.sleep(args.settle_seconds)
         for number in range(args.rounds):
             order = list(commits) if number % 2 == 0 else list(reversed(commits))
             for label in order:
@@ -242,7 +248,7 @@ func benchmarkRecordProcess(root string, pid int) {
                     shutil.rmtree(runtime)
         summaries = {label: {"commit": commits[label], **stats(values)} for label, values in samples.items()}
         increment = summaries["candidate"]["p95_ms"] - summaries["baseline"]["p95_ms"]
-        result = {"label": args.label, "tools": tool_versions, "method": "fresh Web Remote first GetSettings; authenticated local relay and real daemon; nearest-rank percentiles; login/startup/UI/model time excluded", "platform": {"os": platform.system(), "version": platform.mac_ver()[0], "arch": platform.machine()}, "warmup_per_batch": args.warmup, "batches": batches, **summaries, "p95_increment_ms": increment, "under_5_ms": increment < 5, "samples_ms": samples, "cleanup": "owned processes stopped; disposable accounts and checkouts removed"}
+        result = {"label": args.label, "tools": tool_versions, "method": "fresh Web Remote first GetSettings; authenticated local relay and real daemon; nearest-rank percentiles; login/startup/UI/model time excluded", "platform": {"os": platform.system(), "version": platform.mac_ver()[0], "arch": platform.machine()}, "warmup_per_batch": args.warmup, "settle_seconds": args.settle_seconds, "batches": batches, **summaries, "p95_increment_ms": increment, "under_5_ms": increment < 5, "samples_ms": samples, "cleanup": "owned processes stopped; disposable accounts and checkouts removed"}
     finally:
         if cleanup_ok:
             for checkout in reversed(list(checkouts.values())):
