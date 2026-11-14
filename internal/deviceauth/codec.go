@@ -156,12 +156,6 @@ func maxU64(a, b uint64) uint64 {
 	}
 	return b
 }
-func minU64(a, b uint64) uint64 {
-	if a < b {
-		return a
-	}
-	return b
-}
 func addLease(now uint64) uint64 {
 	if now > math.MaxUint64-Lease {
 		return math.MaxUint64

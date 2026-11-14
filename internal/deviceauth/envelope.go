@@ -205,17 +205,6 @@ func (h Header) Scope(s State) error {
 	return nil
 }
 
-func (h Header) objectKey() string {
-	e := encoder{}
-	e.u32(uint32(h.Purpose))
-	e.str(h.Machine)
-	e.str(h.Session)
-	if h.Purpose == DeviceMeta || h.Purpose == Prefs {
-		e.str(h.Request)
-	}
-	return string(e.b)
-}
-
 func DeriveKey(secret, sessionSeed []byte, h Header) ([]byte, error) {
 	if len(secret) != 32 || h.validate() != nil {
 		return nil, ErrInvalid
@@ -411,8 +400,6 @@ func ParseWire(b []byte) (w Wire, err error) {
 	_, err = w.MarshalBinary()
 	return w, err
 }
-func randomHash() (h Hash, err error) { _, err = rand.Read(h[:]); return }
-
 func DerivePurposeKey(secret []byte, h Header) ([]byte, error) {
 	if len(secret) != 32 || h.validate() != nil {
 		return nil, ErrInvalid

@@ -142,23 +142,6 @@ func (s *securitySession) requestSync() {
 	}
 }
 
-// open verifies an envelope against the local chain. An unknown state is
-// fetched immediately and the open is retried once.
-func (s *securitySession) open(ctx context.Context, w deviceauth.Wire, seed []byte, live bool, now uint64) (deviceauth.Header, []byte, error) {
-	if live && s.blocked.Load() {
-		return deviceauth.Header{}, nil, deviceauth.ErrUntrusted
-	}
-	h, plain, err := s.endpoint.Open(w, seed, live, now)
-	if !errors.Is(err, deviceauth.ErrUnknown) {
-		return h, plain, err
-	}
-	s.requestSync()
-	if err := s.syncOnce(ctx); err != nil {
-		return h, nil, err
-	}
-	return s.endpoint.Open(w, seed, live, now)
-}
-
 // accept is the at-most-once control gate. An unknown state is fetched first
 // and the whole gate is retried once.
 func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {

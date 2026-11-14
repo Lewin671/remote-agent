@@ -723,8 +723,7 @@ func (e *Endpoint) VerifiedStates() []State {
 	return out
 }
 
-func (e *Endpoint) StateCount() int { e.mu.Lock(); defer e.mu.Unlock(); return len(e.data.States) }
-func (e *Endpoint) Floor() uint64   { e.mu.Lock(); defer e.mu.Unlock(); return e.data.Floor }
+func (e *Endpoint) Floor() uint64 { e.mu.Lock(); defer e.mu.Unlock(); return e.data.Floor }
 
 // LastRecoveryEpoch is the newest state installed through a recovery
 // statement, or 0 when the chain has none.

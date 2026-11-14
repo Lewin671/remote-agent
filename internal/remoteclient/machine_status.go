@@ -164,12 +164,6 @@ func (p *MachineStatusController) SetActive(visible, online, supported bool) {
 	default:
 	}
 }
-func (p *MachineStatusController) Retry() {
-	select {
-	case p.wake <- struct{}{}:
-	default:
-	}
-}
 func (p *MachineStatusController) Snapshot() MachinePollSnapshot {
 	p.mu.Lock()
 	defer p.mu.Unlock()

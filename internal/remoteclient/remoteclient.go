@@ -45,9 +45,6 @@ type Client struct {
 	http       *http.Client
 }
 
-// Token is the bearer token, for tests that talk to the server directly.
-func (c *Client) Token() string { return c.token }
-
 // API is the raw client service. Its Forward bypasses dispatch tracking;
 // subsequent high-level retries must supply MayHaveBeenDispatched.
 func (c *Client) API() remoteagentv1connect.ClientServiceClient { return c.api }

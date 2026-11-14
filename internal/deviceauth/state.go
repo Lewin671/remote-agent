@@ -406,13 +406,6 @@ func VerifyTransition(parent, next State, recovery *RecoveryStatement) error {
 	}
 	return recoveryDelta(parent, next)
 }
-func mustSignBytes(s State) []byte {
-	b, err := s.signBytes()
-	if err != nil {
-		panic("security: internal state cannot sign")
-	}
-	return b
-}
 func sameMembers(a, b []Member) bool {
 	if len(a) != len(b) {
 		return false
