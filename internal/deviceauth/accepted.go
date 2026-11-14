@@ -12,6 +12,8 @@ import (
 	"github.com/Lewin671/remote-agent/internal/i18n"
 )
 
+//go:generate go run ../../scripts/gen-result-retention -output ../../web/src/result-retention.gen.ts
+
 // ResultRetention is how long durable command outcomes remain queryable after
 // their original deadline. Relay routing must use this same recovery window;
 // it does not extend the authorization to start a new execution.

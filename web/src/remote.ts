@@ -1,4 +1,4 @@
-import { DispatchState, type DispatchCall } from "./dispatch";
+import { DispatchRegistry, DispatchState, type DispatchCall } from "./dispatch";
 import { machineNotificationKinds } from "./machine-notifications";
 import { verifiedOutcome, type Outcome } from "./outcome";
 import * as l10n from "./i18n";
@@ -1780,6 +1780,7 @@ export class Remote {
   }
 
   stop() {
+    this.dispatchStates.sweep();
     this.closed = true;
     this.authority.lifecycle.pause();
     this.unwatchSecurityPush?.();
@@ -3265,12 +3266,10 @@ export class Remote {
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
   protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
-  private readonly dispatchStates = new Map<string, DispatchState>();
+  private readonly dispatchStates = new DispatchRegistry();
   private dispatchState(slot: RequestSlot): DispatchState {
     if (!(slot instanceof RequestSlot)) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-    const state = this.dispatchStates.get(slot.requestId) ?? slot.evidence;
-    state.includePrior(slot.prior);
-    this.dispatchStates.set(slot.requestId, state);
+    const state = this.dispatchStates.get(slot.requestId, slot.deadline, slot.evidence, slot.prior);
     slot.evidence = state;
     return state;
   }
@@ -3283,7 +3282,7 @@ export class Remote {
         throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
       }
       throw error;
-    } finally { call.close(); }
+    } finally { call.close(); this.dispatchStates.sweep(); }
   }
   private async forward(
     machineId: string,

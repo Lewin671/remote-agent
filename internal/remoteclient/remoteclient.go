@@ -39,7 +39,7 @@ type Client struct {
 	device     ed25519.PrivateKey
 	endpoint   *deviceauth.Endpoint
 	attemptsMu sync.Mutex
-	attempts   map[string]*dispatchHistory
+	attempts   *dispatchRegistry
 	epochMu    sync.Mutex
 	relayEpoch string
 	http       *http.Client
@@ -250,7 +250,7 @@ func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time
 	if err != nil {
 		return nil, err
 	}
-	c.rememberFirstSeal(string(key[:]), env)
+	c.rememberFirstSeal(string(key[:]), env, header.Deadline)
 	return env, nil
 }
 
@@ -543,7 +543,15 @@ func (c *Client) Image(ctx context.Context, s Session, imageID string) (img *pb.
 	return img, false, nil
 }
 
-func (c *Client) Close() error { return c.endpoint.Close() }
+func (c *Client) Close() error {
+	c.attemptsMu.Lock()
+	registry := c.attempts
+	c.attemptsMu.Unlock()
+	if registry != nil {
+		registry.sweep()
+	}
+	return c.endpoint.Close()
+}
 
 // NewClient wraps an existing endpoint and token.
 func NewClient(server, token, deviceID string, endpoint *deviceauth.Endpoint) *Client {

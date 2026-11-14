@@ -67,6 +67,10 @@ relay 启动时随机生成 epoch，每个 HTTP 响应（含登录及 `/healthz`
 
 epoch 的发现与缓存以实际 API 来源为准。网页的同源代理模式统一使用 `apiBase`，Vite dev/preview 同时代理 `/healthz`、RPC 和 WebSocket；不能因冷启动发现 epoch 而绕过代理直连账户中的后端地址。
 
+web 与 Go 的按授权 ID 派发历史索引只在没有活跃 call、且原 deadline + 结果保留期已过后清理；同时核对经过时间，墙钟跳变不能提前清掉证据。新调用、关闭调用和停止客户端会检查清理，空闲时每 30 秒检查一次。清理器只持有不含密钥/载荷的索引，不持有整个 Remote/Client。索引删除不清空尚被调用方持有的 RequestSlot 证据；Go 对已过窗口的重新打开授权维持保守 prior，不能因回拨或索引已清理而变成首次发送。Android/iOS 的派发证据由各个 PreparedCommand 持有，没有随只读轮询增长的同类全局索引；pending 对象的证据不因过期而清空。
+
+保留期仍以 `deviceauth.ResultRetention` 为单一维护来源。`go generate ./internal/deviceauth` 生成网页的 `result-retention.gen.ts`，Go full 核对产物与 daemon 的值一致。正常时钟、默认一分钟 deadline、每五秒一次轮询时，索引只覆盖约十一分钟的请求，加至多一个清理周期；活跃或尚未到窗口的授权不以容量/LRU 规则提前驱逐。
+
 下表是四端共用测试向量的规范。H 表示**此前其他尝试**可能进入准入；当前尝试也可能已进入时归入 H=是。H=否包含发起过 HTTP 但收到与该次 attempt 绑定的转发前拒绝。所有状态码枚举须逐个生成向量，不能只测一条代表值。
 
 | 来源 | 状态/证据 | H=否 | H=是 |
