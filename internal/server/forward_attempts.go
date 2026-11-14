@@ -6,17 +6,20 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"math"
 	"sync"
 	"time"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"google.golang.org/protobuf/proto"
 )
 
 const relayEpochHeader = "Remote-Agent-Relay-Epoch"
 const maxForwardAttempts = 65536
 const maxAccountForwardAttempts = 8192
+const resultQueryGrace = int64(deviceauth.ResultRetention / time.Millisecond)
 const attemptGrace = int64(time.Minute / time.Millisecond)
 const maxAttemptDeadline = int64(10 * time.Minute / time.Millisecond)
 
@@ -30,12 +33,12 @@ const (
 )
 
 type attemptRecord struct {
-	account                            string
-	body                               [32]byte
-	deadline, expires, monotonicExpiry int64
-	state                              attemptState
-	code                               connect.Code
-	message, reason                    string
+	account                              string
+	body                                 [32]byte
+	queryUntil, expires, monotonicExpiry int64
+	state                                attemptState
+	code                                 connect.Code
+	message, reason                      string
 }
 type attemptLedger struct {
 	mu                  sync.Mutex
@@ -94,8 +97,14 @@ func (l *attemptLedger) reserve(account, _, id, epoch string, deadline int64, bo
 	}
 	wall, mono := l.clock()
 	l.floor = max(l.floor, wall)
+	// Routing freshness includes retained-result lookup, but never changes the
+	// command's execution deadline. Reject before adding durations to wire input.
+	if deadline <= 0 || deadline > math.MaxInt64-resultQueryGrace-attemptGrace || deadline-l.floor > maxAttemptDeadline {
+		return nil, attemptUnknown("attempt_expired")
+	}
+	queryUntil := deadline + resultQueryGrace
 	// A cleanup/clock rollback cannot make an old body fresh again.
-	if deadline <= l.floor || deadline-l.floor > maxAttemptDeadline {
+	if queryUntil <= l.floor {
 		return nil, attemptUnknown("attempt_expired")
 	}
 	// Authorization headers can change across copies; the body attempt must
@@ -119,7 +128,7 @@ func (l *attemptLedger) reserve(account, _, id, epoch string, deadline int64, bo
 	if len(l.entries) >= l.limit || l.accounts[account] >= l.accountLimit {
 		return nil, attemptUnknown("attempt_capacity")
 	}
-	r := &attemptRecord{account: account, body: body, deadline: deadline, expires: deadline + attemptGrace, monotonicExpiry: mono + (deadline - l.floor) + attemptGrace}
+	r := &attemptRecord{account: account, body: body, queryUntil: queryUntil, expires: queryUntil + attemptGrace, monotonicExpiry: mono + (queryUntil - l.floor) + attemptGrace}
 	l.entries[key] = r
 	l.accounts[account]++
 	return &attemptPermit{ledger: l, entry: r, id: id}, nil
@@ -160,7 +169,7 @@ func (p *attemptPermit) enqueue(ctx context.Context, send func() bool) error {
 	}
 	wall, _ := p.ledger.clock()
 	p.ledger.floor = max(wall, p.ledger.floor)
-	if p.entry.deadline <= p.ledger.floor {
+	if p.entry.queryUntil <= p.ledger.floor {
 		return attemptUnknown("attempt_expired")
 	}
 	if err := ctx.Err(); err != nil {

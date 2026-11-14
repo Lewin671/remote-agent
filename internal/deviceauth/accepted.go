@@ -12,6 +12,11 @@ import (
 	"github.com/Lewin671/remote-agent/internal/i18n"
 )
 
+// ResultRetention is how long durable command outcomes remain queryable after
+// their original deadline. Relay routing must use this same recovery window;
+// it does not extend the authorization to start a new execution.
+const ResultRetention = 10 * time.Minute
+
 const (
 	maxAccepted         = 65536 // 256 logical bytes per summary, independent of bodies.
 	maxAcceptedBytes    = 16 << 20
@@ -19,7 +24,7 @@ const (
 	maxVolatileAccepted = 8192
 	maxVolatileBytes    = 16 << 20
 	bodyOverhead        = 32 + 128 // key hash and logical entry/index overhead
-	acceptedGrace       = uint64(10 * time.Minute / time.Millisecond)
+	acceptedGrace       = uint64(ResultRetention / time.Millisecond)
 	MaxWaiters          = 128 // Max simultaneous duplicate waiters across all paths.
 	defaultWaitTimeout  = 25 * time.Second
 )

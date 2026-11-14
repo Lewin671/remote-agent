@@ -88,7 +88,7 @@ func TestAttemptEpochCapacityAndClockCannotForgetDispatch(t *testing.T) {
 	_, err = l.reserve("account", "client", "dddddddddddddddddddddddddddddddd", "", deadline, [32]byte{})
 	checkUnknown(err)
 	// Wall time alone cannot evict the record and give a delayed copy fresh status.
-	wall = deadline + attemptGrace + 1
+	wall = deadline + resultQueryGrace + attemptGrace + 1
 	_, err = l.reserve("account", "client", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", l.epoch, wall+1_000, [32]byte{})
 	checkUnknown(err)
 	if len(l.entries) != 1 {
@@ -96,13 +96,13 @@ func TestAttemptEpochCapacityAndClockCannotForgetDispatch(t *testing.T) {
 	}
 	// Nor may elapsed time alone, while the envelope's wall deadline is still ahead.
 	wall = 1_000_000
-	mono = attemptGrace + 2_000
+	mono = resultQueryGrace + attemptGrace + 2_000
 	_, err = l.reserve("account", "client", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", l.epoch, l.floor+1_000, [32]byte{})
 	checkUnknown(err)
 	if len(l.entries) != 1 {
 		t.Fatal("monotonic-only cleanup")
 	}
-	wall = deadline + attemptGrace + 1
+	wall = deadline + resultQueryGrace + attemptGrace + 1
 	if _, err = l.reserve("account", "client", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", l.epoch, wall+1_000, [32]byte{}); err != nil {
 		t.Fatal("eligible cleanup failed", err)
 	}
@@ -219,5 +219,96 @@ func TestNotForwardedCopiesSharedErrors(t *testing.T) {
 		if len(ce.Details()) != 1 || len(shared.Details()) != 0 {
 			t.Fatal("per-attempt details mutated shared error")
 		}
+	}
+}
+
+func TestAttemptQueryWindowKeepsSealedDecisions(t *testing.T) {
+	wall, mono := int64(1_000_000), int64(0)
+	l := newAttemptLedger()
+	l.clock = func() (int64, int64) { return wall, mono }
+	deadline := wall + 1000
+	a, err := l.reserve("account", "client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", l.epoch, deadline, [32]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused := a.refuse(connect.NewError(connect.CodeUnavailable, errors.New("offline")), "machine_offline")
+	b, err := l.reserve("account", "client", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", l.epoch, deadline, [32]byte{2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sent := 0
+	if err = b.enqueue(context.Background(), func() bool { sent++; return true }); err != nil {
+		t.Fatal(err)
+	}
+	for _, offset := range []int64{1, resultQueryGrace - 1} {
+		wall = deadline + offset
+		mono = 1000 + offset
+		if p, err := l.reserve("account", "client", a.id, l.epoch, deadline, [32]byte{1}); p != nil || !proto.Equal(unf(err), unf(refused)) {
+			t.Fatal("expired refusal changed", err)
+		}
+		if p, err := l.reserve("account", "client", b.id, l.epoch, deadline, [32]byte{2}); p != nil || unf(err) != nil || err.Error() != "aborted: attempt_duplicate" {
+			t.Fatal("expired dispatch was forgotten", err)
+		}
+	}
+	query, err := l.reserve("account", "client", "cccccccccccccccccccccccccccccccc", l.epoch, deadline, [32]byte{3})
+	if err != nil {
+		t.Fatal("explicit retained-result query refused", err)
+	}
+	if err = query.enqueue(context.Background(), func() bool { sent++; return true }); err != nil {
+		t.Fatal("retained-result query not enqueued", err)
+	}
+	if sent != 2 {
+		t.Fatal("wrong enqueue count", sent)
+	}
+	wall = deadline + resultQueryGrace
+	mono = 1000 + resultQueryGrace
+	if p, err := l.reserve("account", "client", "dddddddddddddddddddddddddddddddd", l.epoch, deadline, [32]byte{4}); p != nil || err == nil || unf(err) != nil {
+		t.Fatal("past query window admitted or claimed not forwarded", err)
+	}
+}
+
+func TestAttemptSealOutlivesTheOriginalCleanupPoint(t *testing.T) {
+	wall, mono := int64(1_000_000), int64(0)
+	l := newAttemptLedger()
+	l.limit = 1
+	l.clock = func() (int64, int64) { return wall, mono }
+	deadline := wall + 1000
+	a, err := l.reserve("account", "client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", l.epoch, deadline, [32]byte{1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused := a.refuse(connect.NewError(connect.CodeUnavailable, errors.New("offline")), "machine_offline")
+	wall = deadline + attemptGrace + 1
+	mono = 1000 + attemptGrace + 1
+	// Both clocks crossed the former expiry, but late A0 is still queryable.
+	// Full capacity must stay unknown, without evicting A1's sealed refusal.
+	p, err := l.reserve("account", "client", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", l.epoch, wall+1000, [32]byte{2})
+	if p != nil || err == nil || unf(err) != nil {
+		t.Fatal("old cleanup reopened capacity during query window", err)
+	}
+	if p, err = l.reserve("account", "client", a.id, l.epoch, deadline, [32]byte{1}); p != nil || !proto.Equal(unf(err), unf(refused)) {
+		t.Fatal("late A0 reopened refused authorization", err)
+	}
+	want := deadline + int64(deviceauth.ResultRetention/time.Millisecond) + attemptGrace
+	if a.entry.expires != want || a.entry.monotonicExpiry != want-1_000_000 {
+		t.Fatal("seal did not cover complete result window")
+	}
+}
+
+func TestAttemptQueryWindowIsRecheckedAtEnqueue(t *testing.T) {
+	wall, mono := int64(1_000_000), int64(0)
+	l := newAttemptLedger()
+	l.clock = func() (int64, int64) { return wall, mono }
+	deadline := wall - 1000 // An expired execution authorization, still queryable.
+	p, err := l.reserve("account", "client", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", l.epoch, deadline, [32]byte{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wall = deadline + resultQueryGrace
+	mono += resultQueryGrace
+	sent := false
+	err = p.enqueue(context.Background(), func() bool { sent = true; return true })
+	if sent || err == nil || unf(err) != nil {
+		t.Fatal("delayed admission crossed result query window", err)
 	}
 }
