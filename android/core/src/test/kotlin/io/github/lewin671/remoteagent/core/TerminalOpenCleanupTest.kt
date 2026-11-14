@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.core
 import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 
 import io.github.lewin671.remoteagent.proto.TerminalFrame
+import io.github.lewin671.remoteagent.proto.ForwardResponse
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 import okhttp3.*
@@ -29,6 +30,13 @@ class TerminalOpenCleanupTest {
     private fun checkFailure(mode: String) = runTest {
         val fixture = ColdOpenFixture(2)
         val peer = ColdOpenPeer(fixture, this)
+        if (mode == "command") {
+            // An unverifiable reply ends this opening without starting a new
+            // main-leg recovery job. Unavailable now intentionally starts that
+            // independent work, covered by RemoteTest's pending-call tests.
+            peer.unavailableMethods = emptySet()
+            peer.response = { name, _ -> if (name == "Forward") ForwardResponse.getDefaultInstance() else null }
+        }
         var socket: Socket? = null
         var closes = 0
         val factory = WebSocket.Factory { request, listener ->
@@ -100,7 +108,7 @@ class TerminalOpenCleanupTest {
     @Test fun factoryFailureReleasesReader() = checkFailure("factory")
     @Test fun socketFailureReleasesReader() = checkFailure("failure")
     @Test fun earlyClosureReleasesReader() = checkFailure("closed")
-    @Test fun rejectedCommandReleasesReader() = checkFailure("command")
+    @Test fun invalidCommandResultReleasesReader() = checkFailure("command")
     @Test fun cancellationWhileOpeningReleasesReader() = checkFailure("cancel-open")
     @Test fun cancellationDuringCommandReleasesReader() = checkFailure("cancel-command")
     @Test fun openTimeoutReleasesReader() = checkFailure("timeout")
