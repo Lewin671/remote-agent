@@ -68,6 +68,40 @@ extension ServerTests {
                 #expect(await first.value);try await remote.refreshTrustedDirectory();#expect(calls.value>=2)
             }
         }
+        @Test func networkRetirementReleasesAnIndependentDirectoryCaller() async throws {
+            try await World.run(setUp:{_ in}) {w in
+                let entered=Signal(),stopped=Signal(),calls=Counter()
+                let http=Intercept.http(for:w.server.url,transform:{q,data,response in
+                    if q.url?.path.hasSuffix("/ListDevices")==true && calls.increment()==1 {entered.set();defer{stopped.set()};try await Task.sleep(for:.seconds(30))}
+                    return (data,response)
+                }) {$0}
+                let remote=try await w.remote(try await w.join(),http:http)
+                remote.networkChanged("initial",available:true)
+                try await eventually("initial signature"){await remote.networkSignature == "initial"}
+                let caller=Task {try await remote.refreshTrustedDirectory()};#expect(await entered.wait())
+                remote.networkChanged("replacement",available:true)
+                #expect(await stopped.wait(1000),"old directory was kept until its deadline")
+                try await caller.value;#expect(calls.value==2);#expect(await remote.directoryLoad == nil)
+            }
+        }
+        @Test func loginDeadlineIncludesBothPermissionDeniedAttempts() async throws {
+            try await World.run(setUp:{_ in}) {w in
+                let calls=Counter(),stopped=Signal()
+                let http=Intercept.http(for:w.server.url,transform:{q,data,response in
+                    if q.url?.path.hasSuffix("/Login")==true && calls.increment()<=2 {
+                        defer{if calls.value==2{stopped.set()}}
+                        try await Task.sleep(for:.seconds(2))
+                        return (Data("{\"code\":\"permission_denied\"}".utf8),HTTPURLResponse(url:q.url!,statusCode:403,httpVersion:nil,headerFields:["Content-Type":"application/json"])!)
+                    }
+                    return (data,response)
+                }) {$0}
+                let remote=try await w.remote(try await w.join(),http:http);await remote.setRecoveryLifetimeMode()
+                let caller=Task {do{_ = try await remote.currentToken();return false}catch is TimedOut{return true}catch{return false}}
+                #expect(await stopped.wait(3800),"login retained beyond its complete round deadline")
+                #expect(await caller.value);#expect(await remote.loginFlight == nil);#expect(await !remote.removed)
+                #expect(!(try await remote.currentToken()).isEmpty);#expect(calls.value==3)
+            }
+        }
         @Test func resumingAnInterruptedColdStartRetiresItsNetworkRound() async throws {
             try await World.run(setUp:{_ in}) {w in
                 let entered=Signal(),stopped=Signal(),calls=Counter()

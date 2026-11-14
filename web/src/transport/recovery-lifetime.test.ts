@@ -89,3 +89,16 @@ test("an old successful sync cannot release a newer failed wake barrier",async()
  release(record);await old;
  await expect(rt.ensureWakeSecurity()).rejects.toMatchObject({code:"clock"});
 });
+
+
+test("network retirement releases a directory caller before the owner deadline",async()=>{
+ const r=await fixture(),rt=r as any;vi.spyOn(rt,"connect").mockResolvedValue(undefined);
+ let entered!:()=>void,old:AbortSignal|undefined,calls=0;
+ const started=new Promise<void>(resolve=>{entered=resolve});
+ rt.api={listDevices:async(_q:unknown,options:{signal:AbortSignal})=>{if(++calls===1){old=options.signal;entered();return new Promise(()=>{});}return {devices:[]};}};
+ const caller=r.loadDevices(false);await started;const owner=rt.directoryJob;
+ r.networkChanged("replacement");
+ try {expect((await within(caller,1000)).expired).not.toBe(true);expect(old?.aborted).toBe(true);
+  expect(calls).toBe(2);expect(r.devicesStatus).toBe("ready");expect(rt.directoryJob).toBeUndefined();
+ }finally{r.stop();owner.controller.abort();await caller;}
+});

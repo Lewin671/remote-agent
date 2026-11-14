@@ -52,4 +52,15 @@ class RecoveryLifetimeTest {
         assertTrue(first.await().exceptionOrNull() is SocketTimeoutException)
         assertEquals(7,round.run{7})
     }
+    @Test fun networkRetirementReleasesAnIndependentDirectoryCaller()=runTest {
+        val peer=ColdOpenPeer(ColdOpenFixture(2),this);val r=peer.remote();var calls=0
+        try {
+            peer.before={name,_->if(name=="ListDevices" && ++calls==1)awaitCancellation()}
+            val caller=async{r.refreshDevices()};runCurrent()
+            assertEquals(1,calls);r.setNetwork(false);runCurrent()
+            assertTrue("old directory was kept until its deadline",caller.isCompleted)
+            caller.await();assertEquals(2,calls);assertNull(field(r,"directoryLoad"))
+        }finally{r.close();runCurrent()}
+    }
+
 }
