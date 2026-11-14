@@ -15,12 +15,19 @@ protocol SyncEngine: AnyObject, Sendable {
     func start()
     func stop()
     func setNetwork(_ available: Bool)
+    func networkChanged(_ signature: String, available: Bool)
     func reconnectNow()
     func retryLogin()
     func close()
     func describeSelf(platform: String, description: String) async throws
 }
 
+extension SyncEngine {
+    func networkChanged(_ signature: String, available: Bool) {
+        setNetwork(available)
+        if available { reconnectNow() }
+    }
+}
 extension Remote: SyncEngine {}
 
 /// What the system says of this device's network. It is evidence, not
@@ -34,6 +41,12 @@ struct NetworkPath: Equatable, Sendable {
     var available: Bool
     /// What the route goes over, such as `en0`: a change of it is a change of network.
     var interface: String
+    var ipv4: Bool? = nil
+    var ipv6: Bool? = nil
+    var dns: Bool? = nil
+    var expensive: Bool? = nil
+    var constrained: Bool? = nil
+    var signature: String { "\(available)/\(interface)/\(String(describing:ipv4))/\(String(describing:ipv6))/\(String(describing:dns))/\(String(describing:expensive))/\(String(describing:constrained))" }
 
     static let unknown = NetworkPath(available: true, interface: "")
 }
@@ -53,7 +66,9 @@ final class SystemNetwork: NetworkWatching {
         monitor.pathUpdateHandler = { path in
             onChange(NetworkPath(
                 available: path.status != .unsatisfied,
-                interface: path.availableInterfaces.first?.name ?? ""))
+                interface: path.availableInterfaces.filter { path.usesInterfaceType($0.type) }.map(\.name).sorted().joined(separator: ","),
+                ipv4: path.supportsIPv4, ipv6: path.supportsIPv6, dns: path.supportsDNS,
+                expensive: path.isExpensive, constrained: path.isConstrained))
         }
         monitor.start(queue: queue)
     }
@@ -75,7 +90,7 @@ enum NetworkChange: Equatable {
         if !new.available { return old.available ? .lost : .none }
         if !old.available { return .gained }
         // Still up, over something else: Wi-Fi to cellular, or another Wi-Fi.
-        return !old.interface.isEmpty && old.interface != new.interface ? .gained : .none
+        return !old.interface.isEmpty && old != new ? .gained : .none
     }
 }
 

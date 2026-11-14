@@ -175,6 +175,8 @@ public actor Remote {
     nonisolated let cache: (any CipherCache)?
     nonisolated let log: @Sendable (String) -> Void
     nonisolated let clock: @Sendable () -> Int64
+    nonisolated let monotonic: @Sendable () -> Int64
+    var recovery: Recovery
     nonisolated let sleep: Sleeper
     nonisolated let jitter: @Sendable () -> Double
     /// Stream frames waiting to be handled before the stream is dropped and caught up from history.
@@ -244,7 +246,15 @@ public actor Remote {
     /// Hears of every login the server gives and of the one in use being refused (`keepLogin`).
     var onLogin: (@Sendable (SavedLogin?) -> Void)?
     var ws: (any FrameStream)?
-    var retry: Int64 = 1000
+    var candidate: (any FrameStream)?
+    var dialing = false
+    var wantedConnection = false
+    var everReady = false
+    var networkGeneration: UInt64 = 0
+    var verifiedNetworkGeneration: UInt64 = 0
+    var networkSignature = ""
+    var activity: PathActivity?
+    var liveness: Task<Void,Never>?
     var running = false
     var removed = false
     var closed = false
@@ -294,7 +304,7 @@ public actor Remote {
     /// What the lifecycle calls post. They are not isolated, so that a screen
     /// calls them without awaiting, and they take effect in the order called.
     enum Op: Sendable {
-        case start, stop, close, reconnectNow, clearRemoved
+        case start, stop, close, reconnectNow, clearRemoved, networkChanged
         case keepLogin(SavedLogin?, @Sendable (SavedLogin?) -> Void)
         case setNetwork(Bool)
         case touch(String)
@@ -302,6 +312,8 @@ public actor Remote {
         case retryEvents(String)
     }
 
+    private struct NetworkInbox: Sendable { var pending: (String,Bool)?; var queued = false }
+    private nonisolated let networkInbox = OSAllocatedUnfairLock(initialState: NetworkInbox())
     private nonisolated let ops: AsyncStream<Op>.Continuation
 
     nonisolated func post(_ op: Op) { ops.yield(op) }
@@ -386,7 +398,8 @@ public actor Remote {
         historyIdleBytes: Int64 = 16 * 1024 * 1024,
         streamOpenMs: Int64 = 15_000,
         linkGraceMs: Int64 = 10_000,
-        securityStorage: (any DeviceSecurity.Storage)? = nil
+        securityStorage: (any DeviceSecurity.Storage)? = nil,
+        monotonic: (@Sendable () -> Int64)? = nil
     ) throws {
         self.account = account
         self.securityStorage = securityStorage
@@ -394,6 +407,9 @@ public actor Remote {
         self.cache = cache
         self.log = log
         self.clock = clock
+        let elapsed = monotonic ?? recoveryTime
+        self.monotonic = elapsed
+        self.recovery = Recovery(now: elapsed, random: jitter)
         self.sleep = sleep
         self.jitter = jitter
         self.frameQueue = frameQueue
@@ -434,6 +450,13 @@ public actor Remote {
     /// Whether the device has a network at all. Losing it ends the connection
     /// at once rather than at the next ping; getting one starts over.
     public nonisolated func setNetwork(_ available: Bool) { ops.yield(.setNetwork(available)) }
+    public nonisolated func networkChanged(_ signature: String, available: Bool) {
+        let notify = networkInbox.withLock { s in
+            s.pending = (signature,available)
+            if s.queued { return false }; s.queued = true; return true
+        }
+        if notify { ops.yield(.networkChanged) }
+    }
 
     /// Ends this Remote for good.
     public nonisolated func close() {
@@ -476,6 +499,8 @@ public actor Remote {
         case .start:
             if running || removed { return }
             running = true
+            if everReady { networkGeneration += 1 }
+            startLiveness()
             beginConnect()
         case .stop:
             halt()
@@ -500,14 +525,24 @@ public actor Remote {
             grace = nil
             waited = false
             if running && !removed {
-                retry = 1000
+                networkGeneration += 1
+                retireCandidate()
                 beginConnect()
             } else {
                 publish()
             }
+        case .networkChanged:
+            guard let (signature,available) = networkInbox.withLock({ s in
+                defer {s.pending=nil;s.queued=false};return s.pending
+            }), signature != networkSignature else { return }
+            let changed = !networkSignature.isEmpty || everReady
+            networkSignature = signature; network = available
+            if changed {
+                networkGeneration += 1; retireCandidate()
+                if running && !removed { beginConnect() } else { publish() }
+            } else { publish() }
         case .reconnectNow:
             if !running || removed { return }
-            retry = 1000
             beginConnect()
         case .clearRemoved:
             removed = false
@@ -531,6 +566,9 @@ public actor Remote {
 
     private func halt() {
         running = false
+        liveness?.cancel();liveness=nil
+        candidate?.cancel();candidate=nil
+        dialing=false
         if let deviceSecurity { Task { await deviceSecurity.stopPolling() } }
         generation += 1
         reconnect?.task.cancel()
@@ -657,15 +695,23 @@ public actor Remote {
         // Given up on while waiting for its turn.
         try Task.checkCancellation()
         do {
-            return signedIn(try await loginResponse(api: api, account: account))
+            let response = try await loginResponse(api: api, account: account)
+            try Task.checkCancellation()
+            return signedIn(response)
         } catch let first as ConnectError where first.code == .permissionDenied {
             do {
-                return signedIn(try await loginResponse(api: api, account: account))
+                let response = try await loginResponse(api: api, account: account)
+                try Task.checkCancellation()
+                return signedIn(response)
             } catch let e as ConnectError where e.code == .permissionDenied {
+                try Task.checkCancellation()
                 // The server does not know this device: its token is no login either.
                 dropToken()
                 removed = true
                 running = false
+                dialing = false; connecting = nil
+                candidate?.cancel(); candidate = nil
+                liveness?.cancel(); liveness = nil
                 generation += 1
                 reconnect?.task.cancel()
                 reconnect = nil
@@ -735,49 +781,90 @@ public actor Remote {
 
     /// Replaces the whole attempt, including a login suspended before a socket exists.
     func beginConnect() {
-        if !running || removed { return }
-        generation += 1
-        reconnect?.task.cancel()
-        reconnect = nil
+        if !running || removed || dialing || candidate != nil || reconnect != nil { return }
+        let wait = recovery.delay()
+        if wait > 0 || !recovery.take() {
+            reconnect = schedule(max(1,wait)) { me,id in
+                guard me.reconnect?.id == id else { return }
+                me.reconnect=nil;me.beginConnect()
+            }
+            return
+        }
+        generation += 1;dialing=true;wantedConnection=false
+        connecting=Task {await self.connect()}
+    }
+
+    func retireCandidate() {
+        wantedConnection=true
+        let old=candidate;candidate=nil
+        opening?.task.cancel();opening=nil
         connecting?.cancel()
-        opening?.task.cancel()
-        opening = nil
-        let old = ws
-        ws = nil
         old?.cancel()
-        connecting = Task { await self.connect() }
+    }
+
+    func startLiveness() {
+        liveness?.cancel()
+        let sleep=self.sleep
+        liveness=Task { [weak self] in
+            guard let initial=await self?.livenessTime() else {return}
+            var last=initial
+            while (try? await sleep(1000)) != nil, !Task.isCancelled {
+                guard let self else {return}
+                last=await self.livenessTick(last)
+            }
+        }
+    }
+    func livenessTime() -> (Int64,Int64) { (monotonic(),clock()) }
+    func livenessTick(_ last:(Int64,Int64)) -> (Int64,Int64) {
+        let now=livenessTime()
+        guard running else {return now}
+        let woke=now.0<last.0 || now.0-last.0>3000 || now.1-last.1>3000
+        if woke {networkGeneration+=1;retireCandidate()}
+        if woke || (ws != nil && now.0-(activity?.last ?? now.0)>=3000) {
+            if conn == .online {conn = .connecting;publish()}
+            beginConnect()
+        }
+        return now
     }
 
     private func connect() async {
         if !running { return }
         let gen = generation
-        conn = .connecting
+        let networkGen = networkGeneration
+        let started = monotonic()
+        defer {
+            if generation == gen {
+                dialing=false;connecting=nil
+                if candidate == nil && running && (ws == nil || wantedConnection) {beginConnect()}
+            }
+        }
+        if ws == nil {conn = .connecting}
         publish()
+        do { try await securitySession().touchAfterWake() }
+        catch { if running && gen == generation {fail(error)};return }
         await restored()
         if !running || gen != generation { return }
         do {
-            // A token kept from the last connection saves the two login calls
-            // each time the app comes back. One about to expire is not worth a
-            // refused connection; the server refusing it closes the stream,
-            // and the next try logs in.
-            if token.isEmpty || tokenExpires < clock() + 86_400_000 {
-                token = try await withTimeout(streamOpenMs, sleep: sleep) {
-                    try await self.signIn()
-                }
+            let budget = (everReady || networkGen > 0) ? min(streamOpenMs,3000) : streamOpenMs
+            try await withTimeout(budget,sleep:sleep) {
+                try await self.prepareMain(networkGen)
             }
         } catch {
             // Replaced or stopped meanwhile: that attempt says what happens next.
-            if running && gen == generation {
+            if running && gen == generation && networkGen == networkGeneration && !Task.isCancelled {
                 fail(error is TimedOut ? URLError(.timedOut) as Error : error)
             }
             return
         }
         if !running || gen != generation { return }
+        if networkGen != networkGeneration {wantedConnection=true;return}
         var frame = PBPeerFrame()
         frame.hello.token = token
         guard let hello: Data = try? frame.serializedData() else { return }
         let socket = deviceLink.router.path.openStream("/v1/stream", hello: hello)
-        ws = socket
+        candidate = socket
+        let activity = PathActivity();activity.received(monotonic())
+        let monotonic=self.monotonic
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
         // What was queued before that is still handled; nothing is skipped.
@@ -786,6 +873,7 @@ public actor Remote {
         let budget = StreamByteBudget(limit: frameQueueBytes)
         Task.detached {
             while let bytes = try? await socket.receive() {
+                activity.received(monotonic())
                 guard budget.reserve(bytes.count) else {
                     socket.cancel()
                     break
@@ -798,63 +886,70 @@ public actor Remote {
             }
             queue.finish()
         }
-        opening = schedule(streamOpenMs) { me, id in
+        opening = schedule((everReady || networkGen > 0) ? max(1,min(streamOpenMs,3000)-(monotonic()-started)) : streamOpenMs) { me, id in
             guard me.opening?.id == id else { return }
             me.opening = nil
-            if me.ws === socket && gen == me.generation && me.conn != .online {
-                me.ws = nil
-                me.generation += 1
+            if me.candidate === socket {
+                me.candidate = nil
                 socket.cancel()
                 me.fail(UserError(L10nMessage.errorsConnectionTimedOutReconnecting()))
             }
         }
-        Task { await self.follow(socket, frames, gen, budget) }
+        Task { await self.follow(socket, frames, gen, networkGen, activity, budget) }
     }
 
     /// Handles a stream's frames in order until it ends or is replaced.
-    private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ budget: StreamByteBudget) async {
+    private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ networkGen: UInt64, _ activity: PathActivity, _ budget: StreamByteBudget) async {
         for await bytes in frames {
             defer { budget.release(bytes.count) }
-            if ws !== socket || gen != generation { break }
+            if ws !== socket && candidate !== socket { break }
             do {
                 let f = try PBServerFrame(serializedBytes: bytes)
-                if case .ready? = f.kind {
-                    opening?.task.cancel()
-                    opening = nil
+                if candidate === socket {
+                    guard case .ready? = f.kind else {throw UserError(L10nMessage.errorsInvalidPushFrame())}
+                    opening?.task.cancel();opening=nil;candidate=nil
+                    guard gen == generation && networkGen == networkGeneration else {socket.cancel();beginConnect();break}
+                    let old=ws;ws=socket;self.activity=activity;everReady=true
+                    recovery.ready();old?.cancel()
                 }
+                if conn == .connecting && networkGen == networkGeneration, case .heartbeat? = f.kind {conn = .online;publish()}
                 await onFrame(f)
             } catch {
                 report(error)
                 break
             }
-            if ws !== socket || gen != generation { break }
+            if ws !== socket { break }
         }
         socket.cancel()
         let end = await socket.ended()
-        guard ws === socket else { return }
-        ws = nil
-        generation += 1
-        opening?.task.cancel()
-        opening = nil
+        guard ws === socket || candidate === socket else { return }
+        if ws === socket {ws=nil}
+        if candidate === socket {candidate=nil;opening?.task.cancel();opening=nil}
         // Only an explicit refusal invalidates the token.
         if end.closeCode == policyViolation { dropToken() }
         fail(end.error ?? UserError(L10nMessage.errorsDisconnectedFromServer()))
     }
 
     func fail(_ e: Error) {
-        conn = .offline
-        error = errorText(e)
-        errorDetail = detailText(e)
-        unresolved = unresolvedHost(e)
+        recovery.failed()
+        if ws == nil {
+            conn = .offline
+            error = errorText(e);errorDetail = detailText(e);unresolved = unresolvedHost(e)
+        }
         publish()
-        if !running { return }
-        let delayMs = retry + Int64(jitter() * Double(retry) * 0.25)
-        retry = min(retry * 2, 30_000)
-        reconnect = schedule(delayMs) { me, id in
-            guard me.reconnect?.id == id else { return }
-            // Not this timer's to cancel from beginConnect while it runs.
-            me.reconnect = nil
-            me.beginConnect()
+        if !running {return}
+        reconnect?.task.cancel()
+        reconnect = schedule(max(1,recovery.delay())) {me,id in
+            guard me.reconnect?.id == id else {return}
+            me.reconnect=nil;me.beginConnect()
+        }
+    }
+
+    func prepareMain(_ networkGen: UInt64) async throws {
+        if token.isEmpty || tokenExpires < clock()+86_400_000 {token=try await signIn()}
+        if networkGen != verifiedNetworkGeneration {
+            _ = try await securitySession().sync()
+            if networkGen == networkGeneration {verifiedNetworkGeneration=networkGen}
         }
     }
 
@@ -862,7 +957,6 @@ public actor Remote {
         switch f.kind {
         case .ready?:
             let gen = generation
-            retry = 1000
             conn = .online
             error = ""
             errorDetail = ""

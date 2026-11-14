@@ -124,6 +124,11 @@ final class RemoteTerminal {
         self.link = link
     }
 
+    func connectIfNeeded() {
+        if case .closed = state { connect() }
+        else if conn == nil && job == nil { connect() }
+    }
+
     func connect() {
         history.end()
         guard let link else { return }

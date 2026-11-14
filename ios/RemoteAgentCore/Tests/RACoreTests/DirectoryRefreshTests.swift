@@ -47,7 +47,7 @@ extension ServerTests {
                     if path.hasSuffix("/GetSecurityStates") { pulls.increment() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 try await r.refreshTrustedDirectory()
                 let token = try await r.currentToken()
                 let machine = try #require(try await r.api.client.listMachines(request: .init(),
@@ -74,7 +74,7 @@ extension ServerTests {
                     if request.url?.path.hasSuffix("/ListDevices") == true { lists.increment() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 let other = try await w.join()
                 try await r.refreshTrustedDirectory()
                 let token = try await r.currentToken()
@@ -139,7 +139,7 @@ extension ServerTests {
                     if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { secondSync.set() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 let first = Task { try await r.refreshTrustedDirectory() }
                 #expect(await entered.wait())
                 let second = Task { try await r.refreshTrustedDirectory() }
@@ -173,7 +173,7 @@ extension ServerTests {
                     if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { updateSync.set() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 try await r.refreshTrustedDirectory()
                 let head = await r.directoryHead
                 hold.set()
@@ -245,7 +245,7 @@ extension ServerTests {
                     if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { updateSync.set() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 try await r.refreshTrustedDirectory()
                 try await r.readTrustedPrefs()
                 let head = await r.directoryHead
@@ -284,7 +284,7 @@ extension ServerTests {
                     if entered.isSet && request.url?.path.hasSuffix("/GetSecurityStates") == true { updateSync.set() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 #expect(await r.refresh())
                 #expect(r.current.machines[w.daemon.id] != nil)
                 let head = await r.directoryHead
@@ -326,7 +326,7 @@ extension ServerTests {
                         await releaseSecurity.wait()
                     }
                 }) { $0 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 try await r.refreshTrustedDirectory()
                 #expect(r.current.devices[victim.deviceId] != nil)
                 let head = await r.directoryHead
@@ -360,7 +360,7 @@ extension ServerTests {
                         await release.wait()
                     }
                 }) { $0 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 try await r.refreshTrustedDirectory()
                 hold.set()
                 let load = Task { try await r.refreshTrustedDirectory() }

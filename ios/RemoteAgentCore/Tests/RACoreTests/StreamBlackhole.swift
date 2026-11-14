@@ -110,15 +110,15 @@ final class StreamBlackhole: @unchecked Sendable {
     let url: String
     let attempts = Counter()
 
-    init(firstClose: Int? = nil) throws {
+    init(firstClose: Int? = nil, firstReady: Bool = false) throws {
         listener = try Listener()
         url = "http://127.0.0.1:\(listener.port)"
         let attempts = self.attempts
         listener.serve { fd in
             guard let head = readHead(fd), acceptUpgrade(fd, head) else { return }
-            if attempts.increment() > 1 {
+            if attempts.increment() > 1 || firstReady {
                 var ready = PBServerFrame()
-                ready.ready = PBReady()
+                ready.ready = PBReady.with { $0.serverTimeMs = Int64(Date().timeIntervalSince1970 * 1000) }
                 let bytes: Data = (try? ready.serializedData()) ?? Data()
                 writeAll(fd, Data([0x82, UInt8(bytes.count)]) + bytes)
             } else if let code = firstClose {
@@ -143,7 +143,7 @@ final class CountingProxy: @unchecked Sendable {
     let url: String
     let streams = Counter()
 
-    init(to port: Int, counting path: String = "/v1/stream") throws {
+    init(to port: Int, counting path: String = "/v1/stream", holdReplacement: DispatchSemaphore? = nil) throws {
         listener = try Listener()
         url = "http://127.0.0.1:\(listener.port)"
         let streams = self.streams
@@ -164,7 +164,9 @@ final class CountingProxy: @unchecked Sendable {
             var first = [UInt8](repeating: 0, count: 4096)
             let n = read(fd, &first, first.count)
             guard n > 0 else { return }
-            if String(decoding: first[..<n], as: UTF8.self).hasPrefix("GET \(path) ") { streams.increment() }
+            if String(decoding: first[..<n], as: UTF8.self).hasPrefix("GET \(path) ") {
+                if streams.increment() == 2 { _ = holdReplacement?.wait(timeout: .now()+10) }
+            }
             guard writeAll(up, Data(first[..<n])) else { return }
             Thread.detachNewThread {
                 pump(from: up, to: fd)

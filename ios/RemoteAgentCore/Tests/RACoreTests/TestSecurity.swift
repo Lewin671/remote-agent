@@ -220,3 +220,9 @@ func fixtureRemote(
         securityStorage: securityStorage
             ?? TestSecurity.find(account.server)?.store(account.deviceId))
 }
+
+// Each World models a separate application process. Cross-target process
+// credit is tested with a shared budget explicitly in RecoveryTests.
+extension Remote {
+    func isolateRecoveryBudget() { recovery = Recovery(now:monotonic,random:jitter,budget:RecoveryBudget()) }
+}

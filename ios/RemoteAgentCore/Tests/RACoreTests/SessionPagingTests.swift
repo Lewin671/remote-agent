@@ -376,7 +376,7 @@ extension ServerTests {
                 _ = try await r.awaitState("offline") { $0.conn == .offline }
 
                 // The next run shows the cached first page before it connects, and the events are still there.
-                let again = try w.remote(r.account, cache: cache)
+                let again = try await w.remote(r.account, cache: cache)
                 w.server.stop()
                 again.start()
                 let st = try await again.awaitState("the cached page") {

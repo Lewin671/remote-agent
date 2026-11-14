@@ -304,11 +304,8 @@ final class AppModel {
         switch change {
         case .none:
             break
-        case .lost:
-            engine?.setNetwork(false)
-        case .gained:
-            engine?.setNetwork(true)
-            engine?.reconnectNow()
+        case .lost, .gained:
+            engine?.networkChanged(new.signature, available: new.available)
         }
     }
 

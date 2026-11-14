@@ -73,7 +73,8 @@ struct TerminalPane: View {
         .onAppear { start() }
         .onDisappear { terminal.close() }
         .onChange(of: active) { _, now in
-            if now { open() } else { terminal.close() }
+            if !model.foreground { terminal.close() }
+            else if now { terminal.connectIfNeeded() }
         }
         .task(id: terminal.resizedElsewhere) {
             // The toolbar says it for a while; nothing pops up over the screen.

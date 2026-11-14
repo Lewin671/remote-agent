@@ -95,6 +95,32 @@ import Testing
 
     private func output(_ text: String) -> PBTerminalFrame { .with { $0.output = Data(text.utf8) } }
 
+    @Test func relayRecoveryKeepsHealthyTerminalAndDoesNotRetypeAfterRealLegLoss() async {
+        let streams=Streams(), online=Flag()
+        let terminal=terminal(streams,online:online)
+        defer {terminal.close()}
+        terminal.connect()
+        await eventually {streams.count==1}
+        streams.listener(0).onFrame(snapshot("retained"))
+        await eventually {terminal.state == .live}
+        terminal.send(Data("once".utf8))
+        await eventually {streams.sent.contains{$0.input==Data("once".utf8)}}
+        online.on=false;terminal.connectIfNeeded()
+        #expect(terminal.state == .live && streams.count==1)
+        streams.listener(0).onFrame(output(" screen"))
+        await eventually {terminal.host.screenText=="retained screen"}
+        online.on=true;terminal.connectIfNeeded()
+        #expect(streams.count==1)
+        streams.listener(0).onClose("closed")
+        await eventually {if case .closed = terminal.state {return true};return false}
+        terminal.connectIfNeeded()
+        await eventually {streams.count==2}
+        #expect(terminal.host.screenText=="retained screen")
+        streams.listener(1).onFrame(snapshot("latest"))
+        await eventually {terminal.state == .live}
+        #expect(streams.sent.filter{$0.input==Data("once".utf8)}.count==1)
+    }
+
     /// A pull down reads the record; the live screen keeps being written to behind the
     /// reader and never moves it, and a key leaves reading before it is sent
     /// (architecture §11 「回看历史」).

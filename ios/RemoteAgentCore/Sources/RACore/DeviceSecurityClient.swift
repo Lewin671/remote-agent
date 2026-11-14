@@ -116,6 +116,9 @@ public actor DeviceSecurityClient {
         pollJob?.cancel()
         pollJob = nil
     }
+    /// Persist wake time without waiting on a relay or affecting a healthy terminal leg.
+    public func touchAfterWake() throws { _ = try touch(now: clock(), persist: true) }
+
     public func sync() async throws -> DeviceSecurity.Record {
         if let syncJob { return try await syncJob.value }
         let task = Task { try await self.syncLoop() }

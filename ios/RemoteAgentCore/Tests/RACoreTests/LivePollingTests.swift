@@ -138,7 +138,7 @@ extension ServerTests {
                         await release.wait()
                     }
                 }) { $0 }
-                let r = try w.remote(try await w.join(), http: http)
+                let r = try await w.remote(try await w.join(), http: http)
                 r.start()
                 _ = try await r.awaitState("active session online") { $0.synced && $0.sessions["s1"]?.info?.status == .running }
                 let feed = r.events("s1")

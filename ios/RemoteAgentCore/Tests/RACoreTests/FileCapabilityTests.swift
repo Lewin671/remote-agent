@@ -148,7 +148,7 @@ extension ServerTests {
                     }
                     return request
                 }
-                let retrying = try w.remote(try await w.join(), http: http)
+                let retrying = try await w.remote(try await w.join(), http: http)
                 active.set(retrying); retrying.start()
                 _ = try await retrying.awaitState("retrying machine") {
                     $0.conn == .online && $0.sessions["s1"]?.info != nil && fileSupported($0.machines[w.daemon.id])

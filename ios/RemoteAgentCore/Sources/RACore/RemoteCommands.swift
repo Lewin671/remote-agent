@@ -122,6 +122,12 @@ extension Remote {
 
     private func forwardPrepared(_ p: PreparedCommand, call: DispatchState.Call) async throws -> PBCommandResult {
         let prior = call.uncertain
+        if verifiedNetworkGeneration != networkGeneration {
+            let gen=networkGeneration
+            _ = try await securitySession().sync()
+            guard gen == networkGeneration else {throw DeviceSecurity.Failure.stale}
+            verifiedNetworkGeneration=gen
+        }
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
         if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
@@ -160,7 +166,7 @@ extension Remote {
                 // Login, authorization and signing can suspend across a machine refresh.
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 let binding = try await securitySession().commandIdentity(envelope)
-                let res = try await delivery.send(machineId: p.machineId, command: envelope)
+                let res = try await recovery.follow { try await delivery.send(machineId: p.machineId, command: envelope) }
                 let msg: PBCommandResult
                 do {
                     (_, msg) = try await openSecureMessage(
@@ -191,6 +197,9 @@ extension Remote {
                     await keepScheduleSnapshot(p.machineId, data: bytes)
                 }
                 return msg
+            } catch is PathChanged {
+                try Task.checkCancellation()
+                continue
             } catch let ce as ConnectError {
                 let notForwarded = delivery.refusal(ce)
                 let unsent = notForwarded != nil

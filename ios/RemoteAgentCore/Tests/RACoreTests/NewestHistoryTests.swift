@@ -91,7 +91,7 @@ extension ServerTests.NewestHistoryTests {
             defer { requests.release.set() }
             let cache = MemoryCache()
             let account = try await w.join()
-            let remote = try w.remote(account, http: requests.http(w.server.url), cache: cache)
+            let remote = try await w.remote(account, http: requests.http(w.server.url), cache: cache)
             remote.start()
             _ = try await remote.awaitState("session metadata") { $0.sessions["s1"]?.info != nil }
             let feed = remote.events("s1")
@@ -124,7 +124,7 @@ extension ServerTests.NewestHistoryTests {
         try await newestWorld { w in
             let requests = HistoryRequests()
             requests.corrupt = 900
-            let remote = try w.remote(await w.join(), http: requests.http(w.server.url))
+            let remote = try await w.remote(await w.join(), http: requests.http(w.server.url))
             remote.start()
             _ = try await remote.awaitState("session metadata") { $0.sessions["s1"]?.info != nil }
             let feed = remote.events("s1")
@@ -152,7 +152,7 @@ extension ServerTests.NewestHistoryTests {
             let late = try #require(await cache.events(sessionId: "s1").first { $0.seq == 1102 })
             let older = HookedCache(cache)
             older.hookEvents { sid in await cache.events(sessionId: sid).filter { $0.seq <= 1100 } }
-            let offline = try w.remote(first.account, cache: older)
+            let offline = try await w.remote(first.account, cache: older)
             offline.start()
             _ = try await offline.awaitState("cached metadata") { $0.sessions["s1"]?.info != nil }
             let feed = offline.events("s1")
@@ -173,7 +173,7 @@ extension ServerTests.NewestHistoryTests {
             first.stop(); w.server.stop()
             let sparse = HookedCache(cache)
             sparse.hookEvents { sid in await cache.events(sessionId: sid).filter { $0.seq <= 20 || $0.seq >= 601 } }
-            let offline = try w.remote(first.account, cache: sparse)
+            let offline = try await w.remote(first.account, cache: sparse)
             offline.start()
             _ = try await offline.awaitState("cached metadata") { $0.sessions["s1"]?.info != nil }
             let feed = offline.events("s1")
@@ -193,7 +193,7 @@ extension ServerTests.NewestHistoryTests {
         try await newestWorld { w in
             let requests = HistoryRequests()
             requests.missing = missing
-            let remote = try w.remote(await w.join(), http: requests.http(w.server.url))
+            let remote = try await w.remote(await w.join(), http: requests.http(w.server.url))
             remote.start()
             let feed = remote.events("s1")
             let gap = try await feed.await("gap reported", ms: 20_000) { $0.fetchError != nil }
@@ -221,7 +221,7 @@ extension ServerTests.NewestHistoryTests {
     }
 
     private func reopen(_ w: World, _ account: Account, _ requests: HistoryRequests, cache: any CipherCache, last: UInt64) async throws -> Remote {
-        let again = try w.remote(account, http: requests.http(w.server.url), cache: cache)
+        let again = try await w.remote(account, http: requests.http(w.server.url), cache: cache)
         again.start()
         _ = try await again.awaitState("listing from the relay") {
             $0.conn == .online && $0.loaded && $0.sessions["s1"]?.lastSeq == last
@@ -335,7 +335,7 @@ extension ServerTests.NewestHistoryTests {
             try await w.daemon.upload("short", agent("one"), agent("two"))
         }) { w in
             let requests = HistoryRequests()
-            let remote = try w.remote(await w.join(), http: requests.http(w.server.url))
+            let remote = try await w.remote(await w.join(), http: requests.http(w.server.url))
             remote.start()
             _ = try await remote.awaitState("initial Ready and session listing") {
                 $0.conn == .online && $0.loaded && $0.sessions["short"]?.info != nil && $0.sessions["empty"]?.info != nil

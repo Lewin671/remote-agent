@@ -90,13 +90,14 @@ final class World: @unchecked Sendable {
         frameQueue: Int = 1024, frameQueueBytes: Int = 32 << 20,
         historyIdleMs: Int64 = 60_000, historyIdleCount: Int = 8, streamOpenMs: Int64 = 15_000,
         linkGraceMs: Int64 = 10_000
-    ) throws -> Remote {
+    ) async throws -> Remote {
         let r = try fixtureRemote(
             account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes,
             historyIdleMs: historyIdleMs,
             historyIdleCount: historyIdleCount, streamOpenMs: streamOpenMs,
             linkGraceMs: linkGraceMs,
             securityStorage: TestSecurity.find(server.url)?.store(account.deviceId))
+        await r.isolateRecoveryBudget()
         onClose { r.close() }
         return r
     }
@@ -106,7 +107,7 @@ final class World: @unchecked Sendable {
         historyIdleMs: Int64 = 60_000,
         historyIdleCount: Int = 8, linkGraceMs: Int64 = 10_000
     ) async throws -> Remote {
-        try remote(
+        try await remote(
             try await join(), http: http, cache: cache, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes,
             historyIdleMs: historyIdleMs,
             historyIdleCount: historyIdleCount, linkGraceMs: linkGraceMs)
@@ -190,7 +191,7 @@ extension SyncServerTests {
                     }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: flaky)
+                let r = try await w.remote(try await w.join(), http: flaky)
                 try await r.refreshTrustedDirectory()
                 #expect(r.current.devices[victim.deviceId] != nil)
                 try await w.phone.remove([victim.deviceId])
@@ -206,7 +207,7 @@ extension SyncServerTests {
         @Test func expiredPublicationStillAllowsTheStoredDirectoryToLoad() async throws {
             try await world { w in
                 let account = try await w.join()
-                let live = try w.remote(account)
+                let live = try await w.remote(account)
                 try await live.renameDevice(account.deviceId, name: "stored client name")
                 let store = try #require(TestSecurity.find(w.server.url)?.store(account.deviceId))
                 let record = try store.readSecurity()
@@ -228,7 +229,7 @@ extension SyncServerTests {
             try await world { w in
                 let account = try await w.join()
                 let cache = MemoryCache()
-                let first = try w.remote(account, cache: cache)
+                let first = try await w.remote(account, cache: cache)
                 first.start()
                 _ = try await first.awaitState("machine before removal") {
                     $0.machines[w.daemon.id]?.meta?.hostname == "fake-mac.local"
@@ -237,7 +238,7 @@ extension SyncServerTests {
                 await first.refreshDevices()
                 first.close()
                 for store: (any CipherCache)? in [nil, cache] {
-                    let restarted = try w.remote(account, cache: store)
+                    let restarted = try await w.remote(account, cache: store)
                     restarted.start()
                     let state = try await restarted.awaitState("archived machine after restart") {
                         $0.machines[w.daemon.id]?.meta?.hostname == "fake-mac.local"
@@ -734,7 +735,7 @@ extension SyncServerTests {
                 #expect(acct.server == w.server.url)
                 #expect(acct.accountId == w.phone.pin.account)
                 // The device that joined is the account's: it logs in and lists like any other.
-                let joined = try w.remote(acct)
+                let joined = try await w.remote(acct)
                 joined.start()
                 _ = try await joined.awaitState("the new device's lists") {
                     $0.conn == .online && $0.sessions["s1"]?.info != nil
@@ -749,7 +750,7 @@ extension SyncServerTests {
                     if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: counting)
+                let r = try await w.remote(try await w.join(), http: counting)
                 r.start()
                 _ = try await r.awaitState("online") { $0.conn == .online }
                 #expect(logins.value == 1)
@@ -763,7 +764,7 @@ extension SyncServerTests {
         }
 
         /// A client whose logins are counted, and the logins it was told to keep, in order.
-        private func counted(_ w: World, _ account: Account) throws -> (
+        private func counted(_ w: World, _ account: Account) async throws -> (
             Remote, Counter, Mailbox<SavedLogin?>
         ) {
             let logins = Counter()
@@ -771,13 +772,13 @@ extension SyncServerTests {
                 if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
                 return request
             }
-            return (try w.remote(account, http: counting), logins, Mailbox<SavedLogin?>())
+            return (try await w.remote(account, http: counting), logins, Mailbox<SavedLogin?>())
         }
 
         @Test func aLoginKeptFromTheLastRunOpensTheStreamWithoutLoggingIn() async throws {
             try await world { w in
                 let acct = try await w.join()
-                let (first, logins, kept) = try counted(w, acct)
+                let (first, logins, kept) = try await counted(w, acct)
                 first.keepLogin(nil) { kept.put($0) }
                 first.start()
                 _ = try await first.awaitState("online") { $0.conn == .online }
@@ -790,7 +791,7 @@ extension SyncServerTests {
                 first.close()
 
                 // The app was started again: the same device, the login it kept.
-                let (second, again, keptAgain) = try counted(w, acct)
+                let (second, again, keptAgain) = try await counted(w, acct)
                 second.keepLogin(saved) { keptAgain.put($0) }
                 second.start()
                 let id = acct.deviceId
@@ -808,7 +809,7 @@ extension SyncServerTests {
         @Test func aKeptLoginTheServerRefusesIsDroppedAndReplaced() async throws {
             try await world { w in
                 let acct = try await w.join()
-                let (r, logins, kept) = try counted(w, acct)
+                let (r, logins, kept) = try await counted(w, acct)
                 // A token the server never gave, as one it revoked or lost with its data: it lasts long by its own word.
                 let stale = SavedLogin(
                     token: "not-a-token-of-this-server",
@@ -829,14 +830,14 @@ extension SyncServerTests {
         @Test func aKeptLoginAboutToRunOutIsNotUsed() async throws {
             try await world { w in
                 let acct = try await w.join()
-                let (first, _, kept) = try counted(w, acct)
+                let (first, _, kept) = try await counted(w, acct)
                 first.keepLogin(nil) { kept.put($0) }
                 first.start()
                 _ = try await first.awaitState("online") { $0.conn == .online }
                 let saved = try #require(await kept.poll(2000) ?? nil)
                 first.close()
 
-                let (second, logins, keptAgain) = try counted(w, acct)
+                let (second, logins, keptAgain) = try await counted(w, acct)
                 let soon = SavedLogin(
                     token: saved.token,
                     expiresMs: Int64(Date().timeIntervalSince1970 * 1000) + 3_600_000)
@@ -852,7 +853,7 @@ extension SyncServerTests {
         @Test func aDeviceTheServerNoLongerKnowsKeepsNoLogin() async throws {
             try await world { w in
                 let acct = try await w.join()
-                let (r, _, kept) = try counted(w, acct)
+                let (r, _, kept) = try await counted(w, acct)
                 r.keepLogin(nil) { kept.put($0) }
                 r.start()
                 _ = try await r.awaitState("online") { $0.conn == .online }
@@ -884,7 +885,7 @@ extension SyncServerTests {
                 // Only the stream goes to the fixture; auth and list RPCs use the real server.
                 let real = w.server.url
                 let routed = Intercept.http(for: hole.url) { $0.moved(to: real) }
-                let r = try w.remote(
+                let r = try await w.remote(
                     Account(
                         server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed,
                         deviceId: acct.deviceId),
@@ -912,7 +913,7 @@ extension SyncServerTests {
                 if request.url?.path.hasSuffix("/Login") == true { logins.increment() }
                 return request.moved(to: real)
             }
-            let r = try w.remote(
+            let r = try await w.remote(
                 Account(
                     server: hole.url, root: acct.root, deviceSeed: acct.deviceSeed,
                     deviceId: acct.deviceId), http: routed)
@@ -956,7 +957,7 @@ extension SyncServerTests {
                     }
                     await cache.inner.putEvents(sessionId: sid, events: events)
                 }
-                let r = try w.remote(
+                let r = try await w.remote(
                     Account(
                         server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
                         deviceId: acct.deviceId),
@@ -1002,7 +1003,7 @@ extension SyncServerTests {
                     }
                     return request
                 }
-                let r = try w.remote(
+                let r = try await w.remote(
                     Account(
                         server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
                         deviceId: acct.deviceId),
@@ -1032,7 +1033,7 @@ extension SyncServerTests {
                     }
                     return request
                 }
-                let r = try w.remote(acct, http: slow, streamOpenMs: 300)
+                let r = try await w.remote(acct, http: slow, streamOpenMs: 300)
                 r.start()
                 let off = try await r.awaitState("login timeout") { $0.conn == .offline }
                 #expect(off.error == L10n.errorsConnectionTimedOut())
@@ -1049,14 +1050,15 @@ extension SyncServerTests {
                 let acct = try await w.join()
                 let proxy = try CountingProxy(to: w.server.port)
                 w.onClose { proxy.close() }
-                let r = try w.remote(
+                let r = try await w.remote(
                     Account(
                         server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
                         deviceId: acct.deviceId))
                 r.start()
                 _ = try await r.awaitEvents("s1", 3)
+                let old = await r.ws
                 r.reconnectNow()
-                _ = try await r.awaitState("network replacement") { $0.conn == .connecting }
+                try await eventually("authenticated replacement") { await r.ws !== old }
                 try await w.daemon.upload("s1", agent("during replacement"))
                 let events = try await r.awaitEvents("s1", 4)
                 #expect(events.seqs == [1, 2, 3, 4])
@@ -1084,7 +1086,7 @@ extension SyncServerTests {
                 // A new run shows the cached history before it is online.
                 r.stop()
                 w.server.stop()
-                let again = try w.remote(r.account, cache: cache)
+                let again = try await w.remote(r.account, cache: cache)
                 again.start()
                 _ = try await again.awaitState("cached session") { $0.sessions["s1"]?.info != nil }
                 let cached = try await again.awaitEvents("s1", 5)
@@ -1245,7 +1247,7 @@ extension SyncServerTests {
                 let files=MemoryFiles()
                 try files.put(folder:"pending",name:"command",data:p.recordBytes())
                 r.close()
-                let restarted=try w.remote(r.account);restarted.start()
+                let restarted=try await w.remote(r.account);restarted.start()
                 _ = try await restarted.awaitState("restarted") {$0.conn == .online && $0.machines[machine]?.online == true}
                 let restored=try PreparedCommand(recordBytes:#require(try files.get(folder:"pending",name:"command")), prior: true)
                 try await restarted.forward(restored,retryOfUnknown:true)
@@ -1484,7 +1486,7 @@ extension SyncServerTests {
                     }
                     return request
                 }
-                let r = try w.remote(
+                let r = try await w.remote(
                     Account(
                         server: proxy.url, root: acct.root, deviceSeed: acct.deviceSeed,
                         deviceId: acct.deviceId),
@@ -1561,8 +1563,8 @@ extension SyncServerTests {
                     if request.url?.path.hasSuffix("/PutAccountPrefs") == true { await gate.arrive() }
                     return request
                 }
-                let a=try w.remote(try await w.join(),http:racing)
-                let b=try w.remote(try await w.join(),http:racing)
+                let a=try await w.remote(try await w.join(),http:racing)
+                let b=try await w.remote(try await w.join(),http:racing)
                 a.start();b.start()
                 _=try await a.awaitState("a online"){$0.conn == .online}
                 _=try await b.awaitState("b online"){$0.conn == .online}
@@ -1606,7 +1608,7 @@ extension SyncServerTests {
                     }
                     return request
                 }
-                let r = try w.remote(try await w.join(), http: flaky)
+                let r = try await w.remote(try await w.join(), http: flaky)
                 r.start()
                 _ = try await r.awaitState("online") { $0.conn == .online && $0.synced }
                 try await eventually("the first read") { reads.value >= 1 }
@@ -1657,7 +1659,7 @@ extension SyncServerTests {
                         await gate.wait()
                     }
                 ) { $0 }
-                let a = try w.remote(try await w.join(), http: slow)
+                let a = try await w.remote(try await w.join(), http: slow)
                 let other = try await w.client()
                 let leaving = try await w.join()
                 a.start()

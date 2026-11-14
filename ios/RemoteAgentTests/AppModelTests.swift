@@ -226,6 +226,15 @@ final class Harness {
         #expect(NetworkChange.from(wifi, to: wifi) == .none)
     }
 
+    @Test func networkCapabilitiesChangingOnTheSameInterfaceAreNotIgnored() {
+        let old=NetworkPath(available:true,interface:"en0",ipv4:true,ipv6:false,dns:true,expensive:false,constrained:false)
+        var next=old;next.ipv6=true
+        #expect(NetworkChange.from(old,to:next) == .gained)
+        next=old;next.constrained=true
+        #expect(NetworkChange.from(old,to:next) == .gained)
+        #expect(NetworkChange.from(next,to:next) == .none)
+    }
+
     @Test func anAccountOfflineAtStartIsToldSo() async throws {
         defer { h.cleanUp() }
         h.model.networkChanged(NetworkPath(available: false, interface: ""))

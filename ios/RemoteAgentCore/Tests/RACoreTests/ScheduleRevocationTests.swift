@@ -23,14 +23,14 @@ extension ServerTests {
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
                 // A stale cache copied from an older run must also be rejected before start().
                 await cache.putBlob(name:"schedules/"+id,data:bytes)
-                let cold=try w.remote(r.account,cache:cache)
+                let cold=try await w.remote(r.account,cache:cache)
                 #expect(await cold.cachedSchedules(id) == nil)
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
                 // Cold restoration prunes it even when no task screen is opened.
                 await cache.putBlob(name:"schedules/"+id,data:bytes)
                 let reading=Signal(), hooked=HookedCache(cache)
                 hooked.hookMachines { reading.set() }
-                let restoring=try w.remote(r.account,cache:hooked);restoring.start()
+                let restoring=try await w.remote(r.account,cache:hooked);restoring.start()
                 #expect(await reading.wait())
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
             }
