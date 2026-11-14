@@ -1,0 +1,7 @@
+import { defineConfig, mergeConfig } from "vitest/config";
+import base from __VITE_CONFIG__;
+export default mergeConfig(base, defineConfig({
+  root: __RUNTIME__,
+  server: { fs: { allow: [__CHECKOUT__, __RUNTIME__] } },
+  test: { include: ["web.test.ts"], environment: "node", maxWorkers: 1, testTimeout: 1_800_000 },
+}));

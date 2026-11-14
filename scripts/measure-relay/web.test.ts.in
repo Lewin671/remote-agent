@@ -1,0 +1,43 @@
+import { test } from "vitest";
+import { readFileSync, writeFileSync, realpathSync } from "node:fs";
+import { Remote } from __REMOTE__;
+import { MemorySecurityStorage, recordFromJSON } from __SECURITY_FIXTURE__;
+import { concat, fromHex } from __CRYPTO__;
+
+// This is a real Web Remote -> relay -> daemon GetSettings call. It does not
+// start a model or simulate the daemon handler. Login and daemon Ready are
+// outside the timer; each measured call uses a fresh Web Remote instance.
+test("first authenticated relay command", async () => {
+  const root = process.env.RA_DEV_DIR!;
+  const real = realpathSync(root);
+  if (!(real.startsWith("/private/tmp/") || real.startsWith("/tmp/")) || process.env.REMOTE_AGENT_HOME !== root + "/bootstrap") throw Error("isolated bootstrap required");
+  const data = JSON.parse(readFileSync(root + "/web-bootstrap.json", "utf8"));
+  const origin = new URL(data.server);
+  if (origin.hostname !== "127.0.0.1" || origin.protocol !== "http:") throw Error("local relay required");
+  const { record } = await recordFromJSON(data.record);
+  const seed = Uint8Array.from(Buffer.from(data.seed, "base64"));
+  const key = await crypto.subtle.importKey("pkcs8", concat(fromHex("302e020100300506032b657004220420"), seed), "Ed25519", false, ["sign"]);
+  class Probe extends Remote {
+    constructor() { super({ server: data.server, deviceId: record.memberID, devicePrivate: key }, undefined, new MemorySecurityStorage(record)); }
+  }
+  const samples = Number(process.env.RA_BENCH_SAMPLES);
+  const warmup = Number(process.env.RA_BENCH_WARMUP);
+  const elapsed: number[] = [];
+  for (let index = 0; index < warmup + samples; index++) {
+    const remote = new Probe();
+    const runtime = remote as unknown as { token: string; trustedMembers: Map<string, unknown> };
+    runtime.token = data.token;
+    runtime.trustedMembers = new Map(record.states.at(-1)!.core.members.map(member => [member.id, member]));
+    try {
+      const start = performance.now();
+      const result = await remote.machineCommand(data.machine, { case: "getSettings", value: {} });
+      const ms = performance.now() - start;
+      if (result.kind.case !== "getSettings" || result.outcome !== "executed" || !result.resultAvailable) throw Error("verified settings result required");
+      if (index >= warmup) elapsed.push(ms);
+    } catch {
+      // Do not put commands, identities or credentials in benchmark output.
+      throw Error(`relay sample failed at index ${index}`);
+    } finally { remote.stop(); }
+  }
+  writeFileSync(root + "/latencies.json", JSON.stringify(elapsed), { mode: 0o600 });
+}, 1_800_000);
