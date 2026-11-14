@@ -15,7 +15,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 的模型目录（它自己的缓存和编进 daemon 的副本取较新的），模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
 | Antigravity（agy） | daemon 与协议 14、网页/Android/iOS 的多 CLI 界面已整合完成（[architecture §19](architecture.md#19-接入-antigravity)） | agy 1.5.0 真实加密端到端与 doctor；本机 Chrome 直接操作的新建、消息、审批、额度及会话设置；三端自动检查，见[整合验收](acceptance-notes.md#antigravity-三端整合与网页直接验收2026-11-04) | 原生客户端真机与直接界面操作；源会话退出后的 MCP 定时派发、API 计费来源仍待验证。审计修复的真实双图与自然计划流程见[复验](acceptance-notes.md#antigravity-审计修复复验2026-11-04) |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩；一台中继上的多个账户、开放注册和账户管理（[architecture](architecture.md#一台中继上的多个账户)） | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)）；多账户：自动测试，加一次旧库迁移的本地演练 | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收；多账户在公共中继上由别人走一遍「试用」流程 |
-| 网页 | 界面稿 [client-v58](design/client-v60.html) 的全部画面，手机和宽屏（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)） | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
+| 网页 | 界面稿 [client-v58](design/client-v61.html) 的全部画面，手机和宽屏（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)） | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 界面稿 v58 的手机和宽屏画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI 直接点按（[v58 验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）；各画面用示例数据对照过亮色和暗色 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
 | iOS App | 界面稿 v58 的手机和 iPad 画面，界面层用系统组件；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 0.55.0 已于 2026-11-06 在美区 App Store 上架；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
@@ -31,14 +31,14 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 ## 下一步
 
-电脑状态核心及网页/Android 界面已整合；iOS 状态视图和联合实测仍按 [architecture §21](architecture.md#21-电脑状态与磁盘保护) 接状态页、主页提醒和附件存储，直接界面操作验证离线/恢复、清理和多机器通知，不把核心单测当成真机验收。
+电脑状态核心和三端视图已整合，接下来补 [下列界面差异](#电脑状态界面) 的裁定及联合实测：直接界面操作验证离线/恢复、清理和多机器通知，不把核心单测当成真机验收。
 
 
 按顺序做；第一项是当前的主要工作。
 
-1. **三端按 [client-v58](design/client-v60.html) 实现新界面**。网页已完成（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)）；iOS 已完成（[验收](acceptance-notes.md#ios-按-client-v58-重写界面层2026-11-11)）；Android 已完成（[验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）。剩下的是三端真机验收和各验收记录里标为未验证的流程。规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
+1. **三端按 [client-v58](design/client-v61.html) 实现新界面**。网页已完成（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)）；iOS 已完成（[验收](acceptance-notes.md#ios-按-client-v58-重写界面层2026-11-11)）；Android 已完成（[验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）。剩下的是三端真机验收和各验收记录里标为未验证的流程。规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
 2. **相册里图片和视频一起选**。「＋」的相册入口同时列出图片和视频，视频按文件发送，规则见 [session-files.md](session-files.md#从相册选视频)。只改三端的选择器和草稿显示，不改协议。随新界面一起做。验收标准：三端各从相册选一段视频发给真实 CLI，CLI 收到文件路径；超过 100 MiB 的视频在选中时提示；电脑不能收文件时相册只列图片
-3. **agent 给客户端发文件**。电脑端（协议、daemon、`send_file` MCP 工具、通知里的文件数量）、网页和 Android 已实现，未发布；iOS 还没做，设计见 [session-files.md](session-files.md#agent-给客户端发文件)。直连复用同一共享对象与只读 `GetSharedFileChunk`，不开放客户端任意路径，待确认事项见「待确认 › 传输模块与直连」。验收标准：Claude Code、Codex、Antigravity 各在隔离环境里真实调用一次 `send_file`，三端在直接界面操作下下载并核对哈希；旧客户端看到带 `shared_files` 的事件不报错；电脑不在线时条目写「电脑不在线」
+3. **Agent 发文件的联合验收**。电脑端和三端文件卡已整合，设计见 [session-files.md](session-files.md#agent-给客户端发文件)。直连复用同一共享对象与只读 `GetSharedFileChunk`，不开放客户端任意路径，待确认事项见「待确认 › 传输模块与直连」。验收标准：Claude Code、Codex、Antigravity 各在隔离环境里真实调用一次 `send_file`，三端在直接界面操作下下载并核对哈希；电脑离线、会话结束、本机副本与断点恢复按共同状态规则显示。
 4. **文件附件的三端联合验收**。按 [session-files.md](session-files.md) 和「待确认 › 文件附件」，在独立测试环境补真机、云文件提供器、大文件内存峰值及断连恢复。验收标准：逐项记录环境、直接界面操作与调试触发的区别、真实 CLI 结果及资源占用；修复确认的问题，未覆盖的流程继续明确标为未验证。
 5. **任意客户端管理的联合验收**。按 [architecture §9](architecture.md#9-账户设备和密钥) 和 [AGENTS.md](../AGENTS.md)，在独立 `RA_DEV_DIR` 从无账户环境开始，用网页新建账户、加入真实电脑并经 server → daemon → tmux 操作真实 CLI。验收三端六条有向交接、设备移除/档案重接/删除、创建及恢复断点、72 小时租约与 48 小时否决；网页手机宽/宽屏及亮暗主题、iOS/iPad 与通知/锁屏分别核实，未验证部分保留限制。
 6. **真机验收**。在自己的 Android 手机和 iPhone（PWA）上走一遍，清单在「待确认 › 真机」。验收标准：清单里每一项有结论，问题修掉或记进本文
@@ -117,6 +117,17 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 会话用过的文件在会话结束前不可回收，可能填满默认 1 GiB 附件配额；目前接受这一限制，之后要不要增加显式管理和容量策略未定（[设计](session-files.md#保留配额与恢复)）。
 
 - 尚未实测：网页真实系统选择器与移动拖放；Android / iOS 真机及云文档提供器的下载、授权跨重启；六个 100 MiB 文件的浏览器和设备内存峰值；混合图片／文件及图片按文件发送的完整真实链路；传输中断网、进程回收、跨真实 daemon 重启恢复和两台真实机器切换。各端既有覆盖与限制见 [网页](acceptance-notes.md#文件附件phase-a2026-10-28)、[Android](acceptance-notes.md#文件附件androidphase-b2026-10-28)、[iOS](acceptance-notes.md#文件附件iosphase-b2026-10-28) 验收；自动测试不能代替这些流程。
+
+### 电脑状态界面
+
+v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚未改代码；共同规则继续以 [architecture §21](architecture.md#电脑状态的共同交互) 为准，需负责人决定修实现还是改规则：
+
+- 网页曲线窗口是 118 秒（`web/src/machine-status-view.ts` 的 `WINDOW_MS`），裁定为 116 秒；Android、iOS 已使用 116 秒。
+- 曲线右端允许落后的上限与裁定的 2 秒不一致：网页 `displayTime` 以实际采样间隔回放，间隔大于 2 秒且不超过 10 秒时可落后更多；Android、iOS 的 `nextChartEnd` 下界是最新点减两个采样间隔，当前是 4 秒。需确认延迟采样或恢复时是否接受这个范围。
+- 网页内存主图 `Hero` 把压力位置缺失也当成没有压力等级，隐藏压力文字；裁定要求有等级就保留文字。网页内存小卡、Android、iOS 已把等级和位置分开。
+- 辅助功能字号要求三只环纵排、两张小卡各占一行。iOS 已有对应布局；Android 的 `MachineRingsCard` 与小卡仍固定 Row，网页 `.ms-rings` 与 `.ms-grid` 也没有字号触发的纵排分支。
+
+这些是源码核对结论，未运行客户端界面或真机验证。
 
 **Agent 发文件**
 

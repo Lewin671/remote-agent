@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v60 · 2026-11-12</title>
+<title>remote-agent 客户端设计稿 v61 · 2026-11-13</title>
 <style>
 
-  /* 颜色各有一个意思：墨色 = 这屏最该做的事；蓝色 = 能点的文字；橙色 = 等你；绿色 = 在线；红色 = 危险。
+  /* 颜色各有一个意思：墨色 = 这屏最该做的事；蓝色 = 能点的文字；橙色 = 等你；绿色 = 在线；黄色 = 只作内存压力条中段；红色 = 危险。
      要读的文字只用 ink 和 ink2（对比度不低于 4.5:1），ink3 只给箭头、占位和图形。 */
   :root {
     --page: #e8e8ed; --frame: #0e0e10;
     --paper: #ffffff; --gbg: #f5f5f7; --ink: #1d1d1f; --ink2: #6e6e73; --ink3: #a1a1a6; --faint: #d2d2d7;
     --sep: rgba(0,0,0,.09); --fill: rgba(0,0,0,.05); --fill2: rgba(0,0,0,.09);
-    --blue: #0066cc; --orange: #e06c00; --orange-ink: #b55a00; --orange-soft: #fff4e6; --green: #248a3d; --red: #d70015;
+    --blue: #0066cc; --orange: #e06c00; --orange-ink: #b55a00; --orange-soft: #fff4e6; --green: #248a3d; --yellow: #ffcc00; --red: #d70015;
     --btn: #1d1d1f; --btn-fg: #ffffff; --bubble: #f0f0f3;
     --tc: #1d1d1f; --tc-line: transparent;
     --glass: rgba(255,255,255,.72); --glass-line: rgba(0,0,0,.07);
@@ -24,7 +24,7 @@
     --page: #050506; --frame: #2b2b2e;
     --paper: #000000; --gbg: #1c1c1e; --ink: #f5f5f7; --ink2: #a1a1a6; --ink3: #6e6e73; --faint: #48484a;
     --sep: rgba(255,255,255,.12); --fill: rgba(255,255,255,.09); --fill2: rgba(255,255,255,.15);
-    --blue: #4da3ff; --orange: #ff9f2e; --orange-ink: #ffb25c; --orange-soft: rgba(255,159,46,.14); --green: #32d15d; --red: #ff5a50;
+    --blue: #4da3ff; --orange: #ff9f2e; --orange-ink: #ffb25c; --orange-soft: rgba(255,159,46,.14); --green: #32d15d; --yellow: #ffd60a; --red: #ff5a50;
     --btn: #f5f5f7; --btn-fg: #000000; --bubble: #2c2c2e;
     --tc: #242426; --tc-line: rgba(255,255,255,.14);
     --glass: rgba(50,50,54,.66); --glass-line: rgba(255,255,255,.13);
@@ -433,17 +433,20 @@
 
 <div class="wrap">
 <div class="head">
-  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v60 · 2026-11-12 · 上一版 v59 在 git 历史里</p></div>
+  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v61 · 2026-11-13 · 上一版 v60 在 git 历史里</p></div>
   <span class="sp"></span>
   <div class="seg" id="themeseg"><button data-t="auto" class="on">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。</div>
 <div class="note">
-  <h4>相对 v59 的改动</h4><ul>
-  <li>按已审定清单统一三端中文措辞，更新按钮、状态、提示和读屏标签的引用。</li>
+  <h4>相对 v60 的改动</h4><ul>
+  <li>合入 <a href="#shared-files">Agent 发来的文件</a> 与 <a href="#machine-status">电脑状态与磁盘保护</a> 两章，按「实现已上线、稿跟随实现」和负责人裁定整理。</li>
+  <li>电脑状态页「占用最多」的会话行改用 <code>fill2</code> 底、<code>ink2</code> 单色官方标，进程行统一用终端图标，不再用彩色图标块或独立应用图标（裁定 #9）。</li>
+  <li>电脑页三只环入口与主页磁盘提醒沿用所在页面表面（不另换整页底色或加白底阴影）；磁盘小卡使用实时两行文案「共 460 GB / remote-agent 占 3.1 GB」。</li>
+  <li>补全共享文件类型色块与暂停态说明：音频在原生端用橙色渐变、网页沿用红色；已暂停进度环在网页为播放三角、原生端为向下箭头；补充已暂停示例卡与全类型示例。</li>
   </ul>
 </div>
-<nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
+<nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
 
 <!-- ===== account-management ===== -->
 <style>
@@ -2715,6 +2718,340 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 › <span class="cur">&nbsp;</span>
 
   <span class="d">gpt-6.1-sol low · ~/Code/workspace</span></div><div class="hscr"><i></i></div><div class="keys k2 glass"><div class="kr"><span>Esc</span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-left"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-up"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-down"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-arrow-right"/></svg></span><span><svg class="ic" width="18" height="18"><use href="#lu-corner-down-left"/></svg></span></div><div class="kr"><span>Tab</span><span>Ctrl+C</span><span class="w"><svg class="ic" width="18" height="18"><use href="#lu-keyboard"/></svg> 键盘</span></div></div><div class="homebar"></div></div><p class="cap"><b>比屏幕宽的终端。</b>没适配、电脑上的窗口比手机宽时，字先缩小，最小到 6；仍放不下就保持 6，左右滑动看整行，底部是横向滚动条。往下拖仍是进入回看，回看里同样能左右滑。点「适配我的屏幕」按手机宽度重排，不再需要横向滑动。</p></div>
+</div>
+</section>
+<!-- ===== shared-files ===== -->
+<style>
+.sx-shared-files {
+  --sf-round: ui-rounded, "SF Pro Rounded", -apple-system, "PingFang SC", sans-serif;
+  --sf-lift: #ffffff;
+  --sf-menu: rgba(250,250,252,.86);
+  --sf-float: 0 20px 60px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08);
+}
+[data-theme="dark"] .sx-shared-files {
+  --sf-lift: #1c1c1e;
+  --sf-menu: rgba(44,44,46,.86);
+  --sf-float: 0 20px 60px rgba(0,0,0,.6), 0 0 0 .5px rgba(255,255,255,.1);
+}
+.sx-shared-files .phone.fit { height: auto; border-radius: 40px; }
+.sx-shared-files .sf-chat { padding: 112px 18px 96px; display: flex; flex-direction: column; gap: 14px; }
+.sx-shared-files .sf-chat.compact { padding: 26px 18px 28px; }
+.sx-shared-files .sf-me { align-self: flex-end; background: var(--bubble); border-radius: 20px; padding: 9px 14px; font-size: 16px; max-width: 300px; line-height: 1.45; }
+.sx-shared-files .sf-ag { font-size: 16px; line-height: 1.55; }
+.sx-shared-files .sf-tool { font-size: 13px; color: var(--ink2); display: flex; gap: 7px; align-items: baseline; }
+.sx-shared-files .sf-tool i { color: var(--ink3); font-style: normal; flex: none; }
+.sx-shared-files .sf-tool code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
+.sx-shared-files .sf-state { font-size: 12px; color: var(--ink3); margin: 0 0 -8px 2px; }
+.sx-shared-files .sf-files { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.sx-shared-files .sf-fc { display: flex; align-items: center; gap: 12px; width: 296px; padding: 10px 12px 10px 10px; border-radius: 20px; background: var(--bubble); }
+.sx-shared-files .sf-tile { width: 44px; height: 44px; border-radius: 11px; flex: none; display: flex; align-items: center; justify-content: center; color: #fff; position: relative; overflow: hidden; }
+.sx-shared-files .sf-tile svg.i { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sx-shared-files .sf-tile.v { background: linear-gradient(160deg, #7d7aff, #5856d6); }
+.sx-shared-files .sf-tile.p { background: linear-gradient(160deg, #5ac8fa, #2f9bf0); }
+.sx-shared-files .sf-tile.z { background: linear-gradient(160deg, #b0b0b8, #8e8e93); }
+.sx-shared-files .sf-tile.d { background: linear-gradient(160deg, #ff8a80, #ff453a); }
+.sx-shared-files .sf-tile.a { background: linear-gradient(160deg, #ffb45e, #ff9500); }
+.sx-shared-files .sf-tile.thumb { background: linear-gradient(135deg, #27405c 0%, #5d7f9c 38%, #e7c08a 62%, #b9703f 100%); }
+.sx-shared-files .sf-tile.thumb::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(0,0,0,.28), transparent 60%); }
+.sx-shared-files .sf-tile.thumb svg.i { position: relative; z-index: 1; width: 16px; height: 16px; fill: #fff; stroke: none; }
+.sx-shared-files .sf-tile.thumb2 { background: linear-gradient(200deg, #f3d9b1, #c98b5e 45%, #6b7f93); }
+.sx-shared-files .sf-fi { flex: 1; min-width: 0; }
+.sx-shared-files .sf-fn { display: flex; font-size: 15px; font-weight: 600; letter-spacing: -.1px; }
+.sx-shared-files .sf-fn span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.sx-shared-files .sf-fn span:last-child { white-space: pre; flex: none; }
+.sx-shared-files .sf-fs { font-size: 13px; color: var(--ink2); margin-top: 2px; font-family: var(--sf-round); font-variant-numeric: tabular-nums; }
+.sx-shared-files .sf-act { width: 30px; height: 30px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: var(--fill2); color: var(--blue); }
+.sx-shared-files .sf-act svg.i { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sx-shared-files .sf-ring { width: 30px; height: 30px; flex: none; position: relative; }
+.sx-shared-files .sf-ring svg { width: 30px; height: 30px; transform: rotate(-90deg); display: block; }
+.sx-shared-files .sf-ring circle { fill: none; stroke-width: 2.6; }
+.sx-shared-files .sf-ring .t { stroke: var(--fill2); }
+.sx-shared-files .sf-ring .p { stroke: var(--blue); stroke-linecap: round; }
+.sx-shared-files .sf-ring i { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px; border-radius: 2.5px; background: var(--blue); }
+.sx-shared-files .sf-ring .rs { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--blue); }
+.sx-shared-files .sf-ring .rs svg.i { width: 13px; height: 13px; transform: none; }
+.sx-shared-files .sf-pill { flex: none; font-size: 15px; font-weight: 600; color: var(--blue); background: var(--fill2); border-radius: 15px; padding: 5px 14px; line-height: 20px; }
+.sx-shared-files .sf-fc.fail .sf-fs { color: var(--red); }
+.sx-shared-files .sf-fc.off .sf-fn, .sx-shared-files .sf-fc.gone .sf-fn { color: var(--ink2); }
+.sx-shared-files .sf-fc.off .sf-tile, .sx-shared-files .sf-fc.gone .sf-tile { filter: grayscale(1); opacity: .55; }
+.sx-shared-files .sf-fc.off .sf-act { color: var(--ink3); }
+.sx-shared-files .sf-fc.gone .sf-fs, .sx-shared-files .sf-fc.gone .sf-fn { color: var(--ink3); }
+/* 长按菜单 */
+.sx-shared-files .sf-blur { position: absolute; inset: 0; background: rgba(0,0,0,.18); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); z-index: 6; }
+.sx-shared-files .sf-ctx { position: absolute; left: 24px; top: 136px; display: flex; flex-direction: column; gap: 10px; z-index: 7; }
+.sx-shared-files .sf-ctx .sf-fc { background: var(--sf-lift); box-shadow: var(--sf-float); }
+.sx-shared-files .sf-menu { width: 250px; border-radius: 14px; background: var(--sf-menu); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); box-shadow: var(--sf-float); overflow: hidden; }
+.sx-shared-files .sf-mh { padding: 11px 16px 10px; border-bottom: .5px solid var(--sep); }
+.sx-shared-files .sf-mh div { font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink2); word-break: break-all; }
+.sx-shared-files .sf-mh small { display: block; font-size: 12px; color: var(--ink3); margin-top: 3px; }
+.sx-shared-files .sf-mi { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 16px; font-size: 17px; border-bottom: .5px solid var(--sep); }
+.sx-shared-files .sf-mi:last-child { border-bottom: 0; }
+.sx-shared-files .sf-mi svg.i { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sx-shared-files .sf-mi.red { color: var(--red); }
+.sx-shared-files .sf-mgap { height: 8px; background: var(--fill); }
+</style>
+<section id="shared-files" class="sx-shared-files">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="v2-video" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="m15.5 10.6 4.7-2.9a.6.6 0 0 1 .9.5v7.6a.6.6 0 0 1-.9.5l-4.7-2.9"/></symbol>
+<symbol id="v2-image" viewBox="0 0 24 24"><rect x="3" y="3.5" width="18" height="17" rx="3.5"/><circle cx="8.8" cy="9.2" r="1.7"/><path d="m21 15.5-4.3-4.3a1.5 1.5 0 0 0-2.1 0L5.5 20.3"/></symbol>
+<symbol id="v2-audio" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+<symbol id="v2-zip" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3.5"/><path d="M12 3v2.5M12 8v2.5M12 13v2.5"/></symbol>
+<symbol id="v2-doc" viewBox="0 0 24 24"><path d="M14 2.8H8a2.5 2.5 0 0 0-2.5 2.5v13.4A2.5 2.5 0 0 0 8 21.2h8a2.5 2.5 0 0 0 2.5-2.5V7.3z"/><path d="M14 2.8v4.5h4.5"/></symbol>
+<symbol id="v2-down" viewBox="0 0 24 24"><path d="M12 5v13m0 0-5-5m5 5 5-5"/></symbol>
+<symbol id="v2-play" viewBox="0 0 24 24"><path d="M8 5.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8A.8.8 0 0 0 8 5.2z"/></symbol>
+<symbol id="v2-share" viewBox="0 0 24 24"><path d="M12 14.5V3.5m0 0L8.2 7.3M12 3.5l3.8 3.8M6 11.5v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-7"/></symbol>
+<symbol id="v2-save" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0-4-4m4 4 4-4M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3"/></symbol>
+<symbol id="v2-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6.5v-2h5v2M6.5 6.5l.9 12.6a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-12.6"/></symbol>
+</defs></svg>
+<h2>Agent 发来的文件</h2>
+<p class="hint">Agent 调用 <code>send_file</code> 时，工具调用原位换成靠左的文件卡（<code>bubble</code> 底、圆角 20、宽 296；网页宽屏收为圆角 12），左边是类型色块（已下载图片/视频换成缩略图），右边只有一个主操作控件。不点不下载；音频在原生端用橙色渐变、网页沿用红色；已暂停进度环内网页是播放三角、原生端是向下箭头。状态与下载约束见 <a href="../session-files.md#文件卡与下载状态">session-files · 文件卡与下载状态</a>，视觉取值见 <a href="../design-system.md#文件交付与电脑状态">design-system · 文件交付与电脑状态</a>。</p>
+<div class="screens">
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>稻城剪辑</b><span>MacBook Pro · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="sf-chat">
+    <div class="sf-me">把剪好的成片发我手机上看看</div>
+    <div class="sf-tool"><i>✓</i><code>ffmpeg -i cut.mov -c:v libx264 out/daocheng-final.mp4</code></div>
+    <div class="sf-ag">成片导出好了，时长 1 分 42 秒，1080p。</div>
+    <div class="sf-files"><div class="sf-fc"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">视频 · 24.3 MB</div></div><span class="sf-act"><svg class="i"><use href="#v2-down"/></svg></span></div></div>
+    <div class="sf-ag">需要我再出一版竖屏的吗？</div>
+  </div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>对话里。</b>那次 <code>send_file</code> 调用原位变成文件卡；前面的普通工具调用仍保持命令一行</p></div>
+
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t low"></div><div class="edge b"></div><div class="scroll" style="padding:62px 18px 40px"><div style="display:flex;flex-direction:column;gap:12px">
+    <div class="sf-state">可下载</div>
+    <div class="sf-fc"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">视频 · 24.3 MB</div></div><span class="sf-act"><svg class="i"><use href="#v2-down"/></svg></span></div>
+    <div class="sf-state">下载中 · 进度环，点一下暂停，再点继续</div>
+    <div class="sf-fc"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">8.1 / 24.3 MB · 约 12 秒</div></div><span class="sf-ring"><svg viewBox="0 0 30 30"><circle class="t" cx="15" cy="15" r="13"/><circle class="p" cx="15" cy="15" r="13" stroke-dasharray="27 82"/></svg><i></i></span></div>
+    <div class="sf-state">已暂停 · 原生用向下箭头，网页用播放三角</div>
+    <div class="sf-fc"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">已暂停 · 8.1 / 24.3 MB</div></div><span class="sf-ring"><svg viewBox="0 0 30 30"><circle class="t" cx="15" cy="15" r="13"/><circle class="p" cx="15" cy="15" r="13" stroke-dasharray="27 82"/></svg><span class="rs"><svg class="i"><use href="#v2-down"/></svg></span></span></div>
+    <div class="sf-state">已下载 · 色块换成缩略图</div>
+    <div class="sf-fc"><span class="sf-tile thumb"><svg class="i"><use href="#v2-play"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">1:42 · 24.3 MB</div></div><span class="sf-pill">打开</span></div>
+    <div class="sf-state">失败</div>
+    <div class="sf-fc fail"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">没下载下来，连接断了</div></div><span class="sf-pill">重试</span></div>
+    <div class="sf-state">电脑不在线</div>
+    <div class="sf-fc off"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">电脑不在线</div></div><span class="sf-act"><svg class="i"><use href="#v2-down"/></svg></span></div>
+    <div class="sf-state">已清理</div>
+    <div class="sf-fc gone"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">会话已结束，文件已清理</div></div></div>
+  </div></div><div class="homebar"></div></div><p class="cap"><b>七种状态。</b>（灰字是状态名，界面里没有。）已暂停时进度环与已下载字节保留；离线与已清理对色块去色并降至 55% 不透明度</p></div>
+
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t low"></div><div class="edge b"></div><div class="sf-chat" style="padding-top:68px">
+    <div class="sf-me">封面、成片、采访录音和文档都给我</div>
+    <div class="sf-files">
+      <div class="sf-fc"><span class="sf-tile thumb2"></span><div class="sf-fi"><div class="sf-fn"><span>cover</span><span>.png</span></div><div class="sf-fs">图片 · 1.8 MB</div></div><span class="sf-pill">打开</span></div>
+      <div class="sf-fc"><span class="sf-tile v"><svg class="i"><use href="#v2-video"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-final-vertical-1080</span><span>-v3.mp4</span></div><div class="sf-fs">12.0 / 61.7 MB</div></div><span class="sf-ring"><svg viewBox="0 0 30 30"><circle class="t" cx="15" cy="15" r="13"/><circle class="p" cx="15" cy="15" r="13" stroke-dasharray="16 82"/></svg><i></i></span></div>
+      <div class="sf-fc"><span class="sf-tile a"><svg class="i"><use href="#v2-audio"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>interview</span><span>.m4a</span></div><div class="sf-fs">音频 · 9.4 MB</div></div><span class="sf-act"><svg class="i"><use href="#v2-down"/></svg></span></div>
+      <div class="sf-fc"><span class="sf-tile d"><svg class="i"><use href="#v2-doc"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>shot-list</span><span>.pdf</span></div><div class="sf-fs">PDF · 420.0 KB</div></div><span class="sf-act"><svg class="i"><use href="#v2-down"/></svg></span></div>
+      <div class="sf-fc"><span class="sf-tile z"><svg class="i"><use href="#v2-zip"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>project</span><span>.zip</span></div><div class="sf-fs">压缩包 · 88.4 MB</div></div><span class="sf-act"><svg class="i"><use href="#v2-down"/></svg></span></div>
+    </div>
+    <div class="sf-ag">五个文件都放这儿了。</div>
+  </div><div class="homebar"></div></div><p class="cap"><b>多个文件与类型色块。</b>间距 8，长文件名中间省略、保留扩展名。原生端音频用橙色渐变（网页音频和其他文件沿用红色渐变，原生端其他文件用灰色）</p></div>
+
+  <div><div class="phone fit" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="sf-chat" style="padding-top:62px">
+    <div class="sf-me">把剪好的成片发我手机上看看</div><div class="sf-ag">成片导出好了，时长 1 分 42 秒，1080p。</div><div class="sf-ag" style="margin-top:86px">需要我再出一版竖屏的吗？</div>
+  </div><div class="sf-blur"></div>
+  <div class="sf-ctx">
+    <div class="sf-fc"><span class="sf-tile thumb"><svg class="i"><use href="#v2-play"/></svg></span><div class="sf-fi"><div class="sf-fn"><span>daocheng-fin</span><span>al.mp4</span></div><div class="sf-fs">1:42 · 24.3 MB</div></div><span class="sf-pill">打开</span></div>
+    <div class="sf-menu">
+      <div class="sf-mh"><div>~/Movies/daocheng/out/daocheng-final.mp4</div><small>来自 MacBook Pro</small></div>
+      <div class="sf-mi">存到相册<svg class="i"><use href="#v2-image"/></svg></div>
+      <div class="sf-mi">存到「文件」<svg class="i"><use href="#v2-save"/></svg></div>
+      <div class="sf-mi">分享…<svg class="i"><use href="#v2-share"/></svg></div>
+      <div class="sf-mgap"></div>
+      <div class="sf-mi red">删除本机副本<svg class="i"><use href="#v2-trash"/></svg></div>
+    </div>
+  </div><div class="homebar"></div></div><p class="cap"><b>长按菜单。</b>卡片原位浮起、背景模糊，菜单顶部写电脑路径与来源电脑。图为 iOS；Android 是存到「下载」、分享后多一项「用其他应用打开」；网页为「保存到本机」、浏览器支持时有「分享…」</p></div>
+</div>
+</section>
+
+<!-- ===== machine-status ===== -->
+<style>
+.sx-machine-status {
+  --ms-round: ui-rounded, "SF Pro Rounded", -apple-system, "PingFang SC", sans-serif;
+  --ms-lift: #ffffff;
+  --ms-card-shadow: 0 .5px 0 rgba(0,0,0,.04), 0 8px 24px -12px rgba(0,0,0,.10);
+}
+[data-theme="dark"] .sx-machine-status {
+  --ms-lift: #1c1c1e;
+  --ms-card-shadow: none;
+}
+.sx-machine-status .phone.fit { height: auto; border-radius: 40px; }
+.sx-machine-status .phone.g { background: var(--gbg); }
+[data-theme="dark"] .sx-machine-status .phone.g { background: var(--paper); }
+.sx-machine-status svg.i { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sx-machine-status .n { font-family: var(--ms-round); font-variant-numeric: tabular-nums; }
+.sx-machine-status .ms-pg { padding: 108px 16px 36px; }
+.sx-machine-status .ms-pg.compact { padding: 18px 16px 22px; }
+.sx-machine-status .ms-lt { padding: 6px 4px 0; }
+.sx-machine-status .ms-lt h3 { margin: 0; font-size: 34px; line-height: 1.14; font-weight: 700; letter-spacing: -.03em; }
+.sx-machine-status .ms-live { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--ink2); margin-top: 2px; }
+.sx-machine-status .ms-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent); animation: ms-demo-breathe 2.4s ease-in-out infinite; }
+.sx-machine-status .ms-dot.stale { animation: none; background: var(--orange); box-shadow: none; }
+@keyframes ms-demo-breathe { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .sx-machine-status .ms-dot { animation: none; } }
+/* 详情页卡片：原生端用 lift 与轻阴影；网页详情沿用 gbg 无阴影 */
+.sx-machine-status .ms-card { background: var(--ms-lift); border-radius: 22px; box-shadow: var(--ms-card-shadow); }
+/* 入口三只环和主页提醒/磁盘满卡保持所在页面的 gbg 表面 */
+.sx-machine-status .ms-surf { background: var(--gbg); border-radius: 22px; }
+.sx-machine-status .ms-kick { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink2); }
+.sx-machine-status .ms-kick svg.i { font-size: 14px; stroke-width: 2.2; }
+.sx-machine-status .ms-hero { padding: 16px 0 0; margin-top: 18px; overflow: hidden; }
+.sx-machine-status .ms-hero .top { padding: 0 18px; display: flex; justify-content: space-between; align-items: flex-end; }
+.sx-machine-status .ms-xl { font-family: var(--ms-round); font-size: 52px; font-weight: 600; letter-spacing: -1.2px; line-height: 1.05; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.sx-machine-status .ms-xl sup { font-size: 24px; font-weight: 600; vertical-align: top; position: relative; top: 7px; margin-left: 1px; letter-spacing: 0; }
+.sx-machine-status .ms-aside { text-align: right; font-size: 13px; color: var(--ink2); line-height: 1.5; padding-bottom: 8px; }
+.sx-machine-status .ms-aside b { font-family: var(--ms-round); font-weight: 600; color: var(--ink); font-size: 15px; }
+.sx-machine-status .ms-chart { display: block; width: 100%; height: 104px; margin-top: 6px; }
+.sx-machine-status .ms-axis { display: flex; justify-content: space-between; padding: 6px 18px 13px; font-size: 11px; color: var(--ink3); }
+.sx-machine-status .ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.sx-machine-status .ms-tl { padding: 14px 16px 15px; min-height: 168px; display: flex; flex-direction: column; }
+.sx-machine-status .ms-lg { font-family: var(--ms-round); font-size: 34px; font-weight: 600; letter-spacing: -.6px; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.sx-machine-status .ms-lg small { font-size: 17px; font-weight: 600; color: var(--ink2); margin-left: 3px; letter-spacing: 0; }
+.sx-machine-status .ms-say { font-size: 13px; color: var(--ink2); line-height: 1.4; margin-top: auto; padding-top: 10px; }
+.sx-machine-status .ms-say b { color: var(--ink); font-weight: 600; }
+.sx-machine-status .ms-uv { height: 6px; border-radius: 3px; margin-top: 14px; position: relative; background: linear-gradient(90deg, var(--green) 0%, var(--green) 45%, var(--yellow) 70%, var(--red) 100%); }
+.sx-machine-status .ms-uv i { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 3px var(--ms-lift); }
+.sx-machine-status .ms-stor { height: 10px; border-radius: 5px; margin-top: 12px; background: var(--fill2); display: flex; overflow: hidden; gap: 1.5px; }
+.sx-machine-status .ms-stor i { display: block; height: 100%; }
+.sx-machine-status .ms-stor .a { background: var(--ink); }
+.sx-machine-status .ms-stor .b { background: var(--faint); }
+.sx-machine-status .ms-stor.crit i { background: var(--red); }
+.sx-machine-status .ms-sec { font-size: 20px; font-weight: 700; letter-spacing: -.3px; margin: 26px 4px 10px; display: flex; justify-content: space-between; align-items: baseline; }
+.sx-machine-status .ms-sec a { font-size: 15px; font-weight: 400; color: var(--blue); letter-spacing: 0; }
+.sx-machine-status .ms-lst { padding: 2px 0; }
+.sx-machine-status .ms-u { display: flex; gap: 12px; padding: 11px 16px 0; }
+.sx-machine-status .ms-ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--fill2); color: var(--ink2); margin-top: 1px; font-size: 16px; }
+.sx-machine-status .ms-ic svg.amark { width: 16px; height: 16px; fill: currentColor; }
+.sx-machine-status .ms-u .b { flex: 1; min-width: 0; padding-bottom: 12px; border-bottom: .5px solid var(--sep); }
+.sx-machine-status .ms-u:last-child .b { border: 0; }
+.sx-machine-status .ms-u .t { display: flex; justify-content: space-between; gap: 10px; font-size: 16px; }
+.sx-machine-status .ms-u .t span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sx-machine-status .ms-u .t span:last-child { font-family: var(--ms-round); font-weight: 500; color: var(--ink); flex: none; font-variant-numeric: tabular-nums; }
+.sx-machine-status .ms-u .m { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.sx-machine-status .ms-u .m div { height: 5px; border-radius: 2.5px; background: var(--ink3); min-width: 5px; }
+.sx-machine-status .ms-u.top .m div { background: var(--ink); }
+.sx-machine-status .ms-u .m small { font-size: 12.5px; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sx-machine-status .ms-rows .r { display: flex; align-items: center; min-height: 48px; padding: 0 16px; font-size: 17px; position: relative; }
+.sx-machine-status .ms-rows .r + .r::before { content: ""; position: absolute; left: 16px; right: 0; top: 0; height: .5px; background: var(--sep); }
+.sx-machine-status .ms-rows .v { margin-left: auto; color: var(--ink2); font-family: var(--ms-round); }
+.sx-machine-status .ms-rows .ch { color: var(--ink3); font-size: 15px; margin-left: 8px; }
+.sx-machine-status .ms-rows .r.link { color: var(--blue); }
+.sx-machine-status .ms-ft { text-align: center; font-size: 13px; color: var(--ink3); margin-top: 22px; }
+.sx-machine-status .ms-red { color: var(--red) !important; }
+.sx-machine-status .ms-org { color: var(--orange-ink) !important; }
+/* 入口：三只环 */
+.sx-machine-status .ms-gt { font-size: 13px; color: var(--ink2); margin: 22px 8px 8px; }
+.sx-machine-status .ms-rings { display: flex; padding: 16px 6px 14px; }
+.sx-machine-status .ms-rg { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sx-machine-status .ms-rg .w { position: relative; }
+.sx-machine-status .ms-rg .w > svg { width: 54px; height: 54px; transform: rotate(-90deg); display: block; }
+.sx-machine-status .ms-rg circle { fill: none; stroke-width: 5.5; }
+.sx-machine-status .ms-rg .t { stroke: var(--fill2); }
+.sx-machine-status .ms-rg .p { stroke: var(--ink); stroke-linecap: round; }
+.sx-machine-status .ms-rg .w span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--ink2); }
+.sx-machine-status .ms-rg b { font-family: var(--ms-round); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sx-machine-status .ms-rg small { font-size: 12px; color: var(--ink2); margin-top: -6px; }
+.sx-machine-status .ms-rg.bad .p { stroke: var(--red); }
+.sx-machine-status .ms-rg.bad b, .sx-machine-status .ms-rg.bad .w span { color: var(--red); }
+/* 主页提醒 / 启动失败 */
+.sx-machine-status .ms-al { display: flex; align-items: center; gap: 13px; padding: 13px 14px 13px 13px; }
+.sx-machine-status .ms-al .blk { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 19px; color: #fff; flex: none; background: linear-gradient(160deg, #ffb340, #f08a00); }
+.sx-machine-status .ms-al .blk.r { background: linear-gradient(160deg, #ff6b60, #e5342a); }
+.sx-machine-status .ms-al .x { flex: 1; min-width: 0; }
+.sx-machine-status .ms-al .x b { display: block; font-size: 16px; font-weight: 600; }
+.sx-machine-status .ms-al .x span { font-size: 14px; color: var(--ink2); display: block; }
+.sx-machine-status .ms-al .ch { color: var(--ink3); font-size: 15px; }
+.sx-machine-status .ms-fail { padding: 16px 16px 0; overflow: hidden; }
+.sx-machine-status .ms-fail b { font-size: 17px; font-weight: 600; display: block; }
+.sx-machine-status .ms-fail p { font-size: 15px; color: var(--ink2); margin: 3px 0 0; line-height: 1.45; }
+.sx-machine-status .ms-fail .bs { display: flex; margin: 14px -16px 0; border-top: .5px solid var(--sep); }
+.sx-machine-status .ms-fail .bs a { flex: 1; text-align: center; height: 46px; line-height: 46px; font-size: 17px; color: var(--blue); }
+.sx-machine-status .ms-fail .bs a + a { border-left: .5px solid var(--sep); font-weight: 600; }
+</style>
+<section id="machine-status" class="sx-machine-status">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="v2-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M9.5 3v3M14.5 3v3M9.5 18v3M14.5 18v3M3 9.5h3M3 14.5h3M18 9.5h3M18 14.5h3"/></symbol>
+<symbol id="v2-mem" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="9" rx="2"/><path d="M7 10.5v2M11 10.5v2M15 10.5v2M6 16v2.5M12 16v2.5M18 16v2.5"/></symbol>
+<symbol id="v2-disk" viewBox="0 0 24 24"><path d="M3.5 14.5 6 6a2 2 0 0 1 1.9-1.5h8.2A2 2 0 0 1 18 6l2.5 8.5v3a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2zM3.5 14.5h17M7.5 17h.01"/></symbol>
+<symbol id="v2-term" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="m7.5 10 3 2.5-3 2.5M13 15h3.5"/></symbol>
+<symbol id="v2-mark-claude" viewBox="0 0 24 24"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></symbol>
+<symbol id="v2-mark-codex" viewBox="0 0 24 24"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></symbol>
+<symbol id="v2-mark-agy" viewBox="10.9 12.2 90 90"><path d="M89.6992 93.695C94.3659 97.195 101.366 94.8617 94.9492 88.445C75.6992 69.7783 79.7825 18.445 55.8659 18.445C31.9492 18.445 36.0325 69.7783 16.7825 88.445C9.78251 95.445 17.3658 97.195 22.0325 93.695C40.1159 81.445 38.9492 59.8617 55.8659 59.8617C72.7825 59.8617 71.6159 81.445 89.6992 93.695Z"/></symbol>
+</defs></svg>
+<h2>电脑状态与磁盘保护</h2>
+<p class="hint">大标题、一块主图（默认 CPU，点内存小卡可交换）、两块小卡、一张排行。全页保持黑白灰，颜色只出现在实时绿点、内存压力刻度（使用 <code>yellow</code>），以及真正出问题的那一项。「占用最多」的会话行与进程行统一用 <code>fill2</code> 底、<code>ink2</code> 单色图形（CLI 官方标与终端标）；入口三只环与主页提醒维持所在页面的 <code>paper</code> + <code>gbg</code> 表面。交互与指标口径见 <a href="../architecture.md#21-电脑状态与磁盘保护">architecture §21</a>，视觉取值见 <a href="../design-system.md#文件交付与电脑状态">design-system · 文件交付与电脑状态</a>。</p>
+<div class="screens">
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook Pro</b><span>在线</span></div><span style="width:44px;flex:none"></span></div><div class="ms-pg">
+    <div class="ms-surf ms-rings">
+      <div class="ms-rg"><div class="w"><svg viewBox="0 0 54 54"><circle class="t" cx="27" cy="27" r="23"/><circle class="p" cx="27" cy="27" r="23" stroke-dasharray="33 145"/></svg><span><svg class="i"><use href="#v2-cpu"/></svg></span></div><b>23%</b><small>CPU</small></div>
+      <div class="ms-rg"><div class="w"><svg viewBox="0 0 54 54"><circle class="t" cx="27" cy="27" r="23"/><circle class="p" cx="27" cy="27" r="23" stroke-dasharray="103 145"/></svg><span><svg class="i"><use href="#v2-mem"/></svg></span></div><b>71%</b><small>内存</small></div>
+      <div class="ms-rg"><div class="w"><svg viewBox="0 0 54 54"><circle class="t" cx="27" cy="27" r="23"/><circle class="p" cx="27" cy="27" r="23" stroke-dasharray="131 145"/></svg><span><svg class="i"><use href="#v2-disk"/></svg></span></div><b>42 GB</b><small>磁盘可用</small></div>
+    </div>
+    <div class="ms-gt">默认设置</div>
+    <div class="ms-surf ms-rows"><div class="r">审批超时<span class="v">30 分钟</span><svg class="i ch"><use href="#lu-chevron-right"/></svg></div><div class="r">空闲结束<span class="v">2 小时</span><svg class="i ch"><use href="#lu-chevron-right"/></svg></div></div>
+  </div><div class="homebar"></div></div><p class="cap"><b>入口 · 电脑页顶部三只环。</b>保持电脑页原有表面，整卡进入状态页；电脑离线时为轨道与「—」、55% 不透明度</p>
+  <p class="cap" style="margin-top:24px;margin-bottom:10px"><b>磁盘快满时</b> · 只有那一只环变红</p>
+  <div class="phone fit"><div class="ms-pg compact"><div class="ms-surf ms-rings">
+    <div class="ms-rg"><div class="w"><svg viewBox="0 0 54 54"><circle class="t" cx="27" cy="27" r="23"/><circle class="p" cx="27" cy="27" r="23" stroke-dasharray="127 145"/></svg><span><svg class="i"><use href="#v2-cpu"/></svg></span></div><b>88%</b><small>CPU</small></div>
+    <div class="ms-rg"><div class="w"><svg viewBox="0 0 54 54"><circle class="t" cx="27" cy="27" r="23"/><circle class="p" cx="27" cy="27" r="23" stroke-dasharray="114 145"/></svg><span><svg class="i"><use href="#v2-mem"/></svg></span></div><b>79%</b><small>内存</small></div>
+    <div class="ms-rg bad"><div class="w"><svg viewBox="0 0 54 54"><circle class="t" cx="27" cy="27" r="23"/><circle class="p" cx="27" cy="27" r="23" stroke-dasharray="143 145"/></svg><span><svg class="i"><use href="#v2-disk"/></svg></span></div><b>1.2 GB</b><small>磁盘可用</small></div>
+  </div></div></div></div>
+
+  <div><div class="phone g fit"><div class="sb"><span>9:41</span><i></i></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="ms-pg">
+    <div class="ms-lt"><h3>MacBook Pro</h3><div class="ms-live"><span class="ms-dot"></span>实时</div></div>
+    <div class="ms-card ms-hero">
+      <div class="top"><div><div class="ms-kick"><svg class="i"><use href="#v2-cpu"/></svg>CPU</div><div class="ms-xl">23<sup>%</sup></div></div><div class="ms-aside"><b>3.2</b> 负载<br>10 核</div></div>
+      <svg class="ms-chart" viewBox="0 0 358 104" preserveAspectRatio="none"><defs><linearGradient id="v2-g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+        <path d="M0,82 C18,80 28,84 44,78 S70,70 88,72 S112,56 130,60 S150,40 168,46 S190,58 206,50 S228,36 244,54 S270,74 286,70 S310,80 326,76 S348,80 358,78 L358,104 L0,104 Z" fill="url(#v2-g1)"/>
+        <path d="M0,82 C18,80 28,84 44,78 S70,70 88,72 S112,56 130,60 S150,40 168,46 S190,58 206,50 S228,36 244,54 S270,74 286,70 S310,80 326,76 S348,80 358,78" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <circle cx="354" cy="78" r="3.5" fill="currentColor"/></svg>
+      <div class="ms-axis"><span>2 分钟前</span><span>1 分钟前</span><span>现在</span></div>
+    </div>
+    <div class="ms-grid">
+      <div class="ms-card ms-tl"><div class="ms-kick"><svg class="i"><use href="#v2-mem"/></svg>内存</div><div class="ms-lg">11.2<small>GB 已用</small></div><div class="ms-uv"><i style="left:34%"></i></div><div class="ms-say"><b>压力正常</b><br>共 16 GB，交换 1.3 GB</div></div>
+      <div class="ms-card ms-tl"><div class="ms-kick"><svg class="i"><use href="#v2-disk"/></svg>磁盘</div><div class="ms-lg">42<small>GB 可用</small></div><div class="ms-stor"><i class="a" style="width:.7%"></i><i class="b" style="width:90.2%"></i></div><div class="ms-say"><b>空间充足</b><br>共 460 GB<br>remote-agent 占 3.1 GB</div></div>
+    </div>
+    <div class="ms-sec">占用最多<a>显示进程</a></div>
+    <div class="ms-card ms-lst">
+      <div class="ms-u top"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-claude"/></svg></span><div class="b"><div class="t"><span>三端措辞统一</span><span class="n">141%</span></div><div class="m"><div style="width:100%"></div><small>2.4 GB</small></div></div></div>
+      <div class="ms-u"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-codex"/></svg></span><div class="b"><div class="t"><span>发文件：电脑端搬到最新 main</span><span class="n">62%</span></div><div class="m"><div style="width:44%"></div><small>1.1 GB</small></div></div></div>
+      <div class="ms-u"><span class="ms-ic"><svg class="amark" viewBox="10.9 12.2 90 90"><use href="#v2-mark-agy"/></svg></span><div class="b"><div class="t"><span>稻城剪辑</span><span class="n">3%</span></div><div class="m"><div style="width:2%"></div><small>380 MB</small></div></div></div>
+    </div>
+    <div class="ms-ft">已开机 3 天 4 小时 · 电池 81%，充电中</div>
+  </div><div class="homebar"></div></div><p class="cap"><b>电脑状态 · 正常。</b>状态详情在原生端用 <code>lift</code> 与轻阴影（网页沿用 <code>gbg</code> 无阴影）。「占用最多」会话行用单色 <code>ink2</code> 的 CLI 官方标，不用品牌色方块</p></div>
+
+  <div><div class="phone g fit"><div class="sb"><span>9:41</span><i></i></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="ms-pg">
+    <div class="ms-lt"><h3>MacBook Pro</h3><div class="ms-live"><span class="ms-dot"></span>实时</div></div>
+    <div class="ms-card ms-hero">
+      <div class="top"><div><div class="ms-kick"><svg class="i"><use href="#v2-cpu"/></svg>CPU</div><div class="ms-xl">88<sup>%</sup></div></div><div class="ms-aside"><b>11.4</b> 负载<br>10 核</div></div>
+      <svg class="ms-chart" viewBox="0 0 358 104" preserveAspectRatio="none"><defs><linearGradient id="v2-g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+        <path d="M0,80 C20,78 34,70 52,44 S84,22 104,26 S136,14 156,20 S188,12 208,18 S240,10 260,16 S296,12 316,18 S344,12 358,14 L358,104 L0,104 Z" fill="url(#v2-g2)"/>
+        <path d="M0,80 C20,78 34,70 52,44 S84,22 104,26 S136,14 156,20 S188,12 208,18 S240,10 260,16 S296,12 316,18 S344,12 358,14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <circle cx="354" cy="14" r="3.5" fill="currentColor"/></svg>
+      <div class="ms-axis"><span>2 分钟前</span><span>1 分钟前</span><span>现在</span></div>
+    </div>
+    <div class="ms-grid">
+      <div class="ms-card ms-tl"><div class="ms-kick"><svg class="i"><use href="#v2-mem"/></svg>内存</div><div class="ms-lg">12.6<small>GB 已用</small></div><div class="ms-uv"><i style="left:72%"></i></div><div class="ms-say"><b class="ms-org">压力偏高</b><br>共 16 GB，交换 4.8 GB</div></div>
+      <div class="ms-card ms-tl"><div class="ms-kick"><svg class="i"><use href="#v2-disk"/></svg>磁盘</div><div class="ms-lg ms-red">1.2<small class="ms-red">GB 可用</small></div><div class="ms-stor crit"><i class="a" style="width:.7%"></i><i class="b" style="width:99%"></i></div><div class="ms-say"><b class="ms-red">快满了</b><br>新会话可能启动不了</div></div>
+    </div>
+    <div class="ms-card ms-rows" style="margin-top:12px"><div class="r link">让 Agent 帮我清理</div><div class="r">remote-agent 的占用<span class="v">3.1 GB</span><svg class="i ch"><use href="#lu-chevron-right"/></svg></div></div>
+    <div class="ms-sec">占用最多<a>显示会话</a></div>
+    <div class="ms-card ms-lst">
+      <div class="ms-u top"><span class="ms-ic"><svg class="i"><use href="#v2-term"/></svg></span><div class="b"><div class="t"><span>java</span><span class="n">312%</span></div><div class="m"><div style="width:100%"></div><small>2.1 GB · 三端措辞统一</small></div></div></div>
+      <div class="ms-u"><span class="ms-ic"><svg class="i"><use href="#v2-term"/></svg></span><div class="b"><div class="t"><span>xcodebuild</span><span class="n">188%</span></div><div class="m"><div style="width:60%"></div><small>1.2 GB · 三端措辞统一</small></div></div></div>
+      <div class="ms-u"><span class="ms-ic"><svg class="i"><use href="#v2-term"/></svg></span><div class="b"><div class="t"><span>Google Chrome</span><span class="n">41%</span></div><div class="m"><div style="width:13%"></div><small>1.6 GB</small></div></div></div>
+    </div>
+  </div><div class="homebar"></div></div><p class="cap"><b>磁盘快满、内存偏紧；排行切到进程。</b>进程行一律使用单色终端图标，属于已知会话的附写会话标题；磁盘注意或紧张时卡片下方出现清理和占用入口</p></div>
+
+  <div>
+    <p class="cap" style="margin:0 0 10px"><b>主页提醒</b> · 磁盘可用 &lt; 10 GB 时出现在大标题之下；空间回来自动消失</p>
+    <div class="phone fit"><div class="ms-pg compact"><div class="ms-surf ms-al"><span class="blk"><svg class="i"><use href="#v2-disk"/></svg></span><div class="x"><b>磁盘空间不多了</b><span>MacBook Pro 还剩 8.2 GB</span></div><svg class="i ch"><use href="#lu-chevron-right"/></svg></div></div></div>
+    <p class="cap" style="margin:18px 0 10px"><b>&lt; 2 GB</b></p>
+    <div class="phone fit"><div class="ms-pg compact"><div class="ms-surf ms-al"><span class="blk r"><svg class="i"><use href="#v2-disk"/></svg></span><div class="x"><b>磁盘快满了</b><span>MacBook Pro 只剩 1.2 GB，会话可能启动不了</span></div><svg class="i ch"><use href="#lu-chevron-right"/></svg></div></div></div>
+    <p class="cap" style="margin:18px 0 10px"><b>启动失败</b> · 取代那行 <code>mkdir … no space left on device</code></p>
+    <div class="phone fit"><div class="ms-pg compact"><div class="ms-surf ms-fail"><b>这台电脑磁盘满了</b><p>会话没能启动。腾出一些空间后再试。</p><div class="bs"><a>查看占用</a><a>重试</a></div></div></div></div>
+    <p class="cap" style="margin:18px 0 10px"><b>数据停更</b> · 小点变橙，数值保留并变灰，收起曲线</p>
+    <div class="phone g fit"><div class="ms-pg compact">
+      <div class="ms-lt"><h3>MacBook Pro</h3><div class="ms-live"><span class="ms-dot stale"></span>2 分钟前的数据</div></div>
+      <div class="ms-card ms-hero" style="color:var(--ink3)"><div class="top"><div><div class="ms-kick" style="color:var(--ink3)"><svg class="i"><use href="#v2-cpu"/></svg>CPU</div><div class="ms-xl">23<sup>%</sup></div></div><div class="ms-aside" style="color:var(--ink3)">3.2 负载<br>10 核</div></div><div style="height:16px"></div></div>
+    </div></div>
+  </div>
 </div>
 </section>
 </div>

@@ -105,13 +105,12 @@ CryptoKit 的 Ed25519 签名带随机盐，同一条消息两次签名不同，�
 
 ## Agent 发来的文件
 
-电脑声明 `shared_files` 能力时，带 `ToolCall.shared_files` 的调用在对话里是文件卡（`buildChat` 的 `ChatItem.sharedFiles`），不声明或调用失败时仍是普通工具行。取块、哈希校验和事件字段见 [session-files.md](session-files.md)；界面与交互规范由负责人定稿，长相见界面稿，不在这里重复。iOS 自己的实现：
+文件卡的状态、菜单、断点和本机副本规则统一见 [session-files](session-files.md#文件卡与下载状态)，画面见 [client-v61](design/client-v61.html#shared-files)。iOS 自己的实现：
 
-- **下载**：`RACore/SharedFileStore` 是一个 actor，按电脑声明的块大小经 `GetSharedFileChunk` 逐块取，写入 `<缓存区>/RemoteAgent/shared-files/<会话>/<file_id>/`，`.part` 与 `.meta` 记下已完成的偏移，杀进程后条目回到已暂停。同一 `(会话, file_id)` 只有一个下载，所有卡共用状态。暂停、取消、删除副本先收回下载的令牌，在途的块回来也不写、不改状态。连接断开等电脑回来最多 30 秒，自动续传一次；逐块核对总长度，最后核对整份 SHA-256，不一致丢弃整份。只有电脑自己回的 `not_found` 才算「已清理」，手机这边找不到会话不算。
-- **副本**：放在缓存区（系统可回收，回收后条目回到可下载），文件名在手机上再清理一遍，目录权限为首次解锁后可访问。计入设置「附件存储」的占用（「收到的文件」一行），随那里的清理一起清，随会话记录和账户删除。缩略图、视频与音频时长只从本机副本读（ImageIO、AVFoundation），不为此多取任何数据。
-- **打开与导出**：打开用 Quick Look（不能预览的类型由它显示通用页，可分享）；存到相册用只写权限，存到「文件」用系统导出面板，分享用系统分享面板。用户点卡片发起下载并一直停留在会话页时，完成后自动打开；离开过页面或 App 到后台就收回这张「票」，完成后只给一次轻触感。
-- **长按菜单**：系统的 contextMenu 做不出稿里的宽度、顶部路径和图标在右的样子，所以长按时对窗口截一张图、模糊 14 点，在上面叠一个自己的界面，卡片原位浮起，菜单在它下方 10 点。
-- **演示与测试**：`-demo -demoRoute session/sample-files*` 是各种卡的样例，`-sharedFileCards` 把某张卡摆成指定状态，`-sharedFileFake` 让样例会话从进程里的假电脑真的下载一遍；参数列表见 `App/Launch.swift`。
+- **下载与副本**：`RACore/SharedFileStore` 是 actor，按会话和文件标识管理下载；缓存区的 `.part` 与 `.meta` 记录偏移，目录保护为首次解锁后可访问。暂停、取消、删除先收回下载令牌，迟到块不再写入。设置的附件存储用「收到的文件」列出占用；ImageIO、AVFoundation 只读本机副本生成缩略图和时长。
+- **打开与导出**：用 Quick Look，不能预览的类型显示它的通用页；存到相册只申请写权限，存到「文件」和分享使用系统面板。App 进入后台也收回自动打开资格。
+- **长按菜单**：系统 contextMenu 不支持稿里的宽度、顶部路径和右侧图标，所以用窗口截图模糊后叠自定义菜单；卡片原位浮起。辅助功能字号下文件卡占满正文列，控件移到文字下方。
+- **演示与测试**：`-demo -demoRoute session/sample-files*` 是卡片样例，`-sharedFileCards` 指定状态，`-sharedFileFake` 从进程内假电脑下载；完整参数见 `App/Launch.swift`。这些演示不等于真实 CLI 验收。
 
 ## 定时任务
 
@@ -135,14 +134,13 @@ SwiftTerm 固定在 1.11.2：1.12 起带 Metal 着色器，构建需要 Xcode �
 
 ## 电脑状态与磁盘保护
 
-界面规范和字段见 [architecture §21](architecture.md#21-电脑状态与磁盘保护)，长相见界面稿 v2 第 ② 部分，三端共同的取舍见 Android 一节（[android-client.md](android-client.md#电脑状态与磁盘保护)）。iOS 的做法：
+共同交互、单位、曲线和磁盘保护见 [architecture §21](architecture.md#21-电脑状态与磁盘保护)，画面见 [client-v61 · 电脑状态](design/client-v61.html#machine-status)。iOS 的做法：
 
-- 取数和轮询沿用 RACore 的 `MachineStatusController`，每个页面一个 `MachineStatusFeed`（`UI/Machine/MachineStatusFeed.swift`）：页面可见、App 在前台、电脑在线且 `machineStatus` 能力位为真才请求，离开页面就停，电脑页的三只环每 10 秒、状态页每 2 秒。显示用的纯值（环、两张小卡、排行行、曲线几何、主页提醒、清理草稿、换主图的淡入淡出时间）在 `RACore/MachineStatusModel.swift`，规则与 Android 的 `MachineStatusModel.kt` 一致，测试在 `MachineStatusModelTests`。
-- 状态页是 `Route.machineStatus`，页底 `liftPage`、卡片 `lift`（亮色白、暗色 #1c1c1e，对应系统的 grouped 配色）；`yellow` 进了 `DS`。主图和两张小卡由一个自定义 `Layout`（`SwapLayout`）排：每个指标有一块底和两份内容（主图、小卡），换主图时只有底在 350 毫秒内移动变形，内容按线性时间淡出（前 100 毫秒）和淡入（后 120 毫秒），下面的排行跟着布局高度走。逐位翻动用系统的 `numericText` 过渡，曲线用 `TimelineView` 加 `Canvas` 匀速滑动，按住曲线用不限最小距离的 `DragGesture`（它拿走起手在曲线上的触摸，页面不跟着滚）。减弱动态效果时换主图、数字、排行位移都直接到位，曲线每个采样点整格左移。辅助功能字号下，三只环改成上下排，两张小卡各占一行。
-- 附件存储在 iOS 上同 Android，是电脑页里的一节：磁盘小卡和「remote-agent 的占用」走 `Route.machineStorage`，打开电脑页并滚到这一节；应急预留是该组里不可清理的一行（沿用该组的 MiB 写法，为 0 不显示）。
-- 新建会话因磁盘满失败，`NewSessionProgress.diskFull` 让提示区出现「这台电脑磁盘满了」卡片（查看占用、重试）；发送、上传等其他路径沿用 `CommandError` 里 `disk_full` 的本机语言文案，加在各自原有前缀后面。「让 Agent 帮我清理」用 `NewSessionDrafts.prepareCleanup` 把电脑、最近项目和提示词写进该项目的草稿（追加、不重复），再打开新任务页；没有项目时先选目录。
-- iOS 还没有 APNs 通道，磁盘提醒的系统通知没做，只有 App 内的主页提醒卡和各处状态；RACore 的 `receiveMachineDiskNotification` 已能解密并生成文案。
-- 看示例数据：`-demo -demoRoute machine-status/mac -machineStatus tight` 等，参数列表在 `App/Launch.swift` 开头；界面测试 `MachineStatusGestureTests` 用真实触摸验证环入口、按住曲线不滚动页面、换主图。
+- RACore 的 `MachineStatusController` 由每页一个 `MachineStatusFeed` 驱动，结合页面、前后台和机器能力决定是否请求。`RACore/MachineStatusModel.swift` 提供显示纯值，测试在 `MachineStatusModelTests`。
+- 状态页路由 `Route.machineStatus`，页底 `liftPage`、卡片 `lift`。自定义 `SwapLayout` 让卡片底连续移动变形，内容前 100 毫秒淡出、后 120 毫秒淡入；逐位数字用 `numericText`，曲线用 `TimelineView` 和 `Canvas`。曲线的 `DragGesture` 接住起手在曲线上的触摸，页面不同时滚动；辅助功能字号通过同一布局改为纵排。
+- 附件存储在电脑页内：`Route.machineStorage` 打开电脑页并滚到该节。启动失败通过 `NewSessionProgress.diskFull` 呈现失败卡，清理入口通过 `NewSessionDrafts.prepareCleanup` 准备草稿。
+- iOS 还没有 APNs，磁盘提醒只有 App 内卡片；RACore 的 `receiveMachineDiskNotification` 能解密并生成文案，不等于系统推送已经实现。
+- `-demo -demoRoute machine-status/mac -machineStatus tight` 等用于看示例，完整参数在 `App/Launch.swift`；`MachineStatusGestureTests` 验证环入口、曲线手势和换主图，实际覆盖见 [验收记录](acceptance-notes.md)。
 
 ## 还不能做的
 

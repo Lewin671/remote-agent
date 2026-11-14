@@ -3,7 +3,7 @@ import { t as message } from "../i18n";
 import { expect, it } from "vitest";
 const fs = "node:fs";
 const { readFileSync } = (await import(/* @vite-ignore */ fs)) as { readFileSync(path: string, enc: string): string };
-function design() { return new DOMParser().parseFromString(readFileSync("../docs/design/client-v60.html", "utf8"), "text/html"); }
+function design() { return new DOMParser().parseFromString(readFileSync("../docs/design/client-v61.html", "utf8"), "text/html"); }
 it("shows schedule inbox groups, fixed leading dots, two kinds of badges and the wide empty state", () => {
   const doc = design(), chapter = doc.querySelector("#schedules")!;
   const list = chapter.querySelector("#p-daily")!;
