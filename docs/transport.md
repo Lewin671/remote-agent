@@ -1,6 +1,6 @@
 # 传输模块与直连
 
-本文负责客户端与 daemon 间的分层、路径选择、恢复、安全绑定与路径状态展示；不定义账户、历史同步或原生 CLI 行为。范围见 [scope.md](scope.md)，既有信封与指令见 [architecture §10](architecture.md#10-报文同步和指令)，证据见 [transport-notes.md](transport-notes.md)，分期、验收和全部未决事项见 [plan.md](plan.md#传输模块与直连)。以下为待实现设计，当前产品仍只走中继。文中的初始预算是实现及验收的起点，不是已测性能。
+本文负责客户端与 daemon 间的分层、路径选择、恢复、安全绑定与路径状态展示；不定义账户、历史同步或原生 CLI 行为。范围见 [scope.md](scope.md)，既有信封与指令见 [architecture §10](architecture.md#10-报文同步和指令)，证据见 [transport-notes.md](transport-notes.md)，分期、验收和全部未决事项见 [plan.md](plan.md#传输模块与直连)。第 0a 的结果契约与第 0b 的 Link/Router/RelayPath 分层已实现；当前仍只走中继，直连、热备及新的恢复策略是后续设计。文中的初始预算是实现及验收的起点，不是已测性能。
 
 ## 1. 分层与职责
 
@@ -30,11 +30,11 @@ Link 提供调用、有序可靠流、分块传输、可订阅的对端可达性
 
 ### 当前实现与目标边界
 
-协议 15 的本地实现接入了第 0a 期的显式完成证据、进程级执行/安全状态、独立同步、v4 接受记录与五类签名结果。产品仍只有中继；完整验收和后续阶段见 [plan](plan.md#直连实施与验收)。这不表示已实现跨路径重试或 direct。
+协议 15 已包含第 0a 期的显式完成证据、进程级执行/安全状态、独立同步、v4 接受记录与五类签名结果。第 0b 在此基础上接入四端 Link/Router/RelayPath；客户端 call/delivery 证据、可达性与能力投影、逻辑流由 Link 持有，relay 登录、epoch、NotForwarded 与物理流由 RelayPath 适配；daemon 的共享 endpoint、执行与发布仍属进程。第 0b 不改 wire、存储格式、文案或纯 relay 的业务策略。验收边界和后续阶段见 [plan](plan.md#直连实施与验收)；尚未实现 DirectPath、跨路径重试、能力握手或流恢复。
 
 ### 正确性前提与所有权
 
-**第 0a 期必须先满足以下前提，之后才允许主动跨连接重试或接入 direct。** 取消结果与同 ID 协调由独立正确性任务验证和修复，本设计不把它们当作现有保证。
+**以下是第 0a 已建立、第 0b 必须保持的前提，后续跨连接重试和 direct 继续遵守。** 取消结果与同 ID 协调的既有验收范围见 [验收记录](acceptance-notes.md#传输-0a-最终结果-wire2026-11-13未发布本地分支)，不能将单路结果扩大为尚未实现的跨路径保证。
 
 - 一个 daemon 进程只有一个 dispatcher，拥有安全 endpoint、接受日志、成员同步、执行上下文、同 ID 协调器、逻辑终端注册表及资源池。`session()` 只拥有该路 WS 登录凭据、socket 和转发等待者；独立成员同步循环持有自己的登录凭据与 HTTP client，凭据续期不依赖主 WS（见第 5 节）；执行、`workers` 和 `terminals` 不随主 WS 排空或销毁。进程退出才停止 dispatcher，不能同时打开互不协调的 endpoint。
 - 所有路径共用入口，先作大小/范围检查、验签解密，认证后查询同 ID 记录，新执行再检查当前成员/租约并准入。把当前 `handleCall` 的 Machine、Command Purpose、请求 ID 长度检查和 `readTerminal` 的 Machine/Session/Request/Purpose 绑定全部搬入该入口；请求 ID 保持现有 16–128 字节及合法字符约束。直连每帧 Sender 还必须等于信令绑定的对端设备，不能只证明它是某个账户成员。终端重组与 Accept 的顺序见第 3 节。
@@ -88,7 +88,7 @@ web 与 Go 的按授权 ID 派发历史索引只在没有活跃 call、且原 de
 | daemon 签名且绑定有效 | 队列/槽、授权、租约、时钟等瞬时拒绝，未持久终结原授权；包括仅声称 outcome=not_sent | unknown，保留原 ID 退避重试 | unknown，原 ID 查询 |
 | 伪称 daemon 或无有效绑定 | 缺类别、未知类别、内外不一致、伪签名或拒绝了未经认证的 ID | unknown | unknown |
 
-Router 合并全部路径/尝试：有仍可能返回可信结果的路径就继续等，所有路径失败或到期才向等待者呈现 unknown；主动停止等待不是终局。not_sent 不能仅由 daemon 本次尚未准入推出；逻辑授权还必须不能被迟到副本再次执行。rejected 只限相同不可变载荷的终局拒绝。server 的未转发标志仅是诚实 relay 对本次调度的说明，不是密码学上的 daemon 执行证明，不能推翻 daemon 或其他路径证据。重试保留原 ID/载荷/期限，不把任何服务器状态用作自动换 ID 的授权。独立取消结果任务的测试结论由负责人整合；本表先规定目标，不声明现代码已满足。
+Router 合并全部路径/尝试：有仍可能返回可信结果的路径就继续等，所有路径失败或到期才向等待者呈现 unknown；主动停止等待不是终局。not_sent 不能仅由 daemon 本次尚未准入推出；逻辑授权还必须不能被迟到副本再次执行。rejected 只限相同不可变载荷的终局拒绝。server 的未转发标志仅是诚实 relay 对本次调度的说明，不是密码学上的 daemon 执行证明，不能推翻 daemon 或其他路径证据。重试保留原 ID/载荷/期限，不把任何服务器状态用作自动换 ID 的授权。第 0a 已按此矩阵验证现有单路结果；多路径合并仍属后续阶段。
 
 ### 接受记录、保留与时序
 
@@ -120,7 +120,7 @@ Router 合并全部路径/尝试：有仍可能返回可信结果的路径就继
 
 ### 重构必须移除的连接依赖
 
-第 0b 期只有 RelayPath，保持现有业务行为，但所有依赖必须经 Link/dispatcher 适配，不能留下 direct 接入后才发现的闸门：
+第 0b 已按下表经 Link/dispatcher 适配，只有 RelayPath，保持现有业务行为。除显式 online 条件外，按钮的 unlinked 宽限、后台下载、live polling、以及连接检查中“server ping 失败是否跳过对端”也取 Link 状态；历史、账户、推送和 server GetImage 仍保留各自的 server 条件。后续路径继续遵守这些边界：
 
 | 位置 | 改造边界 |
 |---|---|
@@ -149,7 +149,7 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 
 两路重复只占原执行的一个槽；等待、ACK、信令、成员同步不占槽，另有 CPU/队列限额。磁盘 bulk 不在共享调度锁内等 fsync；uploads 全局锁公平性必须验证。
 
-`GetSharedFileChunk` 明确为只读类：验签、当前成员/租约和共享对象授权仍执行，**结果不进接受日志、不落盘**，允许重新求值，进入 bulk 池；上传 Put 依靠 durable offset 幂等。下载对象、固定副本与生命周期由 [session-files.md](session-files.md) 负责；当前 checkout 尚无该接口，须整合 agent 发文件任务的只读实现，不另定一套路径/版本规则。server `GetImage` 显示副本仍走原服务。
+`GetSharedFileChunk` 明确为只读类：验签、当前成员/租约和共享对象授权仍执行，**结果不进接受日志、不落盘**，允许重新求值，进入 bulk 池；上传 Put 依靠 durable offset 幂等。下载对象、固定副本与生命周期由 [session-files.md](session-files.md) 负责；该接口及三端下载已实现，第 0b 经 Link 复用现有只读实现；独立 bulk 池与跨路径续传在后续阶段接入，不另定一套路径/版本规则。server `GetImage` 显示副本仍走原服务。
 
 初始资源预算：daemon 最多 8 个客户端 peer，每 peer 最多交互/bulk 两个 PC，客户端最多连接 4 台 daemon；同代次替换短暂并存也计入上限，超限保留 relay。每客户端最多 8 条逻辑终端、每 daemon 合计 16 条。每 peer 发送与重组各最多 2 MiB / 128 帧，daemon 全局各 16 MiB；单密文重组上限 1 MiB、期限 5 秒。候选、信令、重连另见第 4/5 节。daemon 自己实施数量、帧率和字节限额，不依赖 server 的每设备 16 条 WS 或账户 streams 额度替直连把关；这些本地上限不声称实现账户全局计费限额。多客户端与多 daemon 验收必须同时施压。
 

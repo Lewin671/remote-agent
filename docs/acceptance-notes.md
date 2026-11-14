@@ -2388,4 +2388,24 @@ daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 
 
 迁移使用 v0.73.3 原始实现初始化的 v3 库，完成 dry-run 与实际迁移后，账户文件未改、标记为 4，原身份继续用于上述真实链路，无需重新配对。本次没有先运行旧 daemon 的 CLI 再现场切换，也没有重跑旧版本完整 CLI 对照；旧存储与身份材料使用原始实现，未用修改 v4 版本数字代替。旧接受记录、失败恢复、锁与到期检查由迁移和存储测试覆盖。
 
-本任务未使用模拟器、手机、日常 Remote Agent 账户或线上中继。iOS App 单元测试与界面自动化依任务约束留给负责人在模拟器空闲后补跑；通用构建不代替这些测试。未覆盖 direct、双路网络、真机换网或资源预算。临时原生进程、tmux、认证副本、数据库和构建目录在验收后清理。
+第 0a 后续复核已补齐模拟器检查：App 484 项（含参数化共 531 次执行）、UI 9 项通过，均无失败或跳过；不再列为待补。发布前真实链路重新使用 v0.74.2 的原版 v3 库验证手动升级，保留配对身份，再走上述 50 条操作和追加故障场景；最初基于 v0.73.3 的迁移观察不作为最终升级依据。未使用手机、日常 Remote Agent 账户或线上中继，未覆盖 direct、双路网络、真机换网或资源预算。临时原生进程、tmux、认证副本、数据库和构建目录在验收后清理。
+
+## 传输 0b Link/Router/RelayPath（2026-11-14）
+
+固定基线为 `dff1cb11`（v0.75.0、协议 15），本地产品代码为 `650f29b3`。四端只有 RelayPath；迁移调用证据、可达性/能力投影和逻辑流所有权，不变更 wire、存储格式、界面布局或文案。实现边界由 [transport](transport.md#当前实现与目标边界) 维护，未决验收只在 [plan](plan.md#传输模块与直连) 维护。
+
+最终涉及代码的完整检查：Go 30 个有测试包通过；race 覆盖 deviceauth、relay、remoteclient、server、daemon、transport。网页 5,370 项通过、1 项既有 opt-in 跳过；Android core 555、App 789、terminal 7 项及 lintVitalRelease 通过；SwiftPM RACore 780 项、Markdown 17 项通过；iOS full 的 App 485 项通过，并完成文案、协议生成核对和构建。i18n generate --check、lint 通过。重检查串行执行，使用隔离状态与 tmux socket。
+
+新增回归及有效撤销对照共 20 组：Go/网页 10、Android 4、iOS core 5、iOS App 1。覆盖已准入执行、终端和发布不随主连接取消，关闭时的槽等待、旧代次清理、帧类型，三端可达性/能力与授权分离、逻辑流只结束一次，以及当前 actor 状态和连接检查的对端探测。每组删除保护后得到运行时断言失败，随后恢复；编译错误和未选中测试不算反证。完整检查发现过 iOS live polling 读取尚未发布的旧投影，修正为从当前 actor 状态更新 RelayPath，再问 Link，原测试断言保留。
+
+iOS UI 9 项中 8 项通过；`ComposerHitTests.testShortDraftImageTouchesMenusAndSendHitArea` 失败。候选代码重复运行及固定基线的独立 checkout 在同一自建模拟器上，均在打开附件菜单时出现系统预测栏消失、输入区域顶部从 501 到 528 点的相同断言失败。没有修改布局、测试或断言，也没有将这项计为通过。该自建模拟器已 shutdown/delete 并查询确认无残留，DerivedData 和结果包已清理。
+
+真实链路使用新建本地 server、daemon、账户、数据库、CLI HOME 与独立 tmux，原生版本为 Claude Code 2.1.322、Codex CLI 0.166.0。由临时 Node 驱动调用生产 Web Remote 的签名、HTTP、epoch 与结果核验；不是点击网页或手机界面。两种 CLI 各 25 条核心操作，共 50 条认证结果，0 条传输 unknown；预期的模型/effort 错误保留签名业务结论。6 次发送、切模型和批准审批的主 WS 断开均以原 ID 恢复，后端及原生副作用各一次。
+
+追加场景通过：relay 在途重启后旧 epoch 无未转发证明、新 attempt 取回原结果；daemon 完成结果跨重启恢复；执行中退出后返回签名 unknown，不重执行；离线返回绑定 attempt 的 not_sent；定时任务 business conflict 保留原 revision；identity conflict 不泄露或覆盖原结果。丢失回包后超过原 deadline 仍可查；保留期边界使用仅影响验收构建 admission-clock 的调试注入，边界前可查、剪枝后连续查询为签名 unknown，未改变系统或 CLI 时钟。
+
+两种 CLI 还各完成分叉/停止分叉、真实 MCP send_file 和 1,179,648 字节原文件下载；两块响应均按既有 768 KiB 补齐，裁剪后逐字节和 SHA-256 一致。客户端图片/文件上传、相同分块重投、带附件原生发送也各完成一次，核对原生回复、唯一输入事件、图片 upload ID 和文件原字节。历史回复经 server 读取。OS 通知实际送达、三端直接界面的图片/文件流程和真机不在本次实测范围；这些既有逻辑随完整自动检查回归，不以调试触发代替界面验收。
+
+纯 relay 性能使用[可复跑脚本](../scripts/measure-relay/README.md)：同一驱动比较固定基线与候选提交，ABBA 顺序，每批丢弃 20 条预热、保留全部 200 条测量，每提交共 400 条；报告最近秩 p50/p95 和样本数。每条为已认证临时身份的新 Web Remote 首次 GetSettings，包含签名、本地转发、真实 daemon 处理和签名结果校验，排除登录、启动、UI 渲染和模型响应。本机数字仅作参考，不能替代负责人安排的 iMac 正式测量。
+
+结束后已按记录的 PID 和启动时间停止全部原生验收进程，无强制按名称结束；tmux 与 Web 调试入口消失，临时认证副本、原始日志、数据库和二进制已删除。没有 push、发版、部署、操作手机或连接线上服务。
