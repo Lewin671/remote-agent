@@ -42,6 +42,18 @@ public struct Account: Equatable, Sendable, CustomStringConvertible, CustomDebug
 public final class HTTP: Sendable {
     let session: URLSession
     private let delegate: SessionDelegate
+    private let relayEpochs = OSAllocatedUnfairLock<[String: String]>(initialState: [:])
+    private func origin(_ url: URL) -> String {
+        var parts = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        parts.path = ""; parts.query = nil; parts.fragment = nil
+        return parts.string!
+    }
+    func relayEpoch(for url: URL) -> String? { relayEpochs.withLock { $0[origin(url)] } }
+    private func observeEpoch(_ response: URLResponse?, for url: URL) {
+        guard let response = response as? HTTPURLResponse,
+              let epoch = response.value(forHTTPHeaderField: "Remote-Agent-Relay-Epoch"), !epoch.isEmpty else { return }
+        relayEpochs.withLock { $0[origin(url)] = epoch }
+    }
 
     /// `configuration` is copied by URLSession; tests add their URLProtocol classes to it.
     public init(configuration: URLSessionConfiguration = HTTP.defaultConfiguration()) {
@@ -76,6 +88,7 @@ public final class HTTP: Sendable {
             try await withCheckedThrowingContinuation {
                 (c: CheckedContinuation<(Data, HTTPURLResponse), Error>) in
                 let task = session.dataTask(with: request) { data, response, error in
+                    if let url = request.url { self.observeEpoch(response, for: url) }
                     if error == nil, let http = response as? HTTPURLResponse {
                         c.resume(returning: (data ?? Data(), http))
                     } else {
@@ -157,6 +170,7 @@ extension HTTP: HTTPClientInterface {
             r.setValue(values.joined(separator: ","), forHTTPHeaderField: name)
         }
         let task = session.dataTask(with: r) { data, response, error in
+            self.observeEpoch(response, for: request.url)
             // An answer cut short is no answer: its status says nothing of what follows.
             if error == nil, let http = response as? HTTPURLResponse {
                 var headers = Headers()
@@ -228,6 +242,15 @@ public final class Api: Sendable {
         client = PBClientServiceClient(client: protocolClient)
         pairing = PBPairingServiceClient(client: protocolClient)
         recovery = PBRecoveryServiceClient(client: protocolClient)
+    }
+
+    /// Discovery carries no command; its epoch is frozen in each later Forward body.
+    func relayEpoch() async throws -> String {
+        let url = URL(string: server)!
+        if let epoch = http.relayEpoch(for: url) { return epoch }
+        _ = try await http.data(for: URLRequest(url: URL(string: server + "/healthz")!))
+        guard let epoch = http.relayEpoch(for: url) else { throw DeviceSecurity.Failure.untrusted }
+        return epoch
     }
 
     public static func headers(token: String) -> Headers {

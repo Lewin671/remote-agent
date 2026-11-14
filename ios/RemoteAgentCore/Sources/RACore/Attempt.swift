@@ -43,9 +43,13 @@ public final class Attempt {
         let command = error as? CommandError
         if uncertain(error) {
             frozen = true
-        } else if frozen, let command, Attempt.expiry(command) {
+        } else if frozen || pending?.mayHaveRun == true, let command, Attempt.expiry(command) {
+            frozen = true
             expired = true
             return CommandError(CommandError.unknownOutcome, Attempt.expiredUnknown, outcome: .unknown)
+        } else if pending?.mayHaveRun == true, !(command?.fromDaemon == true && command?.outcome != .notSent) {
+            frozen = true
+            return CommandError.unknownBecause(errorText(error))
         } else if frozen, command?.fromDaemon != true || command?.outcome == .notSent {
             // Once unknown, only the daemon's own answer settles it; any
             // other failure (a network error, a failed login) leaves it

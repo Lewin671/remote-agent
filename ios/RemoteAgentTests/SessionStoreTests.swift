@@ -62,6 +62,18 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
     let store = SessionStore()
     let computer = FakeCommands()
 
+    @Test func rawCancellationAfterPreparationKeepsRequestFilesAndUnknown() async throws {
+        let o = Outgoing(requestId: "original", text: "keep", fileIds: ["file"])
+        let p = PreparedCommand(machineId: "fixture-machine", sessionId: "s", requestId: "command", deadlineMs: 1000, command: PBCommand())
+        o.prepared = try PreparedCommand(recordBytes: p.recordBytes(), prior: true)
+        computer.answer(CancellationError())
+        store.add("s", o)
+        await store.deliver(computer, sid: "s", o).value
+        #expect(o.state == .unknown)
+        #expect(o.requestId == "original" && o.fileIds == ["file"])
+        #expect(o.prepared?.requestId == "command")
+    }
+
     @Test func draftTextUsesTheSealedStoreAndIsRemovedWhenCleared() {
         let files = VolatileFiles()
         let first = SessionStore(draftFiles: files, draftQueue: nil)

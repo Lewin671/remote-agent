@@ -177,7 +177,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 		t.Fatal("missing stored session")
 	}
 	shortCtx, shortCancel := context.WithTimeout(ctx, 2*time.Second)
-	_, forwardErr := client.API().Forward(shortCtx, forwardRequest(&pb.ForwardRequest{MachineId: machine, Command: paused}))
+	_, forwardErr := client.API().Forward(shortCtx, forwardRequest(client, &pb.ForwardRequest{MachineId: machine, Command: paused}))
 	shortCancel()
 	if forwardErr == nil {
 		t.Fatal("expired control returned success")

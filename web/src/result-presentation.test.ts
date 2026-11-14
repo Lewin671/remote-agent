@@ -41,7 +41,7 @@ test("relay pre-forward proof binds this attempt and cannot override earlier dis
   let prior=false;
   (r as unknown as {api:unknown}).api={forward:async(q:{attemptId:string})=>{
    if(prior)throw new ConnectError("no proof",Code.PermissionDenied);
-   throw new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:create(NotForwardedSchema,{attemptId:q.attemptId,reason:"machine_offline"})}]);
+   throw new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:create(NotForwardedSchema,{attemptId:q.attemptId,reason:"machine_offline",relayEpoch:"fixture-epoch"})}]);
   }};
   const slot=newSlot();
   let error=await r.machineCommand(r.machine,{case:"listModels",value:{}},slot).catch(e=>e);
@@ -60,13 +60,13 @@ test("a pre-forward refusal cannot erase a concurrent attempt",async()=>{
   const first=r.machineCommand(r.machine,cmd,slot).catch(e=>e);
   const second=r.machineCommand(r.machine,cmd,slot).catch(e=>e);
   await vi.waitFor(()=>expect(waiting).toHaveLength(2));
-  waiting[0].reject(new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:waiting[0].id,reason:"machine_offline"}}]));
+  waiting[0].reject(new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:waiting[0].id,reason:"machine_offline",relayEpoch:"fixture-epoch"}}]));
   expect(uncertain(await Promise.race([first,second]))).toBe(true);
   waiting[1].reject(new ConnectError("no proof",Code.PermissionDenied));
   for(const error of await Promise.all([first,second])) expect(uncertain(error)).toBe(true);
   const third=r.machineCommand(r.machine,cmd,slot).catch(e=>e);
   await vi.waitFor(()=>expect(waiting).toHaveLength(3));
-  waiting[2].reject(new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:waiting[2].id,reason:"machine_offline"}}]));
+  waiting[2].reject(new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:waiting[2].id,reason:"machine_offline",relayEpoch:"fixture-epoch"}}]));
   expect(uncertain(await third)).toBe(true);
  }finally{await r.dispose();}
 });
@@ -75,7 +75,7 @@ test("a restored unknown send keeps earlier evidence after a relay refusal",asyn
  const r=await SyntheticRemote.create();
  try{
   (r as unknown as {api:unknown}).api={forward:async(q:{attemptId:string})=>{
-   throw new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:q.attemptId,reason:"machine_offline"}}]);
+   throw new ConnectError("offline",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:q.attemptId,reason:"machine_offline",relayEpoch:"fixture-epoch"}}]);
   }};
   const slot=newSlot();
   const error=await r.sendMessage("s","original","stable-send",slot,true).catch(e=>e);
@@ -89,7 +89,7 @@ test("a restored unknown send keeps earlier evidence after a relay refusal",asyn
 test("a full relay queue keeps its own unsent reason",async()=>{
  const r=await SyntheticRemote.create();
  try {
-  (r as unknown as {api:unknown}).api={forward:async(q:{attemptId:string})=>{throw new ConnectError("queue is full",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:q.attemptId,reason:"queue_full"}}]);}};
+  (r as unknown as {api:unknown}).api={forward:async(q:{attemptId:string})=>{throw new ConnectError("queue is full",Code.Unavailable,undefined,[{desc:NotForwardedSchema,value:{attemptId:q.attemptId,reason:"queue_full",relayEpoch:"fixture-epoch"}}]);}};
   const error=await r.machineCommand(r.machine,{case:"listModels",value:{}},newSlot()).catch(e=>e);
   expect(error.outcome).toBe("not_sent");expect(error.message).toBe("queue is full");
  }finally{await r.dispose();}

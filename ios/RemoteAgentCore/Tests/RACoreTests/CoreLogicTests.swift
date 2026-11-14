@@ -16,6 +16,16 @@ import Testing
         }
     }
 
+    @Test func rawCancellationAtSettlementKeepsActualDispatch() throws {
+        let a = Attempt(), m = Maker()
+        let first = try a.next(m.make)
+        let call = first.dispatch.open(prior: false)
+        try call.delivery().dispatch(); call.close()
+        a.settle(CancellationError())
+        #expect(a.frozen)
+        #expect(try a.next(m.make) === first)
+    }
+
     @Test func anUnknownOutcomeIsRetriedAsItWas() throws {
         let m = Maker()
         let a = Attempt()

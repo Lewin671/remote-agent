@@ -7,7 +7,7 @@ import {DeviceSecurityClient,unpackSecurity} from "./device-security-client";
 import {parseHeader} from "./device-security";
 import {CommandSchema,CommandResultSchema} from "./gen/remoteagent/v1/remote_pb";
 import {type Envelope} from "./gen/remoteagent/v1/envelope_pb";
-import {newSlot,type RequestSlot} from "./remote";
+import {newSlot,restoreSlot} from "./remote";
 import {ComposerDraftStore} from "./composer-drafts";
 import {Tray} from "./attach";
 import {t} from "./i18n";
@@ -18,7 +18,7 @@ test("create retries and a fresh client preserve the first payload bytes across 
  try{
   const plain=fromBinary(CommandSchema,raw);expect(plain.kind.case).toBe("createSession");
   expect(toBinary(CommandSchema,plain)).not.toEqual(raw);
-  const slot:RequestSlot={...newSlot(),prepared:{machineId:r.machine,sid:"",plain:raw.slice()}};
+  const slot=restoreSlot({...newSlot(),prepared:{machineId:r.machine,sid:"",plain:raw.slice()}}, false);
   const bodies:Uint8Array[]=[];const epochs:bigint[]=[];
   function install(target:SyntheticRemote){
    (target as unknown as {api:unknown}).api={forward:async(q:{command:Envelope})=>{
@@ -35,7 +35,7 @@ test("create retries and a fresh client preserve the first payload bytes across 
   fresh=new SyntheticRemote(r.world,r.member,r.seed);install(fresh);
   const saved=JSON.parse(JSON.stringify({...slot,prepared:{...slot.prepared,plain:Array.from(slot.prepared!.plain)}}));
   saved.prepared.plain=new Uint8Array(saved.prepared.plain);
-  await fresh.machineCommand(r.machine,plain.kind,saved);
+  await fresh.machineCommand(r.machine,plain.kind,restoreSlot(saved,true));
   expect(bodies).toHaveLength(3);for(const b of bodies)expect(b).toEqual(raw);
   expect(epochs[1]).toBeGreaterThan(epochs[0]);
   // Fresh prepares freeze once too; mutating the caller's map cannot change a retry.

@@ -18,7 +18,7 @@ import org.junit.Test
 class ForksTest {
     @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private var n = 0
-    private fun prepare() = PreparedCommand("m1", "s1", "req-${++n}", 0, Envelope.getDefaultInstance())
+    private fun prepare() = PreparedCommand("m1", "s1", "req-${++n}", 0, Envelope.getDefaultInstance(), prior=false)
     private val forked = CommandResult.newBuilder().setForkSession(ForkSessionResponse.newBuilder().setSession(Session.newBuilder().setId("s-fork"))).build()
     private val sent = mutableListOf<Pair<String, Boolean>>()
     private fun lost(code: String): suspend (PreparedCommand, Boolean) -> CommandResult? = { p, retry ->

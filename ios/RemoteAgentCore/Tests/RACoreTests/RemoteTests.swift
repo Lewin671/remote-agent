@@ -1158,6 +1158,68 @@ extension SyncServerTests {
             }
         }
 
+        @Test func aDnsErrorAfterDeliveryCannotClaimNotSent() async throws {
+            try await world { w in
+                let delivered = Counter()
+                let http = Intercept.http(for:w.server.url, transform: { request,data,response in
+                    if request.url?.path.hasSuffix("/Forward") == true {
+                        delivered.increment()
+                        throw URLError(.cannotFindHost)
+                    }
+                    return (data,response)
+                }) { $0 }
+                let r = try await w.client(http:http);r.start()
+                let machine = w.daemon.id
+                _ = try await r.awaitState("online") { $0.conn == .online && $0.machines[machine]?.online == true }
+                let p = try r.prepare(machineId:machine,sessionId:"s1",interrupt())
+                do { try await r.forward(p); Issue.record("lost response returned success") }
+                catch { #expect(uncertain(error)) }
+                #expect(delivered.value == 1)
+                #expect(p.mayHaveRun)
+            }
+        }
+
+        @Test(arguments: [false, true]) func aConcurrentPreflightFailureReadsLiveDispatch(canceled: Bool) async throws {
+            try await world { w in
+                let entered = Signal(), release = Signal(), delivered = Signal(), reply = Signal(), health = Counter()
+                w.onClose { release.set(); reply.set() }
+                let http = Intercept.http(for: w.server.url, transform: { request, data, response in
+                    if request.url?.path == "/healthz" { return (data, response) }
+                    var headers = response.allHeaderFields as! [String:String]
+                    for key in headers.keys where key.lowercased() == "remote-agent-relay-epoch" { headers.removeValue(forKey:key) }
+                    return (data, HTTPURLResponse(url:response.url!, statusCode:response.statusCode, httpVersion:nil, headerFields:headers)!)
+                }) { request in
+                    if request.url?.path == "/healthz" {
+                        health.increment()
+                        if health.value == 1 {
+                            entered.set(); _ = await release.wait(10_000)
+                            if canceled { throw URLError(.cancelled) }
+                            throw URLError(.cannotFindHost)
+                        }
+                    }
+                    return request
+                }
+                let r = try await w.client(http:http); r.start()
+                let machine = w.daemon.id
+                _ = try await r.awaitState("online") { $0.conn == .online && $0.machines[machine]?.online == true }
+                let p = try r.prepare(machineId:machine,sessionId:"s1",interrupt())
+                await w.daemon.setAnswer { h,c in
+                    if h.requestID == p.requestId { delivered.set(); _ = await reply.wait(10_000) }
+                    return FakeDaemon.defaultResult(c)
+                }
+                let first = Task { () -> Bool in
+                    do { try await r.forward(p); return false } catch { return uncertain(error) }
+                }
+                #expect(await entered.wait(10_000))
+                let second = Task { try await r.forward(p) }
+                #expect(await delivered.wait(10_000))
+                release.set()
+                #expect(await first.value)
+                reply.set(); _ = try await second.value
+                #expect(health.value == 2)
+            }
+        }
+
         @Test func createPayloadSurvivesRekeyAndSealedRecordRestart() async throws {
             try await world { w in
                 let fixture=try loadJSON("testdata/transport/prepared-command.json")
@@ -1173,7 +1235,7 @@ extension SyncServerTests {
                 }
                 // Restore a deliberately noncanonical payload, as a previous process prepared it.
                 let encoded=try JSONSerialization.data(withJSONObject:["machineId":machine,"sessionId":"","requestId":newRequestId(),"deadlineMs":Int64(Date().timeIntervalSince1970*1000)+60000,"payload":raw.base64EncodedString()])
-                let p=try PreparedCommand(recordBytes:encoded)
+                let p=try PreparedCommand(recordBytes:encoded, prior: false)
                 try await r.forward(p)
                 let old=try await r.securityIdentity().1.core.epoch
                 _ = try await w.join()
@@ -1185,7 +1247,7 @@ extension SyncServerTests {
                 r.close()
                 let restarted=try w.remote(r.account);restarted.start()
                 _ = try await restarted.awaitState("restarted") {$0.conn == .online && $0.machines[machine]?.online == true}
-                let restored=try PreparedCommand(recordBytes:#require(try files.get(folder:"pending",name:"command")))
+                let restored=try PreparedCommand(recordBytes:#require(try files.get(folder:"pending",name:"command")), prior: true)
                 try await restarted.forward(restored,retryOfUnknown:true)
                 for _ in 0..<3 {
                     let(h,bytes)=try #require(await w.daemon.commandPayloads.poll(5000))

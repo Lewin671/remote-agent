@@ -548,7 +548,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
                 d.getLong("deadline", 0),
                 Envelope.parseFrom(
                     ByteString.copyFrom(d.getByteArray("envelope") ?: return Result.failure()),
-                ),
+                ), prior=wasUnknown(),
             )
         val remote = Remote(acct, RaApp.instance.http, securityStorage = RaApp.instance.vault)
         try {

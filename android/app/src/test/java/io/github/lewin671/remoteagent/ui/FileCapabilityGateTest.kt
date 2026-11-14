@@ -106,7 +106,7 @@ class FileCapabilityGateTest {
         val out = Outgoing("original-request", "keep text", images = listOf(f), fileIds = listOf("original-file"), targetMachineId = "computer")
         try {
             val request = SendRequest.newBuilder().setRequestId(out.requestId).setText(out.text).addAllFileIds(out.fileIds).build()
-            val first = out.prepareDelivery(r, "capability", request)
+            val first = out.prepareDelivery(r, "capability", request, prior = false)
             OutgoingRecords(store).save("capability", out, false)
             val back = OutgoingRecords(store).load("capability").single()
             assertEquals(out.commandRequestId, back.commandRequestId)
@@ -117,7 +117,7 @@ class FileCapabilityGateTest {
             assertEquals(Outgoing.State.UNKNOWN, back.state)
             show(r, true)
             var again: PreparedCommand? = null
-            back.deliver { again = back.prepareDelivery(r, "capability", it) }
+            back.deliver { again = back.prepareDelivery(r, "capability", it, prior = true) }
             assertEquals(first.requestId, again!!.requestId); assertEquals(first.deadlineMs, again!!.deadlineMs)
             assertEquals(listOf("original-file"), back.fileIds)
         } finally { r.close(); AccountMemory.clear() }
@@ -129,7 +129,7 @@ class FileCapabilityGateTest {
         try {
             val old = out.commandRequestId
             out.deliver { request ->
-                val p = out.prepareDelivery(r, "capability", request)
+                val p = out.prepareDelivery(r, "capability", request, prior = false)
                 assertNotEquals(old, p.requestId); assertTrue(p.deadlineMs > System.currentTimeMillis())
                 assertEquals("message", request.requestId)
                 records.save("capability", out, false)

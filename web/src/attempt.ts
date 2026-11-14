@@ -47,7 +47,8 @@ export class Attempt<P> {
   settle(error?: unknown, sent?: { slot: RequestSlot }) {
     const p = this.pending;
     if (!p || (sent && sent !== p)) return;
-    if (error !== undefined && stillUnknown(error, p.tries > 1)) {
+    const final = error instanceof CommandError && error.fromDaemon && error.outcome !== "not_sent" && !uncertain(error);
+    if (error !== undefined && (stillUnknown(error, p.tries > 1) || p.slot.evidence.unresolved && !final)) {
       if (expiredError(error)) p.expired = true;
       return;
     }

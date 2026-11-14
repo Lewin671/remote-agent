@@ -71,7 +71,7 @@ func TestCreateSessionRetryRetainsOriginalPayloadBytes(t *testing.T) {
 	env, _ := sealed.Envelope()
 	handler := &payloadServer{endpoint: machine}
 	_, service := remoteagentv1connect.NewClientServiceHandler(handler)
-	server := httptest.NewServer(service)
+	server := httptest.NewServer(testEpochHandler(service))
 	defer server.Close()
 	client.api = remoteagentv1connect.NewClientServiceClient(server.Client(), server.URL)
 	for range 2 {

@@ -230,6 +230,7 @@ func (a *Authority) RegisterPairMember(ctx context.Context, pairingID string, me
 func (e *Enrolled) Client(a *Authority) *Client {
 	hc := netpolicy.Client(time.Minute)
 	c := &Client{Server: a.Server, DeviceID: e.ID, token: e.Token, endpoint: e.Endpoint, CommandTTL: time.Minute}
+	c.bindHTTP(hc)
 	c.api = remoteagentv1connect.NewClientServiceClient(hc, a.Server, connect.WithInterceptors(bearerToken(e.Token)))
 	return c
 }

@@ -1548,5 +1548,45 @@
     "path": "scripts/migrate-security-v4/accepted_v3.go",
     "literal": "ra3/accepted-entry\\x00",
     "reason": "Legacy v3 checksum domain separator or internal validation sentinel. The CLI displays the localized security.migration_acceptance_corrupt message and never exposes this value."
+  },
+  {
+    "path": "web/src/dispatch.ts",
+    "literal": "dispatch_handle_closed",
+    "reason": "Internal dispatch-owner invariant exception, never rendered in normal product flows."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "dispatch_prior_required",
+    "reason": "Programmer-only restored-slot constructor contract; callers must supply prior evidence."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "clock",
+    "reason": "Protocol diagnostic code; the adjacent localized message supplies user-facing text."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "security_unavailable",
+    "reason": "Protocol diagnostic code; the adjacent localized message supplies user-facing text."
+  },
+  {
+    "path": "internal/server/forward_attempts.go",
+    "literal": "entry_refused",
+    "reason": "Machine-readable relay refusal reason, not product copy."
+  },
+  {
+    "path": "internal/server/forward_attempts.go",
+    "literal": "queue_full",
+    "reason": "Machine-readable relay refusal reason, not product copy."
+  },
+  {
+    "path": "internal/server/forward_attempts.go",
+    "literal": "machine is not keeping up",
+    "reason": "Existing relay wire diagnostic moved from hub to the atomic attempt seal; preserves current wire text."
+  },
+  {
+    "path": "internal/remoteclient/epoch.go",
+    "literal": "relay_epoch_unavailable",
+    "reason": "Machine-readable pre-dispatch discovery diagnostic; command outcome presentation remains with the caller."
   }
 ]

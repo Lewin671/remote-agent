@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { readFileSync, writeFileSync, unlinkSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { fromJson, toJson } from "@bufbuild/protobuf";
-import { Remote, CommandError, type RequestSlot } from "../remote";
+import { Remote, CommandError, restoreSlot, type RequestSlot } from "../remote";
 import { CommandSchema, CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
 import { MemorySecurityStorage, recordFromJSON } from "./security-fixture";
 import { concat, fromHex } from "../crypto";
@@ -29,7 +29,7 @@ test.skipIf(!process.env.RA_TRANSPORT_WEB)("serve the real Web Remote RPC path",
    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
    const q=JSON.parse(Buffer.concat(chunks).toString());
    const cmd=fromJson(CommandSchema,q.command);
-   const slot=slots.get(q.id)??{requestId:q.id,deadline:q.deadline};slots.set(q.id,slot);
+   const slot=slots.get(q.id)??restoreSlot({requestId:q.id,deadline:q.deadline,prepared:undefined},true);slots.set(q.id,slot);
    const result=await runtime.forward(q.machine,q.session,cmd.kind,slot);
    res.setHeader("Content-Type","application/json");res.end(JSON.stringify({result:toJson(CommandResultSchema,result)}));
   }catch(error){

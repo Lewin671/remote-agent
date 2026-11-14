@@ -115,7 +115,20 @@ extension Remote {
     public func forward(_ p: PreparedCommand, retryOfUnknown: Bool = false) async throws
         -> PBCommandResult
     {
-        let prior = retryOfUnknown || p.mayHaveRun
+        let call = p.dispatch.open(prior: retryOfUnknown)
+        defer { call.close() }
+        do { return try await forwardPrepared(p, call: call) }
+        catch {
+            let command = error as? CommandError
+            if call.uncertain && command?.unknown != true && !(command?.fromDaemon == true && command?.outcome != .notSent) {
+                throw CommandError.unknownBecause(errorText(error))
+            }
+            throw error
+        }
+    }
+
+    private func forwardPrepared(_ p: PreparedCommand, call: DispatchState.Call) async throws -> PBCommandResult {
+        let prior = call.uncertain
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
         if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
@@ -123,16 +136,15 @@ extension Remote {
         }
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
-        if !retryOfUnknown && !p.mayHaveRun && clock() >= p.deadlineMs {
+        if !call.uncertain && clock() >= p.deadlineMs {
             throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
         }
         var attempt = 0
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
-        var mayHaveRun = prior
         func notSent(_ code: String, _ text: String) -> CommandError {
-            mayHaveRun
+            call.uncertain
                 ? CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
                 : CommandError(code, text)
         }
@@ -143,22 +155,26 @@ extension Remote {
         while true {
             let attemptId = newRequestId()
             req.attemptID = attemptId
+            let delivery = call.delivery()
+            var relayEpoch = ""
             do {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
-                if token.isEmpty { token = try await relogin(mayHaveRun) }
+                if token.isEmpty { token = try await relogin(call.uncertain) }
                 let stateHash = try await authorizationStateHash()
                 req.command = try await p.authorizationTask(stateHash: stateHash) {
                     verifyObservation in
                     Task {
-                        try await self.authorizePrepared(p, verifyObservation: verifyObservation && !prior)
+                        try await self.authorizePrepared(p, verifyObservation: verifyObservation && !call.hasPrior)
                     }
                 }.value
                 try Task.checkCancellation()
                 // Login, authorization and signing can suspend across a machine refresh.
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 let binding = try await securitySession().commandIdentity(req.command)
-                mayHaveRun = true
-                p.dispatched()
+                relayEpoch = try await api.relayEpoch()
+                req.relayEpoch = relayEpoch
+                try Task.checkCancellation()
+                try delivery.dispatch()
                 var headers = Api.headers(token: token)
                 headers["Remote-Agent-Attempt"] = [attemptId]
                 let res = try await api.client.forward(
@@ -178,8 +194,7 @@ extension Remote {
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), outcome: .unknown)
                 }
                 let verified = msg.requestKeyHash == binding.key && msg.payloadHash == binding.payload && res.attemptID == attemptId && res.outcome == msg.outcome && res.reason == msg.reason && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
-                var category = verifiedOutcome(msg,key:binding.key,payload:binding.payload,outerOutcome:res.outcome,outerReason:res.reason)
-                if verified && category == .notSent { mayHaveRun = p.notSent() || retryOfUnknown; if mayHaveRun { category = .unknown } }
+                let category = verifiedOutcome(msg,key:binding.key,payload:binding.payload,outerOutcome:res.outcome,outerReason:res.reason)
                 if !verified || category == .unknown { throw CommandError(CommandError.unknownOutcome,L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(),fromDaemon:true,outcome:.unknown) }
 
                 if category == .executed && !msg.resultAvailable || category == .conflict && msg.conflictKind == "identity" {
@@ -196,23 +211,25 @@ extension Remote {
                 }
                 return msg
             } catch let ce as ConnectError {
-                let notForwarded = (ce.unpackedDetails() as [PBNotForwarded]).first { $0.attemptID == attemptId }
+                let notForwarded = (ce.unpackedDetails() as [PBNotForwarded]).first { $0.attemptID == attemptId && $0.relayEpoch == relayEpoch && !relayEpoch.isEmpty }
                 let unsent = notForwarded != nil
                 if unsent {
-                    mayHaveRun = p.notSent() || retryOfUnknown
-                    if !mayHaveRun && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),notForwarded?.reason == "machine_offline" ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : ce.code == .unavailable ? (ce.message ?? errorText(ce)) : errorText(ce),outcome:.notSent) }
+                    delivery.notForwarded()
+                    if !call.uncertain && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),notForwarded?.reason == "machine_offline" ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : ce.code == .unavailable ? (ce.message ?? errorText(ce)) : errorText(ce),outcome:.notSent) }
                 }
-                if neverSent(ce.exception) { if !unsent { mayHaveRun = p.notSent() || retryOfUnknown }; throw notSent("network", L10n.errorsIosNetworkUnavailableTheCommandWasNotSent()) }
+                // A terminal DNS/connection error can follow an opaque replay. Only
+                // the relay proof may settle a delivery after RPC handoff.
+                if neverSent(ce.exception) { throw notSent("network", L10n.errorsIosNetworkUnavailableTheCommandWasNotSent()) }
                 if ce.code == .unauthenticated && attempt < 3 {
                     attempt += 1
-                    token = try await relogin(mayHaveRun)
+                    token = try await relogin(call.uncertain)
                     continue
                 }
                 // aborted: the daemon could not seal a result, as on the web.
                 let unknown = [
                     Code.deadlineExceeded, .unknown, .internalError, .canceled, .aborted,
                 ].contains(ce.code)
-                if unknown { mayHaveRun = true }
+
                 if unknown && attempt < 3 && clock() + 2000 < p.deadlineMs {
                     attempt += 1
                     try await sleep(1000 * Int64(attempt))
@@ -228,10 +245,10 @@ extension Remote {
             } catch {
                 if let answer = error as? CommandError, answer.fromDaemon { throw answer }
                 if let refusal = error as? CommandError, refusal.code == "file_upload_unsupported" {
-                    if mayHaveRun { throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertain(value: String(describing: refusal.message)), outcome: .unknown) }
+                    if call.uncertain { throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertain(value: String(describing: refusal.message)), outcome: .unknown) }
                     throw refusal
                 }
-                if mayHaveRun {
+                if call.uncertain {
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosNoVerifiableExecutionResultReceivedRetryTheSameRequest(), outcome: .unknown)
                 }
                 throw error

@@ -38,9 +38,14 @@ class Attempt {
         when {
             error == null -> abandon()
             uncertain(error) -> frozen = true
-            frozen && expiry(error) -> {
+            (frozen || pending?.mayHaveRun == true) && expiry(error) -> {
+                frozen = true
                 expired = true
                 return CommandException(CommandException.UNKNOWN, EXPIRED_UNKNOWN, outcome = Outcome.UNKNOWN)
+            }
+            pending?.mayHaveRun == true && !(error is CommandException && error.fromDaemon && error.outcome != Outcome.NOT_SENT) -> {
+                frozen = true
+                return CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, outcome=Outcome.UNKNOWN)
             }
             // Once unknown, only the daemon's own answer settles it; any
             // other failure (a network error, a failed login) leaves it

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Lewin671/remote-agent/internal/netpolicy"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +40,9 @@ type Client struct {
 	endpoint   *deviceauth.Endpoint
 	attemptsMu sync.Mutex
 	attempts   map[string]*dispatchHistory
+	epochMu    sync.Mutex
+	relayEpoch string
+	http       *http.Client
 }
 
 // Token is the bearer token, for tests that talk to the server directly.
@@ -201,9 +205,11 @@ type CommandError struct {
 	Outcome         outcome.Category
 	ConflictKind    string
 	ResultAvailable bool
+	cause           error
 }
 
 func (e *CommandError) Error() string { return e.Code + ": " + e.Message }
+func (e *CommandError) Unwrap() error { return e.cause }
 
 // Uncertain reports whether retrying must preserve the request ID and deadline.
 // Local errors before dispatch are definite; unsigned transport failures are
@@ -272,7 +278,18 @@ func (c *Client) DoMachine(ctx context.Context, machineID string, cmd *pb.Comman
 // Restored, re-sealed or externally supplied envelopes may have been dispatched.
 // NeverDispatched explicitly asserts otherwise; it cannot erase evidence already
 // observed by this Client. Raw API retries should use MayHaveBeenDispatched.
-func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope, prior ...DispatchEvidence) (*pb.CommandResult, error) {
+func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope, prior ...DispatchEvidence) (answer *pb.CommandResult, failure error) {
+	call := c.openCall(env, prior)
+	defer func() {
+		call.close()
+		if failure != nil && call.uncertain() {
+			var ce *CommandError
+			if errors.As(failure, &ce) && (ce.Outcome == outcome.Unknown || ce.FromDaemon && ce.Outcome != outcome.NotSent) {
+				return
+			}
+			failure = &CommandError{Code: "unknown_outcome", Message: failure.Error(), Outcome: outcome.Unknown, cause: failure}
+		}
+	}()
 	if len(prior) > 1 || len(prior) == 1 && prior[0] != MayHaveBeenDispatched && prior[0] != NeverDispatched {
 		return nil, deviceauth.ErrInvalid
 	}
@@ -300,20 +317,28 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	}
 	// History belongs to the logical request key, including across re-sealing
 	// or a conflicting payload. A changed payload must not reset its prior.
-	identity := string(key[:])
-	c.beginDispatch(identity, env, prior)
+	// Epoch discovery carries no command. Its errors settle this call only.
+	epoch, err := c.RelayEpoch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	delivery := call.delivery()
 	attempt := NewRequestID()
-	req := connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env, AttemptId: attempt})
+	req := connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env, AttemptId: attempt, RelayEpoch: epoch})
 	req.Header().Set("Remote-Agent-Attempt", attempt)
+	delivery.dispatch()
 	res, err := c.api.Forward(ctx, req)
 	if err != nil {
 		var ce *connect.Error
 		if errors.As(err, &ce) {
 			for _, detail := range ce.Details() {
 				value, e := detail.Value()
-				if d, ok := value.(*pb.NotForwarded); e == nil && ok && d.AttemptId == attempt {
+				if d, ok := value.(*pb.NotForwarded); e == nil && ok && d.AttemptId == attempt && d.RelayEpoch == epoch {
 					category := outcome.NotSent
-					if c.notForwarded(identity) {
+					if delivery.notForwarded() {
 						category = outcome.Unknown
 					}
 					return nil, &CommandError{Code: ce.Code().String(), Message: ce.Message(), Outcome: category}
@@ -329,7 +354,7 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	}
 	category := outcome.Verify(out, key[:], payload[:], res.Msg.Outcome, res.Msg.Reason, false)
 	if category == outcome.NotSent {
-		if c.notForwarded(identity) {
+		if delivery.notForwarded() {
 			category = outcome.Unknown
 		}
 	}
@@ -524,6 +549,7 @@ func (c *Client) Close() error { return c.endpoint.Close() }
 func NewClient(server, token, deviceID string, endpoint *deviceauth.Endpoint) *Client {
 	hc := netpolicy.Client(time.Minute)
 	c := &Client{Server: server, DeviceID: deviceID, token: token, endpoint: endpoint, CommandTTL: time.Minute}
+	c.bindHTTP(hc)
 	c.api = remoteagentv1connect.NewClientServiceClient(hc, server, connect.WithInterceptors(bearerToken(token)))
 	return c
 }

@@ -209,7 +209,7 @@ func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Endpoint, str
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { clientEndpoint.Close() })
-	return &Client{DeviceID: cm.ID, endpoint: clientEndpoint}, machineEndpoint, mm.ID
+	return &Client{DeviceID: cm.ID, endpoint: clientEndpoint, relayEpoch: "fixture-epoch"}, machineEndpoint, mm.ID
 }
 
 // A failed pull must not erase a local clock observation, even across reopen.
@@ -254,4 +254,15 @@ func TestSyncPersistsObservedTimeBeforeFailedFetch(t *testing.T) {
 	if reopened.Floor() < observed {
 		t.Error("observed time was lost across reopen")
 	}
+}
+
+func testEpochHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(relayEpochHeader, "fixture-epoch")
+		if r.URL.Path == "/healthz" {
+			w.Write([]byte("ok"))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

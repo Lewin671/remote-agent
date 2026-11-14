@@ -30,7 +30,7 @@ func (s *dispatchService) Forward(ctx context.Context, req *connect.Request[pb.F
 
 func refusedAttempt(req *connect.Request[pb.ForwardRequest]) error {
 	err := connect.NewError(connect.CodeUnavailable, errors.New("fixture offline"))
-	detail, _ := connect.NewErrorDetail(&pb.NotForwarded{AttemptId: req.Msg.AttemptId, Reason: "machine_offline"})
+	detail, _ := connect.NewErrorDetail(&pb.NotForwarded{AttemptId: req.Msg.AttemptId, RelayEpoch: req.Msg.RelayEpoch, Reason: "machine_offline"})
 	err.AddDetail(detail)
 	return err
 }
@@ -93,7 +93,7 @@ func TestRestoredDispatchEvidenceSurvivesNotForwarded(t *testing.T) {
 				return connect.NewResponse(cached), nil
 			}}
 			_, service := remoteagentv1connect.NewClientServiceHandler(handler)
-			server := httptest.NewServer(service)
+			server := httptest.NewServer(testEpochHandler(service))
 			t.Cleanup(server.Close)
 			client.api = remoteagentv1connect.NewClientServiceClient(server.Client(), server.URL)
 			ctx := context.Background()
@@ -202,7 +202,7 @@ func TestConcurrentRestoredRefusalsKeepPriorEvidence(t *testing.T) {
 		return nil, refusedAttempt(req)
 	}}
 	_, service := remoteagentv1connect.NewClientServiceHandler(handler)
-	server := httptest.NewServer(service)
+	server := httptest.NewServer(testEpochHandler(service))
 	t.Cleanup(server.Close)
 	env, err := owner.Seal(mid, "", NewRequestID(), time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_CreateSession{CreateSession: &pb.CreateSessionRequest{Cwd: "/work/example"}}})
 	if err != nil {

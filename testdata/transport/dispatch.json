@@ -1,0 +1,25 @@
+[
+  {"name":"preflight_cannot_spend_other_delivery","prior":false,"steps":[
+    {"op":"open","call":"a"},{"op":"delivery","call":"a","delivery":"a1"},{"op":"dispatch","delivery":"a1"},
+    {"op":"open","call":"b"},{"op":"delivery","call":"b","delivery":"b1"},{"op":"unsent","delivery":"b1"},
+    {"op":"check","call":"b","uncertain":true,"hasPrior":true},{"op":"close","call":"b"},
+    {"op":"check","call":"a","uncertain":true,"hasPrior":true},{"op":"close","call":"a"},
+    {"op":"check","call":"a","uncertain":true,"hasPrior":true}]},
+  {"name":"delivery_settles_once","prior":false,"steps":[
+    {"op":"open","call":"a"},{"op":"delivery","call":"a","delivery":"a1"},{"op":"dispatch","delivery":"a1"},
+    {"op":"delivery","call":"a","delivery":"a2"},{"op":"dispatch","delivery":"a2"},
+    {"op":"unsent","delivery":"a2"},{"op":"unsent","delivery":"a2"},
+    {"op":"check","call":"a","uncertain":true,"hasPrior":true},{"op":"close","call":"a"}]},
+  {"name":"preparing_copy_blocks_early_retirement","prior":false,"steps":[
+    {"op":"open","call":"a"},{"op":"open","call":"b"},
+    {"op":"check","call":"a","uncertain":true,"hasPrior":false},
+    {"op":"close","call":"b"},{"op":"check","call":"a","uncertain":false,"hasPrior":false},{"op":"close","call":"a"}]},
+  {"name":"restored_prior_survives_refusal","prior":true,"steps":[
+    {"op":"open","call":"a"},{"op":"delivery","call":"a","delivery":"a1"},{"op":"dispatch","delivery":"a1"},
+    {"op":"unsent","delivery":"a1"},{"op":"close","call":"a"},
+    {"op":"check","call":"a","uncertain":true,"hasPrior":true}]},
+  {"name":"call_close_has_one_owner","prior":false,"steps":[
+    {"op":"open","call":"a"},{"op":"open","call":"b"},{"op":"close","call":"a"},{"op":"close","call":"a"},
+    {"op":"check","call":"a","uncertain":true,"hasPrior":false},{"op":"close","call":"b"},
+    {"op":"check","call":"a","uncertain":false,"hasPrior":false}]}
+]

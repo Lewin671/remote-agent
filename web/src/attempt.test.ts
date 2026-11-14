@@ -100,3 +100,12 @@ it("never replaces an unknown intent after security signing fails locally", () =
   );
   expect(a.frozen).toBe(false);
 });
+
+it("keeps a dispatched request when a raw cancellation reaches settlement", () => {
+  const a = new Attempt<string>(), first = a.next("original");
+  const call = first.slot.evidence.open();
+  call.delivery().dispatch(); call.close();
+  a.settle(new Error("canceled after dispatch"), first);
+  expect(a.frozen).toBe(true);
+  expect(a.next("replacement").slot).toBe(first.slot);
+});

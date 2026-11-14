@@ -282,7 +282,8 @@ final class SessionStore {
                 let ce = error as? CommandError
                 // A failure that came from the computer settles it; one from here leaves an already
                 // unknown message unknown, keeping the same request (Android's Outgoing.deliver).
-                let unknown = uncertain(error) || (wasUnknown && (ce?.fromDaemon != true || ce?.outcome == .notSent))
+                let final = ce?.fromDaemon == true && ce?.unknown != true && ce?.outcome != .notSent
+                let unknown = uncertain(error) || (wasUnknown && !final) || (o.prepared?.mayHaveRun == true && !final)
                 o.state = unknown ? .unknown : .failed
                 o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && (!o.imageIds.isEmpty || !o.fileIds.isEmpty) &&
                     ce?.message.contains("is not on this machine; upload it again") == true

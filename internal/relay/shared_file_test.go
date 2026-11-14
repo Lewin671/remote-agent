@@ -46,7 +46,7 @@ func TestSharedFileBlocksAreSealedWithoutCompression(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		raw, err := e.client.API().Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: s.MachineID, Command: env}))
+		raw, err := e.client.API().Forward(ctx, forwardRequest(e.client, &pb.ForwardRequest{MachineId: s.MachineID, Command: env}))
 		if err != nil {
 			t.Fatal(err)
 		}

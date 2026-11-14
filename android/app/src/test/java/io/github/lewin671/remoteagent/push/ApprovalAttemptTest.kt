@@ -15,7 +15,7 @@ import org.junit.Test
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ApprovalAttemptTest {
     @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
-    private val command = PreparedCommand("m", "s", "r", 1, Envelope.getDefaultInstance())
+    private val command = PreparedCommand("m", "s", "r", 1, Envelope.getDefaultInstance(), prior=false)
 
     @Test fun noAccountAndLocallyDisabledKindsNeverShowPushes() {
         val attention = NotifyKind.NOTIFY_KIND_ATTENTION
@@ -73,7 +73,7 @@ class ApprovalAttemptTest {
         assertTrue(canceled is CancellationException)
         assertEquals(ApprovalRecord.SENT, durable)
 
-        val reopened = PreparedCommand(command.machineId, command.sessionId, command.requestId, command.deadlineMs, command.envelope)
+        val reopened = PreparedCommand(command.machineId, command.sessionId, command.requestId, command.deadlineMs, command.envelope, prior=false)
         val refused = runCatching {
             sendApproval(reopened, durable, record) { p, retry ->
                 assertTrue(retry)

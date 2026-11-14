@@ -20,7 +20,7 @@ class OutcomeTest {
    val error=CommandException(s("code"),"fixture",fromDaemon=s("source")=="daemon"&&b("signed"),outcome=category,conflictKind=if(category==Outcome.CONFLICT)s("conflictKind") else "",resultAvailable=b("resultAvailable"))
    val frozen=category==Outcome.UNKNOWN || category==Outcome.CONFLICT&&s("conflictKind")=="identity" || category==Outcome.EXECUTED&&!b("resultAvailable")
    assertEquals(row.toString(),frozen,uncertain(error))
-   val attempt=Attempt();val first=attempt.next {PreparedCommand("machine","","fixture-request",1000,Envelope.getDefaultInstance())}
+   val attempt=Attempt();val first=attempt.next {PreparedCommand("machine","","fixture-request",1000,Envelope.getDefaultInstance(), prior=false)}
    if(b("prior"))attempt.settle(CommandException(CommandException.UNKNOWN,"fixture",outcome=Outcome.UNKNOWN))
    attempt.settle(error);assertEquals(row.toString(),frozen,attempt.frozen)
    if(attempt.frozen&&!attempt.expired)org.junit.Assert.assertSame(first,attempt.next {error("unknown retry rebuilt")})

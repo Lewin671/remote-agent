@@ -56,6 +56,7 @@ val buildTestFixtures by tasks.registering(Exec::class) {
 tasks.test {
     timeout.set(Duration.ofMinutes(5))
     inputs.file(rootProject.file("../testdata/transport/outcomes.json"))
+    inputs.file(rootProject.file("../testdata/transport/dispatch.json"))
     systemProperty("outcomeVectors", rootProject.file("../testdata/transport/outcomes.json").absolutePath)
     inputs.dir(rootProject.file("../i18n/messages")).withPathSensitivity(PathSensitivity.RELATIVE)
     // Classes own isolated relay processes; keep each class ordered and overlap

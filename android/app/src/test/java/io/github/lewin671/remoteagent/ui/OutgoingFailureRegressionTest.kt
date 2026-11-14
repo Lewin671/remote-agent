@@ -15,6 +15,23 @@ class OutgoingFailureRegressionTest {
     @get:Rule val resources = SessionMessageContextRule()
     private fun feedback(o: Outgoing, locale: String = "zh-CN") = outgoingFailure(o) { messageTextForTest(it, locale) }
 
+    @Test fun cancellationAfterPreparationReadsEvidenceInsteadOfEntryState() = runBlocking {
+        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+        try {
+            val bytes = io.github.lewin671.remoteagent.proto.Command.getDefaultInstance().toByteArray()
+            val o = Outgoing("original", "keep", fileIds = listOf("file"), targetMachineId = "machine", commandBytes = bytes)
+            val id = o.commandRequestId
+            o.deliver { request ->
+                o.prepareDelivery(remote, "s", request, prior = true)
+                throw kotlinx.coroutines.CancellationException("after dispatch")
+            }
+            assertEquals(Outgoing.State.UNKNOWN, o.state)
+            assertEquals(id, o.commandRequestId)
+            assertEquals("original", o.requestId)
+            assertEquals(listOf("file"), o.fileIds)
+        } finally { remote.close() }
+    }
+
     @Test fun resultNoticesUseTheExactCopyAndPreserveTheRequest() = runBlocking {
         val cases=listOf(
             CommandException("",UiMessages.errorsExecutedResultUnavailable().messageText(),fromDaemon=true,outcome=Outcome.EXECUTED,resultAvailable=false) to UiMessages.errorsExecutedResultUnavailable(),

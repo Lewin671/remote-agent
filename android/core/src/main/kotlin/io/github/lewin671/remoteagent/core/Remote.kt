@@ -324,16 +324,15 @@ class PreparedCommand(
     val envelope: Envelope,
     command: Command? = null,
     serializedCommand: ByteArray? = null,
+    prior: Boolean,
 ) {
     private val payload = serializedCommand?.copyOf() ?: command?.toByteArray()
     internal val command: Command? = payload?.let(Command::parseFrom)
     fun commandBytes(): ByteArray? = payload?.copyOf()
     internal val sealMutex = kotlinx.coroutines.sync.Mutex()
     internal var authorizedEnvelope: Envelope? = null
-    private var dispatchedAttempts = 0
-    internal val mayHaveRun: Boolean get() = synchronized(this) { dispatchedAttempts > 0 }
-    internal fun dispatched() = synchronized(this) { dispatchedAttempts++ }
-    internal fun notSent(): Boolean = synchronized(this) { dispatchedAttempts=(dispatchedAttempts-1).coerceAtLeast(0); dispatchedAttempts>0 }
+    internal val dispatch = DispatchState(prior)
+    val mayHaveRun: Boolean get() = dispatch.unresolved
 
     override fun toString() = "PreparedCommand(request=$requestId)"
 }
@@ -3015,7 +3014,7 @@ class Remote(
             requestId,
             deadlineMs,
             Envelope.getDefaultInstance(),
-            observed,
+            observed, prior=false,
         )
     }
 
@@ -3333,50 +3332,59 @@ class Remote(
     }
 
     suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult =
-        withContext(dispatcher) { forwardOnWorker(p, retryOfUnknown) }
+        run {
+            val call = p.dispatch.open(retryOfUnknown)
+            try { withContext(dispatcher) { forwardOnWorker(p, call) } }
+            catch (error: Exception) {
+                val command = error as? CommandException
+                if (call.uncertain && command?.unknown != true && !(command?.fromDaemon == true && command.outcome != Outcome.NOT_SENT)) {
+                    throw CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, outcome=Outcome.UNKNOWN)
+                }
+                throw error
+            } finally { call.close() }
+        }
 
-    private suspend fun forwardOnWorker(p: PreparedCommand, retryOfUnknown: Boolean): CommandResult {
-        val prior = retryOfUnknown || p.mayHaveRun
+    private suspend fun forwardOnWorker(p: PreparedCommand, call: DispatchState.Call): CommandResult {
+        val prior = call.uncertain
         checkFileCapability(p, prior)
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
         protocolMismatch(state.value.machines[p.machineId])?.let {
             throw CommandException("failed_precondition", it, outcome=if(prior) Outcome.UNKNOWN else Outcome.NOT_SENT)
         }
-        if (!retryOfUnknown && !p.mayHaveRun && state.value.machines[p.machineId]?.online == false)
+        if (!call.uncertain && state.value.machines[p.machineId]?.online == false)
             throw CommandException(CommandException.UNAVAILABLE, UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText(), failureKind = CommandFailureKind.COMPUTER_OFFLINE)
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
-        if (!retryOfUnknown && !p.mayHaveRun && clock() >= p.deadlineMs)
+        if (!call.uncertain && clock() >= p.deadlineMs)
             throw CommandException(CommandException.EXPIRED, UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText())
         var attempt = 0
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
-        var mayHaveRun = prior
         fun notSent(code: String, text: MessageText) =
-            if (mayHaveRun)
+            if (call.uncertain)
                 CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED, outcome = Outcome.UNKNOWN)
             else CommandException(code, text)
-        var waiting = false
+
         // A previous try may have got the command to the daemon: a later
         // "machine offline" then says nothing about it.
         try {
             while (true) {
-                waiting = false
                 var sentToken: String? = null
                 val attemptId = newRequestId()
+                val delivery = call.delivery()
+                var relayEpoch = ""
                 try {
-                    checkFileCapability(p, mayHaveRun)
+                    checkFileCapability(p, call.uncertain)
                     sentToken = currentToken()
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                    val authorized = authorize(p,retryOfUnknown=mayHaveRun)
+                    val authorized = authorize(p,retryOfUnknown=call.hasPrior)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                    checkFileCapability(p, mayHaveRun)
+                    checkFileCapability(p, call.uncertain)
                     val binding = security.commandIdentity(authorized)
-                    waiting = true
-                    mayHaveRun = true
-                    p.dispatched()
+                    relayEpoch = api.relayEpoch()
+                    delivery.dispatch()
                     val res =
                         api.client
                             .forward(
@@ -3384,6 +3392,7 @@ class Remote(
                                     .setMachineId(p.machineId)
                                     .setCommand(authorized)
                                     .setAttemptId(attemptId)
+                                    .setRelayEpoch(relayEpoch)
                                     .build(),
                                 Api.headers(sentToken) + ("Remote-Agent-Attempt" to listOf(attemptId)),
                             )
@@ -3406,8 +3415,7 @@ class Remote(
                             throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
                         }
                     val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) && msg.payloadHash.toByteArray().contentEquals(binding.second) && res.attemptId==attemptId && res.outcome==msg.outcome && res.reason==msg.reason && (msg.outcome=="conflict" || msg.conflictKind.isEmpty())
-                    var category = verifiedOutcome(msg,binding.first,binding.second,res.outcome,res.reason)
-                    if(verified && category==Outcome.NOT_SENT) {mayHaveRun=p.notSent() || retryOfUnknown;if(mayHaveRun)category=Outcome.UNKNOWN}
+                    val category = verifiedOutcome(msg,binding.first,binding.second,res.outcome,res.reason)
                     if (!verified || category==Outcome.UNKNOWN) throw CommandException(CommandException.UNKNOWN,UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),fromDaemon=true,outcome=Outcome.UNKNOWN)
 
                     if ((category==Outcome.EXECUTED && !msg.resultAvailable) || (category==Outcome.CONFLICT && msg.conflictKind=="identity")) {
@@ -3423,27 +3431,27 @@ class Remote(
                     }
                     return msg
                 } catch (ce: ConnectException) {
-                    waiting = false
                     val notForwarded = ce.details.mapNotNull { detail ->
                         if (!detail.type.endsWith("remoteagent.v1.NotForwarded")) null
                         else runCatching { io.github.lewin671.remoteagent.proto.NotForwarded.parseFrom(detail.payload.toByteArray()) }.getOrNull()
-                    }.firstOrNull { it.attemptId == attemptId }
+                    }.firstOrNull { it.attemptId == attemptId && it.relayEpoch == relayEpoch && relayEpoch.isNotEmpty() }
                     val unsent = notForwarded != null
                     if (unsent) {
-                        mayHaveRun=p.notSent() || retryOfUnknown
-                        if (!mayHaveRun && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (notForwarded?.reason=="machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else if (ce.code==Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
+                        delivery.notForwarded()
+                        if (!call.uncertain && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (notForwarded?.reason=="machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else if (ce.code==Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
                     }
                     val cause = ce.exception
                     if (
                         cause is java.net.UnknownHostException || cause is java.net.ConnectException
                     ) {
-                        if (!unsent) mayHaveRun=p.notSent() || retryOfUnknown
+                        // A caller interceptor can fail after consuming a response.
+                        // A transport exception alone cannot settle this RPC delivery.
                         throw notSent("network", UiMessages.errorsAndroidNetworkUnavailableCommandWasNotSent().messageText())
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                         attempt++
                         loginTokens.discard(sentToken)
-                        relogin(mayHaveRun)
+                        relogin(call.uncertain)
                         continue
                     }
                     // ABORTED: the daemon could not seal a result, as on the web.
@@ -3456,9 +3464,7 @@ class Remote(
                                 Code.CANCELED,
                                 Code.ABORTED,
                             )
-                    if (unknown) {
-                        mayHaveRun = true
-                    }
+
                     if (unknown && attempt < 3 && clock() + 2000 < p.deadlineMs) {
                         attempt++
                         delay(1000L * attempt)
@@ -3477,13 +3483,13 @@ class Remote(
                 }
             }
         } catch (e: CancellationException) {
-            if (waiting || mayHaveRun)
+            if (call.uncertain)
                 throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownStoppedWaitingForAReplyRetryingSends().messageText(), failureKind = CommandFailureKind.UNKNOWN, outcome = Outcome.UNKNOWN)
             throw e
         } catch (e: Exception) {
             // Only an authenticated daemon answer settles a dispatched request.
             if (e is CommandException && (e.fromDaemon || e.unknown)) throw e
-            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidNoVerifiableExecutionResultReceivedRetryTheSameRequest().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
+            if (call.uncertain) throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidNoVerifiableExecutionResultReceivedRetryTheSameRequest().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
             throw e
         }
     }

@@ -11,7 +11,7 @@ import org.junit.Test
 
 class AnswersTest {
     private var n = 0
-    private fun prepare(options: List<Int>) = PreparedCommand("m1", "s1", "req-${++n}-$options", 0, Envelope.getDefaultInstance())
+    private fun prepare(options: List<Int>) = PreparedCommand("m1", "s1", "req-${++n}-$options", 0, Envelope.getDefaultInstance(), prior=false)
 
     @Test
     fun anAnswerWithAnUnknownOutcomeIsSentAgainUnchanged() = runBlocking {

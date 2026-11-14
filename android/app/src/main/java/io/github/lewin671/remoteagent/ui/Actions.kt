@@ -82,6 +82,7 @@ class Outgoing(
     commandBytes: ByteArray? = null,
 ) {
     private var preparedBytes: ByteArray? = commandBytes?.copyOf()
+    private var preparedCommand: io.github.lewin671.remoteagent.core.PreparedCommand? = null
     internal fun commandBytes(): ByteArray? = preparedBytes?.copyOf()
     var commandRequestId: String = commandRequestId
         private set
@@ -119,13 +120,15 @@ class Outgoing(
             if (wasFailed) {
                 commandRequestId = newRequestId()
                 preparedBytes = null
+                preparedCommand = null
                 commandDeadlineMs = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS
             }
             send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).addAllFileIds(fileIds).setMode(mode).build())
             state = State.SENT
         } catch (e: Exception) {
             val ce = e as? CommandException
-            val unknown = ce?.unknown == true || (wasUnknown && (ce?.fromDaemon != true || ce.outcome == io.github.lewin671.remoteagent.core.Outcome.NOT_SENT))
+            val final = ce?.fromDaemon == true && !ce.unknown && ce.outcome != io.github.lewin671.remoteagent.core.Outcome.NOT_SENT
+            val unknown = ce?.unknown == true || (wasUnknown && !final) || (preparedCommand?.mayHaveRun == true && !final)
             state = if (unknown) State.UNKNOWN else State.FAILED
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
                 (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
@@ -150,13 +153,14 @@ class Outgoing(
         error = sessionText(checkNotNull(failureDisplay))
     }
 
-    internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest): io.github.lewin671.remoteagent.core.PreparedCommand {
+    internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest, prior: Boolean): io.github.lewin671.remoteagent.core.PreparedCommand {
         val machine = targetMachineId ?: remote.state.value.sessions[sid]?.machineId
             ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         targetMachineId = machine
-        preparedBytes?.let { return io.github.lewin671.remoteagent.core.PreparedCommand(machine,sid,commandRequestId,commandDeadlineMs,io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance(),serializedCommand=it) }
+        preparedCommand?.let { return it }
+        preparedBytes?.let { return io.github.lewin671.remoteagent.core.PreparedCommand(machine,sid,commandRequestId,commandDeadlineMs,io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance(),serializedCommand=it, prior=prior).also { restored -> preparedCommand = restored } }
         return remote.prepare(machine, sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() },
-            requestId = commandRequestId, deadlineMs = commandDeadlineMs).also { preparedBytes=it.commandBytes() }
+            requestId = commandRequestId, deadlineMs = commandDeadlineMs).also { preparedBytes=it.commandBytes(); preparedCommand=it }
     }
 
     private var delivering = false
@@ -477,7 +481,7 @@ object Outbox {
             if (account !== AccountMemory.token) return@launch
             val retry = o.state == Outgoing.State.UNKNOWN
             o.deliver { request ->
-                val prepared = o.prepareDelivery(remote, sid, request)
+                val prepared = o.prepareDelivery(remote, sid, request, prior = retry)
                 remote.requireFileSupport(prepared.machineId, o.fileIds.isNotEmpty(), retry)
                 if (o.images.isNotEmpty()) {
                     val kept = records

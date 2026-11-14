@@ -21,8 +21,17 @@ class AttemptTest {
             assertFalse(uncertain(CommandException(code, "local refusal")))
         }
     }
+    @Test fun rawCancellationAtSettlementKeepsActualDispatch() {
+        val a = Attempt()
+        val first = a.next(::make)
+        val call = first.dispatch.open(false)
+        call.delivery().dispatch(); call.close()
+        a.settle(kotlinx.coroutines.CancellationException("after dispatch"))
+        assertTrue(a.frozen)
+        assertSame(first, a.next(::make))
+    }
     private var n = 0
-    private fun make() = PreparedCommand("m", "", "req-${++n}", 1000, Envelope.getDefaultInstance())
+    private fun make() = PreparedCommand("m", "", "req-${++n}", 1000, Envelope.getDefaultInstance(), prior=false)
 
     @Test
     fun anUnknownOutcomeIsRetriedAsItWas() {

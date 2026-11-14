@@ -1,3 +1,4 @@
+import { DispatchState, type DispatchCall } from "./dispatch";
 import { machineNotificationKinds } from "./machine-notifications";
 import { verifiedOutcome, type Outcome } from "./outcome";
 import * as l10n from "./i18n";
@@ -64,7 +65,7 @@ import {
   type Interceptor,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { relayFetch } from "./transport";
+import { relayFetch, relayEpoch } from "./transport";
 import { closeScheduleNotification, restorePushPrefs, watchSecurityPush } from "./push";
 import {
   checkServer,
@@ -240,15 +241,21 @@ export interface PreparedPayload {
   sid: string;
   plain: Uint8Array<ArrayBuffer>;
 }
-export interface RequestSlot {
-  requestId: string;
-  deadline: number;
-  prepared?: PreparedPayload;
+export class RequestSlot {
+  evidence: DispatchState;
   beforeDispatch?: (slot: RequestSlot) => Promise<void>;
+  constructor(public requestId: string, public deadline: number, public prepared: PreparedPayload | undefined, readonly prior: boolean) {
+    if (typeof prior !== "boolean") throw new TypeError("dispatch_prior_required");
+    this.evidence = new DispatchState(prior);
+  }
+}
+/** Imports require an explicit statement about prior dispatch; bytes alone prove nothing. */
+export function restoreSlot(saved: Pick<RequestSlot, "requestId" | "deadline" | "prepared">, prior: boolean): RequestSlot {
+  return new RequestSlot(saved.requestId, saved.deadline, saved.prepared, prior);
 }
 
 export function newSlot(now = Date.now()): RequestSlot {
-  return { requestId: newRequestID(), deadline: now + COMMAND_TTL_MS };
+  return new RequestSlot(newRequestID(), now + COMMAND_TTL_MS, undefined, false);
 }
 
 export class ScheduleRevisionError extends Error {}
@@ -3134,13 +3141,17 @@ export class Remote {
     cmd: CommandKind,
     slot = newSlot(),
   ): Promise<CommandResult> {
+    return this.withDispatch(slot, call => this.commandWithDispatch(sid, cmd, slot, call));
+  }
+
+  private async commandWithDispatch(sid: string, cmd: CommandKind, slot: RequestSlot, call: DispatchCall): Promise<CommandResult> {
     const authorized = this.authorizedCommands.get(slot) ?? (slot.prepared && this.preparePayload("", "", cmd, slot));
     if (authorized)
-      return this.forward(
+      return this.forwardCall(
         authorized.machineId,
         authorized.sid,
         authorized.cmd,
-        slot,
+        slot, call,
       );
     const s = this.sessions.get(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
@@ -3214,7 +3225,7 @@ export class Remote {
           };
       }
     }
-    return this.forward(s.machineId, sid, cmd, slot);
+    return this.forwardCall(s.machineId, sid, cmd, slot, call);
   }
 
   async getMachineStatus(machineId: string, signal?: AbortSignal) {
@@ -3253,13 +3264,27 @@ export class Remote {
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
-  private readonly dispatchedCommands = new WeakMap<RequestSlot,number>();
-  private unsentAttempt(slot:RequestSlot):boolean {
-    const remaining=Math.max(0,(this.dispatchedCommands.get(slot)??1)-1);
-    if(remaining) this.dispatchedCommands.set(slot,remaining); else this.dispatchedCommands.delete(slot);
-    return remaining>0;
+  protected relayEpoch(): Promise<string> { return relayEpoch(this.account.server); }
+  private readonly dispatchStates = new Map<string, DispatchState>();
+  private dispatchState(slot: RequestSlot): DispatchState {
+    if (!(slot instanceof RequestSlot)) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
+    const state = this.dispatchStates.get(slot.requestId) ?? slot.evidence;
+    state.includePrior(slot.prior);
+    this.dispatchStates.set(slot.requestId, state);
+    slot.evidence = state;
+    return state;
   }
-
+  private async withDispatch<T>(slot: RequestSlot, work: (call: DispatchCall) => Promise<T>): Promise<T> {
+    const call = this.dispatchState(slot).open();
+    try { return await work(call); }
+    catch (error) {
+      if (call.uncertain && !uncertain(error) && !(error instanceof CommandError && error.fromDaemon && error.outcome !== "not_sent")) {
+        if (error instanceof CommandError) throw new CommandError(error.code, ["clock", "security_unavailable"].includes(error.code) ? l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result") : error.message, error.fromDaemon, error.readOnly, "unknown", error.conflictKind, error.resultAvailable);
+        throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
+      }
+      throw error;
+    } finally { call.close(); }
+  }
   private async forward(
     machineId: string,
     sid: string,
@@ -3267,11 +3292,15 @@ export class Remote {
     slot = newSlot(),
     signal?: AbortSignal,
   ): Promise<CommandResult> {
+    return this.withDispatch(slot, call => this.forwardCall(machineId, sid, cmd, slot, call, signal));
+  }
+
+  private async forwardCall(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot, call: DispatchCall, signal?: AbortSignal): Promise<CommandResult> {
     const prepared = this.preparePayload(machineId,sid,cmd,slot);
     ({machineId,sid,cmd}=prepared);
     const { requestId, deadline } = prepared;
-    const priorOutcome: Outcome = this.dispatchedCommands.has(slot) ? "unknown" : "not_sent";
-    if (!this.dispatchedCommands.has(slot) && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
+    const priorOutcome: Outcome = call.uncertain ? "unknown" : "not_sent";
+    if (!call.uncertain && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS)
       throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
     // A machine of another protocol version would refuse the command, in
     // words that do not say which side to update: say so here, unsent.
@@ -3306,6 +3335,7 @@ export class Remote {
       );
     } catch (e) {
       this.noteClock(e);
+      if (call.uncertain) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
       if (e instanceof SecurityError && e.code === "clock")
         throw new CommandError(
           "clock",
@@ -3327,22 +3357,23 @@ export class Remote {
     await slot.beforeDispatch?.(slot);
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
-    let mayHaveRun = this.dispatchedCommands.has(slot);
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
       const attemptId = newRequestID();
+      const delivery = call.delivery();
+      let epoch = "";
       try {
         if (attempt > 0 && Date.now() >= deadline)
           throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
         // Metadata may refresh while sealing, logging in or backing off.
         // Check the immutable authorized payload, including unknown retries.
-        this.checkFileCapability(machineId, cmd, mayHaveRun);
+        this.checkFileCapability(machineId, cmd, call.uncertain);
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
-        mayHaveRun = true;
+        epoch = await this.relayEpoch();
         signal?.throwIfAborted();
-        this.dispatchedCommands.set(slot,(this.dispatchedCommands.get(slot)??0)+1);
-        const res = await this.api.forward({ machineId, command: env, attemptId },{signal, headers:{"Remote-Agent-Attempt":attemptId}});
+        delivery.dispatch();
+        const res = await this.api.forward({ machineId, command: env, attemptId, relayEpoch: epoch },{signal, headers:{"Remote-Agent-Attempt":attemptId}});
         let msg: CommandResult;
         try {
           msg = (
@@ -3364,8 +3395,7 @@ export class Remote {
         }
         const binding = await requestIdentity(parseHeader(new Uint8Array(env.securityHeader)), prepared.plain);
         const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && res.outcome===msg.outcome && res.reason===msg.reason && (msg.outcome==="conflict" || msg.conflictKind==="");
-        let category = verifiedOutcome(msg,binding.key,binding.payload,res.outcome,res.reason,false);
-        if(verified && category==="not_sent") {mayHaveRun=this.unsentAttempt(slot);if(mayHaveRun)category="unknown";}
+        const category = verifiedOutcome(msg,binding.key,binding.payload,res.outcome,res.reason,false);
         if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
 
         if (category === "executed" && !msg.resultAvailable || category === "conflict" && msg.conflictKind === "identity") {
@@ -3384,11 +3414,11 @@ export class Remote {
         // daemon answers still freeze the caller's request slot.
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
-        const notForwarded = ce.findDetails(NotForwardedSchema).find(d=>d.attemptId===attemptId);
+        const notForwarded = ce.findDetails(NotForwardedSchema).find(d=>d.attemptId===attemptId && d.relayEpoch===epoch && !!epoch);
         const unsent = notForwarded !== undefined;
         if (unsent) {
-          mayHaveRun=this.unsentAttempt(slot);
-          if (!mayHaveRun && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),notForwarded?.reason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
+          delivery.notForwarded();
+          if (!call.uncertain && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),notForwarded?.reason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
         }
         if (ce.code === Code.Unauthenticated && attempt < 3) {
           try {
@@ -3409,18 +3439,17 @@ export class Remote {
           Code.Canceled,
           Code.Aborted,
         ].includes(ce.code);
-        if (unknown) mayHaveRun = true;
         const delay = 1000 * (attempt + 1);
         if (unknown && attempt < 3 && Date.now() + delay < deadline) {
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
         if (ce.code === Code.Unavailable)
-          throw mayHaveRun
+          throw call.uncertain
             ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"), false, false, "unknown")
             : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
         if (unknown) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
-        if (mayHaveRun)
+        if (call.uncertain)
           throw new CommandError(
             "unknown_outcome",
             l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
@@ -3444,7 +3473,7 @@ export class Remote {
     mode = SendMode.STEER,
     fileIds: string[] = [],
   ): Promise<RequestSlot> {
-    if (wasUnknown && !this.dispatchedCommands.has(slot)) this.dispatchedCommands.set(slot, 1);
+    if (wasUnknown) this.dispatchState(slot).includePrior(true);
     const cmd: CommandKind = {
       case: "send",
       value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
@@ -3595,12 +3624,13 @@ export class Remote {
       outcomeNotice: false,
       missingImages: false,
     });
+    const sending = restoreSlot({requestId: o.requestId, deadline: o.deadline, prepared: o.prepared}, o.unknown ?? false);
     try {
-      const sending: RequestSlot = {requestId: o.requestId, deadline: o.deadline, prepared: o.prepared, beforeDispatch: async slot => {
+      sending.beforeDispatch = async slot => {
         this.patchOut(sid,o.sendId,{requestId:slot.requestId,deadline:slot.deadline,prepared:slot.prepared});
         await this.keepOutbox(sid);
         this.forwardingOutbox.add(o.sendId);
-      }};
+      };
       const slot = await this.sendMessage(
         sid,
         o.text,
@@ -3615,7 +3645,8 @@ export class Remote {
     } catch (e) {
       // Once unknown, it stays unknown and keeps its request (attempt.ts);
       // the send ID also keeps the daemon from queueing the text twice.
-      const still = stillUnknown(e, o.unknown ?? false);
+      const final = e instanceof CommandError && e.fromDaemon && e.outcome !== "not_sent" && !uncertain(e);
+      const still = stillUnknown(e, o.unknown ?? false) || (sending.evidence.unresolved && !final);
       const missingImages =
         !still &&
         e instanceof CommandError &&

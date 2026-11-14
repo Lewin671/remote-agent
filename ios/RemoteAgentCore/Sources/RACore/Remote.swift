@@ -42,7 +42,8 @@ public final class PreparedCommand: @unchecked Sendable {
     public func recordBytes() throws -> Data {
         try JSONEncoder().encode(Stored(machineId:machineId,sessionId:sessionId,requestId:requestId,deadlineMs:deadlineMs,payload:commandBytes()))
     }
-    public init(recordBytes: Data) throws {
+    public init(recordBytes: Data, prior: Bool) throws {
+        dispatch = DispatchState(prior: prior)
         let record=try JSONDecoder().decode(Stored.self,from:recordBytes)
         machineId=record.machineId;sessionId=record.sessionId;requestId=record.requestId;deadlineMs=record.deadlineMs
         payload = .success(record.payload)
@@ -53,10 +54,8 @@ public final class PreparedCommand: @unchecked Sendable {
     private var sealID: UUID?
     private var sealState: Data?
     private var everAuthorized = false
-    private var dispatchedAttempts = 0
-    var mayHaveRun: Bool { sealLock.withLock { dispatchedAttempts > 0 } }
-    func dispatched() { sealLock.withLock { dispatchedAttempts += 1 } }
-    func notSent() -> Bool { sealLock.withLock { dispatchedAttempts = max(0,dispatchedAttempts-1); return dispatchedAttempts > 0 } }
+    let dispatch: DispatchState
+    public var mayHaveRun: Bool { dispatch.unresolved }
     private func clearAuthorization(_ id: UUID) {
         sealLock.lock()
         defer { sealLock.unlock() }
@@ -104,6 +103,7 @@ public final class PreparedCommand: @unchecked Sendable {
         self.requestId = requestId
         self.deadlineMs = deadlineMs
         self.command = command
+        self.dispatch = DispatchState(prior: false)
         self.payload = Result { try command.serializedData() }
     }
 }

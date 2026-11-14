@@ -101,6 +101,77 @@ class RemoteTest {
         return r
     }
 
+    @Test fun rpcTransportPreventsUncountedPostReplay() = runBlocking<Unit> {
+        val r=client();r.start();r.awaitState("online") {it.conn==ConnState.ONLINE}
+        val prepared=r.prepare(daemon.id,"s1",Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId("s1")).build())
+        val envelope=r.authorize(prepared)
+        for(mode in listOf("disconnect","retry-after","request-timeout","h2-refused","redirect","authentication","interceptor").filter { System.getenv("RA_WIRE_CASE").isNullOrEmpty() || System.getenv("RA_WIRE_CASE") == it }) {
+            for(protected in listOf(false,true)) {
+                RetryWireServer(mode).use { wire ->
+                    val transport=http.newBuilder().retryOnConnectionFailure(true).apply {
+                        if(mode=="h2-refused") protocols(listOf(okhttp3.Protocol.H2_PRIOR_KNOWLEDGE))
+                        if(mode=="redirect") followRedirects(true)
+                        if(mode=="authentication") authenticator { _,response -> response.request.newBuilder().header("Authorization","fixture").build() }
+                        if(mode=="interceptor") addInterceptor { chain ->
+                            val first=chain.proceed(chain.request());first.close();chain.proceed(chain.request())
+                        }
+                    }.build()
+                    if(mode!="interceptor") transport.newCall(okhttp3.Request.Builder().url(wire.url+"/warm").build()).execute().use {it.body.string()}
+                    val api=if(protected) Api(wire.url,transport).client else ClientServiceClient(com.connectrpc.impl.ProtocolClient(com.connectrpc.okhttp.ConnectOkHttpClient(transport),com.connectrpc.ProtocolClientConfig(host=wire.url,serializationStrategy=LiteProtobufStrategy,networkProtocol=com.connectrpc.protocols.NetworkProtocol.CONNECT)))
+                    val state=DispatchState(false);val call=state.open(false);val delivery=call.delivery()
+                    val request=ForwardRequest.newBuilder().setMachineId(daemon.id).setCommand(envelope).setAttemptId("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").setRelayEpoch("wire-epoch").build()
+                    delivery.dispatch()
+                    val error=runCatching {api.forward(request,emptyMap()).value()}.exceptionOrNull() as com.connectrpc.ConnectException
+                    val refusal=error.details.mapNotNull {runCatching {NotForwarded.parseFrom(it.payload.toByteArray())}.getOrNull()}.any {it.attemptId==request.attemptId&&it.relayEpoch==request.relayEpoch}
+                    if(refusal)delivery.notForwarded()
+                    org.junit.Assert.assertEquals("$mode protected=$protected error=$error",if(protected)1 else 2,wire.posts.get())
+                    org.junit.Assert.assertEquals(protected,call.uncertain)
+                    org.junit.Assert.assertTrue(wire.attempts.all {it==request.attemptId})
+                    call.close()
+                }
+            }
+        }
+    }
+
+    @Test fun aDnsErrorAfterDeliveryCannotClaimNotSent() = runBlocking<Unit> {
+        val delivered = java.util.concurrent.atomic.AtomicInteger()
+        val transport = http.newBuilder().addInterceptor { chain ->
+            val response = chain.proceed(chain.request())
+            if (chain.request().url.encodedPath.endsWith("/Forward")) {
+                response.close(); delivered.incrementAndGet()
+                throw java.net.UnknownHostException("after delivery")
+            }
+            response
+        }.build()
+        val account = approvedClient(daemon.phone, transport)
+        val r = fixtureRemote(account, transport)
+        closers += AutoCloseable { r.close() }
+        r.start();r.awaitState("online") { it.conn == ConnState.ONLINE }
+        val p = r.prepare(daemon.id, "s1", Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId("s1")).build())
+        try { r.forward(p); fail("lost response returned success") } catch (e:Exception) { assertTrue(uncertain(e)) }
+        assertEquals(1,delivered.get());assertTrue(p.mayHaveRun)
+    }
+
+    @Test fun loginDnsBeforeDispatchCannotSpendThePreviousAttempt() = runBlocking<Unit> {
+        val now=java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+        val failLogin=java.util.concurrent.atomic.AtomicBoolean()
+        val gated=http.newBuilder().addInterceptor { chain ->
+            if(failLogin.get()&&chain.request().url.encodedPath.endsWith("/GetChallenge"))throw java.net.UnknownHostException("fixture login DNS")
+            chain.proceed(chain.request())
+        }.build()
+        val r=fixtureRemote(approvedClient(daemon.phone,http),gated,clock=now::get);closers+=AutoCloseable{r.close()}
+        r.start();r.awaitState("online") {it.conn==ConnState.ONLINE}
+        val p=r.prepare(daemon.id,"s1",Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId("s1")).build())
+        daemon.garbleResults=true
+        org.junit.Assert.assertTrue(uncertain(runCatching {r.forward(p)}.exceptionOrNull()!!))
+        daemon.garbleResults=false
+        r.stop();r.awaitState("stopped") {it.conn==ConnState.OFFLINE}
+        failLogin.set(true);now.addAndGet(31L*24*60*60*1000)
+        val error=runCatching {r.forward(p)}.exceptionOrNull()
+        org.junit.Assert.assertTrue("prior was lost: $error",error is CommandException && error.unknown)
+        org.junit.Assert.assertTrue(p.dispatch.hasPrior)
+    }
+
     @Test
     fun retiredSessionAndCachedEventShowTheSameExplicitError() = runBlocking<Unit> {
         val cache = MemoryCache()
@@ -305,7 +376,7 @@ class RemoteTest {
         assertFalse(raw.contentEquals(command.toByteArray()))
         val r=client();r.start();r.awaitState("online") {it.conn==ConnState.ONLINE&&it.machines[daemon.id]?.online==true}
         daemon.answer={_,cmd -> if(cmd.hasCreateSession()) CommandResult.newBuilder().setCreateSession(CreateSessionResponse.newBuilder().setSession(Session.newBuilder().setId("fixture-created"))).build() else FakeDaemon.defaultResult(cmd)}
-        val p=PreparedCommand(daemon.id,"",newRequestId(),System.currentTimeMillis()+60000,Envelope.getDefaultInstance(),serializedCommand=raw)
+        val p=PreparedCommand(daemon.id,"",newRequestId(),System.currentTimeMillis()+60000,Envelope.getDefaultInstance(),serializedCommand=raw, prior=false)
         r.forward(p)
         val before=p.authorizedEnvelope!!
         p.commandBytes()!!.fill(0)
@@ -316,7 +387,7 @@ class RemoteTest {
         r.close()
         val next=fixtureRemote(r.account,http);closers+=AutoCloseable{next.close()};next.start()
         next.awaitState("restarted") {it.conn==ConnState.ONLINE&&it.machines[daemon.id]?.online==true}
-        val restored=PreparedCommand(p.machineId,p.sessionId,p.requestId,p.deadlineMs,Envelope.getDefaultInstance(),serializedCommand=saved)
+        val restored=PreparedCommand(p.machineId,p.sessionId,p.requestId,p.deadlineMs,Envelope.getDefaultInstance(),serializedCommand=saved, prior=true)
         next.forward(restored,retryOfUnknown=true)
         val rows=mutableListOf<Pair<Header,ByteArray>>();daemon.commandPayloads.drainTo(rows)
         val matching=rows.filter{it.first.requestId==p.requestId};assertEquals(3,matching.size)

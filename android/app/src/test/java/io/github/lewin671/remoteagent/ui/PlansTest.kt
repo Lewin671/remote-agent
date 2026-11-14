@@ -17,7 +17,7 @@ class PlansTest {
     @Test fun aLostReplyKeepsItsChoiceEnvelopeAndDeadlineAcrossPages() = runBlocking {
         Plans.clear()
         val reply = Plans.of("s")
-        val first = PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance())
+        val first = PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance(), prior=false)
         var prepared = 0
         val make: (PlanChoice) -> PreparedCommand = { prepared++; first }
         assertTrue(runCatching {
@@ -40,7 +40,7 @@ class PlansTest {
 
     @Test fun anotherChoiceIsNeverSentInPlaceOfAnUnknownOne() = runBlocking {
         val reply = Plans.Reply()
-        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance()) }
+        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance(), prior=false) }
         runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw lost } }
         var sent = 0
         val refused = runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_KEEP_PLANNING, make) { _, _ -> sent++ } }
@@ -53,7 +53,7 @@ class PlansTest {
 
     @Test fun anUnknownReplyOffersOnlyItsOwnRetryAndGivingUp() = runBlocking {
         val reply = Plans.Reply()
-        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance()) }
+        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance(), prior=false) }
         assertEquals(PlanOffer(), planOffer(reply))
         runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw lost } }
         val offer = planOffer(reply)
@@ -72,14 +72,14 @@ class PlansTest {
 
     @Test fun aDefiniteFailureOffersEveryChoiceAgain() = runBlocking {
         val reply = Plans.Reply()
-        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance()) }
+        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1234, Envelope.getDefaultInstance(), prior=false) }
         runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw CommandException("failed_precondition", "no", fromDaemon = true,outcome=io.github.lewin671.remoteagent.core.Outcome.EXECUTED) } }
         assertEquals(PlanOffer(), planOffer(reply))
     }
 
     @Test fun anExpiredUnknownReplyCannotApproveTheNextPlan() = runBlocking {
         val reply = Plans.Reply()
-        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1, Envelope.getDefaultInstance()) }
+        val make: (PlanChoice) -> PreparedCommand = { PreparedCommand("m", "s", "r", 1, Envelope.getDefaultInstance(), prior=false) }
         runCatching { Plans.send(reply, PlanChoice.PLAN_CHOICE_IMPLEMENT, make) { _, _ -> throw lost } }
         runCatching { Plans.retry(reply) { _, _ -> throw CommandException(CommandException.EXPIRED, "expired before sending") } }
         assertTrue(reply.expired)

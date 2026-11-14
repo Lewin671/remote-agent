@@ -22,6 +22,19 @@ import io.github.lewin671.remoteagent.proto.RecoveryServiceClient
 import io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Interceptor
+import okhttp3.Authenticator
+import okhttp3.Callback
+import okhttp3.Call
+import okhttp3.Response
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * A device of the account. [root] and [deviceSeed] are secrets: the app keeps them wrapped with a
@@ -59,15 +72,37 @@ class Api(
     // 10.0.2.2 is the emulator's host loopback. Release Android network
     // policy still blocks all cleartext; no remote HTTP origin is accepted.
     val server = Secret.checkServer(server, allowPlainHttp = true)
-    private val source = transport ?: ConnectOkHttpClient(
-        // Never replay login, registration or pairing bodies at another URL.
-        http.newBuilder().followRedirects(false).followSslRedirects(false).build(),
-    )
+    private val observedEpoch = AtomicReference("")
+    private val rpcHttp = http.newBuilder()
+        .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false)
+        .authenticator(Authenticator.NONE).proxyAuthenticator(Authenticator.NONE)
+        .apply { interceptors().add(0, OneShotRPCBody) }.build()
+    private val source = transport ?: ConnectOkHttpClient(rpcHttp)
+
+    suspend fun relayEpoch(): String {
+        observedEpoch.get().takeIf { it.isNotEmpty() }?.let { return it }
+        return suspendCancellableCoroutine { continuation ->
+            val call = rpcHttp.newCall(Request.Builder().url(server.trimEnd('/') + "/healthz").build())
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) { if (continuation.isActive) continuation.resumeWithException(e) }
+                override fun onResponse(call: Call, response: Response) {
+                    val epoch = response.use { it.header(RELAY_EPOCH_HEADER).orEmpty() }
+                    if (epoch.isNotEmpty()) observedEpoch.set(epoch)
+                    if (continuation.isActive) {
+                        if (epoch.isEmpty()) continuation.resumeWithException(IOException("relay_epoch_unavailable"))
+                        else continuation.resume(epoch)
+                    }
+                }
+            })
+        }
+    }
     private val authenticatedTransport = object : com.connectrpc.http.HTTPClientInterface by source {
         override fun unary(
             request: com.connectrpc.http.UnaryHTTPRequest,
             onResult: (com.connectrpc.http.HTTPResponse) -> Unit,
         ): () -> Unit = source.unary(request) { response ->
+            response.headers.entries.firstOrNull { it.key.equals(RELAY_EPOCH_HEADER, true) }?.value?.firstOrNull()?.takeIf { it.isNotEmpty() }?.let(observedEpoch::set)
             if (response.status == 401) {
                 request.headers.entries.firstOrNull { it.key.equals("Authorization", true) }
                     ?.value?.firstOrNull()?.removePrefix("Bearer ")?.takeIf { it.isNotEmpty() }
@@ -97,6 +132,7 @@ class Api(
         /** An HTTP client with the timeouts the protocol expects: Forward waits up to 30 s. */
         fun defaultHttp(): OkHttpClient =
             OkHttpClient.Builder()
+                .retryOnConnectionFailure(false)
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .connectTimeout(15, TimeUnit.SECONDS)
@@ -331,3 +367,25 @@ private fun networkText(e: Throwable?, copy: MessageResolver): String? = when (e
 /** Only meaningful for an error returned by a login attempt. */
 fun loginDenied(error: Throwable): Boolean =
     error is ConnectException && error.code == Code.PERMISSION_DENIED
+
+internal const val RELAY_EPOCH_HEADER = "Remote-Agent-Relay-Epoch"
+
+/** Outermost interceptor: inner interceptors/follow-ups share the same body guard. */
+private object OneShotRPCBody : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val body = request.body ?: return chain.proceed(request)
+        val written = AtomicBoolean()
+        val once = object : RequestBody() {
+            override fun contentType() = body.contentType()
+            override fun contentLength() = body.contentLength()
+            override fun isOneShot() = true
+            override fun isDuplex() = body.isDuplex()
+            override fun writeTo(sink: okio.BufferedSink) {
+                if (!written.compareAndSet(false, true)) throw IOException("request_body_replayed")
+                body.writeTo(sink)
+            }
+        }
+        return chain.proceed(request.newBuilder().method(request.method, once).build())
+    }
+}

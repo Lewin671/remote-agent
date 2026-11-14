@@ -20,6 +20,7 @@ import {
   COMMAND_TTL_MS,
   COMMAND_EXPIRY_SKEW_MS,
   newSlot,
+  restoreSlot,
   Remote,
   uncertain,
   type CommandKind,
@@ -935,7 +936,11 @@ it.each([false, true])("blocks file resend/retry after downgrade and keeps unkno
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PROTOCOL_VERSION } = await import("./protocol");
   r.machines.set(r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) });
-  const forward = vi.fn(async () => { throw new ConnectError("no authenticated result", Code.InvalidArgument); });
+  const { NotForwardedSchema } = await import("./gen/remoteagent/v1/relay_pb");
+  const forward = vi.fn(async (req: {attemptId: string; relayEpoch: string}) => {
+    if (unknown) throw new ConnectError("no authenticated result", Code.InvalidArgument);
+    throw new ConnectError("offline", Code.Unavailable, undefined, [{desc: NotForwardedSchema, value: {attemptId: req.attemptId, relayEpoch: req.relayEpoch, reason: "machine_offline"}}]);
+  });
   (r as unknown as { api: object }).api = { forward };
   const file = { fileId: "file", name: "file.csv", sizeBytes: 4n, path: "/uploads/s/files/file/file.csv" };
   const id = r.send("s", "text with file", [], [], undefined, undefined, [file]);
@@ -1075,7 +1080,7 @@ it("does not renew an interrupted send at its deadline", async () => {
   const r = await probe();
   const error = new CommandError("deadline_exceeded", "interrupted", true);
   const command = vi.spyOn(r, "command").mockRejectedValue(error);
-  const slot = { requestId: "original-request", deadline: Date.now() - 1 };
+  const slot = restoreSlot({requestId: "original-request", deadline: Date.now() - 1, prepared: undefined}, true);
   await expect(r.sendMessage("s1", "hello", "stable-send", slot)).rejects.toBe(error);
   expect(command).toHaveBeenCalledTimes(1);
 });
@@ -1151,7 +1156,7 @@ it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms"
   const r = await probe();
   let now = Date.now();
   vi.spyOn(Date, "now").mockImplementation(() => now);
-  const slot = { requestId: newSlot().requestId, deadline: now + remaining };
+  const slot = restoreSlot({requestId: newSlot().requestId, deadline: now + remaining, prepared: undefined}, false);
   const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
   (r as unknown as { api: object }).api = { forward };
   // Advance only this request's retry delay. Advancing the synthetic clock

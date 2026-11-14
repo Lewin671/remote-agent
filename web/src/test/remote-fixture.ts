@@ -19,6 +19,7 @@ import { SessionStatus } from "../gen/remoteagent/v1/event_pb";
 type B = Uint8Array<ArrayBuffer>;
 type Fields = Omit<Partial<Header>, "$typeName">;
 export class SyntheticRemote extends Remote {
+  protected override relayEpoch() {return Promise.resolve("fixture-epoch");}
   private custom: Record<string, unknown> = {};
   private readonly defaults: Record<string, unknown>;
   readonly seed: B;
