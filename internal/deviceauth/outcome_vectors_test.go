@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+// These pure classifiers are shared by relay and remoteclient. Keep their full
+// matrix here; package-specific forwarding and proof tests cover the call sites.
 func TestSharedOutcomeVectors(t *testing.T) {
 	b, err := os.ReadFile("../../testdata/transport/outcomes.json")
 	if err != nil {
