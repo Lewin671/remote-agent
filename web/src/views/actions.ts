@@ -26,9 +26,9 @@ export function useDerived(remote: Remote, sid: string): Derived {
     let timer: ReturnType<typeof setInterval> | undefined;
     const update = () => {
       const session = remote.sessions.get(sid);
-      const eligible = !document.hidden && remote.conn === "online" &&
+      const eligible = !document.hidden &&
         !!session && !session.endedMs && session.info?.status !== SessionStatus.EXITED &&
-        remote.machines.get(session.machineId)?.online;
+        remote.peer(session.machineId).available;
       if (!eligible) { clearInterval(timer); timer = undefined; }
       else if (timer === undefined) {
         timer = setInterval(() => void remote.refreshLiveSnapshot(sid), 5000);

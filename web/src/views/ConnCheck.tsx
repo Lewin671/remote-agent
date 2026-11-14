@@ -60,10 +60,10 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   }, [connecting, startedAt]);
   const stream = connWord(remote, true);
   const run = useRef(0);
-  const list = [...remote.machines.values()].sort((a, b) => Number(b.online) - Number(a.online) || machineName(a).localeCompare(machineName(b)));
+  const list = [...remote.machines.values()].sort((a, b) => Number(remote.peer(b.id).reachable) - Number(remote.peer(a.id).reachable) || machineName(a).localeCompare(machineName(b)));
   const check = useCallback(async () => {
     const mine = ++run.current;
-    const online = [...remote.machines.values()].filter((m) => m.online).map((m) => m.id);
+    const online = [...remote.machines.values()].filter((m) => remote.peer(m.id).reachable).map((m) => m.id);
     setBusy(true);
     setServer({ state: "wait" });
     setMachines(new Map(online.map((id) => [id, { state: "wait" }])));
@@ -131,7 +131,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         {list.map((m) => (
           <div key={m.id} className="mi">
             <span className="mt">{machineName(m)}</span>
-            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
+            {remote.peer(m.id).reachable ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
           </div>
         ))}
       </div>

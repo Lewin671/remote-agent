@@ -469,7 +469,7 @@ export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; 
     return (
       <div className="page set ms-page">
         <NavBar onBack={onBack} />
-        {status.state === "unavailable" || !m.meta?.capabilities?.machineStatus ? (
+        {status.state === "unavailable" || !remote.peer(m.id).capabilities?.machineStatus ? (
           <div className="center ms-fail">
             <div>
               <div className="et">{t("machine_status.unavailable")}</div>

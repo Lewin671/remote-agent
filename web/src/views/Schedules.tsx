@@ -133,7 +133,7 @@ export function ScheduleRow({
   const notification = latestNotification(task);
   const at = attention ? stoppedTime(task) : notificationTime(notification);
   // Nothing is said of the connection before the lists are in; the last state heard stands.
-  const offline = !remote.awaiting && (remote.conn !== "online" || !(m && remote.onlineOf(m)));
+  const offline = !remote.awaiting && (!remote.peer(m?.id).ready || !(m && remote.onlineOf(m)));
   const running = task.active_run && ["dispatching", "queued", "running"].includes(task.active_run.status);
   const [menu, setMenu] = useState(false);
   const mark = () => { if (fresh) remote.markScheduleRead(machineId, task); else { remote.markScheduleUnread(machineId, task, selected); if (selected) go("tasks"); } };
@@ -178,7 +178,7 @@ export function ScheduleRow({
 function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, onRecover, contextMenu = false, anchor }: { remote: Remote; machineId: string; task: ScheduleTask; onClose: () => void; onUnread?: () => void; onDeleted?: () => void; onRecover?: () => void; contextMenu?: boolean; anchor?: RefObject<HTMLElement | null> }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [deleting, setDeleting] = useState(false);
   const [rearming, setRearming] = useState<ScheduleTask>();
-  const online = remote.conn === "online" && remote.machines.get(machineId)?.online;
+  const online = remote.peer(machineId).available;
   const frozen = remote.scheduleAttempts.get(machineId + "/" + task.id)?.frozen;
   const ended = taskGroup(task) === "ended";
   const fresh = remote.scheduleHasNew(machineId, task);
@@ -688,7 +688,7 @@ export function ScheduleDetail({
   const [allHistory, setAllHistory] = useState(false);
   const [editBase, setEditBase] = useState<ScheduleTask>();
   const m = remote.machines.get(machineId);
-  const online = !!m?.online && remote.conn === "online";
+  const online = remote.peer(m?.id).available;
   const perform = async (operation: string, spec?: ScheduleSpec, base?: ScheduleTask) => {
     if (!task || busy) return;
     const navigate = fromHere(go);
@@ -1438,7 +1438,7 @@ function ScheduleCreateConfig({
   const machineId = session?.machineId ?? ns.cfg.machineId;
   const supported = remote.supportsSchedules(machineId);
   const online =
-    remote.conn === "online" && !!remote.machines.get(machineId)?.online;
+    remote.peer(machineId).available;
   const pendingKey = "create:" + (session?.id ?? project);
   const pending = remote.scheduleAttempts.get(machineId + "/" + pendingKey);
   const mode = ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode;
@@ -1630,8 +1630,8 @@ export function ScheduleStrip({
         <Clock />
         <span>
           {tasks.length > 1
-            ? l10n.t("schedule.strip_count", { count: tasks.length, state: remote.machines.get(session.machineId)?.online && remote.conn === "online" ? nextText(nearest.task, now) : scheduleOffline() })
-            : l10n.t("schedule.strip_single", { frequency: frequency(nearest.task.spec.trigger), state: remote.machines.get(session.machineId)?.online && remote.conn === "online" ? nextText(nearest.task, now) : scheduleOffline() })}
+            ? l10n.t("schedule.strip_count", { count: tasks.length, state: remote.peer(session.machineId).available ? nextText(nearest.task, now) : scheduleOffline() })
+            : l10n.t("schedule.strip_single", { frequency: frequency(nearest.task.spec.trigger), state: remote.peer(session.machineId).available ? nextText(nearest.task, now) : scheduleOffline() })}
         </span>
         <span className="act">
           {l10n.t("schedule.manage")}<ChevronRight />

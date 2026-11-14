@@ -1588,5 +1588,65 @@
     "path": "internal/remoteclient/epoch.go",
     "literal": "relay_epoch_unavailable",
     "reason": "Machine-readable pre-dispatch discovery diagnostic; command outcome presentation remains with the caller."
+  },
+  {
+    "path": "web/src/transport/request.ts",
+    "literal": "dispatch_prior_required",
+    "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
+  },
+  {
+    "path": "web/src/transport/request.ts",
+    "literal": "disk_full",
+    "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
+  },
+  {
+    "path": "web/src/transport/dispatch.ts",
+    "literal": "dispatch_handle_closed",
+    "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
+  },
+  {
+    "path": "web/src/transport/link.ts",
+    "literal": "unknown_outcome",
+    "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
+  },
+  {
+    "path": "web/src/transport/link.ts",
+    "literal": "clock",
+    "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
+  },
+  {
+    "path": "web/src/transport/link.ts",
+    "literal": "security_unavailable",
+    "reason": "Existing internal dispatch/outcome diagnostic moved into Link; the displayed message still comes from i18n."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "${machineName(m)} · ${remote.peer(m.id).reachable ? l10n.t(\"common.ios_online\") : l10n.t(\"settings.offline\")}",
+    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "); const views = machineQuotaViews(m.meta, machineAgents(m), clock, remote.peer(m.id).reachable); return (",
+    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
+  },
+  {
+    "path": "web/src/views/Projects.tsx",
+    "literal": "!remote.peer(id).reachable); return (",
+    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "remote.peer(m.id).reachable); return (",
+    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
+  },
+  {
+    "path": "web/src/views/ApprovalCard.tsx",
+    "literal": "0 && !full; const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0; const always = remote.peer(remote.sessions.get(sid)?.machineId ?? \"\").capabilities?.approvalAlways; const command = (",
+    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
+  },
+  {
+    "path": "web/src/views/NewSession.tsx",
+    "literal": "remote.peer(m.id).reachable)?.id ?? \"\"); const m = remote.machines.get(machineId); return (",
+    "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
   }
 ]

@@ -1,5 +1,5 @@
 import {expect,test} from "vitest";
-import {DispatchRegistry,DispatchState} from "./dispatch";
+import {DispatchRegistry,DispatchState} from "./transport/dispatch";
 import {RESULT_RETENTION_MS} from "./result-retention.gen";
 
 function fixture() {

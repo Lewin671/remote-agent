@@ -74,7 +74,7 @@ export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): 
  * online. */
 export function projectSub(remote: Remote, p: P): ReactNode {
   const counts = sessionCounts(remote, p.sessions);
-  const offline = p.machines.length > 0 && remote.listed && p.machines.every((id) => !remote.machines.get(id)?.online);
+  const offline = p.machines.length > 0 && remote.listed && p.machines.every((id) => !remote.peer(id).reachable);
   return (
     <>
       <PathText path={shortPath(p.key)} />

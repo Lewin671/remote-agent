@@ -127,7 +127,7 @@ export function Composer({
   useEffect(() => () => clearTimeout(hold.current), []);
   const input = ref;
   useAutoGrow(input, text);
-  const online = ready && remote.conn === "online";
+  const online = ready && remote.peer(session.machineId).ready;
   const t = text.trim();
   // While the server is away, nothing is queued behind the user's back:
   // the text stays here until they send it themselves.

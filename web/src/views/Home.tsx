@@ -686,7 +686,7 @@ function Headline({ remote, scope, wide }: { remote: Remote; scope: string; wide
  * button; only with no computer yet is 添加设备 the thing to do. */
 function Empty({ remote, onStart }: { remote: Remote; onStart?: () => void }) {
   const machines = [...remote.machines.values()];
-  const on = machines.find((m) => m.online);
+  const on = machines.find((m) => remote.peer(m.id).reachable);
   return (
     <div className="home-note">
       {on ? (

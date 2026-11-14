@@ -13,7 +13,7 @@ import type { Remote } from "../remote";
 export function diskReminders(remote: Remote) {
   return [...remote.machines.values()]
     .flatMap((m) => {
-      const disk = m.meta && machineDiskReminder(remote.onlineOf(m), m.meta);
+      const disk = m.meta && machineDiskReminder(remote.onlineOf(m), m.meta, !!remote.peer(m.id).capabilities?.machineStatus);
       return disk ? [{ m, disk }] : [];
     })
     .sort((a, b) => Number(b.disk.pressure === ResourcePressure.CRITICAL) - Number(a.disk.pressure === ResourcePressure.CRITICAL) || Number(a.disk.availableBytes - b.disk.availableBytes));

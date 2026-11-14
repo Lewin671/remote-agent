@@ -46,7 +46,7 @@ const keys2: [ReactNode, string, string][] = [
  * Scrolling up opens the read-only reader over the same area. */
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
-  const online = remote.conn === "online";
+  const online = remote.peer(session.machineId).ready;
   const fine = usePointerFine();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);

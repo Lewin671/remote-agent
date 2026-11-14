@@ -52,7 +52,7 @@ export function useMachineStatus(remote: Remote, id: string, intervalMs: number)
   useRemote(remote);
   const m = remote.machines.get(id);
   const online = !!m && remote.onlineOf(m);
-  const supported = !!m?.meta?.capabilities?.machineStatus;
+  const supported = !!remote.peer(m?.id).capabilities?.machineStatus;
   const visible = usePageVisible();
   const control = useRef(undefined as MachineStatusController | undefined);
   const [view, setView] = useState<Omit<StatusView, "retry">>({ state: "idle", failures: 0, curveSinceMs: 0n, receivedAt: 0 });

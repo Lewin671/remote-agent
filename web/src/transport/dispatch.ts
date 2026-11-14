@@ -1,4 +1,4 @@
-import { RESULT_RETENTION_MS } from "./result-retention.gen";
+import { RESULT_RETENTION_MS } from "../result-retention.gen";
 
 /** Evidence belongs to an authorization; each call and each delivery has an owner. */
 export class DispatchState {

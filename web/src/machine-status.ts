@@ -8,9 +8,9 @@ export const isDiskFull = (error: unknown): boolean => typeof error === "object"
 export function recentMachineProject(meta: MachineMeta): string | undefined {
   return [...meta.projects].sort((a,b) => Number((b.latestCreatedMs > b.latestEndedMs ? b.latestCreatedMs : b.latestEndedMs) - (a.latestCreatedMs > a.latestEndedMs ? a.latestCreatedMs : a.latestEndedMs)))[0]?.path;
 }
-export function machineDiskReminder(online: boolean, meta: MachineMeta): DiskStatus | undefined {
+export function machineDiskReminder(online: boolean, meta: MachineMeta, supported: boolean): DiskStatus | undefined {
   const disk = meta.diskStatus;
-  return online && meta.capabilities?.machineStatus && disk && disk.availableBytes < 10_000_000_000n ? disk : undefined;
+  return online && supported && disk && disk.availableBytes < 10_000_000_000n ? disk : undefined;
 }
 export function stableUsage(previous: readonly string[], rows: readonly ResourceUsage[], memory = false): ResourceUsage[] {
   const byId = new Map(rows.map(r=>[r.id,r]));

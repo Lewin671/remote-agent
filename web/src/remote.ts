@@ -1,4 +1,8 @@
-import { DispatchRegistry, DispatchState, type DispatchCall } from "./dispatch";
+import { type DispatchCall } from "./transport/dispatch";
+import { RequestSlot, newSlot, restoreSlot, CommandError, uncertain } from "./transport/request";
+import { Link as DeviceLink } from "./transport/link";
+import { RelayPath } from "./transport/relay-path";
+import type { FrameStream } from "./transport/path";
 import { machineNotificationKinds } from "./machine-notifications";
 import { verifiedOutcome, type Outcome } from "./outcome";
 import * as l10n from "./i18n";
@@ -42,7 +46,6 @@ import {
 } from "./device-security";
 import {
   PairApprovalSchema,
-  NotForwardedSchema,
   RegisterDeviceRequestSchema,
 } from "./gen/remoteagent/v1/relay_pb";
 // Remote keeps the page in sync with the server: it logs in, holds the
@@ -233,58 +236,8 @@ export interface History {
   broken: boolean;
 }
 
-/** A command's request ID and deadline. Sealing a retry with the same
- * pair makes the daemon return its first answer instead of running the
- * command again. */
-export interface PreparedPayload {
-  machineId: string;
-  sid: string;
-  plain: Uint8Array<ArrayBuffer>;
-}
-export class RequestSlot {
-  evidence: DispatchState;
-  beforeDispatch?: (slot: RequestSlot) => Promise<void>;
-  constructor(public requestId: string, public deadline: number, public prepared: PreparedPayload | undefined, readonly prior: boolean) {
-    if (typeof prior !== "boolean") throw new TypeError("dispatch_prior_required");
-    this.evidence = new DispatchState(prior);
-  }
-}
-/** Imports require an explicit statement about prior dispatch; bytes alone prove nothing. */
-export function restoreSlot(saved: Pick<RequestSlot, "requestId" | "deadline" | "prepared">, prior: boolean): RequestSlot {
-  return new RequestSlot(saved.requestId, saved.deadline, saved.prepared, prior);
-}
-
-export function newSlot(now = Date.now()): RequestSlot {
-  return new RequestSlot(newRequestID(), now + COMMAND_TTL_MS, undefined, false);
-}
-
+export { RequestSlot, newSlot, restoreSlot, CommandError, uncertain, COMMAND_TTL_MS, type PreparedPayload } from "./transport/request";
 export class ScheduleRevisionError extends Error {}
-
-export class CommandError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly fromDaemon = false,
-    readonly readOnly = false,
-    readonly outcome: Outcome = fromDaemon ? "unknown" : "not_sent",
-    readonly conflictKind = "",
-    readonly resultAvailable = true,
-  ) {
-    super((outcome === "executed" && !resultAvailable) || conflictKind === "identity" ? message : code === "disk_full" ? l10n.t("machine_status.disk_full") : code === "storage_exhausted" ? l10n.t("machine_status.storage_exhausted") : message);
-  }
-  get needsResultRefresh(): boolean {
-    return this.conflictKind === "identity" || (this.outcome === "executed" && !this.resultAvailable);
-  }
-}
-
-/** Whether reconciliation must keep the original request slot. Missing bodies
- * and identity conflicts also use this flow while retaining their explicit
- * outcome; upload retry policy must inspect that outcome separately. */
-export function uncertain(e: unknown): boolean {
-  if (e instanceof CommandError)
-    return e.outcome === "unknown" || e.needsResultRefresh;
-  return e instanceof ConnectError;
-}
 
 /** The state of answering one question call. */
 export interface AnswerState {
@@ -324,7 +277,7 @@ export type ConnState = "connecting" | "online" | "offline";
  * being made or just lost, which mostly comes back by itself. */
 export type Link = "online" | "waiting" | "no-network" | "no-server";
 
-export const COMMAND_TTL_MS = 60_000;
+
 // Match the security protocol's five-minute maximum clock skew when deciding
 // whether a command can still be retried as the same request.
 export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
@@ -536,10 +489,10 @@ export class Remote {
   get sharedFiles(): SharedFileManager {
     return (this.sharedFilesState ??= new SharedFileManager({
       getChunk: (sid, fileId, offset) => this.getSharedFileChunk(sid, fileId, offset),
-      isConnected: () => this.conn === "online",
+      isConnected: sid => this.peer(this.sessions.get(sid)?.machineId).ready,
       isMachineOnline: (sid) => {
         const s = this.sessions.get(sid);
-        return !!(s && this.machines.get(s.machineId)?.online);
+        return !!(s && this.peer(s.machineId).reachable);
       },
       isSessionEnded: (sid) => {
         const s = this.sessions.get(sid);
@@ -547,14 +500,14 @@ export class Remote {
       },
       sharedFileChunkBytes: (sid) => {
         const s = this.sessions.get(sid);
-        return (s && this.machines.get(s.machineId)?.meta?.capabilities?.sharedFileChunkBytes) || 0;
+        return (s && this.peer(s.machineId).capabilities?.sharedFileChunkBytes) || 0;
       },
       store: sharedFileStore,
     }));
   }
   hasSharedFilesCapability(sid: string): boolean {
     const s = this.sessions.get(sid);
-    return !!(s && this.machines.get(s.machineId)?.meta?.capabilities?.sharedFiles === true);
+    return !!(s && this.peer(s.machineId).capabilities?.sharedFiles === true);
   }
   machines = new Map<string, MachineView>();
   schedules = new Map<
@@ -607,7 +560,7 @@ export class Remote {
 
   /** Current machine metadata, checked again for every file-bearing attempt. */
   fileUploadIssue(machineId: string): string {
-    return this.machines.get(machineId)?.meta?.capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired();
+    return this.peer(machineId).capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired();
   }
 
   private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
@@ -617,7 +570,7 @@ export class Remote {
   }
 
   supportsSchedules(id: string): boolean {
-    return this.machines.get(id)?.meta?.capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
+    return this.peer(id).capabilities?.scheduledTasks === true && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id));
   }
   taskEntries(): TaskEntry[] {
     return [...this.schedules].flatMap(([machineId, state]) =>
@@ -640,14 +593,13 @@ export class Remote {
     for (const id of this.schedules.keys()) if (!this.machines.has(id) || (this.archiveMachines.has(id) && !this.trustedMembers.has(id))) this.forgetSchedules(id);
     for (const id of this.scheduleRequests.keys()) {
       if (
-        this.conn !== "online" ||
-        !this.machines.get(id)?.online ||
+        !this.peer(id).available ||
         !this.supportsSchedules(id)
       )
         this.scheduleRequests.delete(id);
     }
     for (const [id, m] of this.machines) {
-      if (this.conn !== "online" || !m.online || !this.supportsSchedules(id))
+      if (!this.peer(id).available || !this.supportsSchedules(id))
         continue;
       const key = String(m.meta!.scheduleRevision);
       if (this.scheduleRequests.get(id) === key) continue;
@@ -669,8 +621,7 @@ export class Remote {
       return this.scheduleLoading.get(id)!;
     }
     if (
-      this.conn !== "online" ||
-      !this.machines.get(id)?.online ||
+      !this.peer(id).available ||
       !this.supportsSchedules(id)
     )
       return Promise.resolve();
@@ -728,8 +679,7 @@ export class Remote {
         this.changed();
       } while (
         this.scheduleAgain.has(id) &&
-        this.conn === "online" &&
-        this.machines.get(id)?.online
+        this.peer(id).available
       );
     })().finally(async () => {
       this.scheduleLoading.delete(id);
@@ -752,7 +702,7 @@ export class Remote {
       sessionId?: string;
     },
   ): Promise<ScheduleTask> {
-    if (this.conn !== "online" || !this.machines.get(machineId)?.online)
+    if (!this.peer(machineId).available)
       throw new Error(l10n.t("errors.the_computer_is_offline_connect_to_edit_tasks"));
     if (!this.supportsSchedules(machineId))
       throw new Error(l10n.t("errors.update_remote_agent_on_this_computer_to_use_scheduled"));
@@ -1135,7 +1085,7 @@ export class Remote {
     this.tokenWrites = this.tokenWrites.then(() => clearLoginToken(this.account.server, this.account.deviceId)).catch(() => undefined);
   }
   private api: Client<typeof ClientService>;
-  private ws?: WebSocket;
+  private ws?: FrameStream;
   private retry = 1000;
   private closed = false;
   private reconcilingSecurity = 0;
@@ -1146,7 +1096,15 @@ export class Remote {
   private openTimer?: ReturnType<typeof setTimeout>;
   private idleTimer?: ReturnType<typeof setTimeout>;
   private setupProgress?: () => void;
-  private terminals = new Map<WebSocket, (reason: string) => void>();
+  readonly deviceLink = new DeviceLink(new RelayPath(
+    id => {
+      const m = this.machines.get(id);
+      return { reachable: !!m?.online, ready: this.conn === "online", authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)), protocolVersion: m?.meta?.protocolVersion, capabilities: m?.meta?.capabilities };
+    },
+    () => this.relayEpoch(),
+    (request, options) => this.api.forward(request, options),
+  ));
+  peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
   private listeners = new Set<() => void>();
   private version = 0;
 
@@ -1434,14 +1392,23 @@ export class Remote {
    * in, the copy kept in this browser (which says offline) is not that: no
    * computer is known to be off, and what shows is the last state heard. */
   get presence(): ReadonlyMap<string, MachineView> {
-    return this.listed ? this.machines : NO_MACHINES;
+    if (!this.listed) return NO_MACHINES;
+    let projected: Map<string, MachineView> | undefined;
+    for (const [id, machine] of this.machines) {
+      const online = this.peer(id).reachable;
+      if (online !== machine.online) {
+        projected ??= new Map(this.machines);
+        projected.set(id, { ...machine, online });
+      }
+    }
+    return projected ?? this.machines;
   }
 
   /** Whether a computer is online as far as is known: until the lists are in,
    * as the copy kept in this browser had it, so that a card drawn from it has
    * the shape it will have. */
   onlineOf(m: MachineView): boolean {
-    return this.listed ? m.online : (m.keptOnline ?? m.online);
+    return this.listed ? this.peer(m.id).reachable : (m.keptOnline ?? this.peer(m.id).reachable);
   }
 
   /** Nothing here is known to still hold: the server is out of reach, or
@@ -1469,6 +1436,7 @@ export class Remote {
   }
 
   protected changed(immediate = false) {
+    this.deviceLink.changed();
     if (this.conn === "online" || this.closed || !this.begun) {
       clearTimeout(this.graceTimer);
       this.graceTimer = undefined;
@@ -1780,7 +1748,7 @@ export class Remote {
   }
 
   stop() {
-    this.dispatchStates.sweep();
+    this.deviceLink.sweep();
     this.closed = true;
     this.authority.lifecycle.pause();
     this.unwatchSecurityPush?.();
@@ -1798,8 +1766,7 @@ export class Remote {
     const ws = this.ws;
     this.ws = undefined;
     ws?.close();
-    for (const close of this.terminals.values()) close(l10n.t("errors.terminal_connection_closed"));
-    this.terminals.clear();
+    this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
     this.connAttempt = undefined;
@@ -1818,8 +1785,7 @@ export class Remote {
       const ws = this.ws;
       this.ws = undefined;
       ws?.close();
-      for (const close of this.terminals.values())
-        close(l10n.t("errors.network_changed_reconnecting"));
+      this.deviceLink.endRelayStreams(l10n.t("errors.network_changed_reconnecting"));
     } else if (this.ws || this.retryTimer === undefined) return;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
@@ -2028,8 +1994,7 @@ export class Remote {
   private openStream(generation: number) {
     const url =
       apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
-    const ws = new WebSocket(url);
-    ws.binaryType = "arraybuffer";
+    const ws = this.deviceLink.openPathStream(url);
     this.ws = ws;
     const drop = (e: unknown, code?: number) => {
       if (this.ws !== ws) return;
@@ -2039,8 +2004,7 @@ export class Remote {
       clearTimeout(this.idleTimer);
       if (code === 1008) this.discardToken();
       ws.close();
-      for (const close of this.terminals.values())
-        close(l10n.t("errors.disconnected_from_server"));
+      this.deviceLink.endRelayStreams(l10n.t("errors.disconnected_from_server"));
       this.fail(e);
     };
     const watch = () => {
@@ -2057,7 +2021,7 @@ export class Remote {
     this.openTimer = setTimeout(() => {
       drop(new Error(l10n.t("errors.connection_timed_out_reconnecting")));
     }, OPEN_TIMEOUT_MS);
-    ws.onopen = () => {
+    ws.onOpen = () => {
       if (this.ws !== ws || this.closed || generation !== this.generation)
         return;
       const hello = create(PeerFrameSchema, {
@@ -2069,10 +2033,9 @@ export class Remote {
     let queuedBytes = 0;
     let queuedFrames = 0;
     let overflow = false;
-    ws.onmessage = (m) => {
+    ws.onFrame = (data) => {
       if (this.closed || generation !== this.generation || overflow) return;
       watch();
-      const data = m.data as ArrayBuffer;
       queuedBytes += data.byteLength;
       queuedFrames++;
       if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
@@ -2102,7 +2065,7 @@ export class Remote {
           queuedFrames--;
         });
     };
-    ws.onclose = (e) => drop(new Error(l10n.t("errors.disconnected_from_server")), e?.code);
+    ws.onEnd = code => drop(new Error(l10n.t("errors.disconnected_from_server")), code);
   }
 
   private fail(e: unknown) {
@@ -3266,23 +3229,8 @@ export class Remote {
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
   protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
-  private readonly dispatchStates = new DispatchRegistry();
-  private dispatchState(slot: RequestSlot): DispatchState {
-    if (!(slot instanceof RequestSlot)) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-    const state = this.dispatchStates.get(slot.requestId, slot.deadline, slot.evidence, slot.prior);
-    slot.evidence = state;
-    return state;
-  }
-  private async withDispatch<T>(slot: RequestSlot, work: (call: DispatchCall) => Promise<T>): Promise<T> {
-    const call = this.dispatchState(slot).open();
-    try { return await work(call); }
-    catch (error) {
-      if (call.uncertain && !uncertain(error) && !(error instanceof CommandError && error.fromDaemon && error.outcome !== "not_sent")) {
-        if (error instanceof CommandError) throw new CommandError(error.code, ["clock", "security_unavailable"].includes(error.code) ? l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result") : error.message, error.fromDaemon, error.readOnly, "unknown", error.conflictKind, error.resultAvailable);
-        throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-      }
-      throw error;
-    } finally { call.close(); this.dispatchStates.sweep(); }
+  private withDispatch<T>(slot: RequestSlot, work: (call: DispatchCall) => Promise<T>): Promise<T> {
+    return this.deviceLink.call(slot, work);
   }
   private async forward(
     machineId: string,
@@ -3304,7 +3252,7 @@ export class Remote {
     // A machine of another protocol version would refuse the command, in
     // words that do not say which side to update: say so here, unsent.
     const m = this.machines.get(machineId);
-    const theirs = m?.meta?.protocolVersion;
+    const theirs = this.peer(machineId).protocolVersion;
     if (theirs !== undefined && theirs !== PROTOCOL_VERSION)
       throw new CommandError(
         "failed_precondition",
@@ -3358,9 +3306,8 @@ export class Remote {
     // request can say it did not run.
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
-      const attemptId = newRequestID();
-      const delivery = call.delivery();
-      let epoch = "";
+      const delivery = this.deviceLink.delivery(call);
+      const attemptId = delivery.attemptId;
       try {
         if (attempt > 0 && Date.now() >= deadline)
           throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
@@ -3369,10 +3316,7 @@ export class Remote {
         this.checkFileCapability(machineId, cmd, call.uncertain);
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
-        epoch = await this.relayEpoch();
-        signal?.throwIfAborted();
-        delivery.dispatch();
-        const res = await this.api.forward({ machineId, command: env, attemptId, relayEpoch: epoch },{signal, headers:{"Remote-Agent-Attempt":attemptId}});
+        const res = await delivery.send(machineId, env, signal);
         let msg: CommandResult;
         try {
           msg = (
@@ -3413,10 +3357,9 @@ export class Remote {
         // daemon answers still freeze the caller's request slot.
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
-        const notForwarded = ce.findDetails(NotForwardedSchema).find(d=>d.attemptId===attemptId && d.relayEpoch===epoch && !!epoch);
+        const notForwarded = delivery.refusal(ce);
         const unsent = notForwarded !== undefined;
         if (unsent) {
-          delivery.notForwarded();
           if (!call.uncertain && (ce.code !== Code.Unauthenticated || attempt >= 3)) throw new CommandError(Code[ce.code].toLowerCase(),notForwarded?.reason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ce.rawMessage,false,false,"not_sent");
         }
         if (ce.code === Code.Unauthenticated && attempt < 3) {
@@ -3472,7 +3415,7 @@ export class Remote {
     mode = SendMode.STEER,
     fileIds: string[] = [],
   ): Promise<RequestSlot> {
-    if (wasUnknown) this.dispatchState(slot).includePrior(true);
+    if (wasUnknown) this.deviceLink.state(slot).includePrior(true);
     const cmd: CommandKind = {
       case: "send",
       value: { sessionId: sid, text, requestId: sendId, imageIds, fileIds, mode },
@@ -3679,10 +3622,9 @@ export class Remote {
     if (!s) throw new Error(l10n.t("session.android_unknown"));
     if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
     const streamId = newRequestID();
-    const ws = new WebSocket(
+    const ws = this.deviceLink.openPathStream(
       apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term",
     );
-    ws.binaryType = "arraybuffer";
     let closed = false;
     let openingTimer: ReturnType<typeof setTimeout> | undefined;
     let rejectOpening: (e: Error) => void = () => {};
@@ -3692,12 +3634,11 @@ export class Remote {
       closed = true;
       clearTimeout(openingTimer);
       signal?.removeEventListener("abort", abort);
-      this.terminals.delete(ws);
       ws.close();
       rejectOpening(new Error(reason));
-      if (notify) onClose(reason);
+      stream.end(reason, notify);
     };
-    this.terminals.set(ws, finish);
+    const stream = this.deviceLink.openStream(onClose, reason => finish(reason, false));
     signal?.addEventListener("abort", abort, { once: true });
     await new Promise<void>((resolve, reject) => {
       rejectOpening = reject;
@@ -3705,7 +3646,7 @@ export class Remote {
         () => finish(l10n.t("errors.terminal_connection_timed_out_reconnect")),
         OPEN_TIMEOUT_MS,
       );
-      ws.onopen = () => {
+      ws.onOpen = () => {
         if (closed) return;
         clearTimeout(openingTimer);
         try {
@@ -3724,16 +3665,16 @@ export class Remote {
           finish(errorText(e));
         }
       };
-      ws.onerror = () => finish(l10n.t("errors.cannot_connect_to_terminal"));
-      ws.onclose = () => finish(l10n.t("errors.terminal_connection_closed"));
+      ws.onError = () => finish(l10n.t("errors.cannot_connect_to_terminal"));
+      ws.onEnd = () => finish(l10n.t("errors.terminal_connection_closed"));
     });
     let last = 0n;
     let queue = Promise.resolve();
     let pendingBytes = 0;
     let pendingFrames = 0;
-    ws.onmessage = (m) => {
+    ws.onFrame = (data) => {
       if (closed) return;
-      const size = (m.data as ArrayBuffer).byteLength;
+      const size = data.byteLength;
       pendingBytes += size;
       pendingFrames++;
       if (pendingBytes > 2 * 1024 * 1024 || pendingFrames > 512) {
@@ -3747,7 +3688,7 @@ export class Remote {
           if (closed) return;
           const env = fromBinary(
             EnvelopeSchema,
-            new Uint8Array(m.data as ArrayBuffer),
+            new Uint8Array(data),
           );
           const { header, msg } = await this.openSecureMessage(
             env,
@@ -3772,7 +3713,7 @@ export class Remote {
         }
       });
     };
-    ws.onclose = () => finish(l10n.t("errors.terminal_connection_dropped"));
+    ws.onEnd = () => finish(l10n.t("errors.terminal_connection_dropped"));
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     try {
       await this.command(sid, {
@@ -3789,7 +3730,7 @@ export class Remote {
     return {
       send: (frame) => {
         sending = sending.then(async () => {
-          if (closed || ws.readyState !== WebSocket.OPEN) return;
+          if (closed || !ws.ready) return;
           seq++;
           const env = await this.sealSecureMessage(
             {
@@ -3803,7 +3744,7 @@ export class Remote {
             TerminalFrameSchema,
             create(TerminalFrameSchema, frame),
           );
-          if (!closed && ws.readyState === WebSocket.OPEN)
+          if (!closed && ws.ready)
             ws.send(toBinary(EnvelopeSchema, env));
         });
       },

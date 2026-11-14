@@ -98,7 +98,7 @@ export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) 
   const key = machineId + "/" + agent;
   const [got, setGot] = useState<{ key: string; models?: ListModelsResponse; settings?: DaemonSettings; error: string; done: boolean }>();
   const [attempt, setAttempt] = useState(0);
-  const online = remote.machines.get(machineId)?.online ?? false;
+  const online = remote.peer(machineId).reachable ?? false;
   useEffect(() => {
     let alive = true;
     setGot((g) => (g?.key === key ? { ...g, error: "", done: false } : g));
@@ -150,7 +150,7 @@ export function describe(cfg: NewConfig, m: MachineLike | undefined, info: Retur
 }
 
 function freshConfig(remote: Remote, key: string, machineId?: string): NewConfig {
-  const online = [...remote.machines.values()].filter((m) => m.online);
+  const online = [...remote.machines.values()].filter((m) => remote.peer(m.id).reachable);
   const id = machineId ?? online[0]?.id ?? [...remote.machines.keys()][0] ?? "";
   return { machineId: id, cwd: key, agent: machineAgents(remote.machines.get(id))[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
 }
@@ -241,7 +241,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // Where it starts without a choice made on this page.
   // A project none of whose sessions are held starts on a machine that
   // has it, as its summary says, rather than on any machine.
-  const known = p?.machines.find((id) => remote.machines.get(id)?.online) ?? p?.machines[0];
+  const known = p?.machines.find((id) => remote.peer(id).reachable) ?? p?.machines[0];
   const baseMachine = fixedMachine || remote.draftMachines.get(key) || held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, known).machineId;
   const machineId = fixedMachine ?? pinned?.machineId ?? local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
@@ -364,7 +364,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   };
   // Images for the first message go to the chosen machine; a new machine
   // gets them again (the tray keeps them prepared).
-  const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(machine));
+  const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(remote, machine));
   const [, redraw] = useState(0);
   const create = async (prompt: string, terminal = false) => {
     // One request at a time, whichever page sent the one on its way.
@@ -435,7 +435,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   };
   // A project removed from the list (here or on another client) keeps its
   // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? t("new_session.removed_blocked") : remote.listed && !machine?.online ? t("new_session.machine_offline", { name: machineName(machine) }) : remote.conn !== "online" ? t("new_session.disconnected") : unread ? t("new_session.reading_previous") : (configured.model || configured.effort) && info.loading ? t("new_session.reading_models") : "";
+  const blocked = isHidden(remote.projectPrefs(), key) ? t("new_session.removed_blocked") : remote.listed && !remote.peer(machine?.id).reachable ? t("new_session.machine_offline", { name: machineName(machine) }) : !remote.peer(cfg.machineId).ready ? t("new_session.disconnected") : unread ? t("new_session.reading_previous") : (configured.model || configured.effort) && info.loading ? t("new_session.reading_models") : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     adopt();
@@ -646,7 +646,7 @@ export function NewBox({
   );
   const { frozen } = ns;
   // Before the lists are in, no computer is known to be off.
-  const offline = ns.remote.listed && !ns.machine?.online;
+  const offline = ns.remote.listed && !ns.remote.peer(ns.machine?.id).reachable;
   const error =
     ns.error &&
     (frozen ? (
@@ -870,7 +870,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
       <Sheet onClose={onClose} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head new-task-model-sheet">{panel}</Sheet>;
   }
   // Machines this project has used; a new project can use any.
-  const choices: MachineView[] = (p && machine?.online ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
+  const choices: MachineView[] = (p && remote.peer(machine?.id).reachable ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
   let body;
   if (pick === "machine")
     body = (
@@ -878,17 +878,17 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
         {choices.map((m) => (
           <button
             key={m.id}
-            className={"mi" + (m.online ? "" : " dis")}
-            disabled={!m.online}
+            className={"mi" + (remote.peer(m.id).reachable ? "" : " dis")}
+            disabled={!remote.peer(m.id).reachable}
             onClick={() => {
-              ns.setCfg(switchMachine(cfg, m), !machine?.online);
+              ns.setCfg(switchMachine(cfg, m), !remote.peer(machine?.id).reachable);
               back2();
             }}
           >
-            <StateMark kind={m.online ? "online" : "off"} />
+            <StateMark kind={remote.peer(m.id).reachable ? "online" : "off"} />
             <div className="mt">
-              {m.id === cfg.machineId || !m.online ? machineName(m) : <b>{t("new_session.use_machine", { name: machineName(m) })}</b>}
-              {!m.online ? (
+              {m.id === cfg.machineId || !remote.peer(m.id).reachable ? machineName(m) : <b>{t("new_session.use_machine", { name: machineName(m) })}</b>}
+              {!remote.peer(m.id).reachable ? (
                 <div className="md">{m.lastSeenMs ? t("new_session.offline_last_seen", { time: ago(m.lastSeenMs) }) : t("new_session.offline_no_start")}</div>
               ) : (
                 <div className="md">
@@ -1035,7 +1035,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
                 <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
                   <span className="mt">{l10n.t("common.machine")}</span>
                   <span className="mv">
-                    <StateMark kind={machine?.online || !remote.listed ? "online" : "off"} />
+                    <StateMark kind={remote.peer(machine?.id).reachable || !remote.listed ? "online" : "off"} />
                     {machineName(machine)}
                   </span>
                   <ChevronRight className="chev" />
@@ -1200,8 +1200,8 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = t("proje
 
 /** A new project: a machine, then a folder on it. */
 export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine }: { remote: Remote; onBack?: () => void; onDone: (machineId: string, path: string) => void; onClose: () => void; fixedMachine?: string }) {
-  const machines = [...remote.machines.values()].filter(m => !fixedMachine || m.id === fixedMachine).sort((a, b) => Number(b.online) - Number(a.online) || machineName(a).localeCompare(machineName(b)));
-  const [machineId, setMachineId] = useState(machines.find((m) => m.online)?.id ?? "");
+  const machines = [...remote.machines.values()].filter(m => !fixedMachine || m.id === fixedMachine).sort((a, b) => Number(remote.peer(b.id).reachable) - Number(remote.peer(a.id).reachable) || machineName(a).localeCompare(machineName(b)));
+  const [machineId, setMachineId] = useState(machines.find((m) => remote.peer(m.id).reachable)?.id ?? "");
   const m = remote.machines.get(machineId);
   return (
     <Sheet onClose={onClose} title={fixedMachine ? t("projects.choose_directory") : t("projects.new_choose_directory")} back={onBack}>
@@ -1212,10 +1212,10 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
         onChange={setMachineId}
         options={machines.map((x) => ({
           value: x.id,
-          disabled: !x.online || !!fixedMachine,
+          disabled: !remote.peer(x.id).reachable || !!fixedMachine,
           label: (
             <>
-              <StateMark kind={x.online ? "online" : "off"} />
+              <StateMark kind={remote.peer(x.id).reachable ? "online" : "off"} />
               {machineName(x)}
             </>
           ),

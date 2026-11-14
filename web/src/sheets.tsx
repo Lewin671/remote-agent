@@ -131,7 +131,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
   }, [remote, s.machineId]);
   const mode = modeOf(s);
   const cur = mode?.mode || undefined;
-  const online = remote.conn === "online";
+  const online = remote.peer(s.machineId).ready;
   const pick = async (mode: ApprovalMode) => {
     setBusy(true);
     setError("");
@@ -222,7 +222,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   // model even when it is not among them.
   const few = list.length <= 5;
   const shown = all || few ? list : [...list.slice(0, 3), ...(cur && !list.slice(0, 3).includes(cur) ? [cur] : [])];
-  const offline = remote.conn !== "online";
+  const offline = !remote.peer(s.machineId).ready;
   const locked = !!switching || running || offline;
   const set = async (m: ModelInfo, e: string) => {
     setSwitching(m.displayName || m.slug);

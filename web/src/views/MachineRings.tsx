@@ -41,7 +41,7 @@ function RingFace({ ring, kind }: { ring?: Ring; kind: Ring["kind"] }) {
 export function MachineRings({ remote, id, go }: { remote: Remote; id: string; go: (route: string) => void }) {
   const m = remote.machines.get(id);
   const status = useMachineStatus(remote, id, 10_000);
-  if (!m?.meta?.capabilities?.machineStatus) return null;
+  if (!m || !remote.peer(m.id).capabilities?.machineStatus) return null;
   const online = remote.onlineOf(m);
   const rings = status.last && online ? ringsOf(status.last) : undefined;
   const faces: Ring["kind"][] = ["cpu", "memory", "disk"];

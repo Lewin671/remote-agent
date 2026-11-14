@@ -1,6 +1,6 @@
 import {expect,test} from "vitest";
 import rows from "../../testdata/transport/dispatch.json";
-import {DispatchState,type DispatchCall} from "./dispatch";
+import {DispatchState,type DispatchCall} from "./transport/dispatch";
 
 test.each(rows.filter(row => !process.env.RA_DISPATCH_CASE || process.env.RA_DISPATCH_CASE===row.name))("dispatch ownership $name",row=>{
  const state=new DispatchState(row.prior);

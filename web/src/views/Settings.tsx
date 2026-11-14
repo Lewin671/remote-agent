@@ -268,11 +268,11 @@ function UpdateRow() {
 }
 
 /** On a machine's page: a line for each CLI's quota, leading to all of it. */
-function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
+function QuotaSummary({ remote, m, go }: { remote: Remote; m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
   // Reset times pass with nothing else changing.
   const now = useNow(30_000);
-  const views = machineQuotaViews(m.meta, agents, now, m.online);
+  const views = machineQuotaViews(m.meta, agents, now, remote.peer(m.id).reachable);
   return (
     <>
       <div className="label">{l10n.t("settings.account_quota")}</div>
@@ -326,16 +326,16 @@ export function QuotaPage({
         <div className="center muted">{l10n.t("settings.device_not_found")}</div>
       </div>
     );
-  const views = machineQuotaViews(m.meta, machineAgents(m), clock, m.online);
+  const views = machineQuotaViews(m.meta, machineAgents(m), clock, remote.peer(m.id).reachable);
   return (
     <div className="page set">
       <NavBar
         onBack={onBack}
         title={l10n.t("settings.account_quota")}
-        sub={`${machineName(m)} · ${m.online ? l10n.t("common.ios_online") : l10n.t("settings.offline")}`}
+        sub={`${machineName(m)} · ${remote.peer(m.id).reachable ? l10n.t("common.ios_online") : l10n.t("settings.offline")}`}
       />
       <div className="body">
-        {!m.online && (
+        {!remote.peer(m.id).reachable && (
           <div className="set-banners">
             <Banner kind="warn">{l10n.t("settings.computer_offline_showing_the_last_reading")}</Banner>
           </div>
@@ -479,7 +479,7 @@ export function DevicesPage({
               </span>
               <span className="row-name">{machineName(m)}</span>
               <span className="v">
-                {m.online ? (
+                {remote.peer(m.id).reachable ? (
                   <>
                     <StateMark kind="online" />
                     {l10n.t("common.ios_online")}</>
@@ -869,7 +869,7 @@ export function MachinePage({
   const [defaultAgent, setDefaultAgent] = useState<Agent>(agents[0]);
   const activeAgent = agents.includes(defaultAgent) ? defaultAgent : agents[0];
   useEffect(() => {
-    if (!m?.online) return;
+    if (!remote.peer(m?.id).reachable) return;
     setError("");
     remote.settings(id, true).then(setSt, (e) => setError(errorText(e)));
     for (const a of agents)
@@ -877,7 +877,7 @@ export function MachinePage({
         (r) => setModels((x) => new Map(x).set(a, r)),
         () => undefined,
       );
-  }, [remote, id, m?.online, attempt, agents.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, id, remote.peer(m?.id).reachable, attempt, agents.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   // Once the settings are in, the storage is there to be scrolled to.
   useEffect(() => {
     if (section === "storage" && st) document.getElementById("attachment-storage")?.scrollIntoView?.({ block: "start" });
@@ -1068,10 +1068,10 @@ export function MachinePage({
 
   return (
     <div className="page set">
-      <NavBar onBack={onBack} title={name} sub={m.online ? l10n.t("common.ios_online") : ago(m.lastSeenMs) ? l10n.t("settings.online", { value: String(ago(m.lastSeenMs)) }) : l10n.t("settings.offline")} />
+      <NavBar onBack={onBack} title={name} sub={remote.peer(m.id).reachable ? l10n.t("common.ios_online") : ago(m.lastSeenMs) ? l10n.t("settings.online", { value: String(ago(m.lastSeenMs)) }) : l10n.t("settings.offline")} />
       <div className="body">
         <MachineRings remote={remote} id={id} go={go} />
-        <QuotaSummary m={m} go={go} />
+        <QuotaSummary remote={remote} m={m} go={go} />
         {versions.length > 0 && (
           <div className="grp">
             {versions.map((v) => (
@@ -1088,7 +1088,7 @@ export function MachinePage({
             )}
           </div>
         )}
-        {!m.online && (
+        {!remote.peer(m.id).reachable && (
           <div className="label">{l10n.t("settings.computer_settings_offline", { name })}</div>
         )}
         {error && (
@@ -1202,7 +1202,7 @@ export function MachinePage({
             id={id}
             settings={st}
             onSave={setSt}
-            online={m.online}
+            online={remote.peer(m.id).reachable}
           />
         )}
         {projs.length > 0 && (
@@ -1302,7 +1302,7 @@ function ImageStorageSettings({
   const free = usage ? usage.reclaimableBytes + usage.cacheBytes : 0n;
   // The emergency file the daemon keeps back (B2): listed in this group's own MiB/GiB, and not for clearing.
   const meta = remote.machines.get(id)?.meta;
-  const reserve = meta?.capabilities?.machineStatus ? (meta.diskStatus?.emergencyReserveBytes ?? 0n) : 0n;
+  const reserve = remote.peer(id).capabilities?.machineStatus ? (meta?.diskStatus?.emergencyReserveBytes ?? 0n) : 0n;
   // What is worth a line: sizes that are not zero.
   const parts = usage
     ? [

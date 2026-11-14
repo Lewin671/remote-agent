@@ -53,7 +53,7 @@ export interface SharedFileChunkResult {
 
 export interface SharedFileEnvironment {
   getChunk(sessionId: string, fileId: string, offset: bigint): Promise<SharedFileChunkResult>;
-  isConnected(): boolean;
+  isConnected(sessionId: string): boolean;
   isMachineOnline(sessionId: string): boolean;
   isSessionEnded(sessionId: string): boolean;
   sharedFileChunkBytes(sessionId: string): number;
@@ -363,7 +363,7 @@ export class SharedFileManager {
     for (const e of this.entries.values()) {
       if (
         e.reconnectResolve &&
-        this.env.isConnected() &&
+        this.env.isConnected(e.sessionId) &&
         this.env.isMachineOnline(e.sessionId)
       ) {
         const resolve = e.reconnectResolve;
@@ -451,7 +451,7 @@ export class SharedFileManager {
     const e = this.entries.get(this.key(sessionId, file.fileId));
     const totalBytes = Number(file.sizeBytes);
     const ended = this.env.isSessionEnded(sessionId);
-    const online = this.env.isConnected() && this.env.isMachineOnline(sessionId);
+    const online = this.env.isConnected(sessionId) && this.env.isMachineOnline(sessionId);
 
     if (e?.status === "downloaded" && e.blob) {
       return {
@@ -774,7 +774,7 @@ export class SharedFileManager {
         resolve(false);
         return;
       }
-      if (this.env.isConnected() && this.env.isMachineOnline(e.sessionId)) {
+      if (this.env.isConnected(e.sessionId) && this.env.isMachineOnline(e.sessionId)) {
         // Already online (e.g., transient request error): allow immediate single auto-resume.
         resolve(true);
         return;

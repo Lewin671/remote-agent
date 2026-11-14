@@ -290,7 +290,7 @@ export function SessionPage({
   // Remounting the input shows a draft put back from the chat.
   const [composerKey, setComposerKey] = useState(0);
   const items = dockItems(session, d, machine);
-  const tray = useTray(remote, sid, session.machineId, maxImages(machine));
+  const tray = useTray(remote, sid, session.machineId, maxImages(remote, machine));
   /** Puts a message back into the input: its text, and its images, still
    * on the computer, with this device's copies of them when it has them. */
   const restore = async (text: string, from?: string) => {
@@ -386,9 +386,9 @@ export function SessionPage({
   );
   // Display names for the model chip; the list is cached per machine.
   useEffect(() => {
-    if (machine?.online && !inactive)
+    if (remote.peer(machine?.id).reachable && !inactive)
       remote.listModels(session.machineId, agent).catch(() => undefined);
-  }, [remote, session.machineId, agent, machine?.online, inactive]);
+  }, [remote, session.machineId, agent, remote.peer(machine?.id).reachable, inactive]);
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     try {
@@ -625,7 +625,7 @@ export function SessionPage({
           ended={ended}
           scheduledClosed={d.scheduledClosed}
           idleClosed={d.idleClosed}
-          machineOnline={machine?.online ?? false}
+          machineOnline={remote.peer(machine?.id).reachable ?? false}
           agent={agent}
           mname={mname}
           lastSeen={machine?.lastSeenMs ?? 0n}
@@ -753,10 +753,10 @@ export function SessionPage({
                     },
                   ]
                 : []),
-              ...(machine?.online && remote.conn === "online"
+              ...(remote.peer(machine?.id).reachable && remote.peer(session.machineId).ready
                 ? [{ label: i18n.t("session.rename"), group: 1, onClick: () => setRenaming(true) }]
                 : []),
-              ...(agentInfo(agent).forks && machine?.online && remote.conn === "online"
+              ...(agentInfo(agent).forks && remote.peer(machine?.id).reachable && remote.peer(session.machineId).ready
                 ? [
                     ...(forking
                       ? [{
@@ -802,7 +802,7 @@ export function SessionPage({
                             ]),
                   ]
                 : []),
-              { label: i18n.t("session.schedule_send"), group: 1, disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? i18n.t("session.update_computer") : undefined, onClick: () => setScheduling(true) },
+              { label: i18n.t("session.schedule_send"), group: 1, disabled: !remote.peer(machine?.id).reachable || !remote.peer(session.machineId).ready || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? i18n.t("session.update_computer") : undefined, onClick: () => setScheduling(true) },
               // Stopping the turn stays in its place while there is none,
               // grayed, saying why.
               ...(!inactive
@@ -812,7 +812,7 @@ export function SessionPage({
                       : { label: i18n.t("session.interrupt_turn"), disabled: true, note: i18n.t("session.not_running"), group: 1, onClick: () => undefined },
                   ]
                 : []),
-              ...(!ended && machine?.online
+              ...(!ended && remote.peer(machine?.id).reachable
                 ? [
                     {
                       label: i18n.t("session.end_action"),
@@ -1978,7 +1978,7 @@ function EndCard({
           <button
             className="btn"
             onClick={() => void resume()}
-            disabled={!machineOnline || remote.conn !== "online"}
+            disabled={!machineOnline || !remote.peer(session.machineId).ready}
           >
             {i18n.t("session.try_again")}</button>
         </div>
@@ -2005,7 +2005,7 @@ function EndCard({
             <button
               className="btn pri"
               onClick={() => void resume()}
-              disabled={remote.conn !== "online"}
+              disabled={!remote.peer(session.machineId).ready}
             >
               {i18n.t("session.resume")}</button>
           </div>

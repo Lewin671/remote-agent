@@ -29,7 +29,7 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
     void remote.restoreDraft(key, t).catch(() => undefined);
   }
   t.max = max;
-  const caps = remote.machines.get(machineId)?.meta?.capabilities;
+  const caps = remote.peer(machineId).capabilities;
   t.fileSupported = !!caps?.fileUpload;
   t.maxFiles = caps?.maxFilesPerMessage || 6;
   t.maxFileBytes = Number(caps?.maxFileUploadBytes || 100n * 1024n * 1024n);
@@ -60,15 +60,15 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
 /** Why images cannot be added now, or "". */
 export function attachBlocked(remote: Remote, m: MachineView | undefined): string {
   const name = machineName(m);
-  if (!m?.online) return i18n.t("attachment.computer_offline", { name });
-  if (remote.conn !== "online") return i18n.t("attachment.disconnected");
+  if (!m || !remote.peer(m.id).reachable) return i18n.t("attachment.computer_offline", { name });
+  if (!remote.peer(m?.id).ready) return i18n.t("attachment.disconnected");
   if (!m.meta) return i18n.t("attachment.computer_unread", { name });
-  if (!m.meta.capabilities?.imageUpload) return i18n.t("attachment.path_spaces", { name });
+  if (!remote.peer(m?.id).capabilities?.imageUpload) return i18n.t("attachment.path_spaces", { name });
   return "";
 }
 
-export function maxImages(m: MachineView | undefined): number {
-  return m?.meta?.capabilities?.maxImagesPerMessage || 6;
+export function maxImages(remote: Remote, m: MachineView | undefined): number {
+  return remote.peer(m?.id).capabilities?.maxImagesPerMessage || 6;
 }
 
 /** Image files in a drop or a paste. */

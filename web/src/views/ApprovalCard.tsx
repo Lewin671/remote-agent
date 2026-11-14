@@ -146,7 +146,7 @@ export function ApprovalCard({
   const more = docked ? 0 : lines - CARD_LINES;
   const cut = more > 0 && !full;
   const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0;
-  const always = remote.machines.get(remote.sessions.get(sid)?.machineId ?? "")?.meta?.capabilities?.approvalAlways;
+  const always = remote.peer(remote.sessions.get(sid)?.machineId ?? "").capabilities?.approvalAlways;
   const command = (
     <>
       <pre ref={cmd} className={"cmd" + (clamp ? " clamp" : "")} style={clamp ? ({ "--lines": clamp } as CSSProperties) : undefined}>

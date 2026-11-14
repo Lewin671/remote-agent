@@ -27,7 +27,7 @@ it("reports first-load failure and preserves strict ranking thresholds",async()=
 });
 it("uses capability, online status, recent projects and an explicit error code",()=>{
  const meta=create(MachineMetaSchema,{capabilities:create(MachineCapabilitiesSchema,{machineStatus:true}),diskStatus:create(DiskStatusSchema,{availableBytes:9_000_000_000n}),projects:[create(ProjectSummarySchema,{path:"old",latestCreatedMs:1n}),create(ProjectSummarySchema,{path:"new",latestEndedMs:2n})]});
- expect(machineDiskReminder(false,meta)).toBeUndefined();expect(machineDiskReminder(true,meta)).toBeDefined();expect(recentMachineProject(meta)).toBe("new");expect(isDiskFull({code:"disk_full"})).toBe(true);expect(isDiskFull(Error("no space left on device"))).toBe(false);
+ expect(machineDiskReminder(false,meta,true)).toBeUndefined();expect(machineDiskReminder(true,meta,true)).toBeDefined();expect(recentMachineProject(meta)).toBe("new");expect(isDiskFull({code:"disk_full"})).toBe(true);expect(isDiskFull(Error("no space left on device"))).toBe(false);
 });
 it("keeps last values offline and bounds each request to fifteen seconds",async()=>{
  vi.useFakeTimers();let hung=false,calls=0;
