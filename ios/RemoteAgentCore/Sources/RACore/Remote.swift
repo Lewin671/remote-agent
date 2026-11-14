@@ -285,6 +285,7 @@ public actor Remote {
     // background must not open the stream afterwards, and a frame of a
     // replaced socket must not be taken.
     var generation = 0
+    var lifecycleGeneration = 0
     /// Putting what the cache holds in place, started once; no connection is made before it is done.
     var restoring: Task<Void, Never>?
     var restoredResult: SharedResult<Void>?
@@ -599,6 +600,7 @@ public actor Remote {
             securityNetworkReset=(networkGeneration,task)
         }
         generation += 1
+        lifecycleGeneration += 1
         reconnect?.task.cancel()
         reconnect = nil
         listRetry?.task.cancel()
@@ -788,6 +790,7 @@ public actor Remote {
                 opening?.task.cancel();opening=nil
                 liveness?.cancel(); liveness = nil
                 generation += 1
+                lifecycleGeneration += 1
                 reconnect?.task.cancel()
                 reconnect = nil
                 if let ws {retireMainLeg(ws)}
@@ -1058,7 +1061,7 @@ public actor Remote {
     private func onFrame(_ f: PBServerFrame) async {
         switch f.kind {
         case .ready?:
-            let gen = generation
+            let leg = ws
             conn = .online
             error = ""
             errorDetail = ""
@@ -1066,7 +1069,7 @@ public actor Remote {
             publish()
             // Subscribed first, then catch up: nothing falls in between.
             _ = await refresh()
-            if !running || gen != generation || Task.isCancelled { return }
+            if !running || ws !== leg || Task.isCancelled { return }
             let followed = eventFeeds.withLock { feeds in
                 feeds.filter { $0.value.followers > 0 }.map(\.key)
             }

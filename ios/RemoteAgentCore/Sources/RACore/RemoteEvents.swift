@@ -158,12 +158,12 @@ extension Remote {
             return
         }
         b.fetching = true
-        let gen = generation
+        let gen = lifecycleGeneration
         var newerOnly = false
         defer {
             b.fetching = false
-            // A pass for the newer events that failed leaves the whole read asked for after it.
-            if b.refetch && running && (gen != generation || newerOnly) && buffers[sid] === b {
+            // A pass for the newer events, or a fetch superseded by a newer Ready, asks again after it finishes.
+            if b.refetch && running && buffers[sid] === b {
                 Task { await self.fetchEvents(sid) }
             }
             publishEvents(sid, b)
@@ -210,13 +210,13 @@ extension Remote {
                     // advances to it, as far as it makes progress.
                     if !page.more || UInt64(b.events.count) == before { break }
                 }
-                if !running || gen != generation || buffers[sid] !== b { return }
+                if !running || gen != lifecycleGeneration || buffers[sid] !== b { return }
                 let missing = !b.pending.isEmpty || UInt64(b.events.count) < latest
                 b.loaded = !missing && b.historyFailure == nil
                 b.fetchError = missing && b.historyFailure == nil ? L10n.errorsIosHistoryIsDiscontinuousRetryLoading() : nil
             } while b.refetch
         } catch {
-            if !running || gen != generation || buffers[sid] !== b { return }
+            if !running || gen != lifecycleGeneration || buffers[sid] !== b { return }
             report(error)
             b.fetchError = L10n.errorsIosCouldNotLoadHistory(value: String(describing: errorText(error)))
         }
@@ -238,15 +238,15 @@ extension Remote {
     private func historyPage(
         _ sid: String, after: UInt64, limit: UInt64 = 500, buffer b: Buffer, generation gen: Int
     ) async throws -> PBGetEventsResponse? {
-        if !running || gen != generation || buffers[sid] !== b { return nil }
+        if !running || gen != lifecycleGeneration || buffers[sid] !== b { return nil }
         var ask = PBGetEventsRequest()
         ask.sessionID = sid
         ask.afterSeq = after
         ask.limit = UInt32(limit)
         let response = try await api.client.getEvents(request: ask, headers: Api.headers(token: token)).value()
-        if !running || gen != generation || buffers[sid] !== b { return nil }
+        if !running || gen != lifecycleGeneration || buffers[sid] !== b { return nil }
         await ingest(sid, response.events, fillGaps: false, save: true, history: true)
-        if !running || gen != generation || buffers[sid] !== b { return nil }
+        if !running || gen != lifecycleGeneration || buffers[sid] !== b { return nil }
         return response
     }
 

@@ -142,7 +142,7 @@ extension Remote {
             guard me.listRetry?.id == id else { return }
             // Not this timer's to cancel from refresh while it runs.
             me.listRetry = nil
-            if me.running && me.conn == .online && run == me.refreshRun { await me.refresh() }
+            if me.running && run == me.refreshRun { await me.refresh() }
         }
     }
 
@@ -429,7 +429,7 @@ extension Remote {
             prefsRetry = schedule(wait) { me, id in
                 guard me.prefsRetry?.id == id else { return }
                 me.prefsRetry = nil
-                if me.running && me.conn == .online { await me.loadPrefs() }
+                if me.running { await me.loadPrefs() }
             }
         }
     }

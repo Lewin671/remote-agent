@@ -560,6 +560,7 @@ class Remote(
     // Bumped by stop: a connection attempt suspended in login when the app
     // went to the background must not open the stream afterwards.
     private var generation = 0
+    private var lifecycleGeneration = 0
     /**
      * Putting what the cache holds in place, started once; no connection is made before it is done.
      */
@@ -668,6 +669,7 @@ class Remote(
         security.networkChanged()
         retireDirectory()
         generation++
+        lifecycleGeneration++
         reconnect?.cancel()
         reconnect = null
         listRetry?.cancel()
@@ -872,6 +874,7 @@ class Remote(
                         removed = true
                         running = false
                         generation++
+                        lifecycleGeneration++
                         val setup = connecting; connecting = null
                         val pending = candidate; candidate = null
                         val active = ws; ws = null
@@ -1151,7 +1154,7 @@ class Remote(
         when (f.kindCase) {
             ServerFrame.KindCase.HEARTBEAT -> Unit
             ServerFrame.KindCase.READY -> {
-                val gen = generation
+                val leg = ws
                 conn = ConnState.ONLINE
                 clearConnProgress()
                 connError = "".messageText()
@@ -1161,7 +1164,8 @@ class Remote(
                 publish()
                 // Subscribed first, then catch up: nothing falls in between.
                 refresh()
-                if (!running || gen != generation) return
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (!running || ws !== leg) return
                 val histories =
                     buffers.keys + eventFlows.filterValues { it.subscriptionCount.value > 0 }.keys
                 for (sid in histories.toList()) scope.launch {
@@ -1381,7 +1385,7 @@ class Remote(
             delay(wait)
             // Not this job's to cancel itself from refresh.
             listRetry = null
-            if (running && conn == ConnState.ONLINE && run == refreshRun) refresh()
+            if (running && run == refreshRun) refresh()
         }
     }
 
@@ -1756,7 +1760,7 @@ class Remote(
     private suspend fun loadPrefs() {
         prefsRetry?.cancel()
         prefsRetry = null
-        val gen = generation
+        val gen = lifecycleGeneration
         try {
             val o =
                 api.client
@@ -1773,14 +1777,14 @@ class Remote(
             if (e is CancellationException) throw e
             report(e)
             // A connection made since reads them itself.
-            if (prefs != null || !running || gen != generation || prefsRetry != null) return
+            if (prefs != null || !running || gen != lifecycleGeneration || prefsRetry != null) return
             val wait = prefsBackoff
             prefsBackoff = minOf(prefsBackoff * 2, 30_000)
             prefsRetry = scope.launch {
                 delay(wait)
                 // Not this job's to cancel itself from loadPrefs.
                 prefsRetry = null
-                if (running && conn == ConnState.ONLINE && gen == generation && prefs == null)
+                if (running && gen == lifecycleGeneration && prefs == null)
                     loadPrefs()
             }
         }
@@ -2950,8 +2954,8 @@ class Remote(
             return
         }
         b.fetching = true
-        val gen = generation
-        fun active() = running && gen == generation && buffers[sid] === b
+        val gen = lifecycleGeneration
+        fun active() = running && gen == lifecycleGeneration && buffers[sid] === b
         try {
             do {
                 if (!active()) return
@@ -3017,7 +3021,7 @@ class Remote(
             b.fetchError = localized { copy -> copy(UiMessages.errorsAndroidHistoryReadFailed(errorText(e, state.value).resolve(copy))) }
         } finally {
             b.fetching = false
-            if (b.refetch && running && gen != generation) scope.launch { fetchEvents(sid) }
+            if (b.refetch && running && buffers[sid] === b) scope.launch { fetchEvents(sid) }
             publishEvents(sid, b)
         }
     }
@@ -3450,9 +3454,9 @@ class Remote(
             val previous = p.authorizedEnvelope
             if (previous != null) {
                 val h = DeviceSecurity.parseHeader(previous.securityHeader.toByteArray())
-                // A membership change rotates the content key; the same request
-                // (ID and deadline) is resealed under the current epoch.
-                if (h.contentEpoch == head.core.contentEpoch) return@withLock previous
+                // Any new authorization head requires a fresh seal, even when
+                // the content epoch is unchanged. The request bytes stay frozen.
+                if (h.state.contentEquals(DeviceSecurity.stateHash(head))) return@withLock previous
             }
             val env =
                 if (p.command != null) {
@@ -3476,8 +3480,9 @@ class Remote(
                         plain = checkNotNull(p.commandBytes()),
                     )
                 } else {
-                    DeviceSecurity.fromEnvelope(p.envelope)
-                    p.envelope
+                    val (h, plain) = security.openOwnCommand(p.envelope)
+                    if (h.machine != p.machineId || h.session != p.sessionId || h.request != p.requestId || h.deadline != p.deadlineMs.toULong()) throw DeviceSecurity.Failure()
+                    security.seal(DeviceSecurity.Purpose.COMMAND, h.machine, h.session, h.request, deadline = h.deadline, plain = plain)
                 }
             p.authorizedEnvelope = env
             env

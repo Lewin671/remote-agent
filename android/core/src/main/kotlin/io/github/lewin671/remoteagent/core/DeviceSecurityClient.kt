@@ -259,13 +259,18 @@ class DeviceSecurityClient(
     }
 
     internal suspend fun commandIdentity(env: Envelope): Pair<ByteArray, ByteArray> {
+        val (h, plain) = openOwnCommand(env)
+        return DeviceSecurity.requestIdentity(h, plain)
+    }
+
+    internal fun openOwnCommand(env: Envelope): Pair<DeviceSecurity.Header, ByteArray> {
         val w = DeviceSecurity.fromEnvelope(env)
         val h = DeviceSecurity.parseHeader(w.formed.header)
         if (h.sender != memberID || h.purpose != DeviceSecurity.Purpose.COMMAND) throw DeviceSecurity.Failure()
         val r = read()
         val s = r.stateAt(h.epoch) ?: throw DeviceSecurity.Failure("stale")
         val (opened, plain) = DeviceSecurity.open(s, s, false, 0uL, w, openKey(r,s,h,w,false), null)
-        return DeviceSecurity.requestIdentity(opened, unpackSecurity(opened,plain))
+        return opened to unpackSecurity(opened,plain)
     }
 
     suspend fun openCurrent(

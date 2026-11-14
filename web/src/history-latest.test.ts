@@ -205,7 +205,7 @@ it("is not ready before the first page, and ready with it", async () => {
   expect(r.history(SID)).toMatchObject({ loaded: true, ready: true });
 });
 
-it("starts the history again when a reconnection cut the first fetch short", async () => {
+it("starts the history again after a lifecycle restart cut the first fetch short", async () => {
   const count = PAGE + 2;
   const r = await probe(count);
   const all = rows.slice(0, count);
@@ -218,9 +218,9 @@ it("starts the history again when a reconnection cut the first fetch short", asy
   } };
   r.events(SID);
   await asked.promise;
-  // The connection is replaced and is up again while the first request is
-  // still out: nobody asks for the history a second time.
-  (r as any).generation++;
+  // The lifecycle restarts while the first request is still out:
+  // nobody asks for the history a second time.
+  (r as any).lifecycleGeneration++;
   (r as any).conn = "online";
   const done = until(r, () => r.loaded(SID));
   gate.resolve();
@@ -236,8 +236,7 @@ it("leaves a cut fetch for the next connection's first frame while offline", asy
   (r as any).api = { getEvents };
   r.events(SID);
   await asked.promise;
-  (r as any).generation++;
-  (r as any).conn = "offline";
+  r.stop();
   gate.resolve();
   await vi.waitFor(() => expect((r as any).buffers.get(SID).fetching).toBe(false));
   expect(getEvents).toHaveBeenCalledTimes(1);
@@ -269,4 +268,13 @@ it("keeps the displayed tail while prefix pages load, then exposes the complete 
     await completed;
     expect(r.events(SID).map(e => e.seq)).toEqual(rows.slice(0, count).map(e => e.seq));
   } finally { first.resolve(); second.resolve(); }
+});
+
+
+it("keeps an independent history page when a probe changes setup generation", async () => {
+ const r=await probe(1),rt=r as any;const gate=deferred();let calls=0;
+ rt.api={getEvents:async()=>{calls++;await gate.promise;return {events:rows.slice(0,1),more:false};}};
+ r.events(SID);await Promise.resolve();rt.generation++;r.conn="connecting";gate.resolve();
+ await vi.waitFor(()=>expect(r.loaded(SID)).toBe(true));
+ expect(calls).toBe(1);expect(r.events(SID)).toHaveLength(1);
 });

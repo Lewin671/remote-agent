@@ -1110,6 +1110,7 @@ export class Remote {
   private closed = false;
   private reconcilingSecurity = 0;
   private generation = 0;
+  private lifecycleGeneration = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private securityTimer?: ReturnType<typeof setInterval>;
   private pairingTimer?: ReturnType<typeof setInterval>;
@@ -1802,6 +1803,7 @@ export class Remote {
     clearTimeout(this.historyTrim);
     this.historyTrim = undefined;
     this.generation++;
+    this.lifecycleGeneration++;
     this.connecting = false;
     this.setupController?.abort();
     this.setupController = undefined;
@@ -2221,14 +2223,13 @@ export class Remote {
       if (this.ws === ws && this.activeNetworkGeneration === this.networkGeneration && this.foreground && this.conn === "connecting" && frame.kind.case !== "ready") {
         this.conn = "online"; this.changed(true);
       }
-      const activeGeneration = this.generation;
       queuedBytes += data.byteLength; queuedFrames++;
       if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
         overflow = true; drop(new Error(l10n.t("errors.push_backlog_reconnecting"))); return;
       }
       processing = processing.then(async () => {
-        if (this.closed || this.ws !== ws || activeGeneration !== this.generation || overflow) return;
-        await this.onFrame(frame.kind, activeGeneration);
+        if (this.closed || this.ws !== ws || overflow) return;
+        await this.onFrame(frame.kind, ws);
       }).catch(e => { if (current()) { this.report(e); drop(e); } }).finally(() => {
         queuedBytes -= data.byteLength; queuedFrames--;
       });
@@ -2252,9 +2253,9 @@ export class Remote {
 
   private async onFrame(
     kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"],
-    generation = this.generation,
+    leg = this.ws,
   ) {
-    if (this.closed || generation !== this.generation) return;
+    if (this.closed || leg !== this.ws) return;
     switch (kind.case) {
       case "heartbeat":
         break;
@@ -2270,7 +2271,7 @@ export class Remote {
         this.changed(true);
         // Subscribed first, then catch up: nothing falls in between.
         await this.refresh();
-        if (this.closed || generation !== this.generation) return;
+        if (this.closed || leg !== this.ws) return;
         for (const sid of this.buffers.keys()) void this.fetchEvents(sid);
         void this.loadDevices();
         void this.loadPrefs();
@@ -2478,7 +2479,7 @@ export class Remote {
       const delay = this.listRetry;
       this.listRetry = Math.min(this.listRetry * 2, 30_000);
       this.listTimer = setTimeout(() => {
-        if (!this.closed && this.conn === "online") void this.refresh();
+        if (!this.closed) void this.refresh();
       }, delay);
     } finally {
       // Pages may be asked for again; the views are told, since one that
@@ -2896,7 +2897,7 @@ export class Remote {
       return;
     }
     b.fetching = true;
-    const generation = this.generation;
+    const generation = this.lifecycleGeneration;
     let tailThrough: bigint | undefined;
     // The latest page is asked for first when the history is longer than a page.
     const wantsTail = () => !b.tailRequested && s.lastSeq > BigInt(b.events.length + this.historyPageSize);
@@ -2916,7 +2917,7 @@ export class Remote {
           afterSeq: s.lastSeq - BigInt(this.historyPageSize),
           limit: this.historyPageSize,
         });
-        if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b)
+        if (this.closed || generation !== this.lifecycleGeneration || this.buffers.get(sid) !== b)
           return;
         b.tailRequested = true;
         await this.ingest(s, tail.events, false, false, true);
@@ -2929,7 +2930,7 @@ export class Remote {
         for (;;) {
           if (
             this.closed ||
-            generation !== this.generation ||
+            generation !== this.lifecycleGeneration ||
             this.buffers.get(sid) !== b
           )
             return;
@@ -2943,7 +2944,7 @@ export class Remote {
           });
           if (
             this.closed ||
-            generation !== this.generation ||
+            generation !== this.lifecycleGeneration ||
             this.buffers.get(sid) !== b
           )
             return;
@@ -2966,7 +2967,7 @@ export class Remote {
       b.ready = true;
       if (!b.retired) b.error = "";
     } catch (e) {
-      if (this.closed || generation !== this.generation) return;
+      if (this.closed || generation !== this.lifecycleGeneration) return;
       b.error = errorText(e);
       this.report(e);
     } finally {
@@ -2977,9 +2978,8 @@ export class Remote {
       // frame asks for the history anyway.
       if (
         !this.closed &&
-        generation !== this.generation &&
         this.buffers.get(sid) === b &&
-        (b.refetch || (!b.loaded && this.conn === "online"))
+        (b.refetch || (generation !== this.lifecycleGeneration && !b.loaded && this.conn === "online"))
       )
         void this.fetchEvents(sid);
       this.trimHistory();
@@ -3427,40 +3427,46 @@ export class Remote {
     this.checkFileCapability(machineId, cmd, priorOutcome === "unknown");
     // Signed by this device, so the daemon knows who sent it whatever the
     // server says (the server also checks the sender is the caller).
-    let env: Envelope;
-    try {
-      env = await this.sealSecureMessage(
-        {
-          kind: PayloadKind.COMMAND,
-          machineId,
-          sessionId: sid,
-          requestId,
-          deadlineMs: BigInt(deadline),
-          sender: this.account.deviceId,
-        },
-        CommandSchema,
-        create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
-        undefined,
-        prepared.plain,
-      );
-    } catch (e) {
-      this.noteClock(e);
-      if (call.uncertain) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-      if (e instanceof SecurityError && e.code === "clock")
-        throw new CommandError(
-          "clock",
-          l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),false,false,priorOutcome,
+    let env: Envelope | undefined;
+    const authorize = async () => {
+      try {
+        await this.checkNetworkSecurity();
+        const head = await this.security.localStateHash();
+        if (env && equal(parseHeader(new Uint8Array(env.securityHeader)).state, head)) return env;
+        return env = await this.sealSecureMessage(
+          {
+            kind: PayloadKind.COMMAND,
+            machineId,
+            sessionId: sid,
+            requestId,
+            deadlineMs: BigInt(deadline),
+            sender: this.account.deviceId,
+          },
+          CommandSchema,
+          create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }),
+          undefined,
+          prepared.plain,
         );
-      if (e instanceof SecurityError && e.code === "lease")
+      } catch (e) {
+        this.noteClock(e);
+        if (call.uncertain) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
+        if (e instanceof SecurityError && e.code === "clock")
+          throw new CommandError(
+            "clock",
+            l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),false,false,priorOutcome,
+          );
+        if (e instanceof SecurityError && e.code === "lease")
+          throw new CommandError(
+            "failed_precondition",
+            l10n.t("errors.remote_control_expired_control_and_new_uploads_are_paused"),false,false,priorOutcome,
+          );
         throw new CommandError(
-          "failed_precondition",
-          l10n.t("errors.remote_control_expired_control_and_new_uploads_are_paused"),false,false,priorOutcome,
+          "security_unavailable",
+          l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),false,false,priorOutcome,
         );
-      throw new CommandError(
-        "security_unavailable",
-        l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),false,false,priorOutcome,
-      );
-    }
+      }
+    };
+    await authorize();
     // Persist a copy of the exact first authorization before any dispatch.
     slot.requestId=requestId;slot.deadline=deadline;
     slot.prepared={machineId,sid,plain:new Uint8Array(prepared.plain)};
@@ -3481,7 +3487,8 @@ export class Remote {
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
         await delivery.prepare();
-        const res = await this.recovery.follow(attemptSignal => delivery.send(machineId, env, attemptSignal), signal);
+        const envelope = await authorize();
+        const res = await this.recovery.follow(attemptSignal => delivery.send(machineId, envelope, attemptSignal), signal);
         let msg: CommandResult;
         try {
           msg = (
@@ -3501,7 +3508,7 @@ export class Remote {
             "unknown_outcome",
             l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
         }
-        const binding = await requestIdentity(parseHeader(new Uint8Array(env.securityHeader)), prepared.plain);
+        const binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), prepared.plain);
         const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && res.outcome===msg.outcome && res.reason===msg.reason && (msg.outcome==="conflict" || msg.conflictKind==="");
         const category = verifiedOutcome(msg,binding.key,binding.payload,res.outcome,res.reason,false);
         if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
@@ -3605,7 +3612,7 @@ export class Remote {
     } catch (e) {
       if (wasUnknown && e instanceof CommandError && e.outcome === "not_sent")
         throw new CommandError(e.code,e.message,e.fromDaemon,e.readOnly,"unknown",e.conflictKind,e.resultAvailable);
-      // A send whose outcome was unknown is never sealed afresh.
+      // An unknown send keeps its original authorization bytes, ID and deadline.
       if (
         wasUnknown ||
         uncertain(e) ||

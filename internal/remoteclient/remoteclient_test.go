@@ -134,7 +134,7 @@ func TestTermSendKeepsSeqOrderAcrossGoroutines(t *testing.T) {
 	}
 }
 
-func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Endpoint, string) {
+func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, []byte, ed25519.PrivateKey)) (*Client, *deviceauth.Endpoint, string) {
 	t.Helper()
 	_, phoneEd, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -209,6 +209,9 @@ func syntheticTerminalSecurity(t *testing.T) (*Client, *deviceauth.Endpoint, str
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { clientEndpoint.Close() })
+	for _, f := range inspect {
+		f(withClient, secret3, phoneEd)
+	}
 	return &Client{DeviceID: cm.ID, endpoint: clientEndpoint, relayEpoch: "fixture-epoch"}, machineEndpoint, mm.ID
 }
 

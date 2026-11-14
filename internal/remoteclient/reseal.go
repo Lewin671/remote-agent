@@ -8,7 +8,7 @@ import (
 
 // Reseal authorizes an existing request with the current content key. The
 // original unpacked bytes, scope, ID and deadline are retained verbatim.
-// Ordinary retries should call Forward with their existing envelope. The new
+// Forward automatically reseals when its verified head has changed. The new
 // envelope is not a fresh Seal: Forward conservatively retains unknown prior
 // dispatch evidence unless the caller explicitly supplies NeverDispatched.
 func (c *Client) Reseal(envelope *pb.Envelope) (*pb.Envelope, error) {

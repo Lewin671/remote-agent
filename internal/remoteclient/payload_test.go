@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"connectrpc.com/connect"
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -19,8 +20,9 @@ import (
 
 type payloadServer struct {
 	remoteagentv1connect.UnimplementedClientServiceHandler
-	endpoint *deviceauth.Endpoint
-	received [][]byte
+	endpoint      *deviceauth.Endpoint
+	received      [][]byte
+	expectedState *deviceauth.Hash
 }
 
 func (s *payloadServer) Forward(_ context.Context, r *connect.Request[pb.ForwardRequest]) (*connect.Response[pb.ForwardResponse], error) {
@@ -31,6 +33,9 @@ func (s *payloadServer) Forward(_ context.Context, r *connect.Request[pb.Forward
 	h, p, err := s.endpoint.Open(w, nil, false, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		return nil, err
+	}
+	if s.expectedState != nil && h.State != *s.expectedState {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, deviceauth.ErrStale)
 	}
 	plain, err := deviceauth.Unpack(h, p)
 	if err != nil {
@@ -111,5 +116,48 @@ func TestCreateSessionRetryRetainsOriginalPayloadBytes(t *testing.T) {
 		if !bytes.Equal(got, plain) {
 			t.Fatal("retry changed the authorized bytes")
 		}
+	}
+}
+
+func TestForwardRefreshesTheSealWhenVerifiedAuthorizationChanges(t *testing.T) {
+	var head deviceauth.State
+	var key []byte
+	var authority ed25519.PrivateKey
+	client, machine, mid := syntheticTerminalSecurity(t, func(h deviceauth.State, k []byte, a ed25519.PrivateKey) { head, key, authority = h, k, a })
+	raw, err := os.ReadFile("../../testdata/transport/prepared-command.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct{ Plain string }
+	json.Unmarshal(raw, &fixture)
+	plain, _ := base64.StdEncoding.DecodeString(fixture.Plain)
+	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: mid, Request: NewRequestID(), Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}
+	sealed, err := client.endpoint.Prepare(h, nil, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, _ := sealed.Envelope()
+	var recovery [32]byte
+	recovery[0] = 2
+	next, err := deviceauth.BuildRecoveryKeyRotation(head, key, recovery, authority, head.Core.IssuedAt+1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, endpoint := range []*deviceauth.Endpoint{client.endpoint, machine} {
+		if err = endpoint.Install([]deviceauth.State{next}, []*deviceauth.RecoveryStatement{nil}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	expected, _ := next.Hash()
+	handler := &payloadServer{endpoint: machine, expectedState: &expected}
+	_, service := remoteagentv1connect.NewClientServiceHandler(handler)
+	server := httptest.NewServer(testEpochHandler(service))
+	defer server.Close()
+	client.api = remoteagentv1connect.NewClientServiceClient(server.Client(), server.URL)
+	if _, err = client.Forward(context.Background(), mid, env); err != nil {
+		t.Fatal(err)
+	}
+	if len(handler.received) != 1 || !bytes.Equal(handler.received[0], plain) {
+		t.Fatal("recovery changed original bytes")
 	}
 }

@@ -322,6 +322,19 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	// A caller may retain this envelope across Sync or another path's recovery.
+	// Reuse the original authorized bytes, never a re-encoded Command.
+	_, head, _ := c.endpoint.Snapshot()
+	headHash, err := head.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if header.State != headHash {
+		env, err = c.Reseal(env)
+		if err != nil {
+			return nil, err
+		}
+	}
 	delivery := call.delivery()
 	attempt := NewRequestID()
 	req := connect.NewRequest(&pb.ForwardRequest{MachineId: machineID, Command: env, AttemptId: attempt, RelayEpoch: epoch})

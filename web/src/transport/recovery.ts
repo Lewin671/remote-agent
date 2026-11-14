@@ -52,7 +52,7 @@ export class Recovery {
     for (const wake of [...this.listeners]) wake();
   }
   /** A new authenticated path retires only this HTTP waiter. Its delivery
-   * evidence survives in Link; the next attempt uses the original envelope. */
+   * evidence survives in Link; the next attempt authorizes the original request bytes again. */
   async follow<T>(send: (signal: AbortSignal) => Promise<T>, parent?: AbortSignal): Promise<T> {
     const controller = new AbortController();
     const abort = () => controller.abort(parent?.reason);
