@@ -73,8 +73,17 @@ describe("safety", () => {
     const out = renderToStaticMarkup(<Rich text={"[docs](https://example.com) [x](javascript:alert(1)) <https://a.b/c>"} />);
     expect(out).toContain('<a href="https://example.com" target="_blank" rel="noopener noreferrer nofollow">docs</a>');
     expect(out).toContain('<a href="https://a.b/c"');
-    expect(out).not.toContain("javascript:alert(1)\"");
+    expect(out).toContain('<span class="ref" title="javascript:alert(1)">x</span>');
+    expect(out).not.toContain('</span>)');
     expect(out).not.toMatch(/href="javascript/);
+  });
+
+  it("renders balanced destinations and consumes titles without trailing punctuation", () => {
+    const out = renderToStaticMarkup(<Rich text={'[x](<https://example.com/a(b(c))> "title") [z](https://en.wikipedia.org/wiki/Foo_(bar))'} />);
+    expect(out).toBe(
+      '<a href="https://example.com/a(b(c))" target="_blank" rel="noopener noreferrer nofollow">x</a> ' +
+        '<a href="https://en.wikipedia.org/wiki/Foo_(bar)" target="_blank" rel="noopener noreferrer nofollow">z</a>',
+    );
   });
 
   it("shows file references as monospace, not links", () => {

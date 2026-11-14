@@ -55,9 +55,155 @@ private func hasPrefixIgnoringCase(_ text: ArraySlice<Unicode.Scalar>, _ prefix:
     return true
 }
 
+private func isAsciiPunct(_ c: Unicode.Scalar) -> Bool {
+    let v = c.value
+    return (v >= 0x21 && v <= 0x2F) || (v >= 0x3A && v <= 0x40) ||
+        (v >= 0x5B && v <= 0x60) || (v >= 0x7B && v <= 0x7E)
+}
+
+private func isAsciiControl(_ c: Unicode.Scalar) -> Bool {
+    c.value < 0x20 || c.value == 0x7F
+}
+
+private func unescapeDest(_ text: Scalars, _ start: Int, _ end: Int) -> String {
+    guard start < end else { return "" }
+    var out = Scalars()
+    var hasEscape = false
+    var from = start
+    var i = start
+    while i < end {
+        if text[i] == "\\", i + 1 < end, isAsciiPunct(text[i + 1]) {
+            if !hasEscape { out.reserveCapacity(end - start); hasEscape = true }
+            out.append(contentsOf: text[from..<i])
+            out.append(text[i + 1])
+            i += 2
+            from = i
+        } else {
+            i += 1
+        }
+    }
+    if !hasEscape { return String(text[start..<end]) }
+    out.append(contentsOf: text[from..<end])
+    return String(out)
+}
+
+private func skipWsNoBlankLine(_ text: Scalars, _ start: Int) -> Int {
+    var pos = start
+    var newlines = 0
+    while pos < text.count, isSpace(text[pos]) {
+        let c = text[pos]
+        if isLineEnd(c) {
+            newlines += 1
+            if newlines >= 2 { return -1 }
+            if c == "\r", pos + 1 < text.count, text[pos + 1] == "\n" { pos += 1 }
+        }
+        pos += 1
+    }
+    return pos
+}
+
+private func scanAngleDest(_ text: Scalars, _ pos: Int) -> (destStart: Int, destEnd: Int, nextPos: Int)? {
+    let destStart = pos + 1
+    var i = destStart
+    while i < text.count {
+        let c = text[i]
+        if c == ">" { return (destStart, i, i + 1) }
+        if c == "<" || isLineEnd(c) { return nil }
+        i += (c == "\\" && i + 1 < text.count && isAsciiPunct(text[i + 1])) ? 2 : 1
+    }
+    return nil
+}
+
+private func scanTitle(_ text: Scalars, _ pos: Int) -> Int {
+    let opener = text[pos]
+    let closer: Unicode.Scalar = opener == "(" ? ")" : opener
+    var justSawNewline = false
+    var i = pos + 1
+    while i < text.count {
+        let c = text[i]
+        if c == "\\" {
+            justSawNewline = false
+            i += (i + 1 < text.count && isAsciiPunct(text[i + 1])) ? 2 : 1
+            continue
+        }
+        if c == closer { return i + 1 }
+        if opener == "(", c == "(" { return -1 }
+        if isLineEnd(c) {
+            if justSawNewline { return -1 }
+            justSawNewline = true
+            if c == "\r", i + 1 < text.count, text[i + 1] == "\n" { i += 1 }
+            i += 1
+            continue
+        }
+        if !isSpace(c) { justSawNewline = false }
+        i += 1
+    }
+    return -1
+}
+
+private func parseLinkTail(_ text: Scalars, _ afterDest: Int) -> Int {
+    let pos = skipWsNoBlankLine(text, afterDest)
+    if pos < 0 || pos >= text.count { return -1 }
+    if text[pos] == ")" { return pos }
+    if pos == afterDest { return -1 }
+    let c = text[pos]
+    if c != "\"" && c != "'" && c != "(" { return -1 }
+    let afterTitle = scanTitle(text, pos)
+    if afterTitle < 0 { return -1 }
+    let closePos = skipWsNoBlankLine(text, afterTitle)
+    return closePos >= 0 && closePos < text.count && text[closePos] == ")" ? closePos : -1
+}
+
+private func parseLeadingSpaceTarget(_ text: Scalars, _ openParen: Int) -> (end: Int, destStart: Int, destEnd: Int)? {
+    let pos = skipWsNoBlankLine(text, openParen + 1)
+    if pos < 0 || pos >= text.count { return nil }
+    if text[pos] == ")" { return (pos, pos, pos) }
+    if text[pos] == "<" {
+        guard let angle = scanAngleDest(text, pos) else { return nil }
+        let end = parseLinkTail(text, angle.nextPos)
+        return end >= 0 ? (end, angle.destStart, angle.destEnd) : nil
+    }
+    var depth = 0
+    var j = pos
+    var ok = true
+    while j < text.count {
+        let c = text[j]
+        if c == "\\", j + 1 < text.count, isAsciiPunct(text[j + 1]) { j += 2; continue }
+        if c == "(" {
+            depth += 1; j += 1
+        } else if c == ")" {
+            if depth == 0 { return (j, pos, j) }
+            depth -= 1; j += 1
+        } else if isSpace(c) {
+            break
+        } else if isAsciiControl(c) {
+            ok = false; break
+        } else {
+            j += 1
+        }
+    }
+    if ok, depth == 0, j > pos, j < text.count, isSpace(text[j]) {
+        let end = parseLinkTail(text, j)
+        if end >= 0 { return (end, pos, j) }
+    }
+    let c = text[pos]
+    if c == "\"" || c == "'" || c == "(" {
+        let afterTitle = scanTitle(text, pos)
+        if afterTitle >= 0 {
+            let closePos = skipWsNoBlankLine(text, afterTitle)
+            if closePos >= 0, closePos < text.count, text[closePos] == ")" {
+                return (closePos, pos, pos)
+            }
+        }
+    }
+    return nil
+}
+
 private struct LinkEnd {
     let close: Int
     let end: Int
+    let destStart: Int
+    let destEnd: Int
     let auto: Bool
 }
 
@@ -66,27 +212,77 @@ private func inlineLinks(_ text: Scalars) -> [Int: LinkEnd] {
     var links: [Int: LinkEnd] = [:]
     var close = -1
     var end = -1
+    var destStart = -1
+    var destEnd = -1
     var validTarget = false
-    var paren = -1
+    var pendingValid = false
+    var pendingEnd = -1
+    var pendingDestStart = -1
+    var pendingDestEnd = -1
     var angle = -1
     var space = text.count
     var newline = text.count
+    var parenStack: [Int] = []
+    var unmatchedOpens = 0
+    var barrier = text.count
+    var barrierIsWs = false
     for i in text.indices.reversed() {
         let c = text[i]
         if c == "[" {
-            if close > i + 1, close < newline, validTarget { links[i] = LinkEnd(close: close, end: end, auto: false) }
+            if close > i + 1, close < newline, validTarget {
+                links[i] = LinkEnd(close: close, end: end, destStart: destStart, destEnd: destEnd, auto: false)
+            }
         } else if c == "<", angle < space {
             let prefix = text.starts(with: "https://", at: i + 1) ? 8 : text.starts(with: "http://", at: i + 1) ? 7 : 0
-            if prefix > 0, angle > i + 1 + prefix { links[i] = LinkEnd(close: angle, end: angle, auto: true) }
+            if prefix > 0, angle > i + 1 + prefix {
+                links[i] = LinkEnd(close: angle, end: angle, destStart: 0, destEnd: 0, auto: true)
+            }
         }
         if c == "]" {
             close = i
-            end = paren
-            validTarget = i + 1 < text.count && text[i + 1] == "(" && paren > i + 2 && paren < space
+            if i + 1 < text.count, text[i + 1] == "(", pendingValid {
+                validTarget = true
+                end = pendingEnd
+                destStart = pendingDestStart
+                destEnd = pendingDestEnd
+            } else {
+                validTarget = false
+            }
         }
-        if c == ")" { paren = i }
+        pendingValid = false
+        if c == "(", !escapedAt(text, i) {
+            if i > 0, text[i - 1] == "]" {
+                if i + 1 < text.count, isSpace(text[i + 1]) {
+                    if let res = parseLeadingSpaceTarget(text, i) {
+                        pendingValid = true; pendingEnd = res.end; pendingDestStart = res.destStart; pendingDestEnd = res.destEnd
+                    }
+                } else if i + 1 < text.count, text[i + 1] == "<" {
+                    if let ang = scanAngleDest(text, i + 1) {
+                        let tailEnd = parseLinkTail(text, ang.nextPos)
+                        if tailEnd >= 0 {
+                            pendingValid = true; pendingEnd = tailEnd; pendingDestStart = ang.destStart; pendingDestEnd = ang.destEnd
+                        }
+                    }
+                } else if let closeIdx = parenStack.last {
+                    pendingValid = true; pendingEnd = closeIdx; pendingDestStart = i + 1; pendingDestEnd = closeIdx
+                } else if unmatchedOpens == 0, barrierIsWs, barrier < text.count {
+                    let tailEnd = parseLinkTail(text, barrier)
+                    if tailEnd >= 0 {
+                        pendingValid = true; pendingEnd = tailEnd; pendingDestStart = i + 1; pendingDestEnd = barrier
+                    }
+                }
+            }
+            if !parenStack.isEmpty { parenStack.removeLast() } else { unmatchedOpens += 1 }
+        } else if c == ")", !escapedAt(text, i) {
+            parenStack.append(i)
+        }
         if c == ">" { angle = i }
-        if isSpace(c) { space = i }
+        if isSpace(c) {
+            space = i
+            parenStack.removeAll(keepingCapacity: true); unmatchedOpens = 0; barrier = i; barrierIsWs = true
+        } else if isAsciiControl(c) {
+            parenStack.removeAll(keepingCapacity: true); unmatchedOpens = 0; barrier = i; barrierIsWs = false
+        }
         if c == "\n" { newline = i }
     }
     return links
@@ -299,7 +495,7 @@ func spans(_ text: Scalars) -> [MarkdownSpan] {
         case .bracket, .autolink:
             if let link = links[at] {
                 let label = String(text[at + 1..<link.close])
-                let target = link.auto ? label : String(text[link.close + 2..<link.end])
+                let target = link.auto ? label : unescapeDest(text, link.destStart, link.destEnd)
                 if let href = Markdown.safeHref(target) {
                     add(.link(text: label, href: href))
                 } else {

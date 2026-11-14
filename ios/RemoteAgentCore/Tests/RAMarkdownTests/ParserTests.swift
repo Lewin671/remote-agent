@@ -8,9 +8,22 @@ import Testing
     private func rep(_ s: String, _ n: Int) -> String { String(repeating: s, count: n) }
 
     @Test(.timeLimit(.minutes(1))) func hostileTextIsReadInLinearTime() {
-        for text in [rep("[", 100_000), rep("[x](", 25_000), rep("<https://", 20_000), rep("`", 100_000) + "x", rep("* ", 30_000), rep("_ ", 30_000), rep("~~", 30_000)] {
+        for text in [
+            rep("[", 100_000), rep("[x](", 25_000), rep("[x](<", 25_000), rep("[x](/a \"", 25_000), rep("<https://", 20_000),
+            rep("`", 100_000) + "x", rep("* ", 30_000), rep("_ ", 30_000), rep("~~", 30_000),
+        ] {
             #expect(Markdown.inlineSpans(text) == [.text(text)])
         }
+        #expect(
+            Markdown.inlineSpans(rep("[x](", 25_000) + "a" + rep(")", 24_999)) == [
+                .text("[x]("),
+                .ref(text: "x", target: rep("[x](", 24_998) + "a" + rep(")", 24_998)),
+            ]
+        )
+        let nested = "https://example.com/" + rep("(", 25_000) + "x" + rep(")", 25_000)
+        #expect(Markdown.inlineSpans("[x](\(nested))") == [.link(text: "x", href: nested)])
+        let escapedParens = "https://example.com/" + rep("\\(x\\)", 10_000)
+        #expect(Markdown.inlineSpans("[x](\(escapedParens))") == [.link(text: "x", href: "https://example.com/" + rep("(x)", 10_000))])
         // Openers that find no closer, each of which could rescan what follows it.
         for text in [rep("**a ", 30_000), rep("*a ", 30_000), rep("_a ", 30_000), rep("~~a ", 30_000), rep("\\", 50_000) + "`" + rep("\\", 50_000) + "`"] {
             #expect(Markdown.shownText(Markdown.inlineSpans(text)).unicodeScalars.count <= text.unicodeScalars.count)

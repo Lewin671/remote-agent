@@ -155,34 +155,219 @@ private fun escapedAt(text: String, index: Int): Boolean {
     return slashes % 2 == 1
 }
 
-private class LinkEnd(val close: Int, val end: Int, val auto: Boolean)
+private fun Char.isAsciiPunct(): Boolean =
+    this in '!'..'/' || this in ':'..'@' || this in '['..'`' || this in '{'..'~'
+
+private fun Char.isAsciiControl(): Boolean = code < 0x20 || code == 0x7F
+
+private fun unescapeDest(text: String, start: Int, end: Int): String {
+    if (start >= end) return ""
+    var out: StringBuilder? = null
+    var from = start
+    var i = start
+    while (i < end) {
+        if (text[i] == '\\' && i + 1 < end && text[i + 1].isAsciiPunct()) {
+            val sb = out ?: StringBuilder(end - start).also { out = it }
+            sb.append(text, from, i).append(text[i + 1])
+            i += 2
+            from = i
+        } else {
+            i++
+        }
+    }
+    return out?.append(text, from, end)?.toString() ?: text.substring(start, end)
+}
+
+private fun skipWsNoBlankLine(text: String, start: Int): Int {
+    var pos = start
+    var newlines = 0
+    while (pos < text.length && text[pos].isSpace()) {
+        val c = text[pos]
+        if (c.isLineEnd()) {
+            if (++newlines >= 2) return -1
+            if (c == '\r' && pos + 1 < text.length && text[pos + 1] == '\n') pos++
+        }
+        pos++
+    }
+    return pos
+}
+
+private class AngleDest(val destStart: Int, val destEnd: Int, val nextPos: Int)
+
+private fun scanAngleDest(text: String, pos: Int): AngleDest? {
+    val destStart = pos + 1
+    var i = destStart
+    while (i < text.length) {
+        val c = text[i]
+        if (c == '>') return AngleDest(destStart, i, i + 1)
+        if (c == '<' || c.isLineEnd()) return null
+        i += if (c == '\\' && i + 1 < text.length && text[i + 1].isAsciiPunct()) 2 else 1
+    }
+    return null
+}
+
+private fun scanTitle(text: String, pos: Int): Int {
+    val opener = text[pos]
+    val closer = if (opener == '(') ')' else opener
+    var justSawNewline = false
+    var i = pos + 1
+    while (i < text.length) {
+        val c = text[i]
+        if (c == '\\') {
+            justSawNewline = false
+            i += if (i + 1 < text.length && text[i + 1].isAsciiPunct()) 2 else 1
+            continue
+        }
+        if (c == closer) return i + 1
+        if (opener == '(' && c == '(') return -1
+        if (c.isLineEnd()) {
+            if (justSawNewline) return -1
+            justSawNewline = true
+            if (c == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
+            i++
+            continue
+        }
+        if (!c.isSpace()) justSawNewline = false
+        i++
+    }
+    return -1
+}
+
+private fun parseLinkTail(text: String, afterDest: Int): Int {
+    val pos = skipWsNoBlankLine(text, afterDest)
+    if (pos < 0 || pos >= text.length) return -1
+    if (text[pos] == ')') return pos
+    if (pos == afterDest) return -1
+    val c = text[pos]
+    if (c != '"' && c != '\'' && c != '(') return -1
+    val afterTitle = scanTitle(text, pos)
+    if (afterTitle < 0) return -1
+    val closePos = skipWsNoBlankLine(text, afterTitle)
+    return if (closePos >= 0 && closePos < text.length && text[closePos] == ')') closePos else -1
+}
+
+private class LinkTarget(val end: Int, val destStart: Int, val destEnd: Int)
+
+private fun parseLeadingSpaceTarget(text: String, openParen: Int): LinkTarget? {
+    val pos = skipWsNoBlankLine(text, openParen + 1)
+    if (pos < 0 || pos >= text.length) return null
+    if (text[pos] == ')') return LinkTarget(pos, pos, pos)
+    if (text[pos] == '<') {
+        val angle = scanAngleDest(text, pos) ?: return null
+        val end = parseLinkTail(text, angle.nextPos)
+        return if (end >= 0) LinkTarget(end, angle.destStart, angle.destEnd) else null
+    }
+    var depth = 0
+    var j = pos
+    var ok = true
+    while (j < text.length) {
+        val c = text[j]
+        if (c == '\\' && j + 1 < text.length && text[j + 1].isAsciiPunct()) { j += 2; continue }
+        when {
+            c == '(' -> { depth++; j++ }
+            c == ')' -> {
+                if (depth == 0) return LinkTarget(j, pos, j)
+                depth--; j++
+            }
+            c.isSpace() -> break
+            c.isAsciiControl() -> { ok = false; break }
+            else -> j++
+        }
+    }
+    if (ok && depth == 0 && j > pos && j < text.length && text[j].isSpace()) {
+        val end = parseLinkTail(text, j)
+        if (end >= 0) return LinkTarget(end, pos, j)
+    }
+    val c = text[pos]
+    if (c == '"' || c == '\'' || c == '(') {
+        val afterTitle = scanTitle(text, pos)
+        if (afterTitle >= 0) {
+            val closePos = skipWsNoBlankLine(text, afterTitle)
+            if (closePos >= 0 && closePos < text.length && text[closePos] == ')') {
+                return LinkTarget(closePos, pos, pos)
+            }
+        }
+    }
+    return null
+}
+
+private class LinkEnd(val close: Int, val end: Int, val destStart: Int, val destEnd: Int, val auto: Boolean)
 
 /** Index link delimiters once. A failed '[' or autolink opener must not rescan the rest of the text on every character. */
 private fun inlineLinks(text: String): Map<Int, LinkEnd> {
     val links = HashMap<Int, LinkEnd>()
     var close = -1
     var end = -1
+    var destStart = -1
+    var destEnd = -1
     var validTarget = false
-    var paren = -1
+    var pendingValid = false
+    var pendingEnd = -1
+    var pendingDestStart = -1
+    var pendingDestEnd = -1
     var angle = -1
     var space = text.length
     var newline = text.length
+    val parenStack = ArrayList<Int>()
+    var unmatchedOpens = 0
+    var barrier = text.length
+    var barrierIsWs = false
     for (i in text.indices.reversed()) {
         val c = text[i]
         if (c == '[') {
-            if (close > i + 1 && close < newline && validTarget) links[i] = LinkEnd(close, end, false)
+            if (close > i + 1 && close < newline && validTarget) links[i] = LinkEnd(close, end, destStart, destEnd, false)
         } else if (c == '<' && angle < space) {
             val prefix = if (text.startsWith("https://", i + 1)) 8 else if (text.startsWith("http://", i + 1)) 7 else 0
-            if (prefix > 0 && angle > i + 1 + prefix) links[i] = LinkEnd(angle, angle, true)
+            if (prefix > 0 && angle > i + 1 + prefix) links[i] = LinkEnd(angle, angle, 0, 0, true)
         }
         if (c == ']') {
             close = i
-            end = paren
-            validTarget = text.getOrNull(i + 1) == '(' && paren > i + 2 && paren < space
+            if (i + 1 < text.length && text[i + 1] == '(' && pendingValid) {
+                validTarget = true
+                end = pendingEnd
+                destStart = pendingDestStart
+                destEnd = pendingDestEnd
+            } else {
+                validTarget = false
+            }
         }
-        if (c == ')') paren = i
+        pendingValid = false
+        if (c == '(' && !escapedAt(text, i)) {
+            if (i > 0 && text[i - 1] == ']') {
+                val nextChar = text.getOrNull(i + 1)
+                when {
+                    nextChar != null && nextChar.isSpace() -> parseLeadingSpaceTarget(text, i)?.let {
+                        pendingValid = true; pendingEnd = it.end; pendingDestStart = it.destStart; pendingDestEnd = it.destEnd
+                    }
+                    nextChar == '<' -> scanAngleDest(text, i + 1)?.let { ang ->
+                        val tailEnd = parseLinkTail(text, ang.nextPos)
+                        if (tailEnd >= 0) {
+                            pendingValid = true; pendingEnd = tailEnd; pendingDestStart = ang.destStart; pendingDestEnd = ang.destEnd
+                        }
+                    }
+                    parenStack.isNotEmpty() -> {
+                        val closeIdx = parenStack[parenStack.lastIndex]
+                        pendingValid = true; pendingEnd = closeIdx; pendingDestStart = i + 1; pendingDestEnd = closeIdx
+                    }
+                    unmatchedOpens == 0 && barrierIsWs && barrier < text.length -> {
+                        val tailEnd = parseLinkTail(text, barrier)
+                        if (tailEnd >= 0) {
+                            pendingValid = true; pendingEnd = tailEnd; pendingDestStart = i + 1; pendingDestEnd = barrier
+                        }
+                    }
+                }
+            }
+            if (parenStack.isNotEmpty()) parenStack.removeAt(parenStack.lastIndex) else unmatchedOpens++
+        } else if (c == ')' && !escapedAt(text, i)) {
+            parenStack.add(i)
+        }
         if (c == '>') angle = i
-        if (c.isSpace()) space = i
+        if (c.isSpace()) {
+            space = i
+            parenStack.clear(); unmatchedOpens = 0; barrier = i; barrierIsWs = true
+        } else if (c.isAsciiControl()) {
+            parenStack.clear(); unmatchedOpens = 0; barrier = i; barrierIsWs = false
+        }
         if (c == '\n') newline = i
     }
     return links
@@ -292,7 +477,7 @@ fun inlineSpans(text: String): List<Span> {
                 val link = links[at]
                 if (link != null) {
                     val label = text.substring(at + 1, link.close)
-                    val target = if (link.auto) label else text.substring(link.close + 2, link.end)
+                    val target = if (link.auto) label else unescapeDest(text, link.destStart, link.destEnd)
                     val href = safeHref(target)
                     add(if (href != null) Span.Link(label, href) else Span.Ref(label, target))
                     resume = link.end + 1

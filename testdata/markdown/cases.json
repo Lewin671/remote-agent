@@ -1578,11 +1578,11 @@
     {
      "t": "ref",
      "v": "x",
-     "target": "javascript:alert(1"
+     "target": "javascript:alert(1)"
     },
     {
      "t": "text",
-     "v": ") "
+     "v": " "
     },
     {
      "t": "ref",
@@ -2678,6 +2678,420 @@
     {
      "t": "text",
      "v": "５"
+    }
+   ]
+  },
+  {
+   "name": "link destination: balanced parentheses",
+   "md": "[x](https://example.com/Foo_(bar))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/Foo_(bar)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: three nested pairs",
+   "md": "[x](https://example.com/a(b(c(d)))e)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b(c(d)))e"
+    }
+   ]
+  },
+  {
+   "name": "link destination: separate pairs",
+   "md": "[x](https://example.com/a(b)c(d))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)c(d)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: unbalanced opening",
+   "md": "[x](/a(b)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: unbalanced nesting",
+   "md": "[x](/a(b(c))",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a(b(c))"
+    }
+   ]
+  },
+  {
+   "name": "link destination: extra closing punctuation",
+   "md": "[x](https://example.com/a(b)))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    },
+    {
+     "t": "text",
+     "v": ")"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle target",
+   "md": "[x](<https://example.com/a(b)>)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle unbalanced opening",
+   "md": "[x](<https://example.com/a(b>)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle unbalanced closing",
+   "md": "[x](<https://example.com/a)b>)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a)b"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle spaces stay nonclickable",
+   "md": "[x](<https://example.com/a b>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "https://example.com/a b"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle nested opener rejected",
+   "md": "[x](</a<b>)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](</a<b>)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle newline rejected",
+   "md": "[x](</a\nb>)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](</a\nb>)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped pair",
+   "md": "[x](https://example.com/a\\(b\\))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped opening",
+   "md": "[x](https://example.com/a\\(b)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped closing",
+   "md": "[x](https://example.com/a\\)b)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a)b"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped backslash before pair",
+   "md": "[x](https://example.com/a\\\\(b))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a\\(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped angle delimiters",
+   "md": "[x](<https://example.com/a\\<b\\>>)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a<b>"
+    }
+   ]
+  },
+  {
+   "name": "link destination: nonpunctuation escape retained",
+   "md": "[x](https://example.com/a\\qb(c))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a\\qb(c)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: double quoted title",
+   "md": "[x](https://example.com/a(b) \"a title (here)\")",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: single quoted title",
+   "md": "[x](https://example.com/a(b) 'a title')",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: parenthesized title",
+   "md": "[x](https://example.com/a(b) (a \\(title\\)))",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped quote in title",
+   "md": "[x](<https://example.com/a(b)> \"a \\\"title\\\"\")",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: multiline title",
+   "md": "[x](https://example.com/a(b) \"first\nsecond\")",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: whitespace around destination",
+   "md": "[x]( \n https://example.com/a(b)\t\r\n )",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a(b)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: title blank line rejected",
+   "md": "[x](/a(b) \"first\n \nsecond\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a(b) \"first\n \nsecond\")"
+    }
+   ]
+  },
+  {
+   "name": "link destination: title without separator rejected",
+   "md": "[x](</a(b)>\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](</a(b)>\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "link destination: nested title rejected",
+   "md": "[x](/a(b) (nested (title)))",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a(b) (nested (title)))"
+    }
+   ]
+  },
+  {
+   "name": "link destination: unterminated title rejected",
+   "md": "[x](/a(b) \"title)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a(b) \"title)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: empty angle target",
+   "md": "[x](<>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": ""
+    }
+   ]
+  },
+  {
+   "name": "link destination: empty target",
+   "md": "[x]()",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": ""
+    }
+   ]
+  },
+  {
+   "name": "link destination: title only",
+   "md": "[x]( \"a title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": ""
+    }
+   ]
+  },
+  {
+   "name": "link destination: javascript blocked",
+   "md": "[x](javascript:alert(1))",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "javascript:alert(1)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: uppercase javascript blocked",
+   "md": "[x](JAVASCRIPT:alert(1))",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "JAVASCRIPT:alert(1)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped javascript blocked",
+   "md": "[x](javascript\\:alert\\(1\\))",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "javascript:alert(1)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: angle javascript with title blocked",
+   "md": "[x](<javascript:alert(1)> \"title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "javascript:alert(1)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: escaped data blocked",
+   "md": "[x](<data:text/html,\\<script\\>alert(1)\\</script\\>>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "data:text/html,<script>alert(1)</script>"
+    }
+   ]
+  },
+  {
+   "name": "link destination: vbscript blocked",
+   "md": "[x](vbscript:msgbox(1))",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "vbscript:msgbox(1)"
+    }
+   ]
+  },
+  {
+   "name": "link destination: file blocked",
+   "md": "[x](file:///example/a(b))",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "file:///example/a(b)"
     }
    ]
   }

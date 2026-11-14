@@ -6,9 +6,20 @@ import org.junit.Test
 /** What the shared cases (MarkdownCasesTest) do not say: time, table cells, column widths, spacing and styling. */
 class MarkdownTableTest {
     @Test(timeout = 5000) fun hostileTextIsReadInLinearTime() {
-        for (text in listOf("[".repeat(100_000), "[x](".repeat(25_000), "<https://".repeat(20_000), "`".repeat(100_000) + "x", "* ".repeat(30_000), "_ ".repeat(30_000), "~~".repeat(30_000))) {
+        for (text in listOf(
+            "[".repeat(100_000), "[x](".repeat(25_000), "[x](<".repeat(25_000), "[x](/a \"".repeat(25_000), "<https://".repeat(20_000),
+            "`".repeat(100_000) + "x", "* ".repeat(30_000), "_ ".repeat(30_000), "~~".repeat(30_000),
+        )) {
             assertEquals(listOf(Span.Text(text)), inlineSpans(text))
         }
+        assertEquals(
+            listOf(Span.Text("[x]("), Span.Ref("x", "[x](".repeat(24_998) + "a" + ")".repeat(24_998))),
+            inlineSpans("[x](".repeat(25_000) + "a" + ")".repeat(24_999)),
+        )
+        val nested = "https://example.com/" + "(".repeat(25_000) + "x" + ")".repeat(25_000)
+        assertEquals(listOf(Span.Link("x", nested)), inlineSpans("[x]($nested)"))
+        val escapedParens = "https://example.com/" + "\\(x\\)".repeat(10_000)
+        assertEquals(listOf(Span.Link("x", "https://example.com/" + "(x)".repeat(10_000))), inlineSpans("[x]($escapedParens)"))
         // A bare URL is cut from its end once, not once per character dropped.
         assertEquals(listOf(Span.Link("https://a.b/", "https://a.b/"), Span.Text(")".repeat(100_000))), inlineSpans("https://a.b/" + ")".repeat(100_000)))
         // Lines that a backtracking pattern would read in quadratic time or worse.

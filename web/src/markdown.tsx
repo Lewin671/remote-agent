@@ -24,28 +24,196 @@ function escapedAt(text: string, index: number): boolean {
   return slashes % 2 === 1;
 }
 
+function isSpace(c: string | undefined): boolean { return c !== undefined && /\s/.test(c); }
+function isLineEnd(c: string): boolean { return c === "\n" || c === "\r" || c === "\u2028" || c === "\u2029"; }
+
+const asciiPunct = new Set("!\"#$%&'()*+,-./:;\u003c=\u003e?@[\\]^_`{|}~");
+function isAsciiPunct(c: string): boolean { return asciiPunct.has(c); }
+
+function isAsciiControl(c: string): boolean {
+  const code = c.charCodeAt(0);
+  return code < 0x20 || code === 0x7f;
+}
+
+function unescapeDest(text: string, start: number, end: number): string {
+  if (start >= end) { return ""; }
+  let out = "";
+  let from = start;
+  for (let i = start; i < end; i++) {
+    if (text[i] === "\\" && i + 1 < end && isAsciiPunct(text[i + 1])) {
+      out += text.slice(from, i) + text[i + 1];
+      i++;
+      from = i + 1;
+    }
+  }
+  return from === start ? text.slice(start, end) : out + text.slice(from, end);
+}
+
+function skipWsNoBlankLine(text: string, pos: number): number {
+  let newlines = 0;
+  while (pos < text.length && isSpace(text[pos])) {
+    const c = text[pos];
+    if (isLineEnd(c)) {
+      if (++newlines >= 2) return -1;
+      if (c === "\r" && text[pos + 1] === "\n") pos++;
+    }
+    pos++;
+  }
+  return pos;
+}
+
+function scanAngleDest(text: string, pos: number): { destStart: number; destEnd: number; nextPos: number } | undefined {
+  const destStart = pos + 1;
+  let i = destStart;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === ">") return { destStart, destEnd: i, nextPos: i + 1 };
+    if (c === "<" || isLineEnd(c)) return undefined;
+    if (c === "\\" && i + 1 < text.length && isAsciiPunct(text[i + 1])) i += 2;
+    else i++;
+  }
+  return undefined;
+}
+
+function scanTitle(text: string, pos: number): number {
+  const opener = text[pos];
+  const closer = opener === "(" ? ")" : opener;
+  let justSawNewline = false;
+  let i = pos + 1;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === "\\") {
+      justSawNewline = false;
+      i += i + 1 < text.length && isAsciiPunct(text[i + 1]) ? 2 : 1;
+      continue;
+    }
+    if (c === closer) return i + 1;
+    if (opener === "(" && c === "(") return -1;
+    if (isLineEnd(c)) {
+      if (justSawNewline) return -1;
+      justSawNewline = true;
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      i++;
+      continue;
+    }
+    if (!isSpace(c)) justSawNewline = false;
+    i++;
+  }
+  return -1;
+}
+
+function parseLinkTail(text: string, afterDest: number): number {
+  const pos = skipWsNoBlankLine(text, afterDest);
+  if (pos < 0 || pos >= text.length) { return -1; }
+  if (text[pos] === ")") { return pos; }
+  if (pos === afterDest) { return -1; }
+  const c = text[pos];
+  if (c !== '"' && c !== "'" && c !== "(") { return -1; }
+  const afterTitle = scanTitle(text, pos);
+  if (afterTitle < 0) { return -1; }
+  const closePos = skipWsNoBlankLine(text, afterTitle);
+  return closePos < text.length && closePos >= 0 && text[closePos] === ")" ? closePos : -1;
+}
+
+function parseLeadingSpaceTarget(text: string, openParen: number): { end: number; destStart: number; destEnd: number } | undefined {
+  const pos = skipWsNoBlankLine(text, openParen + 1);
+  if (pos < 0 || pos >= text.length) { return undefined; }
+  if (text[pos] === ")") { return { end: pos, destStart: pos, destEnd: pos }; }
+  if (text[pos] === "<") {
+    const angle = scanAngleDest(text, pos);
+    if (!angle) { return undefined; }
+    const end = parseLinkTail(text, angle.nextPos);
+    return end >= 0 ? { end, destStart: angle.destStart, destEnd: angle.destEnd } : undefined;
+  }
+  let depth = 0, j = pos, ok = true;
+  while (j < text.length) {
+    const c = text[j];
+    if (c === "\\" && j + 1 < text.length && isAsciiPunct(text[j + 1])) { j += 2; continue; }
+    if (c === "(") { depth++; j++; }
+    else if (c === ")") {
+      if (depth === 0) { return { end: j, destStart: pos, destEnd: j }; }
+      depth--; j++;
+    } else if (isSpace(c)) break;
+    else if (isAsciiControl(c)) { ok = false; break; }
+    else j++;
+  }
+  if (ok && depth === 0 && j < text.length && j > pos && isSpace(text[j])) {
+    const end = parseLinkTail(text, j);
+    if (end >= 0) { return { end, destStart: pos, destEnd: j }; }
+  }
+  const c = text[pos];
+  if (c === '"' || c === "'" || c === "(") {
+    const afterTitle = scanTitle(text, pos);
+    if (afterTitle >= 0) {
+      const closePos = skipWsNoBlankLine(text, afterTitle);
+      if (closePos < text.length && closePos >= 0 && text[closePos] === ")") {
+        return { end: closePos, destStart: pos, destEnd: pos };
+      }
+    }
+  }
+  return undefined;
+}
+
 /** Index link delimiters once. A failed '[' or autolink opener must not
  * rescan the remaining attacker-controlled CLI text on every character. */
-function inlineLinks(text: string): Map<number, { close: number; end: number; auto?: boolean }> {
-  const links = new Map<number, { close: number; end: number; auto?: boolean }>();
-  let close = -1, end = -1, validTarget = false;
-  let paren = -1, angle = -1, space = text.length, newline = text.length;
+function inlineLinks(text: string): Map<number, { close: number; end: number; destStart: number; destEnd: number; auto?: boolean }> {
+  const links = new Map<number, { close: number; end: number; destStart: number; destEnd: number; auto?: boolean }>();
+  let close = -1, end = -1, destStart = -1, destEnd = -1, validTarget = false;
+  let pendingValid = false, pendingEnd = -1, pendingDestStart = -1, pendingDestEnd = -1;
+  let angle = -1, space = text.length, newline = text.length;
+  const parenStack: number[] = [];
+  let unmatchedOpens = 0, barrier = text.length, barrierIsWs = false;
   for (let i = text.length - 1; i >= 0; i--) {
     const c = text[i];
     if (c === "[") {
-      if (close > i + 1 && close < newline && validTarget) links.set(i, { close, end });
+      if (close > i + 1 && close < newline && validTarget) links.set(i, { close, end, destStart, destEnd });
     } else if (c === "<" && angle < space) {
       const prefix = text.startsWith("https://", i + 1) ? 8 : text.startsWith("http://", i + 1) ? 7 : 0;
-      if (prefix && angle > i + 1 + prefix) links.set(i, { close: angle, end: angle, auto: true });
+      if (prefix && angle > i + 1 + prefix) links.set(i, { close: angle, end: angle, destStart: 0, destEnd: 0, auto: true });
     }
     if (c === "]") {
       close = i;
-      end = paren;
-      validTarget = text[i + 1] === "(" && paren > i + 2 && paren < space;
+      if (text[i + 1] === "(" && pendingValid) {
+        validTarget = true;
+        end = pendingEnd;
+        destStart = pendingDestStart;
+        destEnd = pendingDestEnd;
+      } else {
+        validTarget = false;
+      }
     }
-    if (c === ")") paren = i;
+    pendingValid = false;
+    if (c === "(" && !escapedAt(text, i)) {
+      if (i > 0 && text[i - 1] === "]") {
+        if (isSpace(text[i + 1])) {
+          const res = parseLeadingSpaceTarget(text, i);
+          if (res) { pendingValid = true; pendingEnd = res.end; pendingDestStart = res.destStart; pendingDestEnd = res.destEnd; }
+        } else if (text[i + 1] === "<") {
+          const ang = scanAngleDest(text, i + 1);
+          if (ang) {
+            const tailEnd = parseLinkTail(text, ang.nextPos);
+            if (tailEnd >= 0) { pendingValid = true; pendingEnd = tailEnd; pendingDestStart = ang.destStart; pendingDestEnd = ang.destEnd; }
+          }
+        } else if (parenStack.length > 0) {
+          const closeIdx = parenStack[parenStack.length - 1];
+          pendingValid = true; pendingEnd = closeIdx; pendingDestStart = i + 1; pendingDestEnd = closeIdx;
+        } else if (unmatchedOpens === 0 && barrierIsWs && barrier < text.length) {
+          const tailEnd = parseLinkTail(text, barrier);
+          if (tailEnd >= 0) { pendingValid = true; pendingEnd = tailEnd; pendingDestStart = i + 1; pendingDestEnd = barrier; }
+        }
+      }
+      if (parenStack.length > 0) parenStack.pop();
+      else unmatchedOpens++;
+    } else if (c === ")" && !escapedAt(text, i)) {
+      parenStack.push(i);
+    }
     if (c === ">") angle = i;
-    if (/\s/.test(c)) space = i;
+    if (isSpace(c)) {
+      space = i;
+      parenStack.length = 0; unmatchedOpens = 0; barrier = i; barrierIsWs = true;
+    } else if (isAsciiControl(c)) {
+      parenStack.length = 0; unmatchedOpens = 0; barrier = i; barrierIsWs = false;
+    }
     if (c === "\n") newline = i;
   }
   return links;
@@ -155,7 +323,7 @@ export function inlineSpans(text: string): Span[] {
       const link = links.get(m.index);
       if (link) {
         const label = text.slice(m.index + 1, link.close);
-        const target = link.auto ? label : text.slice(link.close + 2, link.end);
+        const target = link.auto ? label : unescapeDest(text, link.destStart, link.destEnd);
         const href = safeHref(target);
         out.push(href ? { t: "link", v: label, href } : { t: "ref", v: label, target });
         last = link.end + 1;
