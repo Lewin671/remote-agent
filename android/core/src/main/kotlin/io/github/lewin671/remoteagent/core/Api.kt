@@ -90,7 +90,7 @@ class Api(
                     val epoch = response.use { it.header(RELAY_EPOCH_HEADER).orEmpty() }
                     if (epoch.isNotEmpty()) observedEpoch.set(epoch)
                     if (continuation.isActive) {
-                        if (epoch.isEmpty()) continuation.resumeWithException(IOException("relay_epoch_unavailable"))
+                        if (epoch.isEmpty()) continuation.resumeWithException(CommandException("unavailable", UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult().messageText()))
                         else continuation.resume(epoch)
                     }
                 }
