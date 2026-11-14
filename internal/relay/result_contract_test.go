@@ -97,7 +97,7 @@ func TestOfflineAttemptCannotOverrideEarlierSignedUnknown(t *testing.T) {
 	}
 }
 
-func TestExpiredPreviousProtocolRemainsSignedUnknown(t *testing.T) {
+func TestExpiredPreviousProtocolIsBlockedByRelay(t *testing.T) {
 	e := setup(t)
 	e.backend.add(t, "session")
 	e.startRelay()
@@ -112,8 +112,8 @@ func TestExpiredPreviousProtocolRemainsSignedUnknown(t *testing.T) {
 	for range 2 {
 		proof, err := e.client.Forward(context.Background(), s.MachineID, env)
 		var failure *remoteclient.CommandError
-		if !errors.As(err, &failure) || !failure.FromDaemon || failure.Outcome != outcome.Unknown || proof == nil || proof.Outcome != "unknown" {
-			t.Fatal("expired missing ID became a rejection", err)
+		if !errors.As(err, &failure) || failure.FromDaemon || failure.Outcome != outcome.Unknown || proof != nil {
+			t.Fatal("expired body bypassed relay or became a rejection", err)
 		}
 	}
 	if e.backend.sendCount() != 0 {

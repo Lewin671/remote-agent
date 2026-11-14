@@ -205,3 +205,57 @@ func TestMalformedCommandHasBoundProofOnlyAfterAuthentication(t *testing.T) {
 		t.Fatal("unauthenticated ID received a rejection proof")
 	}
 }
+
+// The relay no longer routes expired bodies. Exercise the daemon entry directly
+// so migration's signed-unknown contract remains covered independently of that
+// earlier relay fence, with the same old-protocol, missing-ID authorization.
+func TestExpiredPreviousProtocolRemainsSignedUnknown(t *testing.T) {
+	c := &conn{}
+	keys := initializeTestSecurityKeys(t, c)
+	pin, _, _ := c.security.endpoint.Snapshot()
+	member := keys.states[0].Core.Members[0]
+	lease, err := deviceauth.BuildLease(keys.states[1], keys.phone, keys.states[1].Core.IssuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	now := c.security.now()
+	h := deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "expired-previous-protocol", Deadline: now - 1000}
+	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: 14, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
+	wire, err := client.Prepare(h, nil, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header, _ := deviceauth.ParseHeader(wire.Header)
+	key, payload, err := deviceauth.RequestIdentity(header, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		result, err := c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+			t.Fatal("expired old authorization executed")
+			return deviceauth.Undetermined(), nil
+		})
+		proof, ok := deviceauth.CommandResult(result, err)
+		if !ok || proof.Outcome != "unknown" || !bytes.Equal(proof.RequestKeyHash, key[:]) || !bytes.Equal(proof.PayloadHash, payload[:]) {
+			t.Fatal("expired missing ID became a rejection", err)
+		}
+		plain, _ := proto.Marshal(proof)
+		env, err := c.security.sealResult(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, RequestId: h.Request}, nil, plain, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sealed, err := deviceauth.FromEnvelope(env)
+		if err != nil {
+			t.Fatal(err)
+		}
+		openedHeader, opened, err := client.Open(sealed, nil, false, now)
+		if err != nil || !bytes.Equal(opened, plain) || openedHeader.Request != h.Request || openedHeader.Machine != h.Machine {
+			t.Fatal("expired unknown proof did not authenticate", err)
+		}
+	}
+}
