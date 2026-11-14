@@ -54,4 +54,24 @@ public interface ForwardRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getAttemptIdBytes();
+
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   * @return The relayEpoch.
+   */
+  java.lang.String getRelayEpoch();
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   * @return The bytes for relayEpoch.
+   */
+  com.google.protobuf.ByteString
+      getRelayEpochBytes();
 }

@@ -21,8 +21,9 @@ func validAttempt(id string) bool {
 	return true
 }
 
-// Only callers before the enqueue boundary may use this helper.
-func notForwarded(err error, attempt, reason string) error {
+// Only a sealed refusal or a body-deterministic format rejection may use this
+// helper. Being before the enqueue boundary alone does not establish evidence.
+func notForwarded(err error, attempt, epoch, reason string) error {
 	if !validAttempt(attempt) {
 		return err
 	}
@@ -30,7 +31,14 @@ func notForwarded(err error, attempt, reason string) error {
 	if !errors.As(err, &ce) {
 		ce = connect.NewError(connect.CodeUnavailable, err)
 	}
-	detail, e := connect.NewErrorDetail(&pb.NotForwarded{AttemptId: attempt, Reason: reason})
+	// Error values can be shared (admission errors are). Never attach per-call
+	// details to the original, or another response could inherit this proof.
+	copy := connect.NewError(ce.Code(), errors.New(ce.Message()))
+	for key, values := range ce.Meta() {
+		copy.Meta()[key] = append([]string(nil), values...)
+	}
+	ce = copy
+	detail, e := connect.NewErrorDetail(&pb.NotForwarded{AttemptId: attempt, RelayEpoch: epoch, Reason: reason})
 	if e == nil {
 		ce.AddDetail(detail)
 	}
@@ -40,5 +48,7 @@ func entryRefusal(req connect.AnyRequest, err error) error {
 	if req.Spec().Procedure != remoteagentv1connect.ClientServiceForwardProcedure {
 		return err
 	}
-	return notForwarded(err, req.Header().Get(attemptHeader), "entry_refused")
+	// No terminal decision exists here. Preserve authentication diagnostics
+	// (notably 401 for explicit login refresh), without claiming NotForwarded.
+	return err
 }

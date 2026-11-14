@@ -932,6 +932,9 @@ public struct PBForwardRequest: Sendable {
 
   public var attemptID: String = String()
 
+  /// Frozen with this HTTP attempt; transparent replays retain the old instance.
+  public var relayEpoch: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -977,6 +980,8 @@ public struct PBNotForwarded: Sendable {
   public var attemptID: String = String()
 
   public var reason: String = String()
+
+  public var relayEpoch: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3718,7 +3723,7 @@ extension PBGetEventsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ForwardRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}command\0\u{3}attempt_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}command\0\u{3}attempt_id\0\u{3}relay_epoch\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3729,6 +3734,7 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularMessageField(value: &self._command) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.relayEpoch) }()
       default: break
       }
     }
@@ -3748,6 +3754,9 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if !self.attemptID.isEmpty {
       try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 3)
     }
+    if !self.relayEpoch.isEmpty {
+      try visitor.visitSingularStringField(value: self.relayEpoch, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3755,6 +3764,7 @@ extension PBForwardRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs.machineID != rhs.machineID {return false}
     if lhs._command != rhs._command {return false}
     if lhs.attemptID != rhs.attemptID {return false}
+    if lhs.relayEpoch != rhs.relayEpoch {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3811,7 +3821,7 @@ extension PBForwardResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension PBNotForwarded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NotForwarded"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}attempt_id\0\u{1}reason\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}attempt_id\0\u{1}reason\0\u{3}relay_epoch\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3821,6 +3831,7 @@ extension PBNotForwarded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.relayEpoch) }()
       default: break
       }
     }
@@ -3833,12 +3844,16 @@ extension PBNotForwarded: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
     if !self.reason.isEmpty {
       try visitor.visitSingularStringField(value: self.reason, fieldNumber: 2)
     }
+    if !self.relayEpoch.isEmpty {
+      try visitor.visitSingularStringField(value: self.relayEpoch, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBNotForwarded, rhs: PBNotForwarded) -> Bool {
     if lhs.attemptID != rhs.attemptID {return false}
     if lhs.reason != rhs.reason {return false}
+    if lhs.relayEpoch != rhs.relayEpoch {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

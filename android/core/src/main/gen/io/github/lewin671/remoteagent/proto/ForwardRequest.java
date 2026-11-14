@@ -17,6 +17,7 @@ public  final class ForwardRequest extends
   private ForwardRequest() {
     machineId_ = "";
     attemptId_ = "";
+    relayEpoch_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -185,6 +186,74 @@ public  final class ForwardRequest extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     attemptId_ = value.toStringUtf8();
+
+  }
+
+  public static final int RELAY_EPOCH_FIELD_NUMBER = 4;
+  private java.lang.String relayEpoch_;
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   * @return The relayEpoch.
+   */
+  @java.lang.Override
+  public java.lang.String getRelayEpoch() {
+    return relayEpoch_;
+  }
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   * @return The bytes for relayEpoch.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRelayEpochBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(relayEpoch_);
+  }
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   * @param value The relayEpoch to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRelayEpoch(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    relayEpoch_ = value;
+  }
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   */
+  private void clearRelayEpoch() {
+
+    relayEpoch_ = getDefaultInstance().getRelayEpoch();
+  }
+  /**
+   * <pre>
+   * Frozen with this HTTP attempt; transparent replays retain the old instance.
+   * </pre>
+   *
+   * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+   * @param value The bytes for relayEpoch to set.
+   */
+  private void setRelayEpochBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    relayEpoch_ = value.toStringUtf8();
 
   }
 
@@ -460,6 +529,75 @@ public  final class ForwardRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Frozen with this HTTP attempt; transparent replays retain the old instance.
+     * </pre>
+     *
+     * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+     * @return The relayEpoch.
+     */
+    @java.lang.Override
+    public java.lang.String getRelayEpoch() {
+      return instance.getRelayEpoch();
+    }
+    /**
+     * <pre>
+     * Frozen with this HTTP attempt; transparent replays retain the old instance.
+     * </pre>
+     *
+     * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+     * @return The bytes for relayEpoch.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRelayEpochBytes() {
+      return instance.getRelayEpochBytes();
+    }
+    /**
+     * <pre>
+     * Frozen with this HTTP attempt; transparent replays retain the old instance.
+     * </pre>
+     *
+     * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+     * @param value The relayEpoch to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRelayEpoch(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setRelayEpoch(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Frozen with this HTTP attempt; transparent replays retain the old instance.
+     * </pre>
+     *
+     * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRelayEpoch() {
+      copyOnWrite();
+      instance.clearRelayEpoch();
+      return this;
+    }
+    /**
+     * <pre>
+     * Frozen with this HTTP attempt; transparent replays retain the old instance.
+     * </pre>
+     *
+     * <code>string relay_epoch = 4 [json_name = "relayEpoch"];</code>
+     * @param value The bytes for relayEpoch to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRelayEpochBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRelayEpochBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ForwardRequest)
   }
   @java.lang.Override
@@ -480,10 +618,11 @@ public  final class ForwardRequest extends
             "machineId_",
             "command_",
             "attemptId_",
+            "relayEpoch_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\u0208";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\u0208\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

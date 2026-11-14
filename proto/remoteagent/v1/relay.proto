@@ -359,6 +359,8 @@ message ForwardRequest {
   // the server refuses it.
   Envelope command = 2;
   string attempt_id = 3;
+  // Frozen with this HTTP attempt; transparent replays retain the old instance.
+  string relay_epoch = 4;
 }
 
 message ForwardResponse {
@@ -374,6 +376,7 @@ message ForwardResponse {
 message NotForwarded {
   string attempt_id = 1;
   string reason = 2;
+  string relay_epoch = 3;
 }
 
 // MachineService is used by daemons.

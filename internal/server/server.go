@@ -23,6 +23,7 @@ import (
 
 	"connectrpc.com/connect"
 	connectcors "connectrpc.com/cors"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 )
 
@@ -138,8 +139,9 @@ type Server struct {
 	challengeMu sync.Mutex
 	challenges  map[string]challenge
 
-	signup  *signupGuard
-	diskLow atomic.Bool
+	signup          *signupGuard
+	diskLow         atomic.Bool
+	forwardAttempts *attemptLedger
 }
 
 type challenge struct {
@@ -282,7 +284,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/v1/stream", s.hub.serve)
 	mux.HandleFunc("/v1/term", s.term.serve)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
-	return s.trackRequests(s.cors(s.limitRPCRequests(mux, rpcBodyReadTimeout)))
+	handler := s.trackRequests(s.cors(s.limitRPCRequests(mux, rpcBodyReadTimeout)))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(relayEpochHeader, s.forwardAttempts.epoch)
+		handler.ServeHTTP(w, r)
+	})
 }
 
 // cors lets the allowed web origins call the API.
@@ -293,7 +299,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 	}
 	methods := strings.Join(connectcors.AllowedMethods(), ", ")
 	headers := strings.Join(append(connectcors.AllowedHeaders(), "Authorization", attemptHeader), ", ")
-	exposed := strings.Join(connectcors.ExposedHeaders(), ", ")
+	exposed := strings.Join(append(connectcors.ExposedHeaders(), relayEpochHeader), ", ")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" && allowed[origin] {
@@ -370,6 +376,12 @@ func (s *Server) authenticate(ctx context.Context, token string) (*device, error
 func (s *Server) authInterceptor() connect.UnaryInterceptorFunc {
 	return func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if req.Spec().Procedure == remoteagentv1connect.ClientServiceForwardProcedure {
+				body, ok := req.Any().(*pb.ForwardRequest)
+				if !ok || body.RelayEpoch == "" || body.RelayEpoch != s.forwardAttempts.epoch {
+					return nil, attemptUnknown("relay_restarted")
+				}
+			}
 			token, _ := strings.CutPrefix(req.Header().Get("Authorization"), "Bearer ")
 			d, err := s.authenticate(ctx, token)
 			if err != nil {
@@ -379,9 +391,18 @@ func (s *Server) authInterceptor() connect.UnaryInterceptorFunc {
 				return nil, entryRefusal(req, err)
 			}
 			if req.Spec().Procedure == remoteagentv1connect.ClientServiceForwardProcedure {
+				message, ok := req.Any().(*pb.ForwardRequest)
+				if !ok {
+					return nil, attemptUnknown("attempt_unsealed")
+				}
+				permit, err := s.prepareAttempt(d, message, req.Header().Get(attemptHeader))
+				if err != nil {
+					return nil, err
+				}
+				ctx = context.WithValue(ctx, attemptPermitKey{}, permit)
 				if admission, ok := ctx.Value(rpcAdmissionKey{}).(*rpcAdmission); ok {
 					if err := admission.forward(); err != nil {
-						return nil, entryRefusal(req, err)
+						return nil, permit.refuse(err, "admission_refused")
 					}
 				}
 			}

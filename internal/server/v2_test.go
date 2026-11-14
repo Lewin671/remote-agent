@@ -105,14 +105,14 @@ func TestForwardChecksSenderAndPassesRegistration(t *testing.T) {
 		return env
 	}
 	// Claiming to be another device is refused before reaching the machine.
-	_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(mid)}))
+	_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(mid)}, ts.srv.forwardAttempts.epoch))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("forged sender: %v", err)
 	}
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(cid)}))
+		_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: mid, Command: seal(cid)}, ts.srv.forwardAttempts.epoch))
 		done <- err
 	}()
 	f := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil })

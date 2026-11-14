@@ -63,6 +63,9 @@ type call struct {
 }
 
 func newHub(s *Server) *hub {
+	if s != nil && s.forwardAttempts == nil {
+		s.forwardAttempts = newAttemptLedger()
+	}
 	return &hub{s: s, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}, accountQueueBytes: map[string]int64{}}
 }
 
@@ -451,11 +454,15 @@ func errUnknown(why string) error {
 // forward sends a sealed command to a machine and waits for the result.
 func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.ForwardCall) (*pb.ForwardReply, error) {
 	h := a.h
+	permit, ok := ctx.Value(attemptPermitKey{}).(*attemptPermit)
+	if !ok || permit.id != fc.AttemptId {
+		return nil, attemptUnknown("attempt_unsealed")
+	}
 	h.mu.Lock()
 	p := a.machineLocked(machineID)
 	if p == nil {
 		h.mu.Unlock()
-		return nil, notForwarded(connect.NewError(connect.CodeUnavailable, errors.New("machine is offline")), fc.AttemptId, "machine_offline")
+		return nil, permit.refuse(connect.NewError(connect.CodeUnavailable, errors.New("machine is offline")), "machine_offline")
 	}
 	h.nextCall++
 	id := h.nextCall
@@ -469,8 +476,8 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 	}()
 	fc = proto.CloneOf(fc)
 	fc.CallId = id
-	if !h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: fc}}) {
-		return nil, notForwarded(connect.NewError(connect.CodeUnavailable, errors.New("machine is not keeping up")), fc.AttemptId, "queue_full")
+	if err := permit.enqueue(ctx, func() bool { return h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: fc}}) }); err != nil {
+		return nil, err
 	}
 	timer := time.NewTimer(h.s.cfg.ForwardTimeout)
 	defer timer.Stop()

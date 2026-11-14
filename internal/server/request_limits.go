@@ -230,7 +230,7 @@ func (s *Server) limitRPCRequestsWithWriteTimeouts(next http.Handler, readTimeou
 			_ = controller.SetReadDeadline(time.Now())
 			w.Header().Set("Retry-After", "1")
 			if r.URL.Path == remoteagentv1connect.ClientServiceForwardProcedure && validAttempt(r.Header.Get(attemptHeader)) {
-				_ = errorWriter.Write(w, r, notForwarded(err, r.Header.Get(attemptHeader), "admission_refused"))
+				_ = errorWriter.Write(w, r, attemptUnknown("attempt_unsealed"))
 			} else if errors.Is(err, errRPCGlobalAdmission) {
 				http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			} else {

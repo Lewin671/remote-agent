@@ -29,7 +29,7 @@ func TestForwardEvidenceStopsAtEnqueue(t *testing.T) {
 	env, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: a.mid, Sender: a.cid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli()}, []byte("fixture"))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	req := forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env})
+	req := forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}, ts.srv.forwardAttempts.epoch)
 	done := make(chan error, 1)
 	go func() { _, err := a.client.Forward(ctx, req); done <- err }()
 	a.machineFrame.next(t, func(f *pb.ServerFrame) bool { return f.GetForwardCall() != nil })
@@ -39,14 +39,14 @@ func TestForwardEvidenceStopsAtEnqueue(t *testing.T) {
 		t.Fatal("post-enqueue cancellation claimed not forwarded")
 	}
 	// A nonexistent machine cannot be queued; proof identifies just this attempt.
-	req = forwardRequest(&pb.ForwardRequest{MachineId: "0123456789abcdef0123456789abcdef", Command: env})
+	req = forwardRequest(&pb.ForwardRequest{MachineId: "0123456789abcdef0123456789abcdef", Command: env}, ts.srv.forwardAttempts.epoch)
 	_, err = a.client.Forward(context.Background(), req)
 	if p := unf(err); p == nil || p.AttemptId != req.Msg.AttemptId {
 		t.Fatal("pre-forward envelope rejection lacks bound proof", err)
 	}
 	// Quota/admission paths use the same detail without inspecting any plaintext.
 	for _, code := range []connect.Code{connect.CodeUnavailable, connect.CodeResourceExhausted, connect.CodeUnauthenticated, connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeInvalidArgument} {
-		err := notForwarded(connect.NewError(code, deviceauth.ErrCapacity), req.Msg.AttemptId, "admission_refused")
+		err := notForwarded(connect.NewError(code, deviceauth.ErrCapacity), req.Msg.AttemptId, ts.srv.forwardAttempts.epoch, "admission_refused")
 		if p := unf(err); p == nil || p.AttemptId != req.Msg.AttemptId {
 			t.Fatal(code)
 		}
@@ -57,14 +57,25 @@ func TestOfflineAndFullQueueCarryOnlyThisAttempt(t *testing.T) {
 	h := newHub(&Server{cfg: Config{ForwardTimeout: time.Second}})
 	const attempt = "0123456789abcdef0123456789abcdef"
 	fc := &pb.ForwardCall{AttemptId: attempt}
-	_, err := h.account("account").forward(context.Background(), "machine", fc)
+	permit, err := h.s.forwardAttempts.reserve("account", "client", attempt, h.s.forwardAttempts.epoch, time.Now().Add(time.Minute).UnixMilli(), [32]byte{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.WithValue(context.Background(), attemptPermitKey{}, permit)
+	_, err = h.account("account").forward(ctx, "machine", fc)
 	if p := unf(err); p == nil || p.AttemptId != attempt || p.Reason != "machine_offline" {
 		t.Fatal("offline", err)
 	}
 	p := &peer{dev: &device{id: "machine", account: "account", kind: pb.DeviceKind_DEVICE_KIND_MACHINE}, out: make(chan queuedFrame), cancel: func() {}}
 	h.machines["machine"] = p
-	_, err = h.account("account").forward(context.Background(), "machine", fc)
-	if p := unf(err); p == nil || p.AttemptId != attempt || p.Reason != "queue_full" {
+	fc.AttemptId = "fedcba9876543210fedcba9876543210"
+	permit, err = h.s.forwardAttempts.reserve("account", "client", fc.AttemptId, h.s.forwardAttempts.epoch, time.Now().Add(time.Minute).UnixMilli(), [32]byte{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx = context.WithValue(context.Background(), attemptPermitKey{}, permit)
+	_, err = h.account("account").forward(ctx, "machine", fc)
+	if p := unf(err); p == nil || p.AttemptId != fc.AttemptId || p.Reason != "queue_full" {
 		t.Fatal("queue full", err)
 	}
 	if len(p.out) != 0 || len(h.calls) != 0 || h.queueBytes != 0 {

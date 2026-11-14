@@ -22,6 +22,7 @@ public  final class NotForwarded extends
   private NotForwarded() {
     attemptId_ = "";
     reason_ = "";
+    relayEpoch_ = "";
   }
   public static final int ATTEMPT_ID_FIELD_NUMBER = 1;
   private java.lang.String attemptId_;
@@ -116,6 +117,54 @@ public  final class NotForwarded extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     reason_ = value.toStringUtf8();
+
+  }
+
+  public static final int RELAY_EPOCH_FIELD_NUMBER = 3;
+  private java.lang.String relayEpoch_;
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   * @return The relayEpoch.
+   */
+  @java.lang.Override
+  public java.lang.String getRelayEpoch() {
+    return relayEpoch_;
+  }
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   * @return The bytes for relayEpoch.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRelayEpochBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(relayEpoch_);
+  }
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   * @param value The relayEpoch to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRelayEpoch(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    relayEpoch_ = value;
+  }
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   */
+  private void clearRelayEpoch() {
+
+    relayEpoch_ = getDefaultInstance().getRelayEpoch();
+  }
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   * @param value The bytes for relayEpoch to set.
+   */
+  private void setRelayEpochBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    relayEpoch_ = value.toStringUtf8();
 
   }
 
@@ -319,6 +368,55 @@ public  final class NotForwarded extends
       return this;
     }
 
+    /**
+     * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+     * @return The relayEpoch.
+     */
+    @java.lang.Override
+    public java.lang.String getRelayEpoch() {
+      return instance.getRelayEpoch();
+    }
+    /**
+     * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+     * @return The bytes for relayEpoch.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRelayEpochBytes() {
+      return instance.getRelayEpochBytes();
+    }
+    /**
+     * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+     * @param value The relayEpoch to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRelayEpoch(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setRelayEpoch(value);
+      return this;
+    }
+    /**
+     * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRelayEpoch() {
+      copyOnWrite();
+      instance.clearRelayEpoch();
+      return this;
+    }
+    /**
+     * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+     * @param value The bytes for relayEpoch to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRelayEpochBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setRelayEpochBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.NotForwarded)
   }
   @java.lang.Override
@@ -337,10 +435,11 @@ public  final class NotForwarded extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "attemptId_",
             "reason_",
+            "relayEpoch_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

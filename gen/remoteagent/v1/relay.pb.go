@@ -2427,8 +2427,10 @@ type ForwardRequest struct {
 	MachineId string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	// COMMAND envelope. Its header's sender must be the calling device, or
 	// the server refuses it.
-	Command       *Envelope `protobuf:"bytes,2,opt,name=command,proto3" json:"command,omitempty"`
-	AttemptId     string    `protobuf:"bytes,3,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	Command   *Envelope `protobuf:"bytes,2,opt,name=command,proto3" json:"command,omitempty"`
+	AttemptId string    `protobuf:"bytes,3,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
+	// Frozen with this HTTP attempt; transparent replays retain the old instance.
+	RelayEpoch    string `protobuf:"bytes,4,opt,name=relay_epoch,json=relayEpoch,proto3" json:"relay_epoch,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2480,6 +2482,13 @@ func (x *ForwardRequest) GetCommand() *Envelope {
 func (x *ForwardRequest) GetAttemptId() string {
 	if x != nil {
 		return x.AttemptId
+	}
+	return ""
+}
+
+func (x *ForwardRequest) GetRelayEpoch() string {
+	if x != nil {
+		return x.RelayEpoch
 	}
 	return ""
 }
@@ -2559,6 +2568,7 @@ type NotForwarded struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AttemptId     string                 `protobuf:"bytes,1,opt,name=attempt_id,json=attemptId,proto3" json:"attempt_id,omitempty"`
 	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	RelayEpoch    string                 `protobuf:"bytes,3,opt,name=relay_epoch,json=relayEpoch,proto3" json:"relay_epoch,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2603,6 +2613,13 @@ func (x *NotForwarded) GetAttemptId() string {
 func (x *NotForwarded) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *NotForwarded) GetRelayEpoch() string {
+	if x != nil {
+		return x.RelayEpoch
 	}
 	return ""
 }
@@ -6410,23 +6427,27 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\rR\x05limit\"\\\n" +
 	"\x11GetEventsResponse\x123\n" +
 	"\x06events\x18\x01 \x03(\v2\x1b.remoteagent.v1.StoredEventR\x06events\x12\x12\n" +
-	"\x04more\x18\x02 \x01(\bR\x04more\"\x82\x01\n" +
+	"\x04more\x18\x02 \x01(\bR\x04more\"\xa3\x01\n" +
 	"\x0eForwardRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x122\n" +
 	"\acommand\x18\x02 \x01(\v2\x18.remoteagent.v1.EnvelopeR\acommand\x12\x1d\n" +
 	"\n" +
-	"attempt_id\x18\x03 \x01(\tR\tattemptId\"\x94\x01\n" +
+	"attempt_id\x18\x03 \x01(\tR\tattemptId\x12\x1f\n" +
+	"\vrelay_epoch\x18\x04 \x01(\tR\n" +
+	"relayEpoch\"\x94\x01\n" +
 	"\x0fForwardResponse\x120\n" +
 	"\x06result\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x06result\x12\x18\n" +
 	"\aoutcome\x18\x02 \x01(\tR\aoutcome\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"attempt_id\x18\x04 \x01(\tR\tattemptId\"E\n" +
+	"attempt_id\x18\x04 \x01(\tR\tattemptId\"f\n" +
 	"\fNotForwarded\x12\x1d\n" +
 	"\n" +
 	"attempt_id\x18\x01 \x01(\tR\tattemptId\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"A\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1f\n" +
+	"\vrelay_epoch\x18\x03 \x01(\tR\n" +
+	"relayEpoch\"A\n" +
 	"\x11PutMachineRequest\x12,\n" +
 	"\x04meta\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\x04meta\"\x14\n" +
 	"\x12PutMachineResponse\"\xc6\x01\n" +

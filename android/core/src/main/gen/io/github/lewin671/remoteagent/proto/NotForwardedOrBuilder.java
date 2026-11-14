@@ -33,4 +33,16 @@ public interface NotForwardedOrBuilder extends
    */
   com.google.protobuf.ByteString
       getReasonBytes();
+
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   * @return The relayEpoch.
+   */
+  java.lang.String getRelayEpoch();
+  /**
+   * <code>string relay_epoch = 3 [json_name = "relayEpoch"];</code>
+   * @return The bytes for relayEpoch.
+   */
+  com.google.protobuf.ByteString
+      getRelayEpochBytes();
 }

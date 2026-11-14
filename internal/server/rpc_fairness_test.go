@@ -103,7 +103,7 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = a.client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
+		_, err = a.client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}, ts.srv.forwardAttempts.epoch))
 		return err
 	}
 	for range maxAccountForwardRequests {
@@ -189,7 +189,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := func() error {
-		_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}))
+		_, err := client.Forward(ctx, forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}, ts.srv.forwardAttempts.epoch))
 		return err
 	}
 	done := make(chan error, maxAccountLargeRPCRequests)
