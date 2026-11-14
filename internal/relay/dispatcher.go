@@ -30,18 +30,21 @@ type dispatcher struct {
 	publisher       *conn
 	acct            *Account
 	wasReady        atomic.Bool
+	credentials     []*credentials
 }
 
 func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering bool) (*dispatcher, error) {
 	ctx, cancel := context.WithCancel(ctx)
-	securityCredentials := accountCredentials(acct)
+	maintenance, stopMaintenance := context.WithCancel(ctx)
+	securityCredentials := accountCredentials(maintenance, acct)
 	client := remoteagentv1connect.NewClientServiceClient(httpClient(), acct.Server, connect.WithInterceptors(securityCredentials.bearer()))
 	security, err := openSecuritySession(acct, client)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
-	maintenance, stopMaintenance := context.WithCancel(ctx)
+	security.lifetime = maintenance
+	security.credentials = securityCredentials
 	d := &dispatcher{ctx: ctx, cancel: cancel, security: security, acct: acct, maintenance: maintenance, stopMaintenance: stopMaintenance}
 	d.link = transport.NewLink(ctx, r.admissions, r.calls)
 	if recovering {
@@ -60,7 +63,8 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	}
 	security.onAuthLost = d.requestReload
 	securityCredentials.now = r.retryTime().now
-	publishCredentials := accountCredentials(acct)
+	publishCredentials := accountCredentials(maintenance, acct)
+	d.credentials = []*credentials{securityCredentials, publishCredentials}
 	publishCredentials.now = r.retryTime().now
 	ctx = maintenance
 	d.publisher = &conn{r: r, acct: acct, security: security, lifetime: ctx, diskAlertNow: r.retryTime().now, publishNow: make(chan struct{}, 1),
@@ -83,6 +87,9 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 }
 func (d *dispatcher) close() {
 	d.cancel()
+	for _, c := range d.credentials {
+		c.close()
+	}
 	d.workers.Wait()
 	d.link.Close()
 	d.publisher.writes.close()
@@ -157,6 +164,9 @@ func (c *conn) publishLoop(ctx context.Context) {
 // work. No second endpoint opens until the old generation has drained.
 func (d *dispatcher) retire() {
 	d.stopMaintenance()
+	for _, c := range d.credentials {
+		c.close()
+	}
 	d.security.setAuthorized(false)
 	d.workers.Wait()
 	d.link.DrainCalls()

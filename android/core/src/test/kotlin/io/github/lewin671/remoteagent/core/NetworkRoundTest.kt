@@ -9,6 +9,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NetworkRoundTest {
+    @Test fun lateRetirementCannotCancelANewGenerationOwner() = runBlocking {
+        val release=CompletableDeferred<Unit>()
+        lateinit var caller: Deferred<Int>
+        lateinit var round: NetworkRound
+        round=NetworkRound(Mutex()) {
+            caller=async(start=CoroutineStart.UNDISPATCHED) {round.run {release.await();42}}
+        }
+        round.changed()
+        try {assertTrue("retirement canceled its successor",caller.isActive)}
+        finally {release.complete(Unit)}
+        assertEquals(42,caller.await())
+    }
+
     @Test fun obsoleteLoginDoesNotHoldTheNextNetworkOrCancelItsCaller() = runBlocking {
         val entered=CompletableDeferred<Unit>()
         var calls=0

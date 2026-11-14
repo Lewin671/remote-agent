@@ -186,15 +186,21 @@ export class DeviceSecurityClient {
       let job = this.syncJob, controller = this.syncController;
       if (!job || !controller) {
         controller = new AbortController();
-        job = this.syncLoop(controller.signal);
-        this.syncController = controller; this.syncJob = job;
+        const owner = controller;
+        const pending = this.syncLoop(owner.signal).catch(error => {
+          if (this.syncJob === pending && !owner.signal.aborted) this.recoveryStatusStale = true;
+          throw error;
+        }).finally(() => {
+          if (this.syncJob === pending) { this.syncJob = undefined; this.syncController = undefined; }
+        });
+        job = pending;
+        this.syncController = owner; this.syncJob = pending;
+        void pending.catch(() => undefined);
       }
       try { return await abortable(job, waiter); }
       catch (error) {
         if (controller.signal.aborted && this.active() && !waiter?.aborted) continue;
-        this.recoveryStatusStale = true; throw error;
-      } finally {
-        if (this.syncJob === job) { this.syncJob = undefined; this.syncController = undefined; }
+        throw error;
       }
     }
   }

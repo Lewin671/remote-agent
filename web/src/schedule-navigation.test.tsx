@@ -67,6 +67,8 @@ async function mount() {
 
 async function open(hash: string) {
   await act(async () => { location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
+  // Each lazy route suspends once even when the shared module is cached.
+  await act(async () => { await vi.dynamicImportSettled(); });
 }
 
 it("makes a task from the phone's bottom row", async () => {

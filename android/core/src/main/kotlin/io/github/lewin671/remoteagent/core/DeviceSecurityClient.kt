@@ -114,6 +114,7 @@ class DeviceSecurityClient(
 
     fun close() = synchronized(historyLock) {
         closed = true
+        syncRound.changed()
         clearCache()
     }
 

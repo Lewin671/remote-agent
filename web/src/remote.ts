@@ -1825,6 +1825,15 @@ export class Remote {
     this.security.networkChanged();
   }
 
+  private retireCandidate(reason?: Error) {
+    const setup = this.setupController;
+    this.setupController = undefined; this.connecting = false;
+    setup?.abort(reason);
+    const candidate = this.candidate; this.candidate = undefined;
+    clearTimeout(this.openTimer); this.openTimer = undefined;
+    candidate?.close();
+  }
+
   private touchAfterWake() {
     this.retireNetworkIO();
     this.wakeSecurity = this.security.touch();
@@ -1846,10 +1855,7 @@ export class Remote {
       this.networkGeneration++;
       if (this.closed || !this.foreground) return;
       this.touchAfterWake();
-      this.setupController?.abort(new Error(l10n.t("errors.network_changed_reconnecting")));
-      const candidate = this.candidate;
-      this.candidate = undefined;
-      candidate?.close();
+      this.retireCandidate(new Error(l10n.t("errors.network_changed_reconnecting")));
       this.reconnectNow(true);
     });
   }
@@ -1860,12 +1866,12 @@ export class Remote {
     clearTimeout(this.idleTimer);
     if (!active) {
       clearTimeout(this.retryTimer); this.retryTimer = undefined;
-      this.setupController?.abort();
-      const candidate = this.candidate; this.candidate = undefined; candidate?.close();
+      this.retireCandidate();
     }
     if (active) {
       this.networkGeneration++;
       this.touchAfterWake();
+      this.retireCandidate();
       // Security.sync persists Touch before reading the remote state.
       this.reconnectNow(true);
       this.watchLiveness();
@@ -1889,7 +1895,7 @@ export class Remote {
     this.idleTimer = setTimeout(() => {
       const now = performance.now(), wall = Date.now();
       const paused = now - this.lastTick > STREAM_IDLE_MS || wall - this.lastWallTick > STREAM_IDLE_MS || now < this.lastTick;
-      if (paused) { this.networkGeneration++; this.touchAfterWake(); }
+      if (paused) { this.networkGeneration++; this.touchAfterWake(); this.retireCandidate(); }
       if (paused || (this.ws && now - this.lastFrameAt >= STREAM_IDLE_MS)) {
         if (this.conn === "online") { this.lostAt = Date.now(); this.conn = "connecting"; this.changed(true); }
         this.reconnectNow(true);
@@ -1949,12 +1955,16 @@ export class Remote {
       let job = this.loggingIn, controller = this.loginController;
       if (!job || !controller) {
         controller = new AbortController();
-        job = this.signIn(controller.signal);
-        this.loginController = controller; this.loggingIn = job;
+        const owner = controller;
+        const pending = this.signIn(owner.signal).finally(() => {
+          if (this.loggingIn === pending) { this.loggingIn = undefined; this.loginController = undefined; }
+        });
+        job = pending;
+        this.loginController = owner; this.loggingIn = pending;
+        void pending.catch(() => undefined);
       }
       try { return await abortable(job, waiter); }
       catch (error) { if (controller.signal.aborted && !this.closed && !waiter?.aborted) continue; throw error; }
-      finally { if (this.loggingIn === job) { this.loggingIn = undefined; this.loginController = undefined; } }
     }
   }
 
@@ -1980,8 +1990,8 @@ export class Remote {
           challenge: ch.challenge,
           signature: sig,
         }, { signal, timeoutMs: this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS });
-        this.setupProgress?.();
         signal.throwIfAborted();
+        this.setupProgress?.();
         if (this.closed) return;
         this.token = res.token;
         this.tokenExpires = Number(res.expiresMs);
@@ -2000,6 +2010,7 @@ export class Remote {
         if (again) continue;
         this.discardToken();
         await this.tokenWrites;
+        signal.throwIfAborted();
         this.removed = true;
         this.stop();
         await this.checkLocalRemoval();
@@ -2045,19 +2056,21 @@ export class Remote {
       setup.signal.addEventListener("abort", abort, { once: true });
     });
     try {
-      const go = await Promise.race([this.preStream(generation, at), interrupted]);
+      const go = await Promise.race([this.preStream(generation, at, setup.signal), interrupted]);
       if (go && networkGeneration === this.networkGeneration && !setup.signal.aborted) {
         attempt.step = l10n.t("errors.establishing_push_connection"); this.changed(true);
         this.openStream(generation, recovering ? Math.max(0, deadline - performance.now()) : OPEN_TIMEOUT_MS);
       }
     } catch (e) {
-      if (!this.closed && generation === this.generation && networkGeneration === this.networkGeneration) this.fail(e);
+      if (!this.closed && this.setupController === setup && generation === this.generation && networkGeneration === this.networkGeneration) this.fail(e);
     } finally {
       clearTimeout(stall); setup.signal.removeEventListener("abort", abort);
-      if (setup.signal.aborted && generation === this.generation) this.generation++;
-      if (this.setupController === setup) { this.setupController = undefined; this.connecting = false; }
+      if (this.setupController === setup) {
+        if (setup.signal.aborted && generation === this.generation) this.generation++;
+        this.setupController = undefined; this.connecting = false;
+        if (!this.candidate && !this.closed) this.scheduleReconnect();
+      }
       if (this.setupProgress === progress) this.setupProgress = undefined;
-      if (!this.candidate && !this.closed) this.scheduleReconnect();
     }
   }
 
@@ -2066,9 +2079,10 @@ export class Remote {
   private async preStream(
     generation: number,
     at: (step: string, timeout?: number) => void,
+    signal: AbortSignal,
   ): Promise<boolean> {
-    await this.warm();
-    if (this.closed || generation !== this.generation) return false;
+    await abortable(this.warm(), signal);
+    if (this.closed || generation !== this.generation || signal.aborted) return false;
     at(l10n.t("errors.signing_in"), SETUP_IDLE_MS);
     try {
       // A token kept from an earlier visit saves the two login calls. One
@@ -2076,19 +2090,19 @@ export class Remote {
       // refusing it closes the stream, and the next try logs in.
       if (!this.token || this.tokenExpires < Date.now() + 86_400_000) {
         this.discardToken();
-        await this.tokenWrites;
-        await this.login(this.setupController?.signal);
+        await abortable(this.tokenWrites, signal);
+        await this.login(signal);
       }
     } catch (e) {
       throw e;
     }
-    if (this.closed || generation !== this.generation) return false;
+    if (this.closed || generation !== this.generation || signal.aborted) return false;
     at(l10n.t("errors.syncing_device_state"), SETUP_IDLE_MS);
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
-      const record = await this.security.sync(this.setupController?.signal);
-      if (this.closed || generation !== this.generation || this.setupController?.signal.aborted) return false;
+      const record = await this.security.sync(signal);
+      if (this.closed || generation !== this.generation || signal.aborted) return false;
       this.verifiedNetworkGeneration = this.networkGeneration;
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
       this.maintainAuthority();
@@ -2096,7 +2110,8 @@ export class Remote {
       if (record.member === false) {
         this.removalVerified = true;
         this.discardToken();
-        await this.tokenWrites;
+        await abortable(this.tokenWrites, signal);
+        signal.throwIfAborted();
         this.removed = true;
         this.stop();
         return false;
@@ -2167,7 +2182,7 @@ export class Remote {
       processing = processing.then(async () => {
         if (this.closed || this.ws !== ws || activeGeneration !== this.generation || overflow) return;
         await this.onFrame(frame.kind, activeGeneration);
-      }).catch(e => { this.report(e); drop(e); }).finally(() => {
+      }).catch(e => { if (current()) { this.report(e); drop(e); } }).finally(() => {
         queuedBytes -= data.byteLength; queuedFrames--;
       });
     };
@@ -3990,8 +4005,7 @@ export class Remote {
         return this.loadDevices(describe, update);
       if (this.directoryJob) {
         const job = this.directoryJob;
-        try { await job.promise; }
-        finally { if (this.directoryJob === job) this.directoryJob = undefined; }
+        await job.promise;
         if (job.invalidated || !equalBytes(job.head, await this.security.localStateHash()))
           return this.loadDevices(describe, update);
         if (describe) await this.describeSelf();
@@ -4017,10 +4031,11 @@ export class Remote {
         this.clearClockWarning();
         return;
       }
-      const job = { head: state, promise: this.loadDirectory(record), invalidated: false };
+      const job = { head: state, promise: this.loadDirectory(record).finally(() => {
+        if (this.directoryJob === job) this.directoryJob = undefined;
+      }), invalidated: false };
       this.directoryJob = job;
-      try { await job.promise; }
-      finally { if (this.directoryJob === job) this.directoryJob = undefined; }
+      await job.promise;
       if (job.invalidated) return this.loadDevices(describe, update);
       // Self-description can reload the directory while publishing metadata.
       // It must run after the shared job has finished and been cleared.
@@ -4761,14 +4776,14 @@ export class Remote {
         value: {},
       }).then((r) => {
         if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
-        if (r.kind.value.imageStorage)
-          this.imageStorage.set(machineId, r.kind.value.imageStorage);
-        this.settingsRead.set(machineId, r.kind.value.settings);
-        this.keepInfo();
-        this.changed();
+        if (this.settingsCache.get(machineId) === p) {
+          if (r.kind.value.imageStorage) this.imageStorage.set(machineId, r.kind.value.imageStorage);
+          this.settingsRead.set(machineId, r.kind.value.settings);
+          this.keepInfo(); this.changed();
+        }
         return r.kind.value.settings;
       });
-      p.catch(() => this.settingsCache.delete(machineId));
+      p.catch(() => { if (this.settingsCache.get(machineId) === p) this.settingsCache.delete(machineId); });
       this.settingsCache.set(machineId, p);
     }
     return p;

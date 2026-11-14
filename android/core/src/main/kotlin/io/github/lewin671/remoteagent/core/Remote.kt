@@ -56,6 +56,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -537,6 +538,10 @@ class Remote(
     private var ws: FrameStream? = null
     private val recovery = Recovery(monotonic)
     private var candidate: FrameStream? = null
+    private val mainReaders = java.util.IdentityHashMap<FrameStream, () -> Unit>()
+    private fun retireMainLeg(socket: FrameStream) {
+        cleanup({ mainReaders.remove(socket)?.invoke() }, { socket.cancel() })
+    }
     private var networkGeneration = 0L
     private var networkSignature = ""
     private val networkHints = Channel<Pair<String, Boolean>>(Channel.CONFLATED)
@@ -651,7 +656,7 @@ class Remote(
         // Off the caller's (main) thread: clearing waits for any read holding the locks.
         running = false
         liveness?.cancel(); liveness = null
-        candidate?.cancel(); candidate = null
+        candidate?.let { retireMainLeg(it) }; candidate = null
         liveJobs.values.forEach { it.cancel() }
         liveJobs.clear()
         authorityJob.cancel()
@@ -672,7 +677,7 @@ class Remote(
         opening = null
         val socket = ws
         ws = null
-        cleanup({ security.clearCache() }, { socket?.cancel() }, {
+        cleanup({ security.clearCache() }, { socket?.let { retireMainLeg(it) } }, {
             conn = ConnState.OFFLINE
             clearConnProgress()
             connError = "".messageText()
@@ -752,8 +757,9 @@ class Remote(
         val oldCandidate = candidate
         candidate = null
         opening?.cancel(); opening = null
-        connecting?.cancel()
-        oldCandidate?.cancel()
+        val oldSetup = connecting; connecting = null
+        oldSetup?.cancel()
+        oldCandidate?.let { retireMainLeg(it) }
     }
 
     private fun startLiveness() {
@@ -931,27 +937,30 @@ class Remote(
         if (wait > 0 || !recovery.take()) {
             reconnect = scope.launch {
                 delay(maxOf(wait, 1))
-                reconnect = null
-                beginConnect()
+                if (reconnect === kotlinx.coroutines.currentCoroutineContext()[Job]) {
+                    reconnect = null
+                    beginConnect()
+                }
             }
             return
         }
-        generation++
+        val gen = ++generation
+        val networkGen = networkGeneration
         wantedConnection = false
-        loginTokens.networkChanged()
-        connecting = scope.launch {
-            try { connect() }
+        connecting = scope.launch(start = CoroutineStart.LAZY) {
+            try { connect(gen, networkGen) }
             finally {
-                connecting = null
-                if (candidate == null && running && (ws == null || wantedConnection)) beginConnect()
+                if (connecting === kotlinx.coroutines.currentCoroutineContext()[Job]) {
+                    connecting = null
+                    if (candidate == null && running && (ws == null || wantedConnection)) beginConnect()
+                }
             }
         }
+        connecting?.start()
     }
 
-    private suspend fun connect() {
-        if (!running) return
-        val gen = generation
-        val networkGen = networkGeneration
+    private suspend fun connect(gen: Int, networkGen: Long) {
+        if (!running || gen != generation || networkGen != networkGeneration) return
         val started = monotonic()
         if (ws == null) conn = ConnState.CONNECTING
         connStartedAtMs = clock()
@@ -1046,12 +1055,12 @@ class Remote(
             delay(if (everReady || networkGen > 0) maxOf(1, minOf(streamOpenMs, 3000) - (monotonic() - started)) else streamOpenMs)
             if (candidate === socket) {
                 candidate = null
-                cleanup({ socket.cancel() }, { frames.cancel() }, {
+                cleanup({ retireMainLeg(socket) }, {
                     fail(MessageException(UiMessages.errorsConnectionTimedOutReconnecting().messageText()))
                 })
             }
         }
-        scope.launch {
+        val reader = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 for (b in frames) {
                     try {
@@ -1067,7 +1076,7 @@ class Remote(
                             activeActivity = activity
                             everReady = true
                             recovery.ready()
-                            old?.cancel()
+                            old?.let { retireMainLeg(it) }
                         }
                         if (f.kindCase == ServerFrame.KindCase.READY) {
                             serverAhead =
@@ -1089,6 +1098,7 @@ class Remote(
             } finally {
                 try { cleanup({ frames.cancel() }, { socket.cancel() }) }
                 finally {
+                    mainReaders.remove(socket)
                     if (ws === socket || candidate === socket) {
                         if (ws === socket) ws = null
                         if (candidate === socket) { candidate = null; opening?.cancel(); opening = null }
@@ -1098,6 +1108,8 @@ class Remote(
                 }
             }
         }
+        mainReaders[socket] = { frames.cancel(); reader.cancel() }
+        reader.start()
     }
 
     private fun fail(e: Throwable) {
@@ -2493,17 +2505,19 @@ class Remote(
                 directoryLoadHead?.contentEquals(head) == true
         } ?: run {
             val version = ++directoryVersion
-            scope.async { readDirectory(listedMachines, version) }.also {
+            scope.async(start = CoroutineStart.LAZY) {
+                try { readDirectory(listedMachines, version) }
+                finally {
+                    if (directoryLoad === kotlinx.coroutines.currentCoroutineContext()[Job]) directoryLoad = null
+                }
+            }.also {
                 directoryLoad = it
                 directoryLoadVersion = version
                 directoryLoadHead = head
+                it.start()
             }
         }
-        try {
-            load.await()
-        } finally {
-            if (load.isCompleted && directoryLoad === load) directoryLoad = null
-        }
+        load.await()
     }
 
     private suspend fun readDirectory(listedMachines: ListMachinesResponse?, version: Long) {

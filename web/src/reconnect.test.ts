@@ -44,7 +44,11 @@ async function probe(mockLogin = true) {
   vi.spyOn(r as any, "loadPrefs").mockResolvedValue(undefined);
   return r;
 }
-async function flush() { for (let i = 0; i < 15; i++) await Promise.resolve(); }
+// Drain scheduled microtasks without advancing the recovery clock.
+async function flush() {
+  if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(0);
+  else await new Promise<void>(resolve => setTimeout(resolve, 0));
+}
 
 it("a new network wakes an existing login owner instead of inheriting its old HTTP wait", async () => {
   const r = await probe(false);
@@ -426,4 +430,17 @@ it("publishes connection recovery and waiting deadlines during a slow listing ba
   } finally {
     unsubscribe(); finish(); await batch;
   }
+});
+
+it("a scheduling gap retires every job of the old candidate and keeps the healthy active leg", async () => {
+  const r=await probe();vi.useFakeTimers();
+  r.start();await flush();Socket.all[0].frame("ready");await flush();
+  r.reconnectNow();await flush();expect(Socket.all).toHaveLength(2);
+  vi.setSystemTime(Date.now()+10_000);
+  await vi.advanceTimersByTimeAsync(1000);await flush();
+  expect(Socket.all[1].closed).toBe(true);
+  expect(Socket.all[0].closed).toBe(false);
+  expect(Socket.all).toHaveLength(3);
+  Socket.all[1].onclose?.({code:1006});await flush();
+  Socket.all[2].frame("ready");await flush();expect(r.conn).toBe("online");
 });

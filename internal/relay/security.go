@@ -47,13 +47,18 @@ func CheckSecurityStorage() error {
 
 // role is the signed state's copy of this device's membership.
 type securityRefresh struct {
-	done   chan struct{}
-	err    error
-	cancel context.CancelFunc
+	done    chan struct{}
+	err     error
+	cancel  context.CancelFunc
+	retired bool
 }
 
 type securitySession struct {
 	syncMu        sync.Mutex
+	lifetime      context.Context
+	credentials   *credentials
+	workers       sync.WaitGroup
+	closed        bool
 	syncing       *securityRefresh
 	clock         func() uint64
 	endpoint      *deviceauth.Endpoint
@@ -92,6 +97,14 @@ func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServic
 }
 
 func (s *securitySession) Close() {
+	s.syncMu.Lock()
+	s.closed = true
+	if f := s.syncing; f != nil {
+		s.syncing = nil
+		f.cancel()
+	}
+	s.syncMu.Unlock()
+	s.workers.Wait()
 	s.setAuthorized(false)
 	if s.endpoint != nil {
 		s.endpoint.Close()
@@ -214,38 +227,64 @@ func (s *securitySession) sealResult(h *pb.Header, seed, plain []byte, raw bool)
 // syncOnce pulls states after the local head, verifies and installs them.
 // The connection maintenance loop separately retries current checkpoints.
 func (s *securitySession) refresh(ctx context.Context) error {
-	s.syncMu.Lock()
-	if flight := s.syncing; flight != nil {
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		s.syncMu.Lock()
+		if s.closed || (s.lifetime != nil && s.lifetime.Err() != nil) {
+			s.syncMu.Unlock()
+			return context.Canceled
+		}
+		flight := s.syncing
+		if flight == nil {
+			owner := s.lifetime
+			if owner == nil {
+				owner = context.Background()
+			}
+			round, cancel := context.WithTimeout(owner, 15*time.Second)
+			flight = &securityRefresh{done: make(chan struct{}), cancel: cancel}
+			s.syncing = flight
+			s.workers.Go(func() {
+				err := s.syncOnce(round)
+				s.syncMu.Lock()
+				flight.err = err
+				if s.syncing == flight {
+					s.syncing = nil
+				}
+				close(flight.done)
+				s.syncMu.Unlock()
+				cancel()
+			})
+		}
 		s.syncMu.Unlock()
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-flight.done:
+			s.syncMu.Lock()
+			retired := flight.retired
+			s.syncMu.Unlock()
+			if retired {
+				continue
+			}
 			return flight.err
 		}
 	}
-	round, cancel := context.WithCancel(ctx)
-	flight := &securityRefresh{done: make(chan struct{}), cancel: cancel}
-	s.syncing = flight
-	s.syncMu.Unlock()
-	err := s.syncOnce(round)
-	cancel()
-	s.syncMu.Lock()
-	flight.err = err
-	if s.syncing == flight {
-		s.syncing = nil
-	}
-	close(flight.done)
-	s.syncMu.Unlock()
-	return err
 }
 
-// Retire an obsolete HTTP round, not the process-owned synchronization loop.
+// The network owner retires both the pull and its credential round, never a waiter.
 func (s *securitySession) networkChanged() {
 	s.syncMu.Lock()
 	if flight := s.syncing; flight != nil {
 		s.syncing = nil
+		flight.retired = true
 		flight.cancel()
+	}
+	// Keep replacement pulls behind the same retirement barrier: otherwise a
+	// new pull could start its login before the old generation retires credentials.
+	if s.credentials != nil {
+		s.credentials.networkChanged()
 	}
 	s.syncMu.Unlock()
 	s.requestSync()
