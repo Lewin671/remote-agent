@@ -119,8 +119,8 @@ func wholeBytes(_ n: Int64) -> String {
 func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
     text: String, online: Bool, hasLastSeen: Bool
 )? {
-    if state.unlinked { return nil }
-    if m.online { return (L10n.commonIosOnline(), true, false) }
+    if state.peer(m.id).unlinked { return nil }
+    if m.pathState.reachable { return (L10n.commonIosOnline(), true, false) }
     let lastSeen = ago(m.lastSeenMs, now: now)
     return (lastSeen.or(L10n.settingsOffline()), false, !lastSeen.isEmpty)
 }
@@ -130,9 +130,11 @@ func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
 /// derived from it (quota numbers above all) reads as a last record
 /// (architecture §9 「为什么不沿用旧状态」).
 func asKnown(_ m: MachineView, state: RemoteState) -> MachineView {
-    guard state.unlinked, m.online else { return m }
+    guard state.peer(m.id).unlinked, m.pathState.reachable else { return m }
     var known = m
     known.online = false
+    known.linkState = state.peer(m.id)
+    known.linkState?.reachable = false
     return known
 }
 

@@ -150,6 +150,23 @@ func withTimeout<T: Sendable>(
 public actor Remote {
     public nonisolated let account: Account
     public nonisolated let api: Api
+    lazy var deviceLink = Link(relay: RelayPath(api: api, sleep: sleep,
+        prepare: { [weak self] prior in
+            guard let self else { throw DeviceSecurity.Failure.storage }
+            try await self.prepareRelayAttempt(prior)
+        }, token: { [weak self] in
+            guard let self else { throw DeviceSecurity.Failure.storage }
+            return await self.relayToken()
+        }, renew: { [weak self] prior in
+            guard let self else { throw DeviceSecurity.Failure.storage }
+            try await self.renewRelayAttempt(prior)
+        }))
+    private func prepareRelayAttempt(_ prior: Bool) async throws {
+        if token.isEmpty { token = try await relogin(prior) }
+    }
+    private func relayToken() -> String { token }
+    private func renewRelayAttempt(_ prior: Bool) async throws { token = try await relogin(prior) }
+    public nonisolated func peer(_ machineId: String?) -> PeerState { state.value.peer(machineId) }
     /// Machines, sessions, devices and the connection, as far as they are known.
     public nonisolated let state: Feed<RemoteState>
 
@@ -226,7 +243,7 @@ public actor Remote {
     var tokenExpires: Int64 = 0
     /// Hears of every login the server gives and of the one in use being refused (`keepLogin`).
     var onLogin: (@Sendable (SavedLogin?) -> Void)?
-    var ws: Socket?
+    var ws: (any FrameStream)?
     var retry: Int64 = 1000
     var running = false
     var removed = false
@@ -464,6 +481,7 @@ public actor Remote {
             halt()
         case .close:
             halt()
+            deviceLink.closeStreams()
             closed = true
             for job in liveJobs.values { job.cancel() }
             liveJobs.removeAll()
@@ -563,6 +581,25 @@ public actor Remote {
         if gate.waiters.isEmpty { gate.held = false } else { gate.waiters.removeFirst().resume() }
     }
 
+    private var serverLink: ServerLink {
+        if conn == .online { return .online }
+        if !network || unresolved { return .noNetwork }
+        return waited ? .noServer : .waiting
+    }
+
+    // Control can run between an actor update and publication to the UI.
+    // Refresh only the relay observation, then ask Router for the peer status.
+    func controlPeer(_ machineId: String) -> PeerState {
+        var observed = state.value
+        observed.machines = machines
+        observed.conn = conn
+        observed.removed = removed
+        observed.synced = synced
+        observed.link = serverLink
+        _ = deviceLink.observe(observed)
+        return deviceLink.status(machineId)
+    }
+
     func publish() {
         if conn == .online { offlineSince = 0 } else if offlineSince == 0 { offlineSince = clock() }
         if conn == .online || !running {
@@ -598,17 +635,15 @@ public actor Remote {
         s.loadingSessions = pageJob != nil
         s.sessionsError = pageError
         s.sessionsListed = firstPage
-        if conn == .online {
-            s.link = .online
-        } else if !network || unresolved {
-            s.link = .noNetwork
-        } else if !waited {
-            s.link = .waiting
-        } else {
-            s.link = .noServer
-        }
+        s.link = serverLink
         s.synced = synced
         s.errorDetail = errorDetail
+        let peers = deviceLink.observe(s)
+        s.machines = s.machines.mapValues { machine in
+            var projected = machine
+            projected.linkState = peers[machine.id]
+            return projected
+        }
         if s != state.value { state.set(s) }
     }
 
@@ -741,8 +776,7 @@ public actor Remote {
         var frame = PBPeerFrame()
         frame.hello.token = token
         guard let hello: Data = try? frame.serializedData() else { return }
-        let socket = Socket(
-            http: http, url: api.socketURL("/v1/stream"), hello: hello, sleep: sleep)
+        let socket = deviceLink.router.path.openStream("/v1/stream", hello: hello)
         ws = socket
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
@@ -778,7 +812,7 @@ public actor Remote {
     }
 
     /// Handles a stream's frames in order until it ends or is replaced.
-    private func follow(_ socket: Socket, _ frames: AsyncStream<Data>, _ gen: Int, _ budget: StreamByteBudget) async {
+    private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ budget: StreamByteBudget) async {
         for await bytes in frames {
             defer { budget.release(bytes.count) }
             if ws !== socket || gen != generation { break }

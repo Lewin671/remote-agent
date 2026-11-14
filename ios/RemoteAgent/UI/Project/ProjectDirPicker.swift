@@ -136,7 +136,7 @@ struct ProjectDirPicker: View {
     /// The computers as a segmented control, the chosen one a slider; an offline one cannot be chosen.
     private var machines: some View {
         MachineSegmented(
-            items: listedMachines(state).map { .init(id: $0.id, name: machineLabel(state, id: $0.id), online: $0.online) },
+            items: listedMachines(state).map { .init(id: $0.id, name: machineLabel(state, id: $0.id), online: $0.pathState.reachable) },
             selected: Binding(get: { at.machine }, set: { if $0 != at.machine { at = Browsing(machine: $0) } }))
     }
 

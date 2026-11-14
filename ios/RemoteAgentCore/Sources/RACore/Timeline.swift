@@ -347,7 +347,7 @@ public func sessionCounts(_ state: RemoteState, _ sessions: some Sequence<Sessio
 /// the path, then how many sessions wait and run there, or that none of its computers is online.
 public func projectDetail(_ state: RemoteState, _ pr: Project) -> String {
     let counts = sessionCounts(state, pr.sessions)
-    let offline = !pr.machineIds.isEmpty && !pr.machineIds.contains { state.machines[$0]?.online == true }
+    let offline = !pr.machineIds.isEmpty && !pr.machineIds.contains { state.peer($0).reachable }
     return [shortPath(pr.key), !counts.isEmpty ? counts : offline ? L10n.projectsComputerOffline() : ""].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 

@@ -39,7 +39,7 @@ public func fileByteLimit(for machine: MachineView?) -> Int64 {
 public func fileUploadBlocked(_ machine: MachineView?, online: Bool) -> String? {
     guard let machine else { return L10n.attachmentIosChooseMachine() }
     guard fileSupported(machine) else { return L10n.imageIosThisComputerDoesNotSupportFileUploads() }
-    return machine.online && online ? nil : L10n.attachmentIosComputerOfflineConnectToAddFiles()
+    return machine.pathState.reachable && online ? nil : L10n.attachmentIosComputerOfflineConnectToAddFiles()
 }
 public func fileSize(_ bytes: Int64) -> String {
     if bytes < 1024 { return "\(bytes) B" }

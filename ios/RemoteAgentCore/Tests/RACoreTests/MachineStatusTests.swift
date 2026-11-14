@@ -67,8 +67,8 @@ private actor StatusReads {
         var old = PBProjectSummary(); old.path = "old"; old.latestCreatedMs = 1
         var new = PBProjectSummary(); new.path = "new"; new.latestEndedMs = 2
         meta.projects = [old,new]
-        #expect(machineDiskReminder(online: false, meta: meta) == nil)
-        #expect(machineDiskReminder(online: true, meta: meta) != nil)
+        #expect(machineDiskReminder(online: false, meta: meta, supported: true) == nil)
+        #expect(machineDiskReminder(online: true, meta: meta, supported: true) != nil)
         #expect(recentMachineProject(meta) == "new")
         #expect(isDiskFull(CommandError("disk_full", "fixture")))
         #expect(!isDiskFull(CommandError("internal", "no space left on device")))

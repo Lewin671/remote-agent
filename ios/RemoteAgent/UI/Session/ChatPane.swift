@@ -391,13 +391,13 @@ struct ChatPane: View {
         }
         let rows = chat.rows.flatMap(shown)
         let sid = session.id
-        let online = state.conn == .online
+        let online = state.peer(session.machineId).ready
         let env = ChatEnv(
             agent: session.agent, cwd: session.info?.cwd ?? "",
             home: state.machines[session.machineId]?.meta?.home ?? "",
             frozenAt: online ? 0 : state.offlineSinceMs, approvals: d.approvals,
             noResult: d.noResult, session: sid, machine: machineLabel(state, id: session.machineId),
-            machineOnline: online && state.machines[session.machineId]?.online == true, sessionExited: status == .exited)
+            machineOnline: online && state.peer(session.machineId).reachable == true, sessionExited: status == .exited)
         let pending = pendingInputs(d)
         let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputs[$0.requestId]) }
         let dock = dockItems(d)
@@ -709,7 +709,7 @@ private struct PendingBubble: View {
         let store = context.sessionStore
         let (remote, sid, id) = (context.remote, session.id, pending.id)
         let cancel = store.cancels[id]
-        let online = model.state.conn == .online
+        let online = model.state.peer(session.machineId).ready
         let canceling = cancel == .canceling
         let cancelFailed = cancel != nil && !canceling
         let label = pendingLabel(
@@ -882,19 +882,19 @@ private struct EndedCard: View {
 
     var body: some View {
         let state = model.state
-        let reachable = machine?.online == true && !state.unlinked
+        let reachable = machine?.pathState.reachable == true && !state.peer(session.machineId).unlinked
         SessionEndCard(
             act.running ? L10n.sessionResuming() : L10n.sessionEnded(),
             text: endedText(
-                detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, idleClosed: idleClosed, unlinked: state.unlinked,
-                machineOnline: machine?.online == true, machine: name),
+                detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, idleClosed: idleClosed, unlinked: state.peer(session.machineId).unlinked,
+                machineOnline: machine?.pathState.reachable == true, machine: name),
             mark: act.running ? .running : .idle
         ) {
             if reachable && !act.running {
                 InkButton(act.error.isEmpty ? L10n.sessionResume() : L10n.sessionTryAgain()) {
                     restore()
                 }
-                .disabled(state.conn != .online)
+                .disabled(!state.peer(session.machineId).ready)
             }
             if !act.error.isEmpty {
                 Text(L10n.sessionIosResumeFailed(reason: act.error)).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
@@ -903,7 +903,7 @@ private struct EndedCard: View {
         .debugSignal("session.restore") { if reachable { restore() } }
     }
     private func restore() {
-        guard model.state.conn == .online && machine?.online == true else { return }
+        guard model.state.peer(session.machineId).ready && machine?.pathState.reachable == true else { return }
         act.run {
             var cmd = PBCommand(); cmd.resumeSession.sessionID = session.id
             try await context.remote.command(session.id, cmd)

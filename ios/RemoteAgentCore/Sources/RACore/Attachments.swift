@@ -194,7 +194,7 @@ public func uploadBlocked(_ m: MachineView?, online: Bool, name: String) -> Stri
     guard let caps = capabilities(m) else { return L10n.attachmentComputerUnread(name: name) }
     // The daemon's folder has spaces in its path, which the CLIs do not take.
     if !caps.imageUpload { return L10n.attachmentPathSpaces(name: name) }
-    if !m.online || !online { return L10n.attachmentComputerOffline(name: name) }
+    if !m.pathState.reachable || !online { return L10n.attachmentComputerOffline(name: name) }
     return nil
 }
 

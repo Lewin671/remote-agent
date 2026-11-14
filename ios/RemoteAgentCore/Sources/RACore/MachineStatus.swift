@@ -15,8 +15,8 @@ public func isDiskFull(_ error: Error) -> Bool { (error as? CommandError)?.code 
 public func recentMachineProject(_ meta: PBMachineMeta) -> String? {
     meta.projects.max { max($0.latestCreatedMs, $0.latestEndedMs) < max($1.latestCreatedMs, $1.latestEndedMs) }?.path
 }
-public func machineDiskReminder(online: Bool, meta: PBMachineMeta) -> PBDiskStatus? {
-    online && meta.capabilities.machineStatus && meta.hasDiskStatus && meta.diskStatus.availableBytes < 10_000_000_000 ? meta.diskStatus : nil
+public func machineDiskReminder(online: Bool, meta: PBMachineMeta, supported: Bool) -> PBDiskStatus? {
+    online && supported && meta.hasDiskStatus && meta.diskStatus.availableBytes < 10_000_000_000 ? meta.diskStatus : nil
 }
 public func stableUsage(previous: [String], rows: [PBResourceUsage], memory: Bool = false) -> [PBResourceUsage] {
     var byID = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })

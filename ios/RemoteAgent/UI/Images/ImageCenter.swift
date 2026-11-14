@@ -772,7 +772,7 @@ final class ImageCenter {
     #if DEBUG
         /// Resolve a debug pick when the signal arrives, after project settings have loaded.
         func debugAddFiles(_ key: String, _ urls: [URL]) {
-            addFiles(key, urls, machine: fileMachines[key], online: remote.current.conn == .online)
+            addFiles(key, urls, machine: fileMachines[key], online: remote.current.peer(fileMachines[key]?.id).ready)
         }
 
         /// Shows a message with images as it would stand after sending, for sample data.

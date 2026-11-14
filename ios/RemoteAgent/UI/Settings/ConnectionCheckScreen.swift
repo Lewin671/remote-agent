@@ -18,7 +18,7 @@ struct ConnectionCheckScreen: View {
         let state = model.state
         // Online first: those are the ones measured.
         let byName = sortedMachines(state)
-        let machines = byName.filter(\.online) + byName.filter { !$0.online }
+        let machines = byName.filter { $0.pathState.reachable } + byName.filter { !$0.pathState.reachable }
         SettingsPage {
             GroupCard {
                 let network = state.link != .noNetwork
@@ -26,9 +26,9 @@ struct ConnectionCheckScreen: View {
                 result(L10n.securityServer(), sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
                 for m in machines {
                     let name = machineLabel(state, id: m.id)
-                    if m.online, !state.unlinked || model.isDemo {
+                    if m.pathState.reachable, !state.peer(m.id).unlinked || model.isDemo {
                         result(name, check?.machines[m.id] ?? .wait, slow: slowMachineMs)
-                    } else if state.unlinked {
+                    } else if state.peer(m.id).unlinked {
                         // Whether it is there is not known from here; the server's row says why.
                         GRow(name, value: L10n.connectionNotChecked())
                     } else {
@@ -47,8 +47,8 @@ struct ConnectionCheckScreen: View {
             let made = check ?? ConnectionCheckModel(probes: probes)
             check = made
             // The computers the server lists as online now, not as of the last drawing.
-            let online = context.remote.current.machines.values.filter(\.online).map(\.id)
-            await made.measure(online: model.isDemo ? machines.filter(\.online).map(\.id) : online)
+            let online = context.remote.current.machines.values.filter { $0.pathState.reachable }.map(\.id)
+            await made.measure(online: model.isDemo ? machines.filter { $0.pathState.reachable }.map(\.id) : online)
         }
     }
 
@@ -76,7 +76,7 @@ struct ConnectionCheckScreen: View {
         if model.isDemo { return .demo(model.state.link == .online ? SettingsDemo.state : "serverDown") }
         #endif
         let remote = context.remote
-        return ConnectionProbes(server: { try await remote.pingServer() }, machine: { try await remote.pingMachine($0) })
+        return ConnectionProbes(server: { try await remote.pingServer() }, machine: { try await remote.pingMachine($0) }, canProbe: { id, reached in remote.current.peer(id).canProbe(reached) })
     }
 }
 
@@ -86,6 +86,7 @@ struct ConnectionProbes: Sendable {
     var server: @Sendable () async throws -> Int64
     /// One round trip to a computer through the server, in ms.
     var machine: @Sendable (_ id: String) async throws -> Int64
+    var canProbe: @Sendable (_ id: String, _ serverReachable: Bool) -> Bool = { _, reached in reached }
 
     #if DEBUG
     /// Fixed answers for looking at the page with `-demo`.
@@ -107,8 +108,8 @@ struct ConnectionProbes: Sendable {
 
 /// One run of the check: the server first, by the middle one of three
 /// requests, then every online computer at once. When the server does not
-/// answer the computers are not measured: nothing reaches them but through
-/// it.
+/// answer, each peer Link decides whether its path still permits a probe.
+/// RelayPath keeps the existing skip policy.
 @MainActor
 @Observable
 final class ConnectionCheckModel {
@@ -132,6 +133,7 @@ final class ConnectionCheckModel {
         server = .wait
         machines = Dictionary(uniqueKeysWithValues: Set(online).map { ($0, Ping.wait) })
         defer { if mine == run { busy = false } }
+        var reached = true
         do {
             var samples: [Int64] = []
             for _ in 0..<3 {
@@ -144,12 +146,12 @@ final class ConnectionCheckModel {
         } catch {
             guard mine == run, !Task.isCancelled else { return }
             server = .fail(error: errorText(error).or(L10n.connectionNoResponse()))
-            for id in machines.keys { machines[id] = .skip }
-            return
+            reached = false
+            for id in machines.keys where !probes.canProbe(id, false) { machines[id] = .skip }
         }
         let probe = probes.machine
         await withTaskGroup(of: (String, Ping?).self) { group in
-            for id in machines.keys {
+            for id in machines.keys where probes.canProbe(id, reached) {
                 group.addTask {
                     do {
                         return (id, .ok(ms: try await probe(id)))

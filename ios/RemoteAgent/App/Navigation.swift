@@ -385,7 +385,7 @@ private struct FirstLevel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Nothing can be started out of reach of the server, nor without a computer to run it.
-        .environment(\.sidebarCreate, sidebar ? SidebarCreate(enabled: !state.unlinked && !state.machines.isEmpty) { create(state) } : nil)
+        .environment(\.sidebarCreate, sidebar ? SidebarCreate(enabled: state.machines.keys.contains { !state.peer($0).unlinked }) { create(state) } : nil)
         .floatingBar(.bottom) {
             if sidebar {
                 SidebarFooter(tab: $nav.tab)
@@ -396,7 +396,7 @@ private struct FirstLevel: View {
                         .home: TabBadge(count: waiting),
                         .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: .tasks),
                     ],
-                    canCreate: !state.unlinked && !state.machines.isEmpty,
+                    canCreate: state.machines.keys.contains { !state.peer($0).unlinked },
                     onCreate: { create(state) })
             }
         }

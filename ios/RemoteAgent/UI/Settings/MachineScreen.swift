@@ -45,7 +45,7 @@ struct MachineScreen: View {
     /// Commands reach the computer: this client is connected, the computer is, and both speak the same protocol.
     private func reachable(_ state: RemoteState) -> Bool {
         guard let m = state.machines[id] else { return false }
-        return !state.unlinked && m.online && protocolMismatch(m) == nil
+        return !state.peer(id).unlinked && m.pathState.reachable && protocolMismatch(m) == nil
     }
 
     /// Pulling down reads the settings again, while commands reach the computer.
@@ -66,8 +66,8 @@ struct MachineScreen: View {
             }
         }
         .machineStatusPolling(
-            ringsFeed, fetch: context.machineStatusFetch(id, demo: model.isDemo), online: m?.online == true && !state.unlinked,
-            supported: m?.meta?.capabilities.machineStatus == true)
+            ringsFeed, fetch: context.machineStatusFetch(id, demo: model.isDemo), online: m?.pathState.reachable == true && !state.peer(id).unlinked,
+            supported: m?.pathState.capabilities?.machineStatus == true)
         .navBar(
             m == nil ? L10n.settingsComputer() : machineLabel(state, id: id),
             subtitle: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
@@ -120,10 +120,10 @@ struct MachineScreen: View {
         if let status, !status.online { GroupBanner(offlineText(m, now: now)) }
 
         // CPU, memory and disk at a glance; a daemon that cannot say has none (ui-spec A2).
-        if m.meta?.capabilities.machineStatus == true {
+        if m.pathState.capabilities?.machineStatus == true {
             MachineRingsCard(
-                rings: machineRings(status: ringsFeed.last, online: m.online && !state.unlinked, text: StatusText()),
-                online: m.online && !state.unlinked && protocolMismatch(m) == nil
+                rings: machineRings(status: ringsFeed.last, online: m.pathState.reachable && !state.peer(id).unlinked, text: StatusText()),
+                online: m.pathState.reachable && !state.peer(id).unlinked && protocolMismatch(m) == nil
             ) { nav.open(.machineStatus(id: id)) }
         }
 
@@ -225,9 +225,9 @@ struct MachineScreen: View {
     ) -> some View {
         let s = settings?.settings
         let shown = reachable(state)
-        if state.unlinked {
+        if state.peer(id).unlinked {
             GroupNote(L10n.settingsIosConnectToTheServerToReadAndEditNew())
-        } else if !m.online {
+        } else if !m.pathState.reachable {
             GroupNote(L10n.settingsIosIsOfflineConnectToReadAndEditNewSession(value: String(describing: name)))
         } else if mismatch {
             // The notice at the top says which side to update; nothing is sent meanwhile.

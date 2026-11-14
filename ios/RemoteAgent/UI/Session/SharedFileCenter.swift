@@ -102,8 +102,8 @@ final class SharedFileCenter {
             root: root, fetcher: remote.sharedFileFetcher,
             isMachineOnline: { sid in
                 let state = remote.state.value
-                guard state.conn == .online, let machine = state.sessions[sid]?.machineId else { return false }
-                return state.machines[machine]?.online == true
+                guard let machine = state.sessions[sid]?.machineId else { return false }
+                return state.peer(machine).available
             },
             blockBytes: { sid in
                 let state = remote.state.value

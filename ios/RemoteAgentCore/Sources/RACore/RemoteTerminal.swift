@@ -18,14 +18,6 @@ public protocol TermListener: Sendable {
 /// Input may wait this long, in bytes, to be written before the terminal is given up on.
 private let termSendBudget = 16 << 20
 
-protocol TerminalSocket: Sendable {
-    func send(_ data: Data, done: @escaping @Sendable (Error?) -> Void)
-    func cancel()
-    func close()
-}
-
-extension Socket: TerminalSocket {}
-
 public final class TermConn: Sendable {
     private struct Out {
         var stopped = false
@@ -126,20 +118,16 @@ extension Remote {
         let streamId = newRequestId()
         let machineId = s.machineId
         let closed = OSAllocatedUnfairLock(initialState: false)
-        let finish: @Sendable (String) -> Void = { reason in
-            let first = closed.withLock { c -> Bool in
-                defer { c = true }
-                return !c
-            }
-            if first { listener.onClose(reason) }
-        }
         var hello = PBTermHello()
         hello.token = tok
         hello.streamID = streamId
         hello.machineID = machineId
-        let socket = Socket(
-            http: http, url: api.socketURL("/v1/term"), hello: try hello.serializedData(),
-            sleep: sleep)
+        let socket = deviceLink.router.path.openStream("/v1/term", hello: try hello.serializedData())
+        let stream = deviceLink.openStream(stop: { cancelPath in
+            closed.withLock { $0 = true }
+            if cancelPath { socket.cancel() }
+        }, onClose: listener.onClose)
+        let finish: @Sendable (String) -> Void = { reason in stream.end(reason) }
         // The upgrade gets 20 s, the time the server keeps the first side waiting for the other.
         let sleep = self.sleep
         let limit = Task {
@@ -148,11 +136,12 @@ extension Remote {
         let open = await socket.opened()
         limit.cancel()
         if !open {
-            closed.withLock { $0 = true }
-            socket.cancel()
+            stream.end()
             throw UserError(L10nMessage.errorsCannotConnectToTerminal())
         }
-        let security = try securitySession()
+        let security: DeviceSecurityClient
+        do { security = try securitySession() }
+        catch { stream.end(); throw error }
         Task.detached {
             var last: UInt64 = 0
             while let bytes = try? await socket.receive() {
@@ -182,8 +171,7 @@ extension Remote {
             cmd.openTerminal.streamID = streamId
             try await command(sid, cmd)
         } catch {
-            closed.withLock { $0 = true }
-            socket.cancel()
+            stream.end()
             throw error
         }
         return TermConn(
@@ -204,6 +192,6 @@ extension Remote {
                 return try env.serializedData()
             },
             finish: finish,
-            closeLocal: { closed.withLock { $0 = true } })
+            closeLocal: { stream.end(cancelPath: false) })
     }
 }

@@ -145,8 +145,8 @@ struct MachineStatusScreen: View {
     var body: some View {
         let state = model.state
         let machine = state.machines[id]
-        let supported = machine?.meta?.capabilities.machineStatus == true
-        let online = machine?.online == true && !state.unlinked
+        let supported = machine?.pathState.capabilities?.machineStatus == true
+        let online = machine?.pathState.reachable == true && !state.peer(id).unlinked
         let name = machineLabel(state, id: id)
         let text = StatusText()
         ZStack {

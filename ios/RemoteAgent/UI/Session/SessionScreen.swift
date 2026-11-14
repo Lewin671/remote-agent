@@ -340,7 +340,7 @@ private struct SessionPage: View {
         let fork = store.fork(sid)
         let forking = fork.running
         // The title is kept on the computer: an ended session can be renamed too, but only while the computer is reachable.
-        let reachable = state.conn == .online && state.machines[s.machineId]?.online == true
+        let reachable = state.peer(s.machineId).available
         let sent = sentMessage(s, events: [PBEvent]()) || chat.spoke
         let forkBlock = forkBlocked(status: status, running: running, sent: sent)
         let raw = s.info?.model ?? ""
@@ -361,7 +361,7 @@ private struct SessionPage: View {
         list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
             afterMenu { projectSettings = ProjectSettingsRequest() }
         })
-        list.append(SheetAction(L10n.sessionScheduleSend(), enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : L10n.sessionIosUpdateRequired()) {
+        list.append(SheetAction(L10n.sessionScheduleSend(), enabled: reachable && state.peer(s.machineId).capabilities?.scheduledTasks == true, note: state.peer(s.machineId).capabilities?.scheduledTasks == true ? "" : L10n.sessionIosUpdateRequired()) {
             afterMenu { scheduleSending = true }
         })
         if reachable {

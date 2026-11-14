@@ -405,6 +405,19 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         #expect(Set(order.all.dropFirst(3)) == ["mac", "slow"])
     }
 
+    @Test func aReachableIndependentPathIsProbedWhenTheServerFails() async {
+        let asked = Mail<String>()
+        let peer: PeerState = { var peer = PeerState(); peer.relayRequired = false; peer.reachable = true; peer.ready = true; return peer }()
+        let check = ConnectionCheckModel(probes: ConnectionProbes(
+            server: { throw UserError("服务器没有回应") },
+            machine: { id in asked.put(id); return 12 },
+            canProbe: { id, reached in id == "independent" ? peer.canProbe(reached) : reached }))
+        await check.measure(online: ["independent", "relay"])
+        #expect(check.server == .fail(error: L10n.connectionNoResponse()))
+        #expect(check.machines == ["independent": .ok(ms: 12), "relay": .skip])
+        #expect(asked.all == ["independent"])
+    }
+
     @Test func aServerThatDoesNotAnswerLeavesTheComputersUnmeasured() async {
         let asked = Mail<String>()
         let check = ConnectionCheckModel(probes: ConnectionProbes(

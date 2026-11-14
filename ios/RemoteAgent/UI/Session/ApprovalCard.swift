@@ -38,7 +38,7 @@ struct ApprovalDecision: View {
         let state = model.state
         let truncated = approvalTruncated(approval)
         // Out of reach of the server nothing can be decided, nor once the time is up.
-        let locked = state.unlinked || (approval.hasDeadline && approval.deadline.seconds * 1000 <= now)
+        let locked = state.peer(session.machineId).unlinked || (approval.hasDeadline && approval.deadline.seconds * 1000 <= now)
         let always = capabilities(state.machines[session.machineId])?.approvalAlways == true
         VStack(alignment: .leading, spacing: 0) {
             if denying {

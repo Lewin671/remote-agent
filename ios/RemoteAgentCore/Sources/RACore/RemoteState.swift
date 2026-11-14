@@ -9,7 +9,7 @@ public enum ConnState: Sendable { case connecting, online, offline }
 /// Which stretch of the way to the computer is down, the nearest one only
 /// (client-v30 「断线」): past it nothing is known. `waiting` is a connection
 /// being made or just lost, which mostly comes back by itself.
-public enum Link: Sendable { case online, waiting, noNetwork, noServer }
+public enum ServerLink: Sendable { case online, waiting, noNetwork, noServer }
 
 public struct MachineView: Equatable, Sendable, Identifiable {
     public var id: String
@@ -17,15 +17,19 @@ public struct MachineView: Equatable, Sendable, Identifiable {
     public var lastSeenMs: Int64
     public var meta: PBMachineMeta?
     public var metaRev: UInt64
+    /// Runtime projection only; never persisted or read from server metadata.
+    public var linkState: PeerState?
+    public var pathState: PeerState { linkState ?? RelayPath.discovery(self) }
 
     public init(
-        id: String, online: Bool, lastSeenMs: Int64, meta: PBMachineMeta? = nil, metaRev: UInt64 = 0
+        id: String, online: Bool, lastSeenMs: Int64, meta: PBMachineMeta? = nil, metaRev: UInt64 = 0, linkState: PeerState? = nil
     ) {
         self.id = id
         self.online = online
         self.lastSeenMs = lastSeenMs
         self.meta = meta
         self.metaRev = metaRev
+        self.linkState = linkState
     }
 }
 
@@ -115,7 +119,7 @@ public struct RemoteState: Equatable, Sendable {
     /// sessions held are what the cache kept of an earlier run, and how many
     /// pages there are is not known.
     public var sessionsListed = true
-    public var link: Link = .waiting
+    public var link: ServerLink = .waiting
     /// The lists came from the server since start: what they say of the computers is not from the cache.
     public var synced = false
     /// The failure behind `error` in its own words, for the details.
@@ -125,6 +129,11 @@ public struct RemoteState: Equatable, Sendable {
     public var clockWarning = ""
 
     public init() {}
+
+    public func peer(_ machineId: String?) -> PeerState {
+        let machine = machineId.flatMap { machines[$0] }
+        return machine?.linkState ?? RelayPath.discovery(machine, ready: conn == .online, authorized: !removed, unlinked: unlinked)
+    }
 
     /// Nothing here is known to still hold: the server is out of reach, or
     /// has not been reached yet. A connection lost a moment ago does not count.

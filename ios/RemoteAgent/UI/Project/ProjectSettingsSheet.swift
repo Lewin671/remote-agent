@@ -144,7 +144,7 @@ struct ProjectSettingsSheet: View {
         SheetHead(L10n.projectsIosSettings(), action: done == nil ? nil : L10n.commonDone(), onAction: done)
         if let blocked { Banner(blocked).padding(.bottom, 8) }
         SetCard([
-            AnyView(SetRow(L10n.commonMachine(), machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3) {
+            AnyView(SetRow(L10n.commonMachine(), machineLabel(state, id: draft.machine), dot: state.peer(draft.machine).reachable ? DS.green : DS.ink3) {
                 page = .machine
             })
         ])

@@ -180,7 +180,7 @@ struct SessionComposer: View {
         let state = model.state
         let store = context.sessionStore
         let sid = session.id
-        let online = state.conn == .online
+        let online = state.peer(session.machineId).ready
         let running = status == .running || derived.running
         let images = images
         let attached = images.hasImages

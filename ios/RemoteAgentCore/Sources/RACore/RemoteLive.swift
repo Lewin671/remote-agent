@@ -161,7 +161,7 @@ extension Remote {
     func livePollingTick(_ sid: String) async -> Bool {
         clearEndedLiveState(sid)
         guard !livePollingFinished(sid) else { return false }
-        if conn == .online, let session = sessions[sid], machines[session.machineId]?.online == true {
+        if let session = sessions[sid], controlPeer(session.machineId).available {
             await refreshLiveSnapshot(sid)
         }
         return !livePollingFinished(sid)

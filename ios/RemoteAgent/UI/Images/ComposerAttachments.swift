@@ -24,7 +24,7 @@ struct ComposerAttachments {
     init(state: RemoteState, key: String, machineId: String?, remote: Remote) {
         let machine = machineId.flatMap { state.machines[$0] }
         self.init(remote: remote, key: key, machineId: machineId,
-            blocked: uploadBlocked(machine, online: state.conn == .online, name: machineId.map { machineLabel(state, id: $0) } ?? ""),
+            blocked: uploadBlocked(machine, online: state.peer(machineId).ready, name: machineId.map { machineLabel(state, id: $0) } ?? ""),
             limit: imageLimit(for: machine), machine: machine)
     }
 

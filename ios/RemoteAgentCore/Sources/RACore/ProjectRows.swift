@@ -69,7 +69,7 @@ public func listedMachines(_ state: RemoteState) -> [MachineView] {
 
 /// The computer a folder is first browsed on: the first that is online; empty when none is.
 public func firstOnlineMachine(_ state: RemoteState) -> String {
-    listedMachines(state).first(where: \.online)?.id ?? ""
+    listedMachines(state).first(where: { $0.pathState.reachable })?.id ?? ""
 }
 
 /// A folder's path as the picker writes it, piece by piece: ~ / Code / foo. A path outside the home folder
@@ -230,7 +230,7 @@ public struct NewSessionProgress: Equatable, Sendable {
 
 /// The machines a draft can move to while its own is offline (Android's OfflineChoice): the others the project used that are online.
 public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [OfflineMachineChoice] {
-    projectMachines(state, key: c.cwd).filter { $0 != c.machineId && state.machines[$0]?.online == true }.map { id in
+    projectMachines(state, key: c.cwd).filter { $0 != c.machineId && state.peer($0).reachable == true }.map { id in
         let m = state.machines[id]
         let agents = machineAgents(m)
         let installed = agents.map(agentName).joined(separator: L10n.commonListSeparator())
@@ -266,8 +266,8 @@ public func newSessionNotices(
     if let c {
         let machine = state.machines[c.machineId]
         let label = machineLabel(state, id: c.machineId)
-        if machine?.online != true {
-            if state.unlinked {
+        if machine?.pathState.reachable != true {
+            if state.peer(c.machineId).unlinked {
                 // The connection bar says it.
             } else if drafting {
                 let choices = offlineChoices(state, c)
@@ -311,7 +311,7 @@ public func newSessionNotices(
 public func canStartSession(
     _ state: RemoteState, config c: NewConfig?, drafting: Bool, settled: Bool, running: Bool, models: PBListModelsResponse? = nil
 ) -> Bool {
-    guard let c, settled, !running, drafting, state.conn == .online, let machine = state.machines[c.machineId], machine.online else {
+    guard let c, settled, !running, drafting, state.peer(c.machineId).available, let machine = state.machines[c.machineId] else {
         return false
     }
     return protocolMismatch(machine) == nil && autoIssue(state, c, models: models) == nil
@@ -498,7 +498,7 @@ public struct ProjectMachineRow: Equatable, Sendable, Identifiable {
 public func machineRows(_ state: RemoteState, cwd: String, agent: PBAgent) -> [ProjectMachineRow] {
     projectMachines(state, key: cwd).map { id in
         let m = state.machines[id]
-        let online = m?.online == true
+        let online = m?.pathState.reachable == true
         let installed = machineAgents(m).map(agentName).joined(separator: L10n.commonListSeparator())
         let has = machineAgents(m).contains(agent)
         let note: String

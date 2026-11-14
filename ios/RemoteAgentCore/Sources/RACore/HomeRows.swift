@@ -126,8 +126,8 @@ private func groupId(_ g: EndedGroup) -> String {
 public func accountEmpty(_ state: RemoteState) -> AccountEmpty {
     if state.machines.isEmpty { return .noMachines }
     // Out of reach of the server every computer reads as offline, which says nothing about them (architecture §9 「断线时显示什么」).
-    if state.unlinked { return .unlinked }
-    let online = state.machines.values.filter(\.online).sorted { jvmLess($0.id, $1.id) }
+    if state.unlinked && state.machines.keys.allSatisfy({ state.peer($0).unlinked }) { return .unlinked }
+    let online = state.machines.values.filter { $0.pathState.reachable }.sorted { jvmLess($0.id, $1.id) }
     guard let first = online.first else { return .noneOnline }
     return .ready(machine: machineName(first, id: first.id))
 }
@@ -347,7 +347,7 @@ public func approvalCardText(
     let deadline = approval.hasDeadline ? approval.deadline.seconds * 1000 : 0
     let left = deadline - now
     let time: String
-    if state.unlinked {
+    if state.peer(s.machineId).unlinked {
         time = L10n.listStateUnlinked()
     } else if deadline > 0 {
         time = timeoutNote && left > 0
@@ -357,7 +357,7 @@ public func approvalCardText(
         time = ""
     }
     return ApprovalCardText(
-        kind: approvalHead(approval), time: time, hot: !state.unlinked && deadline > 0 && left < 60_000, title: titleOf(s, zone: zone),
+        kind: approvalHead(approval), time: time, hot: !state.peer(s.machineId).unlinked && deadline > 0 && left < 60_000, title: titleOf(s, zone: zone),
         // The computer is named only where the account has more than one (design-system §6 终端卡).
         place: ([projectName(projectKey(s))] + (state.machines.count > 1 ? [machineName(state.machines[s.machineId], id: s.machineId)] : [])).joined(separator: " · "))
 }

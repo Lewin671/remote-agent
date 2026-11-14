@@ -36,7 +36,7 @@ struct ScheduleConfigSheet: View {
         case .machine:
             if let c {
                 ForEach(machineRows(state, cwd: c.cwd, agent: c.agent)) { row in
-                    let supported = state.machines[row.id]?.meta?.capabilities.scheduledTasks == true
+                    let supported = state.peer(row.id).capabilities?.scheduledTasks == true
                     ListItem(row.name, desc: supported ? row.note : L10n.scheduleIosUpdateRemoteAgentToUseScheduledTasks(), checked: row.id == c.machineId, enabled: row.online && supported) {
                         selectMachine(row.id, state: state)
                     }

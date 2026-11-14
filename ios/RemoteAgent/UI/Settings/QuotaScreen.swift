@@ -30,7 +30,7 @@ struct QuotaScreen: View {
     @ViewBuilder private func groups(_ m: MachineView, state: RemoteState, now: Int64) -> some View {
         let groups = quotaGroups(asKnown(m, state: state), now: now)
         // Not connected, the connection bar says so and the numbers are what was last heard.
-        if !state.unlinked && !m.online { GroupNote(L10n.quotaIosComputerOfflineShowingTheLastReading(), color: DS.orangeInk) }
+        if !state.peer(machine).unlinked && !m.pathState.reachable { GroupNote(L10n.quotaIosComputerOfflineShowingTheLastReading(), color: DS.orangeInk) }
         ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
             if !g.subgroups.isEmpty {
                 ForEach(Array(g.subgroups.enumerated()), id: \.offset) { index, sub in

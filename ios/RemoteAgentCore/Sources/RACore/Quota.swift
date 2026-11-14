@@ -189,7 +189,7 @@ public func quotaGroups(_ m: MachineView, now: Int64) -> [QuotaGroup] {
             out.append(QuotaGroup(agent: agent, title: agentName(agent), status: .unsupported, rows: [], received: "", detail: "", lastRecord: false))
             continue
         }
-        for q in entries { out.append(group(agent: agent, q, several: entries.count > 1, online: m.online, now: now)) }
+        for q in entries { out.append(group(agent: agent, q, several: entries.count > 1, online: m.pathState.reachable, now: now)) }
     }
     return out
 }

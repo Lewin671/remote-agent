@@ -34,7 +34,7 @@ struct TerminalPane: View {
     @State private var details = false
 
     /// The main connection is up: a terminal needs it for its opening command.
-    private var online: Bool { model.state.conn == .online }
+    private var online: Bool { model.state.peer(model.state.sessions[sessionId]?.machineId).ready }
     private var active: Bool { online && model.foreground }
 
     var body: some View {
@@ -88,7 +88,7 @@ struct TerminalPane: View {
         terminal.use(
             RemoteTerminal.Link(
                 open: { try await remote.openTerminal(sid, listener: $0) },
-                online: { app.state.conn == .online && app.foreground },
+                online: { app.state.peer(app.state.sessions[sessionId]?.machineId).ready && app.foreground },
                 hold: { app.holdTerminal($0) },
                 release: { app.releaseTerminal($0) }))
         if active { open() }

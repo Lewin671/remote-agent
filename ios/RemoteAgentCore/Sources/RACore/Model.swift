@@ -68,13 +68,13 @@ public func exited(_ s: SessionView) -> Bool { s.info?.status == .exited }
 /// session ended stays true.
 public func shownStatus(_ state: RemoteState, _ s: SessionView) -> Status {
     let st = statusOf(s, machine: state.machines[s.machineId])
-    return state.unlinked && st != .exited && st != .loading ? .unlinked : st
+    return state.peer(s.machineId).unlinked && st != .exited && st != .loading ? .unlinked : st
 }
 
 public func statusOf(_ s: SessionView, machine: MachineView?) -> Status {
     guard let i = s.info else { return .loading }
     if i.status == .exited { return .exited }
-    if let machine, !machine.online { return .offline }
+    if let machine, !machine.pathState.reachable { return .offline }
     if i.pendingApprovals > 0 { return .approval }
     if i.pendingQuestions > 0 { return .question }
     if i.planOpen { return .plan }
@@ -514,15 +514,14 @@ extension PBEvent {
 
 /// What the machine says it offers; nil until its metadata is read.
 public func capabilities(_ m: MachineView?) -> PBMachineCapabilities? {
-    guard let meta = m?.meta, meta.hasCapabilities else { return nil }
-    return meta.capabilities
+    m?.pathState.capabilities
 }
 
 /// Why no command goes to `m`: it speaks another protocol version than this
 /// app (`protocolVersion`), said by which side to update; nil when they
 /// match or the machine's metadata is not read yet.
 public func protocolMismatch(_ m: MachineView?) -> String? {
-    guard let theirs = m?.meta?.protocolVersion else { return nil }
+    guard let theirs = m?.pathState.protocolVersion else { return nil }
     if theirs < protocolVersion { return L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: String(describing: machineName(m))) }
     if theirs > protocolVersion { return L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd() }
     return nil

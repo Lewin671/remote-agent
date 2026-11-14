@@ -115,15 +115,8 @@ extension Remote {
     public func forward(_ p: PreparedCommand, retryOfUnknown: Bool = false) async throws
         -> PBCommandResult
     {
-        let call = p.dispatch.open(prior: retryOfUnknown)
-        defer { call.close() }
-        do { return try await forwardPrepared(p, call: call) }
-        catch {
-            let command = error as? CommandError
-            if call.uncertain && command?.unknown != true && !(command?.fromDaemon == true && command?.outcome != .notSent) {
-                throw CommandError.unknownBecause(errorText(error))
-            }
-            throw error
+        try await deviceLink.call(p, prior: retryOfUnknown) { call in
+            try await self.forwardPrepared(p, call: call)
         }
     }
 
@@ -148,20 +141,16 @@ extension Remote {
                 ? CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
                 : CommandError(code, text)
         }
-        var req = PBForwardRequest()
-        req.machineID = p.machineId
         // Authorize only after login. A prepared intent keeps plaintext locally;
         // no old-key ciphertext is sent while authority freshness is unknown.
         while true {
-            let attemptId = newRequestId()
-            req.attemptID = attemptId
-            let delivery = call.delivery()
-            var relayEpoch = ""
+            let delivery = deviceLink.delivery(call)
+            let attemptId = delivery.attemptId
             do {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
-                if token.isEmpty { token = try await relogin(call.uncertain) }
+                try await delivery.prepare(prior: call.uncertain)
                 let stateHash = try await authorizationStateHash()
-                req.command = try await p.authorizationTask(stateHash: stateHash) {
+                let envelope = try await p.authorizationTask(stateHash: stateHash) {
                     verifyObservation in
                     Task {
                         try await self.authorizePrepared(p, verifyObservation: verifyObservation && !call.hasPrior)
@@ -170,16 +159,8 @@ extension Remote {
                 try Task.checkCancellation()
                 // Login, authorization and signing can suspend across a machine refresh.
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
-                let binding = try await securitySession().commandIdentity(req.command)
-                relayEpoch = try await api.relayEpoch()
-                req.relayEpoch = relayEpoch
-                try Task.checkCancellation()
-                try delivery.dispatch()
-                var headers = Api.headers(token: token)
-                headers["Remote-Agent-Attempt"] = [attemptId]
-                let res = try await api.client.forward(
-                    request: req, headers: headers
-                ).value()
+                let binding = try await securitySession().commandIdentity(envelope)
+                let res = try await delivery.send(machineId: p.machineId, command: envelope)
                 let msg: PBCommandResult
                 do {
                     (_, msg) = try await openSecureMessage(
@@ -211,10 +192,9 @@ extension Remote {
                 }
                 return msg
             } catch let ce as ConnectError {
-                let notForwarded = (ce.unpackedDetails() as [PBNotForwarded]).first { $0.attemptID == attemptId && $0.relayEpoch == relayEpoch && !relayEpoch.isEmpty }
+                let notForwarded = delivery.refusal(ce)
                 let unsent = notForwarded != nil
                 if unsent {
-                    delivery.notForwarded()
                     if !call.uncertain && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),notForwarded?.reason == "machine_offline" ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : ce.code == .unavailable ? (ce.message ?? errorText(ce)) : errorText(ce),outcome:.notSent) }
                 }
                 // A terminal DNS/connection error can follow an opaque replay. Only
@@ -222,7 +202,7 @@ extension Remote {
                 if neverSent(ce.exception) { throw notSent("network", L10n.errorsIosNetworkUnavailableTheCommandWasNotSent()) }
                 if ce.code == .unauthenticated && attempt < 3 {
                     attempt += 1
-                    token = try await relogin(call.uncertain)
+                    try await delivery.refreshAuth(prior: call.uncertain)
                     continue
                 }
                 // aborted: the daemon could not seal a result, as on the web.

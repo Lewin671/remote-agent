@@ -73,7 +73,7 @@ struct NewScheduleScreen: View {
         let session = state.sessions[sessionID]
         let machine = session?.machineId ?? draft.config?.machineId ?? ""
         let spec = draft.spec(session: session, state: state)
-        let supported = state.machines[machine]?.meta?.capabilities.scheduledTasks == true
+        let supported = state.peer(machine).capabilities?.scheduledTasks == true
         let ready = (sessionID.isEmpty || session != nil) && context.schedules.online(machine) && supported && spec != nil
         Page(gray: true) {
             VStack(spacing: 0) {

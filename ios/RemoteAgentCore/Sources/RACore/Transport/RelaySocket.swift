@@ -14,15 +14,7 @@ let policyViolation = 1008
 /// URLSession's own limit of 1 MiB would end the stream on a full push.
 private let maxMessageBytes = 4 << 20
 
-final class Socket: Sendable {
-    /// How a connection ended, known once the task is done with.
-    struct End: Sendable {
-        /// The close code the server sent, nil when it sent none.
-        var closeCode: Int?
-        /// Why the connection broke; nil when the server closed it, or this side dropped it before it broke.
-        var error: Error?
-    }
-
+final class Socket: FrameStream {
     private struct State {
         var opened = false
         var closeCode: Int?
@@ -30,8 +22,8 @@ final class Socket: Sendable {
         /// Dropped by this side: what the task fails with after that says
         /// nothing. A failure noted before it is still why the connection ended.
         var dropped = false
-        var end: End?
-        var waiters: [CheckedContinuation<End, Never>] = []
+        var end: PathEnd?
+        var waiters: [CheckedContinuation<PathEnd, Never>] = []
         var openWaiters: [CheckedContinuation<Bool, Never>] = []
         var awaitingPong = false
         var pinger: Task<Void, Never>?
@@ -99,11 +91,11 @@ final class Socket: Sendable {
 
     private func didComplete(_ error: Error?) {
         let code = task.closeCode.rawValue
-        let (waiters, openWaiters) = state.withLockUnchecked { s -> ([CheckedContinuation<End, Never>], [CheckedContinuation<Bool, Never>]) in
+        let (waiters, openWaiters) = state.withLockUnchecked { s -> ([CheckedContinuation<PathEnd, Never>], [CheckedContinuation<Bool, Never>]) in
             if s.closeCode == nil, code != 0 { s.closeCode = code }
             // A connection the server closed, or this side dropped, did not break.
             if s.failure == nil, s.closeCode == nil, !s.dropped { s.failure = error }
-            let end = End(closeCode: s.closeCode, error: s.closeCode != nil ? nil : s.failure)
+            let end = PathEnd(closeCode: s.closeCode, error: s.closeCode != nil ? nil : s.failure)
             s.end = end
             s.pinger?.cancel()
             s.pinger = nil
@@ -177,9 +169,9 @@ final class Socket: Sendable {
     }
 
     /// How the connection ended; waits until the task is done with.
-    func ended() async -> End {
+    func ended() async -> PathEnd {
         await withCheckedContinuation { c in
-            let end = state.withLockUnchecked { s -> End? in
+            let end = state.withLockUnchecked { s -> PathEnd? in
                 if s.end == nil { s.waiters.append(c) }
                 return s.end
             }

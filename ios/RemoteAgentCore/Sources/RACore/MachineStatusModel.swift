@@ -438,7 +438,7 @@ public struct DiskReminder: Equatable, Sendable, Identifiable {
 /// The reminders of every online computer under 10 GB, the tightest first.
 public func diskReminders(_ state: RemoteState, text: StatusText = StatusText()) -> [DiskReminder] {
     state.machines.values.compactMap { m -> DiskReminder? in
-        guard let meta = m.meta, let d = machineDiskReminder(online: m.online, meta: meta) else { return nil }
+        guard let meta = m.meta, let d = machineDiskReminder(online: m.pathState.reachable, meta: meta, supported: m.pathState.capabilities?.machineStatus == true) else { return nil }
         let critical = d.availableBytes < 2_000_000_000
         let size = L10n.machineStatusSizeGb(size: text.gbNumber(Int64(d.availableBytes)), locale: text.locale)
         let name = machineLabel(state, id: m.id)
