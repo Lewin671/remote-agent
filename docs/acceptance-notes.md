@@ -26,6 +26,19 @@
 方法及正式一小时运行命令见[恢复测量说明](../scripts/measure-recovery/README.md)。没有连接 iMac、真机或线上；实际手机 Wi-Fi↔蜂窝、后台/前台、同接口 DHCP、Linux 网络以及终端旧流输入续接未验证。本任务的模拟器已 shutdown/delete 并查询确认不存在，DerivedData、Swift scratch、Web/Android 构建产物已删除；只有本地提交，没有 push、发版或部署。
 
 
+### 恢复资源复核（2026-11-14）
+
+两轮复核后，重定基到 v0.75.3 主线 `a8e68fda`，保留 Antigravity 与 iOS picker 焦点修复；协议仍为 15。本轮运行时代码 `87bb1bdf` 修复安全接口拒绝 token 后不更新、失败 wake barrier 不释放、resume 不退休旧 HTTP 轮次与共享 pull 无独立期限，并补齐四端同类的凭据和成员目录期限/退休路径。所有权与期限约束由 [transport](transport.md#第-0c-期活性与重连) 维护。
+
+本轮 24 项新回归对应 24 组有效撤销对照（Go 2、网页 9、Android 6、iOS 7），全部由运行时断言检出，源码恢复后跑完整检查。覆盖旧 token 被拒且尚未开流、迟到拒绝不能丢新 token、Touch 失败后的重试/同步解除及代次隔离、共享 owner 超时清槽、首次 Ready 前暂停再恢复、停下期间重启的网络轮次、成员目录立即退休和有效调用加入后继。iOS 登录测试让两次鉴权重试各自低于单次期限但合计超过整轮期限，确认外层 owner 期限有效；R1 的等待者取消与 compare-and-clear 回归也随全量检查重跑。
+
+重定基后的 Go full、六包 race、网页类型检查及 5,505 项（1 项既有 opt-in 跳过）、Android core 590／App 797／terminal 7 项与 lintVitalRelease、RACore 811 项及其他 SwiftPM 运行器、i18n generate --check/lint 均通过。SwiftPM 保留既有真实 CLI opt-in 跳过。Android 文案预览组收尾曾出现一次后台状态通知触发 Robolectric UI 线程检查，随后该组 44 项及完整 Android 检查在未改源码、断言和期限的情况下通过；保留这次偶发失败记录，未据此判断既有或新增归因。
+
+iOS full 在本轮新建的 iPhone 18 Pro／iOS 27 模拟器上通过，App 488 项、UI 一次运行 9 项均零失败/跳过，协议生成与文案编译核对通过。该模拟器与 Swift/Xcode、Web/Android 构建产物在收尾时删除；没有借用其他任务的模拟器。
+
+本轮没有重跑原生 CLI 和恢复分位数；本节前文的真实链路与 160 个恢复样本只代表首次交付。真机网络、正式恢复测量和执行槽全满时的业务恢复边界仍见 [计划](plan.md#待确认)。没有 push、发版或部署。
+
+
 ## 1. 验证等级
 
 下文和 [plan.md](plan.md) 用同一组说法，它们不能互相替代：
