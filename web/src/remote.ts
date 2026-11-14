@@ -3264,7 +3264,7 @@ export class Remote {
   /** Seals cmd, forwards it and returns the opened result. Network
    * failures are retried with the same request ID, which the daemon
    * runs at most once. */
-  protected relayEpoch(): Promise<string> { return relayEpoch(this.account.server); }
+  protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
   private readonly dispatchStates = new Map<string, DispatchState>();
   private dispatchState(slot: RequestSlot): DispatchState {
     if (!(slot instanceof RequestSlot)) throw new CommandError("unknown_outcome", l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
