@@ -56,4 +56,22 @@ class TerminalTeardownTest {
             }
         } finally { terminal.close();scope.cancel();remote.close() }
     }
+    @Test fun terminalClosureAfterMainRecoveryStartsANewLeg() {
+        val remote=Remote(Account("https://example.com",byteArrayOf(),ByteArray(32){1},"fixture-device"),Api.defaultHttp())
+        remote.showForTest(RemoteState(conn=ConnState.ONLINE,machines=mapOf("machine" to MachineView("machine",true,0)),sessions=mapOf("session" to SessionView("session","machine"))))
+        val scope=CoroutineScope(SupervisorJob()+kotlinx.coroutines.test.StandardTestDispatcher())
+        val terminal=RemoteTerminal(remote,"session",scope);var closes=0;var typed=0
+        val type=Class.forName("io.github.lewin671.remoteagent.core.transport.FrameStream")
+        val socket=Proxy.newProxyInstance(type.classLoader,arrayOf(type)){_,method,_->if(method.name in listOf("send","close"))true else null}
+        val connection=TermConn::class.java.declaredConstructors.single().newInstance(socket,{_:TerminalFrame->typed++},{closes++}) as TermConn
+        val conn=RemoteTerminal::class.java.getDeclaredField("conn").apply{isAccessible=true};conn.set(terminal,connection)
+        try {
+            val apply=RemoteTerminal::class.java.getDeclaredMethod("apply",TerminalFrame::class.java).apply{isAccessible=true}
+            apply.invoke(terminal,TerminalFrame.newBuilder().setClosed("late loss").build())
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            assertEquals("late terminal failure did not reopen",1,closes)
+            assertEquals(RemoteTerminal.State.Connecting,terminal.state.value);assertEquals(0,typed)
+        }finally{terminal.close();scope.cancel();remote.close()}
+    }
+
 }

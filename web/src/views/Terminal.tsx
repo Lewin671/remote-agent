@@ -248,17 +248,17 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const endedPath = useRef(false);
+  const [endedPath, setEndedPath] = useState<{ remote: Remote; sid: string }>();
   const [canOpen, setCanOpen] = useState(online);
   useEffect(() => {
     if (online) {
-      if (endedPath.current) { endedPath.current = false; setAttempt(n => n + 1); }
+      if (endedPath?.remote === remote && endedPath.sid === session.id) { setEndedPath(undefined); setAttempt(n => n + 1); }
       setCanOpen(true);
     }
-  }, [online]);
+  }, [online, endedPath, remote, session.id]);
   useEffect(() => {
     if (!canOpen) return;
-    let alive = true;
+    let alive = true, opened = false, ended = false;
     const opening = new AbortController();
     history.close();
     setState("connecting");
@@ -276,7 +276,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       .openTerminal(
         session.id,
         (f) => {
-          if (!alive) return;
+          if (!alive || ended) return;
           const t = term.current;
           if (!t) return;
           switch (f.kind.case) {
@@ -322,7 +322,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         },
         (why) => {
           if (!alive) return;
-          endedPath.current = true;
+          ended = true;
+          // Only a formerly opened leg recovers automatically. An opening
+          // failure stays closed instead of creating an immediate retry loop.
+          setEndedPath(opened ? { remote, sid: session.id } : undefined);
           conn.current = null;
           history.disconnected();
           setState("closed");
@@ -332,7 +335,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       )
       .then(
         (c) => {
-          if (!alive) return c.close();
+          if (!alive || ended) return c.close();
+          opened = true;
           conn.current = c;
           setLinked(true);
           // The snapshot can be here before the opening command has answered: live once both are.

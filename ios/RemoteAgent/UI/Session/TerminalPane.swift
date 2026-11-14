@@ -10,11 +10,9 @@
 // `UI/Terminal/TerminalHistoryReader`). The key bar stays put, and any key
 // leaves reading before it is sent.
 //
-// The pane is under the session screen's tabs and fills what is left, down
-// to the keyboard. It is connected only while the main connection is up
-// and the app is in front (architecture §10 「后台和内存」): going to the
-// background, losing the server or leaving the tab closes the stream, and
-// coming back opens another, which starts from a fresh snapshot.
+// The pane is under the session screen's tabs. Backgrounding or leaving
+// the tab closes it. Main-path probes preserve a healthy terminal; a real
+// terminal-leg failure opens a new stream and snapshot when the link is ready.
 //
 // The screen itself is `UI/Terminal`: `RemoteTerminal` is the connection,
 // `TerminalHostView` the SwiftTerm view and what output may not do to the

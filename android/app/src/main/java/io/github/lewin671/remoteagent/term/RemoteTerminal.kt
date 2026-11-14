@@ -173,7 +173,21 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 session.append(b, b.size)
             }
             // The daemon says why before it hangs up; the end of the connection that follows says less.
-            TerminalFrame.KindCase.CLOSED -> { history.disconnected(); if (_state.value !is State.Closed) _state.value = State.Closed(f.closed.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.terminalAndroidClosed().messageText()) }
+            TerminalFrame.KindCase.CLOSED -> {
+                history.disconnected()
+                if (_state.value !is State.Closed) {
+                    val opened = conn != null
+                    _state.value = State.Closed(f.closed.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.terminalAndroidClosed().messageText())
+                    // A real leg can fail after the main path is already ready.
+                    // Opening failures have no connection and do not spin here.
+                    if (opened) {
+                        val gen = generation
+                        main.post {
+                            if (gen == generation && remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) connectIfNeeded()
+                        }
+                    }
+                }
+            }
             else -> {}
         }
     }

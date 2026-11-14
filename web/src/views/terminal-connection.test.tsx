@@ -144,3 +144,14 @@ it("keeps the terminal prompt at the bottom when its pane shrinks, without resiz
   await act(async () => vi.advanceTimersByTimeAsync(200));
   expect(state.send).not.toHaveBeenCalled();
 });
+
+it("recovers a terminal leg that closes after the main path is already online", async () => {
+ const vm=await mount();
+ await act(async()=>{vm.remote.conn="offline";vm.remote.touch();});
+ await act(async()=>{vm.remote.conn="online";vm.remote.touch();});
+ expect(vm.open).toHaveBeenCalledTimes(1);
+ await act(async()=>{vm.end("late loss");});
+ expect(vm.open).toHaveBeenCalledTimes(2);
+ expect(terminal.writes).toHaveBeenCalledTimes(1);
+ expect(vm.send.mock.calls.filter(([f])=>f.kind.case==="input")).toHaveLength(0);
+});

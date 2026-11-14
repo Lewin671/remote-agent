@@ -112,9 +112,8 @@ import Testing
         online.on=true;terminal.connectIfNeeded()
         #expect(streams.count==1)
         streams.listener(0).onClose("closed")
-        await eventually {if case .closed = terminal.state {return true};return false}
-        terminal.connectIfNeeded()
         await eventually {streams.count==2}
+        guard streams.count==2 else { #expect(Bool(false), "terminal leg was not recovered"); return }
         #expect(terminal.host.screenText=="retained screen")
         streams.listener(1).onFrame(snapshot("latest"))
         await eventually {terminal.state == .live}
@@ -262,7 +261,8 @@ import Testing
 
     @Test func aSnapshotThenOutputIsTheScreen() async {
         let streams = Streams()
-        let t = terminal(streams)
+        let online = Flag()
+        let t = terminal(streams, online: online)
         #expect(t.state == .connecting)
         t.connect()
         await eventually { streams.count == 1 }
@@ -272,6 +272,7 @@ import Testing
         #expect(t.state == .live)
         #expect(t.size == TerminalSize(80, 24))
         #expect(t.host.screenText == "one\ntwo")
+        online.on = false
         streams.listener(0).onClose("终端连接断开")
         await eventually { t.state != .live }
         #expect(t.state == .closed(L10n.errorsTerminalConnectionDropped()))
@@ -382,18 +383,22 @@ import Testing
     /// The daemon says why it ends a stream and then hangs up: what the connection's end says does not replace it.
     @Test func theDaemonsReasonForClosingStays() async {
         let streams = Streams()
-        let t = terminal(streams)
+        let online = Flag()
+        let t = terminal(streams, online: online)
         t.connect()
         await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("x"))
+        online.on = false
         streams.listener(0).onFrame(.with { $0.closed = "cannot read the screen" })
         streams.listener(0).onClose("终端连接断开")
         await eventually { t.state != .connecting }
         try? await Task.sleep(for: .milliseconds(100))
         #expect(t.state == .closed("cannot read the screen"))
         // A stream that just ends says what the connection says.
+        online.on = true
         t.connect()
         await eventually { streams.count == 2 }
+        online.on = false
         streams.listener(1).onClose("终端连接断开")
         await eventually { t.state != .connecting }
         #expect(t.state == .closed(L10n.errorsTerminalConnectionDropped()))

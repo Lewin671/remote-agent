@@ -197,7 +197,17 @@ final class RemoteTerminal {
             history.disconnected()
             // The daemon says why before it hangs up; the end of the connection that follows says less.
             if case .closed = state { return }
+            let opened = conn != nil
             state = .closed(reason)
+            // This leg may end after main recovery. Opening failures and
+            // explicit lifecycle close do not enter this retry path.
+            if opened {
+                let gen = generation
+                onMain { [weak self] in
+                    guard let self, gen == self.generation, self.link?.online() == true else { return }
+                    self.connectIfNeeded()
+                }
+            }
         }
     }
 
