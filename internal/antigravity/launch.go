@@ -93,6 +93,16 @@ func (a *Adapter) Options(extra []string, model, effort string, mode pb.Approval
 	case pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
 		args = append(args, "--ra-tool-permission=always-proceed")
 	case pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED:
+		// Preserve an explicitly saved native cycle when following CLI
+		// settings. Only the absent/default cycle is pinned by our settings.
+		var st struct {
+			AgentMode string `json:"agentMode"`
+		}
+		b, _ := os.ReadFile(filepath.Join(a.home, "settings.json"))
+		_ = json.Unmarshal(b, &st)
+		if !hasFlag(args, "--mode") && (st.AgentMode == "auto" || st.AgentMode == "plan" || st.AgentMode == "accept-edits") {
+			args = append(args, "--mode", st.AgentMode)
+		}
 		policy := a.launchPermission(nil)
 		if policy == "" {
 			policy = "request-review"
@@ -328,6 +338,9 @@ func buildSettingsJSON(cwd, addonDir, toolPerm string, userSL *statusLineSetting
 		"trustedWorkspaces": trusted,
 		"statusLine":        sl,
 		"toolPermission":    toolPerm,
+		// Since agy 1.5.7, an absent agentMode starts in Auto. An explicit
+		// empty value selects Default; --mode still overrides Auto/Plan.
+		"agentMode": "",
 	}
 	if toolPerm == "" {
 		delete(st, "toolPermission")

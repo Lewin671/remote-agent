@@ -50,7 +50,7 @@ func TestLaunchPermissionAndResume(t *testing.T) {
 			}
 			var st map[string]any
 			b, _ := os.ReadFile(filepath.Join(l.Dir, SettingsFile))
-			if json.Unmarshal(b, &st) != nil || st["toolPermission"] != tc.want {
+			if json.Unmarshal(b, &st) != nil || st["toolPermission"] != tc.want || st["agentMode"] != "" {
 				t.Fatalf("settings %s", b)
 			}
 			if got, _ := os.ReadFile(config); string(got) != string(original) {
@@ -101,7 +101,7 @@ func TestLaunchPermissionAndResume(t *testing.T) {
 			}
 			b, _ = os.ReadFile(filepath.Join(l.Dir, SettingsFile))
 			_ = json.Unmarshal(b, &st)
-			if st["toolPermission"] != tc.want {
+			if st["toolPermission"] != tc.want || st["agentMode"] != "" {
 				t.Fatal("resume changed original policy")
 			}
 		})
@@ -185,5 +185,25 @@ func TestLaunchTrustIncludesCanonicalWorkspaceAndAddon(t *testing.T) {
 	canonical, _ := filepath.EvalSymlinks(real)
 	if !slices.Contains(settings.Trusted, canonical) {
 		t.Fatal("canonical workspace missing")
+	}
+}
+
+func TestFollowingSettingsPreservesExplicitNativeCycle(t *testing.T) {
+	for _, cycle := range []string{"auto", "plan", "accept-edits"} {
+		home := t.TempDir()
+		config := []byte(`{"toolPermission":"request-review","agentMode":"` + cycle + `"}`)
+		mustWrite(t, filepath.Join(home, "settings.json"), config)
+		a := launchTestAdapter(t, home)
+		args, err := a.Options(nil, "", "", pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(args, cycle) || !hasFlag(args, "--mode") {
+			t.Fatalf("lost explicit native cycle: %v", args)
+		}
+		args, err = a.Options(nil, "", "", pb.ApprovalMode_APPROVAL_MODE_ASK)
+		if err != nil || hasFlag(args, "--mode") {
+			t.Fatalf("explicit Ask inherited wider mode: %v %v", args, err)
+		}
 	}
 }
