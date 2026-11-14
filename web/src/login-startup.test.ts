@@ -82,17 +82,16 @@ it("uses zero login RPCs on reload, two on expiry and two after server 1008 reje
   expect(calls).toEqual(["GetChallenge", "Login", "GetSecurityStates"]);
 });
 
-it("also discards a token rejected by the state RPC before a stream can open", async () => {
+it("renews a token rejected by the state RPC before opening the stream", async () => {
   const { f, account, calls, remote, rejectSync } = await setup();
   await saveLoginToken(account.server, f.memberID, { token: "stale", expiresMs: Date.now() + 10 * 86_400_000 });
   rejectSync();
   const r = remote();
   r.start();
-  await vi.waitFor(() => expect(r.conn).toBe("offline"));
-  await (r as any).tokenWrites;
-  expect(await loadLoginToken(account.server, f.memberID)).toBeUndefined();
-  r.reconnectNow();
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
+  await (r as any).tokenWrites;
+  expect((await loadLoginToken(account.server, f.memberID))?.token).toBe("fresh-token");
+  expect(r.authHeader()).toBe("Bearer fresh-token");
   expect(calls).toEqual(["GetSecurityStates", "GetChallenge", "Login", "GetSecurityStates"]);
 });
 
