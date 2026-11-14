@@ -126,8 +126,10 @@ final class ComposerHitTests: XCTestCase {
         }
         let field = app.textFields["消息"]
         XCTAssertTrue(field.present(timeout: 15))
-        var checkMenu: ((String) -> Void)?
-        if scenarios.contains(.short) { checkMenu = try checkAttachmentMenu(app, draft: draft) }
+        if scenarios.contains(.short) {
+            try checkAttachmentMenu(app, draft: draft)
+            clearDraftImages(app)
+        }
         let queue = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "这一轮结束后再发")).firstMatch
         let list = app.descendants(matching: .any).matching(identifier: "chat-list").firstMatch
         // Both states use the same multiline fixture. Sending clears each
@@ -149,6 +151,7 @@ final class ComposerHitTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(frame.width, 44)
                 XCTAssertGreaterThanOrEqual(frame.height, 44)
                 // 0.44 pt from an edge still lies outside a scaled 42.24 pt target.
+                let composerTop = field.frame.minY
                 point(app, frame, hit).press(forDuration: 1)
                 let opened = present(queue, timeout: 3)
                 if !opened {
@@ -156,10 +159,13 @@ final class ComposerHitTests: XCTestCase {
                         frame: [frame.minX, frame.minY, frame.width, frame.height], longPress: false, tap: false))
                 }
                 XCTAssertTrue(opened, "\(scenario.rawValue) \(hit.rawValue) long press")
-                if hit == .center { checkMenu?("ios-send-open") }
+                XCTAssertTrue(queue.isHittable)
+                if hit == .center { capture(app, name: "ios-send-open") }
                 app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
                 XCTAssertTrue(absent(queue, timeout: 3))
-                if hit == .center { checkMenu?("ios-send-closed") }
+                if scenario == .short, hit == .center {
+                    checkComposerRestored(app, draft: draft, top: composerTop, name: "ios-send-closed")
+                }
                 point(app, try sendFrame(app, keyboardShown: scenario != .dismissed, expected: frame), hit).tap()
                 // Text-only sending clears synchronously before its RPC. The
                 // native tap has already waited for the application to settle.
@@ -175,33 +181,72 @@ final class ComposerHitTests: XCTestCase {
         }
     }
 
-    private func checkAttachmentMenu(_ app: XCUIApplication, draft: String) throws -> (String) -> Void {
+    private func capture(_ app: XCUIApplication, name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
+    private func checkComposerRestored(_ app: XCUIApplication, draft: String, top: CGFloat, name: String) {
+        let field = app.textFields["消息"]
+        capture(app, name: name)
+        XCTAssertEqual(field.frame.minY, top, accuracy: 0.5, "\(name): composer must return after dismissal")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, name)
+        XCTAssertEqual(field.value as? String, draft, "\(name): draft text must survive dismissal")
+    }
+
+    private func checkAttachmentMenu(_ app: XCUIApplication, draft: String) throws {
         let field = app.textFields["消息"]
         XCTAssertTrue(field.present(timeout: 15))
-        XCTAssertEqual(notify_post("io.github.lewin671.remoteagent.debug.session.draft"), 0)
-        field.tap()
-        XCTAssertEqual(field.value as? String, draft)
+        fill(app, field, draft)
         XCTAssertTrue(app.keyboards.firstMatch.present(timeout: 5))
+        let images = [app.otherElements["第 1 张，共 2 张"], app.otherElements["第 2 张，共 2 张"]]
+        for image in images { XCTAssertTrue(image.exists) }
+        let states = images.map { $0.value as? String }
         let top = field.frame.minY
-        func check(_ name: String) {
-            XCTAssertTrue(app.keyboards.firstMatch.exists, name)
-            XCTAssertEqual(field.frame.minY, top, accuracy: 0.5, name)
-            let shot = XCTAttachment(screenshot: app.screenshot())
-            shot.name = name
-            shot.lifetime = .keepAlways
-            add(shot)
-            print("COMPOSER_MENU \(name) top=\(field.frame.minY) baseline=\(top)")
+        func checkRestored(_ name: String) {
+            checkComposerRestored(app, draft: draft, top: top, name: name)
+            for (image, state) in zip(images, states) {
+                XCTAssertTrue(image.exists, "\(name): draft attachment must survive dismissal")
+                XCTAssertEqual(image.value as? String, state, name)
+            }
         }
-        check("ios-baseline")
-        app.buttons["添加附件"].tap()
-        XCTAssertTrue(app.buttons["照片和视频"].present(timeout: 5))
-        check("ios-attach-open")
+        func openMenu() {
+            app.buttons["添加附件"].tap()
+            XCTAssertTrue(app.buttons["照片和视频"].present(timeout: 5))
+            XCTAssertTrue(app.buttons["照片和视频"].isHittable)
+            XCTAssertTrue(app.buttons["文件"].isHittable)
+            // A system Menu covers the composer and can collapse the keyboard's
+            // prediction strip (27 pt on iOS 27). Its open-state composer frame
+            // is not a layout guarantee; check restoration only after dismissal.
+        }
+        capture(app, name: "ios-baseline")
+        openMenu()
+        capture(app, name: "ios-attach-open")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
         XCTAssertTrue(app.buttons["照片和视频"].absent(timeout: 5))
-        check("ios-attach-closed")
-        // The first centre long press in the hit matrix checks the send
-        // menu's keyboard/position too, without opening it twice in a row.
-        return check
+        checkRestored("ios-attach-closed")
+
+        // Hit each native menu item and verify its destination, then cancel
+        // without selecting anything: the existing draft must remain intact.
+        openMenu()
+        app.buttons["照片和视频"].tap()
+        let photos = app.navigationBars["Photos"]
+        XCTAssertTrue(photos.present(timeout: 10))
+        capture(app, name: "ios-attach-photos-picker")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(photos.absent(timeout: 5))
+        checkRestored("ios-attach-photos-cancelled")
+
+        openMenu()
+        app.buttons["文件"].tap()
+        let files = app.otherElements["Browse View (Picker)"]
+        XCTAssertTrue(files.present(timeout: 10))
+        capture(app, name: "ios-attach-files-picker")
+        files.buttons["Cancel"].tap()
+        XCTAssertTrue(files.absent(timeout: 5))
+        checkRestored("ios-attach-files-cancelled")
     }
 
     private func checkDraftImageGeometryAndTouches(_ app: XCUIApplication) throws {
@@ -238,8 +283,12 @@ final class ComposerHitTests: XCTestCase {
         // The upper-right part is outside the thumbnail and still removes it.
         remove.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.25)).tap()
         XCTAssertTrue(app.otherElements["第 1 张，共 2 张"].present(timeout: 5))
-        // The corner hit above is native. Clear the remaining fixture images
-        // through DEBUG events before the text-only menu and send checks.
+        // Keep both remaining images through the attachment menu checks.
+    }
+
+    private func clearDraftImages(_ app: XCUIApplication) {
+        // Menu cancellation has verified these attachments survive. Clear the
+        // fixture through DEBUG events before the text-only send hit matrix.
         XCTAssertEqual(notify_post("io.github.lewin671.remoteagent.debug.images.remove"), 0)
         let last = app.otherElements["第 1 张，共 1 张"]
         XCTAssertTrue(last.present(timeout: 5))
