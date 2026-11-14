@@ -153,8 +153,8 @@ export function barPercent(row: ResourceUsage, first: ResourceUsage | undefined,
 
 // --- the curve ---
 
-/** The window the curve shows: the 118 seconds that 60 samples span, newest at the right end. */
-export const WINDOW_MS = 118_000;
+/** A 116-second window stays inside 60 samples while the right edge trails by up to 2 seconds. */
+export const WINDOW_MS = 116_000;
 /** Samples further apart than this had nobody looking between them: the curve breaks there. */
 export const GAP_MS = 10_000;
 /** The "now" dot sits this far inside the right edge, so that it is not cut. */
@@ -177,18 +177,42 @@ export function curvePoints(s: MachineStatus, memory: boolean, since: bigint): P
   return [{ t: Number(s.observedMs), v: memory ? Number(s.memoryUsedBytes) : s.cpuPercent }];
 }
 
-/** Where on the right edge the curve is at `now`: the segment from the
- * second-last point to the last is drawn at a constant pace, one sampling
- * interval in one sampling interval, so that the curve glides instead of
- * stepping when a point arrives. */
-export function displayTime(points: readonly Point[], sinceArrival: number, glide: boolean): number {
-  const last = points.at(-1);
-  if (!last) return 0;
-  const before = points.at(-2);
-  if (!glide || !before) return last.t;
-  const interval = last.t - before.t;
-  if (interval <= 0 || interval > GAP_MS) return last.t;
-  return Math.min(last.t, before.t + Math.max(0, sinceArrival));
+/** A continuous chart clock. On-time samples trail by at most 2 s. A poll gap
+ * catches up to the newest point in 500 ms, cubic ease-out, without a jump.
+ * Retargeting keeps the original deadline; old snapshots never rewind it. */
+export class ChartTimeline {
+  private end?: number;
+  private latest = 0;
+  private lastNow = 0;
+  private catchup?: { from: number; target: number; start: number; deadline: number };
+
+  advance(nowMs: number, firstMs: number, latestMs: number, moving = true): number {
+    if (latestMs <= 0) return 0;
+    if (this.end === undefined || !moving) {
+      this.end = moving ? Math.max(firstMs, latestMs - 2000) : latestMs;
+      this.latest = latestMs;
+      this.lastNow = nowMs;
+      this.catchup = undefined;
+      return this.end;
+    }
+    const now = Math.max(this.lastNow, nowMs);
+    const c = this.catchup;
+    if (c) {
+      const p = Math.min(1, (now - c.start) / (c.deadline - c.start));
+      this.end = c.from + (c.target - c.from) * (1 - (1 - p) ** 3);
+      if (p === 1) this.catchup = undefined;
+    } else {
+      this.end = Math.min(this.latest, this.end + now - this.lastNow);
+    }
+    this.lastNow = now;
+    if (latestMs > this.latest) {
+      this.latest = latestMs;
+      if (this.catchup || latestMs - this.end > 2000) {
+        this.catchup = { from: this.end, target: latestMs, start: now, deadline: this.catchup?.deadline ?? now + 500 };
+      }
+    }
+    return this.end;
+  }
 }
 
 /** The points as they stand at display time `at`: those up to it, then the

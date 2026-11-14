@@ -268,15 +268,45 @@ fun valueAt(points: List<ChartPoint>, t: Long, gapMs: Long = CHART_GAP_MS): Doub
     return null
 }
 
-/**
- * Where the window's right edge ("now") is on the next frame: it moves at the pace of time, never past
- * the newest sample and never more than two sampling intervals behind it. The first sample puts the
- * edge on itself, so the curve grows from the right.
- */
-fun nextChartEnd(previous: Double?, elapsedMs: Double, firstMs: Long, latestMs: Long, intervalMs: Long = SAMPLE_INTERVAL_MS): Double {
-    val low = max(firstMs.toDouble(), latestMs - 2.0 * intervalMs)
-    val start = previous ?: max(firstMs.toDouble(), latestMs - intervalMs.toDouble())
-    return (start + elapsedMs).coerceIn(low, latestMs.toDouble())
+/** On-time samples trail by at most 2 s. After a poll gap, catch up in 500 ms
+ * with cubic ease-out. Retargeting keeps the deadline; old snapshots never rewind. */
+class ChartTimeline {
+    private var end: Double? = null
+    private var latest = 0L
+    private var lastNow = 0.0
+    private data class Catchup(val from: Double, val target: Double, val start: Double, val deadline: Double)
+    private var catchup: Catchup? = null
+
+    fun advance(nowMs: Double, firstMs: Long, latestMs: Long, moving: Boolean = true): Double {
+        if (latestMs <= 0) return 0.0
+        if (end == null || !moving) {
+            end = if (moving) max(firstMs.toDouble(), (latestMs - SAMPLE_INTERVAL_MS).toDouble()) else latestMs.toDouble()
+            latest = latestMs
+            lastNow = nowMs
+            catchup = null
+            return end!!
+        }
+        val now = max(lastNow, nowMs)
+        val c = catchup
+        var value = end!!
+        if (c != null) {
+            val p = ((now - c.start) / (c.deadline - c.start)).coerceAtMost(1.0)
+            val remaining = 1 - p
+            value = c.from + (c.target - c.from) * (1 - remaining * remaining * remaining)
+            if (p == 1.0) catchup = null
+        } else {
+            value = min(latest.toDouble(), value + now - lastNow)
+        }
+        lastNow = now
+        if (latestMs > latest) {
+            latest = latestMs
+            if (catchup != null || latestMs - value > SAMPLE_INTERVAL_MS) {
+                catchup = Catchup(value, latestMs.toDouble(), now, catchup?.deadline ?: (now + 500))
+            }
+        }
+        end = value
+        return value
+    }
 }
 
 /** The sample nearest to [t], or -1 without data. */

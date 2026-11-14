@@ -122,17 +122,45 @@ class MachineStatusModelTest {
         assertNull(valueAt(p, 10_000)); assertNull(valueAt(p, 31_000)); assertNull(valueAt(emptyList(), 1))
     }
 
-    @Test fun chartEndMovesAtTimesPaceAndStaysInsideTheData() {
-        // First sample: the edge sits on it and cannot pass it.
-        assertEquals(1000.0, nextChartEnd(null, 16.0, 1000, 1000), 0.0)
-        // With history it starts one interval behind the newest and advances with time.
-        assertEquals(98_016.0, nextChartEnd(null, 16.0, 0, 100_000), 0.0)
-        assertEquals(98_032.0, nextChartEnd(98_016.0, 16.0, 0, 100_000), 0.0)
-        // Never past the newest sample while the next one is late; never more than two intervals behind.
-        assertEquals(100_000.0, nextChartEnd(99_990.0, 50.0, 0, 100_000), 0.0)
-        assertEquals(96_000.0, nextChartEnd(50_000.0, 16.0, 0, 100_000), 0.0)
-        // A new sample two seconds on: one more interval of room, so motion stays continuous.
-        assertEquals(100_016.0, nextChartEnd(100_000.0, 16.0, 0, 102_000), 0.0)
+    @Test fun onTimeChartSamplesStayWithinTwoSeconds() {
+        val clock = ChartTimeline()
+        assertEquals(100_000.0, clock.advance(0.0, 100_000, 100_000), 0.0)
+        for (now in 0..10_000 step 100) {
+            val latest = 100_000L + now / 2000 * 2000
+            val end = clock.advance(now.toDouble(), 98_000, latest)
+            assertTrue(latest - end in 0.0..2000.0)
+            if (now > 0 && now % 2000 == 0) assertEquals((latest - 2000).toDouble(), end, 0.0)
+        }
+        val history = ChartTimeline()
+        assertEquals(98_000.0, history.advance(0.0, 98_000, 100_000), 0.0)
+        assertEquals(99_000.0, history.advance(1000.0, 98_000, 100_000), 0.0)
+    }
+
+    @Test fun missedPollCatchesUpWithin500msWithoutJumpOrRewind() {
+        val clock = ChartTimeline()
+        clock.advance(0.0, 98_000, 100_000)
+        assertEquals(100_000.0, clock.advance(2000.0, 98_000, 100_000), 0.0)
+        assertEquals(100_000.0, clock.advance(4000.0, 98_000, 104_000), 0.0)
+        val times = listOf(0, 100, 250, 400, 500)
+        val frames = times.map { clock.advance(4000.0 + it, 98_000, 104_000) }
+        assertEquals(listOf(100_000.0, 101_952.0, 103_500.0, 103_968.0, 104_000.0), frames)
+        val speeds = frames.zipWithNext().mapIndexed { i, (a, b) -> (b - a) / (times[i + 1] - times[i]) }
+        assertTrue(speeds.all { it > 0 } && speeds.zipWithNext().all { (a, b) -> a > b })
+        assertEquals(104_000.0, clock.advance(6000.0, 98_000, 106_000), 0.0)
+        assertEquals(105_000.0, clock.advance(7000.0, 98_000, 106_000), 0.0)
+    }
+
+    @Test fun chartCatchupRetargetsWithinItsOriginalDeadline() {
+        val clock = ChartTimeline()
+        clock.advance(0.0, 100_000, 100_000)
+        assertEquals(100_000.0, clock.advance(4000.0, 98_000, 104_000), 0.0)
+        val middle = clock.advance(4250.0, 98_000, 104_000)
+        assertEquals(middle, clock.advance(4250.0, 98_000, 108_000), 0.0)
+        assertEquals(108_000.0, clock.advance(4500.0, 98_000, 108_000), 0.0)
+        assertEquals(108_000.0, clock.advance(4516.0, 98_000, 106_000), 0.0)
+        assertEquals(108_000.0, clock.advance(4400.0, 98_000, 108_000), 0.0)
+        assertEquals(112_000.0, clock.advance(5000.0, 98_000, 112_000, false), 0.0)
+        assertEquals(112_000.0, clock.advance(5000.0, 98_000, 112_000), 0.0)
     }
 
     @Test fun theWindowAlwaysStartsOnDataOnceTheBufferIsFull() {

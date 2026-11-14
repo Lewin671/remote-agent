@@ -13,7 +13,7 @@ import { CpuIcon, DiskIcon, MemoryIcon, TerminalIcon, ChevronRight } from "../ic
 import { agentOf, machineName, titleOf } from "../model";
 import { machineCleanupPrompt, recentMachineProject, stableUsage } from "../machine-status";
 import {
-  RANK_ROWS, barPercent, curvePaths, curvePoints, diskBar, diskTight, diskWord, displayTime, footerText, gbFixed, gbNumber, memText, percentText,
+  RANK_ROWS, barPercent, curvePaths, curvePoints, diskBar, diskTight, diskWord, ChartTimeline, footerText, gbFixed, gbNumber, memText, percentText,
   pressurePosition, pressureWord, sampleAt, secondsBefore, sizeText, staleText, toneOf, xOf, yOf, type Point, type RankKind,
 } from "../machine-status-view";
 import type { Remote } from "../remote";
@@ -51,20 +51,15 @@ function Curve({ points, max, glide, describe, label, prevLabel, nextLabel, onLo
   const [width, setWidth] = useState(358);
   const [looking, setLooking] = useState(undefined as Point | undefined);
   // What the drawing reads each frame; React only re-renders for the width and the point looked at.
-  const live = useRef({ points, max, glide, width, x: undefined as number | undefined, keyT: undefined as number | undefined, hit: undefined as Point | undefined, anchorT: -1, anchorAt: 0, onLook });
+  const live = useRef({ points, max, glide, width, x: undefined as number | undefined, keyT: undefined as number | undefined, hit: undefined as Point | undefined, clock: new ChartTimeline(), onLook });
   live.current.points = points;
   live.current.max = max;
   live.current.glide = glide;
   live.current.width = width;
   live.current.onLook = onLook;
-  const latest = points.at(-1)?.t ?? 0;
-  if (live.current.anchorT !== latest) {
-    live.current.anchorT = latest;
-    live.current.anchorAt = Date.now();
-  }
   const draw = useCallback(() => {
     const s = live.current;
-    const at = displayTime(s.points, Date.now() - s.anchorAt, s.glide);
+    const at = s.clock.advance(performance.now(), s.points[0]?.t ?? 0, s.points.at(-1)?.t ?? 0, s.glide);
     const { line: l, area: a, head } = curvePaths(s.points, at, s.max, s.width, HEIGHT);
     line.current?.setAttribute("d", l);
     area.current?.setAttribute("d", a);
@@ -206,7 +201,7 @@ function Hero({ s, main, points, stale, glide, onLook, looked, heroRef }: {
   const live = mem ? Number(s.memoryUsedBytes) : s.cpuPercent;
   const value = looked ? looked.v : live;
   const big = mem ? gbFixed(value) : String(Math.round(value));
-  const pressure = pressurePosition(s) === undefined ? ResourcePressure.UNSPECIFIED : s.memoryPressure;
+  const pressure = s.memoryPressure;
   const name = mem ? t("machine_status.memory") : t("machine_status.cpu");
   const readable = mem ? `${gbFixed(live)} ${t("machine_status.gb_used")}` : percentText(live);
   const total = Number(s.memoryTotalBytes);

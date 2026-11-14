@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { MachineStatusSchema, ResourcePressure, ResourceUsageSchema } from "./gen/remoteagent/v1/local_pb";
 import { localeStore } from "./i18n";
 import {
-  DOT_INSET, GAP_MS, WINDOW_MS, memText, barPercent, batteryText, curvePaths, curvePoints, diskBar, displayTime, footerText, gbFixed, gbNumber, pressurePosition,
+  DOT_INSET, WINDOW_MS, memText, barPercent, batteryText, curvePaths, curvePoints, diskBar, ChartTimeline, footerText, gbFixed, gbNumber, pressurePosition,
   ringsOf, sampleAt, secondsBefore, sizeText, staleText, toneOf, uptimeText, visiblePoints, xOf, type Point,
 } from "./machine-status-view";
 
@@ -93,8 +93,9 @@ it("lays points out by their own times and breaks the line where nobody sampled"
   expect(xOf(now - WINDOW_MS, now, 358)).toBe(0);
   expect(xOf(now, now, 358)).toBe(358 - DOT_INSET);
   expect(xOf(now - WINDOW_MS / 2, now, 358)).toBeCloseTo((358 - DOT_INSET) / 2, 5);
-  // 118 seconds, the span of 60 samples: the left end has a point, not a blank.
-  expect(WINDOW_MS).toBe(118_000);
+  // The full buffer spans 118 s; a 2 s lag still leaves the 116 s window on data.
+  expect(WINDOW_MS).toBe(116_000);
+  for (const lag of [0, 1000, 2000]) expect(118_000 - lag - WINDOW_MS).toBeGreaterThanOrEqual(0);
 });
 
 it("adds no point of its own: one point is a dot without a line", () => {
@@ -110,22 +111,47 @@ it("keeps only the points from where the curve restarted", () => {
   expect(curvePoints(s, false, 3000n).map((p) => p.v)).toEqual([3, 4]);
 });
 
-it("glides at a constant pace: a sampling interval takes a sampling interval, with no step when a point arrives", () => {
-  const points = [at(0, 10), at(2, 30)];
-  expect(displayTime(points, 0, true)).toBe(at(0).t);
-  expect(displayTime(points, 1000, true)).toBe(at(1).t);
-  expect(displayTime(points, 2000, true)).toBe(at(2).t);
-  expect(displayTime(points, 5000, true)).toBe(at(2).t);
-  // Where the head stands between the two points, its value is on the line between them.
-  const mid = visiblePoints(points, at(1).t);
-  expect(mid.at(-1)).toEqual({ t: at(1).t, v: 20 });
-  // A new point arrives: the display time is where it was.
-  const next = [...points, at(4, 50)];
-  expect(displayTime(next, 0, true)).toBe(displayTime(points, 2000, true));
-  // Reduced motion: one step a point, no gliding.
-  expect(displayTime(points, 500, false)).toBe(at(2).t);
-  // A gap is not glided across.
-  expect(displayTime([at(0), at(2 + GAP_MS / 1000)], 100, true)).toBe(at(2 + GAP_MS / 1000).t);
+it("keeps on-time samples within two seconds, continuous and inside the data", () => {
+  const clock = new ChartTimeline();
+  expect(clock.advance(0, 100_000, 100_000)).toBe(100_000);
+  for (let now = 0; now <= 10_000; now += 100) {
+    const latest = 100_000 + Math.floor(now / 2000) * 2000;
+    const end = clock.advance(now, 98_000, latest);
+    expect(latest - end).toBeGreaterThanOrEqual(0);
+    expect(latest - end).toBeLessThanOrEqual(2000);
+    if (now > 0 && now % 2000 === 0) expect(end).toBe(latest - 2000);
+  }
+  const history = new ChartTimeline();
+  expect(history.advance(0, 98_000, 100_000)).toBe(98_000);
+  expect(history.advance(1000, 98_000, 100_000)).toBe(99_000);
+  expect(visiblePoints([{ t: 98_000, v: 10 }, { t: 100_000, v: 30 }], 99_000).at(-1)?.v).toBe(20);
+});
+
+it("catches a missed poll up within 500 ms with ease-out, no jump or rewind", () => {
+  const clock = new ChartTimeline();
+  clock.advance(0, 98_000, 100_000);
+  expect(clock.advance(2000, 98_000, 100_000)).toBe(100_000);
+  // The 102 s poll failed; the next snapshot includes 102 s and 104 s.
+  expect(clock.advance(4000, 98_000, 104_000)).toBe(100_000);
+  const frames = [0, 100, 250, 400, 500].map(dt => clock.advance(4000 + dt, 98_000, 104_000));
+  expect(frames).toEqual([100_000, 101_952, 103_500, 103_968, 104_000]);
+  const speeds = frames.slice(1).map((v, i) => (v - frames[i]) / [100, 150, 150, 100][i]);
+  expect(speeds.every((v, i) => v > 0 && (i === 0 || v < speeds[i - 1]))).toBe(true);
+  expect(clock.advance(6000, 98_000, 106_000)).toBe(104_000);
+  expect(clock.advance(7000, 98_000, 106_000)).toBe(105_000);
+});
+
+it("retargets catch-up without resetting its deadline, and honours reduced motion", () => {
+  const clock = new ChartTimeline();
+  clock.advance(0, 100_000, 100_000);
+  expect(clock.advance(4000, 98_000, 104_000)).toBe(100_000);
+  const middle = clock.advance(4250, 98_000, 104_000);
+  expect(clock.advance(4250, 98_000, 108_000)).toBe(middle);
+  expect(clock.advance(4500, 98_000, 108_000)).toBe(108_000);
+  expect(clock.advance(4516, 98_000, 106_000)).toBe(108_000);
+  expect(clock.advance(4400, 98_000, 108_000)).toBe(108_000);
+  expect(clock.advance(5000, 98_000, 112_000, false)).toBe(112_000);
+  expect(clock.advance(5000, 98_000, 112_000, true)).toBe(112_000);
 });
 
 it("finds the sample under a position, none over a gap, and names how long before the newest it is", () => {

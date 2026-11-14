@@ -141,12 +141,46 @@ private func status(cpu: Double = 23, total: UInt64 = 16 << 30, used: UInt64 = U
         #expect(chartCeiling(s, metric: .cpu) == 100 && chartCeiling(s, metric: .memory) == 1)
     }
 
-    @Test func rightEdgeSlidesAtThePaceOfTimeAndGrowsFromTheRight() {
-        // First sample: the edge is on it. Then it moves with time, never past the newest, never 2 intervals behind.
-        #expect(nextChartEnd(previous: nil, elapsedMs: 0, firstMs: 100_000, latestMs: 100_000) == 100_000)
-        #expect(nextChartEnd(previous: 100_000, elapsedMs: 16, firstMs: 90_000, latestMs: 102_000) == 100_016)
-        #expect(nextChartEnd(previous: 101_990, elapsedMs: 50, firstMs: 90_000, latestMs: 102_000) == 102_000)
-        #expect(nextChartEnd(previous: 90_000, elapsedMs: 1, firstMs: 90_000, latestMs: 110_000) == 106_000)
+    @Test func onTimeChartSamplesStayWithinTwoSeconds() {
+        var clock = ChartTimeline()
+        #expect(clock.advance(nowMs: 0, firstMs: 100_000, latestMs: 100_000) == 100_000)
+        for now in stride(from: 0, through: 10_000, by: 100) {
+            let latest = Int64(100_000 + now / 2000 * 2000)
+            let end = clock.advance(nowMs: Double(now), firstMs: 98_000, latestMs: latest)
+            #expect((0...2000).contains(Double(latest) - end))
+            if now > 0 && now % 2000 == 0 { #expect(end == Double(latest - 2000)) }
+        }
+        var history = ChartTimeline()
+        #expect(history.advance(nowMs: 0, firstMs: 98_000, latestMs: 100_000) == 98_000)
+        #expect(history.advance(nowMs: 1000, firstMs: 98_000, latestMs: 100_000) == 99_000)
+    }
+
+    @Test func missedPollCatchesUpWithin500msWithoutJumpOrRewind() {
+        var clock = ChartTimeline()
+        _ = clock.advance(nowMs: 0, firstMs: 98_000, latestMs: 100_000)
+        #expect(clock.advance(nowMs: 2000, firstMs: 98_000, latestMs: 100_000) == 100_000)
+        #expect(clock.advance(nowMs: 4000, firstMs: 98_000, latestMs: 104_000) == 100_000)
+        let times = [0.0, 100, 250, 400, 500]
+        let frames = times.map { clock.advance(nowMs: 4000 + $0, firstMs: 98_000, latestMs: 104_000) }
+        #expect(frames == [100_000, 101_952, 103_500, 103_968, 104_000])
+        let speeds = (1..<frames.count).map { (frames[$0] - frames[$0 - 1]) / (times[$0] - times[$0 - 1]) }
+        #expect(speeds.allSatisfy { $0 > 0 })
+        #expect(zip(speeds, speeds.dropFirst()).allSatisfy { $0 > $1 })
+        #expect(clock.advance(nowMs: 6000, firstMs: 98_000, latestMs: 106_000) == 104_000)
+        #expect(clock.advance(nowMs: 7000, firstMs: 98_000, latestMs: 106_000) == 105_000)
+    }
+
+    @Test func chartCatchupRetargetsWithinItsOriginalDeadline() {
+        var clock = ChartTimeline()
+        _ = clock.advance(nowMs: 0, firstMs: 100_000, latestMs: 100_000)
+        #expect(clock.advance(nowMs: 4000, firstMs: 98_000, latestMs: 104_000) == 100_000)
+        let middle = clock.advance(nowMs: 4250, firstMs: 98_000, latestMs: 104_000)
+        #expect(clock.advance(nowMs: 4250, firstMs: 98_000, latestMs: 108_000) == middle)
+        #expect(clock.advance(nowMs: 4500, firstMs: 98_000, latestMs: 108_000) == 108_000)
+        #expect(clock.advance(nowMs: 4516, firstMs: 98_000, latestMs: 106_000) == 108_000)
+        #expect(clock.advance(nowMs: 4400, firstMs: 98_000, latestMs: 108_000) == 108_000)
+        #expect(clock.advance(nowMs: 5000, firstMs: 98_000, latestMs: 112_000, moving: false) == 112_000)
+        #expect(clock.advance(nowMs: 5000, firstMs: 98_000, latestMs: 112_000) == 112_000)
     }
 
     @Test func nearestSampleAndSummary() {

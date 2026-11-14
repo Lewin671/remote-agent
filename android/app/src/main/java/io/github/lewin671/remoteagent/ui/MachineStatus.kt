@@ -104,7 +104,7 @@ import io.github.lewin671.remoteagent.core.footerParts
 import io.github.lewin671.remoteagent.core.listTitle
 import io.github.lewin671.remoteagent.core.machineRings
 import io.github.lewin671.remoteagent.core.memoryCard
-import io.github.lewin671.remoteagent.core.nextChartEnd
+import io.github.lewin671.remoteagent.core.ChartTimeline
 import io.github.lewin671.remoteagent.core.showDiskActions
 import io.github.lewin671.remoteagent.core.statusView
 import io.github.lewin671.remoteagent.core.usageRows
@@ -172,13 +172,14 @@ private fun RingKind.icon(): ImageVector = when (this) { RingKind.CPU -> Lucide.
 fun MachineRingsCard(rings: List<RingSpec>, online: Boolean, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val p = pal
     val open = uiText(UiMessages.machineStatusTitle())
-    Row(
+    StatusAdaptiveRow(
         modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).alpha(if (online) 1f else .55f).clip(Radii.R22).background(p.gbg)
             .then(if (online) Modifier.clickable(role = Role.Button, onClickLabel = open, onClick = onOpen) else Modifier)
             .padding(start = 6.dp, end = 6.dp, top = 16.dp, bottom = 14.dp),
-    ) {
+        horizontalGap = 0.dp, verticalGap = 16.dp,
+    ) { item ->
         for (r in rings) Column(
-            Modifier.weight(1f).clearAndSetSemantics { contentDescription = r.spoken },
+            item.clearAndSetSemantics { contentDescription = r.spoken },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
@@ -186,6 +187,23 @@ fun MachineRingsCard(rings: List<RingSpec>, online: Boolean, onOpen: () -> Unit,
             Spacer(Modifier.height(6.dp))
             Text(r.value, style = ts(17.sp, FontWeight.SemiBold).digits(), color = p.toneInk(r.tone, p.ink), maxLines = 1, textAlign = TextAlign.Center)
             Text(r.name, style = T.s12, color = p.ink2, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+/** Match DarkCard's accessibility threshold; each item gets a full row at large text. */
+@Composable
+private fun StatusAdaptiveRow(
+    modifier: Modifier,
+    horizontalGap: androidx.compose.ui.unit.Dp = 12.dp,
+    verticalGap: androidx.compose.ui.unit.Dp = 12.dp,
+    content: @Composable (Modifier) -> Unit,
+) {
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(verticalGap)) { content(Modifier.fillMaxWidth()) }
+    } else {
+        Row(modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(horizontalGap)) {
+            content(Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
@@ -615,21 +633,22 @@ fun MachineStatusContent(
     val points = remember(s, main, feed.curveSinceMs) { if (s == null) emptyList() else chartPoints(s, main, feed.curveSinceMs) }
     val first = points.firstOrNull()?.timeMs ?: 0L
     val latest = points.lastOrNull()?.timeMs ?: 0L
+    val clock = remember { ChartTimeline() }
     var end by remember { mutableDoubleStateOf(Double.NaN) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(first, latest, Motion.reduced, frozen, stale) {
         if (latest == 0L) return@LaunchedEffect
-        if (frozen || Motion.reduced || stale) { end = latest.toDouble(); return@LaunchedEffect }
+        if (frozen || Motion.reduced || stale) { end = clock.advance(System.nanoTime() / 1e6, first, latest, false); return@LaunchedEffect }
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            var prev = withFrameNanos { it }
             while (true) {
                 val t = withFrameNanos { it }
-                end = nextChartEnd(end.takeIf { !it.isNaN() }, (t - prev) / 1e6, first, latest)
-                prev = t
+                end = clock.advance(t / 1e6, first, latest)
             }
         }
     }
-    val endMs = if (end.isNaN()) latest.toDouble() else end
+    val endMs = if (end.isNaN()) {
+        if (frozen || Motion.reduced || stale) latest.toDouble() else maxOf(first, latest - 2_000).toDouble()
+    } else end
     var scrub by remember { mutableStateOf<ChartPoint?>(null) }
     // The adjust action of a screen reader walks the samples as dragging would.
     var stepIndex by remember { mutableStateOf(-1) }
@@ -667,8 +686,7 @@ fun MachineStatusContent(
                     StatusHeader(name, copy(UiMessages.machineStatusLoading()), false, p, idle = true)
                     val other = if (main == StatusMetric.CPU) StatusMetric.MEMORY else StatusMetric.CPU
                     HeroSkeleton(main, copy, Modifier.padding(top = 18.dp))
-                    Row(Modifier.padding(top = 12.dp).height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val tile = Modifier.weight(1f).fillMaxHeight()
+                    StatusAdaptiveRow(Modifier.padding(top = 12.dp)) { tile ->
                         TileSkeleton(if (other == StatusMetric.MEMORY) Lucide.Memory else Lucide.Cpu, copy(if (other == StatusMetric.MEMORY) UiMessages.machineStatusMemory() else UiMessages.machineStatusCpu()), tile)
                         TileSkeleton(Lucide.HardDrive, copy(UiMessages.machineStatusDisk()), tile)
                     }
@@ -692,8 +710,7 @@ fun MachineStatusContent(
                         else CpuTile(s, text, stale, Modifier, card = false) { pick(StatusMetric.CPU) }
                     }
                     SwapCard(main, true, swap, Modifier.padding(top = 18.dp)) { asHero -> if (asHero) hero(main) else tileOf(main) }
-                    Row(Modifier.padding(top = 12.dp).height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        val tile = Modifier.weight(1f).fillMaxHeight()
+                    StatusAdaptiveRow(Modifier.padding(top = 12.dp)) { tile ->
                         SwapCard(other, false, swap, tile) { asHero -> if (asHero) hero(other) else tileOf(other) }
                         DiskTile(s, text, stale, tile, onOpenStorage)
                     }

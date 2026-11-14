@@ -270,25 +270,14 @@ struct UsageMeter: Layout {
 
 // MARK: The chart (A3 ①, A4)
 
-/// Where "now" is at the chart's right edge, frame by frame (`nextChartEnd`): a reference value the timeline advances.
+/// The view's clock delegates all timing, including poll-gap catch-up, to the tested core model.
 @MainActor
 final class ChartClock {
     private(set) var end: Double = 0
-    private var last: Date?
-    private var primed = false
+    private var timeline = ChartTimeline()
 
     func advance(now: Date, first: Int64, latest: Int64, moving: Bool) -> Double {
-        guard latest > 0 else { return 0 }
-        if !moving {
-            end = Double(latest)
-            last = nil
-            primed = true
-            return end
-        }
-        let elapsed = last.map { now.timeIntervalSince($0) * 1000 } ?? 0
-        last = now
-        end = nextChartEnd(previous: primed ? end : nil, elapsedMs: elapsed, firstMs: first, latestMs: latest)
-        primed = true
+        end = timeline.advance(nowMs: now.timeIntervalSinceReferenceDate * 1000, firstMs: first, latestMs: latest, moving: moving)
         return end
     }
 }

@@ -2033,6 +2033,7 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .ms-page, .ms-rings { --round: ui-rounded, "SF Pro Rounded", var(--sans); --ms-ring: 400ms; --ms-breathe: 2.4s; --ms-bar: 300ms; }
 .ms-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* The entrance: three rings in a card at the top of the computer's page. */
+.ms-rings-wrap, .ms-cards { container-type: inline-size; }
 .ms-rings { display: flex; width: calc(100% - 32px); margin: 4px 16px 12px; padding: 16px 6px 14px; background: var(--gbg); border-radius: 22px; text-align: center; font-family: var(--round); }
 .ms-rings.off { opacity: .55; }
 .ms-ring { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; }
@@ -2042,15 +2043,15 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .ms-ring .t { stroke: var(--fill2); }
 .ms-ring .p { stroke: var(--ink); stroke-linecap: round; transition: stroke-dasharray var(--ms-ring) ease, stroke var(--ms-ring) ease; }
 .ms-ring .g { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--ink2); }
-.ms-ring b { font-size: 17px; font-weight: var(--w6); font-variant-numeric: tabular-nums; }
-.ms-ring small { font-size: 12px; color: var(--ink2); margin-top: -6px; font-family: var(--sans); }
+.ms-ring b { font-size: 1.0625rem; font-weight: var(--w6); font-variant-numeric: tabular-nums; }
+.ms-ring small { font-size: 0.75rem; color: var(--ink2); margin-top: -6px; font-family: var(--sans); }
 .ms-ring.warn .p { stroke: var(--orange); }
 .ms-ring.warn :is(b, .g) { color: var(--orange); }
 .ms-ring.crit .p { stroke: var(--red); }
 .ms-ring.crit :is(b, .g) { color: var(--red); }
 /* The page: a title, a live line, then cards on the page colour. */
-.ms-title { margin: 0; padding: 6px 24px 0; font-size: 34px; line-height: 1.14; font-weight: var(--w7); letter-spacing: -.03em; overflow-wrap: anywhere; }
-.ms-live { display: flex; align-items: center; gap: 6px; padding: 2px 24px 0; font-size: 15px; color: var(--ink2); }
+.ms-title { margin: 0; padding: 6px 24px 0; font-size: 2.125rem; line-height: 1.14; font-weight: var(--w7); letter-spacing: -.03em; overflow-wrap: anywhere; }
+.ms-live { display: flex; align-items: center; gap: 6px; padding: 2px 24px 0; font-size: 0.9375rem; color: var(--ink2); }
 .ms-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent); animation: ms-breathe var(--ms-breathe) ease-in-out infinite; }
 .ms-dot.off { animation: none; background: var(--orange); box-shadow: none; }
 .ms-dot.idle { animation: none; background: var(--ink3); box-shadow: none; }
@@ -2061,21 +2062,21 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .ms-hero { padding: 16px 0 0; margin-top: 18px; overflow: hidden; }
 .ms-hero:not(:has(.ms-plot)) { padding-bottom: 16px; }
 .ms-top { padding: 0 18px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
-.ms-kick { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: var(--w6); color: var(--ink2); }
+.ms-kick { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; font-weight: var(--w6); color: var(--ink2); }
 .ms-kick .ic { font-size: 14px; flex: none; }
-.ms-xl { font-family: var(--round); font-size: 52px; font-weight: var(--w6); letter-spacing: -1.2px; line-height: 1.05; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ms-xl sup { font-size: 24px; font-weight: var(--w6); vertical-align: top; position: relative; top: 7px; margin-left: 1px; letter-spacing: 0; }
-.ms-xl small { font-size: 17px; font-weight: var(--w6); color: var(--ink2); margin-left: 4px; letter-spacing: 0; }
-.ms-aside { text-align: right; font-size: 13px; color: var(--ink2); line-height: 1.5; padding-bottom: 8px; }
-.ms-aside b { font-family: var(--round); font-weight: var(--w6); color: var(--ink); font-size: 15px; }
+.ms-xl { font-family: var(--round); font-size: 3.25rem; font-weight: var(--w6); letter-spacing: -1.2px; line-height: 1.05; margin-top: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ms-xl sup { font-size: 1.5rem; font-weight: var(--w6); vertical-align: top; position: relative; top: 7px; margin-left: 1px; letter-spacing: 0; }
+.ms-xl small { font-size: 1.0625rem; font-weight: var(--w6); color: var(--ink2); margin-left: 4px; letter-spacing: 0; }
+.ms-aside { text-align: right; font-size: 0.8125rem; color: var(--ink2); line-height: 1.5; padding-bottom: 8px; }
+.ms-aside b { font-family: var(--round); font-weight: var(--w6); color: var(--ink); font-size: 0.9375rem; }
 .ms-plot { position: relative; height: 104px; margin-top: 6px; color: var(--ink); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .ms-plot svg { display: block; }
 .ms-plot:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: 12px; }
-.ms-pr { display: flex; justify-content: flex-end; padding: 6px 18px 0; font-size: 13px; }
+.ms-pr { display: flex; justify-content: flex-end; padding: 6px 18px 0; font-size: 0.8125rem; }
 .ms-pr b { font-weight: var(--w6); }
 .ms-pr b.warn, .ms-say b.warn { color: var(--orange); }
 .ms-pr b.crit, .ms-say b.crit { color: var(--red); }
-.ms-axis { display: flex; justify-content: space-between; gap: 8px; padding: 6px 18px 13px; font-size: 11px; color: var(--ink3); }
+.ms-axis { display: flex; justify-content: space-between; gap: 8px; padding: 6px 18px 13px; font-size: 0.6875rem; color: var(--ink3); }
 /* The digits of a number roll where they change. */
 .ms-digit { display: inline-block; overflow: hidden; height: 1lh; vertical-align: top; }
 .ms-digit > span { display: flex; flex-direction: column; }
@@ -2086,11 +2087,11 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 @keyframes ms-down { from { transform: translateY(-50%); } to { transform: translateY(0); } }
 .ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .ms-tile { padding: 14px 16px 15px; min-height: 168px; display: flex; flex-direction: column; text-align: left; align-items: stretch; width: 100%; min-width: 0; color: var(--ink); }
-.ms-lg { display: block; font-family: var(--round); font-size: 34px; font-weight: var(--w6); letter-spacing: -.6px; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.ms-lg small { font-size: 17px; font-weight: var(--w6); color: var(--ink2); margin-left: 3px; letter-spacing: 0; white-space: nowrap; }
+.ms-lg { display: block; font-family: var(--round); font-size: 2.125rem; font-weight: var(--w6); letter-spacing: -.6px; margin-top: 6px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.ms-lg small { font-size: 1.0625rem; font-weight: var(--w6); color: var(--ink2); margin-left: 3px; letter-spacing: 0; white-space: nowrap; }
 .ms-lg.warn, .ms-lg.warn small { color: var(--orange); }
 .ms-lg.crit, .ms-lg.crit small { color: var(--red); }
-.ms-say { display: block; font-size: 13px; color: var(--ink2); line-height: 1.4; margin-top: auto; padding-top: 10px; }
+.ms-say { display: block; font-size: 0.8125rem; color: var(--ink2); line-height: 1.4; margin-top: auto; padding-top: 10px; }
 .ms-clause { white-space: nowrap; }
 .ms-say b { color: var(--ink); font-weight: var(--w6); }
 .ms-uv { display: block; position: relative; height: 6px; border-radius: 3px; margin-top: 14px; background: linear-gradient(90deg, var(--green) 0%, var(--green) 45%, var(--yellow) 70%, var(--red) 100%); }
@@ -2105,25 +2106,25 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .ms-rows .row { min-height: 48px; padding-left: 16px; }
 .ms-rows .row + .row::before { left: 16px; }
 .ms-sec { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 26px 8px 10px; }
-.ms-sec h2 { margin: 0; font-size: 20px; font-weight: var(--w7); letter-spacing: -.3px; }
-.ms-sec .link { font-size: 15px; }
+.ms-sec h2 { margin: 0; font-size: 1.25rem; font-weight: var(--w7); letter-spacing: -.3px; }
+.ms-sec .link { font-size: 0.9375rem; }
 .ms-list { padding: 2px 0; }
-.ms-none { padding: 16px; font-size: 15px; color: var(--ink2); text-align: center; }
+.ms-none { padding: 16px; font-size: 0.9375rem; color: var(--ink2); text-align: center; }
 .ms-u { display: flex; gap: 12px; padding: 11px 16px 0; width: 100%; text-align: left; position: relative; }
 .ms-ic { width: 30px; height: 30px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; margin-top: 1px; }
 .ms-ic .amark { width: 16px; height: 16px; }
 .ms-ic.pr { background: var(--fill2); color: var(--ink2); }
 .ms-rb { flex: 1; min-width: 0; padding-bottom: 12px; border-bottom: .5px solid var(--sep); }
 .ms-u:last-child .ms-rb { border: 0; }
-.ms-rt { display: flex; justify-content: space-between; gap: 10px; font-size: 16px; }
+.ms-rt { display: flex; justify-content: space-between; gap: 10px; font-size: 1rem; }
 .ms-rt > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ms-rt > span:last-child { font-family: var(--round); font-weight: var(--w5); flex: none; font-variant-numeric: tabular-nums; }
 .ms-rm { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
 /* The bar is as long as the row's figure is against the first's, with the other figure right after it. */
 .ms-bar { display: block; flex: 0 1 auto; height: 5px; border-radius: 2.5px; background: var(--ink3); min-width: 5px; transition: width var(--ms-bar) ease; }
 .ms-u.top .ms-bar { background: var(--ink); }
-.ms-rm small { flex: 0 0 auto; max-width: 75%; min-width: 0; font-size: 12.5px; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ms-foot { text-align: center; font-size: 13px; color: var(--ink3); margin-top: 22px; }
+.ms-rm small { flex: 0 0 auto; max-width: 75%; min-width: 0; font-size: 0.78125rem; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-foot { text-align: center; font-size: 0.8125rem; color: var(--ink3); margin-top: 22px; }
 /* The numbers kept from before: all of them ink3, no curve. */
 .ms-page.is-stale :is(.ms-kick, .ms-xl, .ms-xl small, .ms-xl sup, .ms-aside, .ms-aside b, .ms-lg, .ms-lg small, .ms-say, .ms-say b, .ms-rt, .ms-rm small) { color: var(--ink3) !important; }
 .ms-page.is-stale .ms-stor :is(.a, .b) { background: var(--faint); }
@@ -2145,3 +2146,12 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .ms-fail-card .bs button + button { border-left: .5px solid var(--sep); font-weight: var(--w6); }
 /* A wide window's cards are a step less round (design-system §4). */
 .desk :is(.ms-card, .ms-rings, .ms-alert, .ms-fail-card) { border-radius: 14px; }
+
+/* A rem threshold responds to enlarged text inside both mobile and desktop columns. */
+@container (max-width: 22rem) {
+  .ms-rings { flex-direction: column; gap: 16px; }
+  .ms-grid { grid-template-columns: 1fr; }
+  .ms-top { flex-wrap: wrap; }
+  .ms-xl { white-space: normal; }
+  .ms-xl small { display: inline-block; }
+}

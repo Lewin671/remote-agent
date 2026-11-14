@@ -46,8 +46,8 @@ export function MachineRings({ remote, id, go }: { remote: Remote; id: string; g
   const rings = status.last && online ? ringsOf(status.last) : undefined;
   const faces: Ring["kind"][] = ["cpu", "memory", "disk"];
   return (
-    <button className={"ms-rings" + (online ? "" : " off")} disabled={!online} onClick={() => go("machine-status/" + encodeURIComponent(id))}>
+    <div className="ms-rings-wrap"><button className={"ms-rings" + (online ? "" : " off")} disabled={!online} onClick={() => go("machine-status/" + encodeURIComponent(id))}>
       {faces.map((kind) => <RingFace key={kind} kind={kind} ring={rings?.find((r) => r.kind === kind)} />)}
-    </button>
+    </button></div>
   );
 }

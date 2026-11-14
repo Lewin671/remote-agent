@@ -172,6 +172,22 @@ class MachineStatusShotsTest {
         assertEquals(listOf("status:m"), navigated)
     }
 
+    @Test fun ringsStackAtAccessibilityThreshold() {
+        entrance(MachineFixtures.status())
+        for (fontScale in listOf(1f, 1.49f, 1.5f, 2f)) {
+            ui.runOnIdle { scale = fontScale }
+            val bounds = listOf("CPU，", "内存，", "磁盘可用，").map {
+                ui.onNodeWithContentDescription(it, substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            }
+            if (fontScale >= 1.5f) {
+                assertTrue("fontScale=$fontScale bounds=$bounds", bounds.zipWithNext().all { (a, b) -> b.top >= a.bottom && b.left == a.left })
+            } else {
+                assertTrue("fontScale=$fontScale bounds=$bounds", bounds.zipWithNext().all { (a, b) -> b.left >= a.right && b.top == a.top })
+            }
+            if (fontScale == 1f || fontScale == 2f) save("rulings-rings-$fontScale", trim = true)
+        }
+    }
+
     @Test fun entranceDiskTight() {
         entrance(MachineFixtures.status(busy = true).setMemoryUsedBytes(12_640_000_000).setMemoryPressure(ResourcePressure.RESOURCE_PRESSURE_NORMAL))
         ui.onNodeWithContentDescription("磁盘可用，1.2 GB", substring = true).assertExists()
@@ -221,6 +237,30 @@ class MachineStatusShotsTest {
         // The disk is fine: no disk lines.
         ui.onAllNodesWithText("让 Agent 帮我清理").assertCountEquals(0)
         save("04-status-normal", trim = true)
+    }
+
+    @Test fun smallCardsStackAtAccessibilityThresholdAndAfterSwap() {
+        page(MachineFixtures.live(MachineFixtures.status().build()))
+        for (fontScale in listOf(1f, 1.49f, 1.5f, 2f)) {
+            ui.runOnIdle { scale = fontScale }
+            for (metric in listOf(StatusMetric.CPU, StatusMetric.MEMORY)) {
+                ui.runOnIdle { main = metric }
+                val other = if (metric == StatusMetric.CPU) "内存，" else "CPU，"
+                val card = ui.onNodeWithContentDescription(other, substring = true).fetchSemanticsNode().boundsInRoot
+                val disk = ui.onNodeWithContentDescription("磁盘，", substring = true).fetchSemanticsNode().boundsInRoot
+                if (fontScale >= 1.5f) assertTrue(disk.top >= card.bottom && disk.left == card.left)
+                else assertTrue(disk.left >= card.right && disk.top == card.top)
+                if (metric == StatusMetric.CPU && (fontScale == 1f || fontScale == 2f)) save("rulings-status-$fontScale", trim = true)
+            }
+        }
+    }
+
+    @Test fun loadingCardsAlsoStackAtAccessibilitySize() {
+        scale = 2f
+        page(MachineFeed(MachinePollState.LOADING, null, 0, 0))
+        val memory = ui.onNodeWithText("内存").fetchSemanticsNode().boundsInRoot
+        val disk = ui.onNodeWithText("磁盘").fetchSemanticsNode().boundsInRoot
+        assertTrue(disk.top > memory.bottom && disk.left == memory.left)
     }
 
     @Test fun pageDiskTightMemoryHighOnProcesses() {

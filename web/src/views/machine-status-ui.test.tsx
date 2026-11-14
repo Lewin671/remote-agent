@@ -189,6 +189,20 @@ describe("电脑状态", () => {
     expect(rankTitles().slice(0, 3)).toEqual(["java", "xcodebuild", "Google Chrome"]);
   });
 
+  it("keeps pressure words in the memory hero when only the level is available", async () => {
+    const r = demo("ms-full");
+    const status = await r.getMachineStatus("mac");
+    status.memoryPressurePosition = undefined;
+    vi.spyOn(r, "getMachineStatus").mockResolvedValue(status);
+    mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
+    await ready();
+    expect(host.querySelector(".ms-tile .ms-say b")?.textContent).toBe("压力正常");
+    expect(host.querySelector(".ms-uv i")).toBeNull();
+    await click(host.querySelectorAll<HTMLElement>(".ms-tile")[0]);
+    expect(host.querySelector(".ms-hero .ms-pr")?.textContent).toBe("压力正常");
+    expect(host.querySelector(".ms-hero .ms-uv i")).toBeNull();
+  });
+
   it("remembers the main chart for this visit only", async () => {
     const r = demo("ms-full");
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
@@ -589,7 +603,7 @@ describe("the emergency reserve in the attachment storage", () => {
     expect(row.textContent).toBe("应急预留256.0 MiB磁盘写满时自动释放，让你还能开会话处理。");
     expect(row.querySelector("button")).toBeNull();
     // The rings are the top of the page.
-    expect(host.querySelector(".body")!.firstElementChild!.classList.contains("ms-rings")).toBe(true);
+    expect(host.querySelector(".body")!.firstElementChild!.querySelector(".ms-rings")).not.toBeNull();
   });
 
   it("is not listed for a computer that cannot report, nor once the daemon has released it", async () => {

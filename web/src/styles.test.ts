@@ -56,3 +56,13 @@ it("keeps the draft remove target at the corner, inside its cell and before its 
   expect(x + hitWidth).toBeLessThanOrEqual(width + px(".att-tray", "gap"));
   expect(rule(".att-tray")).toContain("overflow-x: auto");
 });
+
+// happy-dom does not lay out container queries. Assert the production CSS
+// contract here; Playwright checks actual bounds at normal/enlarged root text.
+it("stacks machine rings and cards when their container cannot fit large text", () => {
+  expect(css).toMatch(/\.ms-rings-wrap, \.ms-cards\s*\{\s*container-type: inline-size;/);
+  const adaptive = css.slice(css.indexOf("@container (max-width: 22rem)"));
+  expect(adaptive).toMatch(/\.ms-rings\s*\{[^}]*flex-direction: column/);
+  expect(adaptive).toMatch(/\.ms-grid\s*\{[^}]*grid-template-columns: 1fr;/);
+  expect(css).toMatch(/\.ms-ring b\s*\{[^}]*font-size: 1.0625rem;/);
+});

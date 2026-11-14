@@ -303,13 +303,49 @@ public func chartValue(at t: Int64, in points: [ChartPoint], gapMs: Int64 = char
     return nil
 }
 
-/// Where the window's right edge ("now") is on the next frame: it moves at the pace of time, never past
-/// the newest sample and never more than two sampling intervals behind it. The first sample puts the
-/// edge on itself, so the curve grows from the right.
-public func nextChartEnd(previous: Double?, elapsedMs: Double, firstMs: Int64, latestMs: Int64, intervalMs: Int64 = sampleIntervalMs) -> Double {
-    let low = max(Double(firstMs), Double(latestMs) - 2 * Double(intervalMs))
-    let start = previous ?? max(Double(firstMs), Double(latestMs - intervalMs))
-    return min(max(start + elapsedMs, low), Double(latestMs))
+/// On-time samples trail by at most 2 s. After a poll gap, catch up in 500 ms
+/// with cubic ease-out. Retargeting keeps the deadline; old snapshots never rewind.
+public struct ChartTimeline {
+    private var end: Double?
+    private var latest: Int64 = 0
+    private var lastNow: Double = 0
+    private struct Catchup {
+        let from: Double, target: Double, start: Double, deadline: Double
+    }
+    private var catchup: Catchup?
+
+    public init() {}
+
+    public mutating func advance(nowMs: Double, firstMs: Int64, latestMs: Int64, moving: Bool = true) -> Double {
+        guard latestMs > 0 else { return 0 }
+        guard let previous = end, moving else {
+            let value = moving ? max(Double(firstMs), Double(latestMs - sampleIntervalMs)) : Double(latestMs)
+            end = value
+            latest = latestMs
+            lastNow = nowMs
+            catchup = nil
+            return value
+        }
+        let now = max(lastNow, nowMs)
+        let value: Double
+        if let c = catchup {
+            let p = min(1, (now - c.start) / (c.deadline - c.start))
+            let remaining = 1 - p
+            value = c.from + (c.target - c.from) * (1 - remaining * remaining * remaining)
+            if p == 1 { catchup = nil }
+        } else {
+            value = min(Double(latest), previous + now - lastNow)
+        }
+        lastNow = now
+        if latestMs > latest {
+            latest = latestMs
+            if catchup != nil || Double(latestMs) - value > Double(sampleIntervalMs) {
+                catchup = Catchup(from: value, target: Double(latestMs), start: now, deadline: catchup?.deadline ?? now + 500)
+            }
+        }
+        end = value
+        return value
+    }
 }
 
 /// The index of the sample nearest to `t`, or nil without data.
