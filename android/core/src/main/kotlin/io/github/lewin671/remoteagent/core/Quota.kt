@@ -139,7 +139,7 @@ fun quotaGroups(m: MachineView, now: Long, copy: MessageResolver): List<QuotaGro
             out += QuotaGroup(agent, agentName(agent, copy = copy), QuotaStatus.UNSUPPORTED, emptyList(), null, "", false)
             continue
         }
-        for (q in entries) out += group(agent, q, entries.size > 1, m.online, now, copy = copy)
+        for (q in entries) out += group(agent, q, entries.size > 1, m.pathState.reachable, now, copy = copy)
     }
     return out
 }

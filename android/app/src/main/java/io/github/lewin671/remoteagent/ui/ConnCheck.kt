@@ -55,7 +55,7 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
     val remote = LocalRemote.current
     ConnCheckSheet(
         state, onClose, remote.account.server,
-        { remote.state.value.machines.values.filter { it.online }.map { it.id } },
+        { remote.state.value.machines.values.filter { it.pathState.reachable }.map { it.id } },
         { remote.pingServer() }, { remote.pingMachine(it) },
         { remote.reconnectNow() },
     )
@@ -90,25 +90,27 @@ internal fun ConnCheckSheet(
             }
         }
     }
-    val list = state.machines.values.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.MachineView> { it.online }.thenBy { machineLabel(state, it.id) })
+    val list = state.machines.values.sortedWith(compareByDescending<io.github.lewin671.remoteagent.core.MachineView> { it.pathState.reachable }.thenBy { machineLabel(state, it.id) })
     LaunchedEffect(run) {
         busy = true
         val online = onlineMachines()
         server = Ping.Wait
         machines.clear()
         online.forEach { machines[it] = Ping.Wait }
+        var reached = true
         try {
             server = Ping.Ok(median(List(3) { pingServer() }))
-            coroutineScope {
-                online.map { id ->
-                    async { machines[id] = runCatching { Ping.Ok(pingMachine(id)) }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else Ping.Fail(displayError(it).ifEmpty { copy(UiMessages.connectionNoResponse()) }) } }
-                }.awaitAll()
-            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
+            reached = false
             server = Ping.Fail(displayError(e).ifEmpty { copy(UiMessages.connectionNoResponse()) })
-            online.forEach { machines[it] = Ping.Skip }
+            online.filter { !state.peer(it).canProbe(false) }.forEach { machines[it] = Ping.Skip }
+        }
+        coroutineScope {
+            online.filter { state.peer(it).canProbe(reached) }.map { id ->
+                async { machines[id] = runCatching { Ping.Ok(pingMachine(id)) }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else Ping.Fail(displayError(it).ifEmpty { copy(UiMessages.connectionNoResponse()) }) } }
+            }.awaitAll()
         }
         busy = false
     }
@@ -148,7 +150,7 @@ internal fun ConnCheckSheet(
             line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
-                line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, copy(UiMessages.commonAndroidOffline()), p.ink2) }
+                line(machineLabel(state, m.id)) { if (m.pathState.reachable) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, copy(UiMessages.commonAndroidOffline()), p.ink2) }
             }
         }
         if (state.conn != ConnState.ONLINE) {

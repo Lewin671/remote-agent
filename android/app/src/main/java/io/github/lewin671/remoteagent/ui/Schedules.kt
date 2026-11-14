@@ -87,7 +87,7 @@ fun SchedulesScreen() {
     // In the shell (client-v58): the bottom tabs and 新定时 float over the page, and 新定时 is the only way to start one.
     ShellPage(
         Modifier.fillMaxSize(),
-        bottom = { ShellBottom(ShellTab.SCHEDULES, copy(UiMessages.homeNewSchedule()), Lucide.Plus, enabled = !state.unlinked && state.machines.isNotEmpty()) { nav.newTask("") } },
+        bottom = { ShellBottom(ShellTab.SCHEDULES, copy(UiMessages.homeNewSchedule()), Lucide.Plus, enabled = state.machines.keys.any { !state.peer(it).unlinked }) { nav.newTask("") } },
     ) {
         // No glass row on this page, so the title sits just under the status bar.
         LazyColumn(Modifier.fillMaxSize().readableColumn(), contentPadding = shellPadding(top = false)) {
@@ -258,7 +258,7 @@ internal fun ScheduleResultDot(color: Color = pal.blue, description: String? = n
 private fun ScheduleOffline(state: RemoteState, tasks: List<ScheduledTask>) {
     val copy = uiText()
     // The connection bar speaks for a lost relay; this names the computers that are away.
-    val away = tasks.map { it.machine }.distinct().filter { state.machines[it]?.online != true }
+    val away = tasks.map { it.machine }.distinct().filter { state.machines[it]?.pathState?.reachable != true }
     if (state.conn == ConnState.ONLINE && away.isNotEmpty())
         Notice(away.joinToString("、") { machineLabel(state, it) } + " " + copy(SCHEDULE_OFFLINE))
 }

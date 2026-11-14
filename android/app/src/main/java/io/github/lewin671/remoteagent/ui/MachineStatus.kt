@@ -743,9 +743,9 @@ fun MachineStatusScreen(id: String) {
     val state by remote.state.collectAsState()
     val copy = uiText()
     val m = state.machines[id]
-    val supported = m?.meta?.capabilities?.machineStatus == true
+    val supported = m?.pathState?.capabilities?.machineStatus == true
     val fetch = LocalStatusFetch.current
-    val feed = rememberMachineFeed(id, 2_000, supported, m?.online == true) { fetch(remote, id) }
+    val feed = rememberMachineFeed(id, 2_000, supported, m?.pathState?.reachable == true) { fetch(remote, id) }
     var main by remember(id) { mutableStateOf(StatusMetric.CPU) }
     var sessions by remember(id) { mutableStateOf(true) }
     val now = now(5_000)

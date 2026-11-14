@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.transport.DispatchState
+
 import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 
 import io.github.lewin671.remoteagent.proto.*

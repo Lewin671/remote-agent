@@ -545,8 +545,8 @@ fun NewSessionBox(
     var focused by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(focus) { if (focus && !focused) { focused = true; runCatching { fr.requestFocus() } } }
     val machine = config?.machineId
-    val online = state.conn == ConnState.ONLINE
-    val machineOnline = machine != null && online && state.machines[machine]?.online == true
+    val online = state.peer(machine).ready
+    val machineOnline = machine != null && online && state.machines[machine]?.pathState?.reachable == true
     // The mode a new task gets is the machine's default; it cannot start when that is auto and the model has none.
     val defaults = config?.let { defaultModeOf(state.machines[it.machineId], it.agent) } ?: DefaultMode(null, false, false)
     // Keep the edit with its destination, outside the popup: every user dismissal saves it.
@@ -680,8 +680,8 @@ fun NewSessionBox(
             // Why nothing can start yet; a page that failed says so, with the tap that tries again.
             if (!settled && (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty())) EarlierTail(state, Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             else if (!settled) Text(uiText(UiMessages.newSessionReadingPrevious()), style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
-            if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
-            else if (c != null && state.machines[c.machineId]?.online != true) Notice(uiText(UiMessages.newSessionAndroidMachineOffline(name = machineLabel(state, c.machineId))), tone = NoticeTone.WARN)
+            if (c != null && state.machines[c.machineId]?.pathState?.reachable != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
+            else if (c != null && state.machines[c.machineId]?.pathState?.reachable != true) Notice(uiText(UiMessages.newSessionAndroidMachineOffline(name = machineLabel(state, c.machineId))), tone = NoticeTone.WARN)
             if (c != null && missing != null) Notice(uiText(UiMessages.newSessionCliFallback(agent = agentName(c.agent, copy = copy), missing = agentName(missing, copy = copy), name = machineLabel(state, c.machineId))), action = uiText(UiMessages.newSessionChangeMachine()), onAction = { afterKeyboard(onMachine) })
             if (c != null && issue == AutoIssue.MODEL) Notice(uiText(UiMessages.newSessionAndroidModelNoAuto(name = machineLabel(state, c.machineId))),
                 tone = NoticeTone.WARN, action = uiText(UiMessages.newSessionChangeModel()), onAction = { picker.toggle("model") })
@@ -834,7 +834,7 @@ fun machineSubtitle(installed: List<Agent>, separator: String, missing: Agent? =
 @Composable
 private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoose: (NewConfig) -> Unit) {
     val p = pal
-    val others = projectMachines(state, c.cwd).filter { it != c.machineId && state.machines[it]?.online == true }
+    val others = projectMachines(state, c.cwd).filter { it != c.machineId && state.machines[it]?.pathState?.reachable == true }
     Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg).padding(horizontal = 12.dp, vertical = 9.dp)) {
         Text(uiText(UiMessages.newSessionAndroidOfflineDraft(name = machineLabel(state, c.machineId))), style = T.s13, color = p.orangeInk)
         Text(uiText(UiMessages.newSessionAndroidDraftPreserved()), style = T.s12, color = p.ink2)
@@ -970,7 +970,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
                 FieldLabel(uiText(UiMessages.newSessionAndroidNewSession()))
                 val machineRow: @Composable () -> Unit =
-                    { SetRow(uiText(UiMessages.commonMachine()), machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.online == true) p.green else p.faint) }
+                    { SetRow(uiText(UiMessages.commonMachine()), machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.pathState?.reachable == true) p.green else p.faint) }
                 // A new task's machine is there only to choose among several.
                 val machineRows = if (scheduling || manyMachines) listOf(machineRow) else emptyList()
                 val rows = listOf<@Composable () -> Unit>(
@@ -1023,7 +1023,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 SheetHead(uiText(UiMessages.commonMachine()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() }, onBack = back)
                 SheetList { used.forEachIndexed { i, id ->
                     val m = state.machines[id]
-                    val online = m?.online == true
+                    val online = m?.pathState?.reachable == true
                     val agents = machineAgents(m)
                     val has = agent in agents
                     val fallback = if (has) null else switchMachine(c, id, agents).agent
@@ -1195,7 +1195,7 @@ fun DirPickerBody(state: RemoteState, title: String = uiText(UiMessages.projects
 fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (machine: String, path: String) -> Unit) {
     val p = pal
     val remote = LocalRemote.current
-    var machine by rememberSaveable { mutableStateOf(state.machines.values.firstOrNull { it.online }?.id.orEmpty()) }
+    var machine by rememberSaveable { mutableStateOf(state.machines.values.firstOrNull { it.pathState.reachable }?.id.orEmpty()) }
     var path by remember { mutableStateOf("") }
     var dirs by remember { mutableStateOf<ListDirectoriesResponse?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -1216,9 +1216,9 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
     }
     Column(modifier) {
         if (state.machines.size > 1) {
-            val listed = state.machines.values.sortedWith(compareByDescending<MachineView> { it.online }.thenBy { machineLabel(state, it.id) })
+            val listed = state.machines.values.sortedWith(compareByDescending<MachineView> { it.pathState.reachable }.thenBy { machineLabel(state, it.id) })
             MachineSegmented(
-                listed.map { machineLabel(state, it.id) }, listed.map { it.online }, listed.indexOfFirst { it.id == machine },
+                listed.map { machineLabel(state, it.id) }, listed.map { it.pathState.reachable }, listed.indexOfFirst { it.id == machine },
                 { i -> val m = listed[i]; if (machine != m.id) { machine = m.id; path = ""; dirs = null } },
                 Modifier.padding(bottom = 10.dp),
             )

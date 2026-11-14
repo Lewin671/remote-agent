@@ -151,7 +151,7 @@ fun HomeScreen() {
     val anyProject = remember(state) { projects(state, copy = copy).isNotEmpty() }
     FetchEarlier(state, page = list.wantPage, all = list.wantAll)
     // A new session needs the server and a computer to run on.
-    val canStart = !state.unlinked && state.machines.isNotEmpty()
+    val canStart = state.machines.keys.any { !state.peer(it).unlinked }
     ShellPage(
         Modifier.fillMaxSize(),
         top = {

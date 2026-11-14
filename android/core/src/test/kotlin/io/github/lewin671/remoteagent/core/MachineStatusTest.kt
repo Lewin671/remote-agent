@@ -32,7 +32,7 @@ class MachineStatusTest {
   val c=b.toBuilder().setCpuPercent(12.01).setMemoryBytes(150_000_001).build()
   for(memory in listOf(false,true)) assertEquals("b",stableUsage(listOf("a","b"),listOf(a,c),memory)[0].id)
   val m=MachineMeta.newBuilder().setCapabilities(MachineCapabilities.newBuilder().setMachineStatus(true)).setDiskStatus(DiskStatus.newBuilder().setAvailableBytes(9_000_000_000)).addProjects(ProjectSummary.newBuilder().setPath("old").setLatestCreatedMs(1)).addProjects(ProjectSummary.newBuilder().setPath("new").setLatestEndedMs(2)).build()
-  assertNull(machineDiskReminder(false,m));assertNotNull(machineDiskReminder(true,m));assertEquals("new",recentMachineProject(m));assertTrue(isDiskFull(CommandException("disk_full","test")));assertFalse(isDiskFull(Exception("no space left on device")))
+  assertNull(machineDiskReminder(false,m,true));assertNotNull(machineDiskReminder(true,m,true));assertEquals("new",recentMachineProject(m));assertTrue(isDiskFull(CommandException("disk_full","test")));assertFalse(isDiskFull(Exception("no space left on device")))
   assertTrue(Command.newBuilder().setGetMachineStatus(GetMachineStatusRequest.getDefaultInstance()).build().isReadOnlyCommand())
  }
 }

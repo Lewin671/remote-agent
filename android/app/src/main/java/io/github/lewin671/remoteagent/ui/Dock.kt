@@ -320,7 +320,7 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
             openLabel = uiText(approvalHead(a)),
             body = { ApprovalContent(a) },
         ) {
-            ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, t))
+            ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, s.machineId, a, t))
         }
     }
 }

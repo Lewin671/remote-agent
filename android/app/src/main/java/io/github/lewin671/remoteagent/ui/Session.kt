@@ -294,7 +294,7 @@ private fun SessionTopBar(
     val act = rememberAction()
     // The title is kept on the computer: an ended session can be renamed too, but only while the
     // computer is reachable.
-    val canRename = state.conn == ConnState.ONLINE && machineOf(state, s)?.online == true
+    val canRename = state.peer(s.machineId).available
     val live = status != Status.EXITED && canRename
     // A fork starts at once, in the menu: its row shows the progress, and a failure under it. It is
     // kept
@@ -597,7 +597,7 @@ internal fun ChatPane(
     // Capture UI-owned outbox state before handing the immutable inputs to the worker.
     val texts = outbox.associate { it.requestId to it.text }
     val sharedFilesSupported = io.github.lewin671.remoteagent.core.sharedFilesSupported(state.machines[s.machineId])
-    val machineOnline = state.machines[s.machineId]?.online == true
+    val machineOnline = state.machines[s.machineId]?.pathState?.reachable == true
     val sessionExited = status == Status.EXITED
     LaunchedEffect(events, d, projection, texts, copy, sharedFilesSupported) {
         projection.update(
@@ -855,7 +855,7 @@ private fun PendingBubble(
     var expanded by remember(pending.id) { mutableStateOf(false) }
     val cancel = Cancels.states[pending.id]
     val resume = rememberAction()
-    val online = state.conn == ConnState.ONLINE
+    val online = state.peer(state.sessions[sid]?.machineId).ready
     val label = pendingInputLabel(pending, starting, cancel, resume.running, resume.error.isNotEmpty(), copy = copy)
     val origin =
         chatSource(
@@ -1055,14 +1055,14 @@ private fun Bottom(
             if (act.running) copy(UiMessages.sessionResuming()) else copy(UiMessages.sessionEnded()),
             buildString {
                 append(exitReason(s.info?.statusDetail.orEmpty(), d.scheduledClosed, d.idleClosed, copy = copy))
-                if (state.unlinked) append(copy(UiMessages.sessionConnectResume()))
-                else if (m?.online == true)
+                if (state.peer(s.machineId).unlinked) append(copy(UiMessages.sessionConnectResume()))
+                else if (m?.pathState?.reachable == true)
                     append(copy(UiMessages.sessionResumeNote(name = (machineLabel(state, s.machineId)).toString())))
                 else append(copy(UiMessages.sessionOfflineResume(name = (machineLabel(state, s.machineId)).toString())))
             },
             running = act.running,
         ) {
-            if (m?.online == true && !state.unlinked && !act.running)
+            if (m?.pathState?.reachable == true && !state.peer(s.machineId).unlinked && !act.running)
                 PillButton(
                     if (act.error.isNotEmpty()) copy(UiMessages.sessionTryAgain()) else copy(UiMessages.sessionResume()),
                     {
@@ -1078,7 +1078,7 @@ private fun Bottom(
                     },
                     Modifier.fillMaxWidth().padding(top = 14.dp),
                     if (act.error.isNotEmpty()) ButtonKind.SECONDARY else ButtonKind.INK,
-                    enabled = state.conn == ConnState.ONLINE,
+                    enabled = state.peer(s.machineId).ready,
                 )
             if (act.error.isNotEmpty())
                 Text(
@@ -1188,7 +1188,7 @@ internal fun Composer(
     val interruptAction = rememberAction()
     val view = androidx.compose.ui.platform.LocalView.current
     var text by Outbox.draft(s.id)
-    val online = state.conn == ConnState.ONLINE
+    val online = state.peer(s.machineId).ready
     val running = status == Status.RUNNING || d.running
     val images = ImageDrafts.forSession(s.id)
     val keeping = Outbox.keeping(s.id)
@@ -1252,7 +1252,7 @@ internal fun Composer(
         onSend = { send() },
         onPlus = pick,
         onFile = rememberDocumentPicker(images, remote, s.machineId),
-        plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine) && online && machine?.online == true),
+        plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine) && online && machine?.pathState?.reachable == true),
         onQueue = if (running) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt =
             if (running)

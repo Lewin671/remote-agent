@@ -6,7 +6,7 @@ import kotlinx.coroutines.channels.Channel
 
 fun isDiskFull(error: Throwable): Boolean = error is CommandException && error.code == "disk_full"
 fun recentMachineProject(meta: MachineMeta): String? = meta.projectsList.maxByOrNull { maxOf(it.latestCreatedMs, it.latestEndedMs) }?.path
-fun machineDiskReminder(online: Boolean, meta: MachineMeta): DiskStatus? = meta.diskStatus.takeIf { online && meta.capabilities.machineStatus && meta.hasDiskStatus() && it.availableBytes < 10_000_000_000L }
+fun machineDiskReminder(online: Boolean, meta: MachineMeta, supported: Boolean): DiskStatus? = meta.diskStatus.takeIf { online && supported && meta.hasDiskStatus() && it.availableBytes < 10_000_000_000L }
 fun stableUsage(previous: List<String>, rows: List<ResourceUsage>, memory: Boolean = false): List<ResourceUsage> {
     val byId = rows.associateBy { it.id }.toMutableMap()
     val ordered = previous.mapNotNull { byId.remove(it) }.toMutableList()

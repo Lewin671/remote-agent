@@ -98,9 +98,9 @@ fun DevicesScreen() {
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(5.dp),
                                         ) {
-                                            if (m.online) StatusMark(MarkKind.ONLINE)
+                                            if (m.pathState.reachable) StatusMark(MarkKind.ONLINE)
                                             ArrowText(
-                                                (if (m.online) copy(UiMessages.securityAndroidOnline())
+                                                (if (m.pathState.reachable) copy(UiMessages.securityAndroidOnline())
                                                 else
                                                     whenText(m.lastSeenMs, t, copy = copy).ifEmpty {
                                                         copy(UiMessages.securityAndroidOffline())

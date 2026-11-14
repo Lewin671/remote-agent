@@ -308,9 +308,9 @@ fun ApprovalButtons(
 }
 
 /** Whether an approval can be decided now: not out of reach of the server, and not past its deadline. */
-fun approvalLocked(state: RemoteState, a: ApprovalRequested, now: Long): Boolean {
+fun approvalLocked(state: RemoteState, machineId: String, a: ApprovalRequested, now: Long): Boolean {
     val deadline = if (a.hasDeadline()) a.deadline.seconds * 1000 else 0
-    return state.unlinked || (deadline > 0 && now >= deadline)
+    return state.peer(machineId).unlinked || (deadline > 0 && now >= deadline)
 }
 
 /**
@@ -373,7 +373,7 @@ fun ApprovalCard(
         if (approvalTruncated(a)) Text(uiText(approvalTruncatedMessage), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
         if (!denying && a.description.isNotEmpty())
             Text(approvalDisplay(a.description), style = T.s15, color = CardColors.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp))
-        ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, now), cut = cut) { full = true }
+        ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, s.machineId, a, now), cut = cut) { full = true }
     }
 }
 

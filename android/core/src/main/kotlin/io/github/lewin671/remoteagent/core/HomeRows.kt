@@ -124,8 +124,8 @@ private fun groupId(g: EndedGroup): String = when (g) {
 fun accountEmpty(state: RemoteState, copy: MessageResolver): AccountEmpty {
     if (state.machines.isEmpty()) return AccountEmpty.NoMachines
     // Out of reach of the server every computer reads as offline, which says nothing about them.
-    if (state.unlinked) return AccountEmpty.Unlinked
-    val first = state.machines.values.filter { it.online }.minByOrNull { it.id } ?: return AccountEmpty.NoneOnline
+    if (state.unlinked && state.machines.keys.all { state.peer(it).unlinked }) return AccountEmpty.Unlinked
+    val first = state.machines.values.filter { it.pathState.reachable }.minByOrNull { it.id } ?: return AccountEmpty.NoneOnline
     return AccountEmpty.Ready(machineName(first, first.id, copy = copy))
 }
 
@@ -317,14 +317,14 @@ fun approvalCardText(
     val deadline = if (approval.hasDeadline()) approval.deadline.seconds * 1000 else 0
     val left = deadline - now
     val time = when {
-        state.unlinked -> UiMessages.listStateUnlinked().messageText()
+        state.peer(s.machineId).unlinked -> UiMessages.listStateUnlinked().messageText()
         deadline > 0 -> (if (timeoutNote && left > 0) UiMessages.approvalAndroidRemainingTimeout(minutesLeft(deadline, now).toInt()) else UiMessages.homeIosApprovalRemaining(minutesLeft(deadline, now).toInt())).messageText()
         else -> "".messageText()
     }
     return ApprovalCardText(
         kind = approvalHead(approval),
         time = time,
-        hot = !state.unlinked && deadline > 0 && left < 60_000,
+        hot = !state.peer(s.machineId).unlinked && deadline > 0 && left < 60_000,
         title = listTitle(s, zone),
         // The computer is named only where the account has more than one (design-system §6 终端卡).
         place = listOfNotNull(listProjectName(projectKey(s)), listMachineName(state.machines[s.machineId], s.machineId).takeIf { state.machines.size > 1 }).joinMessages(" · "),

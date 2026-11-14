@@ -592,7 +592,7 @@ fun ApprovalPage(sid: String, aid: String) {
                 return@DarkCard
             }
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) { ApprovalContent(a) }
-            ApprovalButtons(state, s, a, decision, denying, { denying = it }, approvalLocked(state, a, t))
+            ApprovalButtons(state, s, a, decision, denying, { denying = it }, approvalLocked(state, s.machineId, a, t))
         }
     }
 }

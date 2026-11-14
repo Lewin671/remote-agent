@@ -392,7 +392,7 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
     val p = pal
     Column(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R28)
-            .then(if (m.online) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R28))
+            .then(if (m.pathState.reachable) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R28))
             .clickable(onClick = onClick).padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -400,13 +400,13 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
             Arrow(p.ink3, T.s17)
         }
         Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
+            StatusMark(if (m.pathState.reachable) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
             Text(
-                if (m.online) copy(UiMessages.settingsAndroidOnline()) else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t, copy = copy).let { if (it.isEmpty()) copy(UiMessages.settingsOffline()) else copy(UiMessages.settingsOnline((it).toString())) },
+                if (m.pathState.reachable) copy(UiMessages.settingsAndroidOnline()) else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t, copy = copy).let { if (it.isEmpty()) copy(UiMessages.settingsOffline()) else copy(UiMessages.settingsOnline((it).toString())) },
                 style = T.s13, color = p.ink2, maxLines = 1,
             )
         }
-        if (m.online) for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, t, copy = copy)) {
+        if (m.pathState.reachable) for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, t, copy = copy)) {
             val row = g.rows.filter { it.percent != null }.maxByOrNull { it.percent!! } ?: continue
             val left = (100 - row.percent!!).coerceIn(0.0, 100.0)
             val low = left <= 20.0
@@ -530,8 +530,8 @@ fun DeviceScreen(
     val save = rememberAction()
     val storageAt = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     var attempt by remember { mutableStateOf(0) }
-    LaunchedEffect(id, member, m?.online, attempt) {
-        if (!member || m?.online != true) return@LaunchedEffect
+    LaunchedEffect(id, member, m?.pathState?.reachable, attempt) {
+        if (!member || m?.pathState?.reachable != true) return@LaunchedEffect
         try {
             val reply = readSettings(remote, id)
             settings = reply.settings
@@ -573,18 +573,18 @@ fun DeviceScreen(
         }
         Column(Modifier.verticalScrollFaded()) {
             // 电脑状态 (ui-spec A2): the card at the top of the page, only for a computer that has it.
-            if (member && m.meta?.capabilities?.machineStatus == true) {
+            if (member && m.pathState.capabilities?.machineStatus == true) {
                 val fetch = LocalStatusFetch.current
-                val feed = rememberMachineFeed(id, 10_000, true, m.online) { fetch(remote, id) }
+                val feed = rememberMachineFeed(id, 10_000, true, m.pathState.reachable) { fetch(remote, id) }
                 val text = StatusText(copy, LocalMessageLocale.current)
-                MachineRingsCard(machineRings(feed.last, m.online, text), m.online, onOpen = { nav.machineStatus(id) })
+                MachineRingsCard(machineRings(feed.last, m.pathState.reachable, text), m.pathState.reachable, onOpen = { nav.machineStatus(id) })
             }
             if (!member)
                 Notice(
                     copy(UiMessages.settingsAndroidRemovedRetainedSessionArchive()),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
-            else if (!m.online)
+            else if (!m.pathState.reachable)
                 Notice(
                     copy(UiMessages.settingsAndroidOfflineLastOnlineValue1((whenText(m.lastSeenMs, copy = copy)).toString())),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
@@ -671,7 +671,7 @@ fun DeviceScreen(
             }
             val s = settings
             when {
-                !m.online ->
+                !m.pathState.reachable ->
                     Hint(
                         copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession((machineLabel(state, id)).toString())),
                         Modifier.padding(bottom = 12.dp),
@@ -777,7 +777,7 @@ fun DeviceScreen(
                         MachineImageStorage(
                             s,
                             imageStorage,
-                            m.online && !save.running,
+                            m.pathState.reachable && !save.running,
                             onChange = { next, clean -> update(next, clean) },
                         )
                     }
@@ -1132,7 +1132,7 @@ fun QuotaScreen(id: String) {
     val groups = m?.let { io.github.lewin671.remoteagent.core.quotaGroups(it, t, copy = copy) }.orEmpty()
     PageScaffold(
         copy(UiMessages.settingsAccountQuota()),
-        subtitle = m?.let { machineLabel(state, id) + " · " + if (it.online) copy(UiMessages.settingsAndroidOnlineB90866()) else copy(UiMessages.settingsOffline()) },
+        subtitle = m?.let { machineLabel(state, id) + " · " + if (it.pathState.reachable) copy(UiMessages.settingsAndroidOnlineB90866()) else copy(UiMessages.settingsOffline()) },
         readable = true,
     ) {
         if (m == null) {
@@ -1140,7 +1140,7 @@ fun QuotaScreen(id: String) {
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
-            if (!m.online)
+            if (!m.pathState.reachable)
                 Text(
                     copy(UiMessages.settingsComputerOfflineShowingTheLastReading()),
                     style = T.s13,

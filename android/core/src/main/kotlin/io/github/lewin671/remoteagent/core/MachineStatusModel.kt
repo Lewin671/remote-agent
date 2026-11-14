@@ -385,7 +385,7 @@ data class DiskReminder(val machineId: String, val critical: Boolean, val availa
 fun diskReminders(state: RemoteState, text: StatusText, nameOf: (String) -> String): List<DiskReminder> =
     state.machines.values.mapNotNull { m ->
         val meta = m.meta ?: return@mapNotNull null
-        val d = machineDiskReminder(m.online, meta) ?: return@mapNotNull null
+        val d = machineDiskReminder(m.pathState.reachable, meta, m.pathState.capabilities?.machineStatus == true) ?: return@mapNotNull null
         val critical = d.availableBytes < 2_000_000_000L
         val size = text.copy(UiMessages.machineStatusSizeGb(text.gbNumber(d.availableBytes)))
         val name = nameOf(m.id)

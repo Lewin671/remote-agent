@@ -1,4 +1,4 @@
-package io.github.lewin671.remoteagent.core
+package io.github.lewin671.remoteagent.core.transport
 
 /** Shared evidence for one immutable authorization, including preparing copies. */
 internal class DispatchState(prior: Boolean) {

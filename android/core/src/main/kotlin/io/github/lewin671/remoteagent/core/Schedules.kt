@@ -141,7 +141,7 @@ data class ScheduleTaskKey(val machine: String, val task: String)
 fun scheduleRunAllowed(t: ScheduledTask) = t.active == null && t.json["manual_request"] !is JsonObject && taskGroup(t) !in setOf(TaskGroup.ATTENTION, TaskGroup.ENDED)
 fun scheduleDefinitionAllowed(t: ScheduledTask) = t.active == null
 fun scheduleSupported(m: MachineView?) = capabilities(m)?.scheduledTasks == true && protocolMismatch(m) == null
-fun scheduleWritable(s: RemoteState, machine: String) = s.conn == ConnState.ONLINE && s.machines[machine]?.online == true && scheduleSupported(s.machines[machine])
+fun scheduleWritable(s: RemoteState, machine: String) = s.peer(machine).available && scheduleSupported(s.machines[machine])
 val stoppedScheduleRuns = setOf("failed", "uncertain", "interrupted", "skipped", "cancelled")
 fun scheduleReason(reason: String, short: Boolean = false, copy: MessageResolver): String = when (reason) {
     "relay_session_limit" -> copy(UiMessages.scheduleTheRelaySSessionLimitHasBeenReached())

@@ -93,7 +93,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
 
     fun connect() {
         history.close()
-        if (remote.state.value.conn != io.github.lewin671.remoteagent.core.ConnState.ONLINE) { close(); return }
+        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
         job?.cancel()
         conn?.close()
         conn = null

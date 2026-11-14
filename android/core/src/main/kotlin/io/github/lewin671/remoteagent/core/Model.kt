@@ -294,14 +294,14 @@ fun exited(s: SessionView): Boolean = s.info?.status == SessionStatus.SESSION_ST
  */
 fun shownStatus(state: RemoteState, s: SessionView): Status {
     val st = statusOf(s, state.machines[s.machineId])
-    return if (state.unlinked && st != Status.EXITED && st != Status.LOADING) Status.UNLINKED
+    return if (state.peer(s.machineId).unlinked && st != Status.EXITED && st != Status.LOADING) Status.UNLINKED
     else st
 }
 
 fun statusOf(s: SessionView, machine: MachineView?): Status {
     val i = s.info ?: return Status.LOADING
     if (i.status == SessionStatus.SESSION_STATUS_EXITED) return Status.EXITED
-    if (machine != null && !machine.online) return Status.OFFLINE
+    if (machine != null && !machine.pathState.reachable) return Status.OFFLINE
     if (i.pendingApprovals > 0) return Status.APPROVAL
     if (i.pendingQuestions > 0) return Status.QUESTION
     if (i.planOpen) return Status.PLAN
@@ -1586,14 +1586,14 @@ fun Event.originOrNull(): io.github.lewin671.remoteagent.proto.Origin? =
 
 /** What the machine says it offers; null until its metadata is read. */
 fun capabilities(m: MachineView?): io.github.lewin671.remoteagent.proto.MachineCapabilities? =
-    m?.meta?.takeIf { it.hasCapabilities() }?.capabilities
+    m?.pathState?.capabilities
 
 /**
  * Why no command goes to [m]: it speaks another protocol version than this app (PROTOCOL_VERSION),
  * said by which side to update; null when they match or the machine's metadata is not read yet.
  */
 fun protocolMismatch(m: MachineView?): MessageText? {
-    val theirs = m?.meta?.protocolVersion ?: return null
+    val theirs = m?.pathState?.protocolVersion ?: return null
     return when {
         theirs < PROTOCOL_VERSION -> localized { copy -> copy(UiMessages.errorsRemoteAgentOnIsOutOfDateUpdateIt(listMachineName(m).resolve(copy))) }
         theirs > PROTOCOL_VERSION -> UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry().messageText()

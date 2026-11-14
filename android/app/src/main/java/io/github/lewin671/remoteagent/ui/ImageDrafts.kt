@@ -173,7 +173,7 @@ fun uploadBlocked(m: MachineView?, online: Boolean, name: String, copy: (io.gith
         caps == null -> copy(UiMessages.attachmentComputerUnread(name = name))
         // The daemon's folder has spaces in its path, which the CLIs do not take.
         !caps.imageUpload -> copy(UiMessages.attachmentPathSpaces(name = name))
-        !m.online || !online -> copy(UiMessages.attachmentComputerOffline(name = name))
+        !m.pathState.reachable || !online -> copy(UiMessages.attachmentComputerOffline(name = name))
         else -> null
     }
 }

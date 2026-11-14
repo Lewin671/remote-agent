@@ -5,6 +5,15 @@
 // suspend, like the page's event loop.
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.transport.Link as DeviceLink
+import io.github.lewin671.remoteagent.core.transport.RelayPath
+import io.github.lewin671.remoteagent.core.transport.PeerState
+import io.github.lewin671.remoteagent.core.transport.FrameStream
+import io.github.lewin671.remoteagent.core.transport.FrameListener
+
+
+import io.github.lewin671.remoteagent.core.transport.DispatchState
+
 import com.connectrpc.Code
 import com.connectrpc.ConnectException
 import io.github.lewin671.remoteagent.proto.Agent
@@ -14,7 +23,6 @@ import io.github.lewin671.remoteagent.proto.CommandResult
 import io.github.lewin671.remoteagent.proto.DeleteMachineRecordsRequest
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Event
-import io.github.lewin671.remoteagent.proto.ForwardRequest
 import io.github.lewin671.remoteagent.proto.GetEventsRequest
 import io.github.lewin671.remoteagent.proto.GetPairingRequest
 import io.github.lewin671.remoteagent.proto.Header
@@ -71,12 +79,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
 import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import okio.ByteString
-import okio.ByteString.Companion.toByteString
 
 enum class ConnState {
     CONNECTING,
@@ -102,7 +105,11 @@ data class MachineView(
     val lastSeenMs: Long,
     val meta: MachineMeta? = null,
     val metaRev: Long = 0,
-)
+    /** Runtime Link projection; never persisted or accepted from the server. */
+    val linkState: PeerState? = null,
+) {
+    val pathState: PeerState get() = linkState ?: RelayPath.discovery(this)
+}
 
 data class SessionView(
     val id: String,
@@ -205,6 +212,11 @@ data class RemoteState(
     /** Last connection failure, separate from errors reported by ordinary requests. */
     val connError: MessageText = "".messageText(),
 ) {
+    fun peer(machineId: String?): PeerState {
+        val machine = machines[machineId]
+        return machine?.linkState ?: RelayPath.discovery(machine, conn == ConnState.ONLINE, !removed, unlinked)
+    }
+
     /** Display metadata never determines authority; the ID comes from the verified head. */
     val authorityName: MessageText
         get() = localized { copy -> clientName(devices[authorityDeviceId], authorityDeviceId, devices.values, copy = copy) }
@@ -346,7 +358,7 @@ interface TermListener {
 
 class TermConn
 internal constructor(
-    private val ws: WebSocket,
+    private val ws: FrameStream,
     private val sendFrame: (TerminalFrame) -> Unit,
     private val closeLocal: () -> Unit,
 ) {
@@ -356,7 +368,7 @@ internal constructor(
 
     fun close() {
         closeLocal()
-        ws.close(1000, null)
+        ws.close()
     }
 }
 
@@ -404,6 +416,13 @@ class Remote(
 ) {
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
+    @Volatile private var relayObservation = RemoteState()
+    internal val deviceLink = DeviceLink(RelayPath(
+        api = api,
+        sockets = { socketFactory ?: streamHttp },
+        observe = { id -> relayObservation.let { RelayPath.discovery(it.machines[id], it.conn == ConnState.ONLINE, !it.removed, it.unlinked) } },
+    ))
+    fun peer(machineId: String?) = state.value.peer(machineId)
     val security =
         DeviceSecurityClient(
             securityStorage ?: MissingDeviceSecurityStorage,
@@ -512,7 +531,7 @@ class Remote(
     // changes networks, is noticed and replaced. Requests share its pool.
     private val streamHttp =
         http.newBuilder().pingInterval(STREAM_PING_SECONDS, TimeUnit.SECONDS).build()
-    private var ws: WebSocket? = null
+    private var ws: FrameStream? = null
     private var retry = 1000L
     private var running = false
     private var removed = false
@@ -665,6 +684,7 @@ class Remote(
 
     /** Ends this Remote for good. */
     fun close() {
+        deviceLink.closeStreams()
         security.close()
         cache?.close()
         stop()
@@ -681,7 +701,6 @@ class Remote(
     }
 
     private fun publish() {
-        updateLivePollers()
         if (conn == ConnState.ONLINE) offlineSince = 0
         else if (offlineSince == 0L) offlineSince = clock()
         if (conn == ConnState.ONLINE || !running) {
@@ -704,7 +723,7 @@ class Remote(
                 !waited -> Link.WAITING
                 else -> Link.NO_SERVER
             }
-        _state.value =
+        val observed =
             RemoteState(
                 machines.toMap(),
                 sessions.toMap(),
@@ -732,6 +751,10 @@ class Remote(
                 connStartedAtMs = connStartedAtMs,
                 connError = connError,
             )
+        relayObservation = observed
+        val peers = deviceLink.snapshot(observed.machines.keys)
+        _state.value = observed.copy(machines = observed.machines.mapValues { (id, machine) -> machine.copy(linkState = peers[id]) })
+        updateLivePollers()
     }
 
     /**
@@ -755,7 +778,7 @@ class Remote(
                         generation++
                         reconnect?.cancel()
                         reconnect = null
-                        ws?.close(1000, null)
+                        ws?.close()
                         ws = null
                         conn = ConnState.OFFLINE
                         clearConnProgress()
@@ -874,49 +897,48 @@ class Remote(
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
         val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
         val socket =
-            (socketFactory ?: streamHttp).newWebSocket(
-                Request.Builder().url(url).build(),
-                object : WebSocketListener() {
-                    override fun onOpen(webSocket: WebSocket, response: Response) {
-                        webSocket.send(hello.toByteString())
+            deviceLink.router.path.openStream(
+                url,
+                object : FrameListener() {
+                    override fun onOpen(stream: FrameStream) {
+                        stream.send(hello)
                     }
 
-                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    override fun onFrame(stream: FrameStream, bytes: ByteArray) {
                         if (bytes.size > STREAM_FRAME_BYTES) {
-                            webSocket.cancel()
+                            stream.cancel()
                             frames.cancel()
                             return
                         }
                         if (queuedBytes.addAndGet(bytes.size.toLong()) > STREAM_QUEUE_BYTES) {
                             queuedBytes.addAndGet(-bytes.size.toLong())
-                            webSocket.cancel()
+                            stream.cancel()
                             frames.cancel()
                             return
                         }
-                        if (frames.trySend(bytes.toByteArray()).isFailure) {
+                        if (frames.trySend(bytes).isFailure) {
                             queuedBytes.addAndGet(-bytes.size.toLong())
-                            webSocket.cancel()
+                            stream.cancel()
                             frames.cancel()
                         }
                     }
 
-                    override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    override fun onClosing(stream: FrameStream, code: Int) {
                         if (code == POLICY_VIOLATION) refused.set(true)
-                        webSocket.close(1000, null)
+                        stream.close()
                         frames.close()
                     }
 
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    override fun onEnd(stream: FrameStream, code: Int) {
                         if (code == POLICY_VIOLATION) refused.set(true)
                         frames.close()
                     }
 
                     override fun onFailure(
-                        webSocket: WebSocket,
-                        t: Throwable,
-                        response: Response?,
+                        stream: FrameStream,
+                        error: Throwable,
                     ) {
-                        broken.set(t)
+                        broken.set(error)
                         frames.close()
                     }
                 },
@@ -2571,6 +2593,7 @@ class Remote(
         live: Map<String, io.github.lewin671.remoteagent.proto.LiveSnapshot> = emptyMap(),
     ) {
         check(!running) { "showForTest on a started Remote" }
+        relayObservation = state
         _state.value = state
         for ((key, response) in modelLists) models["${key.first}/${key.second.number}"] =
             CompletableDeferred(response)
@@ -2623,8 +2646,7 @@ class Remote(
 
     private fun canPollLive(sid: String): Boolean {
         val session = sessions[sid] ?: return false
-        return running && conn == ConnState.ONLINE &&
-            machines[session.machineId]?.online == true && !exited(session) &&
+        return running && deviceLink.status(session.machineId).available && !exited(session) &&
             session.listedEndedMs == 0L && session.info?.hasEndedAt() != true &&
             (eventFlows[sid]?.subscriptionCount?.value ?: 0) > 0
     }
@@ -3332,17 +3354,7 @@ class Remote(
     }
 
     suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult =
-        run {
-            val call = p.dispatch.open(retryOfUnknown)
-            try { withContext(dispatcher) { forwardOnWorker(p, call) } }
-            catch (error: Exception) {
-                val command = error as? CommandException
-                if (call.uncertain && command?.unknown != true && !(command?.fromDaemon == true && command.outcome != Outcome.NOT_SENT)) {
-                    throw CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, outcome=Outcome.UNKNOWN)
-                }
-                throw error
-            } finally { call.close() }
-        }
+        deviceLink.call(p, retryOfUnknown, dispatcher) { call -> forwardOnWorker(p, call) }
 
     private suspend fun forwardOnWorker(p: PreparedCommand, call: DispatchState.Call): CommandResult {
         val prior = call.uncertain
@@ -3352,7 +3364,7 @@ class Remote(
         protocolMismatch(state.value.machines[p.machineId])?.let {
             throw CommandException("failed_precondition", it, outcome=if(prior) Outcome.UNKNOWN else Outcome.NOT_SENT)
         }
-        if (!call.uncertain && state.value.machines[p.machineId]?.online == false)
+        if (!call.uncertain && peer(p.machineId).knownOffline)
             throw CommandException(CommandException.UNAVAILABLE, UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText(), failureKind = CommandFailureKind.COMPUTER_OFFLINE)
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
@@ -3372,9 +3384,8 @@ class Remote(
         try {
             while (true) {
                 var sentToken: String? = null
-                val attemptId = newRequestId()
-                val delivery = call.delivery()
-                var relayEpoch = ""
+                val delivery = deviceLink.delivery(call)
+                val attemptId = delivery.attemptId
                 try {
                     checkFileCapability(p, call.uncertain)
                     sentToken = currentToken()
@@ -3383,20 +3394,7 @@ class Remote(
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
                     val binding = security.commandIdentity(authorized)
-                    relayEpoch = api.relayEpoch()
-                    delivery.dispatch()
-                    val res =
-                        api.client
-                            .forward(
-                                ForwardRequest.newBuilder()
-                                    .setMachineId(p.machineId)
-                                    .setCommand(authorized)
-                                    .setAttemptId(attemptId)
-                                    .setRelayEpoch(relayEpoch)
-                                    .build(),
-                                Api.headers(sentToken) + ("Remote-Agent-Attempt" to listOf(attemptId)),
-                            )
-                            .value()
+                    val res = delivery.send(p.machineId, authorized, sentToken)
                     val (_, msg) =
                         try {
                             openSecureMessage(
@@ -3431,13 +3429,9 @@ class Remote(
                     }
                     return msg
                 } catch (ce: ConnectException) {
-                    val notForwarded = ce.details.mapNotNull { detail ->
-                        if (!detail.type.endsWith("remoteagent.v1.NotForwarded")) null
-                        else runCatching { io.github.lewin671.remoteagent.proto.NotForwarded.parseFrom(detail.payload.toByteArray()) }.getOrNull()
-                    }.firstOrNull { it.attemptId == attemptId && it.relayEpoch == relayEpoch && relayEpoch.isNotEmpty() }
+                    val notForwarded = delivery.refusal(ce)
                     val unsent = notForwarded != null
                     if (unsent) {
-                        delivery.notForwarded()
                         if (!call.uncertain && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (notForwarded?.reason=="machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else if (ce.code==Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
                     }
                     val cause = ce.exception
@@ -3764,7 +3758,8 @@ class Remote(
         val queuedBytes = java.util.concurrent.atomic.AtomicLong(0)
         val terminalJob = SupervisorJob(scope.coroutineContext[Job])
         val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
-        val socket = java.util.concurrent.atomic.AtomicReference<WebSocket?>()
+        val socket = java.util.concurrent.atomic.AtomicReference<FrameStream?>()
+        lateinit var stream: DeviceLink.Stream
         fun cleanup(reason: MessageText? = null) {
             if (!closed.compareAndSet(false, true)) return
             incoming.cancel()
@@ -3772,8 +3767,9 @@ class Remote(
             terminalJob.cancel()
             socket.get()?.cancel()
             opened.completeExceptionally(MessageException(reason ?: UiMessages.terminalAndroidClosed().messageText()))
-            if (reason != null) listener.onClose(reason)
+            stream.end(reason)
         }
+        stream = deviceLink.openStream(stop = { cleanup() }, onClose = listener::onClose)
         terminalScope.launch {
             try {
                 for (raw in incoming) {
@@ -3804,23 +3800,23 @@ class Remote(
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
         try {
             val ws =
-                (socketFactory ?: streamHttp).newWebSocket(
-                    Request.Builder().url(url).build(),
-                    object : WebSocketListener() {
-                        override fun onOpen(webSocket: WebSocket, response: Response) {
+                deviceLink.router.path.openStream(
+                    url,
+                    object : FrameListener() {
+                        override fun onOpen(stream: FrameStream) {
                             val hello =
                                 TermHello.newBuilder()
                                     .setToken(tok)
                                     .setStreamId(streamId)
                                     .setMachineId(s.machineId)
                                     .build()
-                            webSocket.send(hello.toByteArray().toByteString())
+                            stream.send(hello.toByteArray())
                             opened.complete(Unit)
                         }
 
-                        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                        override fun onFrame(stream: FrameStream, bytes: ByteArray) {
                             if (closed.get()) return
-                            val raw = bytes.toByteArray()
+                            val raw = bytes
                             if (
                                 raw.size > 1 shl 20 ||
                                     queuedBytes.addAndGet(raw.size.toLong()) > 2L * 1024 * 1024 ||
@@ -3830,24 +3826,23 @@ class Remote(
                             }
                         }
 
-                        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                        override fun onClosing(stream: FrameStream, code: Int) {
                             if (code == POLICY_VIOLATION) rejectToken(tok)
-                            webSocket.close(1000, null)
+                            stream.close()
                             cleanup(UiMessages.errorsTerminalConnectionDropped().messageText())
                         }
 
-                        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                        override fun onEnd(stream: FrameStream, code: Int) {
                             if (code == POLICY_VIOLATION) rejectToken(tok)
                             cleanup(UiMessages.errorsTerminalConnectionDropped().messageText())
                         }
 
                         override fun onFailure(
-                            webSocket: WebSocket,
-                            t: Throwable,
-                            response: Response?,
-                        ) {
+                            stream: FrameStream,
+                            error: Throwable,
+                            ) {
                             opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
-                            cleanup(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(t, state.value).resolve(copy))) })
+                            cleanup(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, state.value).resolve(copy))) })
                         }
                     },
                 )
@@ -3886,7 +3881,7 @@ class Remote(
                                     .build(),
                                 frame,
                             )
-                        if (!closed.get()) ws.send(env.toByteArray().toByteString())
+                        if (!closed.get()) ws.send(env.toByteArray())
                     }
                 } catch (e: Exception) {
                     cleanup(errorText(e, state.value))

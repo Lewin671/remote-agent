@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.transport.DispatchState
+
 import java.io.File
 import kotlinx.serialization.json.*
 import org.junit.Assert.assertEquals

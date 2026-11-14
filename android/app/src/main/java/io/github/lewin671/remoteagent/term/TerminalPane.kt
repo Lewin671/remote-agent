@@ -186,11 +186,12 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val scope = rememberCoroutineScope()
     val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val online = remote.state.collectAsStateWithLifecycle().value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE
+    val transportState = remote.state.collectAsStateWithLifecycle().value
+    val online = transportState.peer(transportState.sessions[sessionId]?.machineId).ready
     DisposableEffect(term, owner, online) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_START -> if (online && remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect()
+                androidx.lifecycle.Lifecycle.Event.ON_START -> if (online && remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) term.connect()
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> term.close()
                 else -> {}
             }
@@ -388,7 +389,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                                 style = T.s15, color = CardColors.text.copy(alpha = .7f), modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                             )
                             var details by remember { mutableIntStateOf(0) }
-                            CardButton(copy(UiMessages.terminalReconnect()), { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
+                            CardButton(copy(UiMessages.terminalReconnect()), { if (remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
                             Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.Center) {
                                 Text(if (details % 2 == 1) copy(UiMessages.terminalAndroidHideDetails()) else copy(UiMessages.terminalViewDetails()), style = T.s13, color = CardColors.link)
                             }
