@@ -37,9 +37,10 @@ async function mount() {
   terminal.writes.mockClear(); terminal.resize.mockClear();
   const remote = DemoRemote.create(new URLSearchParams()); remote.start();
   let frame!: Parameters<Remote["openTerminal"]>[1];
+  let end!: Parameters<Remote["openTerminal"]>[2];
   const close = vi.fn(), send = vi.fn();
-  const open = vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => {
-    frame = receive; return { close, send } as never;
+  const open = vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive, onClose) => {
+    frame = receive; end = onClose; return { close, send } as never;
   });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
@@ -52,18 +53,19 @@ async function mount() {
       return { target: el, contentRect: { width, height }, borderBoxSize: [{ inlineSize: width, blockSize: height }] };
     }));
   };
-  return { remote, open, close, send, get frame() { return frame; }, hide: (value: boolean) => { hidden = value; }, resize: layout, layout };
+  return { remote, open, close, send, get frame() { return frame; }, get end() { return end; }, hide: (value: boolean) => { hidden = value; }, resize: layout, layout };
 }
-it("keeps the terminal through hiding and closes it with the main connection", async () => {
+it("keeps the healthy independent terminal through hiding and main reconnects", async () => {
   const { remote, open, close, frame, hide } = await mount();
   await act(async () => { hide(true); document.dispatchEvent(new Event("visibilitychange")); });
   expect(close).not.toHaveBeenCalled(); expect(open).toHaveBeenCalledTimes(1);
   await act(async () => { await frame({ kind: { case: "output", value: new Uint8Array([66]) } } as never); });
   expect(terminal.writes).toHaveBeenLastCalledWith(new Uint8Array([66]));
   await act(async () => { remote.conn = "offline"; remote.touch(); });
-  expect(close).toHaveBeenCalledTimes(1);
+  expect(close).not.toHaveBeenCalled();
   await act(async () => { remote.conn = "online"; remote.touch(); });
-  expect(open).toHaveBeenCalledTimes(2);
+  expect(open).toHaveBeenCalledTimes(1);
+  expect(terminal.writes).toHaveBeenLastCalledWith(new Uint8Array([66]));
 });
 it("does not resize tmux while hidden, including a refit already scheduled before hiding", async () => {
   const { send, hide, resize } = await mount();
@@ -81,7 +83,7 @@ it("does not resize tmux while hidden, including a refit already scheduled befor
 it("defers the first fit of a terminal reopened in the background until visible", async () => {
   const state = await mount();
   await act(async () => { state.hide(true); document.dispatchEvent(new Event("visibilitychange")); });
-  await act(async () => { state.remote.conn = "offline"; state.remote.touch(); });
+  await act(async () => { state.end("closed"); state.remote.conn = "offline"; state.remote.touch(); });
   await act(async () => { state.remote.conn = "online"; state.remote.touch(); });
   await act(async () => { await state.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   expect(state.send).not.toHaveBeenCalled();

@@ -138,6 +138,7 @@ func TestSessionSyncFailureDoesNotReconnectOrBlockHealthySession(t *testing.T) {
 			if err != nil || len(evs) != 2 || evs[1].GetAgentMessage().Text != "still syncing" {
 				t.Fatalf("healthy events: %v %v", evs, err)
 			}
+			e.online(t, true)
 			_, err = e.client.Do(context.Background(), s, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "healthy", Text: "command during failure"}}})
 			if err != nil || e.backend.sendCount() != 1 {
 				t.Fatalf("healthy command: %v", err)

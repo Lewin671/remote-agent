@@ -15,11 +15,15 @@ type relaySession struct {
 	dispatcher   *dispatcher
 	pathLifetime context.Context
 	path         transport.Path
+	activity     func()
 }
 
 func (c *relaySession) readLoop(ctx context.Context) error {
 	return readForwardCalls(ctx, c.dispatcher.link, func() (*pb.ServerFrame, error) {
 		b, err := c.path.Read(ctx)
+		if err == nil && c.activity != nil {
+			c.activity()
+		}
 		if err != nil {
 			return nil, err
 		}

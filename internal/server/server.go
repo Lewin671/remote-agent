@@ -158,7 +158,7 @@ func New(cfg Config) (*Server, error) {
 		cfg.ForwardTimeout = 30 * time.Second
 	}
 	if cfg.PingInterval == 0 {
-		cfg.PingInterval = 20 * time.Second
+		cfg.PingInterval = time.Second
 	}
 	if cfg.ImageRetention == 0 {
 		cfg.ImageRetention = defaultImageRetention

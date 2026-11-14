@@ -1,6 +1,15 @@
 package relay
 
-import "time"
+import (
+	"context"
+	"github.com/Lewin671/remote-agent/internal/transport"
+	"time"
+)
+
+// SetNetworkChangesForTest injects OS observations without changing host networking.
+func SetNetworkChangesForTest(r *Relay, changes <-chan uint64) {
+	r.networkChanges = func(context.Context) <-chan uint64 { return changes }
+}
 
 // SetSyncIntervalForTest changes only this relay's polling schedule. Set it
 // before Run; production relays retain New's five-second interval.
@@ -24,3 +33,8 @@ func SetSecurityIntervalForTest(r *Relay, interval time.Duration) { r.securityIn
 
 // SetRetryNowForTest shares a process publication clock across socket changes.
 func SetRetryNowForTest(r *Relay, now func() time.Time) { r.timing.now = now }
+
+func ReadyCountForTest(r *Relay) uint64 { return r.readyCount.Load() }
+
+// IsolateRecoveryBudgetForTest gives a simulated daemon process its own global budget.
+func IsolateRecoveryBudgetForTest(r *Relay) { r.recoveryBudget = &transport.Budget{} }

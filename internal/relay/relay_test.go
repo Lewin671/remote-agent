@@ -438,6 +438,7 @@ const testSyncInterval = 20 * time.Millisecond
 
 func newTestRelay(backend relay.Backend) *relay.Relay {
 	r := relay.New(backend)
+	relay.IsolateRecoveryBudgetForTest(r)
 	r.Retry = 50 * time.Millisecond
 	relay.SetSyncIntervalForTest(r, testSyncInterval)
 	return r
@@ -1316,6 +1317,7 @@ func TestRefusedNotificationSurvivesReconnect(t *testing.T) {
 	waitFor(t, "the refused notification to be retained", func() bool { return relay.HasOwedNotificationForTest(r, "sess1") })
 	// The stream drops before the next pass; the event is on the server,
 	// so the next connection uploads nothing for it.
+	e.online(t, true)
 	e.dropStreams()
 	waitFor(t, "the refused notification to be offered again", func() bool { return notifies.Load() >= 2 })
 }
@@ -1501,6 +1503,7 @@ func TestCheckpointFailureDoesNotBlockItsOwnSessionSync(t *testing.T) {
 			}
 			appendText(t, log, "pending-session", "second")
 			e.session(t, "pending-session", 2)
+			e.online(t, true)
 			_, err := e.client.Do(context.Background(), s, &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: s.ID, Title: "metadata still syncs"}}})
 			if err != nil {
 				t.Fatal(err)

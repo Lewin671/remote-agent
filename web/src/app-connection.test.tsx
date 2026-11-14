@@ -84,6 +84,7 @@ it("ignores network events after suspension and cancels timers and listeners on 
   await visibility(true); await vi.advanceTimersByTimeAsync(60_000);
   window.dispatchEvent(new Event("online")); expect(reconnect).not.toHaveBeenCalled();
   await visibility(false); expect(start).toHaveBeenCalledTimes(2);
+  const resumed = reconnect.mock.calls.length;
   await visibility(true);
   await act(async () => root!.unmount()); root = undefined;
   const stopped = stop.mock.calls.length;
@@ -91,7 +92,7 @@ it("ignores network events after suspension and cancels timers and listeners on 
   document.dispatchEvent(new Event("freeze")); window.dispatchEvent(new Event("online"));
   await vi.advanceTimersByTimeAsync(60_000);
   expect(start).toHaveBeenCalledTimes(2); expect(stop).toHaveBeenCalledTimes(stopped);
-  expect(reconnect).not.toHaveBeenCalled();
+  expect(reconnect).toHaveBeenCalledTimes(resumed);
 });
 it("leaves an initially hidden page stopped until visible", async () => {
   const { start, visibility } = await mount(true);

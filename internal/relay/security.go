@@ -46,7 +46,14 @@ func CheckSecurityStorage() error {
 }
 
 // role is the signed state's copy of this device's membership.
+type securityRefresh struct {
+	done chan struct{}
+	err  error
+}
+
 type securitySession struct {
+	syncMu        sync.Mutex
+	syncing       *securityRefresh
 	clock         func() uint64
 	endpoint      *deviceauth.Endpoint
 	client        remoteagentv1connect.ClientServiceClient
@@ -205,6 +212,29 @@ func (s *securitySession) sealResult(h *pb.Header, seed, plain []byte, raw bool)
 
 // syncOnce pulls states after the local head, verifies and installs them.
 // The connection maintenance loop separately retries current checkpoints.
+func (s *securitySession) refresh(ctx context.Context) error {
+	s.syncMu.Lock()
+	if flight := s.syncing; flight != nil {
+		s.syncMu.Unlock()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-flight.done:
+			return flight.err
+		}
+	}
+	flight := &securityRefresh{done: make(chan struct{})}
+	s.syncing = flight
+	s.syncMu.Unlock()
+	err := s.syncOnce(ctx)
+	s.syncMu.Lock()
+	flight.err = err
+	s.syncing = nil
+	close(flight.done)
+	s.syncMu.Unlock()
+	return err
+}
+
 func (s *securitySession) syncOnce(ctx context.Context) error {
 	if s.beforeSync != nil {
 		if err := s.beforeSync(); err != nil {
@@ -303,7 +333,7 @@ func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, 
 		case <-s.syncNow:
 		}
 		attempt, cancel := context.WithTimeout(ctx, 15*time.Second)
-		err := s.syncOnce(attempt)
+		err := s.refresh(attempt)
 		cancel()
 		if initialDone != nil {
 			close(initialDone)

@@ -1,3 +1,4 @@
+import { Bucket, Recovery } from "./transport/recovery";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { Remote } from "./remote";
@@ -49,7 +50,7 @@ async function setup() {
           }));
     return new Response(new Uint8Array(bytes), { headers: { "Content-Type": "application/proto" } });
   });
-  const remote = () => { const r = new ProbeRemote(account); remotes.push(r); return r; };
+  const remote = () => { const r = new ProbeRemote(account); Object.defineProperty(r, "recovery", { value: new Recovery(() => performance.now(), () => .5, new Bucket(4, 2)) }); remotes.push(r); return r; };
   return { f, account, calls, remote, deny: () => { denied = true; }, rejectSync: () => { rejectSync = true; } };
 }
 it("uses zero login RPCs on reload, two on expiry and two after server 1008 rejection", async () => {

@@ -148,10 +148,12 @@ export function App() {
       cancelHidden();
       running = true;
       // start is idempotent and also replaces a stale retained stream.
+      remote.setForeground(true);
       remote.start();
       remote.setNetwork(navigator.onLine);
     };
     const visibility = () => {
+      remote.setForeground(!document.hidden);
       remote.setScheduleVisible(!document.hidden);
       if (!document.hidden) resume();
       else if (running && hiddenTimer === undefined)
@@ -160,9 +162,14 @@ export function App() {
     const online = () => {
       if (!running) return;
       remote.setNetwork(true);
-      remote.reconnectNow(true);
+      connectionChanged();
     };
     const offline = () => { if (running) remote.setNetwork(false); };
+    const connection = (navigator as Navigator & { connection?: EventTarget & { type?: string; effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean } }).connection;
+    const connectionChanged = () => {
+      if (running) remote.networkChanged(JSON.stringify([navigator.onLine, connection?.type, connection?.effectiveType, connection?.downlink, connection?.rtt, connection?.saveData]));
+    };
+    connection?.addEventListener("change", connectionChanged);
     document.addEventListener("visibilitychange", visibility);
     // Frozen timers cannot enforce the grace period. Release sockets in
     // the event itself, including when entering the back/forward cache.
@@ -175,6 +182,7 @@ export function App() {
     remote.setScheduleVisible(!document.hidden);
     resume();
     return () => {
+      connection?.removeEventListener("change", connectionChanged);
       document.removeEventListener("visibilitychange", visibility);
       document.removeEventListener("freeze", pause);
       document.removeEventListener("resume", resume);

@@ -248,8 +248,16 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const endedPath = useRef(false);
+  const [canOpen, setCanOpen] = useState(online);
   useEffect(() => {
-    if (!online) return;
+    if (online) {
+      if (endedPath.current) { endedPath.current = false; setAttempt(n => n + 1); }
+      setCanOpen(true);
+    }
+  }, [online]);
+  useEffect(() => {
+    if (!canOpen) return;
     let alive = true;
     const opening = new AbortController();
     history.close();
@@ -314,6 +322,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         },
         (why) => {
           if (!alive) return;
+          endedPath.current = true;
+          conn.current = null;
           history.disconnected();
           setState("closed");
           setReason((r) => r || why);
@@ -341,7 +351,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       conn.current = null;
       history.close();
     };
-  }, [remote, session.id, attempt, online]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, session.id, attempt, canOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (state !== "live" || shown) return;

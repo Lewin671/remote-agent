@@ -50,27 +50,24 @@ test("stop completes state and all observers despite throwing physical and produ
   }
 });
 
-test.each(["network change", "socket drop"])("%s schedules recovery even when close callbacks throw", async kind => {
+test.each(["network change", "socket drop"])("%s schedules recovery without calling independent terminal listeners", async kind => {
   const remote = await SyntheticRemote.create();
   const runtime = remote as unknown as { closed: boolean; generation: number; retryTimer?: ReturnType<typeof setTimeout>; openStream(g: number): void; connect(): Promise<void> };
   const socket: FrameStream = { ready: true, close: vi.fn(), send: vi.fn() };
   const reconnect = vi.spyOn(runtime, "connect").mockResolvedValue();
   vi.spyOn(remote.deviceLink, "openPathStream").mockReturnValue(socket);
-  const failure = Error("injected product close");
+  const notified = vi.fn();
   try {
-    vi.useFakeTimers();
-    runtime.closed = false;
-    remote.conn = "online";
+    vi.useFakeTimers(); runtime.closed = false; remote.conn = "online";
     runtime.openStream(runtime.generation);
-    remote.deviceLink.openStream(() => { throw failure; }, vi.fn());
-    if (kind === "network change") {
-      expect(() => remote.reconnectNow(true)).toThrow(failure);
-      expect(reconnect).toHaveBeenCalledOnce();
-    } else {
-      expect(() => socket.onEnd?.()).toThrow(failure);
-      expect(remote.conn).toBe("offline");
+    remote.deviceLink.openStream(notified, vi.fn());
+    if (kind === "network change") remote.reconnectNow(true);
+    else socket.onEnd?.();
+    expect(notified).not.toHaveBeenCalled();
+    // A pending candidate coalesces a hint; a dropped candidate retries.
+    if (kind === "socket drop") {
       expect(runtime.retryTimer).toBeDefined();
-      await vi.advanceTimersByTimeAsync(1251);
+      await vi.advanceTimersByTimeAsync(1501);
       expect(reconnect).toHaveBeenCalledOnce();
     }
   } finally { vi.useRealTimers(); await remote.dispose(); }

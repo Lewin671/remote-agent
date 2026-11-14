@@ -168,6 +168,11 @@ export class DeviceSecurityClient {
   async localStateHash(): Promise<B> {
     return (await this.load()).stateHash;
   }
+  /** Persist the local time floor without waiting on a network path. */
+  async touch(): Promise<void> {
+    await this.load();
+    await this.store.touchSecurity(BigInt(Date.now()));
+  }
   async sync(): Promise<SecurityRecord> {
     if (this.syncJob) return this.syncJob;
     const job = this.syncLoop();

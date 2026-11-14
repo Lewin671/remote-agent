@@ -198,7 +198,7 @@ func (h *hub) ping(ctx context.Context, conn *websocket.Conn, p *peer) {
 			// Browsers cannot observe control-frame Ping/Pong. Send a visible
 			// heartbeat through the same bounded queue as the other frames.
 			h.send(p, &pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}})
-			pctx, cancel := context.WithTimeout(ctx, h.s.cfg.PingInterval)
+			pctx, cancel := context.WithTimeout(ctx, 3*h.s.cfg.PingInterval)
 			err := conn.Ping(pctx)
 			cancel()
 			if err != nil {

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -60,10 +59,12 @@ type ImageUpload struct {
 
 // Relay keeps the daemon connected to the server.
 type Relay struct {
-	backend     Backend
-	admissions  chan struct{} // bounded authentication and same-ID wait workers
-	calls       chan struct{} // bounds command workers across reconnects
-	machineRPCs chan struct{} // bounds session uploads across reconnects
+	recoveryBudget *transport.Budget
+	readyCount     atomic.Uint64
+	backend        Backend
+	admissions     chan struct{} // bounded authentication and same-ID wait workers
+	calls          chan struct{} // bounds command workers across reconnects
+	machineRPCs    chan struct{} // bounds session uploads across reconnects
 	// backlog admits one ended session at a time to its first sync after
 	// connecting, so that the other RPC slot stays free for live sessions.
 	backlog chan struct{}
@@ -76,8 +77,9 @@ type Relay struct {
 	timing           retryTiming
 	// These durations are per relay so integration tests can exercise the
 	// real timeout and retry paths without waiting on production intervals.
-	readyTimeout  time.Duration
-	syncRetryBase time.Duration
+	networkChanges func(context.Context) <-chan uint64
+	readyTimeout   time.Duration
+	syncRetryBase  time.Duration
 	// keyMu makes reading or creating a session's key one step across
 	// concurrent uploads and terminal requests.
 	keyMu sync.Mutex
@@ -215,81 +217,6 @@ type conn struct {
 	checkpointPending atomic.Bool
 	publishNow        chan struct{}
 	onSyncReady       func()
-}
-
-// session logs in, opens the stream, and serves until an error.
-func (r *Relay) session(ctx context.Context, acct *Account, dispatcher *dispatcher) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stopRetirement := context.AfterFunc(dispatcher.maintenance, cancel)
-	defer stopRetirement()
-	token, err := login(ctx, acct)
-	if err != nil {
-		return fmt.Errorf("login: %w", err)
-	}
-	c := &relaySession{pathLifetime: ctx, dispatcher: dispatcher}
-	var workers sync.WaitGroup
-	defer func() { cancel(); workers.Wait() }()
-
-	wsURL := "ws" + strings.TrimPrefix(acct.Server, "http") + "/v1/stream"
-	ws, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: httpClient()})
-	if err != nil {
-		return fmt.Errorf("open stream: %w", err)
-	}
-	defer ws.CloseNow()
-	ws.SetReadLimit(4 << 20)
-	c.path = transport.NewRelayPath(ws)
-	readyCtx, readyCancel := context.WithTimeout(ctx, r.readyTimeout)
-	defer readyCancel()
-	hello, _ := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_Hello{Hello: &pb.StreamHello{Token: token}}})
-	if err := ws.Write(readyCtx, websocket.MessageBinary, hello); err != nil {
-		return err
-	}
-	if f, err := readFrame(readyCtx, ws); err != nil {
-		return err
-	} else if f.GetReady() == nil {
-		return errors.New("server did not accept the stream")
-	}
-	// A terminal uses an independent WS. Keep its relay adapter after the main
-	// socket drops; the next authenticated generation replaces credentials.
-	// Install before reading the first command (which may open a terminal).
-	dispatcher.link.Router.Attach(func(ctx context.Context, route transport.StreamRoute) (transport.Path, error) {
-		return openRelayStream(ctx, acct.Server, token, route)
-	})
-	errc := make(chan error, 4)
-	// Start consuming immediately after Ready, including during slow startup RPCs.
-	workers.Go(func() { errc <- c.readLoop(ctx); cancel() })
-	r.mu.Lock()
-	r.connected = true
-	r.mu.Unlock()
-	defer func() {
-		r.mu.Lock()
-		r.connected = false
-		r.mu.Unlock()
-	}()
-	slog.Info("relay: connected", "server", acct.Server, "machine", acct.DeviceID)
-	dispatcher.ready()
-
-	workers.Go(func() {
-		// Keep the connection alive through proxies and notice a dead one.
-		t := time.NewTicker(25 * time.Second)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-				pctx, pcancel := context.WithTimeout(ctx, 20*time.Second)
-				err := ws.Ping(pctx)
-				pcancel()
-				if err != nil {
-					errc <- fmt.Errorf("ping: %w", err)
-					return
-				}
-			}
-		}
-	})
-	return <-errc
 }
 
 func login(ctx context.Context, acct *Account) (string, error) {

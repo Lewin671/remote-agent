@@ -75,7 +75,14 @@ func TestStreamEndsAtTokenExpiry(t *testing.T) {
 	stream := ts.stream(t, token)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, _, err := stream.ws.Read(ctx); err == nil || ctx.Err() != nil {
-		t.Fatalf("expired stream did not close promptly: %v", err)
+	for {
+		_, _, err := stream.ws.Read(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				t.Fatalf("expired stream did not close promptly: %v", err)
+			}
+			break
+		}
+		// One-second heartbeats can precede the two-second token expiry.
 	}
 }

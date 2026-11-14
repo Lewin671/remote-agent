@@ -1,3 +1,5 @@
+import { RESULT_RETENTION_MS } from "./result-retention.gen";
+import { Recovery, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { type DispatchCall } from "./transport/dispatch";
 import { RequestSlot, newSlot, restoreSlot, CommandError, uncertain } from "./transport/request";
@@ -414,9 +416,8 @@ export async function joinWithApproval(
 
 /** How long the stream may take from dialing to the server's ready. */
 const OPEN_TIMEOUT_MS = 15_000;
-const STREAM_IDLE_MS = 60_000;
-// One default server heartbeat (20 s), plus 10 s for scheduling/network delay.
-const STREAM_RESUME_IDLE_MS = 30_000;
+const STREAM_IDLE_MS = 3_000;
+const STREAM_RESUME_IDLE_MS = 3_000;
 const RECONNECT_NOTICE_MS = 1_500;
 const RPC_TIMEOUT_MS = 45_000;
 // Allow one full RPC plus local verification/storage. Progress starts a
@@ -1087,7 +1088,18 @@ export class Remote {
   }
   private api: Client<typeof ClientService>;
   private ws?: FrameStream;
-  private retry = 1000;
+  private readonly recovery = new Recovery();
+  private candidate?: FrameStream;
+  private connecting = false;
+  private setupController?: AbortController;
+  private foreground = true;
+  private networkSignature = "";
+  private lastTick = performance.now();
+  private lastWallTick = Date.now();
+  private networkGeneration = 0;
+  private verifiedNetworkGeneration = 0;
+  private activeNetworkGeneration = 0;
+  private wakeSecurity?: Promise<void>;
   private closed = false;
   private reconcilingSecurity = 0;
   private generation = 0;
@@ -1143,7 +1155,7 @@ export class Remote {
         const reply = await this.api.getSecurityStates({
           afterEpoch: after,
           limit,
-        });
+        }, { signal: this.setupController?.signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS });
         this.setupProgress?.();
         return {
           states: reply.states.map((s) => ({
@@ -1274,6 +1286,7 @@ export class Remote {
       ? this.sessionSeeds.get(want.sessionId ?? "")
       : undefined;
     rejectRetiredHistory(env);
+    if (!history) await this.wakeSecurity;
     let out: Awaited<ReturnType<DeviceSecurityClient["openHistory"]>>;
     try {
       if (historical?.status === "rejected") throw historical.reason;
@@ -1305,6 +1318,14 @@ export class Remote {
     }
     return { header, msg, size: out.plaintext.length };
   }
+  private async checkNetworkSecurity() {
+    if (this.verifiedNetworkGeneration === this.networkGeneration) return;
+    const generation = this.networkGeneration;
+    await this.security.sync();
+    if (generation !== this.networkGeneration) throw new SecurityError("stale");
+    this.verifiedNetworkGeneration = generation;
+  }
+
   private async sealSecureMessage<D extends DescMessage>(
     h: Omit<
       Partial<import("./gen/remoteagent/v1/envelope_pb").Header>,
@@ -1315,6 +1336,8 @@ export class Remote {
     beforeSign?: () => void,
     preparedBytes?: Uint8Array<ArrayBuffer>,
   ) {
+    await this.wakeSecurity;
+    if (h.kind === PayloadKind.COMMAND) await this.checkNetworkSecurity();
     let purpose = Number(h.kind) as Purpose;
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
       const f = msg as unknown as { kind: { case?: string } };
@@ -1434,7 +1457,7 @@ export class Remote {
     this.waited = false;
     this.waitingNotice = false;
     this.changed(true);
-    if (!available) this.reconnectNow(true);
+    this.networkChanged(String(available));
   }
 
   protected changed(immediate = false) {
@@ -1611,8 +1634,7 @@ export class Remote {
       !this.closed &&
       (this.ws || (this.generation > 0 && this.conn === "connecting"))
     ) {
-      if (this.ws && this.conn === "online" &&
-          Date.now() - this.lastFrameAt > STREAM_RESUME_IDLE_MS)
+      if (this.ws && performance.now() - this.lastFrameAt > STREAM_RESUME_IDLE_MS)
         this.reconnectNow(true);
       return;
     }
@@ -1761,6 +1783,11 @@ export class Remote {
     clearTimeout(this.historyTrim);
     this.historyTrim = undefined;
     this.generation++;
+    this.connecting = false;
+    this.setupController?.abort();
+    this.setupController = undefined;
+    const candidate = this.candidate;
+    this.candidate = undefined;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
     clearTimeout(this.openTimer);
@@ -1775,6 +1802,7 @@ export class Remote {
       () => this.authority.lifecycle.pause(),
       () => unwatch?.(),
       () => ws?.close(),
+      () => candidate?.close(),
       () => this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed")),
       () => this.changed(true),
     );
@@ -1782,27 +1810,72 @@ export class Remote {
 
   /** Connects now instead of waiting out the backoff, e.g. when the
    * network came back. */
-  reconnectNow(networkChanged = false) {
-    if (this.closed || this.removed) return;
-    let ws: FrameStream | undefined;
-    if (networkChanged) {
-      if (this.conn === "online") this.lostAt = Date.now();
-      this.generation++;
-      clearTimeout(this.openTimer);
-      clearTimeout(this.idleTimer);
-      ws = this.ws;
-      this.ws = undefined;
-    } else if (this.ws || this.retryTimer === undefined) return;
-    cleanup(
-      () => ws?.close(),
-      () => { if (networkChanged) this.deviceLink.endRelayStreams(l10n.t("errors.network_changed_reconnecting")); },
-      () => {
-        clearTimeout(this.retryTimer);
-        this.retryTimer = undefined;
-        this.retry = 1000;
-        void this.connect();
-      },
-    );
+  reconnectNow(_networkChanged = false) {
+    if (this.closed || this.removed || !this.foreground) return;
+    this.scheduleReconnect();
+  }
+
+  private touchAfterWake() {
+    this.wakeSecurity = this.security.touch();
+    // Consumers observe the original failure; avoid an unhandled rejection
+    // while an idle terminal has no frame to read or send.
+    void this.wakeSecurity.catch(() => undefined);
+  }
+
+  networkChanged(signature: string) {
+    if (signature === this.networkSignature) return;
+    this.networkSignature = signature;
+    this.networkGeneration++;
+    this.touchAfterWake();
+    this.setupController?.abort(new Error(l10n.t("errors.network_changed_reconnecting")));
+    const candidate = this.candidate;
+    this.candidate = undefined;
+    candidate?.close();
+    this.reconnectNow(true);
+  }
+
+  setForeground(active: boolean) {
+    if (this.foreground === active) return;
+    this.foreground = active;
+    clearTimeout(this.idleTimer);
+    if (!active) {
+      clearTimeout(this.retryTimer); this.retryTimer = undefined;
+      this.setupController?.abort();
+      const candidate = this.candidate; this.candidate = undefined; candidate?.close();
+    }
+    if (active) {
+      this.networkGeneration++;
+      this.touchAfterWake();
+      // Security.sync persists Touch before reading the remote state.
+      this.reconnectNow(true);
+      this.watchLiveness();
+    }
+  }
+
+  private scheduleReconnect() {
+    if (this.closed || !this.foreground || this.connecting || this.candidate || this.retryTimer !== undefined) return;
+    const delay = Math.ceil(this.recovery.delay());
+    if (delay === 0 && this.recovery.take()) { void this.connect(); return; }
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = undefined;
+      this.scheduleReconnect();
+    }, Math.max(1, delay));
+  }
+
+  private watchLiveness() {
+    clearTimeout(this.idleTimer);
+    if (this.closed || !this.foreground) return;
+    this.lastTick = performance.now(); this.lastWallTick = Date.now();
+    this.idleTimer = setTimeout(() => {
+      const now = performance.now(), wall = Date.now();
+      const paused = now - this.lastTick > STREAM_IDLE_MS || wall - this.lastWallTick > STREAM_IDLE_MS || now < this.lastTick;
+      if (paused) { this.networkGeneration++; this.touchAfterWake(); }
+      if (paused || (this.ws && now - this.lastFrameAt >= STREAM_IDLE_MS)) {
+        if (this.conn === "online") { this.lostAt = Date.now(); this.conn = "connecting"; this.changed(true); }
+        this.reconnectNow(true);
+      }
+      this.watchLiveness();
+    }, 1000);
   }
 
   /** How long one round trip to the server takes now, in ms: a request
@@ -1857,6 +1930,7 @@ export class Remote {
   }
 
   private async signIn() {
+    const signal = this.setupController?.signal;
     const auth = createClient(
       AuthService,
       createConnectTransport({
@@ -1868,7 +1942,7 @@ export class Remote {
     );
     for (let again = true; ; again = false) {
       try {
-        const ch = await auth.getChallenge({ deviceId: this.account.deviceId });
+        const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs: this.everOnline ? 3000 : OPEN_TIMEOUT_MS });
         this.setupProgress?.();
         const sig = await signLogin(this.account.devicePrivate, ch.challenge);
         const res = await auth.login({
@@ -1876,7 +1950,7 @@ export class Remote {
           deviceId: this.account.deviceId,
           challenge: ch.challenge,
           signature: sig,
-        });
+        }, { signal, timeoutMs: this.everOnline ? 3000 : OPEN_TIMEOUT_MS });
         this.setupProgress?.();
         if (this.closed) return;
         this.token = res.token;
@@ -1910,46 +1984,49 @@ export class Remote {
   }
 
   private async connect() {
-    if (this.closed) return;
+    if (this.closed || this.connecting || this.candidate) return;
     this.retryTimer = undefined;
+    this.connecting = true;
+    const setup = this.setupController = new AbortController();
+    const networkGeneration = this.networkGeneration;
     const generation = ++this.generation;
-    this.conn = "connecting";
+    const recovering = this.everOnline || networkGeneration > 0;
+    const deadline = performance.now() + 3000;
+    if (!this.ws) this.conn = "connecting";
     const attempt = this.connAttempt = { step: l10n.t("errors.reading_local_state"), startedAt: Date.now() };
-    let step = "";
-    let budget = OPEN_TIMEOUT_MS;
+    let step = "", budget = OPEN_TIMEOUT_MS;
     let stall: ReturnType<typeof setTimeout> | undefined;
     const progress = () => {
       if (this.closed || generation !== this.generation) return;
       clearTimeout(stall);
-      stall = setTimeout(() => {
-        if (this.closed || generation !== this.generation) return;
-        this.generation++;
-        this.fail(new Error(l10n.t("errors.timed_out_reconnecting", { value: String(step) })));
-      }, budget);
+      stall = setTimeout(() => setup.abort(new Error(l10n.t("errors.timed_out_reconnecting", { value: step }))),
+        recovering ? Math.max(0, Math.min(budget, deadline - performance.now())) : budget);
     };
     const at = (name: string, timeout = OPEN_TIMEOUT_MS) => {
-      step = name;
-      attempt.step = name;
-      this.changed(true);
-      budget = timeout;
-      progress();
+      step = name; attempt.step = name; budget = timeout;
+      this.changed(true); progress();
     };
     this.setupProgress = progress;
     at(l10n.t("errors.reading_local_state"));
+    let abort!: () => void;
+    const interrupted = new Promise<never>((_, reject) => {
+      abort = () => reject(setup.signal.reason);
+      setup.signal.addEventListener("abort", abort, { once: true });
+    });
     try {
-      const go = await this.preStream(generation, at);
-      if (go) {
-        attempt.step = l10n.t("errors.establishing_push_connection");
-        this.changed(true);
-        this.openStream(generation);
+      const go = await Promise.race([this.preStream(generation, at), interrupted]);
+      if (go && networkGeneration === this.networkGeneration && !setup.signal.aborted) {
+        attempt.step = l10n.t("errors.establishing_push_connection"); this.changed(true);
+        this.openStream(generation, recovering ? Math.max(0, deadline - performance.now()) : OPEN_TIMEOUT_MS);
       }
     } catch (e) {
-      // Storage can reject before login, and WebSocket construction can
-      // throw before callbacks exist. Both belong to this attempt's retry.
-      if (!this.closed && generation === this.generation) this.fail(e);
+      if (!this.closed && generation === this.generation && networkGeneration === this.networkGeneration) this.fail(e);
     } finally {
-      clearTimeout(stall);
+      clearTimeout(stall); setup.signal.removeEventListener("abort", abort);
+      if (setup.signal.aborted && generation === this.generation) this.generation++;
+      if (this.setupController === setup) { this.setupController = undefined; this.connecting = false; }
       if (this.setupProgress === progress) this.setupProgress = undefined;
+      if (!this.candidate && !this.closed) this.scheduleReconnect();
     }
   }
 
@@ -1972,8 +2049,7 @@ export class Remote {
         await this.login();
       }
     } catch (e) {
-      if (generation === this.generation && !this.closed) this.fail(e);
-      return false;
+      throw e;
     }
     if (this.closed || generation !== this.generation) return false;
     at(l10n.t("errors.syncing_device_state"), SETUP_IDLE_MS);
@@ -1981,6 +2057,8 @@ export class Remote {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
       const record = await this.security.sync();
+      if (this.closed || generation !== this.generation || this.setupController?.signal.aborted) return false;
+      this.verifiedNetworkGeneration = this.networkGeneration;
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
       this.maintainAuthority();
       this.changed();
@@ -1995,108 +2073,87 @@ export class Remote {
       this.clearClockWarning();
     } catch (e) {
       this.noteClock(e);
-      if (generation === this.generation && !this.closed) this.fail(e);
-      return false;
+      throw e;
     }
     return !this.closed && generation === this.generation;
   }
 
   private lastFrameAt = 0;
 
-  private openStream(generation: number) {
-    const url =
-      apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
+  private openStream(generation: number, timeout = 3000) {
+    const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
     const ws = this.deviceLink.openPathStream(url);
-    this.ws = ws;
+    this.candidate = ws;
+    const networkGeneration = this.networkGeneration;
+    let opening: ReturnType<typeof setTimeout> | undefined;
+    const current = () => !this.closed && (this.ws === ws || this.candidate === ws);
     const drop = (e: unknown, code?: number) => {
-      if (this.ws !== ws) return;
-      this.ws = undefined;
-      this.generation++;
-      clearTimeout(this.openTimer);
-      clearTimeout(this.idleTimer);
+      if (!current()) return;
+      clearTimeout(opening);
+      if (this.candidate === ws) this.candidate = undefined;
+      if (this.ws === ws) this.ws = undefined;
       cleanup(
         () => { if (code === 1008) this.discardToken(); },
         () => ws.close(),
-        () => this.deviceLink.endRelayStreams(l10n.t("errors.disconnected_from_server")),
         () => this.fail(e),
       );
     };
-    const watch = () => {
-      this.lastFrameAt = Date.now();
-      clearTimeout(this.idleTimer);
-      this.idleTimer = setTimeout(
-        () => drop(new Error(l10n.t("errors.connection_timed_out_reconnecting"))),
-        STREAM_IDLE_MS,
-      );
-    };
-    // A browser gives up on a handshake whose packets are lost only after
-    // minutes; the next attempt usually gets through much sooner.
-    clearTimeout(this.openTimer);
-    this.openTimer = setTimeout(() => {
-      drop(new Error(l10n.t("errors.connection_timed_out_reconnecting")));
-    }, OPEN_TIMEOUT_MS);
+    opening = this.openTimer = setTimeout(() => drop(new Error(l10n.t("errors.connection_timed_out_reconnecting"))), timeout);
     ws.onOpen = () => {
-      if (this.ws !== ws || this.closed || generation !== this.generation)
-        return;
-      const hello = create(PeerFrameSchema, {
-        kind: { case: "hello", value: { token: this.token } },
-      });
+      if (!current()) return;
+      const hello = create(PeerFrameSchema, { kind: { case: "hello", value: { token: this.token } } });
       ws.send(toBinary(PeerFrameSchema, hello));
     };
-    let processing = Promise.resolve();
-    let queuedBytes = 0;
-    let queuedFrames = 0;
+    let processing = Promise.resolve(), queuedBytes = 0, queuedFrames = 0;
     let overflow = false;
     ws.onFrame = (data) => {
-      if (this.closed || generation !== this.generation || overflow) return;
-      watch();
-      queuedBytes += data.byteLength;
-      queuedFrames++;
-      if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
-        overflow = true;
-        drop(new Error(l10n.t("errors.push_backlog_reconnecting")));
-        return;
+      if (!current() || overflow) return;
+      let frame: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>;
+      try { frame = fromBinary(ServerFrameSchema, new Uint8Array(data)); }
+      catch { drop(new Error(l10n.t("errors.invalid_push_frame"))); return; }
+      if (this.candidate === ws) {
+        if (frame.kind.case !== "ready") { drop(new Error(l10n.t("errors.invalid_push_frame"))); return; }
+        if (networkGeneration !== this.networkGeneration || generation !== this.generation) {
+          this.candidate = undefined; clearTimeout(opening); ws.close(); this.scheduleReconnect(); return;
+        }
+        clearTimeout(opening);
+        const old = this.ws;
+        this.ws = ws; this.candidate = undefined; this.generation++;
+        this.activeNetworkGeneration = networkGeneration;
+        old?.close();
+        this.recovery.ready();
+        this.watchLiveness();
       }
-      processing = processing
-        .then(async () => {
-          if (this.closed || generation !== this.generation || overflow) return;
-          let f;
-          try {
-            f = fromBinary(ServerFrameSchema, new Uint8Array(data));
-          } catch {
-            overflow = true;
-            drop(new Error(l10n.t("errors.invalid_push_frame")));
-            return;
-          }
-          await this.onFrame(f.kind, generation);
-        })
-        .catch((e) => {
-          this.report(e);
-          drop(e);
-        })
-        .finally(() => {
-          queuedBytes -= data.byteLength;
-          queuedFrames--;
-        });
+      this.lastFrameAt = performance.now();
+      if (this.ws === ws && this.activeNetworkGeneration === this.networkGeneration && this.foreground && this.conn === "connecting" && frame.kind.case !== "ready") {
+        this.conn = "online"; this.changed(true);
+      }
+      const activeGeneration = this.generation;
+      queuedBytes += data.byteLength; queuedFrames++;
+      if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
+        overflow = true; drop(new Error(l10n.t("errors.push_backlog_reconnecting"))); return;
+      }
+      processing = processing.then(async () => {
+        if (this.closed || this.ws !== ws || activeGeneration !== this.generation || overflow) return;
+        await this.onFrame(frame.kind, activeGeneration);
+      }).catch(e => { this.report(e); drop(e); }).finally(() => {
+        queuedBytes -= data.byteLength; queuedFrames--;
+      });
     };
     ws.onEnd = code => drop(new Error(l10n.t("errors.disconnected_from_server")), code);
   }
 
   private fail(e: unknown) {
-    if (this.conn === "online") this.lostAt = Date.now();
-    this.conn = "offline";
-    this.failures++;
-    this.connError = errorText(e);
+    this.recovery.failed();
+    if (!this.ws) {
+      if (this.conn === "online") this.lostAt = Date.now();
+      this.conn = "offline";
+      this.failures++;
+      this.connError = errorText(e);
+      this.error = errorText(e);
+    }
     this.connAttempt = undefined;
-    this.error = errorText(e);
-    if (this.closed) { this.changed(true); return; }
-    const delay = this.retry;
-    this.retry = Math.min(this.retry * 2, 30_000);
-    clearTimeout(this.retryTimer);
-    this.retryTimer = setTimeout(
-      () => void this.connect(),
-      delay + Math.random() * delay * 0.25,
-    );
+    this.scheduleReconnect();
     this.changed(true);
   }
 
@@ -2110,7 +2167,6 @@ export class Remote {
         break;
       case "ready":
         clearTimeout(this.openTimer);
-        this.retry = 1000;
         this.conn = "online";
         this.connAttempt = undefined;
         this.lostAt = undefined;
@@ -3323,7 +3379,7 @@ export class Remote {
       const delivery = this.deviceLink.delivery(call);
       const attemptId = delivery.attemptId;
       try {
-        if (attempt > 0 && Date.now() >= deadline)
+        if (attempt > 0 && Date.now() >= deadline + (call.uncertain ? RESULT_RETENTION_MS : 0))
           throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
         // Metadata may refresh while sealing, logging in or backing off.
         // Check the immutable authorized payload, including unknown retries.
@@ -3331,7 +3387,7 @@ export class Remote {
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
         await delivery.prepare();
-        const res = await delivery.send(machineId, env, signal);
+        const res = await this.recovery.follow(attemptSignal => delivery.send(machineId, env, attemptSignal), signal);
         let msg: CommandResult;
         try {
           msg = (
@@ -3370,6 +3426,7 @@ export class Remote {
       } catch (e) {
         // Only transport failures are automatically retried here. Interrupted
         // daemon answers still freeze the caller's request slot.
+        if (e instanceof PathChanged) { signal?.throwIfAborted(); continue; }
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
         const notForwarded = delivery.refusal(ce);

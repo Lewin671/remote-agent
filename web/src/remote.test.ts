@@ -1,3 +1,4 @@
+import { Bucket, Recovery } from "./transport/recovery";
 import { t as message } from "./i18n";
 import { create, fromBinary } from "@bufbuild/protobuf";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
@@ -421,7 +422,7 @@ it("lets go of a sent message's local image copies once the CLI records it", asy
   ).toBe(1);
 });
 
-it("gives up on a stream that never opens, and reconnects at once when the network returns", async () => {
+it("gives up on a stream that never opens, and retains backoff when the network returns", async () => {
   const sockets: {
     closed: boolean;
     onclose?: (e: { code: number }) => void;
@@ -450,7 +451,8 @@ it("gives up on a stream that never opens, and reconnects at once when the netwo
   );
   const r = await probe();
   try {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    Object.defineProperty(r, "recovery", { value: new Recovery(() => performance.now(), () => .75, new Bucket(4, 2)) });
     r.start();
     await vi.waitFor(() => expect(sockets.length).toBe(1));
     // The handshake hangs: nothing closes it until the client does.
@@ -459,9 +461,10 @@ it("gives up on a stream that never opens, and reconnects at once when the netwo
     vi.advanceTimersByTime(2_000);
     expect(sockets[0].closed).toBe(true);
     expect(r.conn).toBe("offline");
-    // Waiting out the backoff; the network coming back skips the wait.
+    // Hints retain the failed attempt's full-jitter backoff.
     expect(sockets.length).toBe(1);
     r.reconnectNow();
+    await vi.advanceTimersByTimeAsync(1000);
     vi.useRealTimers();
     await vi.waitFor(() => expect(sockets.length).toBe(2));
     // While a connection is being made, asking again changes nothing.

@@ -5,6 +5,7 @@ import { ConnBar } from "./ui";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { ServerFrameSchema } from "./gen/remoteagent/v1/relay_pb";
+import { Bucket, Recovery } from "./transport/recovery";
 import { Remote } from "./remote";
 
 // Closing a blackholed stream does not have to produce a close event.
@@ -34,6 +35,7 @@ async function probe(mockLogin = true) {
     constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }); }
   }
   const r = new Probe(); remotes.push(r);
+  Object.defineProperty(r, "recovery", { value: new Recovery(() => performance.now(), () => .75, new Bucket(4, 2)) });
   vi.stubGlobal("WebSocket", Socket);
   if (mockLogin) vi.spyOn(r as any, "login").mockResolvedValue(undefined);
   vi.spyOn(r.security, "sync").mockResolvedValue({ member: true, states: [{ core: { authorityID: "authority" } }] } as never);
@@ -51,7 +53,7 @@ it("retries a handshake without waiting for onclose and ignores late frames", as
   await vi.advanceTimersByTimeAsync(15_000);
   expect(old.closed).toBe(true); expect(r.conn).toBe("offline");
   old.frame("ready"); await flush(); expect(r.conn).toBe("offline");
-  r.reconnectNow(); await flush(); expect(Socket.all).toHaveLength(2);
+  r.reconnectNow(); await vi.advanceTimersByTimeAsync(750); await flush(); expect(Socket.all).toHaveLength(2);
   // Neither a late open nor a close from the old socket affects its replacement.
   old.onopen?.(); old.onclose?.({ code: 1008 });
   expect(old.send).not.toHaveBeenCalled();
@@ -71,7 +73,7 @@ it("names the stretch that is down: the server only after a moment, this device'
   // The browser's word needs no waiting, and a network back starts over.
   r.setNetwork(false); expect(r.link).toBe("no-network");
   r.setNetwork(true); expect(r.link).toBe("waiting");
-  r.reconnectNow(true); await flush();
+  r.reconnectNow(true); await vi.advanceTimersByTimeAsync((r as any).recovery.delay() + 1); await flush();
   Socket.all[Socket.all.length - 1].frame("ready"); await flush();
   expect(r.link).toBe("online"); expect(r.unlinked).toBe(false);
 });
@@ -81,9 +83,10 @@ it("replaces an apparently online socket when the network changes", async () => 
   r.start(); await flush(); const old = Socket.all[0];
   old.frame("ready"); await flush(); expect(r.conn).toBe("online");
   r.reconnectNow(true); await flush();
-  expect(old.closed).toBe(true); expect(Socket.all).toHaveLength(2);
-  old.frame("ready"); await flush(); expect(r.conn).toBe("connecting");
+  expect(old.closed).toBe(false); expect(Socket.all).toHaveLength(2);
+  old.frame("heartbeat"); await flush(); expect(r.conn).toBe("online");
   Socket.all[1].frame("ready"); await flush(); expect(r.conn).toBe("online");
+  expect(old.closed).toBe(true);
 });
 
 it("detects silent loss while heartbeats keep an idle healthy stream online", async () => {
@@ -91,12 +94,13 @@ it("detects silent loss while heartbeats keep an idle healthy stream online", as
   r.start(); await flush(); const ws = Socket.all[0];
   ws.frame("ready"); await flush();
   for (let i = 0; i < 5; i++) {
-    await vi.advanceTimersByTimeAsync(20_000); ws.frame("heartbeat"); await flush();
+    await vi.advanceTimersByTimeAsync(1000); ws.frame("heartbeat"); await flush();
     expect(ws.closed).toBe(false); expect(Socket.all).toHaveLength(1);
   }
-  await vi.advanceTimersByTimeAsync(60_000);
-  expect(ws.closed).toBe(true); expect(r.conn).toBe("offline");
-  await vi.advanceTimersByTimeAsync(1_250); expect(Socket.all).toHaveLength(2);
+  await vi.advanceTimersByTimeAsync(3_000);
+  expect(ws.closed).toBe(false); expect(r.conn).toBe("connecting");
+  expect(Socket.all).toHaveLength(2);
+  Socket.all[1].frame("ready"); await flush(); expect(ws.closed).toBe(true);
 });
 
 it("observes heartbeats while catch-up is still processing the ready frame", async () => {
@@ -105,7 +109,7 @@ it("observes heartbeats while catch-up is still processing the ready frame", asy
   vi.mocked(r.refresh).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
   r.start(); await flush(); const ws = Socket.all[0]; ws.frame("ready"); await flush();
   for (let i = 0; i < 4; i++) {
-    await vi.advanceTimersByTimeAsync(20_000); ws.frame("heartbeat"); await flush();
+    await vi.advanceTimersByTimeAsync(1000); ws.frame("heartbeat"); await flush();
     expect(ws.closed).toBe(false);
   }
   finish(); await flush(); expect(r.conn).toBe("online");
@@ -135,8 +139,8 @@ it("releases a blackholed history fetch so a new connection can catch up", async
   r.start(); await flush(); Socket.all[0].frame("ready"); await flush();
   r.events("s"); await flush(); expect(count).toBe(1);
   Socket.all[0].onclose?.({ code: 1006 });
-  r.reconnectNow(); await flush(); Socket.all[1].frame("ready"); await flush();
-  await vi.advanceTimersByTimeAsync(45_000); await flush();
+  r.reconnectNow(); await vi.advanceTimersByTimeAsync(750); await flush(); Socket.all[1].frame("ready"); await flush();
+  for (let i = 0; i < 45; i++) { await vi.advanceTimersByTimeAsync(1000); Socket.all[1].frame("heartbeat"); await flush(); }
   expect(count).toBeGreaterThan(1); expect(r.history("s").loaded).toBe(true);
 });
 
@@ -195,7 +199,7 @@ it("bounds a security sync that never answers and retries it", async () => {
   expect(r.failures).toBe(1); expect(Socket.all).toHaveLength(0);
   // Waiting out the backoff is not needed: a network back tries at once.
   sync.mockResolvedValue({ member: true, states: [{ core: { authorityID: "authority" } }] } as never);
-  r.reconnectNow(); await flush();
+  r.reconnectNow(); await vi.advanceTimersByTimeAsync(750); await flush();
   expect(Socket.all).toHaveLength(1);
   Socket.all[0].frame("ready"); await flush(); expect(r.conn).toBe("online");
 });
@@ -236,7 +240,7 @@ it("clears attempt progress on failure and stop, starts afresh on retries and ne
     expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined(); expect(r.connError).not.toBe("");
     // The last failure stays for the banner's details until Ready.
     const failed = r.connError;
-    r.reconnectNow(true); await flush();
+    r.reconnectNow(true); await vi.advanceTimersByTimeAsync(750); await flush();
     expect(r.connError).toBe(failed); expect(r.connStartedAt).toBeGreaterThan(startedAt!);
     await vi.advanceTimersByTimeAsync(100);
     r.setNetwork(false); await flush();
@@ -304,7 +308,7 @@ it("ignores a failed local read from an attempt replaced by a network change", a
   let reject!: (e: Error) => void;
   vi.spyOn(r as any, "warm").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   const old = (r as any).connect(); await flush();
-  r.reconnectNow(true); await flush();
+  r.networkChanged("new-route"); await flush();
   Socket.all[0].frame("ready"); await flush();
   reject(new Error("old read failed"));
   await expect(old).resolves.toBeUndefined();
@@ -312,19 +316,22 @@ it("ignores a failed local read from an attempt replaced by a network change", a
   await vi.advanceTimersByTimeAsync(1_250); expect(Socket.all).toHaveLength(1);
 });
 
-it("keeps a recently active stream when foregrounding, but replaces one silent for over thirty seconds", async () => {
+it("suspends liveness while hidden and authenticates a replacement before reusing a resumed path", async () => {
   const r = await probe(); vi.useFakeTimers();
   r.start(); await flush(); const old = Socket.all[0];
   old.frame("ready"); await flush();
-  await vi.advanceTimersByTimeAsync(20_000); old.frame("heartbeat"); await flush();
-  await vi.advanceTimersByTimeAsync(30_000); r.start(); await flush();
-  expect(Socket.all).toHaveLength(1); expect(old.closed).toBe(false);
-  await vi.advanceTimersByTimeAsync(1); r.start(); await flush();
-  expect(old.closed).toBe(true); expect(Socket.all).toHaveLength(2);
-  old.frame("ready"); await flush(); expect(r.conn).toBe("connecting");
-  Socket.all[1].frame("ready"); await flush(); expect(r.conn).toBe("online");
+  await vi.advanceTimersByTimeAsync(1000); old.frame("heartbeat"); await flush();
+  r.start(); await flush(); expect(Socket.all).toHaveLength(1);
+  r.setForeground(false);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(Socket.all).toHaveLength(1);
+  r.setForeground(true); await flush();
+  expect(old.closed).toBe(false); expect(Socket.all).toHaveLength(2);
+  Socket.all[1].frame("ready"); await flush();
+  expect(old.closed).toBe(true); expect(r.conn).toBe("online");
   r.start(); r.start(); await flush(); expect(Socket.all).toHaveLength(2);
 });
+
 it("cancels an old backoff when foreground startup has already replaced it", async () => {
   const r = await probe(); vi.useFakeTimers();
   r.start(); await flush(); Socket.all[0].frame("ready"); await flush();
@@ -375,12 +382,13 @@ it("publishes connection recovery and waiting deadlines during a slow listing ba
     await vi.advanceTimersByTimeAsync(1_500);
     expect(seen.at(-1)).toBe("connecting:waiting:true");
     await vi.advanceTimersByTimeAsync(8_500);
-    expect(seen.at(-1)).toBe("connecting:no-server:true");
-    Socket.all[1].frame("ready"); await flush();
+    expect(r.link).toBe("no-server"); expect(r.showWaiting).toBe(true);
+    await vi.advanceTimersByTimeAsync((r as any).recovery.delay() + 1); await flush();
+    Socket.all.at(-1)!.frame("ready"); await flush();
     expect(seen.at(-1)).toBe("online:online:false");
     r.setNetwork(false);
     expect(seen).toContain("online:online:false");
-    expect(seen.at(-1)).toBe("connecting:no-network:false");
+    expect(r.network).toBe(false); expect(r.conn).toBe("online");
     r.stop(); expect(seen.at(-1)).toBe("offline:no-network:false");
   } finally {
     unsubscribe(); finish(); await batch;
