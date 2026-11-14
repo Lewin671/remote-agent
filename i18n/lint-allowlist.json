@@ -1648,5 +1648,10 @@
     "path": "web/src/views/NewSession.tsx",
     "literal": "remote.peer(m.id).reachable)?.id ?? \"\"); const m = remote.machines.get(machineId); return (",
     "reason": "Lexical JSX scanner false positive after routing the existing state expression through Link; all rendered labels use the unchanged i18n keys."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "remote.supportsSchedules(id) && !remote.peer(id).unlinked); return (",
+    "reason": "Lexical JSX scanner false positive in the Link-based schedule availability expression; rendered labels use unchanged i18n keys."
   }
 ]

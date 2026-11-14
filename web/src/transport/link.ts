@@ -1,9 +1,6 @@
 import { ConnectError } from "@connectrpc/connect";
 import { DispatchRegistry, type DispatchCall } from "./dispatch";
 import { RequestSlot, CommandError, uncertain } from "./request";
-import type { Envelope } from "../gen/remoteagent/v1/envelope_pb";
-import { NotForwardedSchema } from "../gen/remoteagent/v1/relay_pb";
-import { newRequestID } from "../crypto";
 import * as l10n from "../i18n";
 import type { Path } from "./path";
 import { Router } from "./router";
@@ -42,19 +39,14 @@ export class Link {
 
   delivery(call: DispatchCall) {
     const evidence = call.delivery();
-    const path = this.router.path;
-    const attemptId = newRequestID();
-    let epoch = "";
+    const attempt = this.router.path.attempt(() => evidence.dispatch());
     return {
-      attemptId,
-      async send(machineId: string, command: Envelope, signal?: AbortSignal) {
-        epoch = await path.epoch();
-        signal?.throwIfAborted();
-        evidence.dispatch();
-        return path.forward({ machineId, command, attemptId, relayEpoch: epoch }, { signal, headers: { "Remote-Agent-Attempt": attemptId } });
-      },
+      attemptId: attempt.attemptId,
+      prepare: () => attempt.prepare(),
+      send: (...args: Parameters<typeof attempt.send>) => attempt.send(...args),
+      refreshAuth: (prior: boolean) => attempt.refreshAuth(prior),
       refusal(error: ConnectError) {
-        const proof = error.findDetails(NotForwardedSchema).find(d => d.attemptId === attemptId && d.relayEpoch === epoch && !!epoch);
+        const proof = attempt.refusal(error);
         if (proof) evidence.notForwarded();
         return proof;
       },

@@ -1,7 +1,6 @@
 package io.github.lewin671.remoteagent.core.transport
 
 import io.github.lewin671.remoteagent.proto.Envelope
-import io.github.lewin671.remoteagent.proto.ForwardRequest
 import io.github.lewin671.remoteagent.proto.ForwardResponse
 import io.github.lewin671.remoteagent.proto.MachineCapabilities
 
@@ -34,10 +33,18 @@ internal open class FrameListener {
     open fun onFailure(stream: FrameStream, error: Throwable) {}
 }
 
+internal data class PathRefusal(val reason: String)
+internal interface PathAttempt {
+    val attemptId: String
+    suspend fun prepare(prior: Boolean)
+    suspend fun send(machineId: String, command: Envelope): ForwardResponse
+    fun refusal(error: com.connectrpc.ConnectException): PathRefusal?
+    suspend fun refreshAuth(prior: Boolean)
+}
+
 /** Routing and opaque envelopes only; no command decoding or authorization. */
 internal interface Path {
     fun status(machineId: String): PeerState
-    suspend fun epoch(): String
-    suspend fun forward(frame: ForwardRequest, headers: Map<String, List<String>>): ForwardResponse
+    fun attempt(handoff: () -> Unit): PathAttempt
     fun openStream(address: String, listener: FrameListener): FrameStream
 }

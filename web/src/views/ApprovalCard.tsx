@@ -104,7 +104,7 @@ export function ApprovalCard({
   const deadline = deadlineOf(a);
   const expired = deadline > 0 && now >= deadline;
   const truncated = approvalTruncated(a);
-  const unlinked = remote.unlinked;
+  const unlinked = remote.peer(remote.sessions.get(sid)?.machineId).unlinked;
   // An answer whose outcome is unknown holds: only a retry of it may go.
   const locked = !!ap.busy || expired || (!!ap.error && ap.unknown) || unlinked;
   const kind = approvalTitle(a);

@@ -1099,10 +1099,11 @@ export class Remote {
   readonly deviceLink = new DeviceLink(new RelayPath(
     id => {
       const m = this.machines.get(id);
-      return { reachable: !!m?.online, ready: this.conn === "online", authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)), protocolVersion: m?.meta?.protocolVersion, capabilities: m?.meta?.capabilities };
+      return { relayRequired: true, unlinked: this.unlinked, reachable: !!m?.online, ready: this.conn === "online", authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)), protocolVersion: m?.meta?.protocolVersion, capabilities: m?.meta?.capabilities };
     },
     () => this.relayEpoch(),
     (request, options) => this.api.forward(request, options),
+    () => this.login(),
   ));
   peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
   private listeners = new Set<() => void>();
@@ -3316,6 +3317,7 @@ export class Remote {
         this.checkFileCapability(machineId, cmd, call.uncertain);
         // Once C is handed to an untrusted relay, no outer status proves it
         // was not executed. Only an authenticated daemon result is final.
+        await delivery.prepare();
         const res = await delivery.send(machineId, env, signal);
         let msg: CommandResult;
         try {
@@ -3364,7 +3366,7 @@ export class Remote {
         }
         if (ce.code === Code.Unauthenticated && attempt < 3) {
           try {
-            await this.login();
+            await delivery.refreshAuth(call.uncertain);
           } catch {
             throw new CommandError(
               "unknown_outcome",

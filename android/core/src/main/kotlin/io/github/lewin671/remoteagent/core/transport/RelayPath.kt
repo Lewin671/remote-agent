@@ -3,6 +3,10 @@ package io.github.lewin671.remoteagent.core.transport
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.value
+import io.github.lewin671.remoteagent.core.newRequestId
+import io.github.lewin671.remoteagent.proto.Envelope
+import io.github.lewin671.remoteagent.proto.NotForwarded
+import com.connectrpc.ConnectException
 import io.github.lewin671.remoteagent.proto.ForwardRequest
 import io.github.lewin671.remoteagent.proto.ForwardResponse
 import okhttp3.Request
@@ -15,12 +19,33 @@ import okio.ByteString.Companion.toByteString
 internal class RelayPath(
     private val api: Api,
     private val sockets: () -> WebSocket.Factory,
+    private val token: suspend () -> String = { "" },
+    private val renew: suspend (String?, Boolean) -> Unit = { _, _ -> },
     private val observe: (String) -> PeerState,
 ) : Path {
     override fun status(machineId: String) = observe(machineId)
-    override suspend fun epoch() = api.relayEpoch()
-    override suspend fun forward(frame: ForwardRequest, headers: Map<String, List<String>>): ForwardResponse =
-        api.client.forward(frame, headers).value()
+    override fun attempt(handoff: () -> Unit): PathAttempt = object : PathAttempt {
+        override val attemptId = newRequestId()
+        private var usedToken: String? = null
+        private var epoch = ""
+        override suspend fun prepare(prior: Boolean) { usedToken = token() }
+        override suspend fun send(machineId: String, command: Envelope): ForwardResponse {
+            val sentToken = checkNotNull(usedToken)
+            val current = api.relayEpoch()
+            handoff()
+            epoch = current
+            val frame = ForwardRequest.newBuilder().setMachineId(machineId).setCommand(command).setAttemptId(attemptId).setRelayEpoch(current).build()
+            return api.client.forward(frame, Api.headers(sentToken) + ("Remote-Agent-Attempt" to listOf(attemptId))).value()
+        }
+        override fun refusal(error: ConnectException): PathRefusal? {
+            val proof = error.details.mapNotNull { detail ->
+                if (!detail.type.endsWith("remoteagent.v1.NotForwarded")) null
+                else runCatching { NotForwarded.parseFrom(detail.payload.toByteArray()) }.getOrNull()
+            }.firstOrNull { it.attemptId == attemptId && it.relayEpoch == epoch && epoch.isNotEmpty() }
+            return proof?.let { PathRefusal(it.reason) }
+        }
+        override suspend fun refreshAuth(prior: Boolean) { renew(usedToken, prior) }
+    }
     override fun openStream(address: String, listener: FrameListener): FrameStream = SocketStream(
         sockets().newWebSocket(Request.Builder().url(address).build(), object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) = listener.onOpen(SocketStream(webSocket))

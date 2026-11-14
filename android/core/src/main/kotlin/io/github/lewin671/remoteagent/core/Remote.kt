@@ -420,6 +420,8 @@ class Remote(
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
         sockets = { socketFactory ?: streamHttp },
+        token = { currentToken() },
+        renew = { used, prior -> loginTokens.discard(used); relogin(prior) },
         observe = { id -> relayObservation.let { RelayPath.discovery(it.machines[id], it.conn == ConnState.ONLINE, !it.removed, it.unlinked) } },
     ))
     fun peer(machineId: String?) = state.value.peer(machineId)
@@ -3383,18 +3385,17 @@ class Remote(
         // "machine offline" then says nothing about it.
         try {
             while (true) {
-                var sentToken: String? = null
                 val delivery = deviceLink.delivery(call)
                 val attemptId = delivery.attemptId
                 try {
                     checkFileCapability(p, call.uncertain)
-                    sentToken = currentToken()
+                    delivery.prepare(call.uncertain)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     val authorized = authorize(p,retryOfUnknown=call.hasPrior)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
                     val binding = security.commandIdentity(authorized)
-                    val res = delivery.send(p.machineId, authorized, sentToken)
+                    val res = delivery.send(p.machineId, authorized)
                     val (_, msg) =
                         try {
                             openSecureMessage(
@@ -3444,8 +3445,7 @@ class Remote(
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                         attempt++
-                        loginTokens.discard(sentToken)
-                        relogin(call.uncertain)
+                        delivery.refreshAuth(call.uncertain)
                         continue
                     }
                     // ABORTED: the daemon could not seal a result, as on the web.

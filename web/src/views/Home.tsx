@@ -208,7 +208,7 @@ export function SessionRow({
   last?: boolean;
   enter?: boolean;
 }) {
-  const st = shownStateOf(s, remote.presence.get(s.machineId), remote.unlinked && !remote.awaiting);
+  const st = shownStateOf(s, remote.presence.get(s.machineId), remote.peer(s.machineId).unlinked && !remote.awaiting);
   // Waiting sessions preview what they wait for, which is in the events.
   const waiting = st.tone === "wait";
   useEffect(
@@ -774,7 +774,7 @@ function HomeBanners({ remote, go, prefs }: { remote: Remote; go: Go; prefs?: bo
 /** Whether a new session can be started from here now: not out of reach
  * of the server, and with a computer to run it on. */
 function canStart(remote: Remote): boolean {
-  return !remote.unlinked && remote.machines.size > 0;
+  return [...remote.machines.keys()].some(id => !remote.peer(id).unlinked);
 }
 
 /** The bottom of the phone's sessions and tasks pages: the two tabs in a
@@ -895,14 +895,14 @@ export function Sidebar({
   const conn = connWord(remote);
   const [checking, setChecking] = useState(false);
   const tasks = active === "tasks";
-  const supported = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
+  const supported = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id) && !remote.peer(id).unlinked);
   return (
     <aside className="side">
       <div className="side-top">
         {/* The scope and the way to start something share the top row: one line of controls, then the headline. */}
         {!tasks && <ScopeCapsule remote={remote} go={go} wide onPicked={() => project !== undefined && go("")} />}
         {tasks ? (
-          <button className="mini" disabled={!supported || remote.unlinked} onClick={() => go("tasks/new")}>
+          <button className="mini" disabled={!supported} onClick={() => go("tasks/new")}>
             <Plus />
             {t("home.new_schedule")}
           </button>

@@ -1,5 +1,6 @@
-import type { CallOptions, Client } from "@connectrpc/connect";
+import type { Client, ConnectError } from "@connectrpc/connect";
 import type { ClientService } from "../gen/remoteagent/v1/relay_pb";
+import type { Envelope } from "../gen/remoteagent/v1/envelope_pb";
 import type { MachineCapabilities } from "../gen/remoteagent/v1/remote_pb";
 
 /** Discovery and path readiness are separate from permission to execute.
@@ -8,6 +9,8 @@ export interface PeerStatus {
   reachable: boolean;
   ready: boolean;
   authorized: boolean;
+  unlinked: boolean;
+  relayRequired: boolean;
   protocolVersion?: number;
   capabilities?: MachineCapabilities;
 }
@@ -25,10 +28,17 @@ export interface FrameStream {
   close(): void;
 }
 
+export interface PathAttempt {
+  readonly attemptId: string;
+  prepare(): Promise<void>;
+  send(machineId: string, command: Envelope, signal?: AbortSignal): Promise<ForwardReply>;
+  refusal(error: ConnectError): { reason: string } | undefined;
+  refreshAuth(prior: boolean): Promise<void>;
+}
+
 /** Paths see routing and sealed frames, never commands, keys or outcomes. */
 export interface Path {
   status(machineId: string): PeerStatus;
-  epoch(): Promise<string>;
+  attempt(handoff: () => void): PathAttempt;
   openStream(address: string): FrameStream;
-  forward(frame: ForwardFrame, options?: CallOptions): Promise<ForwardReply>;
 }

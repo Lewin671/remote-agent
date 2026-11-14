@@ -6,6 +6,6 @@ export class Router {
   constructor(readonly path: Path) {}
   status(machineId: string) {
     const state = this.path.status(machineId);
-    return { ...state, available: state.ready && state.reachable };
+    return { ...state, available: state.ready && state.reachable, canProbe: (serverReachable: boolean) => serverReachable || !state.relayRequired };
   }
 }

@@ -237,7 +237,7 @@ export function SessionPage({
   // and the input must not be replaced by 电脑不在线 for the moment it takes.
   // Nor is a word for the connection due then: the last state heard shows,
   // rather than 未连接 and 电脑离线 and then the state.
-  const st = shownStateOf(session, remote.presence.get(session.machineId), remote.unlinked && !remote.awaiting);
+  const st = shownStateOf(session, remote.presence.get(session.machineId), remote.peer(session.machineId).unlinked && !remote.awaiting);
   const agent = agentOf(session);
   const title = pending ? t("session.title") : titleOf(session);
   const project = projectName(projectKey(session));
@@ -1989,7 +1989,7 @@ function EndCard({
       <div className="h">
         <StateMark kind="off" />
         {i18n.t("session.ended")}</div>
-      {remote.unlinked ? (
+      {remote.peer(session.machineId).unlinked ? (
         <div className="d">{i18n.t("session.connect_resume")}</div>
       ) : machineOnline ? (
         <>

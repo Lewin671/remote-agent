@@ -2,9 +2,6 @@ package io.github.lewin671.remoteagent.core.transport
 
 import com.connectrpc.ConnectException
 import io.github.lewin671.remoteagent.core.*
-import io.github.lewin671.remoteagent.proto.Envelope
-import io.github.lewin671.remoteagent.proto.ForwardRequest
-import io.github.lewin671.remoteagent.proto.NotForwarded
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,22 +25,15 @@ internal class Link(path: Path) {
         } finally { call.close() }
     }
 
-    fun delivery(call: DispatchState.Call) = Delivery(call.delivery())
-    inner class Delivery(private val evidence: DispatchState.Call.Delivery) {
-        val attemptId = newRequestId()
-        private var epoch = ""
-        suspend fun send(machineId: String, command: Envelope, token: String): io.github.lewin671.remoteagent.proto.ForwardResponse {
-            epoch = router.path.epoch()
-            evidence.dispatch()
-            return router.path.forward(ForwardRequest.newBuilder().setMachineId(machineId).setCommand(command).setAttemptId(attemptId).setRelayEpoch(epoch).build(), Api.headers(token) + ("Remote-Agent-Attempt" to listOf(attemptId)))
-        }
-        fun refusal(error: ConnectException): NotForwarded? {
-            val proof = error.details.mapNotNull { detail ->
-                if (!detail.type.endsWith("remoteagent.v1.NotForwarded")) null
-                else runCatching { NotForwarded.parseFrom(detail.payload.toByteArray()) }.getOrNull()
-            }.firstOrNull { it.attemptId == attemptId && it.relayEpoch == epoch && epoch.isNotEmpty() }
-            if (proof != null) evidence.notForwarded()
-            return proof
+    fun delivery(call: DispatchState.Call): PathAttempt {
+        val evidence = call.delivery()
+        val attempt = router.path.attempt { evidence.dispatch() }
+        return object : PathAttempt by attempt {
+            override fun refusal(error: ConnectException): PathRefusal? {
+                val proof = attempt.refusal(error)
+                if (proof != null) evidence.notForwarded()
+                return proof
+            }
         }
     }
 

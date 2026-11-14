@@ -21,7 +21,7 @@ test("operation gates and capability checks use Link despite stale relay discove
   (r as unknown as { api: unknown }).api = { forward };
   r.conn = "offline";
   r.machines.set(r.machine, { id: r.machine, online: false, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION - 1, capabilities: { fileUpload: false } }) });
-  const link = new Link(new RelayPath(() => ({ reachable: true, ready: true, authorized: true, protocolVersion: PROTOCOL_VERSION, capabilities: create(MachineCapabilitiesSchema, { fileUpload: true, scheduledTasks: true }) }), relay.epoch, relay.forward));
+  const link = new Link({ status: () => ({ reachable: true, ready: true, authorized: true, unlinked: false, relayRequired: false, protocolVersion: PROTOCOL_VERSION, capabilities: create(MachineCapabilitiesSchema, { fileUpload: true, scheduledTasks: true }) }), attempt: handoff => relay.attempt(handoff), openStream: address => relay.openStream(address) });
   Object.defineProperty(r, "deviceLink", { value: link });
   try {
     const changed = vi.fn();
@@ -32,6 +32,7 @@ test("operation gates and capability checks use Link despite stale relay discove
     Object.assign(r, { listed: true });
     expect(r.presence.get(r.machine)?.online).toBe(true);
     expect(r.machines.get(r.machine)?.online).toBe(false);
+    expect(r.peer(r.machine).canProbe(false)).toBe(true);
     expect(r.fileUploadIssue(r.machine)).toBe("");
     await r.machineCommand(r.machine, { case: "createSession", value: { cwd: "/work/example", fileIds: ["file"] } });
     expect(forward).toHaveBeenCalledTimes(1);
@@ -69,7 +70,7 @@ test("physical path endings are separate from Link's relay-only stream-close pol
   const path = new RelayStream("wss://example.com/v1/term");
   const pathEnd = vi.fn(), productClose = vi.fn(), stop = vi.fn();
   path.onEnd = pathEnd;
-  const link = new Link(new RelayPath(() => ({ reachable: true, ready: true, authorized: true }), async () => "epoch", vi.fn()));
+  const link = new Link(new RelayPath(() => ({ reachable: true, ready: true, authorized: true, unlinked: false, relayRequired: false }), async () => "epoch", vi.fn()));
   const stream = link.openStream(productClose, stop);
   socket.onclose?.();
   expect(pathEnd).toHaveBeenCalledTimes(1);

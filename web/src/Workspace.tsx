@@ -79,7 +79,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
   useLayoutEffect(() => { remote.setSchedulePage(route); }, [remote, route]);
   useEffect(() => { remote.syncSchedules(); });
   const wide = useWide();
-  const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
+  const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id) && !remote.peer(id).unlinked);
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
   const session = kind === "s" ? (remote.sessions.get(arg) ?? remote.openingSessions.get(arg)) : undefined;
@@ -133,7 +133,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
       : wide ? (
         <div className="center muted schedule-selection-empty">
           <span>{l10n.t("home.ios_choose_task")}</span>
-          <button className="btn sm" disabled={!scheduling || remote.unlinked} onClick={() => go("tasks/new")}>
+          <button className="btn sm" disabled={!scheduling} onClick={() => go("tasks/new")}>
             {l10n.t("home.new_schedule")}</button>
         </div>
       ) : <SchedulesPage remote={remote} go={go} />;
@@ -193,7 +193,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
     <div className="phone">
       <Suspense fallback={loading}>{page}</Suspense>
       {kind === "tasks" && !arg && (
-        <BottomBar remote={remote} go={go} active="tasks" action={{ label: l10n.t("home.new_schedule"), icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling || remote.unlinked }} />
+        <BottomBar remote={remote} go={go} active="tasks" action={{ label: l10n.t("home.new_schedule"), icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling }} />
       )}
     </div>
   );

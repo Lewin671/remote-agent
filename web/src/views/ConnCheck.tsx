@@ -77,11 +77,10 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
       if (mine !== run.current) return;
       reached = false;
       setServer({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") });
-      setMachines(new Map(online.map((id) => [id, { state: "skip" }])));
+      setMachines(new Map(online.map((id) => [id, { state: remote.peer(id).canProbe(false) ? "wait" : "skip" }])));
     }
-    if (reached)
-      await Promise.all(
-        online.map(async (id) => {
+    await Promise.all(
+        online.filter(id => remote.peer(id).canProbe(reached)).map(async (id) => {
           const p: Ping = await remote.pingMachine(id).then(
             (ms) => ({ state: "ok", ms }),
             (e) => ({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") }),
