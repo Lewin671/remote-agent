@@ -1,4 +1,4 @@
-import { abortable } from "./transport/recovery";
+import { abortable, ownedRound, PathChanged } from "./transport/recovery";
 import {
   contentSecretOf,
   installSecurity,
@@ -102,6 +102,7 @@ export class DeviceSecurityClient {
     private readonly fetchStates: FetchStates,
     private readonly active: () => boolean = () => true,
     private readonly store: SecurityStorage = browserStorage,
+    private readonly roundBudget: () => number = () => 15_000,
   ) {}
   private async validateLocalRecord(
     r: SecurityRecord,
@@ -176,7 +177,7 @@ export class DeviceSecurityClient {
     await this.store.touchSecurity(BigInt(Date.now()));
   }
   networkChanged() {
-    this.syncController?.abort();
+    this.syncController?.abort(new PathChanged());
     this.syncController = undefined;
     this.syncJob = undefined;
   }
@@ -187,8 +188,8 @@ export class DeviceSecurityClient {
       if (!job || !controller) {
         controller = new AbortController();
         const owner = controller;
-        const pending = this.syncLoop(owner.signal).catch(error => {
-          if (this.syncJob === pending && !owner.signal.aborted) this.recoveryStatusStale = true;
+        const pending = ownedRound(owner, this.roundBudget(), signal => this.syncLoop(signal)).catch(error => {
+          if (this.syncJob === pending && !(owner.signal.reason instanceof PathChanged)) this.recoveryStatusStale = true;
           throw error;
         }).finally(() => {
           if (this.syncJob === pending) { this.syncJob = undefined; this.syncController = undefined; }
@@ -199,7 +200,7 @@ export class DeviceSecurityClient {
       }
       try { return await abortable(job, waiter); }
       catch (error) {
-        if (controller.signal.aborted && this.active() && !waiter?.aborted) continue;
+        if (controller.signal.reason instanceof PathChanged && this.active() && !waiter?.aborted) continue;
         throw error;
       }
     }

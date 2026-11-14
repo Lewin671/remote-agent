@@ -242,7 +242,7 @@ func (s *securitySession) refresh(ctx context.Context) error {
 			if owner == nil {
 				owner = context.Background()
 			}
-			round, cancel := context.WithTimeout(owner, 15*time.Second)
+			round, cancel := context.WithTimeout(owner, 3*time.Second)
 			flight = &securityRefresh{done: make(chan struct{}), cancel: cancel}
 			s.syncing = flight
 			s.workers.Go(func() {
@@ -379,8 +379,8 @@ func securityAuthenticationLost(err error) bool {
 	return connect.CodeOf(err) == connect.CodeUnauthenticated || connect.CodeOf(err) == connect.CodePermissionDenied
 }
 
-// syncLoop retains the current 60/15-second timing. The shorter direct
-// liveness budget belongs to phase 1. It starts independently of WS readiness.
+// The periodic loop remains independent of WS readiness. Its caller budget
+// does not own the shared pull: that round has its own recovery deadline.
 func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, initialDone chan<- struct{}) error {
 	var warn warningGate
 	ticker := time.NewTicker(interval)

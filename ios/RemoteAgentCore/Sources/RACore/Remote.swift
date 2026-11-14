@@ -263,6 +263,7 @@ public actor Remote {
     var dialing = false
     var wantedConnection = false
     var everReady = false
+    var startedOnce = false
     var networkGeneration: UInt64 = 0
     var verifiedNetworkGeneration: UInt64 = 0
     var networkSignature = ""
@@ -517,7 +518,8 @@ public actor Remote {
         case .start:
             if running || removed { return }
             running = true
-            if everReady { networkGeneration += 1 }
+            if startedOnce { networkGeneration += 1; retireCandidate() }
+            startedOnce = true
             startLiveness()
             beginConnect()
         case .stop:
@@ -587,6 +589,7 @@ public actor Remote {
     private func halt() {
         running = false
         retireLogin()
+        retireDirectory()
         liveness?.cancel();liveness=nil
         if let candidate {retireMainLeg(candidate)};candidate=nil
         dialing=false
@@ -724,7 +727,7 @@ public actor Remote {
                 let id = UUID(), result = SharedResult<String>()
                 let task = Task {
                     let outcome: Result<String, Error>
-                    do { outcome = .success(try await self.performSignIn()) }
+                    do { outcome = .success(try await withTimeout(self.everReady || self.networkGeneration > 0 ? 3000 : 60_000, sleep: self.sleep) { try await self.performSignIn() }) }
                     catch { outcome = .failure(error) }
                     if self.loginFlight?.id == id { self.loginFlight = nil }
                     result.resolve(outcome)
@@ -807,6 +810,10 @@ public actor Remote {
     }
 
     /// Forgets the token in use, here and wherever the app keeps it.
+    func rejectCredential(_ rejected: String) {
+        if token == rejected { dropToken() }
+    }
+
     private func dropToken() {
         token = ""
         tokenExpires = 0
@@ -875,6 +882,7 @@ public actor Remote {
 
     func retireCandidate() {
         retireLogin()
+        retireDirectory()
         wantedConnection=true
         let old=candidate;candidate=nil
         opening?.task.cancel();opening=nil

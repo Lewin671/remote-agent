@@ -24,6 +24,7 @@ type credentials struct {
 	lifetime context.Context
 	workers  sync.WaitGroup
 	closed   bool
+	timeout  time.Duration
 	token    string
 	login    func(context.Context) (string, error)
 	flight   *loginFlight
@@ -64,7 +65,11 @@ func (c *credentials) get(ctx context.Context, rejected string) (string, error) 
 			if owner == nil {
 				owner = context.Background()
 			}
-			round, cancel := context.WithTimeout(owner, 60*time.Second)
+			budget := c.timeout
+			if budget == 0 {
+				budget = 60 * time.Second
+			}
+			round, cancel := context.WithTimeout(owner, budget)
 			f = &loginFlight{done: make(chan struct{}), cancel: cancel}
 			c.flight = f
 			c.token = ""

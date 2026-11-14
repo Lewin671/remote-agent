@@ -1,5 +1,5 @@
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
-import { Recovery, PathChanged, abortable } from "./transport/recovery";
+import { Recovery, PathChanged, abortable, ownedRound, scopedClient } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { type DispatchCall } from "./transport/dispatch";
 import { RequestSlot, newSlot, restoreSlot, CommandError, uncertain } from "./transport/request";
@@ -464,7 +464,7 @@ export class Remote {
   private liveErrors = new Map<string, string>();
   private liveJobs = new Map<string, Promise<void>>();
 
-  private directoryJob?: { head: Uint8Array; promise: Promise<void>; invalidated?: boolean };
+  private directoryJob?: { head: Uint8Array; promise: Promise<void>; controller: AbortController; invalidated?: boolean };
   private directoryHead?: Uint8Array;
   private recoveryObjectsPending = false;
   private trustedMembers = new Map<string, Member>();
@@ -1103,6 +1103,10 @@ export class Remote {
   private verifiedNetworkGeneration = 0;
   private activeNetworkGeneration = 0;
   private wakeSecurity?: Promise<void>;
+  private wakeController?: AbortController;
+  private wakeRequired = false;
+  private wakeRevision = 0;
+  private roundBudget() { return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
   private closed = false;
   private reconcilingSecurity = 0;
   private generation = 0;
@@ -1156,10 +1160,17 @@ export class Remote {
       account.devicePrivate,
       async (after, limit, signal) => {
         this.setupProgress?.();
-        const reply = await this.api.getSecurityStates({
-          afterEpoch: after,
-          limit,
-        }, { signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS });
+        const request = { afterEpoch: after, limit };
+        const options = { signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS };
+        const used = this.token;
+        let reply;
+        try { reply = await this.api.getSecurityStates(request, options); }
+        catch (error) {
+          signal?.throwIfAborted();
+          if (!(error instanceof ConnectError) || error.code !== Code.Unauthenticated) throw error;
+          if (!this.token || this.token === used) await this.login(signal);
+          reply = await this.api.getSecurityStates(request, options);
+        }
         this.setupProgress?.();
         return {
           states: reply.states.map((s) => ({
@@ -1174,6 +1185,7 @@ export class Remote {
       },
       () => !this.closed || this.reconcilingSecurity > 0,
       securityStorage,
+      () => this.roundBudget(),
     );
     const pairing = createClient(PairingService, createConnectTransport({
       fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true,
@@ -1290,7 +1302,7 @@ export class Remote {
       ? this.sessionSeeds.get(want.sessionId ?? "")
       : undefined;
     rejectRetiredHistory(env);
-    if (!history) await this.wakeSecurity;
+    if (!history) await this.ensureWakeSecurity();
     let out: Awaited<ReturnType<DeviceSecurityClient["openHistory"]>>;
     try {
       if (historical?.status === "rejected") throw historical.reason;
@@ -1324,8 +1336,9 @@ export class Remote {
   }
   private async checkNetworkSecurity() {
     if (this.verifiedNetworkGeneration === this.networkGeneration) return;
-    const generation = this.networkGeneration;
+    const generation = this.networkGeneration, wake = this.wakeRevision;
     await this.security.sync();
+    this.confirmWake(generation, wake);
     if (generation !== this.networkGeneration) throw new SecurityError("stale");
     this.verifiedNetworkGeneration = generation;
   }
@@ -1340,7 +1353,7 @@ export class Remote {
     beforeSign?: () => void,
     preparedBytes?: Uint8Array<ArrayBuffer>,
   ) {
-    await this.wakeSecurity;
+    await this.ensureWakeSecurity();
     if (h.kind === PayloadKind.COMMAND) await this.checkNetworkSecurity();
     let purpose = Number(h.kind) as Purpose;
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
@@ -1648,6 +1661,7 @@ export class Remote {
     this.authority.lifecycle.resume();
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = watchSecurityPush(() => void this.syncSecurity());
+    if (this.begun) { this.networkGeneration++; this.touchAfterWake(); }
     this.begun = true;
     this.trimHistory();
     clearInterval(this.securityTimer);
@@ -1820,9 +1834,16 @@ export class Remote {
   }
 
   private retireNetworkIO() {
-    this.loginController?.abort();
+    this.loginController?.abort(new PathChanged());
     this.loginController = undefined; this.loggingIn = undefined;
     this.security.networkChanged();
+    if (this.directoryJob) {
+      this.directoryJob.invalidated = true;
+      this.directoryJob.controller.abort(new PathChanged());
+      this.directoryJob = undefined;
+    }
+    this.wakeController?.abort(new PathChanged());
+    this.wakeController = undefined; this.wakeSecurity = undefined;
   }
 
   private retireCandidate(reason?: Error) {
@@ -1836,10 +1857,33 @@ export class Remote {
 
   private touchAfterWake() {
     this.retireNetworkIO();
-    this.wakeSecurity = this.security.touch();
-    // Consumers observe the original failure; avoid an unhandled rejection
-    // while an idle terminal has no frame to read or send.
-    void this.wakeSecurity.catch(() => undefined);
+    this.wakeRequired = true;
+    this.beginWakeTouch();
+  }
+
+  private beginWakeTouch(): Promise<void> {
+    const revision = ++this.wakeRevision, generation = this.networkGeneration;
+    const owner = this.wakeController = new AbortController();
+    const job = ownedRound(owner, this.roundBudget(), () => this.security.touch()).then(() => {
+      this.confirmWake(generation, revision);
+    }).finally(() => {
+      if (this.wakeSecurity === job) { this.wakeSecurity = undefined; this.wakeController = undefined; }
+    });
+    this.wakeSecurity = job;
+    void job.catch(() => undefined);
+    return job;
+  }
+
+  private confirmWake(generation: number, revision: number) {
+    if (generation === this.networkGeneration && revision === this.wakeRevision) this.wakeRequired = false;
+  }
+
+  private async ensureWakeSecurity() {
+    while (this.wakeRequired) {
+      const job = this.wakeSecurity ?? this.beginWakeTouch();
+      try { await job; }
+      catch (error) { if (error instanceof PathChanged && !this.closed) continue; throw error; }
+    }
   }
 
   networkChanged(signature: string) {
@@ -1956,7 +2000,7 @@ export class Remote {
       if (!job || !controller) {
         controller = new AbortController();
         const owner = controller;
-        const pending = this.signIn(owner.signal).finally(() => {
+        const pending = ownedRound(owner, this.roundBudget(), signal => this.signIn(signal)).finally(() => {
           if (this.loggingIn === pending) { this.loggingIn = undefined; this.loginController = undefined; }
         });
         job = pending;
@@ -1964,7 +2008,7 @@ export class Remote {
         void pending.catch(() => undefined);
       }
       try { return await abortable(job, waiter); }
-      catch (error) { if (controller.signal.aborted && !this.closed && !waiter?.aborted) continue; throw error; }
+      catch (error) { if (controller.signal.reason instanceof PathChanged && !this.closed && !waiter?.aborted) continue; throw error; }
     }
   }
 
@@ -2101,7 +2145,9 @@ export class Remote {
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
+      const network = this.networkGeneration, wake = this.wakeRevision;
       const record = await this.security.sync(signal);
+      this.confirmWake(network, wake);
       if (this.closed || generation !== this.generation || signal.aborted) return false;
       this.verifiedNetworkGeneration = this.networkGeneration;
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
@@ -3886,12 +3932,13 @@ export class Remote {
 
   private async republishRecoveryObjects(
     record: import("./device-security-store").SecurityRecord,
+    api = this.api,
   ) {
     const boundary = record.states.filter((_, i) => record.proofs[i]).at(-1)
       ?.core.contentEpoch;
     if (!boundary) return;
     for (let attempt = 0; attempt < 5; attempt++) {
-      const { object: o } = await this.api.getAccountPrefs({
+      const { object: o } = await api.getAccountPrefs({
         objectId: PREFS_OBJECT,
       });
       if (
@@ -3933,7 +3980,7 @@ export class Remote {
       );
       if (
         (
-          await this.api.putAccountPrefs({
+          await api.putAccountPrefs({
             objectId: PREFS_OBJECT,
             expectedRevision: o.revision,
             envelope,
@@ -3944,7 +3991,7 @@ export class Remote {
       if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
     }
     for (let attempt = 0; attempt < 5; attempt++) {
-      const own = (await this.api.listDevices({})).devices.find(
+      const own = (await api.listDevices({})).devices.find(
         (d) => d.id === this.account.deviceId,
       );
       if (
@@ -3979,7 +4026,7 @@ export class Remote {
       );
       if (
         (
-          await this.api.putDeviceMeta({
+          await api.putDeviceMeta({
             deviceId: own.id,
             expectedRevision: own.metaRevision,
             meta,
@@ -4032,7 +4079,8 @@ export class Remote {
         this.clearClockWarning();
         return;
       }
-      const job = { head: state, promise: this.loadDirectory(record).finally(() => {
+      const controller = new AbortController();
+      const job = { head: state, controller, promise: ownedRound(controller, this.roundBudget(), signal => this.loadDirectory(record, signal)).finally(() => {
         if (this.directoryJob === job) this.directoryJob = undefined;
       }), invalidated: false };
       this.directoryJob = job;
@@ -4042,30 +4090,34 @@ export class Remote {
       // It must run after the shared job has finished and been cleared.
       if (describe && this.devicesStatus === "ready") await this.describeSelf();
     } catch (e) {
+      if (e instanceof PathChanged) { if (!this.closed) return this.loadDevices(describe, update); return; }
       this.noteClock(e);
+      if (this.directoryJob) return;
       this.devicesStatus = "error";
       this.changed();
     }
   }
 
-  private async loadDirectory(record: SecurityRecord) {
+  private async loadDirectory(record: SecurityRecord, signal: AbortSignal) {
+    const api = scopedClient(this.api, signal);
     this.recoveryObjectsPending = true;
     let publicationPending = false;
     try {
       try {
-        await this.republishRecoveryObjects(record);
+        await this.republishRecoveryObjects(record, api);
       } catch (e) {
         // Expired publication stays pending; it must not block stored reads.
         if (!(e instanceof SecurityError) || e.code !== "lease") throw e;
         publicationPending = true;
       }
+      signal.throwIfAborted();
       this.clearClockWarning();
       const head = record.states[record.states.length - 1];
       const members = new Map(head.core.members.map((m) => [m.id, m]));
       const state = await stateHash(head);
       const [listed, online] = await Promise.all([
-        this.api.listDevices({}),
-        this.api.listMachines({}),
+        api.listDevices({}),
+        api.listMachines({}),
       ]);
       const metadata = new Map<string, Envelope>();
       for (const d of listed.devices)
@@ -4159,9 +4211,11 @@ export class Remote {
         }
         nextDevices.set(m.id, d);
       }
+      signal.throwIfAborted();
       if (this.directoryJob?.invalidated) return;
       if (!equalBytes(await this.security.localStateHash(), state))
         throw new Error(l10n.t("errors.device_directory_state_changed"));
+      signal.throwIfAborted();
       for (const [id, d] of nextDevices) {
         if ((this.devices.get(id)?.metaRev ?? 0n) > d.metaRev)
           throw new Error(l10n.t("errors.the_device_directory_response_is_out_of_date"));
@@ -4190,6 +4244,7 @@ export class Remote {
       this.devicesStatus = "ready";
       this.changed();
     } catch (e) {
+      if (signal.aborted) throw signal.reason;
       this.noteClock(e);
       this.devicesStatus = "error";
       this.changed();

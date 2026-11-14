@@ -1,3 +1,4 @@
+import Connect
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -13,29 +14,40 @@ extension Remote {
         if !account.accountId.isEmpty, record.pin.account != account.accountId {
             throw DeviceSecurity.Failure.untrusted
         }
-        let api = self.api
         let client = DeviceSecurityClient(
             store: securityStorage, memberID: account.deviceId, signingKey: device,
             clock: { [clock] in UInt64(bitPattern: clock()) },
+            pullTimeoutMs: 3000,
             fetchStates: { [weak self] after in
                 guard let self else { throw DeviceSecurity.Failure.storage }
-                var request = PBGetSecurityStatesRequest()
-                request.afterEpoch = after
-                request.limit = 8
-                do {
-                    let token = try await self.currentToken()
-                    let result = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: token)).value()
-                    try Task.checkCancellation()
-                    await self.receivedRecoveryStatus(result)
-                    return result
-                } catch {
-                    if !Task.isCancelled {await self.markRecoveryStatusStale()}
-                    throw error
-                }
+                return try await self.fetchSecurityPage(after)
             })
         deviceSecurity = client
         return client
     }
+    private func fetchSecurityPage(_ after: UInt64) async throws -> PBGetSecurityStatesResponse {
+        var request = PBGetSecurityStatesRequest(); request.afterEpoch = after; request.limit = 8
+        var used = try await currentToken()
+        do {
+            let response: PBGetSecurityStatesResponse
+            do { response = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: used)).value() }
+            catch let error as ConnectError where error.code == .unauthenticated {
+                try Task.checkCancellation()
+                rejectCredential(used)
+                used = try await currentToken()
+                do { response = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: used)).value() }
+                catch let error as ConnectError where error.code == .unauthenticated {
+                    rejectCredential(used); throw error
+                }
+            }
+            try Task.checkCancellation(); receivedRecoveryStatus(response)
+            return response
+        } catch {
+            if !Task.isCancelled { markRecoveryStatusStale() }
+            throw error
+        }
+    }
+
     func authorizationStateHash() async throws -> Data {
         do { return try await securitySession().headStateHash() } catch {
             if error is CancellationError { throw error }

@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.core.transport
 
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -16,9 +19,10 @@ internal class NetworkRound(
 ) {
     private val lock = Any()
     private var generation = 0L
+    private var timeoutMs = 15_000L
     private var active: Job? = null
     fun changed() {
-        val old = synchronized(lock) { generation++; active.also { active = null } }
+        val old = synchronized(lock) { generation++; timeoutMs = 3000; active.also { active = null } }
         // The scheduling hook runs outside the lock; even a new owner installed
         // here must never receive the preceding generation's cancellation.
         afterRetirement()
@@ -32,8 +36,8 @@ internal class NetworkRound(
                 return coroutineScope {
                     mutex.withLock {
                         val job = currentCoroutineContext()[Job]!!
-                        synchronized(lock) { before = generation; active = job }
-                        try { currentCoroutineContext().ensureActive(); block() }
+                        val budget = synchronized(lock) { before = generation; active = job; timeoutMs }
+                        try { currentCoroutineContext().ensureActive(); ownedNetworkOperation(budget, block) }
                         finally { synchronized(lock) { if (active === job) active = null } }
                     }
                 }
@@ -44,3 +48,11 @@ internal class NetworkRound(
         }
     }
 }
+
+/** Expiry belongs to this round, not to any waiter outside it. */
+internal suspend fun <T> ownedNetworkOperation(ms: Long, block: suspend () -> T): T =
+    try { withTimeout(ms) { block() } }
+    catch (error: TimeoutCancellationException) {
+        currentCoroutineContext().ensureActive()
+        throw SocketTimeoutException().apply { initCause(error) }
+    }

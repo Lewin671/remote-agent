@@ -20,6 +20,7 @@ public actor DeviceSecurityClient {
     private let signingKey: SigningKey
     private let fetchStates: StateFetch
     private let clock: @Sendable () -> UInt64
+    private let pullTimeoutMs: Int64
     private var current: DeviceSecurity.Record?
     private struct Pull: Sendable { let id: UUID; let generation: UInt64; let task: Task<Void, Never>; let result: SharedResult<DeviceSecurity.Record> }
     private var syncJob: Pull?
@@ -34,6 +35,7 @@ public actor DeviceSecurityClient {
         clock: @escaping @Sendable () -> UInt64 = {
             UInt64(Date().timeIntervalSince1970 * 1000)
         },
+        pullTimeoutMs: Int64 = 15_000,
         fetchStates: @escaping StateFetch
     ) {
         self.store = store
@@ -41,6 +43,7 @@ public actor DeviceSecurityClient {
         self.signingKey = signingKey
         self.clock = clock
         self.fetchStates = fetchStates
+        self.pullTimeoutMs = pullTimeoutMs
     }
     private func read() throws -> DeviceSecurity.Record {
         try DeviceSecurity.check(!closed, .storage)
@@ -137,7 +140,7 @@ public actor DeviceSecurityClient {
                 let id = UUID(), result = SharedResult<DeviceSecurity.Record>()
                 let task = Task {
                     let outcome: Result<DeviceSecurity.Record, Error>
-                    do { outcome = .success(try await self.syncLoop(generation)) }
+                    do { outcome = .success(try await withTimeout(self.pullTimeoutMs, sleep: { try await Task.sleep(for: .milliseconds($0)) }) { try await self.syncLoop(generation) }) }
                     catch { outcome = .failure(error) }
                     if self.syncJob?.id == id { self.syncJob = nil }
                     result.resolve(outcome)

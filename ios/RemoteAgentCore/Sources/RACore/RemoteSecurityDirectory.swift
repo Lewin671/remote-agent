@@ -3,6 +3,12 @@ import Foundation
 import RAProto
 
 extension Remote {
+    func retireDirectory() {
+        directoryVersion += 1
+        let job = directoryLoad; directoryLoad = nil
+        job?.task.cancel()
+    }
+
     /// Reads the current signed state and the devices the relay lists, then
     /// keeps only the members the state names. Device metadata is self-signed
     /// and is the only source of a client's name.
@@ -61,7 +67,12 @@ extension Remote {
             let id=UUID(), result=SharedResult<Void>()
             let task=Task {
                 let outcome: Result<Void,Error>
-                do {try await self.readTrustedDirectory(record,version:version);outcome = .success(())}
+                do {
+                    try await withTimeout(self.everReady || self.networkGeneration > 0 ? 3000 : 15_000, sleep:self.sleep) {
+                        try await self.readTrustedDirectory(record,version:version)
+                    }
+                    outcome = .success(())
+                }
                 catch {outcome = .failure(error)}
                 if self.directoryLoad?.id==id {self.directoryLoad=nil}
                 result.resolve(outcome)
@@ -173,6 +184,8 @@ extension Remote {
         }
         archiveMachines=Set(record.states.values.flatMap{$0.core.members}.filter{$0.kind==1}.map{$0.id})
         for (id,var machine) in nextMachines where members[id] == nil {machine.online=false;nextMachines[id]=machine}
+        try Task.checkCancellation()
+        guard version == directoryVersion else { return }
         trustedMembers = members
         trustedMetadata = metadata
         directoryHead = hash

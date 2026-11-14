@@ -548,6 +548,7 @@ class Remote(
     private var wantedConnection = false
     private var verifiedNetworkGeneration = 0L
     private var everReady = false
+    private var startedOnce = false
     private var liveness: Job? = null
     private var activeActivity: java.util.concurrent.atomic.AtomicLong? = null
     private var running = false
@@ -642,7 +643,8 @@ class Remote(
                     delay(60_000)
                 }
             }
-            if (everReady) networkGeneration++
+            if (startedOnce) { networkGeneration++; retireCandidate() }
+            startedOnce = true
             try { security.touch() } catch (e: Exception) { report(e) }
             startLiveness()
             beginConnect()
@@ -664,6 +666,7 @@ class Remote(
         stateJob = null
         loginTokens.networkChanged()
         security.networkChanged()
+        retireDirectory()
         generation++
         reconnect?.cancel()
         reconnect = null
@@ -750,9 +753,16 @@ class Remote(
         }
     }
 
+    private fun retireDirectory() {
+        directoryVersion++
+        val old = directoryLoad; directoryLoad = null
+        old?.cancel()
+    }
+
     private fun retireCandidate() {
         loginTokens.networkChanged()
         security.networkChanged()
+        retireDirectory()
         wantedConnection = true
         val oldCandidate = candidate
         candidate = null
@@ -2505,13 +2515,21 @@ class Remote(
             report(e)
             return
         }
+        while (true) {
         val load = directoryLoad?.takeIf {
             !it.isCompleted && directoryLoadVersion == directoryVersion &&
                 directoryLoadHead?.contentEquals(head) == true
         } ?: run {
             val version = ++directoryVersion
             scope.async(start = CoroutineStart.LAZY) {
-                try { readDirectory(listedMachines, version) }
+                try {
+                    io.github.lewin671.remoteagent.core.transport.ownedNetworkOperation(if (everReady || networkGeneration > 0) 3000 else 15_000) {
+                        readDirectory(listedMachines, version)
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    report(e)
+                }
                 finally {
                     if (directoryLoad === kotlinx.coroutines.currentCoroutineContext()[Job]) directoryLoad = null
                 }
@@ -2522,7 +2540,13 @@ class Remote(
                 it.start()
             }
         }
-        load.await()
+        val expectedVersion = directoryLoadVersion
+        try { load.await(); return }
+        catch (e: CancellationException) {
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (directoryVersion == expectedVersion || directoryLoad === load) throw e
+        }
+        }
     }
 
     private suspend fun readDirectory(listedMachines: ListMachinesResponse?, version: Long) {
