@@ -1,3 +1,4 @@
+import { cleanup } from "../cleanup";
 import { ConnectError } from "@connectrpc/connect";
 import { DispatchRegistry, type DispatchCall } from "./dispatch";
 import { RequestSlot, CommandError, uncertain } from "./request";
@@ -11,7 +12,7 @@ export class Link {
   readonly router: Router;
   private readonly listeners = new Set<() => void>();
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
-  changed() { for (const listener of this.listeners) listener(); }
+  changed() { cleanup(...this.listeners); }
   private readonly dispatchStates = new DispatchRegistry();
   private readonly streams = new Set<{ end(reason: string, notify?: boolean): void }>();
   constructor(path: Path) { this.router = new Router(path); }
@@ -62,10 +63,9 @@ export class Link {
         if (ended) return;
         ended = true;
         this.streams.delete(stream);
-        stop(reason);
         // Relay-only policy preserves the existing explicit end-of-stream
         // behavior. A physical adapter has no reference to this listener.
-        if (notify) onClose(reason);
+        cleanup(() => stop(reason), () => { if (notify) onClose(reason); });
       },
     };
     this.streams.add(stream);
@@ -73,6 +73,6 @@ export class Link {
   }
   endRelayStreams(reason: string) { this.closeStreams(reason); }
   closeStreams(reason: string) {
-    for (const stream of this.streams) stream.end(reason);
+    cleanup(...[...this.streams].map(stream => () => stream.end(reason)));
   }
 }

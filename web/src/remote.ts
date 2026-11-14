@@ -1,3 +1,4 @@
+import { cleanup } from "./cleanup";
 import { type DispatchCall } from "./transport/dispatch";
 import { RequestSlot, newSlot, restoreSlot, CommandError, uncertain } from "./transport/request";
 import { Link as DeviceLink } from "./transport/link";
@@ -1437,7 +1438,6 @@ export class Remote {
   }
 
   protected changed(immediate = false) {
-    this.deviceLink.changed();
     if (this.conn === "online" || this.closed || !this.begun) {
       clearTimeout(this.graceTimer);
       this.graceTimer = undefined;
@@ -1455,11 +1455,14 @@ export class Remote {
       }, this.waitingNotice ? this.linkGraceMs - notice : notice);
     }
     this.version++;
-    this.sharedFilesState?.onConnectivityChange();
     // Connection state must reach React even while an older listing is
     // awaiting metadata. Batching that work must not hide recovery or loss.
     if (this.held && !immediate) this.dirty = true;
-    else for (const fn of this.listeners) fn();
+    cleanup(
+      () => this.deviceLink.changed(),
+      () => this.sharedFilesState?.onConnectivityChange(),
+      ...(!this.held || immediate ? [...this.listeners] : []),
+    );
   }
 
   // While a listing is applied, each of its sessions is a change: the
@@ -1474,7 +1477,7 @@ export class Remote {
     } finally {
       if (!--this.held && this.dirty) {
         this.dirty = false;
-        for (const fn of this.listeners) fn();
+        cleanup(...this.listeners);
       }
     }
   }
@@ -1749,10 +1752,8 @@ export class Remote {
   }
 
   stop() {
-    this.deviceLink.sweep();
     this.closed = true;
-    this.authority.lifecycle.pause();
-    this.unwatchSecurityPush?.();
+    const unwatch = this.unwatchSecurityPush;
     this.unwatchSecurityPush = undefined;
     clearInterval(this.securityTimer);
     this.securityTimer = undefined;
@@ -1766,32 +1767,42 @@ export class Remote {
     clearTimeout(this.idleTimer);
     const ws = this.ws;
     this.ws = undefined;
-    ws?.close();
-    this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
     this.connAttempt = undefined;
-    this.changed(true);
+    cleanup(
+      () => this.deviceLink.sweep(),
+      () => this.authority.lifecycle.pause(),
+      () => unwatch?.(),
+      () => ws?.close(),
+      () => this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed")),
+      () => this.changed(true),
+    );
   }
 
   /** Connects now instead of waiting out the backoff, e.g. when the
    * network came back. */
   reconnectNow(networkChanged = false) {
     if (this.closed || this.removed) return;
+    let ws: FrameStream | undefined;
     if (networkChanged) {
       if (this.conn === "online") this.lostAt = Date.now();
       this.generation++;
       clearTimeout(this.openTimer);
       clearTimeout(this.idleTimer);
-      const ws = this.ws;
+      ws = this.ws;
       this.ws = undefined;
-      ws?.close();
-      this.deviceLink.endRelayStreams(l10n.t("errors.network_changed_reconnecting"));
     } else if (this.ws || this.retryTimer === undefined) return;
-    clearTimeout(this.retryTimer);
-    this.retryTimer = undefined;
-    this.retry = 1000;
-    void this.connect();
+    cleanup(
+      () => ws?.close(),
+      () => { if (networkChanged) this.deviceLink.endRelayStreams(l10n.t("errors.network_changed_reconnecting")); },
+      () => {
+        clearTimeout(this.retryTimer);
+        this.retryTimer = undefined;
+        this.retry = 1000;
+        void this.connect();
+      },
+    );
   }
 
   /** How long one round trip to the server takes now, in ms: a request
@@ -2003,10 +2014,12 @@ export class Remote {
       this.generation++;
       clearTimeout(this.openTimer);
       clearTimeout(this.idleTimer);
-      if (code === 1008) this.discardToken();
-      ws.close();
-      this.deviceLink.endRelayStreams(l10n.t("errors.disconnected_from_server"));
-      this.fail(e);
+      cleanup(
+        () => { if (code === 1008) this.discardToken(); },
+        () => ws.close(),
+        () => this.deviceLink.endRelayStreams(l10n.t("errors.disconnected_from_server")),
+        () => this.fail(e),
+      );
     };
     const watch = () => {
       this.lastFrameAt = Date.now();
@@ -2076,8 +2089,7 @@ export class Remote {
     this.connError = errorText(e);
     this.connAttempt = undefined;
     this.error = errorText(e);
-    this.changed(true);
-    if (this.closed) return;
+    if (this.closed) { this.changed(true); return; }
     const delay = this.retry;
     this.retry = Math.min(this.retry * 2, 30_000);
     clearTimeout(this.retryTimer);
@@ -2085,6 +2097,7 @@ export class Remote {
       () => void this.connect(),
       delay + Math.random() * delay * 0.25,
     );
+    this.changed(true);
   }
 
   private async onFrame(
@@ -3620,6 +3633,7 @@ export class Remote {
     onClose: (reason: string) => void,
     signal?: AbortSignal,
   ): Promise<TermConn> {
+    if (this.closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     const s = this.sessions.get(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
     if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
@@ -3631,16 +3645,14 @@ export class Remote {
     let openingTimer: ReturnType<typeof setTimeout> | undefined;
     let rejectOpening: (e: Error) => void = () => {};
     const abort = () => finish(l10n.t("errors.terminal_connection_canceled"));
-    const finish = (reason: string, notify = true) => {
-      if (closed) return;
+    const stream = this.deviceLink.openStream(onClose, reason => {
       closed = true;
       clearTimeout(openingTimer);
       signal?.removeEventListener("abort", abort);
-      ws.close();
       rejectOpening(new Error(reason));
-      stream.end(reason, notify);
-    };
-    const stream = this.deviceLink.openStream(onClose, reason => finish(reason, false));
+      ws.close();
+    });
+    const finish = (reason: string, notify = true) => stream.end(reason, notify);
     signal?.addEventListener("abort", abort, { once: true });
     await new Promise<void>((resolve, reject) => {
       rejectOpening = reject;
