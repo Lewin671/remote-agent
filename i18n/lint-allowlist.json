@@ -1653,5 +1653,25 @@
     "path": "web/src/views/Home.tsx",
     "literal": "remote.supportsSchedules(id) && !remote.peer(id).unlinked); return (",
     "reason": "Lexical JSX scanner false positive in the Link-based schedule availability expression; rendered labels use unchanged i18n keys."
+  },
+  {
+    "path": "internal/antigravity/approval.go",
+    "literal": "Yes, allow access",
+    "reason": "Exact external agy 1.5.9 menu labels used to verify native approval choices; never product UI copy."
+  },
+  {
+    "path": "internal/antigravity/approval.go",
+    "literal": "Yes, and always allow non-workspace access",
+    "reason": "Exact external agy 1.5.9 menu labels used to verify native approval choices; never product UI copy."
+  },
+  {
+    "path": "internal/antigravity/approval.go",
+    "literal": "No, deny access",
+    "reason": "Exact external agy 1.5.9 menu labels used to verify native approval choices; never product UI copy."
+  },
+  {
+    "path": "internal/antigravity/transcript.go",
+    "literal": "remote_agent/send_file",
+    "reason": "Canonical MCP tool identity shared with the file-result matcher, not a translatable product label."
   }
 ]

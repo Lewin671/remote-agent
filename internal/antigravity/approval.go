@@ -12,6 +12,11 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
+// The managed plugin's directly exposed tool in agy 1.5.9. Do not infer a
+// server/tool split from underscores: different names can collide.
+const nativeSendFileTool = "mcp_remote-agent_remote_agent_send_file"
+const nativeSendFileTitle = "remote-agent_remote_agent/send_file"
+
 // permissionBody isolates the active request, excluding history and the menu's
 // permanent-grant command prefixes. Only complete, recognized menus are used.
 var fileDiffHeaderRE = regexp.MustCompile(`^(/.+?)\s+[+-][0-9]+(?:\s+[+-][0-9]+)?$`)
@@ -44,7 +49,7 @@ func permissionBody(plain string) (body, deny string, ok bool) {
 			}
 		}
 		for _, title := range []string{"Allow creation of this file?", "Allow access to this file?"} {
-			if j := strings.Index(area, title); j >= 0 && validFileMenu(area[j:]) {
+			if j := strings.Index(area, title); j >= 0 && validFileMenu(area[j:]) && len(questionRows(area[j:])) == 2 {
 				return strings.TrimSpace(area[:j]), "2", true
 			}
 		}
@@ -52,6 +57,10 @@ func permissionBody(plain string) (body, deny string, ok bool) {
 	}
 	if !validFileMenu(area) {
 		return "", "", false
+	}
+	deny = "2"
+	if len(questionRows(area)) == 3 {
+		deny = "3"
 	}
 	// Native file prompts put the full path above the diff, without the
 	// command prompt's Requesting-permission heading. Bind only that active
@@ -62,6 +71,20 @@ func permissionBody(plain string) (body, deny string, ok bool) {
 		if dividerRE.MatchString(strings.TrimSpace(line)) {
 			start = i + 1
 		}
+	}
+	// 1.5.9 outside-workspace reads have a wrapped path between Read:
+	// and an explicit reason, followed by a three-choice menu.
+	section := strings.TrimSpace(strings.Join(before[start:], "\n"))
+	if deny == "3" {
+		rows := strings.Split(section, "\n")
+		if len(rows) < 3 || rows[0] != "Read:" || rows[len(rows)-1] != "Reason: outside workspace" {
+			return "", "", false
+		}
+		path := strings.Join(rows[1:len(rows)-1], "")
+		if !strings.HasPrefix(path, "/") {
+			return "", "", false
+		}
+		return path, deny, true
 	}
 	for _, line := range before[start:] {
 		line = strings.TrimSpace(line)
@@ -85,13 +108,26 @@ func (a *Adapter) MatchApproval(styled string, h *agent.Hook) (*pb.ApprovalReque
 		return nil, false
 	}
 	plain := StripANSI(styled)
-	body, _, ok := permissionBody(plain)
-	if !ok || (h.ToolName == "call_mcp_tool") != strings.HasPrefix(plain[permissionPosition(plain):], "Allow calling this tool?") {
+	body, deny, ok := permissionBody(plain)
+	if deny == "3" && h.ToolName != "read_file" {
+		return nil, false
+	}
+	isMCP := h.ToolName == "call_mcp_tool" || h.ToolName == nativeSendFileTool
+	if !ok || isMCP != strings.HasPrefix(plain[permissionPosition(plain):], "Allow calling this tool?") {
 		return nil, false
 	}
 	var args map[string]json.RawMessage
 	if json.Unmarshal(h.ToolInput, &args) != nil {
 		return nil, false
+	}
+	if h.ToolName == nativeSendFileTool {
+		// alwaysLoad exposes our plugin's send_file as a direct native tool.
+		// Its menu still omits arguments: require the exact managed identity
+		// and let MatchApprovals reject duplicate or uncertain pending calls.
+		if args == nil || body != nativeSendFileTitle {
+			return nil, false
+		}
+		return &pb.ApprovalRequested{ToolName: h.ToolName, ToolInputJson: string(h.ToolInput), InputDigest: agent.InputDigest(h.ToolName, h.ToolInput)}, true
 	}
 	if h.ToolName == "call_mcp_tool" {
 		var server, tool string
@@ -205,6 +241,9 @@ func unwrapRequest(body string) string {
 
 func validFileMenu(area string) bool {
 	rows := questionRows(area)
+	if strings.HasPrefix(area, "Allow access to this file?") && len(rows) == 3 {
+		return rows[1].label == "Yes, allow access" && rows[2].label == "Yes, and always allow non-workspace access" && rows[3].label == "No, deny access"
+	}
 	if len(rows) != 2 {
 		return false
 	}

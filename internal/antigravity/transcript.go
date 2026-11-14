@@ -734,9 +734,14 @@ func describeTool(name string, raw json.RawMessage) toolDesc {
 			}
 			return toolDesc{title: unquoteString(path)}
 		}
+	case nativeSendFileTool:
+		return toolDesc{title: "remote_agent/send_file"}
 	case "call_mcp_tool":
 		srv, _ := m["ServerName"].(string)
 		tl, _ := m["ToolName"].(string)
+		if srv == "remote-agent_remote_agent" && tl == "send_file" {
+			return toolDesc{title: "remote_agent/send_file"}
+		}
 		if srv != "" || tl != "" {
 			return toolDesc{title: fmt.Sprintf("%s/%s", unquoteString(srv), unquoteString(tl))}
 		}
@@ -760,7 +765,7 @@ func toolKindFor(name string) pb.ToolKind {
 		return pb.ToolKind_TOOL_KIND_COMMAND
 	case "write_file", "edit_file":
 		return pb.ToolKind_TOOL_KIND_FILE_CHANGE
-	case "call_mcp_tool":
+	case "call_mcp_tool", nativeSendFileTool:
 		return pb.ToolKind_TOOL_KIND_MCP
 	default:
 		return pb.ToolKind_TOOL_KIND_OTHER

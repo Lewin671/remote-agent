@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -276,5 +277,35 @@ func TestAuditToolInputsPreserveReadAndMCPMeaning(t *testing.T) {
 		if toolKindFor(name) == pb.ToolKind_TOOL_KIND_FILE_CHANGE {
 			t.Fatalf("read counted as edit: %s", name)
 		}
+	}
+}
+
+func TestDirectSendFile159Transcript(t *testing.T) {
+	raw, err := os.ReadFile("testdata/transcript/send-file-direct-1.5.9.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := NewParser()
+	var started bool
+	var result *pb.ToolCall
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		events, err := p.Parse([]byte(line))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range events {
+			if s := e.GetToolStarted(); s != nil {
+				started = true
+				if s.Kind != pb.ToolKind_TOOL_KIND_MCP || s.Title != "remote_agent/send_file" || s.ItemType != nativeSendFileTool {
+					t.Fatalf("direct native identity lost: %+v", s)
+				}
+			}
+			if c := e.GetToolCall(); c != nil {
+				result = c
+			}
+		}
+	}
+	if !started || result == nil || result.Kind != pb.ToolKind_TOOL_KIND_MCP || result.Title != "remote_agent/send_file" || !strings.Contains(result.Output, `"file_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`) {
+		t.Fatalf("missing downloadable result: %+v", result)
 	}
 }
