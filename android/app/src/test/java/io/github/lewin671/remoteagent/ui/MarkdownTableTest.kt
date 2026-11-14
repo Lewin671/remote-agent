@@ -8,6 +8,7 @@ class MarkdownTableTest {
     @Test(timeout = 5000) fun hostileTextIsReadInLinearTime() {
         for (text in listOf(
             "[".repeat(100_000), "[x](".repeat(25_000), "[x](<".repeat(25_000), "[x](/a \"".repeat(25_000), "<https://".repeat(20_000),
+            "[x](/a\u000b\u000c)".repeat(10_000),
             "`".repeat(100_000) + "x", "* ".repeat(30_000), "_ ".repeat(30_000), "~~".repeat(30_000),
         )) {
             assertEquals(listOf(Span.Text(text)), inlineSpans(text))
@@ -18,6 +19,8 @@ class MarkdownTableTest {
         )
         val nested = "https://example.com/" + "(".repeat(25_000) + "x" + ")".repeat(25_000)
         assertEquals(listOf(Span.Link("x", nested)), inlineSpans("[x]($nested)"))
+        val nbspNested = "[x](\u00a0".repeat(10_000) + "a" + ")".repeat(10_000)
+        assertEquals(listOf(Span.Ref("x", nbspNested)), inlineSpans("[x]($nbspNested)"))
         val escapedParens = "https://example.com/" + "\\(x\\)".repeat(10_000)
         assertEquals(listOf(Span.Link("x", "https://example.com/" + "(x)".repeat(10_000))), inlineSpans("[x]($escapedParens)"))
         // A bare URL is cut from its end once, not once per character dropped.

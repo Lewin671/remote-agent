@@ -81,6 +81,8 @@ const inlineCases: Record<string, (n: number) => string> = {
   "unclosed angle destinations": (n) => "[x](<".repeat(n),
   "unclosed link titles": (n) => '[x](/a "'.repeat(n),
   "escaped destination delimiters": (n) => "[x](https://example.com/" + "\\(x\\)".repeat(n) + ")",
+  "NBSP nested destinations": (n) => "[x](" + "[x](\u00a0".repeat(n) + "a" + ")".repeat(n + 1),
+  "control destination barriers": (n) => "[x](/a\u000b\u000c)".repeat(n),
   "unclosed autolinks": (n) => "<https://".repeat(n),
   underscores: (n) => "_a ".repeat(n),
   strikes: (n) => "~~a ".repeat(n),

@@ -10,6 +10,7 @@ import Testing
     @Test(.timeLimit(.minutes(1))) func hostileTextIsReadInLinearTime() {
         for text in [
             rep("[", 100_000), rep("[x](", 25_000), rep("[x](<", 25_000), rep("[x](/a \"", 25_000), rep("<https://", 20_000),
+            rep("[x](/a\u{000b}\u{000c})", 10_000),
             rep("`", 100_000) + "x", rep("* ", 30_000), rep("_ ", 30_000), rep("~~", 30_000),
         ] {
             #expect(Markdown.inlineSpans(text) == [.text(text)])
@@ -22,6 +23,8 @@ import Testing
         )
         let nested = "https://example.com/" + rep("(", 25_000) + "x" + rep(")", 25_000)
         #expect(Markdown.inlineSpans("[x](\(nested))") == [.link(text: "x", href: nested)])
+        let nbspNested = rep("[x](\u{00a0}", 10_000) + "a" + rep(")", 10_000)
+        #expect(Markdown.inlineSpans("[x](\(nbspNested))") == [.ref(text: "x", target: nbspNested)])
         let escapedParens = "https://example.com/" + rep("\\(x\\)", 10_000)
         #expect(Markdown.inlineSpans("[x](\(escapedParens))") == [.link(text: "x", href: "https://example.com/" + rep("(x)", 10_000))])
         // Openers that find no closer, each of which could rescan what follows it.

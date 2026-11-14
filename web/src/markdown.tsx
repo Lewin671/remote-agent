@@ -25,7 +25,9 @@ function escapedAt(text: string, index: number): boolean {
 }
 
 function isSpace(c: string | undefined): boolean { return c !== undefined && /\s/.test(c); }
-function isLineEnd(c: string): boolean { return c === "\n" || c === "\r" || c === "\u2028" || c === "\u2029"; }
+// CommonMark link separators are space, tab and CR/LF, not Unicode whitespace.
+function isLinkSpace(c: string | undefined): boolean { return c === " " || c === "\t" || isLinkLineEnd(c); }
+function isLinkLineEnd(c: string | undefined): boolean { return c === "\n" || c === "\r"; }
 
 const asciiPunct = new Set("!\"#$%&'()*+,-./:;\u003c=\u003e?@[\\]^_`{|}~");
 function isAsciiPunct(c: string): boolean { return asciiPunct.has(c); }
@@ -51,9 +53,9 @@ function unescapeDest(text: string, start: number, end: number): string {
 
 function skipWsNoBlankLine(text: string, pos: number): number {
   let newlines = 0;
-  while (pos < text.length && isSpace(text[pos])) {
+  while (pos < text.length && isLinkSpace(text[pos])) {
     const c = text[pos];
-    if (isLineEnd(c)) {
+    if (isLinkLineEnd(c)) {
       if (++newlines >= 2) return -1;
       if (c === "\r" && text[pos + 1] === "\n") pos++;
     }
@@ -68,7 +70,7 @@ function scanAngleDest(text: string, pos: number): { destStart: number; destEnd:
   while (i < text.length) {
     const c = text[i];
     if (c === ">") return { destStart, destEnd: i, nextPos: i + 1 };
-    if (c === "<" || isLineEnd(c)) return undefined;
+    if (c === "<" || isLinkLineEnd(c)) return undefined;
     if (c === "\\" && i + 1 < text.length && isAsciiPunct(text[i + 1])) i += 2;
     else i++;
   }
@@ -89,14 +91,14 @@ function scanTitle(text: string, pos: number): number {
     }
     if (c === closer) return i + 1;
     if (opener === "(" && c === "(") return -1;
-    if (isLineEnd(c)) {
+    if (isLinkLineEnd(c)) {
       if (justSawNewline) return -1;
       justSawNewline = true;
       if (c === "\r" && text[i + 1] === "\n") i++;
       i++;
       continue;
     }
-    if (!isSpace(c)) justSawNewline = false;
+    if (!isLinkSpace(c)) justSawNewline = false;
     i++;
   }
   return -1;
@@ -133,11 +135,11 @@ function parseLeadingSpaceTarget(text: string, openParen: number): { end: number
     else if (c === ")") {
       if (depth === 0) { return { end: j, destStart: pos, destEnd: j }; }
       depth--; j++;
-    } else if (isSpace(c)) break;
+    } else if (isLinkSpace(c)) break;
     else if (isAsciiControl(c)) { ok = false; break; }
     else j++;
   }
-  if (ok && depth === 0 && j < text.length && j > pos && isSpace(text[j])) {
+  if (ok && depth === 0 && j < text.length && j > pos && isLinkSpace(text[j])) {
     const end = parseLinkTail(text, j);
     if (end >= 0) { return { end, destStart: pos, destEnd: j }; }
   }
@@ -185,7 +187,7 @@ function inlineLinks(text: string): Map<number, { close: number; end: number; de
     pendingValid = false;
     if (c === "(" && !escapedAt(text, i)) {
       if (i > 0 && text[i - 1] === "]") {
-        if (isSpace(text[i + 1])) {
+        if (isLinkSpace(text[i + 1])) {
           const res = parseLeadingSpaceTarget(text, i);
           if (res) { pendingValid = true; pendingEnd = res.end; pendingDestStart = res.destStart; pendingDestEnd = res.destEnd; }
         } else if (text[i + 1] === "<") {
@@ -208,8 +210,9 @@ function inlineLinks(text: string): Map<number, { close: number; end: number; de
       parenStack.push(i);
     }
     if (c === ">") angle = i;
-    if (isSpace(c)) {
-      space = i;
+    // Autolinks keep their existing Unicode whitespace boundary.
+    if (isSpace(c)) space = i;
+    if (isLinkSpace(c)) {
       parenStack.length = 0; unmatchedOpens = 0; barrier = i; barrierIsWs = true;
     } else if (isAsciiControl(c)) {
       parenStack.length = 0; unmatchedOpens = 0; barrier = i; barrierIsWs = false;

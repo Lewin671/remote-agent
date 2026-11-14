@@ -155,6 +155,10 @@ private fun escapedAt(text: String, index: Int): Boolean {
     return slashes % 2 == 1
 }
 
+// CommonMark link separators are space, tab and CR/LF, not Unicode whitespace.
+private fun Char.isLinkSpace(): Boolean = this == ' ' || this == '\t' || isLinkLineEnd()
+private fun Char.isLinkLineEnd(): Boolean = this == '\n' || this == '\r'
+
 private fun Char.isAsciiPunct(): Boolean =
     this in '!'..'/' || this in ':'..'@' || this in '['..'`' || this in '{'..'~'
 
@@ -181,9 +185,9 @@ private fun unescapeDest(text: String, start: Int, end: Int): String {
 private fun skipWsNoBlankLine(text: String, start: Int): Int {
     var pos = start
     var newlines = 0
-    while (pos < text.length && text[pos].isSpace()) {
+    while (pos < text.length && text[pos].isLinkSpace()) {
         val c = text[pos]
-        if (c.isLineEnd()) {
+        if (c.isLinkLineEnd()) {
             if (++newlines >= 2) return -1
             if (c == '\r' && pos + 1 < text.length && text[pos + 1] == '\n') pos++
         }
@@ -200,7 +204,7 @@ private fun scanAngleDest(text: String, pos: Int): AngleDest? {
     while (i < text.length) {
         val c = text[i]
         if (c == '>') return AngleDest(destStart, i, i + 1)
-        if (c == '<' || c.isLineEnd()) return null
+        if (c == '<' || c.isLinkLineEnd()) return null
         i += if (c == '\\' && i + 1 < text.length && text[i + 1].isAsciiPunct()) 2 else 1
     }
     return null
@@ -220,14 +224,14 @@ private fun scanTitle(text: String, pos: Int): Int {
         }
         if (c == closer) return i + 1
         if (opener == '(' && c == '(') return -1
-        if (c.isLineEnd()) {
+        if (c.isLinkLineEnd()) {
             if (justSawNewline) return -1
             justSawNewline = true
             if (c == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++
             i++
             continue
         }
-        if (!c.isSpace()) justSawNewline = false
+        if (!c.isLinkSpace()) justSawNewline = false
         i++
     }
     return -1
@@ -269,12 +273,12 @@ private fun parseLeadingSpaceTarget(text: String, openParen: Int): LinkTarget? {
                 if (depth == 0) return LinkTarget(j, pos, j)
                 depth--; j++
             }
-            c.isSpace() -> break
+            c.isLinkSpace() -> break
             c.isAsciiControl() -> { ok = false; break }
             else -> j++
         }
     }
-    if (ok && depth == 0 && j > pos && j < text.length && text[j].isSpace()) {
+    if (ok && depth == 0 && j > pos && j < text.length && text[j].isLinkSpace()) {
         val end = parseLinkTail(text, j)
         if (end >= 0) return LinkTarget(end, pos, j)
     }
@@ -336,7 +340,7 @@ private fun inlineLinks(text: String): Map<Int, LinkEnd> {
             if (i > 0 && text[i - 1] == ']') {
                 val nextChar = text.getOrNull(i + 1)
                 when {
-                    nextChar != null && nextChar.isSpace() -> parseLeadingSpaceTarget(text, i)?.let {
+                    nextChar != null && nextChar.isLinkSpace() -> parseLeadingSpaceTarget(text, i)?.let {
                         pendingValid = true; pendingEnd = it.end; pendingDestStart = it.destStart; pendingDestEnd = it.destEnd
                     }
                     nextChar == '<' -> scanAngleDest(text, i + 1)?.let { ang ->
@@ -362,8 +366,9 @@ private fun inlineLinks(text: String): Map<Int, LinkEnd> {
             parenStack.add(i)
         }
         if (c == '>') angle = i
-        if (c.isSpace()) {
-            space = i
+        // Autolinks keep their existing Unicode whitespace boundary.
+        if (c.isSpace()) space = i
+        if (c.isLinkSpace()) {
             parenStack.clear(); unmatchedOpens = 0; barrier = i; barrierIsWs = true
         } else if (c.isAsciiControl()) {
             parenStack.clear(); unmatchedOpens = 0; barrier = i; barrierIsWs = false

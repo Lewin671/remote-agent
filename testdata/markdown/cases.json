@@ -3094,6 +3094,488 @@
      "target": "file:///example/a(b)"
     }
    ]
+  },
+  {
+   "name": "NBSP remains in bare destination and safeHref rejects it",
+   "md": "[x](https://example.com/a \"title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "https://example.com/a \"title\""
+    }
+   ]
+  },
+  {
+   "name": "NBSP remains in leading space destination and safeHref rejects it",
+   "md": "[x]( https://example.com/a \"title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "https://example.com/a \"title\""
+    }
+   ]
+  },
+  {
+   "name": "NBSP inside destination before a real title separator",
+   "md": "[x](/a b \"title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a b"
+    }
+   ]
+  },
+  {
+   "name": "leading NBSP is destination content",
+   "md": "[x]( /a)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": " /a"
+    }
+   ]
+  },
+  {
+   "name": "trailing NBSP is destination content",
+   "md": "[x](/a )",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a "
+    }
+   ]
+  },
+  {
+   "name": "NBSP cannot separate angle destination from title",
+   "md": "[x](</a> \"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](</a> \"title\")"
+    }
+   ]
+  },
+  {
+   "name": "NBSP cannot follow title",
+   "md": "[x](/a \"title\" )",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a \"title\" )"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid before destination",
+   "md": "[x](\u000b/a)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](\u000b/a)"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid after leading space",
+   "md": "[x]( \u000b/a)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x]( \u000b/a)"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid inside bare destination",
+   "md": "[x](/a\u000bb)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\u000bb)"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid inside destination after leading space",
+   "md": "[x]( /a\u000bb)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x]( /a\u000bb)"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid before title",
+   "md": "[x](/a\u000b\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\u000b\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid between space and title",
+   "md": "[x](/a \u000b\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a \u000b\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid after angle destination",
+   "md": "[x](</a>\u000b\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](</a>\u000b\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid after title",
+   "md": "[x](/a \"title\"\u000b)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a \"title\"\u000b)"
+    }
+   ]
+  },
+  {
+   "name": "VT invalid before closing parenthesis",
+   "md": "[x](/a\u000b)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\u000b)"
+    }
+   ]
+  },
+  {
+   "name": "VT allowed in angle destination but safeHref rejects it",
+   "md": "[x](<https://example.com/a\u000bb>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "https://example.com/a\u000bb"
+    }
+   ]
+  },
+  {
+   "name": "VT is title content",
+   "md": "[x](/a \"a\u000bb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "VT title line is not blank",
+   "md": "[x](/a \"a\n\u000b\nb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid before destination",
+   "md": "[x](\f/a)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](\f/a)"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid after leading space",
+   "md": "[x]( \f/a)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x]( \f/a)"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid inside bare destination",
+   "md": "[x](/a\fb)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\fb)"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid inside destination after leading space",
+   "md": "[x]( /a\fb)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x]( /a\fb)"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid before title",
+   "md": "[x](/a\f\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\f\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid between space and title",
+   "md": "[x](/a \f\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a \f\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid after angle destination",
+   "md": "[x](</a>\f\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](</a>\f\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid after title",
+   "md": "[x](/a \"title\"\f)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a \"title\"\f)"
+    }
+   ]
+  },
+  {
+   "name": "FF invalid before closing parenthesis",
+   "md": "[x](/a\f)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\f)"
+    }
+   ]
+  },
+  {
+   "name": "FF allowed in angle destination but safeHref rejects it",
+   "md": "[x](<https://example.com/a\fb>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "https://example.com/a\fb"
+    }
+   ]
+  },
+  {
+   "name": "FF is title content",
+   "md": "[x](/a \"a\fb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "FF title line is not blank",
+   "md": "[x](/a \"a\n\f\nb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "SOH invalid inside bare destination",
+   "md": "[x](/a\u0001b)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\u0001b)"
+    }
+   ]
+  },
+  {
+   "name": "US invalid inside bare destination",
+   "md": "[x](/a\u001fb)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\u001fb)"
+    }
+   ]
+  },
+  {
+   "name": "DEL invalid inside bare destination",
+   "md": "[x](/ab)",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/ab)"
+    }
+   ]
+  },
+  {
+   "name": "tab separates destination and title",
+   "md": "[x](\thttps://example.com/a\t\"title\"\t)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a"
+    }
+   ]
+  },
+  {
+   "name": "LF separates destination and title",
+   "md": "[x](\nhttps://example.com/a\n\"title\"\n)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a"
+    }
+   ]
+  },
+  {
+   "name": "CR separates destination and title",
+   "md": "[x](\rhttps://example.com/a\r\"title\"\r)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a"
+    }
+   ]
+  },
+  {
+   "name": "CRLF separates destination and title",
+   "md": "[x](\r\nhttps://example.com/a\r\n\"title\"\r\n)",
+   "want": [
+    {
+     "t": "link",
+     "v": "x",
+     "href": "https://example.com/a"
+    }
+   ]
+  },
+  {
+   "name": "CRLF blank line invalid between destination and title",
+   "md": "[x](/a\r\n \t\r\n\"title\")",
+   "want": [
+    {
+     "t": "text",
+     "v": "[x](/a\r\n \t\r\n\"title\")"
+    }
+   ]
+  },
+  {
+   "name": "NBSP title line is not blank",
+   "md": "[x](/a \"a\n \nb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "LS title line is not blank",
+   "md": "[x](/a \"a\n \nb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "LS remains in bare destination",
+   "md": "[x](/a \"title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a \"title\""
+    }
+   ]
+  },
+  {
+   "name": "LS allowed in angle destination",
+   "md": "[x](</a b>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a b"
+    }
+   ]
+  },
+  {
+   "name": "PS title line is not blank",
+   "md": "[x](/a \"a\n \nb\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a"
+    }
+   ]
+  },
+  {
+   "name": "PS remains in bare destination",
+   "md": "[x](/a \"title\")",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a \"title\""
+    }
+   ]
+  },
+  {
+   "name": "PS allowed in angle destination",
+   "md": "[x](</a b>)",
+   "want": [
+    {
+     "t": "ref",
+     "v": "x",
+     "target": "/a b"
+    }
+   ]
   }
  ],
  "numericColumn": [

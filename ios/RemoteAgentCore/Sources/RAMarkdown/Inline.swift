@@ -55,6 +55,15 @@ private func hasPrefixIgnoringCase(_ text: ArraySlice<Unicode.Scalar>, _ prefix:
     return true
 }
 
+// CommonMark link separators are space, tab and CR/LF, not Unicode whitespace.
+private func isLinkSpace(_ c: Unicode.Scalar) -> Bool {
+    c == " " || c == "\t" || isLinkLineEnd(c)
+}
+
+private func isLinkLineEnd(_ c: Unicode.Scalar) -> Bool {
+    c == "\n" || c == "\r"
+}
+
 private func isAsciiPunct(_ c: Unicode.Scalar) -> Bool {
     let v = c.value
     return (v >= 0x21 && v <= 0x2F) || (v >= 0x3A && v <= 0x40) ||
@@ -90,9 +99,9 @@ private func unescapeDest(_ text: Scalars, _ start: Int, _ end: Int) -> String {
 private func skipWsNoBlankLine(_ text: Scalars, _ start: Int) -> Int {
     var pos = start
     var newlines = 0
-    while pos < text.count, isSpace(text[pos]) {
+    while pos < text.count, isLinkSpace(text[pos]) {
         let c = text[pos]
-        if isLineEnd(c) {
+        if isLinkLineEnd(c) {
             newlines += 1
             if newlines >= 2 { return -1 }
             if c == "\r", pos + 1 < text.count, text[pos + 1] == "\n" { pos += 1 }
@@ -108,7 +117,7 @@ private func scanAngleDest(_ text: Scalars, _ pos: Int) -> (destStart: Int, dest
     while i < text.count {
         let c = text[i]
         if c == ">" { return (destStart, i, i + 1) }
-        if c == "<" || isLineEnd(c) { return nil }
+        if c == "<" || isLinkLineEnd(c) { return nil }
         i += (c == "\\" && i + 1 < text.count && isAsciiPunct(text[i + 1])) ? 2 : 1
     }
     return nil
@@ -128,14 +137,14 @@ private func scanTitle(_ text: Scalars, _ pos: Int) -> Int {
         }
         if c == closer { return i + 1 }
         if opener == "(", c == "(" { return -1 }
-        if isLineEnd(c) {
+        if isLinkLineEnd(c) {
             if justSawNewline { return -1 }
             justSawNewline = true
             if c == "\r", i + 1 < text.count, text[i + 1] == "\n" { i += 1 }
             i += 1
             continue
         }
-        if !isSpace(c) { justSawNewline = false }
+        if !isLinkSpace(c) { justSawNewline = false }
         i += 1
     }
     return -1
@@ -174,7 +183,7 @@ private func parseLeadingSpaceTarget(_ text: Scalars, _ openParen: Int) -> (end:
         } else if c == ")" {
             if depth == 0 { return (j, pos, j) }
             depth -= 1; j += 1
-        } else if isSpace(c) {
+        } else if isLinkSpace(c) {
             break
         } else if isAsciiControl(c) {
             ok = false; break
@@ -182,7 +191,7 @@ private func parseLeadingSpaceTarget(_ text: Scalars, _ openParen: Int) -> (end:
             j += 1
         }
     }
-    if ok, depth == 0, j > pos, j < text.count, isSpace(text[j]) {
+    if ok, depth == 0, j > pos, j < text.count, isLinkSpace(text[j]) {
         let end = parseLinkTail(text, j)
         if end >= 0 { return (end, pos, j) }
     }
@@ -252,7 +261,7 @@ private func inlineLinks(_ text: Scalars) -> [Int: LinkEnd] {
         pendingValid = false
         if c == "(", !escapedAt(text, i) {
             if i > 0, text[i - 1] == "]" {
-                if i + 1 < text.count, isSpace(text[i + 1]) {
+                if i + 1 < text.count, isLinkSpace(text[i + 1]) {
                     if let res = parseLeadingSpaceTarget(text, i) {
                         pendingValid = true; pendingEnd = res.end; pendingDestStart = res.destStart; pendingDestEnd = res.destEnd
                     }
@@ -277,8 +286,9 @@ private func inlineLinks(_ text: Scalars) -> [Int: LinkEnd] {
             parenStack.append(i)
         }
         if c == ">" { angle = i }
-        if isSpace(c) {
-            space = i
+        // Autolinks keep their existing Unicode whitespace boundary.
+        if isSpace(c) { space = i }
+        if isLinkSpace(c) {
             parenStack.removeAll(keepingCapacity: true); unmatchedOpens = 0; barrier = i; barrierIsWs = true
         } else if isAsciiControl(c) {
             parenStack.removeAll(keepingCapacity: true); unmatchedOpens = 0; barrier = i; barrierIsWs = false
