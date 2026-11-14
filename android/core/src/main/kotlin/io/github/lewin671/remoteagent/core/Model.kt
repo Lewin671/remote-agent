@@ -591,6 +591,7 @@ fun modeOf(s: SessionView): Mode? = modeOf(s.info?.mode ?: ApprovalMode.APPROVAL
  */
 fun modeLabel(s: SessionView, copy: MessageResolver): ModeLabel? {
     val i = s.info ?: return null
+    if (i.status == SessionStatus.SESSION_STATUS_STARTING) return null
     modeOf(i.mode)?.let {
         return ModeLabel(copy(it.text), it)
     }

@@ -698,7 +698,7 @@ export interface ModeChip {
 /** The approval mode, read from the latest turn context. */
 export function modeOf(s: SessionLike): ModeChip | undefined {
   const i = s.info;
-  if (!i) return undefined;
+  if (!i || i.status === SessionStatus.STARTING) return undefined;
   // Session.mode is either CLI's mode as a client mode; UNSPECIFIED with a
   // permission mode is one of Claude Code's own, shown by its name.
   const text = i.mode

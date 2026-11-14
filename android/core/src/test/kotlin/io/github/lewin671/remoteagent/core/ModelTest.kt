@@ -27,6 +27,15 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 class ModelTest {
+    @Test fun unconfirmedStartupModeIsHidden() {
+        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
+        for (permission in listOf("", "未知审批模式", "default")) {
+            assertTrue(modeLabel(s { status = SessionStatus.SESSION_STATUS_STARTING; permissionMode = permission }, copy = ::messageTextForTest) == null)
+        }
+        assertEquals("未知审批模式", modeLabel(s { permissionMode = "未知审批模式" }, copy = ::messageTextForTest)?.text)
+    }
+
+
     @Test fun popupDiagnosticsAreLocalized() {
         for (detail in listOf("trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel")) {
             assertEquals(UiMessages.listStatePopup().messageText(), popupTitle(detail))

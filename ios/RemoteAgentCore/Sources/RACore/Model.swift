@@ -302,7 +302,7 @@ public func modeOf(_ s: SessionView) -> Mode? { modeLabel(s)?.mode }
 /// its name. With neither (a Codex context outside the four modes), it is
 /// named from the approval fields.
 public func modeLabel(_ s: SessionView) -> ModeLabel? {
-    guard let i = s.info else { return nil }
+    guard let i = s.info, i.status != .starting else { return nil }
     if let m = modeOf(i.mode) { return ModeLabel(text: m.text, mode: m) }
     if !i.permissionMode.isEmpty {
         let m = permissionMode(i.permissionMode)

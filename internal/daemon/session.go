@@ -1160,10 +1160,16 @@ func (s *session) infoLocked() *pb.Session {
 	if s.ag.Capabilities().ConversationIdentity {
 		// Freshness gates actions separately. An idle status line need not
 		// rerun, so age alone cannot erase the last confirmed display mode.
-		if s.identityPending || s.identityFailed || s.statusLineAt.IsZero() {
+		if !s.meta.Exited && !s.identityFailed && (s.identityPending || s.statusLineAt.IsZero()) {
+			// No mode has been confirmed for this process yet. Missing
+			// observations are not a confirmed, unrecognized combination.
 			out.Mode = pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
-		}
-		if out.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+			out.PermissionMode = ""
+			// Native clients can also derive a mode from these fields. Do
+			// not expose stale policy facts as a newly confirmed Ask mode.
+			out.ApprovalsReviewer, out.ApprovalPolicy, out.Sandbox, out.CollaborationMode = "", "", "", ""
+		} else if s.identityPending || s.identityFailed || s.statusLineAt.IsZero() || out.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+			out.Mode = pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 			out.PermissionMode = "未知审批模式"
 		}
 	}

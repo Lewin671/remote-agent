@@ -6,6 +6,14 @@ import Testing
 
 /// Android's core ModelTest.
 @Suite struct ModelTests {
+    @Test func unconfirmedStartupModeIsHidden() {
+        for permission in ["", "未知审批模式", "default"] {
+            #expect(modeLabel(s { $0.status = .starting; $0.permissionMode = permission }) == nil)
+        }
+        #expect(modeLabel(s { $0.permissionMode = "未知审批模式" })?.text == "未知审批模式")
+    }
+
+
     private func s(_ fill: (inout PBSession) -> Void = { _ in }) -> SessionView { Mk.session("s", fill) }
 
     @Test func statusFollowsThePriorityList() {

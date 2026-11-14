@@ -1071,3 +1071,11 @@ it("localizes popup diagnostics without exposing native titles", () => {
   expect(popupTitle("")).toBe("");
   } } finally { localeStore.overrideForTesting(); }
 });
+
+it("hides unconfirmed startup modes and preserves confirmed unknown modes", () => {
+  for (const permissionMode of ["", "未知审批模式", "default"]) {
+    expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.STARTING, permissionMode }))).toBeUndefined();
+  }
+  expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.IDLE, permissionMode: "未知审批模式" }))?.text).toBe("未知审批模式");
+  expect(modeOf(sess({ agent: Agent.ANTIGRAVITY, status: SessionStatus.IDLE, mode: ApprovalMode.ASK }))?.mode).toBe(ApprovalMode.ASK);
+});

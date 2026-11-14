@@ -485,3 +485,45 @@ func TestAgyImageCleanupRechecksVisibleBusyTurn(t *testing.T) {
 		t.Fatal("cleanup interrupted an unparsed visible turn")
 	}
 }
+
+func TestAgyUnconfirmedModeIsAbsentUntilIdentityIsProven(t *testing.T) {
+	h := agyHarness(t)
+	h.s.context = &pb.TurnContext{ApprovalPolicy: "always-proceed", PermissionMode: "default"}
+	for _, resume := range []bool{false, true} {
+		h.s.identityResume = resume
+		h.s.identityPending = true
+		h.s.statusLineAt = time.Now()
+		if i := h.s.info(); i.Mode != 0 || i.PermissionMode != "" || i.ApprovalPolicy != "" || i.Sandbox != "" || i.ApprovalsReviewer != "" || i.CollaborationMode != "" {
+			t.Fatalf("unconfirmed mode leaked: %v", i)
+		}
+	}
+	h.s.identityPending = false
+	h.s.statusLineAt = time.Time{}
+	if i := h.s.info(); i.Mode != 0 || i.PermissionMode != "" || i.ApprovalPolicy != "" || i.Sandbox != "" || i.ApprovalsReviewer != "" || i.CollaborationMode != "" {
+		t.Fatal("unobserved mode leaked", i)
+	}
+	h.s.statusLineAt = time.Now()
+	if i := h.s.info(); i.Mode != pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
+		t.Fatal("confirmed mode hidden", i)
+	}
+	h.s.context.PermissionMode = "auto"
+	if i := h.s.info(); i.Mode != 0 || i.PermissionMode != "未知审批模式" {
+		t.Fatal("genuinely unknown mode lost", i)
+	}
+	h.s.identityPending = true
+	h.s.identityFailed = true
+	if i := h.s.info(); i.Mode != 0 || i.PermissionMode != "未知审批模式" {
+		t.Fatal("failed identity treated as transient", i)
+	}
+	// Exited sources use durable policy facts for delegated schedule checks.
+	// Hiding a transient live label must not erase those facts.
+	h.s.identityPending, h.s.identityFailed = false, false
+	h.s.meta.Exited = true
+	h.s.statusLineAt = time.Time{}
+	h.s.context.PermissionMode = "default"
+	h.s.context.Sandbox = "disabled"
+	if i := h.s.info(); i.Mode != 0 || i.ApprovalPolicy != "always-proceed" || i.Sandbox != "disabled" {
+		t.Fatal("exited durable policy was hidden", i)
+	}
+
+}
