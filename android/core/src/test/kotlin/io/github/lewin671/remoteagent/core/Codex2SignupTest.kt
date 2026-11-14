@@ -2,7 +2,6 @@ package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
 import kotlinx.coroutines.runBlocking
-import okio.Buffer
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -18,18 +17,16 @@ class Codex2SignupTest {
                     .newBuilder()
                     .addInterceptor { chain ->
                         assertNotNull("signup touched network before durable identity", draft)
-                        if (chain.request().url.encodedPath.endsWith("/RegisterDevice")) {
-                            val body = Buffer()
-                            chain.request().body!!.writeTo(body)
-                            val exact = RegisterDeviceRequest.parseFrom(body.readByteArray())
+                        val request = if (chain.request().url.encodedPath.endsWith("/RegisterDevice")) chain.request().inspectBody { bytes ->
+                            val exact = RegisterDeviceRequest.parseFrom(bytes)
                             assertArrayEquals(
                                 "registration was not durable before network",
                                 draft!!.registration,
                                 exact.toByteArray(),
                             )
                             registrations += exact
-                        }
-                        chain.proceed(chain.request())
+                        } else chain.request()
+                        chain.proceed(request)
                     }
                     .build()
             try {

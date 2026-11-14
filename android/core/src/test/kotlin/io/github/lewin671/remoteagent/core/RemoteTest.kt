@@ -870,12 +870,10 @@ class RemoteTest {
                 http
                     .newBuilder()
                     .addInterceptor { chain ->
-                        if (chain.request().url.encodedPath.endsWith("/PutSecurityState")) {
-                            val body = okio.Buffer()
-                            chain.request().body!!.writeTo(body)
+                        val request = if (chain.request().url.encodedPath.endsWith("/PutSecurityState")) chain.request().inspectBody { bytes ->
                             val sent =
                                 io.github.lewin671.remoteagent.proto.PutSecurityStateRequest
-                                    .parseFrom(body.readByteArray())
+                                    .parseFrom(bytes)
                             if (!sent.lease.isEmpty) {
                                 val saved = store.readSecurityOperation()!!
                                 val durable =
@@ -883,8 +881,8 @@ class RemoteTest {
                                         .parseFrom(saved.signed)
                                 if (durable.lease != sent.lease) savedBeforeUpload.set(false)
                             }
-                        }
-                        chain.proceed(chain.request())
+                        } else chain.request()
+                        chain.proceed(request)
                     }
                     .build()
             val reopened = fixtureRemote(daemon.phone, checking)
@@ -1727,6 +1725,9 @@ class RemoteTest {
             server.stop()
             r.awaitState("offline") { it.conn != ConnState.ONLINE }
             server.start()
+            // The fixture daemon has no application reconnect loop. Drop pooled
+            // sockets from the dead server before its explicit login attempt.
+            http.connectionPool.evictAll()
             daemon.login()
             daemon.connect()
             daemon.upload("s1", agent("断线期间"), agent("又一条"))

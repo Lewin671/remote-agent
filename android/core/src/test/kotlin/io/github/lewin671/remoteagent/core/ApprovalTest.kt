@@ -157,16 +157,11 @@ class ApprovalTest {
                             "candidate keys were published before durable save",
                             candidateSaved.get(),
                         )
-                    if (chain.request().url.encodedPath.endsWith("/RegisterDevice")) {
+                    val request = if (chain.request().url.encodedPath.endsWith("/RegisterDevice")) chain.request().inspectBody { bytes ->
                         assertTrue("registration preceded security record save", accountSaved.get())
-                        val body = okio.Buffer()
-                        chain.request().body!!.writeTo(body)
-                        assertArrayEquals(
-                            RegistrationIntent.parse(savedIntent.get()).request.toByteArray(),
-                            body.readByteArray(),
-                        )
-                    }
-                    chain.proceed(chain.request())
+                        assertArrayEquals(RegistrationIntent.parse(savedIntent.get()).request.toByteArray(), bytes)
+                    } else chain.request()
+                    chain.proceed(request)
                 }
                 .build()
         try {
@@ -216,6 +211,7 @@ class ApprovalTest {
                 assertTrue(login(Api(server.url, http), account).isNotBlank())
                 server.stop()
                 server.start() // In-memory pairing is gone; registration is still durable.
+                http.connectionPool.evictAll() // New explicit RPC, not a hidden stale-socket retry.
                 pairing.approve() // Resolves the missing pairing using actual registration.
             }
         } finally {

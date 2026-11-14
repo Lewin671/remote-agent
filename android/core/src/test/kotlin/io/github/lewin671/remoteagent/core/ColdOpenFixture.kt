@@ -124,7 +124,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             if (unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
                 rejectNextHistory = false
                 onResult(HTTPResponse(trailers = emptyMap(), status = if (unavailable) 503 else 401,
-                    headers = mapOf("content-type" to listOf("application/json")),
+                    headers = mapOf("content-type" to listOf("application/json"), "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch")),
                     message = Buffer().writeUtf8(if (unavailable) "{\"code\":\"unavailable\"}" else "{\"code\":\"unauthenticated\"}")))
                 return@launch
             }
@@ -159,7 +159,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
                 }
                 else -> error("Unexpected RPC: $name")
             }
-            onResult(HTTPResponse(trailers = emptyMap(), status = 200, headers = mapOf("content-type" to listOf("application/proto")),
+            onResult(HTTPResponse(trailers = emptyMap(), status = 200, headers = mapOf("content-type" to listOf("application/proto"), "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch")),
                 message = Buffer().write(response.toByteArray())))
         }
         return { job.cancel() }
