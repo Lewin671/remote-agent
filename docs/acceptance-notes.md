@@ -2420,3 +2420,21 @@ Android 新回归用两个线程和 registry 原 monitor，将关闭固定在“
 本轮 Android full：core 562、App 791、terminal 7，全通过，lintVitalRelease 通过；恢复撤销对照后另复验 core 17、App 2 项。网页 full：5,376 通过、1 项既有 opt-in 跳过，类型检查通过。SwiftPM：RACore 781、Markdown 17 项通过。iOS full 在本轮新建的模拟器上通过 App 485 项，零失败/跳过，并完成协议生成核对和文案编译。模拟器已 shutdown/delete 并查询确认无残留，DerivedData、xcresult 和 Swift scratch 已删除。
 
 原附件菜单的 UI 失败保持在 0b 范围外，负责人已在独立任务调整为菜单关闭后的布局断言；本轮不修改该代码，也未运行 UI 自动化。没有重跑真实 CLI 或首条性能，首次交付的记录只代表当时提交；负责人在复核干净后安排 iMac 测量，进度见 [plan](plan.md#传输模块与直连)。本轮只有本地提交，没有推送、发版或部署。
+
+
+### 重定基与 iMac 正式测量（2026-11-14）
+
+两轮复核后，0b 无冲突重定基到 `2bb7b0ff`（v0.75.1 主线，含 CommonMark 链接、机器状态布局/时序和 Composer 菜单恢复测试修正）。11 个任务提交的 range-diff 均等价。验证及计时的候选为 `7eccbe1b`；该提交只给测量工具增加编译后静置选项，产品协议仍为 15。
+
+重定基后重新执行：Go full 30 个有测试包通过；race 的 deviceauth、relay、remoteclient、server、daemon、transport 六包通过；网页 5,472 项通过、1 项既有 opt-in 跳过，类型检查通过；Android core 564、App 795、terminal 7 项及 lintVitalRelease 通过；RACore 783、Markdown 17 项通过；iOS full 的 App 485 项通过，UI 在同一本轮新建模拟器上一次运行 9 项通过，均零失败/跳过。文案和协议生成核对通过，模拟器及本地构建产物已清理。
+
+正式对照在 Intel Core i7-10700（8 核 16 线程）、32 GiB、macOS 12.6 的共享测量机上进行。私有工具链为 Go 1.26.11 darwin/amd64、Node 22.23.3、pnpm 10.19.0；全程持有主机队列锁，独立 HOME/GOPATH/GOCACHE、账户与数据库。两边编译后静置 60 秒，随后按 ABBA 顺序各两批，每批 20 条预热、200 条计时，保留全部 400 条样本，以最近秩计算分位数。
+
+| 版本 | 样本数 | p50（ms） | p95（ms） |
+|---|---:|---:|---:|
+| 基线 `2bb7b0ff` | 400 | 4.849 | 5.913 |
+| 候选 `7eccbe1b` | 400 | 4.855 | 5.910 |
+
+p95 增量为 **−0.003 ms**，满足 <5 ms 门槛。计时覆盖已认证的新 Web Remote 首次 GetSettings 的签名、实际 relay/daemon 处理与结果校验；登录、启动、UI 和模型响应不在区间内，测量环境禁止启动原生 CLI 会话。静置期 30 次采样未发现忙进程；计时期 9 次采样未发现并行开发任务或达到既定 200% CPU 的 DISTURBED 门槛，纳入监测的主要后台进程（单进程至少 5% CPU）合计峰值为 56.2%，没有删去任何延迟样本。方法与参数见[测量说明](../scripts/measure-relay/README.md)。
+
+完成后在同一主机队列锁下删除全部私有源码、工具链、缓存和临时状态，已记录进程均退出；共享机器的原有 Node 16 保持原样。没有推送、发版或部署。计时之后只补充验收文档和计划状态。
