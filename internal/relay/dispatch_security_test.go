@@ -3,12 +3,12 @@ package relay
 import (
 	"context"
 	"errors"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/transport"
 )
 
 // A malicious relay can send arbitrary frames without client authentication.
@@ -17,15 +17,15 @@ import (
 func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	slots := New(nil).admissions
-	limit := cap(slots)
-	var owned sync.WaitGroup
-	defer func() { cancel(); owned.Wait() }()
+	r := New(nil)
+	limit := cap(r.admissions)
+	link := transport.NewLink(ctx, r.admissions, r.calls)
+	defer func() { cancel(); link.Close() }()
 	var reads, starts atomic.Int32
 	done := make(chan error, 1)
 	workers := make(chan struct{}, limit)
 	go func() {
-		done <- readForwardCalls(ctx, ctx, slots, &owned, func() (*pb.ServerFrame, error) {
+		done <- readForwardCalls(ctx, link, func() (*pb.ServerFrame, error) {
 			reads.Add(1)
 			return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
 		}, func(ctx context.Context, call *pb.ForwardCall) {
@@ -70,12 +70,13 @@ func TestForwardReadFailureLeavesExecutionWithProcess(t *testing.T) {
 	process, stop := context.WithCancel(context.Background())
 	defer stop()
 	entered, release := make(chan struct{}), make(chan struct{})
-	var owned sync.WaitGroup
+	link := transport.NewLink(process, make(chan struct{}, 1), make(chan struct{}, 1))
+	defer link.Close()
 	done := make(chan error, 1)
 	failure := errors.New("stream ended")
 	reads := 0
 	go func() {
-		done <- readForwardCalls(context.Background(), process, make(chan struct{}, 1), &owned, func() (*pb.ServerFrame, error) {
+		done <- readForwardCalls(context.Background(), link, func() (*pb.ServerFrame, error) {
 			reads++
 			if reads == 1 {
 				return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
@@ -100,5 +101,5 @@ func TestForwardReadFailureLeavesExecutionWithProcess(t *testing.T) {
 		t.Error("path waited for execution")
 	}
 	close(release)
-	owned.Wait()
+	link.DrainCalls()
 }

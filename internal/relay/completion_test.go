@@ -18,7 +18,7 @@ func TestBackendEvidenceDoesNotFollowDiagnosticCode(t *testing.T) {
 			if final {
 				err = outcome.FinalError(err)
 			}
-			c := &conn{r: New(interruptedScheduleBackend{cause: err})}
+			c := testEndpoint(t, New(interruptedScheduleBackend{cause: err}))
 			_, got := c.executeEvidence(context.Background(), "", &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
 			if (got != deviceauth.NoCategory) != final {
 				t.Errorf("code=%s category=%v got=%v", code, final, got)

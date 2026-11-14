@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/transport"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -28,6 +29,8 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	c := &conn{r: New(nil)}
+	link := transport.NewLink(ctx, c.r.admissions, c.r.calls)
+	defer link.Close()
 	keys := initializeTestSecurityKeys(t, c)
 	pin, _, _ := c.security.endpoint.Snapshot()
 	member := keys.states[0].Core.Members[0]
@@ -54,7 +57,7 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 	var releaseOnce sync.Once
 	first := make(chan error, 1)
 	go func() {
-		_, err := c.security.acceptWith(ctx, original, nil, now, c.acquireCall, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+		_, err := c.security.acceptWith(ctx, original, nil, now, link.Acquire, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
 			close(running)
 			<-release
 			return deviceauth.Final(nil), nil
@@ -68,11 +71,10 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 	frames := make(chan *pb.ServerFrame)
 	registered := make(chan struct{}, deviceauth.MaxWaiters)
 	fullReply, slotQueue, newReply := make(chan error, 1), make(chan struct{}, 1), make(chan error, 1)
-	var workers sync.WaitGroup
 	reader := make(chan error, 1)
-	defer func() { cancel(); releaseOnce.Do(func() { close(release) }); <-reader; workers.Wait(); <-first }()
+	defer func() { cancel(); releaseOnce.Do(func() { close(release) }); <-reader; link.Close(); <-first }()
 	go func() {
-		reader <- readForwardCalls(ctx, ctx, c.r.admissions, &workers, func() (*pb.ServerFrame, error) {
+		reader <- readForwardCalls(ctx, link, func() (*pb.ServerFrame, error) {
 			select {
 			case f := <-frames:
 				return f, nil
@@ -81,15 +83,15 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 			}
 		}, func(ctx context.Context, call *pb.ForwardCall) {
 			if call.CallId <= uint64(deviceauth.MaxWaiters) {
-				_, err := c.security.acceptWith(&registeredWaitContext{Context: ctx, registered: registered}, original, nil, now, c.acquireCall, nil)
+				_, err := c.security.acceptWith(&registeredWaitContext{Context: ctx, registered: registered}, original, nil, now, link.Acquire, nil)
 				if err != nil && !errors.Is(err, deviceauth.ErrOutcomeUnknown) {
 					t.Error(err)
 				}
 			} else if call.CallId == uint64(deviceauth.MaxWaiters+1) {
-				_, err := c.security.acceptWith(ctx, original, nil, now, c.acquireCall, nil)
+				_, err := c.security.acceptWith(ctx, original, nil, now, link.Acquire, nil)
 				fullReply <- err
 			} else {
-				acquire := func(ctx context.Context) (func(), error) { slotQueue <- struct{}{}; return c.acquireCall(ctx) }
+				acquire := func(ctx context.Context) (func(), error) { slotQueue <- struct{}{}; return link.Acquire(ctx) }
 				_, err := c.security.acceptWith(ctx, fresh, nil, now, acquire, func(deviceauth.Header, []byte) (deviceauth.Completion, error) { return deviceauth.Final(nil), nil })
 				newReply <- err
 			}

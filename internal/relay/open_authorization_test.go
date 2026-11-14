@@ -46,8 +46,8 @@ func TestOpenTerminalRevokedBeforeOrDuringOpeningCannotSucceed(t *testing.T) {
 	for _, during := range []bool{false, true} {
 		t.Run(map[bool]string{false: "before", true: "during"}[during], func(t *testing.T) {
 			b := &blockedOpeningBackend{dir: t.TempDir(), entered: make(chan struct{}), release: make(chan struct{})}
-			c := &conn{r: New(b), lifetime: context.Background()}
-			keys := initializeTestSecurityKeys(t, c)
+			c := testEndpoint(t, New(b))
+			keys := initializeEndpointSecurityKeys(t, c)
 			if err := os.WriteFile(filepath.Join(b.dir, "relay.key"), make([]byte, 32), 0600); err != nil {
 				t.Fatal(err)
 			}

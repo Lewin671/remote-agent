@@ -93,7 +93,7 @@ func TestCancellationTakesPriorityOverBackendStatus(t *testing.T) {
 			if wrap {
 				err = connect.NewError(connect.CodeAborted, err)
 			}
-			c := &conn{r: New(interruptedScheduleBackend{cause: err})}
+			c := testEndpoint(t, New(interruptedScheduleBackend{cause: err}))
 			out := c.execute(context.Background(), "", &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
 			want := "canceled"
 			if cause == context.DeadlineExceeded {
@@ -119,8 +119,8 @@ func TestOpenTerminalBeforeStreamIsDefinite(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "relay.key"), make([]byte, 32), 0600); err != nil {
 		t.Fatal(err)
 	}
-	c := &conn{r: New(canceledTerminalBackend{dir: dir})}
-	initializeTestSecurityKeys(t, c)
+	c := testEndpoint(t, New(canceledTerminalBackend{dir: dir}))
+	initializeEndpointSecurityKeys(t, c)
 	out := c.execute(context.Background(), "test-session", &pb.Command{Kind: &pb.Command_OpenTerminal{OpenTerminal: &pb.OpenTerminalRequest{SessionId: "test-session", StreamId: "terminal-stream-request"}}})
 	if out.ErrorCode != "failed_precondition" {
 		t.Fatalf("pre-stream cancellation: %s", out.ErrorCode)

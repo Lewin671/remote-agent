@@ -18,6 +18,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -198,14 +199,11 @@ func sleep(ctx context.Context, d time.Duration) {
 	}
 }
 
-// conn supplies helpers to a WS path or to the process publication component.
-// Only a WS path has dispatcher/pathLifetime/ws/token; the publisher owns
-// machine/writes/publication state. Neither owns the shared security endpoint.
+// conn is the process publication component. Its HTTP credentials and
+// lifetime are independent of the main relay path and the shared endpoint.
 type conn struct {
 	diskAlertNow  func() time.Time
 	nextDiskAlert time.Time // publisher syncLoop owns the volatile retry deadline
-	dispatcher    *dispatcher
-	pathLifetime  context.Context // socket/reply waiting, never execution
 
 	lifetime          context.Context // stream lifetime, independent of one command deadline
 	writes            connectionWrites
@@ -217,8 +215,6 @@ type conn struct {
 	checkpointPending atomic.Bool
 	publishNow        chan struct{}
 	onSyncReady       func()
-	ws                *websocket.Conn
-	token             string
 }
 
 // session logs in, opens the stream, and serves until an error.
@@ -231,7 +227,7 @@ func (r *Relay) session(ctx context.Context, acct *Account, dispatcher *dispatch
 	if err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
-	c := &conn{r: r, acct: acct, token: token, lifetime: dispatcher.ctx, pathLifetime: ctx, dispatcher: dispatcher, security: dispatcher.security}
+	c := &relaySession{pathLifetime: ctx, dispatcher: dispatcher}
 	var workers sync.WaitGroup
 	defer func() { cancel(); workers.Wait() }()
 
@@ -242,7 +238,7 @@ func (r *Relay) session(ctx context.Context, acct *Account, dispatcher *dispatch
 	}
 	defer ws.CloseNow()
 	ws.SetReadLimit(4 << 20)
-	c.ws = ws
+	c.path = transport.NewRelayPath(ws)
 	readyCtx, readyCancel := context.WithTimeout(ctx, r.readyTimeout)
 	defer readyCancel()
 	hello, _ := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_Hello{Hello: &pb.StreamHello{Token: token}}})
@@ -254,6 +250,12 @@ func (r *Relay) session(ctx context.Context, acct *Account, dispatcher *dispatch
 	} else if f.GetReady() == nil {
 		return errors.New("server did not accept the stream")
 	}
+	// A terminal uses an independent WS. Keep its relay adapter after the main
+	// socket drops; the next authenticated generation replaces credentials.
+	// Install before reading the first command (which may open a terminal).
+	dispatcher.link.Router.Attach(func(ctx context.Context, route transport.StreamRoute) (transport.Path, error) {
+		return openRelayStream(ctx, acct.Server, token, route)
+	})
 	errc := make(chan error, 4)
 	// Start consuming immediately after Ready, including during slow startup RPCs.
 	workers.Go(func() { errc <- c.readLoop(ctx); cancel() })
@@ -336,13 +338,13 @@ func bearer(token string) connect.UnaryInterceptorFunc {
 }
 
 func readFrame(ctx context.Context, ws *websocket.Conn) (*pb.ServerFrame, error) {
-	typ, b, err := ws.Read(ctx)
+	b, err := transport.NewRelayPath(ws).Read(ctx)
 	if err != nil {
 		return nil, err
 	}
 	f := &pb.ServerFrame{}
-	if typ != websocket.MessageBinary || proto.Unmarshal(b, f) != nil {
-		return nil, errors.New("malformed frame from server")
+	if proto.Unmarshal(b, f) != nil {
+		return nil, transport.ErrInvalidFrame
 	}
 	return f, nil
 }
@@ -458,57 +460,6 @@ const maxConcurrentCalls = 8
 // Thus duplicate waiters alone cannot backpressure the stream reader. Fresh
 // work remains bounded and can backpressure it, as before this refactor.
 const maxConcurrentAdmissions = maxConcurrentCalls + deviceauth.MaxWaiters + 16
-
-func (c *conn) readLoop(ctx context.Context) error {
-	return readForwardCalls(ctx, c.dispatcher.ctx, c.r.admissions, &c.dispatcher.executions, func() (*pb.ServerFrame, error) {
-		return readFrame(ctx, c.ws)
-	}, c.handleCall)
-}
-
-func readForwardCalls(ctx, execution context.Context, slots chan struct{}, calls *sync.WaitGroup, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		f, err := read()
-		if err != nil {
-			return err
-		}
-		if call := f.GetForwardCall(); call != nil {
-			// At most cap(slots) handlers plus this one unread-dispatched frame
-			// are retained. The production cap exceeds execution + waiter caps;
-			// fresh work can still fill it. Path cancellation unblocks the reader.
-			select {
-			case slots <- struct{}{}:
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-			if ctx.Err() != nil {
-				<-slots
-				return ctx.Err()
-			}
-			calls.Go(func() {
-				defer func() { <-slots }()
-				handle(execution, call)
-			})
-		}
-	}
-}
-
-func (c *conn) reply(ctx context.Context, r *pb.ForwardReply) {
-	if c.pathLifetime != nil {
-		ctx = c.pathLifetime
-	}
-	b, err := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: r}})
-	if err != nil {
-		return
-	}
-	wctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	if err := c.ws.Write(wctx, websocket.MessageBinary, b); err != nil {
-		slog.Warn("relay: send reply", "call", r.CallId, "err", err)
-	}
-}
 
 // errKeyLost means the server holds a session whose key is missing here.
 var errKeyLost = errors.New("the session's key is missing locally but the server already has the session")

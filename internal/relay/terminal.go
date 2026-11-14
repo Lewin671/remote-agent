@@ -3,16 +3,14 @@ package relay
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
-	"github.com/coder/websocket"
+	"github.com/Lewin671/remote-agent/internal/transport"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -34,7 +32,7 @@ const termBatch = 64 << 10
 
 // openTerminal joins the stream a client asked for and serves it in the
 // background until either side leaves.
-func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) error {
+func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string) error {
 	if len(streamID) < minRequestID {
 		return errors.New("invalid stream ID")
 	}
@@ -70,34 +68,31 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 		t.Close()
 		return err
 	}
-	ws, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(c.acct.Server, "http")+"/v1/term", &websocket.DialOptions{HTTPClient: httpClient()})
+	path, err := c.link.Router.OpenStream(ctx, transport.StreamRoute{ID: streamID})
 	if err != nil {
 		t.Close()
-		return fmt.Errorf("join the terminal stream: %w", err)
-	}
-	ws.SetReadLimit(1 << 20)
-	hello, _ := proto.Marshal(&pb.TermHello{Token: c.token, StreamId: streamID})
-	if err := ws.Write(ctx, websocket.MessageBinary, hello); err != nil {
-		t.Close()
-		ws.CloseNow()
 		return err
 	}
 	if err := c.security.confirmStream(streamCtx); err != nil {
 		t.Close()
-		ws.CloseNow()
+		path.Close()
 		return err
 	}
+	if !c.link.ServeStream(func() { defer streamCancel(); c.serveTerminal(streamCtx, path, t, key, sessionID, streamID) }) {
+		t.Close()
+		path.Close()
+		return context.Canceled
+	}
 	established = true
-	c.dispatcher.terminals.Go(func() { defer streamCancel(); c.serveTerminal(streamCtx, ws, t, key, sessionID, streamID) })
 	return nil
 }
 
-func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal, key []byte, sessionID, streamID string) {
+func (c *endpoint) serveTerminal(ctx context.Context, path transport.Path, t Terminal, key []byte, sessionID, streamID string) {
 	ctx, cancel := context.WithCancel(ctx)
 	var workers sync.WaitGroup
 	defer func() {
 		cancel()
-		ws.CloseNow()
+		path.Close()
 		workers.Wait()
 		t.Close()
 	}()
@@ -121,7 +116,7 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 		}
 		wctx, wcancel := context.WithTimeout(ctx, 10*time.Second)
 		defer wcancel()
-		return ws.Write(wctx, websocket.MessageBinary, b)
+		return path.Write(wctx, b)
 	}
 
 	snap, err := t.Snapshot()
@@ -154,7 +149,7 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 	})
 	workers.Go(func() {
 		defer cancel()
-		c.readTerminal(ctx, ws, t, key, sessionID, streamID, historyRequests)
+		c.readTerminal(ctx, path, t, key, sessionID, streamID, historyRequests)
 	})
 	for {
 		select {
@@ -162,7 +157,7 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 			return
 		case <-t.Done():
 			_ = send(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Closed{Closed: t.Reason()}})
-			ws.Close(websocket.StatusNormalClosure, "")
+			path.Finish()
 			return
 		case page := <-historyPages:
 			if err := send(&pb.TerminalFrame{Kind: &pb.TerminalFrame_HistoryPage{HistoryPage: page}}); err != nil {
@@ -194,11 +189,11 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 }
 
 // readTerminal applies the client's sealed input frames in order.
-func (c *conn) readTerminal(ctx context.Context, ws *websocket.Conn, t Terminal, key []byte, sessionID, streamID string, historyRequests chan<- *pb.TerminalHistoryRequest) {
+func (c *endpoint) readTerminal(ctx context.Context, path transport.Path, t Terminal, key []byte, sessionID, streamID string, historyRequests chan<- *pb.TerminalHistoryRequest) {
 	var last uint64
 	for {
-		typ, b, err := ws.Read(ctx)
-		if err != nil || typ != websocket.MessageBinary {
+		b, err := path.Read(ctx)
+		if err != nil {
 			return
 		}
 		env := &pb.Envelope{}

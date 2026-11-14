@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/transport"
 )
 
 // dispatcher owns one endpoint for the entire daemon/account lifetime. Socket
@@ -20,11 +21,11 @@ type dispatcher struct {
 	ctx             context.Context
 	cancel          context.CancelFunc
 	workers         sync.WaitGroup
-	executions      sync.WaitGroup
+	link            *transport.Link
+	endpoint        *endpoint
 	maintenance     context.Context
 	stopMaintenance context.CancelFunc
 	reloadRequested atomic.Bool
-	terminals       sync.WaitGroup
 	security        *securitySession
 	publisher       *conn
 	acct            *Account
@@ -42,6 +43,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	}
 	maintenance, stopMaintenance := context.WithCancel(ctx)
 	d := &dispatcher{ctx: ctx, cancel: cancel, security: security, acct: acct, maintenance: maintenance, stopMaintenance: stopMaintenance}
+	d.link = transport.NewLink(ctx, r.admissions, r.calls)
 	if recovering {
 		security.setAuthorized(false)
 	}
@@ -63,6 +65,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	ctx = maintenance
 	d.publisher = &conn{r: r, acct: acct, security: security, lifetime: ctx, diskAlertNow: r.retryTime().now, publishNow: make(chan struct{}, 1),
 		machine: remoteagentv1connect.NewMachineServiceClient(httpClient(), acct.Server, connect.WithInterceptors(publishCredentials.bearer(), r.limitMachineRPCs()))}
+	d.endpoint = &endpoint{r: r, acct: acct, security: security, lifetime: d.link.Context(), link: d.link, sessionKey: d.publisher.sessionKey}
 	// Each loop has its own budget and credentials; no network I/O lock or RPC
 	// slot used by publication is shared with membership synchronization.
 	initialSync := make(chan struct{})
@@ -81,8 +84,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 func (d *dispatcher) close() {
 	d.cancel()
 	d.workers.Wait()
-	d.executions.Wait() // all command handlers stop before joining terminal additions
-	d.terminals.Wait()
+	d.link.Close()
 	d.publisher.writes.close()
 	d.security.Close()
 }
@@ -157,9 +159,9 @@ func (d *dispatcher) retire() {
 	d.stopMaintenance()
 	d.security.setAuthorized(false)
 	d.workers.Wait()
-	d.executions.Wait()
+	d.link.DrainCalls()
 	d.cancel()
-	d.terminals.Wait()
+	d.link.Close()
 	d.publisher.writes.close()
 	d.security.Close()
 }

@@ -118,7 +118,7 @@ func TestSyncDiskAlertsAcknowledgesOnlyDeliveredAndRetriesInOrder(t *testing.T) 
 }
 func TestMachineStatusScopeAndMachineErrorMapping(t *testing.T) {
 	h := &diskLocal{}
-	c := &conn{r: New(&diskBackend{local: h})}
+	c := testEndpoint(t, New(&diskBackend{local: h}))
 	cmd := &pb.Command{Kind: &pb.Command_GetMachineStatus{GetMachineStatus: &pb.GetMachineStatusRequest{}}}
 	if r := c.execute(context.Background(), "wrong-session", cmd); r.ErrorCode != "invalid_argument" || h.calls != 0 {
 		t.Fatal(r)
@@ -151,7 +151,7 @@ func TestScheduleAcceptedStorageErrorIsNotARevisionConflict(t *testing.T) {
 	detail, _ := connect.NewErrorDetail(&pb.MachineError{Code: protocol.DiskFull})
 	e.AddDetail(detail)
 	h.failure = e
-	c := &conn{r: New(&diskBackend{local: h})}
+	c := testEndpoint(t, New(&diskBackend{local: h}))
 	r := c.execute(context.Background(), "", &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "run"}}})
 	if r.ErrorCode != "aborted" {
 		t.Fatal(r)

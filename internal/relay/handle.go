@@ -21,9 +21,9 @@ const minRequestID = 16
 
 // handleCall opens a forwarded command, runs it at most once, and replies
 // with the sealed result.
-func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
+func (c *endpoint) handleCall(ctx, waiting context.Context, call *pb.ForwardCall, reply func(*pb.ForwardReply)) {
 	fail := func(reason string) {
-		c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Outcome: "unknown", Reason: reason, EntryFailure: true})
+		reply(&pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Outcome: "unknown", Reason: reason, EntryFailure: true})
 	}
 
 	if c.security == nil {
@@ -47,11 +47,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 	// retried once; the endpoint re-verifies the exact state inside it.
 	// The path owns only admission/duplicate waiting. Once accepted, the
 	// callback below keeps the process execution context through a WS loss.
-	waiting := ctx
-	if c.pathLifetime != nil {
-		waiting = c.pathLifetime
-	}
-	result, err := c.security.acceptWith(waiting, wire, nil, uint64(time.Now().UnixMilli()), c.acquireCall, func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
+	result, err := c.security.acceptWith(waiting, wire, nil, uint64(time.Now().UnixMilli()), c.link.Acquire, func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
 		cmd := &pb.Command{}
 		original := plain
 		plain, err := deviceauth.Unpack(h, plain)
@@ -142,17 +138,17 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("result_authorization_failed")
 		return
 	}
-	c.reply(ctx, &pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Result: env, Outcome: proof.Outcome, Reason: proof.Reason})
+	reply(&pb.ForwardReply{CallId: call.CallId, AttemptId: call.AttemptId, Result: env, Outcome: proof.Outcome, Reason: proof.Reason})
 
 }
 
 // execute runs a command on the session named in its sealed header.
-func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *pb.CommandResult {
+func (c *endpoint) execute(ctx context.Context, sessionID string, cmd *pb.Command) *pb.CommandResult {
 	result, _ := c.executeEvidence(ctx, sessionID, cmd)
 	return result
 }
 
-func (c *conn) executeEvidence(ctx context.Context, sessionID string, cmd *pb.Command) (*pb.CommandResult, deviceauth.Category) {
+func (c *endpoint) executeEvidence(ctx context.Context, sessionID string, cmd *pb.Command) (*pb.CommandResult, deviceauth.Category) {
 	r := c.r
 	l := r.backend.Local()
 	out := &pb.CommandResult{}
@@ -399,15 +395,4 @@ func call[Q, R any](ctx context.Context, fn func(context.Context, *connect.Reque
 	}
 	set(res.Msg)
 	return nil
-}
-
-// New work waits for a slot outside endpoint locks until its signed deadline
-// or path cancellation. Already accepted duplicates do not acquire a slot.
-func (c *conn) acquireCall(ctx context.Context) (func(), error) {
-	select {
-	case c.r.calls <- struct{}{}:
-		return func() { <-c.r.calls }, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
 }

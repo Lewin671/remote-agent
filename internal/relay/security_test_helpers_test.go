@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"crypto/ed25519"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/transport"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -110,4 +112,25 @@ func openTestSecureMessage(c *conn, seed []byte, env *pb.Envelope, want *pb.Head
 		return nil, err
 	}
 	return h.Projection(), proto.Unmarshal(plain, m)
+}
+
+func testEndpoint(t *testing.T, r *Relay) *endpoint {
+	t.Helper()
+	if r == nil {
+		r = New(nil)
+	}
+	link := transport.NewLink(context.Background(), r.admissions, r.calls)
+	t.Cleanup(link.Close)
+	publisher := &conn{r: r, lifetime: link.Context()}
+	return &endpoint{r: r, lifetime: link.Context(), link: link, sessionKey: publisher.sessionKey}
+}
+
+func initializeEndpointSecurityKeys(t *testing.T, e *endpoint) *testSecurityKeys {
+	t.Helper()
+	c := &conn{r: e.r, acct: e.acct, lifetime: e.lifetime}
+	keys := initializeTestSecurityKeys(t, c)
+	e.acct = c.acct
+	e.security = c.security
+	e.sessionKey = c.sessionKey
+	return keys
 }
