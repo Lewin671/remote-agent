@@ -496,6 +496,8 @@ it("drops a cached history that is not this session's", async () => {
 });
 
 it("starts from what the browser kept: the token, and the last listing", async () => {
+  // Token reuse is independent of recovery jitter, which has its own tests.
+  vi.spyOn(Math, "random").mockReturnValue(0.1);
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
   r.sessions.clear();
@@ -564,7 +566,7 @@ it("starts from what the browser kept: the token, and the last listing", async (
   // A handshake the network dropped keeps the token.
   Socket.all[0].closedBy(1006);
   // Token reuse is independent of the backoff duration (covered separately).
-  // Request the foreground reconnect rather than waiting a real second.
+  // The foreground request now honors the same bounded jitter as other hints.
   r.reconnectNow();
   await vi.waitFor(() => expect(Socket.all).toHaveLength(2));
   expect(r.authHeader()).toBe("Bearer kept-token");

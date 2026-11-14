@@ -1813,8 +1813,7 @@ export class Remote {
     );
   }
 
-  /** Connects now instead of waiting out the backoff, e.g. when the
-   * network came back. */
+  /** Requests a candidate while preserving the shared credit and backoff. */
   reconnectNow(_networkChanged = false) {
     if (this.closed || this.removed || !this.foreground) return;
     this.scheduleReconnect();
