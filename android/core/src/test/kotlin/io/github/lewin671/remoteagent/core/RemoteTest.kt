@@ -1565,18 +1565,14 @@ class RemoteTest {
                     .addInterceptor { chain ->
                         val request = chain.request()
                         val target =
-                            if (request.url.encodedPath == "/v1/stream") request
-                            else
-                                request
-                                    .newBuilder()
-                                    .url(server.url + request.url.encodedPath)
-                                    .build()
+                            if (request.url.encodedPath == "/v1/stream") request.newBuilder().url(hole.url + request.url.encodedPath).build()
+                            else request
                         chain.proceed(target)
                     }
                     .build()
             val r =
                 fixtureRemote(
-                    Account(hole.url, acct.root, acct.deviceSeed, acct.deviceId),
+                    acct,
                     routed,
                     streamOpenMs = 300,
                 )
@@ -1596,6 +1592,79 @@ class RemoteTest {
             assertNull(r.state.value.connStartedAtMs)
             assertEquals(2, hole.attempts.get())
         }
+
+    @Test
+    fun silentMainPathIsProbedWithoutClosingItsHealthyIndependentTerminal() = runBlocking<Unit> {
+        val acct = approvedClient(daemon.phone, http)
+        val hole = StreamBlackhole { socket ->
+            StreamBlackhole.writeFrame(socket.getOutputStream(), ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(System.currentTimeMillis())).build().toByteArray())
+        }
+        closers += hole
+        val routed = http.newBuilder().addInterceptor { chain ->
+            val q = chain.request()
+            chain.proceed(if (q.url.encodedPath == "/v1/stream") q.newBuilder().url(hole.url + q.url.encodedPath).build() else q)
+        }.build()
+        val r = fixtureRemote(acct, routed)
+        closers += AutoCloseable { r.close() }
+        r.start(); r.awaitState("first ready") { it.conn == ConnState.ONLINE && it.loaded }
+        r.awaitEvents("s1", 3)
+        val closed = java.util.concurrent.atomic.AtomicInteger()
+        val terminal = r.openTerminal("s1", object : TermListener {
+            override fun onFrame(frame: TerminalFrame) {}
+            override fun onClose(reason: MessageText) { closed.incrementAndGet() }
+        })
+        val started = System.nanoTime()
+        try {
+            val recovered = runCatching { withTimeout(6000) { r.state.first { hole.attempts.get() >= 2 && it.conn == ConnState.ONLINE } } }.isSuccess
+            assertTrue("silent path did not recover", recovered)
+            daemon.answer = { _, _ -> CommandResult.newBuilder().setRenameSession(RenameSessionResponse.getDefaultInstance()).build() }
+            r.command("s1", Command.newBuilder().setRenameSession(RenameSessionRequest.newBuilder().setSessionId("s1").setTitle("after recovery")).build())
+            assertTrue((System.nanoTime() - started) / 1_000_000 < 6000)
+            assertEquals(0, closed.get())
+        } finally { terminal.close() }
+    }
+
+    @Test
+    fun authenticatedReplacementWakesOriginalForward() = runBlocking<Unit> {
+        val hold = ForwardHold(server.url)
+        val clientHttp = http.newBuilder().addInterceptor { chain ->
+            val q = chain.request()
+            chain.proceed(if (q.url.encodedPath.endsWith("/Forward")) q.newBuilder().url(hold.url + q.url.encodedPath).build() else q)
+        }.build()
+        val r = fixtureRemote(approvedClient(daemon.phone, http), clientHttp)
+        closers += AutoCloseable { r.close(); hold.close() }
+        r.start(); r.awaitState("initial ready") { it.conn == ConnState.ONLINE && it.loaded }
+        daemon.answer = { _, _ -> CommandResult.newBuilder().setGetSettings(GetSettingsResponse.getDefaultInstance()).build() }
+        val call = async { r.machineCommand(daemon.id, Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build()) }
+        withTimeout(5000) { hold.held.await() }
+        r.reconnectNow()
+        try { withTimeout(5000) { call.await() } }
+        catch (e: Exception) {
+            val details = listOf("connecting", "candidate", "generation").associateWith { name -> Remote::class.java.getDeclaredField(name).apply { isAccessible = true }.get(r).let { if (it is kotlinx.coroutines.Job) it.isActive else if (name == "candidate") (it != null) else it } }
+            throw AssertionError("recovery failed: deliveries=${hold.received.size} state=${r.state.value.conn} owners=$details",e)
+        }
+        assertEquals(2, hold.received.size)
+        assertEquals(hold.received[0].command, hold.received[1].command)
+        assertTrue(hold.received[0].attemptId != hold.received[1].attemptId)
+    }
+
+    @Test
+    fun duplicateAddressNotificationsHaveOneReplacement() = runBlocking<Unit> {
+        val streams = java.util.concurrent.atomic.AtomicInteger()
+        val observed = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath == "/v1/stream") streams.incrementAndGet()
+            chain.proceed(chain.request())
+        }.build()
+        val r = fixtureRemote(approvedClient(daemon.phone, http), observed)
+        closers += AutoCloseable { r.close() }
+        r.networkChanged("same-interface|old-address", true)
+        r.start(); r.awaitState("initial path") { it.conn == ConnState.ONLINE && it.loaded }
+        repeat(1000) { r.networkChanged("same-interface|new-address", true) }
+        r.awaitState("replacement") { it.conn == ConnState.ONLINE && streams.get() >= 2 }
+        repeat(4) { delay(250); r.networkChanged("same-interface|new-address", true) }
+        delay(200)
+        assertEquals(2, streams.get())
+    }
 
     @Test
     fun repeatedNetworkCallbacksDuringLoginLeaveOnlyOneCurrentStream() =
@@ -1703,11 +1772,11 @@ class RemoteTest {
             r.awaitEvents("s1", 3)
             try {
                 r.reconnectNow()
-                // StateFlow may conflate a fast CONNECTING -> ONLINE transition. Hold the
-                // replacement upgrade so the upload is known to happen while disconnected.
+                // Hold the candidate upgrade; the authenticated old leg remains usable.
                 withTimeout(10_000) { replacement.await() }
-                assertEquals(ConnState.CONNECTING, r.state.value.conn)
+                assertEquals(ConnState.ONLINE, r.state.value.conn)
                 daemon.upload("s1", agent("during replacement"))
+                r.awaitEvents("s1", 4)
             } finally {
                 release.countDown()
             }

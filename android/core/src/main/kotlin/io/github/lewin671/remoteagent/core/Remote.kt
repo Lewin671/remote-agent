@@ -11,6 +11,8 @@ import io.github.lewin671.remoteagent.core.transport.PeerState
 import io.github.lewin671.remoteagent.core.transport.FrameStream
 import io.github.lewin671.remoteagent.core.transport.FrameListener
 
+import io.github.lewin671.remoteagent.core.transport.Recovery
+import io.github.lewin671.remoteagent.core.transport.PathChanged
 import io.github.lewin671.remoteagent.core.transport.DispatchState
 
 import com.connectrpc.Code
@@ -411,6 +413,7 @@ class Remote(
     private val socketFactory: WebSocket.Factory? = null,
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
     private val onSessionRemoved: suspend (String) -> Unit = {},
+    private val monotonic: () -> Long = { System.nanoTime() / 1_000_000 },
 ) {
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
@@ -532,7 +535,16 @@ class Remote(
     private val streamHttp =
         http.newBuilder().pingInterval(STREAM_PING_SECONDS, TimeUnit.SECONDS).build()
     private var ws: FrameStream? = null
-    private var retry = 1000L
+    private val recovery = Recovery(monotonic)
+    private var candidate: FrameStream? = null
+    private var networkGeneration = 0L
+    private var networkSignature = ""
+    private val networkHints = Channel<Pair<String, Boolean>>(Channel.CONFLATED)
+    private var wantedConnection = false
+    private var verifiedNetworkGeneration = 0L
+    private var everReady = false
+    private var liveness: Job? = null
+    private var activeActivity: java.util.concurrent.atomic.AtomicLong? = null
     private var running = false
     private var removed = false
     private val signingIn = Mutex()
@@ -625,6 +637,9 @@ class Remote(
                     delay(60_000)
                 }
             }
+            if (everReady) networkGeneration++
+            try { security.touch() } catch (e: Exception) { report(e) }
+            startLiveness()
             beginConnect()
         }
     }
@@ -635,6 +650,8 @@ class Remote(
     private fun stopOnWorker() {
         // Off the caller's (main) thread: clearing waits for any read holding the locks.
         running = false
+        liveness?.cancel(); liveness = null
+        candidate?.cancel(); candidate = null
         liveJobs.values.forEach { it.cancel() }
         liveJobs.clear()
         authorityJob.cancel()
@@ -677,7 +694,8 @@ class Remote(
             grace = null
             waited = false
             if (running && !removed) {
-                retry = 1000
+                networkGeneration++
+                try { security.touch() } catch (e: Exception) { report(e) }
                 beginConnect()
             } else publish()
         }
@@ -697,8 +715,51 @@ class Remote(
     fun reconnectNow() {
         scope.launch {
             if (!running || removed) return@launch
-            retry = 1000
             beginConnect()
+        }
+    }
+
+    /** Snapshot equality coalesces repeated default-network callbacks. */
+    fun networkChanged(signature: String, available: Boolean) {
+        networkHints.trySend(signature to available)
+    }
+
+    init {
+        scope.launch {
+            for ((signature, available) in networkHints) {
+                if (signature == networkSignature) continue
+                val changed = networkSignature.isNotEmpty() || everReady
+                networkSignature = signature
+                network = available
+                if (!changed) { publish(); continue }
+                networkGeneration++
+                if (running && !removed) {
+                    wantedConnection = true
+                    try { security.touch() } catch (e: Exception) { report(e) }
+                    beginConnect()
+                } else publish()
+            }
+        }
+    }
+
+    private fun startLiveness() {
+        liveness?.cancel()
+        liveness = scope.launch {
+            var last = monotonic(); var wall = clock()
+            while (running) {
+                delay(1000)
+                val now = monotonic(); val currentWall = clock()
+                val woke = now < last || now - last > 3000 || currentWall - wall > 3000
+                if (woke) {
+                    networkGeneration++
+                    try { security.touch() } catch (e: Exception) { report(e) }
+                }
+                last = now; wall = currentWall
+                if (woke || (ws != null && now - (activeActivity?.get() ?: now) >= 3000)) {
+                    if (conn == ConnState.ONLINE) { conn = ConnState.CONNECTING; publish() }
+                    beginConnect()
+                }
+            }
         }
     }
 
@@ -848,22 +909,33 @@ class Remote(
 
     /** Replaces the whole attempt, including a login suspended before a socket exists. */
     private fun beginConnect() {
-        if (!running || removed) return
+        if (!running || removed || candidate != null || connecting?.isActive == true || reconnect?.isActive == true) return
+        val wait = recovery.delay()
+        if (wait > 0 || !recovery.take()) {
+            reconnect = scope.launch {
+                delay(maxOf(wait, 1))
+                reconnect = null
+                beginConnect()
+            }
+            return
+        }
         generation++
-        reconnect?.cancel()
-        reconnect = null
-        connecting?.cancel()
-        opening?.cancel()
-        opening = null
-        val old = ws
-        ws = null
-        cleanup({ old?.cancel() }, { connecting = scope.launch { connect() } })
+        wantedConnection = false
+        connecting = scope.launch {
+            try { connect() }
+            finally {
+                connecting = null
+                if (candidate == null && running && (ws == null || wantedConnection)) beginConnect()
+            }
+        }
     }
 
     private suspend fun connect() {
         if (!running) return
         val gen = generation
-        conn = ConnState.CONNECTING
+        val networkGen = networkGeneration
+        val started = monotonic()
+        if (ws == null) conn = ConnState.CONNECTING
         connStartedAtMs = clock()
         connStep = UiMessages.errorsReadingLocalState().messageText()
         publish()
@@ -872,13 +944,22 @@ class Remote(
         connStep = UiMessages.errorsSigningIn().messageText()
         publish()
         val token = try {
-            withTimeout(streamOpenMs) { currentToken() }
+            withTimeout(if (everReady) minOf(streamOpenMs, 3000) else streamOpenMs) {
+                security.touch()
+                val token = currentToken()
+                if (networkGen != verifiedNetworkGeneration) {
+                    security.sync()
+                    if (networkGen == networkGeneration) verifiedNetworkGeneration = networkGen
+                }
+                token
+            }
         } catch (e: Exception) {
             if (e is CancellationException && e !is TimeoutCancellationException) throw e
             if (running && gen == generation) fail(e)
             return
         }
         if (!running || gen != generation) return
+        if (networkGen != networkGeneration) { wantedConnection = true; return }
         connStep = UiMessages.errorsEstablishingPushConnection().messageText()
         publish()
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/stream"
@@ -897,6 +978,7 @@ class Remote(
                 .toByteArray()
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
         val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
+        val activity = java.util.concurrent.atomic.AtomicLong(monotonic())
         val socket =
             deviceLink.router.path.openStream(
                 url,
@@ -906,6 +988,7 @@ class Remote(
                     }
 
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
+                        activity.set(monotonic())
                         if (bytes.size > STREAM_FRAME_BYTES) {
                             cleanup({ stream.cancel() }, { frames.cancel() })
                             return
@@ -940,12 +1023,11 @@ class Remote(
                     }
                 },
             )
-        ws = socket
+        candidate = socket
         opening = scope.launch {
-            delay(streamOpenMs)
-            if (ws === socket && gen == generation && conn != ConnState.ONLINE) {
-                ws = null
-                generation++
+            delay(if (everReady) maxOf(1, minOf(streamOpenMs, 3000) - (monotonic() - started)) else streamOpenMs)
+            if (candidate === socket) {
+                candidate = null
                 cleanup({ socket.cancel() }, { frames.cancel() }, {
                     fail(MessageException(UiMessages.errorsConnectionTimedOutReconnecting().messageText()))
                 })
@@ -955,18 +1037,29 @@ class Remote(
             try {
                 for (b in frames) {
                     try {
-                        if (ws !== socket || gen != generation) break
+                        if (ws !== socket && candidate !== socket) break
                         val f = ServerFrame.parseFrom(b)
+                        if (candidate === socket) {
+                            if (f.kindCase != ServerFrame.KindCase.READY) throw MessageException(UiMessages.errorsInvalidPushFrame().messageText())
+                            opening?.cancel(); opening = null
+                            candidate = null
+                            if (networkGen != networkGeneration || gen != generation) { socket.cancel(); beginConnect(); break }
+                            val old = ws
+                            ws = socket
+                            activeActivity = activity
+                            everReady = true
+                            recovery.ready()
+                            old?.cancel()
+                        }
                         if (f.kindCase == ServerFrame.KindCase.READY) {
-                            opening?.cancel()
-                            opening = null
                             serverAhead =
                                 clock() - f.ready.serverTimeMs >
                                     DeviceSecurity.MAX_CLOCK_SKEW.toLong()
                             publish()
                         }
+                        if (conn == ConnState.CONNECTING && networkGen == networkGeneration && f.kindCase != ServerFrame.KindCase.READY) { conn = ConnState.ONLINE; publish() }
                         onFrame(f)
-                        if (ws !== socket || gen != generation) break
+                        if (ws !== socket) break
                     } finally {
                         // A frame remains in flight while its handler is suspended.
                         queuedBytes.addAndGet(-b.size.toLong())
@@ -978,12 +1071,9 @@ class Remote(
             } finally {
                 try { cleanup({ frames.cancel() }, { socket.cancel() }) }
                 finally {
-                    if (ws === socket) {
-                        ws = null
-                        generation++
-                        opening?.cancel()
-                        opening = null
-                        // Only an explicit refusal invalidates the token.
+                    if (ws === socket || candidate === socket) {
+                        if (ws === socket) ws = null
+                        if (candidate === socket) { candidate = null; opening?.cancel(); opening = null }
                         try { if (refused.get()) loginTokens.discard(token) }
                         finally { fail(broken.get() ?: MessageException(UiMessages.errorsDisconnectedFromServer().messageText())) }
                     }
@@ -993,19 +1083,20 @@ class Remote(
     }
 
     private fun fail(e: Throwable) {
-        conn = ConnState.OFFLINE
+        recovery.failed()
+        if (ws == null) {
+            conn = ConnState.OFFLINE
+            error = errorText(e, state.value)
+            connError = error
+            errorDetail = connectionErrorDetail(e)
+            unresolved = unresolvedHost(e)
+        }
         clearConnProgress()
-        error = errorText(e, state.value)
-        connError = error
-        errorDetail = connectionErrorDetail(e)
-        unresolved = unresolvedHost(e)
         publish()
         if (!running) return
-        val delayMs = retry + (Random.nextDouble() * retry * 0.25).toLong()
-        retry = minOf(retry * 2, 30_000)
+        reconnect?.cancel()
         reconnect = scope.launch {
-            delay(delayMs)
-            // Do not cancel this retry job from beginConnect while it runs.
+            delay(maxOf(1, recovery.delay()))
             reconnect = null
             beginConnect()
         }
@@ -1016,7 +1107,6 @@ class Remote(
             ServerFrame.KindCase.HEARTBEAT -> Unit
             ServerFrame.KindCase.READY -> {
                 val gen = generation
-                retry = 1000
                 conn = ConnState.ONLINE
                 clearConnProgress()
                 connError = "".messageText()
@@ -3356,6 +3446,12 @@ class Remote(
 
     private suspend fun forwardOnWorker(p: PreparedCommand, call: DispatchState.Call): CommandResult {
         val prior = call.uncertain
+        if (verifiedNetworkGeneration != networkGeneration) {
+            val gen = networkGeneration
+            security.sync()
+            if (gen != networkGeneration) throw DeviceSecurity.Failure("stale")
+            verifiedNetworkGeneration = gen
+        }
         checkFileCapability(p, prior)
         // A machine of another protocol version would refuse it: say which
         // side to update instead of sending.
@@ -3391,7 +3487,7 @@ class Remote(
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
                     val binding = security.commandIdentity(authorized)
-                    val res = delivery.send(p.machineId, authorized)
+                    val res = recovery.follow { delivery.send(p.machineId, authorized) }
                     val (_, msg) =
                         try {
                             openSecureMessage(
@@ -3425,6 +3521,8 @@ class Remote(
                         if (!currentScheduleMember(p.machineId)) cache?.removeBlob("schedule:${p.machineId}")
                     }
                     return msg
+                } catch (changed: PathChanged) {
+                    continue
                 } catch (ce: ConnectException) {
                     val notForwarded = delivery.refusal(ce)
                     val unsent = notForwarded != null

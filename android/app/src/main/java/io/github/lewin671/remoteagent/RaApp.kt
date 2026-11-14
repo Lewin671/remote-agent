@@ -8,6 +8,8 @@ import android.app.Application
 import android.app.NotificationManager
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.LinkProperties
+import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -161,23 +163,53 @@ class RaApp : Application() {
             )
         // Without a network at start no callback comes.
         online = getSystemService(ConnectivityManager::class.java).activeNetwork != null
-        getSystemService(ConnectivityManager::class.java)
-            .registerDefaultNetworkCallback(
-                object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        online = true
-                        _remote.value?.setNetwork(true)
-                        _remote.value?.reconnectNow()
-                        scope.launch { registerPush() }
-                    }
-
-                    // Only when no other network takes over as the default.
-                    override fun onLost(network: Network) {
-                        online = false
-                        _remote.value?.setNetwork(false)
-                    }
-                },
-            )
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        connectivity.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+            private var current: Network? = connectivity.activeNetwork
+            private var properties: LinkProperties? = current?.let(connectivity::getLinkProperties)
+            private var capabilities: NetworkCapabilities? = current?.let(connectivity::getNetworkCapabilities)
+            private fun changed() {
+                val network = current
+                online = network != null
+                // Addresses stay only in this process and are never logged or persisted.
+                val signature = networkIdentity(
+                    network?.networkHandle,
+                    properties?.interfaceName,
+                    properties?.linkAddresses?.map { it.toString() }?.sorted(),
+                    properties?.routes?.map { it.toString() }?.sorted(),
+                    properties?.dnsServers?.mapNotNull { it.hostAddress },
+                    (0..7).filter { capabilities?.hasTransport(it) == true },
+                    listOf(NetworkCapabilities.NET_CAPABILITY_INTERNET, NetworkCapabilities.NET_CAPABILITY_VALIDATED,
+                        NetworkCapabilities.NET_CAPABILITY_NOT_METERED, NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                        .filter { capabilities?.hasCapability(it) == true },
+                )
+                _remote.value?.networkChanged(signature, online)
+            }
+            override fun onAvailable(network: Network) {
+                current = network
+                properties = connectivity.getLinkProperties(network)
+                capabilities = connectivity.getNetworkCapabilities(network)
+                changed()
+                scope.launch { registerPush() }
+            }
+            override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+                if (network != current) return
+                properties = linkProperties
+                changed()
+            }
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                if (network != current) return
+                capabilities = networkCapabilities
+                changed()
+            }
+            override fun onLost(network: Network) {
+                if (network != current) return
+                current = connectivity.activeNetwork?.takeUnless { it == network }
+                properties = current?.let(connectivity::getLinkProperties)
+                capabilities = current?.let(connectivity::getNetworkCapabilities)
+                changed()
+            }
+        })
     }
 
     /**
@@ -340,6 +372,7 @@ class RaApp : Application() {
                         sharedFiles.removeSession(sid)
                     }
                 },
+                monotonic = android.os.SystemClock::elapsedRealtime,
                 securityStorage = vault,
                 scheduleSeen = io.github.lewin671.remoteagent.core.ScheduleSeen(
                     listOf(acct.server, acct.deviceId),

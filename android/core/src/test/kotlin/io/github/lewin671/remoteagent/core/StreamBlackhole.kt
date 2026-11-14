@@ -41,7 +41,7 @@ internal class StreamBlackhole(private val first: ((Socket) -> Unit)? = null) : 
                                 if (attempts.incrementAndGet() == 1 && first != null) {
                                     first.invoke(it)
                                 } else if (attempts.get() > 1) {
-                                    val ready = ServerFrame.newBuilder().setReady(Ready.getDefaultInstance()).build().toByteArray()
+                                    val ready = ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(System.currentTimeMillis())).build().toByteArray()
                                     output.write(byteArrayOf(0x82.toByte(), ready.size.toByte()))
                                     output.write(ready); output.flush()
                                 }

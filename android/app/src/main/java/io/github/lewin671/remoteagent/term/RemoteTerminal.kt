@@ -91,6 +91,8 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         override fun onViewSize(columns: Int, rows: Int) {}
     })
 
+    fun connectIfNeeded() { if (_state.value is State.Closed || (conn == null && job?.isActive != true)) connect() }
+
     fun connect() {
         history.close()
         if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }

@@ -223,4 +223,9 @@ fun fixtureRemote(
         TestSecurity.find(account.server)?.stores?.get(account.deviceId),
         tokenStorage,
         onSessionRemoved = onSessionRemoved,
-    )
+    ).also { remote ->
+        // Each fixture models a separate application process. Shared-budget
+        // interactions are exercised explicitly by RecoveryTest.
+        Remote::class.java.getDeclaredField("recovery").apply { isAccessible = true }.set(remote,
+            io.github.lewin671.remoteagent.core.transport.Recovery(global = io.github.lewin671.remoteagent.core.transport.RecoveryBudget()))
+    }

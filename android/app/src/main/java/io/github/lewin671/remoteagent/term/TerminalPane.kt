@@ -188,16 +188,19 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val transportState = remote.state.collectAsStateWithLifecycle().value
     val online = transportState.peer(transportState.sessions[sessionId]?.machineId).ready
-    DisposableEffect(term, owner, online) {
+    DisposableEffect(term, owner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_START -> if (online && remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) term.connect()
+                androidx.lifecycle.Lifecycle.Event.ON_START -> if (remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) term.connect()
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> term.close()
                 else -> {}
             }
         }
         owner.lifecycle.addObserver(observer)
         onDispose { owner.lifecycle.removeObserver(observer); term.close() }
+    }
+    LaunchedEffect(online) {
+        if (online && owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) term.connectIfNeeded()
     }
     val state by term.state.collectAsState()
     val size by term.size.collectAsState()

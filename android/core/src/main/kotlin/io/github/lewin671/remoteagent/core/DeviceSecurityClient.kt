@@ -121,6 +121,12 @@ class DeviceSecurityClient(
     private fun now(r: DeviceSecurity.Record): ULong = maxOf(clock().toULong(), r.floor)
 
     /** Pulls every state after the local head. The relay cannot make the head go backwards. */
+    /** Persist wake time locally; a slow relay must not close an independent terminal. */
+    fun touch() {
+        val r = read()
+        store.touchSecurity(DeviceSecurity.stateHash(r.head), now(r))
+    }
+
     suspend fun sync(): DeviceSecurity.Record = syncMutex.withLock {
         repeat(DeviceSecurity.MAX_STATES) {
             // Ordinary phones receive no control envelopes. Persist their local

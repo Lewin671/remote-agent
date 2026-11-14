@@ -38,11 +38,15 @@ class LivePollingTest {
                 .setSession(fixture.session("short", 3, SessionStatus.SESSION_STATUS_RUNNING))).build())
             runCurrent(); assertEquals(ended + 1, polls())
             peer.offline = true
+            peer.disconnect(); runCurrent()
             remote.reconnectNow(); runCurrent()
             val disconnected = polls()
             advanceTimeBy(6_001); runCurrent(); assertEquals(disconnected, polls())
             peer.offline = false
-            remote.reconnectNow(); runCurrent(); assertEquals(disconnected + 1, polls())
+            remote.reconnectNow(); runCurrent()
+            val recovery = Remote::class.java.getDeclaredField("recovery").apply { isAccessible = true }.get(remote) as io.github.lewin671.remoteagent.core.transport.Recovery
+            advanceTimeBy(recovery.delay() + 1); runCurrent()
+            assertEquals(disconnected + 1, polls())
             subscription.cancel(); runCurrent(); val unsubscribed = polls()
             advanceTimeBy(6_001); runCurrent(); assertEquals(unsubscribed, polls())
         } finally { subscription.cancel(); remote.close(); runCurrent() }

@@ -109,7 +109,11 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
         clock = { fixture.now + test.testScheduler.currentTime },
         securityStorage = TestSecurityStore(fixture.record), tokenStorage = tokens,
         dispatcher = StandardTestDispatcher(test.testScheduler), socketFactory = sockets, rpcTransport = this,
-    )
+        monotonic = { test.testScheduler.currentTime },
+    ).also { remote ->
+        Remote::class.java.getDeclaredField("recovery").apply { isAccessible = true }.set(remote,
+            io.github.lewin671.remoteagent.core.transport.Recovery({ test.testScheduler.currentTime }, { .75 }, io.github.lewin671.remoteagent.core.transport.RecoveryBudget()))
+    }
 
     override fun unary(request: UnaryHTTPRequest, onResult: (HTTPResponse) -> Unit): () -> Unit {
         val job = test.backgroundScope.launch {
@@ -178,6 +182,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     }
 
     fun frame(frame: ServerFrame) { sockets.last().emit(frame) }
+    fun disconnect() { sockets.toList().forEach { it.close(1001, "disconnected"); it.cancel() } }
 
     fun push(event: StoredEvent) {
         sockets.last().emit(ServerFrame.newBuilder().setEventsAppended(EventsAppended.newBuilder()
@@ -186,6 +191,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
 
     private inner class Socket(val req: Request, val listener: WebSocketListener) : WebSocket {
         var canceled = false
+        private var heartbeat: Job? = null
         override fun request() = req
         override fun queueSize() = 0L
         override fun send(text: String) = error("Binary frames only")
@@ -193,11 +199,16 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             if (PeerFrame.parseFrom(bytes.toByteArray()).hello.token != token) {
                 refused++
                 listener.onClosing(this, 1008, "Rejected")
-            } else emit(ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(fixture.now)).build())
+            } else {
+                emit(ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(fixture.now + test.testScheduler.currentTime)).build())
+                heartbeat = test.backgroundScope.launch {
+                    while (isActive && !canceled) { delay(1000); emit(ServerFrame.newBuilder().setHeartbeat(Heartbeat.getDefaultInstance()).build()) }
+                }
+            }
             return true
         }
         fun emit(frame: ServerFrame) { if (!canceled) listener.onMessage(this, frame.toByteArray().toByteString()) }
         override fun close(code: Int, reason: String?): Boolean { listener.onClosed(this, code, reason.orEmpty()); return true }
-        override fun cancel() { canceled = true }
+        override fun cancel() { canceled = true; heartbeat?.cancel() }
     }
 }
