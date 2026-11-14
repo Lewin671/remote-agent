@@ -271,3 +271,49 @@ func TestClippedMediaHeaders(t *testing.T) {
 		})
 	}
 }
+
+// Captures from isolated agy 1.5.9. Footer/task rows must not block sending;
+// native question and permission panels must still prevent composer writes.
+func TestScreen159PassiveRowsAndPanels(t *testing.T) {
+	a := New("", "")
+	for _, name := range []string{"idle-footer-1.5.9.txt", "background-two-1.5.9.txt", "background-narrow-1.5.9.txt", "pinned-default-1.5.9.txt"} {
+		t.Run(name, func(t *testing.T) {
+			screen := readScreenFixture(t, name)
+			s := a.Analyze(screen)
+			if !s.ComposerReady || !s.DraftEmpty || s.Popup != "" {
+				t.Fatalf("passive native footer blocked composer: %+v", s)
+			}
+			if text, ok := a.ComposerText(screen, ""); !ok || text != "" {
+				t.Fatalf("composer: %q, %v", text, ok)
+			}
+		})
+	}
+	for _, name := range []string{"permission-1.5.9.txt", "question-multi-1.5.9.txt", "question-second-1.5.9.txt"} {
+		s := a.Analyze(readScreenFixture(t, name))
+		if s.Popup == "" || s.ComposerReady || s.DraftEmpty {
+			t.Fatalf("active panel %s: %+v", name, s)
+		}
+	}
+}
+
+func TestBackgroundBarRequiresNativeBoundary(t *testing.T) {
+	a := New("", "")
+	base := "────────────────────\n> \n────────────────────\n"
+	for _, rows := range []string{
+		"● [07:11:12] 45m timer running\n● [07:10:54] long command runnin",
+		"● [07:11:12] long command...",
+	} {
+		screen := base + rows + "\n────────────────────\n? for shortcuts\n"
+		if s := a.Analyze(screen); s.Popup != "" || !s.DraftEmpty {
+			t.Fatalf("clipped bar: %+v", s)
+		}
+		for _, suffix := range []string{"", "\nUnknown dialog\n> 1. Choose\nKeyboard: Navigate"} {
+			if s := a.Analyze(base + rows + suffix); s.Popup == "" || s.ComposerReady {
+				t.Fatalf("unclosed bar was trusted: %+v", s)
+			}
+		}
+		if s := a.Analyze(screen + "\nUnknown dialog\n> 1. Choose\nKeyboard: Navigate"); s.Popup == "" || s.ComposerReady {
+			t.Fatalf("bar hid active panel: %+v", s)
+		}
+	}
+}

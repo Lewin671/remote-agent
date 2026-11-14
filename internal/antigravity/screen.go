@@ -49,17 +49,26 @@ func composerRegion(styled string) (lines []string, top, bottom int, ok bool) {
 	return
 }
 
-var backgroundRowRE = regexp.MustCompile(`^● \[\d{2}:\d{2}:\d{2}\] .+ running$`)
+var backgroundRowRE = regexp.MustCompile(`^● \[\d{2}:\d{2}:\d{2}\] .+`)
 
 // A panel may leave the composer visible. Its immediate trailing section is
 // interactive until proved otherwise; the native background bar is passive.
 func trailingPanel(lines []string, bottom int) string {
 	tail := lines[bottom+1:]
 	for len(tail) > 0 && backgroundRowRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
-		tail = tail[1:]
+		// The task bar is one group, with a single closing rule. Both
+		// the task name and its status can be clipped to the pane width.
+		for len(tail) > 0 && backgroundRowRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
+			tail = tail[1:]
+		}
 		if len(tail) == 0 || !dividerRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
 			return "unknown panel"
 		}
+		tail = tail[1:]
+	}
+	// Since 1.5.9 the default footer can directly follow the composer or
+	// task bar. It is passive; still inspect any following menu controls.
+	if len(tail) > 0 && strings.HasPrefix(strings.TrimSpace(StripANSI(tail[0])), "? for shortcuts") {
 		tail = tail[1:]
 	}
 	if len(tail) > 0 && strings.TrimSpace(StripANSI(tail[0])) != "" {

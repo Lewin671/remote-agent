@@ -1,0 +1,48 @@
+
+      [38;5;179m▄[38;5;208m[48;5;208m▀[38;5;203m[48;5;209m▀[49m▄[39m        [1m[94mAntigravity CLI 1.5.9[0m
+     [38;5;149m[48;5;113m▀[38;5;143m[48;5;107m▀[38;5;173m[48;5;173m▀[38;5;209m[48;5;209m▀[38;5;203m[48;5;167m▀▀[39m[49m       [90muser@example.com (Google AI Pro)[39m
+    [38;5;107m[48;5;113m▀[38;5;71m[48;5;72m▀[38;5;72m[48;5;68m▀[38;5;67m[49m▀[38;5;103m▀[38;5;98m[48;5;68m▀[38;5;97m[48;5;62m▀[38;5;132m[48;5;97m▀[39m[49m      [90mGemini 4 Hydrogen (Low)[39m
+   [38;5;78m▄[48;5;74m▀[38;5;73m▀[39m[49m    [38;5;68m[48;5;69m▀▀[49m▄[39m     [90m/tmp/ra-agy-example/work[39m
+  [38;5;75m▄[38;5;79m[48;5;75m▀[38;5;75m[49m▀[39m      [38;5;69m▀[48;5;69m▀[49m▄[39m
+
+[90m────────────────────────────────────────────────────────────[39m
+[1m[34m> Reply with exactly PONG. Do not call tools.[0m
+
+  PONG
+
+[90m────────────────────────────────────────────────────────────[39m
+[1m[34m> Use run_command to launch two separate background commands: python3 -c "import time; time.sleep(180); print(42)" and python3 -c "import time;[0m
+[1m[34m  time.sleep(180); raise SystemExit(3)". Give them names bg-success-with-a-long-name-for-width-check and bg-failure-with-a-long-name-for-width-check. Return[0m
+[1m[34m  once both run in the background; do not wait for completion. This is an isolated adapter test.[0m
+
+[33m●[39m [1m[33mRan[0m [37m(python3 -c "import time; time.sleep(180); print(42)")[39m
+[33m●[39m [1m[33mRunning[0m [37m(python3 -c "import time; time.sleep(180); raise SystemExit(3)")[39m [37m(ctrl+o to expand)[39m
+
+[1m[33mCommand[0m
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+[1m[37mRequesting permission for:[0m
+[37m   python3 -c "import time; time.sleep(180); print(42)"[39m
+
+[1mRun this command?[0m
+[94m> 1. Yes, run command[39m
+  2. Yes, and always allow in this conversation for commands that start with 'python3 -c "import time; time.sleep(180); print(42)"'
+  3. Yes, and always allow for commands that start with 'python3 -c "import time; time.sleep(180); print(42)"' (Persist to settings.json)
+  4. No, cancel
+
+  [1m[94m↑/↓[0m[90m Navigate · [1m[94mtab[0m[90m Amend · [1m[94mctrl+g[0m[90m edit/expand command[39m
+? for shortcuts                                                                                                                          Gemini 4 Hydrogen (Low)
+
+
+
+
+
+
+
+
+
+
+
+
+
+

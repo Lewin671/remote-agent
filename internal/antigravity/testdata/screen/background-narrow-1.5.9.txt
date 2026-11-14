@@ -1,0 +1,48 @@
+
+  • [94mbg-success-with-a-long-[39m
+  [94mname-for-width-check[39m
+  ([94m11111111-2222-4333-8444-[39m
+  [94m555555555555/task-4[39m)
+  • [94mbg-failure-with-a-long-[39m
+  [94mname-for-width-check[39m
+  ([94m11111111-2222-4333-8444-[39m
+  [94m555555555555/task-5[39m)
+
+[90m─────────────────────────────[39m
+[1m[34m> 中文输入验证：第一行你好[0m
+[1m[34m  第二行包含 emoji[0m
+[1m[34m  🐈。只回复两行：[0m
+[1m[34m  你好[0m
+[1m[34m  收到[0m
+
+  你好
+  收到
+
+[90m─────────────────────────────[39m
+[1m[34m> Use ask_question to ask two[0m
+[1m[34m  questions. Question 1 is[0m
+[1m[34m  Which language? with Go and[0m
+[1m[34m  Python. Question 2 is Which[0m
+[1m[34m  tests? with Unit and[0m
+[1m[34m  Integration, allowing[0m
+[1m[34m  multiple selection. Wait for[0m
+[1m[34m  my answers.[0m
+
+[1m[33m?[0m Which language?
+[1m[34m> Go[0m
+[1m[33m?[0m Which tests?
+[1m[34m> Unit, Integration[0m
+
+  Received your answers:
+
+  • [1mWhich language?[0m: Go
+  • [1mWhich tests?[0m: Unit,
+  Integration
+
+[90m────────────────────────────────
+[94m>[39m
+[90m────────────────────────────────
+[39m  [33m●[39m [07:27:33] [94mpython...[39m [33mrunning
+[39m  [33m●[39m [07:26:49] [94mpython...[39m [33mrunning
+[90m────────────────────────────────
+[39m? for shortcuts Gemini 4 Hydroge
