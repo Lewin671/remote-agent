@@ -35,6 +35,7 @@ func TestHashReloadRejectsDeletionTombstone(t *testing.T) {
 					name += "/restart"
 				}
 				t.Run(name, func(t *testing.T) {
+					t.Parallel()
 					root := t.TempDir()
 					u := newUploads(root)
 					data := []byte("original bytes")
@@ -130,20 +131,18 @@ func TestHashReloadRejectsDeletionTombstone(t *testing.T) {
 func TestRestoreRefsReloadsSnapshotBeforeWriting(t *testing.T) {
 	t.Parallel()
 	for _, image := range []bool{false, true} {
+		prepare := completedUpload(t, image, "snapshot.bin", []byte("keep"))
 		for _, changed := range []string{"deleting", "returning", "removed"} {
 			kind := "file"
 			if image {
 				kind = "image"
 			}
 			t.Run(kind+"/"+changed, func(t *testing.T) {
+				t.Parallel()
 				h := newHarness(t, Config{})
 				u := h.d.uploads
-				var ims, files []string
-				if image {
-					ims = []string{storageUpload(t, u)}
-				} else {
-					files = []string{uploadFile(t, u, "snapshot.bin", []byte("keep"))}
-				}
+				fixture := prepare(t, u)
+				ims, files := fixture.images, fixture.files
 				all, err := u.takeUploads(ims, files, "phone", h.s.meta.ID, "r")
 				if err != nil {
 					t.Fatal(err)

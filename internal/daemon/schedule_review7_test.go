@@ -105,6 +105,7 @@ func TestLatePublicationRefusalAfterTargetEdit(t *testing.T) {
 	for _, manual := range []bool{false, true} {
 		for _, restart := range []bool{false, true} {
 			t.Run(map[bool]string{false: "automatic", true: "manual"}[manual]+map[bool]string{false: "/live", true: "/restart"}[restart], func(t *testing.T) {
+				t.Parallel()
 				h, task, snapshot, _ := unpublishedRun(t, manual)
 				defer func() { h.s.log.Close() }()
 				h.d.queueScheduledSession(context.Background(), snapshot, time.Now(), h.s)

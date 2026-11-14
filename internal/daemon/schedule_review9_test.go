@@ -59,6 +59,7 @@ func TestMCPAdmissionReadsTranscriptBeforeEveryMutation(t *testing.T) {
 	for _, claude := range []bool{false, true} {
 		for _, op := range []string{"create", "update", "resume", "run"} {
 			t.Run(map[bool]string{false: "codex", true: "claude"}[claude]+"/"+op, func(t *testing.T) {
+				t.Parallel()
 				h, own := admissionFixture(t, claude)
 				defer h.s.log.Close()
 				native := writeScheduledTranscriptInput(t, h, "scheduled", claude)

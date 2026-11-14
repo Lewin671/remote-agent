@@ -307,6 +307,7 @@ func TestInputWaitsForCodexStartup(t *testing.T) {
 	for _, withImages := range []bool{false, true} {
 		for _, footer := range []string{"", "? for shortcuts"} {
 			t.Run(fmt.Sprintf("images=%t/footer=%q", withImages, footer), func(t *testing.T) {
+				t.Parallel()
 				synctest.Test(t, func(t *testing.T) {
 					h := newHarness(t, Config{})
 					var imgs []queuedImage

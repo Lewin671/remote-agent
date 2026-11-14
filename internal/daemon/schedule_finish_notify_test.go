@@ -29,6 +29,7 @@ func TestScheduledFinishNotification(t *testing.T) {
 		{name: "interrupted", status: "interrupted", body: "定时任务运行已中断。"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			h := scheduleHarness(t)
 			defer func() { h.s.log.Close() }()
 			task := startScheduledTurn(t, h)
@@ -135,6 +136,7 @@ func TestScheduledNotificationPolicySnapshot(t *testing.T) {
 	t.Parallel()
 	for _, policy := range []string{"", "finish", "agent_only", "invalid"} {
 		t.Run(policy, func(t *testing.T) {
+			t.Parallel()
 			h := scheduleHarness(t)
 			defer h.s.log.Close()
 			spec := taskSpec(schedule.Trigger{Type: "after_turn"})

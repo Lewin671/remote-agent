@@ -131,6 +131,7 @@ func TestManualPendingControlsAndAdmission(t *testing.T) {
 	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
 		for _, op := range []string{"pause", "cancel"} {
 			t.Run(typ+op, func(t *testing.T) {
+				t.Parallel()
 				h, task := manualFixture(t, typ)
 				defer h.s.log.Close()
 				requestManual(t, h, task.ID)
@@ -147,6 +148,7 @@ func TestManualPendingControlsAndAdmission(t *testing.T) {
 		}
 		for _, status := range []string{"uncertain", "uncertain-late", "failed", "completed", "cancelled"} {
 			t.Run(typ+status, func(t *testing.T) {
+				t.Parallel()
 				h, task := manualFixture(t, typ)
 				defer h.s.log.Close()
 				if status == "failed" && oneShotTrigger(task.Spec.Trigger) {

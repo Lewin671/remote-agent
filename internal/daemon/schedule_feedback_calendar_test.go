@@ -166,6 +166,7 @@ func TestRecurringResumeAndManualFailures(t *testing.T) {
 	for _, status := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled"} {
 		for _, initial := range []string{"scheduled", "paused"} {
 			t.Run(status+initial, func(t *testing.T) {
+				t.Parallel()
 				h := scheduleHarness(t)
 				defer h.s.log.Close()
 				task := createTask(t, h, taskSpec(schedule.Trigger{Type: "calendar", Time: "08:00", Timezone: "UTC"}), "")
@@ -228,6 +229,7 @@ func TestManualTrialFailureBoundaries(t *testing.T) {
 	t.Parallel()
 	for _, ending := range []string{"dispatch_failed", "input_cancelled", "unconfirmed", "interrupted", "user_paused", "user_cancelled"} {
 		t.Run(ending, func(t *testing.T) {
+			t.Parallel()
 			h := scheduleHarness(t)
 			defer h.s.log.Close()
 			now := time.Now()
