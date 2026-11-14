@@ -1683,5 +1683,10 @@
     "path": "web/src/views/Home.tsx",
     "literal": "remote.retainHistory(s.id), [remote, s.id]); const st = stateOf(s, remote.presence.get(s.machineId)); const p = pendingOf(remote, s.id); const kind = st.kind === \"approval\" ? p.approval ? approvalTitle(p.approval) : st.text : st.kind === \"question\" ? askTitle(agentOf(s)) : st.text; const about = st.kind === \"approval\" ? p.approval?.command ? approvalDisplay(p.approval.command).replace(/\\s+/g, \" \") : \"\" : st.kind === \"question\" ? p.question?.questions[0]?.text ?? \"\" : st.kind === \"popup\" ? popupTitle(s.info?.statusDetail ?? \"\") : \"\"; const other = scope !== ALL && projectKey(s) !== scope ? projectName(projectKey(s)) : \"\"; const rest = [other, about].filter(Boolean).join(\" · \"); return (",
     "reason": "Lexical JSX scanner false positive spanning the existing home-row expression; popupTitle resolves only existing localized copy."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "stale",
+    "reason": "Existing DeviceSecurity error code for an obsolete network generation; not a displayed string. Command errors are rendered through existing localized messages."
   }
 ]
