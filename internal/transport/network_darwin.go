@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+
+	"golang.org/x/net/route"
 )
 
 func routeHints(ctx context.Context) <-chan struct{} {
@@ -33,36 +35,39 @@ func routeHints(ctx context.Context) <-chan struct{} {
 	return out
 }
 func defaultRoutes() []string {
-	b, err := syscall.RouteRIB(syscall.NET_RT_DUMP, 0)
+	b, err := route.FetchRIB(syscall.AF_UNSPEC, route.RIBType(syscall.NET_RT_DUMP), 0)
 	if err != nil {
 		return nil
 	}
-	msgs, err := syscall.ParseRoutingMessage(b)
+	return routesFromRIB(b)
+}
+
+// The legacy syscall decoder casts message offsets to aligned Go pointers.
+// Darwin route records can begin on a four-byte boundary; decode their bytes.
+func routesFromRIB(b []byte) []string {
+	msgs, err := route.ParseRIB(route.RIBType(syscall.NET_RT_DUMP), b)
 	if err != nil {
 		return nil
 	}
 	var routes []string
 	for _, msg := range msgs {
-		m, ok := msg.(*syscall.RouteMessage)
+		m, ok := msg.(*route.RouteMessage)
 		if !ok {
 			continue
 		}
-		addrs, err := syscall.ParseRoutingSockaddr(m)
-		if err != nil {
-			continue
-		}
+		addrs := m.Addrs
 		if len(addrs) <= syscall.RTAX_GATEWAY {
 			continue
 		}
 		zero := false
 		switch a := addrs[syscall.RTAX_DST].(type) {
-		case *syscall.SockaddrInet4:
-			zero = a.Addr == [4]byte{}
-		case *syscall.SockaddrInet6:
-			zero = a.Addr == [16]byte{}
+		case *route.Inet4Addr:
+			zero = a.IP == [4]byte{}
+		case *route.Inet6Addr:
+			zero = a.IP == [16]byte{}
 		}
 		if zero {
-			routes = append(routes, fmt.Sprintf("%d/%#v", m.Header.Index, addrs[syscall.RTAX_GATEWAY]))
+			routes = append(routes, fmt.Sprintf("%d/%#v", m.Index, addrs[syscall.RTAX_GATEWAY]))
 		}
 	}
 	return routes

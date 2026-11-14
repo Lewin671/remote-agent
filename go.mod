@@ -13,6 +13,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260929172509-b39ff6d641ec
 	golang.org/x/image v0.46.0
+	golang.org/x/net v0.58.0
 	golang.org/x/sys v0.48.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.42.0
