@@ -1,3 +1,4 @@
+import { abortable } from "./transport/recovery";
 import {
   contentSecretOf,
   installSecurity,
@@ -62,7 +63,7 @@ export interface StatePage {
   recoveryReadyMs?: bigint;
 }
 /** Reads the server's signed state chain after an epoch. */
-export type FetchStates = (after: bigint, limit: number) => Promise<StatePage>;
+export type FetchStates = (after: bigint, limit: number, signal?: AbortSignal) => Promise<StatePage>;
 /** Foreground security client. The notification worker separately reads local
  * security state to open scheduled notifications; it never signs or syncs. */
 /** Storage operations preserve atomic head changes and strict
@@ -92,6 +93,7 @@ export class DeviceSecurityClient {
   recoveryReadyMs = 0n;
   recoveryStatusStale = true;
   private syncJob?: Promise<SecurityRecord>;
+  private syncController?: AbortController;
   private validated = new WeakMap<SecurityRecord, Promise<SecurityRecord>>();
   private contentKeys = new WeakMap<SecurityRecord, Map<bigint, Promise<B>>>();
   constructor(
@@ -173,27 +175,46 @@ export class DeviceSecurityClient {
     await this.load();
     await this.store.touchSecurity(BigInt(Date.now()));
   }
-  async sync(): Promise<SecurityRecord> {
-    if (this.syncJob) return this.syncJob;
-    const job = this.syncLoop();
-    this.syncJob = job;
-    try {
-      return await job;
-    } catch (e) {
-      this.recoveryStatusStale = true;
-      throw e;
-    } finally {
-      if (this.syncJob === job) this.syncJob = undefined;
+  networkChanged() {
+    this.syncController?.abort();
+    this.syncController = undefined;
+    this.syncJob = undefined;
+  }
+  async sync(waiter?: AbortSignal): Promise<SecurityRecord> {
+    for (;;) {
+      waiter?.throwIfAborted();
+      let job = this.syncJob, controller = this.syncController;
+      if (!job || !controller) {
+        controller = new AbortController();
+        job = this.syncLoop(controller.signal);
+        this.syncController = controller; this.syncJob = job;
+      }
+      try { return await abortable(job, waiter); }
+      catch (error) {
+        if (controller.signal.aborted && this.active() && !waiter?.aborted) continue;
+        this.recoveryStatusStale = true; throw error;
+      } finally {
+        if (this.syncJob === job) { this.syncJob = undefined; this.syncController = undefined; }
+      }
     }
   }
-  private async syncLoop(): Promise<SecurityRecord> {
+  private async syncLoop(signal: AbortSignal): Promise<SecurityRecord> {
     let r = await this.load();
     for (let pages = 0; pages < 512; pages++) {
       // A failed pull must not forget an observed lease expiry, including in the sealing cache.
       await this.store.touchSecurity(BigInt(Date.now()));
       r = await this.load();
       const head = r.states[r.states.length - 1];
-      const reply = await this.fetchStates(head.core.epoch, MAX_PAGE);
+      signal.throwIfAborted();
+      let cancel!: () => void;
+      const aborted = new Promise<never>((_, reject) => {
+        cancel = () => reject(signal.reason);
+        signal.addEventListener("abort", cancel, { once: true });
+      });
+      let reply: StatePage;
+      try { reply = await Promise.race([this.fetchStates(head.core.epoch, MAX_PAGE, signal), aborted]); }
+      finally { signal.removeEventListener("abort", cancel); }
+      signal.throwIfAborted();
       this.recoveryPending = reply.recoveryPending ?? false;
       this.recoveryReadyMs = reply.recoveryReadyMs ?? 0n;
       this.recoveryStatusStale = false;
@@ -211,6 +232,7 @@ export class DeviceSecurityClient {
         return this.load();
       }
       const { states, proofs } = await parseChain(reply.states);
+      signal.throwIfAborted();
       const before = head.core.epoch;
       await this.store.installSecurity(r, states, proofs);
       r = await this.load();

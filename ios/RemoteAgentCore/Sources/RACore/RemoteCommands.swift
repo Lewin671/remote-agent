@@ -124,6 +124,7 @@ extension Remote {
         let prior = call.uncertain
         if verifiedNetworkGeneration != networkGeneration {
             let gen=networkGeneration
+            try await refreshNetworkSecurity()
             _ = try await securitySession().sync()
             guard gen == networkGeneration else {throw DeviceSecurity.Failure.stale}
             verifiedNetworkGeneration=gen
@@ -139,6 +140,7 @@ extension Remote {
             throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
         }
         var attempt = 0
+        var recoveryUntil:Int64?
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
@@ -205,6 +207,13 @@ extension Remote {
                 let unsent = notForwarded != nil
                 if unsent {
                     if !call.uncertain && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),notForwarded?.reason == "machine_offline" ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : ce.code == .unavailable ? (ce.message ?? errorText(ce)) : errorText(ce),outcome:.notSent) }
+                }
+                if ce.code == .unavailable && call.uncertain && running {
+                    if recoveryUntil == nil {
+                        recoveryUntil=monotonic()+3000
+                        if notForwarded == nil {beginConnect()}
+                    }
+                    if monotonic()+250 < recoveryUntil! {try await sleep(250);continue}
                 }
                 // A terminal DNS/connection error can follow an opaque replay. Only
                 // the relay proof may settle a delivery after RPC handoff.

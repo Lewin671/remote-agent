@@ -9,7 +9,7 @@ export class RelayPath implements Path {
     readonly status: (machineId: string) => PeerStatus,
     readonly epoch: () => Promise<string>,
     readonly forward: Forward,
-    private readonly renew: () => Promise<void> = async () => {},
+    private readonly renew: (signal?: AbortSignal) => Promise<void> = async () => {},
   ) {}
   attempt(handoff: () => void): PathAttempt {
     const attemptId = newRequestID();
@@ -25,7 +25,7 @@ export class RelayPath implements Path {
         return this.forward({ machineId, command, attemptId, relayEpoch: current }, { signal, headers: { "Remote-Agent-Attempt": attemptId } });
       },
       refusal: error => error.findDetails(NotForwardedSchema).find(d => d.attemptId === attemptId && d.relayEpoch === epoch && !!epoch),
-      refreshAuth: () => this.renew(),
+      refreshAuth: (_prior, signal) => this.renew(signal),
     };
   }
   openStream(address: string): FrameStream { return new RelayStream(address); }

@@ -40,6 +40,69 @@ import os
 
 extension ServerTests {
     @Suite struct RecoveryIntegration {
+        @Test func temporaryDaemonGapKeepsTheOriginalLiveCallPending() async throws {
+            try await World.run(setUp:{w in
+                try await w.daemon.connect()
+                await w.daemon.setAnswer{_,_ in .with{$0.getSettings=PBGetSettingsResponse()}}
+            }) {w in
+                let bodies=OSAllocatedUnfairLock(initialState:[PBForwardRequest]())
+                let http=Intercept.http(for:w.server.url,transform:{request,data,response in
+                    if request.url?.path.hasSuffix("/Forward")==true,let raw=request.httpBody {
+                        let command=try PBForwardRequest(serializedBytes:raw)
+                        let first=bodies.withLock{list in list.append(command);return list.count==1}
+                        if first {return (Data("{\"code\":\"unavailable\"}".utf8),HTTPURLResponse(url:request.url!,statusCode:503,httpVersion:"HTTP/1.1",headerFields:["Content-Type":"application/json"])!)}
+                    }
+                    return (data,response)
+                }) {$0}
+                let remote=try await w.remote(try await w.join(),http:http)
+                remote.start();_ = try await remote.awaitState("ready"){$0.conn == .online && $0.loaded}
+                _ = try await remote.machineCommand(w.daemon.id,PBCommand.with{$0.getSettings=PBGetSettingsRequest()})
+                let received=bodies.withLock{$0}
+                #expect(received.count==2)
+                if received.count==2 {#expect(received[0].command==received[1].command)}
+            }
+        }
+        @Test func supersededSecurityHTTPDoesNotBlockTheNewRound() async throws {
+            try await World.run(setUp:{w in try await w.daemon.connect()}) {w in
+                let held=Signal(),calls=Counter()
+                let http=Intercept.http(for:w.server.url,transform:{request,data,response in
+                    if request.url?.path.hasSuffix("/GetSecurityStates")==true && calls.increment()==1 {
+                        held.set();try await Task.sleep(for:.seconds(30))
+                    }
+                    return (data,response)
+                }) {$0}
+                let remote=try await w.remote(try await w.join(),http:http)
+                let security=try await remote.securitySession()
+                let first=Task {try await security.sync()}
+                #expect(await held.wait())
+                await security.networkChanged()
+                let record=try await withTimeout(2000,sleep:realSleep){try await first.value}
+                #expect(record.member)
+                #expect(calls.value==2)
+            }
+        }
+        @Test func supersededLoginKeepsItsCallerAndRefreshesTheNewPath() async throws {
+            try await World.run(setUp:{w in try await w.daemon.connect()}) {w in
+                let hold=Signal(),entered=Signal(),challenges=Counter()
+                let http=Intercept.http(for:w.server.url,transform:{request,data,response in
+                    if request.url?.path.hasSuffix("/GetChallenge")==true && hold.isSet && challenges.increment()==1 {
+                        entered.set();try await Task.sleep(for:.seconds(30))
+                    }
+                    return (data,response)
+                }) {$0}
+                let remote=try await w.remote(try await w.join(),http:http)
+                remote.networkChanged("initial",available:true)
+                remote.start();_ = try await remote.awaitState("ready"){$0.conn == .online && $0.loaded}
+                await remote.expireRecoveryTestLogin()
+                hold.set()
+                let pending=Task {try await remote.currentToken()}
+                #expect(await entered.wait())
+                remote.networkChanged("new-route",available:true)
+                let token=try await withTimeout(2000,sleep:realSleep){try await pending.value}
+                #expect(!token.isEmpty && challenges.value==2)
+                #expect(!remote.current.removed)
+            }
+        }
         @Test func retainedHTTPIsWokenWithTheOriginalAuthorization() async throws {
             try await World.run(setUp:{w in
                 try await w.daemon.connect()
@@ -133,4 +196,8 @@ extension ServerTests {
             }
         }
     }
+}
+
+extension Remote {
+    func expireRecoveryTestLogin() {token="";tokenExpires=0}
 }

@@ -17,6 +17,19 @@ export class Bucket {
 const processBudget = new Bucket(4, 2);
 export class PathChanged extends Error {}
 
+/** Cancel one waiter without canceling a shared credential/security owner. */
+export async function abortable<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return operation;
+  signal.throwIfAborted();
+  let abort!: () => void;
+  const canceled = new Promise<never>((_, reject) => {
+    abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+  try { return await Promise.race([operation, canceled]); }
+  finally { signal.removeEventListener("abort", abort); }
+}
+
 export class Recovery {
   private target: Bucket;
   private failures = 0;

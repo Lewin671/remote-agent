@@ -1,6 +1,8 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.LoginResponse
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -27,20 +29,23 @@ internal class LoginTokens(
     private val login: suspend () -> LoginResponse,
 ) {
     private val mutex = Mutex()
+    private val round = io.github.lewin671.remoteagent.core.transport.NetworkRound(mutex)
+    fun networkChanged() { round.changed() }
     private var restored = false
     private var token: LoginToken? = null
 
-    suspend fun current(): String = mutex.withLock {
+    suspend fun current(): String = round.run {
         if (!restored) {
             token = store?.loadLoginToken(account)
             restored = true
         }
         token?.let {
-            if (it.valid(clock())) return@withLock it.value
+            if (it.valid(clock())) return@run it.value
             token = null
             store?.clearLoginToken(account)
         }
         val next = login().let { LoginToken(it.token, it.expiresMs) }
+        currentCoroutineContext().ensureActive()
         check(next.value.isNotEmpty() && next.expiresMs > clock()) { "Login returned an expired credential" }
         store?.saveLoginToken(account, next)
         token = next

@@ -38,3 +38,10 @@ func ReadyCountForTest(r *Relay) uint64 { return r.readyCount.Load() }
 
 // IsolateRecoveryBudgetForTest gives a simulated daemon process its own global budget.
 func IsolateRecoveryBudgetForTest(r *Relay) { r.recoveryBudget = &transport.Budget{} }
+
+// ObserveRecoveryForTest records only lifecycle timing, never frames or identifiers.
+func ObserveRecoveryForTest(r *Relay, observer func(string)) {
+	r.observeRecovery = func(event recoveryEvent) { observer([]string{"hint", "suspect", "lost", "dial", "ready"}[event]) }
+}
+
+func ActiveCallsForTest(r *Relay) int { return len(r.calls) }

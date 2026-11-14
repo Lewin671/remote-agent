@@ -21,7 +21,9 @@ public actor DeviceSecurityClient {
     private let fetchStates: StateFetch
     private let clock: @Sendable () -> UInt64
     private var current: DeviceSecurity.Record?
-    private var syncJob: Task<DeviceSecurity.Record, Error>?
+    private struct Pull: Sendable { let id: UUID; let generation: UInt64; let task: Task<DeviceSecurity.Record, Error> }
+    private var syncJob: Pull?
+    private var syncGeneration: UInt64 = 0
     private var pollJob: Task<Void, Never>?
     private var closed = false
     public private(set) var recoveryPending = false
@@ -85,7 +87,7 @@ public actor DeviceSecurityClient {
     public func headStateHash() throws -> Data { try DeviceSecurity.stateHash(try read().state) }
     public func close() {
         closed = true
-        syncJob?.cancel()
+        syncJob?.task.cancel()
         syncJob = nil
         pollJob?.cancel()
         pollJob = nil
@@ -115,18 +117,34 @@ public actor DeviceSecurityClient {
     public func stopPolling() {
         pollJob?.cancel()
         pollJob = nil
+        networkChanged()
+    }
+    public func networkChanged() {
+        syncGeneration += 1
+        syncJob?.task.cancel(); syncJob=nil
     }
     /// Persist wake time without waiting on a relay or affecting a healthy terminal leg.
     public func touchAfterWake() throws { _ = try touch(now: clock(), persist: true) }
 
     public func sync() async throws -> DeviceSecurity.Record {
-        if let syncJob { return try await syncJob.value }
-        let task = Task { try await self.syncLoop() }
-        syncJob = task
-        defer { syncJob = nil }
-        return try await task.value
+        while true {
+            try Task.checkCancellation()
+            let flight: Pull
+            if let existing=syncJob { flight=existing }
+            else {
+                let generation=syncGeneration
+                flight=Pull(id:UUID(),generation:generation,task:Task {try await self.syncLoop(generation)})
+                syncJob=flight
+            }
+            defer {if syncJob?.id==flight.id {syncJob=nil}}
+            do {return try await flight.task.value}
+            catch {
+                if flight.generation != syncGeneration && !Task.isCancelled && !closed {continue}
+                throw error
+            }
+        }
     }
-    private func syncLoop() async throws -> DeviceSecurity.Record {
+    private func syncLoop(_ generation: UInt64) async throws -> DeviceSecurity.Record {
         for _ in 0..<DeviceSecurity.maxStates {
             // Persist observed expiry even if fetching fails, before another seal can use the cache.
             let r = try touch(now: clock(), persist: true)
@@ -135,7 +153,9 @@ public actor DeviceSecurityClient {
                 r.state.core.issuedAt <= localNow + DeviceSecurity.clockSkewLimit, .clock)
             let res: PBGetSecurityStatesResponse
             do { res = try await fetchStates(r.headEpoch) }
-            catch { recoveryStatusStale = true; throw error }
+            catch { if generation==syncGeneration { recoveryStatusStale = true }; throw error }
+            try Task.checkCancellation()
+            guard generation==syncGeneration else {throw CancellationError()}
             recoveryPending = res.recoveryPending
             recoveryReadyMs = res.recoveryReadyMs
             recoveryStatusStale = false

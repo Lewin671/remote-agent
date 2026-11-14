@@ -14,6 +14,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type recoveryEvent uint8
+
+const (
+	recoveryHint recoveryEvent = iota
+	recoverySuspect
+	recoveryLost
+	recoveryDial
+	recoveryReady
+)
+
+func (r *Relay) observe(event recoveryEvent) {
+	if r.observeRecovery != nil {
+		r.observeRecovery(event)
+	}
+}
+
 type mainPath struct {
 	ws         *websocket.Conn
 	token      string
@@ -79,6 +95,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	for {
 		now := time.Now()
 		if wanted && !dialing && policy.Take(now) {
+			r.observe(recoveryDial)
 			dialing = true
 			wanted = false
 			gen := generation
@@ -104,6 +121,8 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 				network = nil
 				continue
 			}
+			r.observe(recoveryHint)
+			d.security.networkChanged()
 			generation++
 			wanted = true
 			if candidateCancel != nil {
@@ -117,6 +136,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 		case <-tick.C:
 			now = time.Now()
 			if now.Sub(lastTick) > transport.SuspectAfter || now.UnixNano()-lastTick.UnixNano() > int64(transport.SuspectAfter) {
+				d.security.networkChanged()
 				generation++
 				wanted = true
 				if candidateCancel != nil {
@@ -128,12 +148,16 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			}
 			lastTick = now
 			if active != nil && elapsed()-active.last.Load() >= int64(transport.SuspectAfter) {
+				if !wanted && !dialing {
+					r.observe(recoverySuspect)
+				}
 				wanted = true
 			}
 		case old := <-ended:
 			if old != active {
 				continue
 			}
+			r.observe(recoveryLost)
 			active = nil
 			wanted = true
 			r.mu.Lock()
@@ -169,6 +193,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 			r.mu.Lock()
 			r.connected = true
 			r.mu.Unlock()
+			r.observe(recoveryReady)
 			r.readyCount.Add(1)
 			d.ready()
 			readers.Go(func() {

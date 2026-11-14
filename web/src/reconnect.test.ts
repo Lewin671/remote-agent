@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ConnBar } from "./ui";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
-import { ServerFrameSchema } from "./gen/remoteagent/v1/relay_pb";
+import { ServerFrameSchema, GetChallengeResponseSchema, LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Bucket, Recovery } from "./transport/recovery";
 import { Remote } from "./remote";
 
@@ -45,6 +45,37 @@ async function probe(mockLogin = true) {
   return r;
 }
 async function flush() { for (let i = 0; i < 15; i++) await Promise.resolve(); }
+
+it("a new network wakes an existing login owner instead of inheriting its old HTTP wait", async () => {
+  const r = await probe(false);
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  let challenges = 0;
+  const challenge = () => new Response(toBinary(GetChallengeResponseSchema, create(GetChallengeResponseSchema, { challenge: new Uint8Array(32) })), { headers: { "Content-Type": "application/proto" } });
+  vi.stubGlobal("fetch", (input: unknown, init?: RequestInit) => {
+    if (String(input).endsWith("/GetChallenge")) {
+      if (++challenges === 1) {
+        entered();
+        return new Promise<Response>((resolve,reject) => {
+          release = () => resolve(challenge());
+          init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason), { once: true });
+        });
+      }
+      return Promise.resolve(challenge());
+    }
+    return Promise.resolve(new Response(toBinary(LoginResponseSchema, create(LoginResponseSchema, { token: "fresh", expiresMs: BigInt(Date.now()+10*86_400_000) })), { headers: { "Content-Type": "application/proto" } }));
+  });
+  const login = (r as any).login() as Promise<void>;
+  try {
+    await started;
+    r.networkChanged("new-route");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const completed = await Promise.race([login.then(() => true),new Promise<boolean>(resolve => {timer=setTimeout(() => resolve(false),1000);})]);
+    clearTimeout(timer);
+    expect(completed,"the previous login caller should join the fresh credential round").toBe(true);
+    expect(challenges).toBe(2);expect(r.authHeader()).toBe("Bearer fresh");expect(r.removed).toBe(false);
+  } finally {release?.();await login.catch(() => undefined);r.stop();}
+});
 
 it("retries a handshake without waiting for onclose and ignores late frames", async () => {
   const r = await probe(); vi.useFakeTimers();
@@ -309,6 +340,7 @@ it("ignores a failed local read from an attempt replaced by a network change", a
   vi.spyOn(r as any, "warm").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   const old = (r as any).connect(); await flush();
   r.networkChanged("new-route"); await flush();
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
   Socket.all[0].frame("ready"); await flush();
   reject(new Error("old read failed"));
   await expect(old).resolves.toBeUndefined();
@@ -332,12 +364,13 @@ it("suspends liveness while hidden and authenticates a replacement before reusin
   r.start(); r.start(); await flush(); expect(Socket.all).toHaveLength(2);
 });
 
-it("cancels an old backoff when foreground startup has already replaced it", async () => {
+it("foreground notifications preserve the outstanding backoff", async () => {
   const r = await probe(); vi.useFakeTimers();
   r.start(); await flush(); Socket.all[0].frame("ready"); await flush();
   Socket.all[0].onclose?.({ code: 1006 });
-  r.start(); await flush(); expect(Socket.all).toHaveLength(2);
-  await vi.advanceTimersByTimeAsync(1_250); expect(Socket.all).toHaveLength(2);
+  r.start(); r.start(); await flush(); expect(Socket.all).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(749); expect(Socket.all).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(1); expect(Socket.all).toHaveLength(2);
 });
 
 it("delays only cached waiting notices, preserves offline warnings and the ten-second failure deadline", async () => {

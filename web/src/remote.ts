@@ -1,5 +1,5 @@
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
-import { Recovery, PathChanged } from "./transport/recovery";
+import { Recovery, PathChanged, abortable } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { type DispatchCall } from "./transport/dispatch";
 import { RequestSlot, newSlot, restoreSlot, CommandError, uncertain } from "./transport/request";
@@ -1080,6 +1080,7 @@ export class Remote {
   private token = "";
   private tokenExpires = 0;
   private loggingIn?: Promise<void>;
+  private loginController?: AbortController;
   private tokenWrites: Promise<void> = Promise.resolve();
   private discardToken() {
     this.token = "";
@@ -1094,6 +1095,8 @@ export class Remote {
   private setupController?: AbortController;
   private foreground = true;
   private networkSignature = "";
+  private pendingNetwork?: string;
+  private networkNoticeQueued = false;
   private lastTick = performance.now();
   private lastWallTick = Date.now();
   private networkGeneration = 0;
@@ -1116,7 +1119,7 @@ export class Remote {
     },
     () => this.relayEpoch(),
     (request, options) => this.api.forward(request, options),
-    () => this.login(),
+    signal => this.login(signal),
   ));
   peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
   private listeners = new Set<() => void>();
@@ -1130,9 +1133,10 @@ export class Remote {
     protected readonly sessionPageSize = SESSION_PAGE,
   ) {
     const auth: Interceptor = (next) => (req) => {
-      req.header.set("Authorization", "Bearer " + this.token);
+      const sentToken = this.token;
+      req.header.set("Authorization", "Bearer " + sentToken);
       return next(req).catch((e: unknown) => {
-        if (e instanceof ConnectError && e.code === Code.Unauthenticated)
+        if (e instanceof ConnectError && e.code === Code.Unauthenticated && this.token === sentToken)
           this.discardToken();
         throw e;
       });
@@ -1150,12 +1154,12 @@ export class Remote {
     this.security = new DeviceSecurityClient(
       account.deviceId,
       account.devicePrivate,
-      async (after, limit) => {
+      async (after, limit, signal) => {
         this.setupProgress?.();
         const reply = await this.api.getSecurityStates({
           afterEpoch: after,
           limit,
-        }, { signal: this.setupController?.signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS });
+        }, { signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS });
         this.setupProgress?.();
         return {
           states: reply.states.map((s) => ({
@@ -1651,7 +1655,7 @@ export class Remote {
     // within a minute, and an unknown state is fetched at once.
     this.securityTimer = setInterval(() => void this.syncSecurity(), 60_000);
     void this.watchPairingDelivery();
-    void this.connect();
+    this.scheduleReconnect();
   }
 
   /** Read once on startup/reload, and when approval saves its delivery. */
@@ -1775,6 +1779,7 @@ export class Remote {
 
   stop() {
     this.closed = true;
+    this.retireNetworkIO();
     const unwatch = this.unwatchSecurityPush;
     this.unwatchSecurityPush = undefined;
     clearInterval(this.securityTimer);
@@ -1815,7 +1820,14 @@ export class Remote {
     this.scheduleReconnect();
   }
 
+  private retireNetworkIO() {
+    this.loginController?.abort();
+    this.loginController = undefined; this.loggingIn = undefined;
+    this.security.networkChanged();
+  }
+
   private touchAfterWake() {
+    this.retireNetworkIO();
     this.wakeSecurity = this.security.touch();
     // Consumers observe the original failure; avoid an unhandled rejection
     // while an idle terminal has no frame to read or send.
@@ -1823,15 +1835,24 @@ export class Remote {
   }
 
   networkChanged(signature: string) {
-    if (signature === this.networkSignature) return;
-    this.networkSignature = signature;
-    this.networkGeneration++;
-    this.touchAfterWake();
-    this.setupController?.abort(new Error(l10n.t("errors.network_changed_reconnecting")));
-    const candidate = this.candidate;
-    this.candidate = undefined;
-    candidate?.close();
-    this.reconnectNow(true);
+    if (signature === (this.pendingNetwork ?? this.networkSignature)) return;
+    this.pendingNetwork = signature;
+    if (this.networkNoticeQueued) return;
+    this.networkNoticeQueued = true;
+    queueMicrotask(() => {
+      this.networkNoticeQueued = false;
+      const latest = this.pendingNetwork; this.pendingNetwork = undefined;
+      if (latest === undefined || latest === this.networkSignature) return;
+      this.networkSignature = latest;
+      this.networkGeneration++;
+      if (this.closed || !this.foreground) return;
+      this.touchAfterWake();
+      this.setupController?.abort(new Error(l10n.t("errors.network_changed_reconnecting")));
+      const candidate = this.candidate;
+      this.candidate = undefined;
+      candidate?.close();
+      this.reconnectNow(true);
+    });
   }
 
   setForeground(active: boolean) {
@@ -1923,14 +1944,22 @@ export class Remote {
 
   /** One login at a time: the server keeps few challenges per device, and
    * a denial has to mean what it says. */
-  private login(): Promise<void> {
-    return (this.loggingIn ??= this.signIn().finally(
-      () => (this.loggingIn = undefined),
-    ));
+  private async login(waiter?: AbortSignal): Promise<void> {
+    for (;;) {
+      waiter?.throwIfAborted();
+      let job = this.loggingIn, controller = this.loginController;
+      if (!job || !controller) {
+        controller = new AbortController();
+        job = this.signIn(controller.signal);
+        this.loginController = controller; this.loggingIn = job;
+      }
+      try { return await abortable(job, waiter); }
+      catch (error) { if (controller.signal.aborted && !this.closed && !waiter?.aborted) continue; throw error; }
+      finally { if (this.loggingIn === job) { this.loggingIn = undefined; this.loginController = undefined; } }
+    }
   }
 
-  private async signIn() {
-    const signal = this.setupController?.signal;
+  private async signIn(signal: AbortSignal) {
     const auth = createClient(
       AuthService,
       createConnectTransport({
@@ -1942,7 +1971,8 @@ export class Remote {
     );
     for (let again = true; ; again = false) {
       try {
-        const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs: this.everOnline ? 3000 : OPEN_TIMEOUT_MS });
+        const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs: this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS });
+        signal.throwIfAborted();
         this.setupProgress?.();
         const sig = await signLogin(this.account.devicePrivate, ch.challenge);
         const res = await auth.login({
@@ -1950,8 +1980,9 @@ export class Remote {
           deviceId: this.account.deviceId,
           challenge: ch.challenge,
           signature: sig,
-        }, { signal, timeoutMs: this.everOnline ? 3000 : OPEN_TIMEOUT_MS });
+        }, { signal, timeoutMs: this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS });
         this.setupProgress?.();
+        signal.throwIfAborted();
         if (this.closed) return;
         this.token = res.token;
         this.tokenExpires = Number(res.expiresMs);
@@ -1962,6 +1993,7 @@ export class Remote {
         await this.tokenWrites;
         return;
       } catch (e) {
+        signal.throwIfAborted();
         if (!(e instanceof ConnectError) || e.code !== Code.PermissionDenied)
           throw e;
         // A server restarted between the two calls forgets the challenge;
@@ -2046,7 +2078,7 @@ export class Remote {
       if (!this.token || this.tokenExpires < Date.now() + 86_400_000) {
         this.discardToken();
         await this.tokenWrites;
-        await this.login();
+        await this.login(this.setupController?.signal);
       }
     } catch (e) {
       throw e;
@@ -2056,7 +2088,7 @@ export class Remote {
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
-      const record = await this.security.sync();
+      const record = await this.security.sync(this.setupController?.signal);
       if (this.closed || generation !== this.generation || this.setupController?.signal.aborted) return false;
       this.verifiedNetworkGeneration = this.networkGeneration;
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
@@ -3374,6 +3406,7 @@ export class Remote {
     await slot.beforeDispatch?.(slot);
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
+    let recoveryUntil: number | undefined;
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
       const delivery = this.deviceLink.delivery(call);
@@ -3436,13 +3469,26 @@ export class Remote {
         }
         if (ce.code === Code.Unauthenticated && attempt < 3) {
           try {
-            await delivery.refreshAuth(call.uncertain);
+            await delivery.refreshAuth(call.uncertain, signal);
           } catch {
             throw new CommandError(
               "unknown_outcome",
               l10n.t("errors.the_previous_request_s_outcome_is_still_unknown_cannot"), false, false, "unknown");
           }
           continue;
+        }
+        // Client and daemon authenticate independently. A newly usable
+        // client path may briefly precede the daemon's replacement.
+        if (ce.code === Code.Unavailable && call.uncertain && this.begun && !this.closed) {
+          signal?.throwIfAborted();
+          if (recoveryUntil === undefined) {
+            recoveryUntil = performance.now() + 3000;
+            if (!notForwarded) this.reconnectNow();
+          }
+          if (performance.now() + 250 < recoveryUntil) {
+            await abortable(new Promise<void>(resolve => setTimeout(resolve,250)),signal);
+            continue;
+          }
         }
         // DeadlineExceeded is also the server's word for a daemon that gave
         // no result: it may have run.

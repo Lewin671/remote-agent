@@ -657,6 +657,8 @@ class Remote(
         authorityJob.cancel()
         stateJob?.cancel()
         stateJob = null
+        loginTokens.networkChanged()
+        security.networkChanged()
         generation++
         reconnect?.cancel()
         reconnect = null
@@ -695,6 +697,7 @@ class Remote(
             waited = false
             if (running && !removed) {
                 networkGeneration++
+                retireCandidate()
                 try { security.touch() } catch (e: Exception) { report(e) }
                 beginConnect()
             } else publish()
@@ -734,12 +737,23 @@ class Remote(
                 if (!changed) { publish(); continue }
                 networkGeneration++
                 if (running && !removed) {
-                    wantedConnection = true
+                    retireCandidate()
                     try { security.touch() } catch (e: Exception) { report(e) }
                     beginConnect()
                 } else publish()
             }
         }
+    }
+
+    private fun retireCandidate() {
+        loginTokens.networkChanged()
+        security.networkChanged()
+        wantedConnection = true
+        val oldCandidate = candidate
+        candidate = null
+        opening?.cancel(); opening = null
+        connecting?.cancel()
+        oldCandidate?.cancel()
     }
 
     private fun startLiveness() {
@@ -752,6 +766,7 @@ class Remote(
                 val woke = now < last || now - last > 3000 || currentWall - wall > 3000
                 if (woke) {
                     networkGeneration++
+                    retireCandidate()
                     try { security.touch() } catch (e: Exception) { report(e) }
                 }
                 last = now; wall = currentWall
@@ -829,10 +844,12 @@ class Remote(
         try {
             loginResponse(api, account)
         } catch (first: ConnectException) {
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (first.code != Code.PERMISSION_DENIED) throw first
             try {
                 loginResponse(api, account)
             } catch (e: ConnectException) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (e.code == Code.PERMISSION_DENIED)
                     withContext(dispatcher) {
                         loginTokenStore?.clearLoginToken(account)
@@ -921,6 +938,7 @@ class Remote(
         }
         generation++
         wantedConnection = false
+        loginTokens.networkChanged()
         connecting = scope.launch {
             try { connect() }
             finally {
@@ -944,7 +962,7 @@ class Remote(
         connStep = UiMessages.errorsSigningIn().messageText()
         publish()
         val token = try {
-            withTimeout(if (everReady) minOf(streamOpenMs, 3000) else streamOpenMs) {
+            withTimeout(if (everReady || networkGen > 0) minOf(streamOpenMs, 3000) else streamOpenMs) {
                 security.touch()
                 val token = currentToken()
                 if (networkGen != verifiedNetworkGeneration) {
@@ -1025,7 +1043,7 @@ class Remote(
             )
         candidate = socket
         opening = scope.launch {
-            delay(if (everReady) maxOf(1, minOf(streamOpenMs, 3000) - (monotonic() - started)) else streamOpenMs)
+            delay(if (everReady || networkGen > 0) maxOf(1, minOf(streamOpenMs, 3000) - (monotonic() - started)) else streamOpenMs)
             if (candidate === socket) {
                 candidate = null
                 cleanup({ socket.cancel() }, { frames.cancel() }, {
@@ -3465,6 +3483,7 @@ class Remote(
         if (!call.uncertain && clock() >= p.deadlineMs)
             throw CommandException(CommandException.EXPIRED, UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText())
         var attempt = 0
+        var recoveryUntil: Long? = null
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
@@ -3528,6 +3547,13 @@ class Remote(
                     val unsent = notForwarded != null
                     if (unsent) {
                         if (!call.uncertain && (ce.code != Code.UNAUTHENTICATED || attempt >= 3)) throw CommandException(ce.code.name.lowercase(), if (notForwarded?.reason=="machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText() else if (ce.code==Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText() else errorText(ce), outcome=Outcome.NOT_SENT)
+                    }
+                    if (ce.code == Code.UNAVAILABLE && call.uncertain && running) {
+                        if (recoveryUntil == null) {
+                            recoveryUntil = monotonic()+3000
+                            if (notForwarded == null) beginConnect()
+                        }
+                        if (monotonic()+250 < recoveryUntil) { delay(250); continue }
                     }
                     val cause = ce.exception
                     if (

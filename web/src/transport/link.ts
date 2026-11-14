@@ -45,7 +45,7 @@ export class Link {
       attemptId: attempt.attemptId,
       prepare: () => attempt.prepare(),
       send: (...args: Parameters<typeof attempt.send>) => attempt.send(...args),
-      refreshAuth: (prior: boolean) => attempt.refreshAuth(prior),
+      refreshAuth: (prior: boolean, signal?: AbortSignal) => attempt.refreshAuth(prior, signal),
       refusal(error: ConnectError) {
         const proof = attempt.refusal(error);
         if (proof) evidence.notForwarded();

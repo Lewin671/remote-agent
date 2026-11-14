@@ -47,8 +47,9 @@ func CheckSecurityStorage() error {
 
 // role is the signed state's copy of this device's membership.
 type securityRefresh struct {
-	done chan struct{}
-	err  error
+	done   chan struct{}
+	err    error
+	cancel context.CancelFunc
 }
 
 type securitySession struct {
@@ -223,16 +224,31 @@ func (s *securitySession) refresh(ctx context.Context) error {
 			return flight.err
 		}
 	}
-	flight := &securityRefresh{done: make(chan struct{})}
+	round, cancel := context.WithCancel(ctx)
+	flight := &securityRefresh{done: make(chan struct{}), cancel: cancel}
 	s.syncing = flight
 	s.syncMu.Unlock()
-	err := s.syncOnce(ctx)
+	err := s.syncOnce(round)
+	cancel()
 	s.syncMu.Lock()
 	flight.err = err
-	s.syncing = nil
+	if s.syncing == flight {
+		s.syncing = nil
+	}
 	close(flight.done)
 	s.syncMu.Unlock()
 	return err
+}
+
+// Retire an obsolete HTTP round, not the process-owned synchronization loop.
+func (s *securitySession) networkChanged() {
+	s.syncMu.Lock()
+	if flight := s.syncing; flight != nil {
+		s.syncing = nil
+		flight.cancel()
+	}
+	s.syncMu.Unlock()
+	s.requestSync()
 }
 
 func (s *securitySession) syncOnce(ctx context.Context) error {
@@ -242,6 +258,9 @@ func (s *securitySession) syncOnce(ctx context.Context) error {
 		}
 	}
 	_, err := s.pull(ctx)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if securityAuthenticationLost(err) || s.endpoint.CheckLease(s.now()) != nil {
 		s.setAuthorized(false)
 		if securityAuthenticationLost(err) && s.onAuthLost != nil {
@@ -262,6 +281,9 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 		}
 		res, err := s.client.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{AfterEpoch: after, Limit: 8}))
 		if err != nil {
+			return 0, err
+		}
+		if err := ctx.Err(); err != nil {
 			return 0, err
 		}
 		if res.Msg.HeadEpoch < after {

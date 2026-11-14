@@ -24,6 +24,8 @@ class DeviceSecurityClient(
     private val fetchStates: suspend (afterEpoch: ULong) -> GetSecurityStatesResponse,
 ) {
     private val syncMutex = Mutex()
+    private val syncRound = io.github.lewin671.remoteagent.core.transport.NetworkRound(syncMutex)
+    fun networkChanged() { syncRound.changed() }
     private val historyLock = Any()
     // Record identity covers the pin, whole chain/proofs, recipient, private key and stored keys.
     // A newly read or installed record never shares these memoized grant/PrevSecret results.
@@ -127,13 +129,14 @@ class DeviceSecurityClient(
         store.touchSecurity(DeviceSecurity.stateHash(r.head), now(r))
     }
 
-    suspend fun sync(): DeviceSecurity.Record = syncMutex.withLock {
+    suspend fun sync(): DeviceSecurity.Record = syncRound.run {
         repeat(DeviceSecurity.MAX_STATES) {
             // Ordinary phones receive no control envelopes. Persist their local
             // observed time even for an unchanged head or a failed state pull.
             val before = read()
             val r = store.touchSecurity(DeviceSecurity.stateHash(before.head), now(before))
             val res = fetchStates(r.head.core.epoch)
+            currentCoroutineContext().ensureActive()
             recoveryPending = res.recoveryPending
             recoveryReadyMs = res.recoveryReadyMs
             if (res.headEpoch.toULong() < r.head.core.epoch) throw DeviceSecurity.Failure("stale")
@@ -142,7 +145,7 @@ class DeviceSecurityClient(
                     throw DeviceSecurity.Failure("stale")
                 val cert =
                     res.lease.toByteArray().takeIf { it.isNotEmpty() }?.let { HeadLease.parse(it) }
-                return@withLock if (cert != null)
+                return@run if (cert != null)
                     store.installSecurity(
                         DeviceSecurity.stateHash(r.head),
                         emptyList(),

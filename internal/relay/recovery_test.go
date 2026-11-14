@@ -2,7 +2,9 @@ package relay_test
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -14,6 +16,68 @@ import (
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
+
+func TestRecoveryNetworkChangeRetiresOnlyTheObsoleteSecurityRound(t *testing.T) {
+	var armed, held atomic.Bool
+	entered, canceled := make(chan struct{}), make(chan struct{})
+	release := make(chan struct{})
+	defer close(release)
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if armed.Load() && strings.HasSuffix(r.URL.Path, "/GetSecurityStates") && held.CompareAndSwap(false, true) {
+				_, _ = io.Copy(io.Discard, r.Body)
+				r.Body.Close()
+				close(entered)
+				select {
+				case <-r.Context().Done():
+					close(canceled)
+				case <-release:
+				}
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	e.backend.add(t, "security-recovery")
+	changes := make(chan uint64, 1)
+	ready := make(chan struct{}, 4)
+	armed.Store(true)
+	e.startRelayBackend(e.backend, func(r *relay.Relay) {
+		relay.SetNetworkChangesForTest(r, changes)
+		relay.ObserveRecoveryForTest(r, func(event string) {
+			if event == "ready" {
+				ready <- struct{}{}
+			}
+		})
+	})
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("security round did not start")
+	}
+	select {
+	case <-ready:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial path did not authenticate")
+	}
+	changes <- 1
+	select {
+	case <-canceled:
+	case <-time.After(2 * time.Second):
+		t.Fatal("old security HTTP still blocks the new network")
+	}
+	select {
+	case <-ready:
+	case <-time.After(3 * time.Second):
+		t.Fatal("new authenticated path waited for the obsolete round")
+	}
+	s := e.session(t, "security-recovery", 0)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if _, err := e.client.Do(ctx, s, &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: s.ID, Title: "recovered"}}}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestRecoveryBlackholeBecomesUsableWithoutSocketClose(t *testing.T) {
 	var attempts atomic.Int32

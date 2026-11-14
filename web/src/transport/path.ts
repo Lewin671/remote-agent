@@ -33,7 +33,7 @@ export interface PathAttempt {
   prepare(): Promise<void>;
   send(machineId: string, command: Envelope, signal?: AbortSignal): Promise<ForwardReply>;
   refusal(error: ConnectError): { reason: string } | undefined;
-  refreshAuth(prior: boolean): Promise<void>;
+  refreshAuth(prior: boolean, signal?: AbortSignal): Promise<void>;
 }
 
 /** Paths see routing and sealed frames, never commands, keys or outcomes. */

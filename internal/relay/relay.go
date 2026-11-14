@@ -59,12 +59,13 @@ type ImageUpload struct {
 
 // Relay keeps the daemon connected to the server.
 type Relay struct {
-	recoveryBudget *transport.Budget
-	readyCount     atomic.Uint64
-	backend        Backend
-	admissions     chan struct{} // bounded authentication and same-ID wait workers
-	calls          chan struct{} // bounds command workers across reconnects
-	machineRPCs    chan struct{} // bounds session uploads across reconnects
+	observeRecovery func(recoveryEvent)
+	recoveryBudget  *transport.Budget
+	readyCount      atomic.Uint64
+	backend         Backend
+	admissions      chan struct{} // bounded authentication and same-ID wait workers
+	calls           chan struct{} // bounds command workers across reconnects
+	machineRPCs     chan struct{} // bounds session uploads across reconnects
 	// backlog admits one ended session at a time to its first sync after
 	// connecting, so that the other RPC slot stays free for live sessions.
 	backlog chan struct{}

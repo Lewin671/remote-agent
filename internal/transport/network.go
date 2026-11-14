@@ -14,22 +14,25 @@ import (
 // stay in memory; neither the fingerprint nor its source is logged. Kernel
 // events accelerate the bounded fallback scan, including same-interface DHCP.
 func NetworkChanges(ctx context.Context) <-chan uint64 {
+	tick := time.NewTicker(time.Second)
+	return observeNetworkChanges(ctx, routeHints(ctx), tick.C, networkFingerprint, tick.Stop)
+}
+
+func observeNetworkChanges(ctx context.Context, hints <-chan struct{}, ticks <-chan time.Time, scan func() [32]byte, stop func()) <-chan uint64 {
 	out := make(chan uint64, 1)
 	go func() {
 		defer close(out)
-		hints := routeHints(ctx)
-		tick := time.NewTicker(time.Second)
-		defer tick.Stop()
-		previous := networkFingerprint()
+		defer stop()
+		previous := scan()
 		var generation uint64
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-hints:
-			case <-tick.C:
+			case <-ticks:
 			}
-			current := networkFingerprint()
+			current := scan()
 			if current == previous {
 				continue
 			}

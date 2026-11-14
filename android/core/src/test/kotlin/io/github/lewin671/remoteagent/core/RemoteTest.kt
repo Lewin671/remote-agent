@@ -1625,6 +1625,31 @@ class RemoteTest {
     }
 
     @Test
+    fun temporaryDaemonGapKeepsTheOriginalLiveCallPending() = runBlocking<Unit> {
+        val calls=java.util.concurrent.atomic.AtomicInteger()
+        val first=java.util.concurrent.atomic.AtomicReference<ForwardRequest>()
+        val transient = http.newBuilder().addInterceptor { chain ->
+            val q=chain.request()
+            if(q.url.encodedPath.endsWith("/Forward") && calls.incrementAndGet()==1) {
+                val buffer=okio.Buffer();q.body!!.writeTo(buffer)
+                first.set(ForwardRequest.parseFrom(buffer.readByteArray()))
+                return@addInterceptor okhttp3.Response.Builder().request(q).protocol(okhttp3.Protocol.HTTP_1_1)
+                    .code(503).message("unavailable").header("Content-Type","application/json")
+                    .body("""{"code":"unavailable"}""".toResponseBody("application/json".toMediaType())).build()
+            }
+            chain.proceed(q)
+        }.build()
+        val r=fixtureRemote(approvedClient(daemon.phone,http),transient)
+        closers+=AutoCloseable{r.close()}
+        r.start();r.awaitState("ready"){it.conn==ConnState.ONLINE && it.loaded}
+        daemon.answer={_,_->CommandResult.newBuilder().setGetSettings(GetSettingsResponse.getDefaultInstance()).build()}
+        r.machineCommand(daemon.id,Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build())
+        assertEquals(2,calls.get())
+        val delivered=daemon.commands.poll(1,TimeUnit.SECONDS)!!
+        assertEquals(Header.parseFrom(first.get().command.header).requestId,delivered.first.requestId)
+    }
+
+    @Test
     fun authenticatedReplacementWakesOriginalForward() = runBlocking<Unit> {
         val hold = ForwardHold(server.url)
         val clientHttp = http.newBuilder().addInterceptor { chain ->

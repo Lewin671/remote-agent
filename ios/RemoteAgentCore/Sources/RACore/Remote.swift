@@ -259,6 +259,10 @@ public actor Remote {
     var removed = false
     var closed = false
     let signingIn = Gate()
+    struct LoginFlight: Sendable {let id:UUID;let generation:UInt64;let task:Task<String,Error>}
+    var loginFlight:LoginFlight?
+    var loginGeneration:UInt64=0
+    var securityNetworkReset:(UInt64,Task<Void,Never>)?
     var reconnect: Scheduled?
     var connecting: Task<Void, Never>?
     var opening: Scheduled?
@@ -566,6 +570,7 @@ public actor Remote {
 
     private func halt() {
         running = false
+        retireLogin()
         liveness?.cancel();liveness=nil
         candidate?.cancel();candidate=nil
         dialing=false
@@ -690,17 +695,55 @@ public actor Remote {
     /// between the two calls forgets the challenge; denied a fresh one too,
     /// it no longer knows this device, and nothing connects until it joins again.
     func signIn() async throws -> String {
+        while true {
+            try Task.checkCancellation()
+            let flight:LoginFlight
+            if let existing=loginFlight {flight=existing}
+            else {
+                let generation=loginGeneration
+                flight=LoginFlight(id:UUID(),generation:generation,task:Task {try await self.performSignIn()})
+                loginFlight=flight
+            }
+            defer {if loginFlight?.id==flight.id {loginFlight=nil}}
+            do {return try await flight.task.value}
+            catch {
+                if flight.generation != loginGeneration && !Task.isCancelled && !closed {continue}
+                throw error
+            }
+        }
+    }
+    func retireLogin() {
+        loginGeneration+=1;loginFlight?.task.cancel();loginFlight=nil
+    }
+    func refreshNetworkSecurity() async throws {
+        let gen=networkGeneration
+        let task:Task<Void,Never>
+        if let current=securityNetworkReset,current.0==gen {task=current.1}
+        else {
+            let client=try securitySession()
+            task=Task {await client.networkChanged()}
+            securityNetworkReset=(gen,task)
+        }
+        await task.value
+        guard gen==networkGeneration else {throw PathChanged()}
+    }
+
+    private func performSignIn() async throws -> String {
         await acquire(signingIn)
         defer { release(signingIn) }
         // Given up on while waiting for its turn.
         try Task.checkCancellation()
         do {
-            let response = try await loginResponse(api: api, account: account)
+            let response = try await withTimeout(everReady || networkGeneration > 0 ? min(streamOpenMs,3000) : streamOpenMs, sleep:sleep) { [api,account] in
+                try await loginResponse(api:api,account:account)
+            }
             try Task.checkCancellation()
             return signedIn(response)
         } catch let first as ConnectError where first.code == .permissionDenied {
             do {
-                let response = try await loginResponse(api: api, account: account)
+                let response = try await withTimeout(everReady || networkGeneration > 0 ? min(streamOpenMs,3000) : streamOpenMs, sleep:sleep) { [api,account] in
+                try await loginResponse(api:api,account:account)
+            }
                 try Task.checkCancellation()
                 return signedIn(response)
             } catch let e as ConnectError where e.code == .permissionDenied {
@@ -791,10 +834,12 @@ public actor Remote {
             return
         }
         generation += 1;dialing=true;wantedConnection=false
+        if token.isEmpty || tokenExpires < clock()+86_400_000 {retireLogin()}
         connecting=Task {await self.connect()}
     }
 
     func retireCandidate() {
+        retireLogin()
         wantedConnection=true
         let old=candidate;candidate=nil
         opening?.task.cancel();opening=nil
@@ -840,7 +885,10 @@ public actor Remote {
         }
         if ws == nil {conn = .connecting}
         publish()
-        do { try await securitySession().touchAfterWake() }
+        do {
+            if networkGen != verifiedNetworkGeneration {try await refreshNetworkSecurity()}
+            try await securitySession().touchAfterWake()
+        }
         catch { if running && gen == generation {fail(error)};return }
         await restored()
         if !running || gen != generation { return }

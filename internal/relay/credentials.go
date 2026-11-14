@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -49,6 +50,9 @@ func (c *credentials) get(ctx context.Context, rejected string) (string, error) 
 		case <-ctx.Done():
 			return "", ctx.Err()
 		case <-f.done:
+			if ctx.Err() == nil && (errors.Is(f.err, context.Canceled) || errors.Is(f.err, context.DeadlineExceeded)) {
+				return c.get(ctx, rejected)
+			}
 			return f.token, f.err
 		}
 	}
@@ -67,7 +71,7 @@ func (c *credentials) get(ctx context.Context, rejected string) (string, error) 
 	if err == nil {
 		c.token = token
 		c.failed = nil
-	} else {
+	} else if ctx.Err() == nil {
 		c.failed = f
 		c.retryAt = c.clock().Add(time.Second)
 	}
