@@ -36,6 +36,59 @@ import os
         r.ready()
         #expect(await pending.value);#expect(stopped.isSet)
     }
+
+    @Test func adaptiveLivenessThresholdsAndTwoHeartbeatGuard() {
+        let now = OSAllocatedUnfairLock(initialState: Int64(0))
+        let liveness = LegLiveness(initialNow: 0, now: { now.withLock { $0 } })
+        #expect(liveness.thresholdMs() == 60_000)
+        liveness.onFrame(5_000, isHeartbeat: false)
+        #expect(liveness.thresholdMs() == 60_000)
+        liveness.onFrame(10_000, isHeartbeat: true)
+        #expect(liveness.thresholdMs() == 60_000)
+        now.withLock { $0 = 14_000 }
+        #expect(!liveness.suspect())
+        now.withLock { $0 = 70_000 }
+        #expect(liveness.suspect())
+
+        let fast = LegLiveness(initialNow: 0)
+        fast.onFrame(1_000, isHeartbeat: true)
+        fast.onFrame(2_000, isHeartbeat: true)
+        #expect(fast.thresholdMs() == 3_000)
+        #expect(!fast.suspect(4_999))
+        #expect(fast.suspect(5_000))
+
+        let legacy = LegLiveness(initialNow: 0)
+        legacy.onFrame(1_000, isHeartbeat: true)
+        legacy.onFrame(21_000, isHeartbeat: true)
+        #expect(legacy.thresholdMs() == 60_000)
+        #expect(!legacy.suspect(80_999))
+        #expect(legacy.suspect(81_000))
+    }
+
+    @Test func terminalRecoveryBackoffAndSharedGlobalBudget() {
+        let time = OSAllocatedUnfairLock(initialState: Int64(0))
+        let budget = RecoveryBudget()
+        let t1 = TerminalRecovery(now: { time.withLock { $0 } }, random: { 0.5 }, budget: budget)
+        let t2 = TerminalRecovery(now: { time.withLock { $0 } }, random: { 0.5 }, budget: budget)
+        let t3 = TerminalRecovery(now: { time.withLock { $0 } }, random: { 0.5 }, budget: budget)
+
+        #expect(t1.takeOrDelayMs() == nil)
+        t1.recordFailureIfUnstabilized()
+        let d1 = t1.takeOrDelayMs()
+        #expect(d1 != nil && d1! >= 500)
+
+        t1.onStabilized()
+        time.withLock { $0 = 1_000 }
+        #expect(t1.takeOrDelayMs() == nil)
+
+        #expect(t2.takeOrDelayMs() == nil)
+        #expect(t2.takeOrDelayMs() == nil)
+        #expect(t3.takeOrDelayMs() == nil)
+        // t1(1000)=3, t2(1000)=2,1, t3(1000)=0! A fresh 4th terminal still hits global wait >= 500ms:
+        let t4 = TerminalRecovery(now: { time.withLock { $0 } }, random: { 0.5 }, budget: budget)
+        let globalDelay = t4.takeOrDelayMs()
+        #expect(globalDelay != nil && globalDelay! >= 500)
+    }
 }
 
 extension ServerTests {
@@ -141,7 +194,7 @@ extension ServerTests {
                 await w.daemon.setAnswer {_,_ in .with{$0.getSettings=PBGetSettingsResponse()}}
             }) {w in
                 let account=try await w.join()
-                let hole=try StreamBlackhole(firstReady:true)
+                let hole=try StreamBlackhole(firstReady:true,firstHeartbeats:2,firstHeartbeatIntervalMs:500)
                 w.onClose{hole.close()}
                 let real=w.server.url
                 let http=Intercept.http(for:hole.url){$0.moved(to:real)}
@@ -153,6 +206,21 @@ extension ServerTests {
                 _ = try await remote.machineCommand(w.daemon.id,PBCommand.with{$0.getSettings=PBGetSettingsRequest()})
                 #expect(hole.attempts.value==2)
                 #expect(started.duration(to:.now) < .seconds(6))
+            }
+        }
+        @Test func silentMainStreamWithoutTwoHeartbeatsKeepsLegacy60sThreshold() async throws {
+            try await World.run(setUp:{w in try await w.daemon.connect()}) {w in
+                let account=try await w.join()
+                let hole=try StreamBlackhole(firstReady:true,firstHeartbeats:1)
+                w.onClose{hole.close()}
+                let real=w.server.url
+                let http=Intercept.http(for:hole.url){$0.moved(to:real)}
+                let remote=try await w.remote(Account(server:hole.url,root:account.root,deviceSeed:account.deviceSeed,deviceId:account.deviceId),http:http)
+                remote.start();_ = try await remote.awaitState("first ready"){$0.conn == .online}
+                let old=await remote.ws
+                await sleepMs(4500)
+                #expect(await remote.ws === old)
+                #expect(hole.attempts.value==1)
             }
         }
         @Test func candidateCannotRetireTheActivePathBeforeReady() async throws {

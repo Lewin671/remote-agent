@@ -110,7 +110,13 @@ final class StreamBlackhole: @unchecked Sendable {
     let url: String
     let attempts = Counter()
 
-    init(firstClose: Int? = nil, firstReady: Bool = false, firstCloseAfter: DispatchSemaphore? = nil) throws {
+    init(
+        firstClose: Int? = nil,
+        firstReady: Bool = false,
+        firstCloseAfter: DispatchSemaphore? = nil,
+        firstHeartbeats: Int = 0,
+        firstHeartbeatIntervalMs: Int = 500
+    ) throws {
         listener = try Listener()
         url = "http://127.0.0.1:\(listener.port)"
         let attempts = self.attempts
@@ -122,6 +128,17 @@ final class StreamBlackhole: @unchecked Sendable {
                 ready.ready = PBReady.with { $0.serverTimeMs = Int64(Date().timeIntervalSince1970 * 1000) }
                 let bytes: Data = (try? ready.serializedData()) ?? Data()
                 writeAll(fd, Data([0x82, UInt8(bytes.count)]) + bytes)
+            }
+            if attempt == 1 && firstReady && firstHeartbeats > 0 {
+                for index in 0..<firstHeartbeats {
+                    if index > 0 && firstHeartbeatIntervalMs > 0 {
+                        Thread.sleep(forTimeInterval: Double(firstHeartbeatIntervalMs) / 1000.0)
+                    }
+                    var hb = PBServerFrame()
+                    hb.heartbeat = PBHeartbeat()
+                    let bytes: Data = (try? hb.serializedData()) ?? Data()
+                    _ = writeAll(fd, Data([0x82, UInt8(bytes.count)]) + bytes)
+                }
             }
             if attempt == 1, let code = firstClose {
                 _ = firstCloseAfter?.wait(timeout: .now()+10)

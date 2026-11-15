@@ -63,10 +63,16 @@ import Testing
         }
     }
 
-    private func terminal(_ streams: Streams, online: Flag = Flag(), fail: String? = nil)
+    private func terminal(
+        _ streams: Streams,
+        online: Flag = Flag(),
+        fail: String? = nil,
+        recovery: TerminalRecovery = TerminalRecovery(budget: RecoveryBudget()),
+        stabilityDuration: Duration = .seconds(5)
+    )
         -> RemoteTerminal
     {
-        let terminal = RemoteTerminal()
+        let terminal = RemoteTerminal(recovery: recovery, stabilityDuration: stabilityDuration)
         terminal.host.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
         terminal.host.layoutIfNeeded()
         terminal.use(
@@ -402,5 +408,82 @@ import Testing
         streams.listener(1).onClose("终端连接断开")
         await eventually { t.state != .connecting }
         #expect(t.state == .closed(L10n.errorsTerminalConnectionDropped()))
+    }
+
+    @Test func repeatedFailuresBeforeStabilityBackOffAndResetAfterStabilizing() async {
+        let streams = Streams()
+        let online = Flag()
+        let budget = RecoveryBudget()
+        let recovery = TerminalRecovery(random: { 0.5 }, budget: budget)
+        let t = terminal(streams, online: online, recovery: recovery, stabilityDuration: .milliseconds(80))
+        defer { t.close() }
+
+        t.connect()
+        await eventually { streams.count == 1 }
+        streams.listener(0).onFrame(snapshot("s0"))
+        await eventually { t.state == .live }
+
+        // First leg failure before 80ms stability reopens immediately using first token.
+        streams.listener(0).onClose("c0")
+        await eventually { streams.count == 2 }
+        streams.listener(1).onFrame(snapshot("s1"))
+        await eventually { t.state == .live }
+
+        // Second failure before 80ms stability must apply backoff (500ms at random=0.5) instead of spinning.
+        streams.listener(1).onClose("c1")
+        try? await Task.sleep(for: .milliseconds(180))
+        #expect(streams.count == 2)
+        if case .closed = t.state {} else {
+            Issue.record("expected closed state during terminal reopen backoff, got \(t.state)")
+        }
+
+        // After the ~500ms backoff window elapses, stream 2 opens.
+        await eventually { streams.count == 3 }
+        streams.listener(2).onFrame(snapshot("s2"))
+        await eventually { t.state == .live }
+
+        // Stabilizing for > 80ms resets backoff streak so the next failure reopens right away.
+        try? await Task.sleep(for: .milliseconds(130))
+        streams.listener(2).onClose("c2")
+        await eventually { streams.count == 4 }
+    }
+
+    @Test func overflowBeforeStabilityRespectsBackoffAndSharedBudget() async {
+        let streams1 = Streams()
+        let streams2 = Streams()
+        let budget = RecoveryBudget()
+        let t1 = terminal(
+            streams1,
+            recovery: TerminalRecovery(random: { 0.5 }, budget: budget),
+            stabilityDuration: .milliseconds(120)
+        )
+        let t2 = terminal(
+            streams2,
+            recovery: TerminalRecovery(random: { 0.5 }, budget: budget),
+            stabilityDuration: .milliseconds(120)
+        )
+        defer { t1.close(); t2.close() }
+
+        t1.connect()
+        t2.connect()
+        await eventually { streams1.count == 1 && streams2.count == 1 }
+        streams1.listener(0).onFrame(snapshot("a0"))
+        streams2.listener(0).onFrame(snapshot("b0"))
+        await eventually { t1.state == .live && t2.state == .live }
+
+        let chunk = PBTerminalFrame.with { $0.output = Data(repeating: 0x78, count: 64 * 1024) }
+        for _ in 0..<40 { streams1.listener(0).onFrame(chunk) }
+        await eventually { streams1.count == 2 }
+        streams1.listener(1).onFrame(snapshot("a1"))
+        await eventually { t1.state == .live }
+
+        // Second overflow on t1 before stabilizing must enter backoff rather than reopening immediately.
+        for _ in 0..<40 { streams1.listener(1).onFrame(chunk) }
+        try? await Task.sleep(for: .milliseconds(180))
+        #expect(streams1.count == 2)
+
+        // Meanwhile t2 shares the same process RecoveryBudget: its first close still gets one token immediately.
+        streams2.listener(0).onClose("c0")
+        await eventually { streams2.count == 2 }
     }
 }

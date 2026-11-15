@@ -1688,5 +1688,25 @@
     "path": "web/src/remote.ts",
     "literal": "stale",
     "reason": "Existing DeviceSecurity error code for an obsolete network generation; not a displayed string. Command errors are rendered through existing localized messages."
+  },
+  {
+    "path": "internal/transport/network.go",
+    "literal": "route:%s:%d:%s:%s",
+    "reason": "Internal format string hashed into the SHA-256 default-route network fingerprint; never displayed or logged."
+  },
+  {
+    "path": "internal/transport/network.go",
+    "literal": "if:%d:%s:%s:%s",
+    "reason": "Internal format string hashed into the SHA-256 interface-address network fingerprint; never displayed or logged."
+  },
+  {
+    "path": "internal/transport/network_darwin.go",
+    "literal": "link:%d:%s",
+    "reason": "Internal link-layer gateway token hashed into the SHA-256 network fingerprint; never displayed or logged."
+  },
+  {
+    "path": "web/src/views/Terminal.tsx",
+    "literal": "(\"connecting\"); const stateRef = useRef",
+    "reason": "Lexical JSX scanner false positive spanning TypeScript generic angle brackets; never rendered UI text."
   }
 ]

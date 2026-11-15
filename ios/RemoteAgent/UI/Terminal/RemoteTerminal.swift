@@ -114,22 +114,99 @@ final class RemoteTerminal {
     @ObservationIgnored private var pictured = false
     @ObservationIgnored private var held: UUID?
     @ObservationIgnored private var job: Task<Void, Never>?
+    @ObservationIgnored private var reopenTask: Task<Void, Never>?
+    @ObservationIgnored private var stabilityTask: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
     /// This connection has yet to fit on its own; never again once 还原 was chosen here.
     @ObservationIgnored private var autoFit = false
     @ObservationIgnored private var released = false
     @ObservationIgnored private var frames = TerminalFrames()
+    @ObservationIgnored private let recovery: TerminalRecovery
+    @ObservationIgnored private let stabilityDuration: Duration
+
+    init(
+        recovery: TerminalRecovery = TerminalRecovery(),
+        stabilityDuration: Duration = .seconds(5)
+    ) {
+        self.recovery = recovery
+        self.stabilityDuration = stabilityDuration
+    }
 
     func use(_ link: Link) {
         self.link = link
     }
 
     func connectIfNeeded() {
-        if case .closed = state { connect() }
-        else if conn == nil && job == nil { connect() }
+        if case .closed = state { resumeConnect() }
+        else if conn == nil && job == nil && reopenTask == nil { resumeConnect() }
     }
 
     func connect() {
+        reopenTask?.cancel(); reopenTask = nil
+        stabilityTask?.cancel(); stabilityTask = nil
+        recovery.reset()
+        openAttempt()
+    }
+
+    private func resumeConnect() {
+        guard reopenTask == nil else { return }
+        guard let link else { return }
+        guard link.online() else {
+            close()
+            return
+        }
+        scheduleTakeOrDelay(generation, fallbackReason: nil)
+    }
+
+    private func scheduleReopen(_ expectedGen: Int, fallbackReason: String) {
+        guard expectedGen == generation, reopenTask == nil else { return }
+        guard link?.online() == true else { return }
+        stabilityTask?.cancel(); stabilityTask = nil
+        recovery.recordFailureIfUnstabilized()
+        scheduleTakeOrDelay(expectedGen, fallbackReason: fallbackReason)
+    }
+
+    private func scheduleTakeOrDelay(_ expectedGen: Int, fallbackReason: String?) {
+        guard expectedGen == generation, reopenTask == nil else { return }
+        guard link?.online() == true else { return }
+        guard let waitMs = recovery.takeOrDelayMs() else {
+            openAttempt()
+            return
+        }
+        generation += 1
+        let nextGen = generation
+        frames.close()
+        job?.cancel()
+        job = nil
+        drop()
+        if case .closed = state {} else {
+            state = .closed(fallbackReason ?? L10n.errorsTerminalConnectionDropped())
+        }
+        reopenTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            var pendingDelay = waitMs
+            while pendingDelay > 0 {
+                try? await Task.sleep(for: .milliseconds(pendingDelay))
+                if Task.isCancelled || nextGen != self.generation { return }
+                guard self.link?.online() == true else {
+                    self.reopenTask = nil
+                    return
+                }
+                if let nextWait = self.recovery.takeOrDelayMs() {
+                    pendingDelay = nextWait
+                } else {
+                    break
+                }
+            }
+            guard !Task.isCancelled, nextGen == self.generation else { return }
+            self.reopenTask = nil
+            self.openAttempt()
+        }
+    }
+
+    private func openAttempt() {
+        reopenTask?.cancel(); reopenTask = nil
+        stabilityTask?.cancel(); stabilityTask = nil
         history.end()
         guard let link else { return }
         guard link.online() else {
@@ -151,7 +228,12 @@ final class RemoteTerminal {
         let listener = Listener(queue: queue) { [weak self] offer in
             switch offer {
             case .schedule: onMain(after: Self.frameInterval) { self?.flush(gen, queue) }
-            case .overflow: onMain { if let self, gen == self.generation { self.connect() } }
+            case .overflow: onMain {
+                if let self, gen == self.generation {
+                    self.history.disconnected()
+                    self.scheduleReopen(gen, fallbackReason: L10n.errorsTerminalConnectionDropped())
+                }
+            }
             case .queued, .closed: break
             }
         }
@@ -162,11 +244,14 @@ final class RemoteTerminal {
                     opened.close()
                     return
                 }
+                self.job = nil
                 self.conn = opened
                 self.held = link.hold(opened)
                 self.goLive()
             } catch {
                 guard let self, gen == self.generation else { return }
+                self.job = nil
+                self.recovery.recordFailureIfUnstabilized()
                 self.state = .closed(errorText(error))
             }
         }
@@ -205,7 +290,7 @@ final class RemoteTerminal {
                 let gen = generation
                 onMain { [weak self] in
                     guard let self, gen == self.generation, self.link?.online() == true else { return }
-                    self.connectIfNeeded()
+                    self.scheduleReopen(gen, fallbackReason: reason)
                 }
             }
         }
@@ -216,8 +301,21 @@ final class RemoteTerminal {
     /// and fitted, once both are here; until then keys would go nowhere.
     private func goLive() {
         guard pictured, conn != nil else { return }
-        if state == .connecting { state = .live }
+        if state == .connecting {
+            state = .live
+            startStabilityTimer(for: generation)
+        }
         fitOnOpen()
+    }
+
+    private func startStabilityTimer(for gen: Int) {
+        stabilityTask?.cancel()
+        let duration = stabilityDuration
+        stabilityTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: duration)
+            guard let self, !Task.isCancelled, gen == self.generation, self.state == .live else { return }
+            self.recovery.onStabilized()
+        }
     }
 
     func send(_ data: Data) {
@@ -287,11 +385,14 @@ final class RemoteTerminal {
     }
 
     func close() {
+        reopenTask?.cancel(); reopenTask = nil
+        stabilityTask?.cancel(); stabilityTask = nil
         history.end()
         generation += 1
         frames.close()
         state = .closed(Self.paused)
         job?.cancel()
+        job = nil
         drop()
     }
 

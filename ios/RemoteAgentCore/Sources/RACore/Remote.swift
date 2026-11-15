@@ -917,7 +917,7 @@ public actor Remote {
         guard running else {return now}
         let woke=now.0<last.0 || now.0-last.0>3000 || now.1-last.1>3000
         if woke {networkGeneration+=1;retireCandidate()}
-        if woke || (ws != nil && now.0-(activity?.last ?? now.0)>=3000) {
+        if woke || (ws != nil && (activity?.suspect(now.0) ?? false)) {
             if conn == .online {conn = .connecting;publish()}
             beginConnect()
         }
@@ -962,7 +962,7 @@ public actor Remote {
         guard let hello: Data = try? frame.serializedData() else { return }
         let socket = deviceLink.router.path.openStream("/v1/stream", hello: hello)
         candidate = socket
-        let activity = PathActivity();activity.received(monotonic())
+        let activity = PathActivity(initialNow: monotonic())
         let monotonic=self.monotonic
         // Bounded: a reader that falls behind drops the stream and catches up
         // from history after reconnecting, instead of queueing without end.
@@ -972,7 +972,13 @@ public actor Remote {
         let budget = StreamByteBudget(limit: frameQueueBytes)
         let receive = Task.detached {
             while let bytes = try? await socket.receive() {
-                activity.received(monotonic())
+                let isHeartbeat: Bool
+                if case .heartbeat? = (try? PBServerFrame(serializedBytes: bytes))?.kind {
+                    isHeartbeat = true
+                } else {
+                    isHeartbeat = false
+                }
+                activity.received(monotonic(), isHeartbeat: isHeartbeat)
                 guard budget.reserve(bytes.count) else {
                     socket.cancel()
                     break

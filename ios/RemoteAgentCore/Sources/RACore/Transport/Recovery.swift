@@ -86,8 +86,111 @@ final class Recovery: Sendable {
     }
 }
 
+/// Per-terminal reopen recovery sharing the process-wide global budget (4/2s)
+/// while keeping an independent target budget (2/1s) and full-jitter backoff (1..30s).
+public final class TerminalRecovery: Sendable {
+    private let recovery: Recovery
+    private let reopenedInStreak = OSAllocatedUnfairLock(initialState: false)
+
+    public init() {
+        self.recovery = Recovery()
+    }
+
+    init(
+        now: @escaping @Sendable () -> Int64 = recoveryTime,
+        random: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
+        budget: RecoveryBudget = processRecoveryBudget
+    ) {
+        self.recovery = Recovery(now: now, random: random, budget: budget)
+    }
+
+    public func recordFailureIfUnstabilized() {
+        let active = reopenedInStreak.withLock { $0 }
+        if active {
+            recovery.failed()
+        }
+    }
+
+    public func takeOrDelayMs() -> Int64? {
+        if recovery.take() {
+            reopenedInStreak.withLock { $0 = true }
+            return nil
+        }
+        return max(1, recovery.delay())
+    }
+
+    public func delayMs() -> Int64 {
+        recovery.delay()
+    }
+
+    public func onStabilized() {
+        reopenedInStreak.withLock { $0 = false }
+        recovery.ready()
+    }
+
+    public func reset() {
+        reopenedInStreak.withLock { $0 = false }
+        recovery.ready()
+    }
+}
+
+final class LegLiveness: Sendable {
+    static let defaultDeadAfterMs: Int64 = 60_000
+    static let minDeadAfterMs: Int64 = 3_000
+
+    private struct State: Sendable {
+        var lastFrameAt: Int64
+        var heartbeats: Int = 0
+        var lastHeartbeatAt: Int64 = 0
+        var observedIntervalMs: Int64 = 0
+    }
+
+    private let state: OSAllocatedUnfairLock<State>
+    private let now: @Sendable () -> Int64
+
+    init(initialNow: Int64 = recoveryTime(), now: @escaping @Sendable () -> Int64 = recoveryTime) {
+        self.now = now
+        self.state = OSAllocatedUnfairLock(initialState: State(lastFrameAt: initialNow))
+    }
+
+    func onFrame(_ at: Int64? = nil, isHeartbeat: Bool = false) {
+        let timestamp = at ?? now()
+        state.withLock { s in
+            if timestamp > s.lastFrameAt { s.lastFrameAt = timestamp }
+            guard isHeartbeat else { return }
+            s.heartbeats += 1
+            if s.heartbeats >= 2 {
+                s.observedIntervalMs = max(0, timestamp - s.lastHeartbeatAt)
+            }
+            s.lastHeartbeatAt = timestamp
+        }
+    }
+
+    func thresholdMs() -> Int64 {
+        state.withLock { s in
+            if s.heartbeats < 2 { return Self.defaultDeadAfterMs }
+            return max(Self.minDeadAfterMs, 3 * s.observedIntervalMs)
+        }
+    }
+
+    func suspect(_ at: Int64? = nil) -> Bool {
+        let timestamp = at ?? now()
+        return state.withLock { s in
+            let threshold = s.heartbeats < 2
+                ? Self.defaultDeadAfterMs
+                : max(Self.minDeadAfterMs, 3 * s.observedIntervalMs)
+            return timestamp - s.lastFrameAt >= threshold
+        }
+    }
+
+    var lastFrame: Int64 { state.withLock { $0.lastFrameAt } }
+}
+
 final class PathActivity: Sendable {
-    private let value = OSAllocatedUnfairLock(initialState:Int64(0))
-    func received(_ now: Int64) {value.withLock {$0=now}}
-    var last: Int64 {value.withLock {$0}}
+    private let liveness: LegLiveness
+    init(initialNow: Int64 = 0) { self.liveness = LegLiveness(initialNow: initialNow) }
+    func received(_ now: Int64, isHeartbeat: Bool = false) { liveness.onFrame(now, isHeartbeat: isHeartbeat) }
+    func thresholdMs() -> Int64 { liveness.thresholdMs() }
+    func suspect(_ now: Int64) -> Bool { liveness.suspect(now) }
+    var last: Int64 { liveness.lastFrame }
 }
