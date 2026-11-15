@@ -34,6 +34,8 @@ func main() {
 	}
 	if len(os.Args) >= 2 {
 		switch os.Args[1] {
+		case "stun":
+			os.Exit(runSTUN(os.Args[2:]))
 		case "admin":
 			os.Exit(runAdmin(os.Args[2:]))
 		case "healthcheck":

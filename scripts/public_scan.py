@@ -130,7 +130,7 @@ def release(tag, dist, web_public=None):
     """What is wrong with a packaged release as a whole: its files are exactly
     the ones a release has, and each archive holds exactly what belongs in it."""
     daemon = {"remote-agent", "remote-agent-service", "THIRD_PARTY_NOTICES.txt"}
-    server = {"remote-agent-server", "Dockerfile", ".dockerignore", "compose.yaml", "Caddyfile", "env.example", "THIRD_PARTY_NOTICES.txt"}
+    server = {"remote-agent-server", "Dockerfile", ".dockerignore", "compose.yaml", "stun.compose.yaml", "Caddyfile", "env.example", "THIRD_PARTY_NOTICES.txt"}
     archives = {f"remote-agent-{tag}-{t}": daemon for t in TARGETS}
     archives |= {f"remote-agent-server-{tag}-{t}": server for t in TARGETS if t.startswith("linux")}
     archives[f"remote-agent-web-{tag}"] = None

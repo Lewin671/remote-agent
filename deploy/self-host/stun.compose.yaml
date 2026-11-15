@@ -1,0 +1,18 @@
+# Optional independent STUN discovery. Use an unproxied DNS name such as
+# stun.example.com and allow UDP 3478 at the host and network firewall.
+# No relay database, volumes, HTTP access log or TURN service is needed.
+# Run beside the regular compose file only after deploying protocol 16.
+services:
+  stun:
+    image: remote-agent-server:local
+    entrypoint: ["/remote-agent-server", "stun"]
+    command: ["--listen", ":3478", "--rate", "1000", "--source-rate", "20", "--bytes", "131072", "--sources", "4096"]
+    ports: ["3478:3478/udp"]
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.5
+    pids_limit: 32
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: {driver: none}

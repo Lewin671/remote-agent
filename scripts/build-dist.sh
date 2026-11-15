@@ -50,7 +50,7 @@ for arch in arm64 amd64; do
 	name=remote-agent-server-$tag-linux-$arch
 	mkdir "$stage/$name"
 	RA_BUILD_CHANNEL=release CGO_ENABLED=0 GOOS=linux GOARCH=$arch scripts/build-go.sh "$stage/$name/remote-agent-server" ./cmd/remote-agent-server
-	for f in Dockerfile .dockerignore compose.yaml Caddyfile env.example; do
+	for f in Dockerfile .dockerignore compose.yaml stun.compose.yaml Caddyfile env.example; do
 		cp "deploy/self-host/$f" "$stage/$name/"
 	done
 	GOOS=linux GOARCH=$arch scripts/notices.py go ./cmd/remote-agent-server >"$stage/$name/THIRD_PARTY_NOTICES.txt"

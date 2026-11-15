@@ -712,6 +712,104 @@
         "zh-CN": "source"
       },
       "zh-CN": "本机安全库需要升级到第 4 代。请先停止 daemon，运行 scripts/migrate-security-v4；无需重新配对。旧请求结果无法恢复，请先核对在途操作。"
+    },
+    "transport.stun_bytes": {
+      "en": "Maximum STUN response bytes per second",
+      "key": "transport.stun_bytes",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "全局每秒允许的 STUN 响应字节数"
+    },
+    "transport.stun_failed": {
+      "en": "STUN service could not start or continue",
+      "key": "transport.stun_failed",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "STUN 服务启动或运行失败"
+    },
+    "transport.stun_invalid": {
+      "en": "Invalid STUN limits",
+      "key": "transport.stun_invalid",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "STUN 限额配置无效"
+    },
+    "transport.stun_listen": {
+      "en": "UDP address for STUN",
+      "key": "transport.stun_listen",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "STUN 的 UDP 监听地址"
+    },
+    "transport.stun_rate": {
+      "en": "Maximum STUN responses per second",
+      "key": "transport.stun_rate",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "全局每秒允许的 STUN 响应数"
+    },
+    "transport.stun_source_rate": {
+      "en": "Maximum STUN responses per source per second",
+      "key": "transport.stun_source_rate",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "每个来源每秒允许的 STUN 响应数"
+    },
+    "transport.stun_sources": {
+      "en": "Maximum sources in the temporary rate-limit table",
+      "key": "transport.stun_sources",
+      "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "短期限流表的最大来源数"
     }
   }
 }

@@ -284,3 +284,31 @@ func SecurityResultBodyUnavailable(locale string) string {
 func SecurityStorageV4Required(locale string) string {
 	return render(locale, "security.storage_v4_required", map[string]any{})
 }
+
+func TransportStunBytes(locale string) string {
+	return render(locale, "transport.stun_bytes", map[string]any{})
+}
+
+func TransportStunFailed(locale string) string {
+	return render(locale, "transport.stun_failed", map[string]any{})
+}
+
+func TransportStunInvalid(locale string) string {
+	return render(locale, "transport.stun_invalid", map[string]any{})
+}
+
+func TransportStunListen(locale string) string {
+	return render(locale, "transport.stun_listen", map[string]any{})
+}
+
+func TransportStunRate(locale string) string {
+	return render(locale, "transport.stun_rate", map[string]any{})
+}
+
+func TransportStunSourceRate(locale string) string {
+	return render(locale, "transport.stun_source_rate", map[string]any{})
+}
+
+func TransportStunSources(locale string) string {
+	return render(locale, "transport.stun_sources", map[string]any{})
+}

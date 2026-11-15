@@ -1,0 +1,100 @@
+[
+  {
+    "key": "transport.stun_listen",
+    "zh-CN": "STUN 的 UDP 监听地址",
+    "en": "UDP address for STUN",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.stun_rate",
+    "zh-CN": "全局每秒允许的 STUN 响应数",
+    "en": "Maximum STUN responses per second",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.stun_source_rate",
+    "zh-CN": "每个来源每秒允许的 STUN 响应数",
+    "en": "Maximum STUN responses per source per second",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.stun_bytes",
+    "zh-CN": "全局每秒允许的 STUN 响应字节数",
+    "en": "Maximum STUN response bytes per second",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.stun_sources",
+    "zh-CN": "短期限流表的最大来源数",
+    "en": "Maximum sources in the temporary rate-limit table",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.stun_invalid",
+    "zh-CN": "STUN 限额配置无效",
+    "en": "Invalid STUN limits",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.stun_failed",
+    "zh-CN": "STUN 服务启动或运行失败",
+    "en": "STUN service could not start or continue",
+    "notes": "独立 STUN 服务命令行帮助或错误。错误不包含请求、来源地址或事务 ID。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]
