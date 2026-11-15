@@ -17,7 +17,8 @@ import (
 )
 
 // Account usage limits (architecture "账户额度"). Codex reports them in its
-// rollouts; Claude Code only in the input of its status line, which
+// rollouts, read from every run on this machine, not only managed sessions
+// (accountLimitsLoop); Claude Code only in the input of its status line, which
 // remote-agent's status line command passes on. Nothing here asks the
 // model or any service for them. Provider limits are kept per login
 // account (a fingerprint, never the account's IDs), in quota.json, so a
@@ -319,6 +320,9 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 			}
 		} else {
 			e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
+			if _, ok := ag.(agent.AccountLimitsSource); ok && d.limits == nil {
+				e.Detail = i18n.QuotaCodexWaiting("zh-CN")
+			}
 			if u := d.limits; u != nil {
 				e.State, e.Plan, e.ObservedMs = pb.QuotaState_QUOTA_STATE_OK, u.PlanType, d.limitsAt.UnixMilli()
 				for _, w := range []struct {

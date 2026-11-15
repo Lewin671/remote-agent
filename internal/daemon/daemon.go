@@ -269,6 +269,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	background.Go(func() { d.statusCollector.Run(ctx) })
 	background.Go(func() { d.diskLoop(ctx) })
+	background.Go(func() { d.accountLimitsLoop(ctx) })
 	d.loadQuotas()
 	// Finish transfer intents before restoring queue refs, without treating
 	// persisted Exited as final: tmux may still be alive and reattach below.
@@ -796,6 +797,51 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	slog.Info("created session", "session", id)
 	return s, acceptedErr
 }
+
+// accountLimitsLoop also picks up limits from runs remote-agent does not
+// manage, such as `codex exec` started by another agent. It only reads
+// local files; nothing asks a service.
+func (d *Daemon) accountLimitsLoop(ctx context.Context) {
+	since := map[pb.Agent]time.Time{}
+	t := time.NewTicker(accountLimitsInterval)
+	defer t.Stop()
+	for {
+		d.pollAccountLimits(since, time.Now())
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
+}
+
+// pollAccountLimits reads what changed since each CLI's last poll.
+func (d *Daemon) pollAccountLimits(since map[pb.Agent]time.Time, now time.Time) {
+	for _, a := range d.adapterList() {
+		src, ok := a.(agent.AccountLimitsSource)
+		if !ok || a.Bin() == "" {
+			continue
+		}
+		after, ok := since[a.Kind()]
+		if !ok {
+			after = now.Add(-accountLimitsLookback)
+		}
+		u, at, seen := src.AccountLimits(after)
+		if u != nil {
+			d.noteLimits(u, at)
+		}
+		if seen.After(after) {
+			after = seen
+		}
+		since[a.Kind()] = after
+	}
+}
+
+const (
+	accountLimitsInterval = time.Minute
+	// The longest Codex window is a week; older records are past their reset.
+	accountLimitsLookback = 8 * 24 * time.Hour
+)
 
 // noteLimits keeps the newest usage limits Codex reported.
 func (d *Daemon) noteLimits(u *pb.TokenUsage, at time.Time) {

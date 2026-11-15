@@ -237,6 +237,10 @@ func MachineStatusUnavailable(locale string) string {
 	return render(locale, "machine_status.unavailable", map[string]any{})
 }
 
+func QuotaCodexWaiting(locale string) string {
+	return render(locale, "quota.codex_waiting", map[string]any{})
+}
+
 func QuotaManaged(locale string) string {
 	return render(locale, "quota.managed", map[string]any{})
 }

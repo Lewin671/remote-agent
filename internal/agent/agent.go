@@ -92,6 +92,13 @@ type StatusLineAccount interface {
 	ManagedStatusLine(dir string) bool
 }
 
+// AccountLimitsSource is optionally implemented by adapters whose CLI writes
+// account limits to local files on every run, including runs remote-agent
+// does not manage. seen is the newest modification found, the next since.
+type AccountLimitsSource interface {
+	AccountLimits(since time.Time) (limits *pb.TokenUsage, at, seen time.Time)
+}
+
 // QuotaWindowOrder orders a provider's merged windows for all clients.
 type QuotaWindowOrder interface {
 	OrderQuotaWindows(windows []*pb.QuotaWindow)

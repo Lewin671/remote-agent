@@ -684,7 +684,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 
 设备页提供额度详情，按这台机器上安装的 CLI 分组，显示 CLI 登录账户的用量；它与会话上下文占用、累计 token、remote-agent 的图片存储配额分别展示。不同 CLI 不相加，不按模型或会话切分账户额度；不同机器也不凭套餐名推断为同一个账户。界面见 [client-v61 · 账户额度](design/client-v61.html#quota)。
 
-Codex 只从 remote-agent 管理的会话读取 rollout 的额度字段，其他原生会话运行不会触发这里的更新；只含额度、没有 token 统计的 `token_count` 也采集，沿用之前的 token 计数且保留来源时间。Codex 用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。
+Codex 读这台电脑上所有运行的 rollout 额度字段，不限于 remote-agent 管理的会话：其他终端直接开的会话、其他 Agent 调用的 `codex exec` 用的是同一个登录，也写同样的 rollout。daemon 每分钟扫一次 `$CODEX_HOME/sessions` 下自上次以来修改过的 rollout（启动时回看 8 天，单次最多读 16 个文件，每个只读末尾 1 MiB），取上报时间最新的一条，只读本地文件，不向任何服务查询；只含额度、没有 token 统计的 `token_count` 也采集，沿用之前的 token 计数且保留来源时间。Codex 用 rollout 的额度字段（[codex-notes §1](codex-notes.md#1-数据从哪读)）。Claude Code 的 transcript 没有账户额度，额度只在状态栏命令的输入里（[claude-code-notes §2](claude-code-notes.md#2-transcript)）。
 
 - **采集**：daemon 在会话的 `--settings` 里把状态栏设成 `"$RA_EXE" statusline claude`（不改用户的设置文件）：它把输入转给 daemon（500 毫秒超时，失败也不影响状态栏），再用同样的输入运行用户原来的状态栏命令（启动会话时按 Claude Code 的优先级读出、存在会话目录里），输出和退出码原样交回，`padding`、`refreshInterval` 也照搬，所以终端里看到的状态栏不变。
 - **读不到时**：托管设置里定了状态栏时它会盖过 daemon 的，额度就读不到，报「不支持」。

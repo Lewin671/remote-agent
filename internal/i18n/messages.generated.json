@@ -544,6 +544,20 @@
       },
       "zh-CN": "读不到这台电脑的状态"
     },
+    "quota.codex_waiting": {
+      "en": "No Codex quota recorded on this computer in the last 8 days. Run Codex in any terminal, or have another agent call it, and this page updates within a minute.",
+      "key": "quota.codex_waiting",
+      "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "这台电脑最近 8 天没有 Codex 的额度记录。在任何终端运行 Codex，或由其他 Agent 调用 Codex 后，这里会在一分钟内更新。"
+    },
     "quota.managed": {
       "en": "Managed settings override the status line, so quota cannot be read.",
       "key": "quota.managed",
