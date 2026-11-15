@@ -24,14 +24,16 @@ import (
 )
 
 type directPeer struct {
-	policyVersion directPolicyVersion
-	processValid  atomic.Bool
-	session       *direct.Session
-	peer          peerwire.Public // Routing hint only; Session proves the bootstrap correlation.
-	binding       deviceauth.PeerBinding
-	codec         *peerwire.Codec
-	connection    []byte
-	expires       uint64
+	paths            [2]*direct.Path
+	nextCapabilities uint64
+	policyVersion    directPolicyVersion
+	processValid     atomic.Bool
+	session          *direct.Session
+	peer             peerwire.Public // Routing hint only; Session proves the bootstrap correlation.
+	binding          deviceauth.PeerBinding
+	codec            *peerwire.Codec
+	connection       []byte
+	expires          uint64
 }
 type peerInput struct {
 	peer string
@@ -332,6 +334,8 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 				path.Close()
 				return
 			}
+			p.paths[use-1] = path
+			p.nextCapabilities = 0
 			m.workers.Go(func() { m.readPath(p, use, path) })
 			m.mu.Unlock()
 		},
@@ -558,6 +562,16 @@ func (m *directManager) maintenance() {
 					break
 				}
 				m.releaseOutputLocked(q)
+			}
+		}
+		for _, p := range m.active {
+			if p.session.Established() && p.session.Active() && now >= p.nextCapabilities {
+				var id [16]byte
+				_, _ = rand.Read(id[:])
+				body := peerwire.PB(peerwire.B(1, id[:]), peerwire.U(2, 1), peerwire.U(2, 4), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 13), peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9), peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20))
+				if p.session.SendControl(1, body) {
+					p.nextCapabilities = now + 55000
+				}
 			}
 		}
 		pathGeneration := m.pathGeneration

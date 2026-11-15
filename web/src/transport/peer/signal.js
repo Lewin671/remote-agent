@@ -29,7 +29,7 @@ export class Signal {
  if(o.type===8){const targets=restart(raw);if(!this.offerer()||o.context.use!==this.use||o.context.generation!==this.generation||targets.size!==1||targets.get(this.use)!==this.generation)throw Error('Restart binding')}
  }
  setAuthorization(until,members,revision){this.leaseUntil=until;this.membersAuthorized=members;this.authorizationRevision=revision;this.version++}
- authorized(){return this.clock<this.leaseUntil&&this.membersAuthorized&&this.authorizationRevision===1}
+ authorized(){return this.clock<this.leaseUntil&&this.membersAuthorized&&this.authorizationRevision===1&&(!this.current||this.current())}
  async replyAllowed(raw,now){this.tick(now);const revision=this.authorizationRevision;if(!this.authorized())return false;try{const o=await this.codec.open(raw.slice(),this.peer,this.self,this.clock),c=o.context;knownPayload(c.cls,o.type,o.payload);return revision===this.authorizationRevision&&this.authorized()&&this.clock<Number(c.deadline)&&w.equal(c.connection,this.connection)&&w.equal(this.seen.get(w.cacheKey(c))??[],o.hash)&&w.equal(c.senderInstance,this.peer.instance)&&w.equal(c.senderBoot,this.peer.boot)&&!(c.cls===2n&&[4,10,11,12,13].includes(o.type))}catch{return false}}
  offerer(){return w.hex(this.self.id)<w.hex(this.peer.id)}
  ready(){return !this.closed&&this.localSDP&&this.remoteSDP&&this.dtls&&this.confirmed}

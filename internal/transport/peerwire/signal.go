@@ -16,6 +16,8 @@ type Action struct {
 	Original    []byte // Frozen authenticated frame, revalidated at SDK dispatch.
 }
 type Signal struct {
+	Current func() bool // Optional process owner gate, rechecked at every admission/dispatch/reply.
+
 	Codec *Codec
 
 	LeaseUntil, AuthorizationRevision                                                  uint64
@@ -603,7 +605,7 @@ func (s *Signal) SetAuthorization(until uint64, members bool, revision uint64) {
 	s.AuthorizationRevision = revision
 }
 func (s *Signal) authorized() bool {
-	return s.Clock < s.LeaseUntil && s.MembersAuthorized && s.AuthorizationRevision == 1
+	return s.Clock < s.LeaseUntil && s.MembersAuthorized && s.AuthorizationRevision == 1 && (s.Current == nil || s.Current())
 }
 
 // A receipt ACK uses the frozen accepted hash, not current PC admission.

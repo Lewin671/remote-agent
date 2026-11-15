@@ -10,6 +10,7 @@ export function readCandidates(raw: Bytes): { list: Candidate[]; index: number }
 export function endBody(ufrag: Bytes, count: number, batches: number): Bytes;
 export class Signal {
   constructor(codec: Codec, self: Identity, peer: Public, connection: Bytes, use: number, now: number);
+  current?: () => boolean; leaseUntil: number;
   self: Identity; peer: Public; connection: Bytes; clock: number; roundDeadline: number; version: number;
   probe: Opened | null; receivedProbe: Opened | null; challenge: Opened | null;
   use: bigint; generation: bigint; next: bigint;

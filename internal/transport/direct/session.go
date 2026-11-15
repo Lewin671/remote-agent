@@ -37,10 +37,12 @@ type SessionConfig struct {
 	LoopbackOnly bool
 }
 type sessionEvent struct {
-	use       uint64
-	candidate *webrtc.ICECandidateInit
-	state     webrtc.PeerConnectionState
-	kind      int
+	use         uint64
+	candidate   *webrtc.ICECandidateInit
+	state       webrtc.PeerConnectionState
+	kind        int
+	controlType uint64
+	body        []byte
 }
 type sessionPC struct {
 	business                    atomic.Bool
@@ -59,19 +61,20 @@ type Session struct {
 	finished    chan struct{}
 	closedPaths []*Path
 
-	cfg         SessionConfig
-	ctx         context.Context
-	cancel      context.CancelFunc
-	input       chan []byte
-	held        atomic.Int64
-	events      chan sessionEvent
-	delivery    chan deliveryResult
-	boot        *peerwire.Sender
-	pcs         [2]sessionPC
-	controlSeq  uint64
-	challenge   []byte
-	receipts    map[string][]byte
-	controlSeen map[string][]byte
+	cfg           SessionConfig
+	ctx           context.Context
+	cancel        context.CancelFunc
+	input         chan []byte
+	held          atomic.Int64
+	events        chan sessionEvent
+	delivery      chan deliveryResult
+	boot          *peerwire.Sender
+	controlWindow *peerwire.Sender
+	pcs           [2]sessionPC
+	controlSeq    uint64
+	challenge     []byte
+	receipts      map[string][]byte
+	controlSeen   map[string][]byte
 }
 type deliveryResult struct {
 	id     []byte
@@ -93,6 +96,8 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 	for i := range s.pcs {
 		g := peerwire.NewSignal(cfg.Codec, cfg.Self, cfg.Peer, cfg.Connection, uint64(i+1), now)
 		g.RoundDeadline = cfg.Deadline
+		g.Current = cfg.Allow
+		g.LeaseUntil = ^uint64(0)
 		s.pcs[i] = sessionPC{signal: g, sender: peerwire.NewSender(cfg.Deadline), batch: peerwire.CandidateBatcher{Generation: 1, Deadline: cfg.Deadline, Binding: 1}}
 	}
 	if initiate {
@@ -217,6 +222,11 @@ func (s *Session) run() {
 	}
 }
 func (s *Session) flush(now uint64) {
+	if s.controlWindow != nil {
+		for _, raw := range s.controlWindow.Tick(now) {
+			s.transmit(raw)
+		}
+	}
 	for _, raw := range s.boot.Tick(now) {
 		if s.cfg.Allow() {
 			s.transmit(raw)
@@ -354,25 +364,34 @@ func (s *Session) receive(raw []byte, now uint64) {
 		hash := f[6].B
 		// An authenticated ACK can settle only a recorded immutable sender packet.
 		matched := false
-		for _, sender := range []*peerwire.Sender{s.boot, s.pcs[0].sender, s.pcs[1].sender} {
+		bootstrap := false
+		for _, sender := range s.senders() {
 			if pending := sender.Pending[string(hash)]; pending != nil {
 				original, err := s.cfg.Codec.OpenSent(pending.Raw, s.cfg.Self, peer, now)
 				if err != nil || original.Context.Seq != f[5].U || original.Context.Class != f[4].U || original.Context.Generation != f[7].U || original.Context.Use != f[8].U {
 					continue
 				}
 				matched = true
+				if original.Type == 2 && original.Context.Class == 1 && original.Context.Generation == 0 {
+					bootstrap = true
+				}
 			}
 		}
 		if !matched {
 			return
 		}
 		s.retainUntil.Store(max(s.retainUntil.Load(), c.Deadline+300000))
-		for i := range s.pcs {
-			if _, err = s.pcs[i].signal.Receive(raw, now); err != nil {
-				return
+		if bootstrap {
+			for i := range s.pcs {
+				if _, err = s.pcs[i].signal.Receive(raw, now); err != nil {
+					return
+				}
 			}
 		}
 		s.boot.Ack(hash)
+		if s.controlWindow != nil {
+			s.controlWindow.Ack(hash)
+		}
 		for i := range s.pcs {
 			s.pcs[i].sender.Ack(hash)
 			s.maybeOffer(i, now)
@@ -591,6 +610,21 @@ func (s *Session) maybeOffer(i int, now uint64) {
 	s.sendSignal(i, 3, peerwire.SDPBody(offer), now)
 }
 func (s *Session) event(e sessionEvent, now uint64) {
+	if e.kind == 6 {
+		if !s.Active() || len(s.pcs[0].signal.Peer.Boot) != 32 {
+			return
+		}
+		raw := s.control(e.controlType, e.body, now)
+		if raw == nil {
+			return
+		}
+		if s.controlWindow == nil || s.controlWindow.TimedOut || len(s.controlWindow.Pending) == 0 {
+			s.controlWindow = peerwire.NewSender(now + 10000)
+		}
+		s.controlWindow.Enqueue(raw, now, now+10000, 1)
+		return
+	}
+
 	if e.kind == 5 {
 		for i := range s.pcs {
 			p := &s.pcs[i]
@@ -647,7 +681,7 @@ func (s *Session) maybeReady(i int, now uint64) {
 	}
 }
 func (s *Session) result(r deliveryResult, now uint64) {
-	for _, sender := range []*peerwire.Sender{s.boot, s.pcs[0].sender, s.pcs[1].sender} {
+	for _, sender := range s.senders() {
 		for _, pending := range sender.Pending {
 			fields, err := peerwire.Parse(pending.Raw, 5)
 			if err != nil || !bytes.Equal(fields[4].B, r.id) {
@@ -695,4 +729,23 @@ func (s *Session) transmit(raw []byte) bool {
 			return s.ctx.Err() == nil && s.cfg.Allow() && uint64(time.Now().UnixMilli()) < deadline
 		},
 	})
+}
+
+func (s *Session) senders() []*peerwire.Sender {
+	out := []*peerwire.Sender{s.boot, s.pcs[0].sender, s.pcs[1].sender}
+	if s.controlWindow != nil {
+		out = append(out, s.controlWindow)
+	}
+	return out
+}
+func (s *Session) SendControl(typ uint64, body []byte) bool {
+	if len(body) > 14<<10 || !s.Active() {
+		return false
+	}
+	select {
+	case s.events <- sessionEvent{kind: 6, controlType: typ, body: append([]byte(nil), body...)}:
+		return true
+	default:
+		return false
+	}
 }
