@@ -13,6 +13,7 @@ type Sender struct {
 	Deadline                   uint64
 	Pending                    map[string]*Pending
 	TimedOut                   bool
+	Paused                     bool
 	Frames, Bytes              int
 	RetryAt, NetworkGeneration uint64
 	Failures                   uint32
@@ -42,6 +43,9 @@ func (s *Sender) Tick(now uint64) [][]byte {
 	if now >= s.Deadline {
 		s.Pending = map[string]*Pending{}
 		s.TimedOut = true
+		return nil
+	}
+	if s.Paused {
 		return nil
 	}
 	var out [][]byte
@@ -172,3 +176,6 @@ func (s *Sender) SetAuthorization(until uint64, members bool, revision uint64) {
 		s.Rebind(revision)
 	}
 }
+
+func (s *Sender) Offline()    { s.Paused = true }
+func (s *Sender) Discovered() { s.Paused = false }

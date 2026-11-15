@@ -13,6 +13,7 @@ type Action struct {
 	Class, Type uint64
 	Payload     []byte
 	Generation  uint64
+	Original    []byte // Frozen authenticated frame, revalidated at SDK dispatch.
 }
 type Signal struct {
 	Codec *Codec
@@ -139,11 +140,11 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			s.Unsupported++
 			s.Seen[key] = o.Hash
 			s.CacheUntil[key] = c.Deadline + 300000
-			return []Action{{2, 10, PB(U(1, c.Class), U(2, o.Type), U(3, c.Seq), B(4, o.Hash)), c.Generation}}, nil
+			return []Action{{2, 10, PB(U(1, c.Class), U(2, o.Type), U(3, c.Seq), B(4, o.Hash)), c.Generation, o.Raw}}, nil
 		}
 		s.Seen[key] = o.Hash
 		s.CacheUntil[key] = c.Deadline + 300000
-		return []Action{{2, o.Type, o.Payload, c.Generation}}, nil
+		return []Action{{2, o.Type, o.Payload, c.Generation, o.Raw}}, nil
 	}
 	if o.Type == 1 || o.Type == 2 {
 		if string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 {
@@ -186,7 +187,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			}
 		}
 
-		return []Action{{1, o.Type, o.Payload, 0}}, nil
+		return []Action{{1, o.Type, o.Payload, 0, o.Raw}}, nil
 	}
 	// Receive has authenticated both current instances/nonces before Accept.
 	// An Offer can overtake Control: its nonce proof is bootstrap admission,
@@ -265,7 +266,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 	return actions, nil
 }
 func (s *Signal) apply(o Opened) (Action, error) {
-	action := Action{1, o.Type, o.Payload, o.Context.Generation}
+	action := Action{1, o.Type, o.Payload, o.Context.Generation, o.Raw}
 	switch o.Type {
 	case 3: // Offer: only the smaller device may originate it.
 		if s.Offerer() || s.RemoteSDP {
@@ -345,7 +346,7 @@ func (s *Signal) apply(o Opened) (Action, error) {
 		s.GapDeadline = 0
 	default:
 		s.Unsupported++
-		action = Action{2, 10, PB(U(1, o.Context.Class), U(2, o.Type), U(3, o.Context.Seq), B(4, o.Hash)), o.Context.Generation}
+		action = Action{2, 10, PB(U(1, o.Context.Class), U(2, o.Type), U(3, o.Context.Seq), B(4, o.Hash)), o.Context.Generation, o.Raw}
 	}
 	return action, nil
 }
@@ -625,4 +626,18 @@ func (s *Signal) ReplyAllowed(raw []byte, now uint64) bool {
 		return false
 	}
 	return !(c.Class == 2 && (o.Type == 4 || o.Type == 10 || o.Type == 11 || o.Type == 12 || o.Type == 13))
+}
+
+// Prune releases only expired replay evidence. It is independent of the
+// establishment deadline, so a long-lived or retired connection stays bounded.
+func (s *Signal) Prune(now uint64) {
+	s.Clock = max(s.Clock, now)
+	for key, until := range s.CacheUntil {
+		if s.Clock > until {
+			delete(s.CacheUntil, key)
+			delete(s.Seen, key)
+			delete(s.Allowed, key)
+			delete(s.Dispatched, key)
+		}
+	}
 }

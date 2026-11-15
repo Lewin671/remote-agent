@@ -57,3 +57,24 @@ func TestSenderAndBatcher(t *testing.T) {
 	check(len(b.Flush(51, true, 2, 1)) == 0)
 	check(!b.Add([]byte{1}, 2, 52, 1))
 }
+
+func TestOfflineDiscoveryKeepsOriginalRetryWindow(t *testing.T) {
+	s := NewSender(10000)
+	raw := []byte{1, 2, 3}
+	if !s.Enqueue(raw, 0, 10000, 1) || len(s.Tick(0)) != 1 {
+		t.Fatal("initial send")
+	}
+	s.Offline()
+	if len(s.Tick(500)) != 0 {
+		t.Fatal("offline retried without discovery")
+	}
+	s.Discovered()
+	if len(s.Tick(1500)) != 1 || len(s.Tick(1501)) != 1 || len(s.Tick(1502)) != 0 {
+		t.Fatal("discovery changed three-attempt cap")
+	}
+	s.Offline()
+	s.Discovered()
+	if len(s.Tick(10000)) != 0 || !s.TimedOut {
+		t.Fatal("discovery extended total deadline")
+	}
+}
