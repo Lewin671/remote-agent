@@ -1,0 +1,12 @@
+{
+  "reused_sdk_archives": "downloads.json (all five primary SDK archives verified against pinned SHA-256)",
+  "additional": [
+    {
+      "url": "https://repo.maven.apache.org/maven2/org/bouncycastle/bcprov-jdk18on/1.85/bcprov-jdk18on-1.85.jar",
+      "sha256": "20af26bf6060bb8005cc2389916812c1e0e998dc48d2ced7131b89461b54cff7",
+      "bytes": 10321819,
+      "published_sha256_verified": true
+    }
+  ],
+  "go_sources": "Pinned go.mod/go.sum; Go content checksums verified on download. Existing Go 1.26.11 toolchain reused."
+}

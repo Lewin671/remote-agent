@@ -113,7 +113,7 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 
 2.5 秒是接收方故障期限，与发送方重试重叠，成功补齐时不额外等待。因此不额外给原算术
 1.25 秒节流 +1.5 秒重试 +3 秒 relay +1 秒引导 +3 秒 ICE/DTLS 的 9.75 秒加一次 2.5 秒；
-但完整引导的串行重试另有下界反例，见第 8 节，9.75 秒不能据此视为恢复上界。
+完整引导须同时满足第 8 节的整轮丢失前提，不能把逐消息三份尝试当作无条件恢复上界。
 最后重试未在缺口期限内到达、缺口到期后的新代次及超长 retry_after 须另列失败/耗时，
 不沿用此成功预算或延长 10 秒。当前只有模型结果，不是四端 SDK 或 16 PC 恢复实测。
 
@@ -127,12 +127,12 @@ Playwright 1.65.1 的 WebKit 27.2（build 2388）、Android `io.github.webrtc-sd
 
 每个实现均产生原始 Offer/Answer/Restart，固定 negotiated ID 0/1，业务通道可靠有序、探测通道 maxRetransmits=0，
 同 SDK 两端收到测试消息；未创建音视频 track 或配置 STUN/TURN。原串经过实验验证器后直接传入 SDK，
-输入未裁剪或重编码。浏览器 getter 在追加候选后会变化，因此在追加候选前核对 remoteDescription 与传入原串相同。
-正常协商未产生额外 DCEP 回调；**恶意额外通道与跨 generation 候选尚未做运行攻击测试**，不能据此宣称直连安全门槛完成。
+输入未裁剪或重编码。跨 SDK 时浏览器 getter 即使在追加候选前也可能规范化 Pion SDP；应用核对传入参数与验证原串相同，hash 不取 getter。
+正常协商未产生额外 DCEP 回调；后续恶意通道、候选负例和跨 SDK 证据见第 9 节。
 
-[共享原串与正负向量](../testdata/transport/sdp/manifest.json)有 15 份 SDK 原串、1 份相同指纹继承正例和 16 份负例，
-共 32 项；Go、JavaScript、Java/JVM 与 Swift 验证器消费同一 vectors.tsv。
-覆盖 LF/裸 CR/末尾缺失、NUL、无效 UTF-8、额外音频/application/未知媒体、ice-lite、指纹缺失/算法/长度/冲突/同 scope 重复、
+[共享原串与正负向量](../testdata/transport/sdp/manifest.json)有 15 份 SDK 原串、1 份相同指纹继承正例和 17 份负例，
+共 33 项；Go、JavaScript、Java/JVM 与 Swift 验证器消费同一 vectors.tsv。
+覆盖 BOM/LF/裸 CR/末尾缺失、NUL、无效 UTF-8、额外音频/application/未知媒体、ice-lite、指纹缺失/算法/长度/冲突/同 scope 重复、
 重复 ufrag 和尺寸超限。SDP 在候选收集前取得，只含临时实验凭据与公用占位地址；没有用户身份、私钥或实际网卡候选地址。
 这些有限向量不是完整 RFC 语法/fuzz 或密码学认证证明。
 
@@ -145,10 +145,10 @@ iOS 最初空壳未采用 iOS 27 scene 生命周期，启动崩溃；修正夹�
 iOS 真机 arm64 目标编译成功，但没有运行/安装真机：未签名 App 从 75,643 B 到 12,959,436 B（增量 12,883,793 B），
 相同 ZIP 参数的未签名 IPA 从 9,032 B 到 5,957,625 B（增量 5,948,593 B）；不是 App Store thinning/加密后的下载量。
 
-SDK 候选建议为继续实验 Pion v4.2.26、浏览器原生、Android 标准 webrtc-sdk 150.7871.04 和 iOS stasel 157.0.0，
+负责人已采纳实验阶段选型为 Pion v4.2.26、浏览器原生、Android 标准 webrtc-sdk 150.7871.04 和 iOS stasel 157.0.0，
 均不加入主工程。Android prefixed/stripped、自建 data-only libwebrtc、iOS webrtc-sdk/Specs 是尚未运行的备选，不能按归档大小推荐发布。
 Pion LICENSE 为 MIT；Android Maven POM 声明 BSD-3-Clause，分发仓库脚本 LICENSE 为 MIT；iOS XCFramework 附 WebRTC 三条款许可与 PrivacyInfo。
-Android arm64 ELF 的三个 PT_LOAD 对齐均为 16 KiB，APK ZIP 对齐检查通过；未在 16 KiB 页设备运行。完整第三方 notices、Android R8、iOS 商店/本地网络权限和供应链签名复核仍属于冻结门槛。
+Android arm64 ELF 的三个 PT_LOAD 对齐均为 16 KiB，APK ZIP 对齐检查通过；未在 16 KiB 页设备运行。完整第三方 notices、Android R8、iOS 商店/本地网络权限和供应链签名复核仍属于产品依赖冻结门槛。
 来源：[Pion 固定版本](https://github.com/pion/webrtc/releases/tag/v4.2.26)、[Android 分发](https://github.com/webrtc-sdk/android)、
 [stasel 固定 Package.swift](https://github.com/stasel/WebRTC/blob/157.0.0/Package.swift)。固定下载 URL、SHA-256 及包体摘要另存实验 manifest；
 SPM zip 校验值已与 Package.swift 一致，不把下载 hash 当作独立的发布者签名证明。
@@ -183,5 +183,75 @@ Answerer 的 Confirm 已允许与 Answer 重试并行；不要求 Confirm 等 IC
 这证明“每条逻辑信令最多丢两份”不能由只加一次 1.5 秒的算术保证本次 10 秒成功。
 另做更有利的变体：假定 daemon 已知客户端 nonce，主动发 Challenge，完全省去等待 Probe；同时允许 Confirm 与 ICE/DTLS 并行。即便如此，ICE/DTLS 用设计允许的 3 秒、从双方 SDP 可安装后完成，仍有 `3+3×1.5+max(1.5,3)=10.5 秒`，模型也是 0/16 Ready。这不是当前 SDK 实际耗时，而是设计分项允许值内的反例；没有把主动 Challenge 宣布为已冻结规则。
 
-如果负责人本意是**整轮恢复合计最多丢两帧**，本反例不在那个成功前提内，需要明确这个口径与按消息三份重传的区别。
-本轮按停止条件保留反例，不改重试、10 秒、128 帧/3 MiB，不继续终端或冻结 wire；裁定入口见 [plan](plan.md#传输模块与直连)。
+负责人已裁定成功前提为整轮合计最多丢两帧；上面的逐消息丢两份保留为超出前提的退路场景。每条最多三份、2.5 秒缺口、32 条窗口、10 秒总期限及 128 帧/3 MiB 均保留。超时释放本轮资源，保留防重放依据并按全抖动退避，不能因新网络通知延长本轮或清零退避。
+
+
+**裁定后的有限事件枚举（2026-11-15）**：[round-loss-matrix.py](../spike/transport-1a/round-loss-matrix.py)
+枚举两个 peer、每个两个 PC 的事件位置，丢失范围同时包含 Signal 和 Control ACK，第二个丢失点也包含首次丢失诱发的重试。
+连同 8 peer×2 PC 对照分别让 client/daemon 作固定 Offerer（后者等待 Challenge ACK 证明当前 nonce），共 14,884 例：0 丢失 2 例、1 丢失 240 例、2 丢失 14,642 例，全部 Ready；
+在 relay 3 秒、发现 1 秒、ICE 3 秒的条件下最晚 8,550 ms。大规模场景每方向初发 120 帧、16/16 Ready。
+这里按事件等价类覆盖分布，**不是穷举任意连续网络时延或同时运行 16 个 SDK PC**；两次丢失后发送量仍在突发桶内。
+逐消息丢两份的超前提场景在 10 秒失败，PC/待发帧/计时器均为零、relay 可用，下次示例重试 10,500 ms。
+退避测试覆盖 1/2/4/…/30 秒全抖动和 1,000 次网络代次通知，不重置已选择的重试期限。
+
+## 9. 四端信令、真实封装与跨 SDK 互连
+
+**独立实验，2026-11-15；仍非产品直连验收。** Go、浏览器 WebCrypto（Chrome/WebKit）、Java/JVM（Bouncy Castle 1.85）
+和 Swift/CryptoKit 各实现同一草案 codec、信令接收器、发送窗口及候选汇集器。
+[共享 sealed 轨迹](../testdata/transport/signal/scenarios.tsv)分 Signal/Control 两条可乱序、重放或丢失的假管道，
+12 个场景、189 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
+旧 SDK callback token、未来代候选先到、同序号冲突、固定缺口期限和未知类型认证 Unsupported。
+Probe 只可触发受限 Challenge；发送方收到绑定双方 nonce 的 Challenge ACK 后才能以 responder 身份开始 PC。
+单独收到重放 Probe 不能进入 SDK；接收器返回的 action 才是 SDK 调用许可，计数不是实际 API 调用次数。
+Close 与缺口退休分开：前者终结连接，后者允许固定 Offerer 开下一代，沿用整轮期限与防重放缓存。
+
+四种实现的七组发送/汇集测试覆盖 32 在途背压、0/500/1500 ms、ACK 释放、limited、10 秒清空、退避不被换网重置，
+以及 50 ms/16 条/64 个/4 批和旧代候选回调。时钟是虚拟时钟；代码没有用真实睡眠冒充重试精度。
+[16 项密码学向量](../testdata/transport/wire/vectors.json)验证真实 X25519/HKDF-SHA256/AES-256-GCM/Ed25519，
+错误身份、nonce/head/scope、拼接、畸形编码和签名不能推进状态。Java/JS/Go 的固定随机输入可逐字节比对；
+CryptoKit 签名可能采用随机化，密文和 AAD 一致、签名交叉验签一致，不要求签名字节相同。
+Apple 对此有[明确说明](https://developer.apple.com/documentation/cryptokit/curve25519/signing/privatekey/signature(for:))；重试必须冻结整包，不能重新调用签名器。
+固定测试身份由公开种子产生，ID 仍按既有成员公钥摘要规则生成；这些材料不能用于账户。
+
+容量实验以 8 客户端×2 PC、每候选**编码后恰 1,024 B**、每代 64 个/4 批构造实际加密帧。
+候选使用文档地址，只测编码，未交 SDK。每 PC 每方向 1 引导+1 SDP+4批+End+Confirm，正好 128 个初发帧/方向。
+采用 Android 原串的客户端方向 1,145,100 B、Pion 方向 1,145,956 B；最大整帧 17,075 B。
+每包保留原字节送三份，为 384 帧、分别 3,435,300/3,437,868 B；ACK 每方向 384 帧、259,968 B，最大 677 B。
+均小于设计 3 MiB 初发、9 MiB 三份及 1 KiB 单 ACK。Go 对五类 SDP 原串全部核算通过。
+同一双向容量语料经 Chrome/WebKit/Java/Swift 自己的 crypto **重新封装、解密并经 sender 送三份**，
+各得到 256/768 帧、2,291,056/6,873,168 B。墙钟包含编码/验签开销，Chrome 331 ms、WebKit 660 ms，
+Java 566 ms、Swift 547 ms；它们是主机测试耗时，不能加成手机性能或端到端 Ready 保证。
+
+真实 SDK 互连的另一层实验由本机 Pion 充当对端，Chrome、WebKit、Android API 36、iOS 27 分别实际交换原始 SDP 和候选。
+HTTP 夹具是有权看到自身 SDP 的 **peer**，只监听 loopback、随机 token 认证；不是 server 密文转发实现。
+Android 使用模拟器 host gateway，并由其主动 ICE 检查让 Pion 学习 peer-reflexive 候选，不让主机探测模拟器私网地址。
+每个客户端各四组：自身 Offerer、Pion Offerer+真实 ICE restart、额外 DCEP、未声明 negotiated SID 2。
+候选错误 ufrag/代次在 AddICECandidate 前拒绝；探测通道收到业务不分派；额外 DCEP 立即关闭 PC；
+未声明 SID 不产生应用回调或业务交付。Pion 接收侧另有实际 SDK 通道负例测试。
+
+两次信令交换后 ufrag 确实改变，可靠/探测通道可恢复，但本机 restart 时延不稳定：
+Android 一次 1,189 ms；最终浏览器轮次 Chrome 6,391 ms、WebKit 5,971 ms，2.5 秒新代次探测均超时。
+iOS 早一轮完整四组通过、restart 5,929 ms；新增探测曾超时，最终四组重跑通过、restart 2,593 ms，保留所有失败样本，不能据最终成功声明稳定性。
+这些运行没有远端公网 STUN、真实移动换网或统计采样；不定位为单一 SDK/网络原因，不声称加探测就解决 SCTP 恢复。
+设计的 ICE/DTLS 分项是成功前提，超过时须保持 relay 并在整轮 10 秒截止，不能改总期限。
+故障轨迹状态机与真实 SDK 互连分别运行，尚非四端产品信令适配器的密码学闭环，也不是 16 PC 并发 SDK 性能验收。
+
+## 10. 终端假路径与最小字段验证
+
+**Go 有限状态实验，2026-11-15**：[terminal/](../spike/transport-1a/terminal/)
+复用现有 deviceauth 的真实成员状态、租约、业务信封和 RequestIdentity；两条路径与 tmux 注入后端是测试替身。
+20 组场景输出在[共用预期](../testdata/transport/terminal/expected.json)。未调用产品 Endpoint.Accept 或真实 tmux，
+Accept 观察点只在重组、认证、绑定和连续序号通过后触发；不能作为持久接受日志/CLI 端到端验收。
+
+覆盖整密文重组后认证、双路乱序/重复/冲突、5 秒碎片清理、10 秒缺口恢复、渲染后 ACK、20 ms/16 帧合并、
+输出 replay 与输入依据分离、64 KiB/30 秒输入背压、部分 600 B 输入的已知 256/可能 512 B 前缀及后续 blocked，
+Resize 失败不 fail-stop、换密钥仅重新加密原业务字节且只注入一次、物理断路不取消正在注入、
+AttachPath 不调用 OpenTerminal、旧腿回调不能关新腿、实例变更要求核对、认证 InputStatus/分页回复/最终 Barrier/ACK、
+先核清再补发旧流、旧流最终停止准入后才重新授权明确未应用输入、16 活流+16 退休条目/30 秒清理。
+
+最小字段已落在 [wire 草案](transport-wire-draft.md)：应用 seq/原 deadline/原信封、path generation、整密文长度/hash、
+processed/input_success/failed_seq、每条原授权 hash 和 outcome/注入前缀区间、查询关联 ID/不可变 snapshot token/分页完成标志、
+最终 stop-admission barrier、Attach 的旧 stream/实例/新腿绑定。输出 replay 失效不传播成 Input fail-stop。
+四端 codec 可承载这些固定 type ID 与有界 protobuf；当前终端语义轨迹只在 Go 跑，Java/Swift/JS 终端移植尚未执行。
+其移植不要求端上模拟 tmux：将后端结果作为显式输入事件，以同一事件时钟和预期 JSON 核对即可；产品阶段仍须接真实后端。
+本模型在明细满时保守背压，未模拟健康长流已确认摘要的回收优化；生产实现须接现有接受记录与水位保留策略，不能直接复制实验 map。

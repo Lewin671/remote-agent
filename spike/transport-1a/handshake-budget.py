@@ -35,8 +35,11 @@ class Experiment:
     CRITICAL = {'Probe','Challenge','Offer','Answer','Confirm'}
 
     def __init__(self, offer, answer, losses=2, relay_ms=3000,
-                 proactive_challenge=False, ice_ms=0):
+                 proactive_challenge=False, ice_ms=0, faults=None, peers=8, discovery_ms=0, offerer="client"):
         self.offer, self.answer, self.losses = offer, answer, losses
+        self.faults,self.peers=faults,peers
+        self.offerer=offerer;self.answerer="daemon" if offerer=="client" else "client";self.offer_started=set()
+        self.deliveries=[];self.dropped=[];self.ack_ordinals={}
         self.proactive_challenge,self.ice_ms=proactive_challenge,ice_ms
         self.events=[]; self.order=0; self.now=0; self.trace=[]
         self.acked=set(); self.cache={}; self.pending={}; self.expected={}; self.gaps={}
@@ -45,7 +48,9 @@ class Experiment:
         self.body_bytes={'client':0,'daemon':0};self.acks={'client':0,'daemon':0}
         self.installed_offers=set();self.installed_answers=set();self.confirms={'client':set(),'daemon':set()}
         self.retired=0;self.ready=set();self.ice_ready=set();self.last_ready_ms=None
-        self.event(relay_ms,self.start)
+        self.ice_started=set();self.candidate_ready={"client":set(),"daemon":set()}
+        self.event(relay_ms,lambda:self.log("relay_ready"))
+        self.event(relay_ms+discovery_ms,self.start)
 
     def event(self,at,action):
         self.order+=1;heapq.heappush(self.events,(at,self.order,action))
@@ -73,7 +78,10 @@ class Experiment:
         assert hashlib.sha256(frame.body).hexdigest()==digest
         self.sends[frame.sender]+=1;self.body_bytes[frame.sender]+=len(frame.body)
         self.log('send',frame,attempt=attempt)
-        if frame.kind in self.CRITICAL and attempt<self.losses:
+        delivery=('Signal',frame.sender,frame.peer,frame.pc,frame.seq,attempt)
+        self.deliveries.append(delivery)
+        if (self.faults is not None and delivery in self.faults) or (self.faults is None and frame.kind in self.CRITICAL and attempt<self.losses):
+            self.dropped.append(delivery)
             self.log('drop',frame);return
         self.receive(frame)
 
@@ -101,10 +109,17 @@ class Experiment:
                     while self.expected[lane] in pending:
                         next_frame=pending.pop(self.expected[lane]);self.process(next_frame);self.expected[lane]+=1
                     if not pending:self.gaps.pop(lane,None)
-        # Independent, healthy Control fake pipe. Authenticated receipt ACK;
+        # Independent Control fake pipe; fault sets may also drop ACKs.
         # acknowledging a buffered candidate does not install it in the SDK.
-        self.acks['daemon' if f.sender=='client' else 'client']+=1
+        ack_sender='daemon' if f.sender=='client' else 'client'
+        self.acks[ack_sender]+=1
+        ordinal=self.ack_ordinals.get(key,0);self.ack_ordinals[key]=ordinal+1
+        delivery=('Control',ack_sender,f.peer,f.pc,f.seq,ordinal)
+        self.deliveries.append(delivery)
+        if self.faults is not None and delivery in self.faults:
+            self.dropped.append(delivery);return
         self.acked.add(key);self.outstanding[lane].discard(key)
+        if f.kind=="Challenge" and self.offerer=="daemon":self.begin_offers(f.peer)
 
     def gap(self,lane):
         if self.gaps.get(lane)==self.now and self.pending.get(lane):
@@ -113,7 +128,7 @@ class Experiment:
     def candidates(self,sender,peer,pc):
         # A bounded maximum: 64 synthetic, documentation-address candidates.
         # They are never submitted to an SDK or used as network destinations.
-        sdp=self.offer if sender=='client' else self.answer
+        sdp=self.offer if sender==self.offerer else self.answer
         ufrag=re.search(rb'a=ice-ufrag:([^\r]+)',sdp).group(1).decode()
         for batch in range(4):
             candidates=[f'candidate:{n+1} 1 UDP 2122260223 192.0.2.1 {5000+n} typ host ufrag {ufrag}' for n in range(batch*16,(batch+1)*16)]
@@ -123,8 +138,8 @@ class Experiment:
         self.send(Frame(sender,peer,pc,6,'EndCandidates',b'64,4'))
 
     def start(self):
-        self.log('relay_ready')
-        for peer in range(8):
+        self.log('bootstrap_start')
+        for peer in range(self.peers):
             if self.proactive_challenge:
                 # Optimistically assume the daemon already knows the client's
                 # current nonce; remove the Probe dependency entirely.
@@ -137,27 +152,39 @@ class Experiment:
         if f.kind=='Probe':
             self.send(Frame('daemon',f.peer,-1,1,'Challenge',b'fresh-daemon-nonce'))
         elif f.kind=='Challenge':
-            for pc in range(2):
-                self.send(Frame('client',f.peer,pc,1,'Offer',self.offer))
-                self.event(self.now+50,lambda p=f.peer,c=pc:self.candidates('client',p,c))
+            if self.offerer=='client':self.begin_offers(f.peer)
         elif f.kind=='Offer':
             assert k not in self.installed_offers;self.installed_offers.add(k)
-            self.send(Frame('daemon',f.peer,f.pc,1,'Answer',self.answer))
+            self.send(Frame(self.answerer,f.peer,f.pc,1,'Answer',self.answer))
             self.event(self.now+50,lambda p=f.peer,c=f.pc:self.answer_tail(p,c))
         elif f.kind=='Answer':
             assert k in self.installed_offers and k not in self.installed_answers;self.installed_answers.add(k)
-            self.event(self.now+self.ice_ms,lambda k=k:self.ice_complete(k))
-            self.send(Frame('client',f.peer,f.pc,7,'Confirm',self.confirm_body()))
+            self.maybe_start_ice(k)
+            self.send(Frame(self.offerer,f.peer,f.pc,7,'Confirm',self.confirm_body()))
         elif f.kind=='Confirm':
             assert k in self.installed_offers and k in self.installed_answers
             receiver='daemon' if f.sender=='client' else 'client'
             self.confirms[receiver].add(k)
             self.maybe_ready(k)
         elif f.kind=='Candidate':
-            assert k in (self.installed_offers if f.sender=='client' else self.installed_answers)
+            assert k in (self.installed_offers if f.sender==self.offerer else self.installed_answers)
+            self.candidate_ready[f.sender].add(k);self.maybe_start_ice(k)
+
+    def begin_offers(self,peer):
+        if peer in self.offer_started:return
+        self.offer_started.add(peer)
+        for pc in range(2):
+            self.send(Frame(self.offerer,peer,pc,1,'Offer',self.offer))
+            self.event(self.now+50,lambda p=peer,c=pc:self.candidates(self.offerer,p,c))
 
     def confirm_body(self):
         return hashlib.sha256(self.offer).digest()+hashlib.sha256(self.answer).digest()
+
+    def maybe_start_ice(self,k):
+        if k in self.ice_started or k not in self.installed_answers:return
+        if any(k not in ready for ready in self.candidate_ready.values()):return
+        self.ice_started.add(k)
+        self.event(self.now+self.ice_ms,lambda:self.ice_complete(k))
 
     def ice_complete(self,k):
         self.ice_ready.add(k);self.maybe_ready(k)
@@ -167,10 +194,10 @@ class Experiment:
             self.ready.add(k);self.last_ready_ms=self.now
 
     def answer_tail(self,peer,pc):
-        self.candidates('daemon',peer,pc)
+        self.candidates(self.answerer,peer,pc)
         # The answerer knows both SDPs already; its Confirm may overlap Answer
         # retransmission. The offerer's Confirm cannot precede receiving Answer.
-        self.send(Frame('daemon',peer,pc,7,'Confirm',self.confirm_body()))
+        self.send(Frame(self.answerer,peer,pc,7,'Confirm',self.confirm_body()))
 
     def run(self):
         while self.events:
@@ -180,11 +207,18 @@ class Experiment:
         assert self.retired==0  # The lead's 2.5-second fix is respected.
         assert all(n<=128 for n in self.initial.values())
         assert all(n<=384 for n in self.sends.values())
-        return dict(initial_frames=self.initial,transmitted_frames=self.sends,
+        timed_out=len(self.ready)!=2*self.peers
+        pending_before=sum(len(q) for q in self.outstanding.values())
+        self.events.clear();self.pending.clear();self.gaps.clear();self.outstanding.clear()
+        return dict(timed_out=timed_out,relay_available=True,
+                    active_timers=0,pending_frames=0,owned_pcs=0 if timed_out else 2*self.peers,
+                    tombstone_hashes=len(self.cache),unacked_at_deadline=pending_before,
+                    next_retry_ms=self.DEADLINE+500 if timed_out else None,
+                    initial_frames=self.initial,transmitted_frames=self.sends,
                     payload_bytes_only=self.body_bytes,control_acks=self.acks,
                     sender_window_peak=self.peak,reorder_buffer_peak=self.buffer_peak,
                     retired_generations=self.retired,ready_pcs=len(self.ready),
-                    all_ready_at_ms=self.last_ready_ms if len(self.ready)==16 else None,
+                    all_ready_at_ms=self.last_ready_ms if len(self.ready)==2*self.peers else None,
                     offers_installed=len(self.installed_offers),answers_installed=len(self.installed_answers),
                     ice_ready_pcs=len(self.ice_ready),proactive_challenge=self.proactive_challenge,ice_ms=self.ice_ms,
                     total_deadline_ms=self.DEADLINE,trace=self.trace)

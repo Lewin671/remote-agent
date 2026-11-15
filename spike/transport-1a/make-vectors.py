@@ -33,6 +33,7 @@ vectors={
     'fingerprint-short':raw.replace(fp,b'a=fingerprint:sha-256 01:02\r\n'),
     'fingerprint-missing':raw.replace(fp,b''),
     'fingerprint-conflict':raw.replace(b'm=application',b'a=fingerprint:sha-256 '+b'00:'*31+b'00\r\nm=application',1),
+    'bom':b'\xef\xbb\xbf'+raw,
     'duplicate-ufrag':raw+ufrag,
     'unknown-media':raw.replace(b'm=application',b'm=unknown'),
     'oversize':raw+b'a=candidate:'+b'A'*65536+b'\r\n',
@@ -40,7 +41,7 @@ vectors={
 for name,data in vectors.items():add('bad-'+name+'.bin',data,False,'mutation of chrome-offer.sdp')
 inherited=raw.replace(b'm=application',fp+b'm=application',1)
 add('good-inherited-fingerprint.sdp',inherited,True,'same fingerprint at session and media scopes')
-assert len(rows)==32
+assert len(rows)==33
 (args.output/'vectors.tsv').write_text('\n'.join(rows)+'\n')
 (args.output/'manifest.json').write_text(json.dumps(metadata,indent=2)+'\n')
 (args.output/'.gitattributes').write_text('*.sdp -text -diff\n*.bin -text -diff\n')

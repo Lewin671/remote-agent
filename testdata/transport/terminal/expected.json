@@ -1,0 +1,122 @@
+{
+  "evidence": "two fake paths; real existing business envelope; fake tmux",
+  "scenarios": {
+    "active_retired_query_budgets": true,
+    "attach_no_new_tmux": true,
+    "authenticated_ack_batching": true,
+    "authenticated_controls": {
+      "bytes": 1353,
+      "packets": 2
+    },
+    "authentication_before_accept": true,
+    "conflict_no_inject": true,
+    "final_barrier_before_new_authorization": true,
+    "fragment_expiry": true,
+    "gap_network_recovery": true,
+    "input_cache_backpressure": {
+      "bytes": 64400,
+      "frames": 14
+    },
+    "instance_change_requires_confirmation": true,
+    "non_input_failure": {
+      "available": true,
+      "final": false,
+      "Processed": 2,
+      "InputSuccess": 2,
+      "Failed": 0,
+      "Details": [
+        {
+          "seq": 1,
+          "authorized_payload_hash": "faa62ad1d4d3835862d698157b57dab4e6a78f9e135bb03a6ba58c39b177706b",
+          "outcome": "non_input_failed",
+          "known_prefix": 0,
+          "possible_prefix": 0,
+          "input_bytes": 0
+        },
+        {
+          "seq": 2,
+          "authorized_payload_hash": "d908492397c22ae8ed965f0b6a9e1d18ac96961f39824dee0f1b44418778a934",
+          "outcome": "applied",
+          "known_prefix": 12,
+          "possible_prefix": 12,
+          "input_bytes": 12
+        }
+      ]
+    },
+    "output_reassembly_render_ack": true,
+    "partial_fail_stop": {
+      "available": true,
+      "final": false,
+      "Processed": 2,
+      "InputSuccess": 0,
+      "Failed": 1,
+      "Details": [
+        {
+          "seq": 1,
+          "authorized_payload_hash": "51df098374fd64a49f38878d57ac5d4aab0d5066ed7a65f7e113f0a2d86e8db1",
+          "outcome": "partial_or_unknown",
+          "known_prefix": 256,
+          "possible_prefix": 512,
+          "input_bytes": 600
+        },
+        {
+          "seq": 2,
+          "authorized_payload_hash": "6fd34b97fe3480ab8196da70d19dd02f2dc9e9b54e69b6fb29c4290b9efde9bc",
+          "outcome": "blocked",
+          "known_prefix": 0,
+          "possible_prefix": 0,
+          "input_bytes": 7
+        }
+      ]
+    },
+    "physical_loss_preserves_execution": true,
+    "rekey_same_authorized_hash": true,
+    "reorder_and_duplicate": {
+      "available": true,
+      "final": false,
+      "Processed": 2,
+      "InputSuccess": 2,
+      "Failed": 0,
+      "Details": [
+        {
+          "seq": 1,
+          "authorized_payload_hash": "328091ae3d6881495e864f31caa7e8b1cfd9f4024021d4d9e0b9b2922a341f3b",
+          "outcome": "applied",
+          "known_prefix": 5,
+          "possible_prefix": 5,
+          "input_bytes": 5
+        },
+        {
+          "seq": 2,
+          "authorized_payload_hash": "adca4604d2aad276e8d1dd33316b08e781bb23f3bfbffd023c2ac7b571399072",
+          "outcome": "applied",
+          "known_prefix": 6,
+          "possible_prefix": 6,
+          "input_bytes": 6
+        }
+      ]
+    },
+    "separate_replay_and_input_audit": true,
+    "status_and_barrier_serial": {
+      "available": true,
+      "final": true,
+      "Processed": 1,
+      "InputSuccess": 1,
+      "Failed": 0,
+      "Details": [
+        {
+          "seq": 1,
+          "authorized_payload_hash": "e3bb65561af8e55a9e8b03bda84998658a5551d926883e4d4306b9ac087ed034",
+          "outcome": "applied",
+          "known_prefix": 4,
+          "possible_prefix": 4,
+          "input_bytes": 4
+        }
+      ]
+    },
+    "status_reply_and_old_stream_resend": {
+      "control_bytes": 3706,
+      "control_packets": 5
+    }
+  }
+}

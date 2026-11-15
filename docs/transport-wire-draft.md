@@ -2,7 +2,7 @@
 
 **草案，待负责人冻结。** 本文为第 1 期实验提出字段和安全编码，不代表产品已接入；
 既定语义以 [transport](transport.md) 为准，未决项在 [plan](plan.md#传输模块与直连)。
-完整引导已有[串行重试反例](transport-notes.md#8-完整引导链的串行重试下界)，四端信令与终端状态机未完成；本草案不具备冻结条件。
+完整引导的成功前提已裁定为整轮合计最多丢两帧；[串行重试模型](transport-notes.md#8-完整引导链的串行重试下界)中更强的丢失组合用于检查按时退路。信令轨迹、封装一致性和终端假路径证据见[实测](transport-notes.md#9-四端信令真实封装与跨-sdk-互连)；产品适配闭环与真机性能不在本实验中宣称完成。
 字段草案在 [transport-draft.proto](../spike/transport-1a/wire/transport-draft.proto)，不参与现有生成流程。
 
 ## 格式边界
@@ -18,6 +18,8 @@ InputStatus 的每条结果必须绑定原序号和原字节 hash，部分注入
 查询/关闭 Barrier 进入旧流执行序；BarrierReply 的 final 标志只在停止旧流新准入后成立。
 AttachPath 按原 stream、sender、session、双方进程实例、腿 ID/代次及双向水位挂载，不调用 OpenTerminal。
 InputStatus 的 unavailable 与 daemon 实例变化要求人工核对，不能自动重发未知输入。
+InputStatusReply 的 snapshot token 绑定同一次串行查询的完整水位与明细；分页不能跨快照。NotApplied 是该快照中未应用的结果，只能在旧流按原授权去重续接；换新流重新授权前还必须取得停止旧流准入的最终 BarrierReply。
+终端明细的 hash 沿用第 0a RequestIdentity 的原授权 hash，不能用换密钥后会变化的密文 hash；Fragment 的 hash 则是当前整密文 hash。
 
 ## 编码与认证顺序
 
@@ -29,11 +31,11 @@ InputStatus 的 unavailable 与 daemon 实例变化要求人工核对，不能�
 未来扩展新增 type ID，不能偷偷改变已有 type 的严格 schema。
 
 server 只应看到路由标识、Signal/Control、frame ID、密文长度与时序。因此不能把 head、boot nonce、
-SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。安全编码候选为两层封装：
+SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。实验已实现的安全编码候选为两层封装：
 
 1. 从当前同一已验证成员 epoch+head 中取得双方 X25519/Ed25519 公钥，拒绝普通 machine meta 中的密钥。
    X25519 shared secret 经 HKDF-SHA256 导出设备对 context 包装密钥。info 采用长度前缀编码的固定域
-   `remote-agent/peer-context/v1`、账户、按原始字节排序的两个设备 ID、明确的发送方向。
+   `remote-agent/peer-context/v1`、账户、账户 domain、按原始字节排序的两个设备 ID、发送 ID、接收 ID。
 2. Context 的原 protobuf 字节用 AES-256-GCM 加密，随机 12 字节 nonce；AAD 绑定固定域、协议、账户、
    登录来源/目标、外层类别和本地 frame ID。Context 内含双方角色/实例/boot nonce、connection、用途、
    generation、head、信令/控制方向与 seq、原签发时间和短 deadline。正式上下文所有字段必需。
@@ -45,11 +47,25 @@ SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。�
    验签后才解 Context，核对当前 head/租约/nonce/实例/期限/序号，再解 body、查 type；通过后才交 SDK。
 5. Probe/Challenge 使用独立 bootstrap 域，只含源实例与 boot challenge、探测关联 ID 和已知的目标信息，
    不含 SDP、不创建 PC、不执行控制。双方 nonce 验证完成才允许正式密钥。旧实例仅产生受限的当前 Challenge。
-   同一 bootstrap 授权的副本不能无限生成新 PC、清空缓存或改变正式代次。
+   同一 bootstrap 授权的副本不能无限生成新 PC、清空缓存或改变正式代次。收到 Probe 仅记待证明状态；Challenge 的认证 ACK 绑定原 seq/hash、用途与 generation=0，证明对方持有当前双方 nonce 后才允许 responder 开始 PC。
 
-该双层封装是本次安全编码**候选**，尚须四端密码学一致向量与安全复核，不能直接宣布冻结。
+该双层封装是本次安全编码**候选**，四种语言的加密/验签向量已通过，尚须负责人审定与产品安全复核，不能直接宣布冻结。
 它避免为了导出正式密钥把私有上下文暴露给 relay；增加的 nonce/tag/signature/长度开销须计入真实帧字节。
 设备成员身份、租约、时间 floor 和原有业务信封算法保持原定义；此编码不进入业务接受日志。
+
+具体字节算法由实验 `Wire`/`labwire` 与[固定向量](../testdata/transport/wire/vectors.json)共同约束：
+`LP` 对每段加 uint32 大端长度；KDF 中整数为 uint64 大端。HKDF-SHA256 的 salt 是
+`SHA256("remote-agent/peer-hkdf/v1")`，输出 32 B；context/body/bootstrap/AAD/signature 使用互异固定域。
+所有 AEAD nonce 12 B、tag 16 B，frame ID 16 B，双方 instance 16 B、boot nonce 32 B；账户 domain 和 head 各 32 B。
+Context.direction 保存 sender ID，正式 KDF 中同时有 from/to 与类别，不把角色混同于方向。
+明文 Context 的 seq/use/generation 只在解密后可见；bootstrap generation=0，正式 generation 从 1 开始。
+PCUse=0 是 peer scope，正式信令只允许 Restart/Close 使用它；控制消息可不针对 PC。
+
+protobuf 必需 scalar 的显式零值也由实验编码器保留，不能依赖默认生成器的 omit-default 行为重编码签名材料。
+重复字段只在 schema 声明 repeated 的位置允许（Candidate/RestartPC/FrameStatus 等）；普通字段拒绝重复和非最短整数。
+CryptoKit Ed25519 可能随机化签名，跨语言必须校验相同签名输入与验签成功，不能要求所有签名器产出同一字节。
+三次发送冻结首次整个 PeerFrameDelivery 字节；初次重封装测量与重试测量分开。
+实验成员/进程 fixture 用公开固定种子便于复现，真实启动的 instance/boot nonce 必须随机生成并服从现有成员授权。
 
 信令 seq 在每方向、每 generation 从 1 增长，重复确认与 SDK 安装记录共用同一个有界缓存；
 同 seq 异 hash 拒绝。每方向未确认窗口 32，乱序缓冲 32，缺口自首个乱序到达固定 2.5 秒，重发不延长。
@@ -63,14 +79,15 @@ SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。�
 | PeerSignal | 1 Probe，2 Challenge，3 Offer，4 Answer，5 Candidate，6 EndCandidates，7 Confirm，8 Restart，9 Close | 完整 Signal ≤64 KiB；SDP 预留封装空间，候选每条编码 ≤1 KiB、批≤16、每代≤64/4批 |
 | TransportControl | 1 Capabilities，2 AttachPath，3 InputStatus，4 Ack，5 Replay，6 Barrier，7 StreamFailed，8 ClosePath，9 DirectPolicy，10 Unsupported，11 InputStatusReply，12 BarrierReply，13 PolicyReply | 完整 Control ≤16 KiB；Signal ACK ≤1 KiB；结果明细需分页且绑定同一查询/屏障快照，不能每页观察不同水位 |
 
+Signal ACK 另携带被确认 generation/use；包括 bootstrap 的 generation=0，不能只靠数值 seq 关联另一条 PC 或另一代。
 Ack 不请求 ACK；Unsupported/明确回复类型也不产生确认回环。回复以关联请求 seq/hash 和双方实例绑定，
 重复回复只被原等待者消费。Capabilities 最长 60 秒；DirectPolicy revision 持久化并按角色区分机器/自身 peer 范围。
 所有类型都不能借控制队列执行任意 Command。既有五类 CommandResult、身份/业务冲突和正文可得性原样复用。
 
 ## 协议号建议
 
-在协议 15 基线上引入这些新路由帧、Purpose 与授权语义，建议升为 **16**，四端一起更新；
-真正整合时若 16 已被占用，按当时基线定号。本实验不改任何现有协议常量。
+在协议 15 基线上引入这些新路由帧、Purpose 与授权语义，负责人已采纳升为 **16**，四端一起更新；
+真正整合时若 16 已被占用，顺延到当时可用的下一个号。本实验不改任何现有协议常量。
 固定编码冻结后，新增类型且旧端认证后返回 Unsupported、发起方保留 relay、不改变原操作语义，
 可在同一协议内扩展。已有字段、角色、类别、授权、ACK 水位或未知类型处理含义变化须升协议，不能添加旧协议推断分支。
 本草案未涉及存储迁移；实际实施若需要数据重建或协同升级，必须写清公开升级要求。

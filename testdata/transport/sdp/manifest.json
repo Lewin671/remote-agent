@@ -222,5 +222,12 @@
     "source": "same fingerprint at session and media scopes",
     "sha256": "d1e31afb8c80a3d9ab3ddaad5760719bbf55770f881e9915a333c8da0abd3e8d",
     "bytes": 575
+  },
+  {
+    "file": "bad-bom.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "2d59379a829d4ab3b65435fb5a92f66363775e9d6a6d7e41c475e6d4607c2e9f",
+    "bytes": 459
   }
 ]

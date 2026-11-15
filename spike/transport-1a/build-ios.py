@@ -16,7 +16,7 @@ work=args.work/name;app=work/'Payload/SDKLab.app';app.mkdir(parents=True,exist_o
 sdk='iphonesimulator' if args.simulator else 'iphoneos'
 sdkpath=subprocess.check_output(['xcrun','--sdk',sdk,'--show-sdk-path'],text=True).strip()
 target='arm64-apple-ios16.0'+('-simulator' if args.simulator else '')
-sources=[root/'SDPCheck.swift',root/'IOSLab.swift'];extra=[]
+sources=[root/'SDPCheck.swift',root/'CrossIOS.swift',root/'IOSLab.swift'];extra=[]
 if args.baseline:
     source=work/'main.swift'
     source.write_text('''import UIKit

@@ -118,8 +118,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey:Any]?) -> Bool {
         DispatchQueue.global().async {
             let out = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            do { try experiment(out) } catch {
-                try? Data(String(describing:error).utf8).write(to: out.appendingPathComponent("failure.txt"))
+            do {
+                let config=out.appendingPathComponent("peer.json")
+                if FileManager.default.fileExists(atPath:config.path){try crossIOS(JSONSerialization.jsonObject(with:Data(contentsOf:config)) as! [String:Any],out)}else{try experiment(out)}
+            } catch {
+                let e=error as NSError
+                try? Data("\(e.domain):\(e.code)".utf8).write(to: out.appendingPathComponent("failure.txt"))
             }
             try? Data("done".utf8).write(to: out.appendingPathComponent("done"))
         }

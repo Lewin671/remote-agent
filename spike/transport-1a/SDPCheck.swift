@@ -7,6 +7,7 @@ enum SDPCheck {
     }
     static func validate(_ bytes: Data) throws {
         func require(_ ok: Bool) throws { if !ok { throw Invalid.sdp } }
+        try require(!bytes.starts(with: [239,187,191]))
         guard let raw = String(data: bytes, encoding: .utf8) else { throw Invalid.sdp }
         try require(bytes.count <= 60*1024 && raw.hasSuffix("\r\n") && !raw.contains("\0"))
         let rest = raw.replacingOccurrences(of: "\r\n", with: "")

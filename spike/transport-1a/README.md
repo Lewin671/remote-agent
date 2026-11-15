@@ -1,107 +1,91 @@
-# 传输 1a：SDK 实验与信令期限模型
+# 传输 1a：独立 SDK、信令与终端实验
 
-按负责人 2026-11-14 裁定运行的有限虚拟时钟模型。设计以 [transport §5](../../docs/transport.md#非持久双向信令) 为准；
-结果见 [transport-notes](../../docs/transport-notes.md#6-信令重试与缺口期限的模型验证)。
-这不是 SDK、密码学或产品测试，不测真实 wire 字节或网络时间。
+只验证设计前提与字段，不导入产品 Link/Router，不启用直连、不修改生产协议常量。
+[设计](../../docs/transport.md)、[实测与证据边界](../../docs/transport-notes.md#6-信令重试与缺口期限的模型验证)、
+[草案，待负责人冻结](../../docs/transport-wire-draft.md)分别负责规则、结果和候选编码。
 
-```sh
-REMOTE_AGENT_HOME=/tmp/ra-transport-model CGO_ENABLED=0 \
-  python3 spike/transport-1a/retry-gap.py
-```
+## 代码与证据分层
 
-只有 Python 标准库，不创建状态目录、不读账户、不打开网络，不调用 SDK。
-Signal/Control 是可分别丢帧的假路径；有效身份、head、租约、challenge、认证作为前提。
-`sdk_observer_calls` 只是本应调用 SDK 的观察点，合成 payload 不是 SDP。
+| 入口 | 验什么 | 不声称什么 |
+|---|---|---|
+| `retry-gap.py`、`handshake-budget.py`、`round-loss-matrix.py` | 两条假管道，2.5 秒固定缺口、32 在途、整轮合计最多丢两帧、10 秒截止与退避 | SDK 时延、任意网络条件下成功 |
+| `Signal` / `signal.mjs` / `go/labwire` | 四种语言的 bootstrap、全部信令类型、角色/代次/原串/候选门、重复与乱序、确认和关闭 | action 计数不是实际 SDK 调用次数 |
+| `Sender` / `sender.mjs` | 32 窗口、冻结重发、limited、截止、退避、50 ms/16/64/4 候选汇集 | 实时调度精度 |
+| `Wire` / `wire.mjs` / `go/labwire/codec.go` | 实际 X25519/HKDF/AES-GCM/Ed25519、有界严格 protobuf、共享正负向量 | 产品成员同步/租约实现或独立密码学审计 |
+| `go/cmd/measure-wire`、`SenderVectors`、`sender-check.mjs` | 实际整包字节、各原生 crypto 重封装和三份冻结副本 | 128 PC 或 16 PC 同时跑 SDK；合成大候选不交 SDK |
+| `go/cmd/sdk-peer`、`cross-browser.mjs`、`CrossAndroid`、`CrossIOS` | 本机 Pion 与四类真实客户端 SDK 原串、候选、restart、DCEP/未知 SID/探测通道负例 | HTTP 对端夹具不是中继；尚非产品密码学信令与 SDK 闭环 |
+| `terminal/` | 两条假路径、现有业务信封/成员/租约、重组/水位/失败/重放/最终 barrier/Attach | fake tmux 与 Accept 观察点不是持久协调器或真实 CLI 验收 |
 
-缺口从其后第一帧乱序到达起算 2500 ms，重发和后续帧不延长期限。
-发送窗口最多 32 个未确认序号；满则等待 ACK。重发同序号不占新槽，初发后 500/1500 ms 重试，
-limited 可推迟到 retry_after，但最多三份并保留 10 秒总期限。模型不用等待/轮询循环。
+原 1 秒缺口反例与逐消息丢两份的串行反例已有负责人裁定。成功前提按**整轮合计最多丢两帧**，
+超出前提保留 relay、10 秒截止；不因后续网络通知刷新退避。SDK 分项过慢也是超前提失败，不能扩大成功口径。
+SDK 实验与状态机轨迹是分别运行的两层证据；产品适配、完整成员/撤销门与 16 PC 并发留给第 1 期整合。
 
-十场景覆盖正常、一次 Offer 丢失、ACK 丢失、原两次 Offer 丢失反例、候选批缺口、
-limited/retry_after、retry_after 超过总期限、每代丢两份 Offer、丢全部三份 Offer、发送窗口背压。
-原反例在 1500 ms 补齐，不再提前退休；所有副本的 hash 一致，接收处理不重复。
-全丢场景给代次重开零成本的有利条件，仍最多 4 代；它不代表真实 Restart/ICE 的耗时。
-窗口压力用 64 条合成消息，不代表信令允许 64 个候选批。
+## 隔离与依赖
 
-旧 1 秒反例保存在 git 历史中；现在只维护裁定后的规则。
+每个实验/编译命令显式设置 `REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0`。
+输出、下载、模块缓存、构建和模拟器均放本任务自己的临时目录；重步骤前可用空间须至少 15 GiB。
+不接日常 daemon/账户/手机/线上；只关闭记录了 PID/启动时间的自有进程。
+SDK 从 [downloads.json](downloads.json) 固定 URL 下载并验 SHA-256；额外 JVM provider 在
+[downloads-r3.json](downloads-r3.json)。摘要校验不等于发布者签名或可复现构建证明。
+Java 使用 Bouncy Castle 1.85 的实验 provider，未加入 Android 产品依赖。Swift 使用系统 CryptoKit。
+Go 依赖固定在两个独立 module 的 go.mod/go.sum，不修改根模块。
 
-## 完整引导链的第二个反例
+## 有限离线复验
 
-```sh
-REMOTE_AGENT_HOME=/tmp/ra-transport-model CGO_ENABLED=0 \
-  python3 spike/transport-1a/handshake-budget.py testdata/transport/sdp
-```
-
-载入五组 SDK/引擎原串，以两条假管道模拟 Signal 和健康 Control，8 客户端×2 PC，
-每 PC 64 个合成候选/4 批。没有运行 16 个真实 PeerConnection。
-正常和每条只丢初发均 16/16 Ready；每条关键消息丢前两份时，10 秒内 0/16 Ready。
-Probe→Challenge→Offer→Answer→Offerer Confirm 的五次串行重试，即使其余成本为零，
-加 3 秒 relay 也需要至少 10.5 秒。它不是“整轮只有两帧丢失”的场景。
-主场景采用请求/应答 bootstrap。另一个有利变体省去 Probe 等待、主动 Challenge，并把 Confirm 与设计允许的 3 秒 ICE/DTLS 并行，仍在 10 秒内 0/16 Ready；它不声明新的 bootstrap 产品规则。
-2.5 秒缺口没有超时、发送窗口峰值 7；此模型仅计 payload 字节，不把合成候选当 SDK 实测候选。
-
-**在此按任务停止条件停止**，未完成四端完整信令或终端假路径状态机，wire 草案不能冻结。
-证据和待裁定入口见 [transport-notes §8](../../docs/transport-notes.md#8-完整引导链的串行重试下界)。
-
-## 独立 SDK 与共享 SDP 向量
-
-- `go/` 独立 Go module，Pion 版本与依赖锁在 go.mod/go.sum，不导入产品代码。
-- `browser.mjs` 使用独立安装的 Playwright 模块，运行已安装 Chrome 与下载的 WebKit。
-- `AndroidLab.java` / `IOSLab.swift` 是独立空壳 App；生成 Offer/Answer/Restart 原串并传测试消息。
-- `SDPCheck.java` / `SDPCheck.swift`、`sdp.mjs`、`go/sdp.go` 是实验验证器，读取同一份 vectors.tsv。
-- `build-android.py` / `build-ios.py` 建实验 App 或无 SDK 包体对照；输出只允许放 /tmp，不会安装 App。
-- [downloads.json](downloads.json) 固定下载 URL、SHA-256；iOS zip 与 SPM checksum、Android AAR 与 Maven sha256 核对通过。
-  这不是发布者签名或可复现构建证明。工具链下载也记录，已有 Chrome/Android SDK/Xcode 未重装。
-- [字段草案](wire/transport-draft.proto)只供语法检查，不进入生产生成目录。
-
-每个运行/编译命令显式使用 `REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0`。
-下载、依赖解包、模块缓存、App 和输出必须放本任务自己的 /tmp 目录；每个重步骤前检查磁盘≥15 GiB。
-不要用手机；只在自己创建且记录 ID/PID 的模拟器上安装实验 App，结束 shutdown/delete 或停止并删除私有 AVD。
-
-示例（先创建自己的隔离目录，固定二进制按 downloads.json 下载并核对，不从这里更新产品）：
+先把已核验的 BC JAR 放入自己的临时目录，并准备 Go 1.26.11、Node、JDK、Swift、protoc。
 
 ```sh
-# 从 go/ 中运行；输出 SDP 只用于临时测试，不打到日志。
 REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  GOMODCACHE=/tmp/transport-lab/gomod go run . /tmp/transport-lab/sdp
+  GOMODCACHE=/tmp/transport-lab/gomod \
+  python3 spike/transport-1a/verify.py \
+  --out /tmp/transport-lab/check --bc /tmp/transport-lab/downloads/bcprov.jar
+```
 
-# 从仓库根运行。Playwright 应独立安装，不修改 web/package.json。
+可用 `--go /path/to/go` 指定已安装工具链。脚本运行有限事件集合，不写构建等待循环；每项有 timeout，
+低于磁盘下限就报错。结果和逐项耗时写 `verification.json`，模型/容量结果另存 JSON。
+本入口不下载浏览器、不创建模拟器、不操作产品或真实 tmux。
+
+共享材料：
+
+- `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、17 份负例，共 33 项；原串禁文本换行转换。
+- `testdata/transport/wire`：16 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
+- `testdata/transport/signal/scenarios.tsv`：12 个场景、189 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
+- `testdata/transport/terminal/expected.json`：20 组终端模型预期；不是四套终端引擎均已执行的声明。
+
+`signal-vectors.mjs testdata/transport/sdp /tmp/transport-lab/signal` 可重新生成并先用 JS 执行轨迹；
+seal 使用新随机数，所以重生成的包字节不同，语义预期不变。同一发送的副本则必须逐字节相同。
+CryptoKit 的签名可随机化；Swift CLI 先核对固定随机输入下密文字节，再由 Go 交叉验证完整签名。
+
+## 真实 SDK 独立实验
+
+`go/` 根入口、`browser.mjs`、`AndroidLab.java`、`IOSLab.swift` 生成自配对 Offer/Answer/Restart 原串。
+移动包用 `build-android.py --sdk ... --work /tmp/... --aar /tmp/...` 和
+`build-ios.py --framework /tmp/... --work /tmp/...`，`--baseline` 生成空壳对照；
+iOS `--simulator` 编译模拟器，默认只编译未签名 arm64 目标，不安装真机。
+Android 也支持 `--sdk-tree` 使用自己已核验的 AAR 解包目录。SDK 不加入主工程。
+
+跨 SDK 时先在隔离环境编译 `go/cmd/sdk-peer`，用 `-info /tmp/transport-lab/peer.json` 启动。
+私有 JSON 含 loopback URL/token/PID，只交给自有测试 App，不打印或提交。它是测试对端，持有自身 SDP 的明文权限。
+浏览器可运行：
+
+```sh
 REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
   PLAYWRIGHT_BROWSERS_PATH=/tmp/transport-lab/browsers \
-  node spike/transport-1a/browser.mjs /tmp/transport-lab/node/node_modules/playwright/index.mjs /tmp/transport-lab/sdp
-
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  python3 spike/transport-1a/build-android.py --sdk "$ANDROID_SDK_ROOT" \
-  --work /tmp/transport-lab/android --aar /tmp/transport-lab/android.aar
-
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  python3 spike/transport-1a/build-ios.py --framework /tmp/transport-lab/WebRTC.xcframework \
-  --work /tmp/transport-lab/ios
+  node spike/transport-1a/cross-browser.mjs \
+  /tmp/transport-lab/node/node_modules/playwright/index.mjs \
+  /tmp/transport-lab/peer.json /tmp/transport-lab/cross-browser.json \
+  /tmp/transport-lab/check/capacity.tsv testdata/transport/signal/scenarios.tsv
 ```
 
-`--baseline` 生成对应空壳包体对照；iOS `--simulator` 用模拟器 slice，默认仅编译未签名真机 arm64 包，**不安装真机**。
-SDK 实际启动时，记录 PID，从自己的 App 容器取回 `.sdp/.json`；不要取其他 App 的文件。
-iOS 使用 scene 生命周期；Android 先注销 DataChannel 回调再释放，避免清理回调访问已释放的 JNI 对象。
+最后两参数启用 Chrome 与 WebKit **各自 WebCrypto** 的容量与信令重放；不是 Node 替浏览器计算。
+将 peer.json 写入独立 Android App 的 files/ 或 iOS App 的 Documents/ 后再启动，即跑跨 SDK 四组实验。
+Android 只用自己的 AVD/ADB server，iOS 只用自己创建的模拟器；构建产物与容器结果在 /tmp 留档后删除模拟器。
+实验只为本地 peer 允许明文 HTTP；不把这一设置带入产品。
 
-共享向量验证：
+四组分别是客户端 Offerer、Pion Offerer+ICE restart、恶意额外 DCEP、未声明 negotiated SID 2。
+客户端在 SetRemoteDescription 前验证并原样传入参数，不把 SDK getter 的规范化结果拿来重算 hash。
+额外 DCEP 关闭 PC；未声明 SID 没有应用接收入口。Pion 接收侧由 `TestUnexpectedChannels` 实际验证。
+候选错误 ufrag/generation 在 AddICECandidate 前拒绝；业务不走探测通道。
+新的探测是否在 2.5 秒完成单独记录，超时是失败观察，随后继续诊断 SDK 是否最终恢复；后面的诊断耗时不是允许产品延长总期限。
 
-```sh
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  node spike/transport-1a/check-vectors.mjs testdata/transport/sdp
-# go/ 目录：
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  GOMODCACHE=/tmp/transport-lab/gomod go run . vectors ../../../testdata/transport/sdp
-# 仓库根：
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  javac -d /tmp/transport-lab/classes spike/transport-1a/SDPCheck.java
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  java -cp /tmp/transport-lab/classes example.transportlab.SDPCheck testdata/transport/sdp
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  swiftc -parse-as-library -D VECTOR_CLI -module-cache-path /tmp/transport-lab/swift-cache \
-  spike/transport-1a/SDPCheck.swift -o /tmp/transport-lab/swift-vectors
-REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
-  /tmp/transport-lab/swift-vectors testdata/transport/sdp
-```
-
-有限向量不代替完整 SDP fuzz、恶意额外 DCEP、跨端互通、真实候选重启、防重放或完整安全编码一致向量。
-每个 SDK 的自配对消息成功也不等于产品可直连、真实 NAT 成功率或手机性能验收。
+结束时关闭自己记录的 peer PID、私有 ADB/emulator、iOS shutdown/delete，并确认不存在；不使用 pkill/killall。

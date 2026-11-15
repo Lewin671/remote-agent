@@ -95,7 +95,7 @@ public final class AndroidLab extends Activity {
   @Override public void onCreate(Bundle state) {
     super.onCreate(state);
     try{save("pid",Integer.toString(android.os.Process.myPid()));}catch(Exception ignored){}
-    new Thread(()->{try{experiment();}catch(Exception e){try{save("failure.txt",e.getClass().getName()+":"+e.getMessage()+" stage="+stage+" candidates="+debugA.candidates.size()+","+debugB.candidates.size()+" ice="+debugA.ice+","+debugB.ice+" dc="+debugA.dcState+","+debugB.dcState);}catch(Exception ignored){}}
+    new Thread(()->{try{File config=new File(getFilesDir(),"peer.json");if(config.exists()){CrossAndroid.run(this,new JSONObject(new String(Files.readAllBytes(config.toPath()),StandardCharsets.UTF_8)),getFilesDir());}else{experiment();}}catch(Exception e){try{save("failure.txt",e.getClass().getName()+" stage="+stage);}catch(Exception ignored){}}
       finally{try{save("done","done");}catch(Exception ignored){}}},"sdk-lab").start();
   }
 }

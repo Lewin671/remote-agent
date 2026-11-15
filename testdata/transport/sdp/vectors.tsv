@@ -30,3 +30,4 @@ bad-duplicate-ufrag.bin	0
 bad-unknown-media.bin	0
 bad-oversize.bin	0
 good-inherited-fingerprint.sdp	1
+bad-bom.bin	0
