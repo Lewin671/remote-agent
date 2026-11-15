@@ -169,8 +169,22 @@ func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []
 	return s.acceptWith(ctx, w, seed, now, nil, fn)
 }
 func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, acquire func(context.Context) (func(), error), fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
+	options := s.acceptOptions()
+	options.Acquire = acquire
+	out, err := s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
+	if !errors.Is(err, deviceauth.ErrUnknown) {
+		return out, err
+	}
+	s.requestSync()
+	if err := s.syncOnce(ctx); err != nil {
+		return nil, err
+	}
+	return s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
+}
+
+func (s *securitySession) acceptOptions() deviceauth.AcceptOptions {
 	_, _, machine := s.endpoint.Snapshot()
-	options := deviceauth.AcceptOptions{Evidence: true, AllowNew: func() bool { return !s.blocked.Load() }, Acquire: acquire, Validate: func(h deviceauth.Header, plain []byte) error {
+	options := deviceauth.AcceptOptions{Evidence: true, AllowNew: func() bool { return !s.blocked.Load() }, Validate: func(h deviceauth.Header, plain []byte) error {
 		if h.Purpose != deviceauth.Command {
 			return nil
 		}
@@ -199,15 +213,7 @@ func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, see
 		}
 		return nil
 	}}
-	out, err := s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
-	if !errors.Is(err, deviceauth.ErrUnknown) {
-		return out, err
-	}
-	s.requestSync()
-	if err := s.syncOnce(ctx); err != nil {
-		return nil, err
-	}
-	return s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
+	return options
 }
 
 // sealResult is only used after authenticated acceptance lookup/completion.

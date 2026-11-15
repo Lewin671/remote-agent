@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"connectrpc.com/connect"
+	"context"
 	"errors"
 	"log/slog"
 	"os"
@@ -290,4 +291,13 @@ func (u *uploads) confirmAcceptance(session string, ids []string) []string {
 		}
 	}
 	return pending
+}
+
+// Check between bounded disk steps. A blocked syscall itself remains owned by
+// the transport execution; cancellation never pretends it has exited.
+func (u *uploads) stepContext(ctx context.Context, name string, work func() error) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return u.step(name, work)
 }

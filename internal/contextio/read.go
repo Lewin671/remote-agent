@@ -4,6 +4,7 @@ package contextio
 import (
 	"context"
 	"os"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,7 +33,16 @@ func Read[T any](ctx context.Context, fn func() (T, error)) (T, error) {
 		err   error
 	}
 	done := make(chan result, 1)
-	go func() { defer func() { <-slots }(); v, err := fn(); done <- result{v, err} }()
+	work, finish := track(ctx)
+	var pending atomic.Bool
+	pending.Store(true)
+	go func() {
+		defer finish()
+		defer func() { <-slots }()
+		v, err := fn()
+		pending.Store(false)
+		done <- result{v, err}
+	}()
 	select {
 	case r := <-done:
 		if err := ctx.Err(); err != nil {
@@ -40,6 +50,9 @@ func Read[T any](ctx context.Context, fn func() (T, error)) (T, error) {
 		}
 		return r.value, r.err
 	case <-ctx.Done():
+		if work != nil && pending.Load() {
+			work.violate()
+		}
 		return zero, ctx.Err()
 	}
 }

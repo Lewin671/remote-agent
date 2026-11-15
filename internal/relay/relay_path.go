@@ -19,7 +19,7 @@ type relaySession struct {
 }
 
 func (c *relaySession) readLoop(ctx context.Context) error {
-	return readForwardCalls(ctx, c.dispatcher.link, func() (*pb.ServerFrame, error) {
+	return readForwardCalls(ctx, func() (*pb.ServerFrame, error) {
 		b, err := c.path.Read(ctx)
 		if err != nil {
 			return nil, err
@@ -35,12 +35,12 @@ func (c *relaySession) readLoop(ctx context.Context) error {
 			c.activity(f.GetHeartbeat() != nil)
 		}
 		return f, nil
-	}, func(execution context.Context, call *pb.ForwardCall) {
-		c.dispatcher.endpoint.handleCall(execution, ctx, call, func(reply *pb.ForwardReply) { c.reply(ctx, reply) })
+	}, func(call *pb.ForwardCall) {
+		c.dispatcher.endpoint.dispatch(ctx, call, func(reply *pb.ForwardReply) { c.reply(ctx, reply) })
 	})
 }
 
-func readForwardCalls(ctx context.Context, link *transport.Link, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {
+func readForwardCalls(ctx context.Context, read func() (*pb.ServerFrame, error), handle func(*pb.ForwardCall)) error {
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -50,11 +50,7 @@ func readForwardCalls(ctx context.Context, link *transport.Link, read func() (*p
 			return err
 		}
 		if call := f.GetForwardCall(); call != nil {
-			if err := link.Dispatch(ctx, func(execution context.Context) {
-				handle(execution, call)
-			}); err != nil {
-				return err
-			}
+			handle(call)
 		}
 	}
 }

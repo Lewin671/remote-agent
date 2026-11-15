@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/transport"
@@ -15,12 +16,14 @@ import (
 // no socket, login token, or path cancellation. Publication owns session keys;
 // the link owns admitted executions and streams across relay generations.
 type endpoint struct {
-	r          *Relay
-	acct       *Account
-	security   *securitySession
-	lifetime   context.Context
-	link       *transport.Link
-	sessionKey func(string, bool) ([]byte, error)
+	admissionOnce sync.Once
+	admission     *commandAdmission
+	r             *Relay
+	acct          *Account
+	security      *securitySession
+	lifetime      context.Context
+	link          *transport.Link
+	sessionKey    func(string, bool) ([]byte, error)
 }
 
 // openRelayStream is path setup only. The resulting path carries sealed

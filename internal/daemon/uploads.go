@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -114,7 +114,7 @@ type uploads struct {
 	root string // state root, including session metadata consulted by recovery
 	dir  string
 
-	mu               sync.Mutex
+	mu               controlMutex
 	drops            map[string]uint64 // per session, see sessionDrops
 	quota            int64
 	limits           func() int64
@@ -217,6 +217,10 @@ func (u *uploads) owned(t *transfer, device string) error {
 }
 
 func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.ImageUploadStatus, error) {
+	return u.beginContext(context.Background(), req, device)
+}
+
+func (u *uploads) beginContext(ctx context.Context, req *pb.BeginImageUploadRequest, device string) (*pb.ImageUploadStatus, error) {
 	if !u.usable() {
 		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, errors.New("the remote-agent folder's path has spaces, which the CLIs do not take in image paths")))
 	}
@@ -237,7 +241,9 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		return nil, outcome.FinalError(connect.NewError(connect.CodeInvalidArgument, errors.New("sha256 must be 32 bytes")))
 	}
 	pins := u.protectedSessions()
-	u.mu.Lock()
+	if err := u.mu.LockContext(ctx); err != nil {
+		return nil, err
+	}
 	defer u.mu.Unlock()
 	if t, err := u.load(req.TransferId); err == nil {
 		if err := u.owned(t, device); err != nil {
@@ -261,7 +267,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		return nil, err
 	}
 	for _, d := range []string{filepath.Join(u.dir, "partial"), filepath.Join(u.dir, "pending")} {
-		if err := u.step("begin-directory", func() error { return u.mkdirUploadDir(d) }); err != nil {
+		if err := u.stepContext(ctx, "begin-directory", func() error { return u.mkdirUploadDir(d) }); err != nil {
 			return nil, err
 		}
 	}
@@ -270,7 +276,7 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		t.SafeName = safeFileName(req.FileName)
 	}
 	var f *os.File
-	if err := u.step("begin-create", func() error {
+	if err := u.stepContext(ctx, "begin-create", func() error {
 		var err error
 		f, err = os.OpenFile(u.partial(t.ID)+".part", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 		return err
@@ -278,17 +284,23 @@ func (u *uploads) begin(req *pb.BeginImageUploadRequest, device string) (*pb.Ima
 		return nil, err
 	}
 	defer f.Close()
-	if err := u.step("begin-bytes", f.Sync); err != nil {
+	if err := u.stepContext(ctx, "begin-bytes", f.Sync); err != nil {
 		return nil, err
 	}
-	if err := u.step("begin-record", func() error { return u.save(t) }); err != nil {
+	if err := u.stepContext(ctx, "begin-record", func() error { return u.save(t) }); err != nil {
 		return nil, err
 	}
 	return t.status(), nil
 }
 
 func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUploadStatus, error) {
-	u.mu.Lock()
+	return u.putContext(context.Background(), req, device)
+}
+
+func (u *uploads) putContext(ctx context.Context, req *pb.PutImageChunkRequest, device string) (*pb.ImageUploadStatus, error) {
+	if err := u.mu.LockContext(ctx); err != nil {
+		return nil, err
+	}
 	defer u.mu.Unlock()
 	t, err := u.load(req.TransferId)
 	if err != nil {
@@ -331,24 +343,30 @@ func (u *uploads) put(req *pb.PutImageChunkRequest, device string) (*pb.ImageUpl
 		}
 	}
 	if req.Offset+n > t.Persisted {
-		if err := u.step("chunk-write", func() error { _, err := f.WriteAt(req.Data[t.Persisted-req.Offset:], t.Persisted); return err }); err != nil {
+		if err := u.stepContext(ctx, "chunk-write", func() error { _, err := f.WriteAt(req.Data[t.Persisted-req.Offset:], t.Persisted); return err }); err != nil {
 			return nil, err
 		}
-		if err := u.step("chunk-bytes", f.Sync); err != nil {
+		if err := u.stepContext(ctx, "chunk-bytes", f.Sync); err != nil {
 			return nil, err
 		}
 		t.Persisted = req.Offset + n
 		t.UpdatedMs = time.Now().UnixMilli()
 	}
-	if err := u.step("chunk-record", func() error { return u.save(t) }); err != nil {
+	if err := u.stepContext(ctx, "chunk-record", func() error { return u.save(t) }); err != nil {
 		return nil, err
 	}
 	return t.status(), nil
 }
 
 func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
+	return u.completeContext(context.Background(), id, device)
+}
+
+func (u *uploads) completeContext(ctx context.Context, id, device string) (*pb.ImageUploadStatus, error) {
 	pins := u.protectedSessions()
-	u.mu.Lock()
+	if err := u.mu.LockContext(ctx); err != nil {
+		return nil, err
+	}
 	defer u.mu.Unlock()
 	t, err := u.load(id)
 	if err != nil {
@@ -370,9 +388,12 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 		return nil, outcome.FinalError(connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("only %d of %d bytes arrived", t.Persisted, t.Total)))
 	}
 	if t.FileName != "" {
-		return u.completeFile(t)
+		return u.completeFile(ctx, t)
 	}
-	permit := imageproc.Acquire()
+	permit, err := imageproc.AcquireContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer permit.Release()
 	data, err := os.ReadFile(u.partial(t.ID) + ".part")
 	if err != nil {
@@ -413,11 +434,20 @@ func (u *uploads) complete(id, device string) (*pb.ImageUploadStatus, error) {
 	imageID := newID(16)
 	b := img.Bounds()
 	t.ImageID, t.Width, t.Height, t.CompletedMs, t.Format = imageID, int32(b.Dx()), int32(b.Dy()), time.Now().UnixMilli(), format
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return u.commitUpload(t, func(dst string) error { return writeFileSync(dst, clean) })
 }
 
 func (u *uploads) abort(id, device string) error {
-	u.mu.Lock()
+	return u.abortContext(context.Background(), id, device)
+}
+
+func (u *uploads) abortContext(ctx context.Context, id, device string) error {
+	if err := u.mu.LockContext(ctx); err != nil {
+		return err
+	}
 	defer u.mu.Unlock()
 	t, err := u.load(id)
 	if connect.CodeOf(err) == connect.CodeNotFound {

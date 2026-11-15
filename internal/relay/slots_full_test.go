@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,14 +13,16 @@ import (
 )
 
 // Real local server + encrypted WS + production admission and execution pools.
-func TestFullExecutionSlotsQueueNinthCommandAndCoalesceDuplicate(t *testing.T) {
+func TestFullOrdinaryPoolLeavesInteractionsAndCoalescesDuplicate(t *testing.T) {
 	e := setup(t)
 	e.backend.add(t, "sess1")
 	entered := make(chan struct{}, 9)
 	release := make(chan struct{})
 	var once sync.Once
 	defer once.Do(func() { close(release) })
-	e.backend.sendResult = func(ctx context.Context) error {
+	var executions atomic.Int32
+	e.backend.normalResult = func(ctx context.Context) error {
+		executions.Add(1)
 		entered <- struct{}{}
 		select {
 		case <-release:
@@ -36,32 +39,39 @@ func TestFullExecutionSlotsQueueNinthCommandAndCoalesceDuplicate(t *testing.T) {
 	envs := make([]*pb.Envelope, 9)
 	for i := range envs {
 		var err error
-		envs[i], err = e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, Text: "test", RequestId: fmt.Sprintf("slot-message-%d", i)}}})
+		envs[i], err = e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: s.ID, Title: fmt.Sprintf("ordinary-%d", i)}}})
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 	results := make(chan error, 10)
 	forward := func(i int) { _, err := e.client.Forward(ctx, s.MachineID, envs[i]); results <- err }
-	for i := range 8 {
+	for i := range 9 {
 		go forward(i)
 	}
-	for range 8 {
+	for range 4 {
 		select {
 		case <-entered:
 		case <-ctx.Done():
 			t.Fatal("execution slots did not fill")
 		}
 	}
-	go forward(8)
 	go forward(0)
 	select {
 	case err := <-results:
 		t.Fatalf("full slots returned before release: %v", err)
 	case <-time.After(150 * time.Millisecond):
 	}
-	if n := e.backend.sendCount(); n != 8 {
+	if n := executions.Load(); n != 4 {
 		t.Fatalf("executed while full: %d", n)
+	}
+	for _, command := range []*pb.Command{
+		{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, Text: "interactive"}}},
+		{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: s.ID, ApprovalId: "fixture-approval", Allow: true}}},
+	} {
+		if _, err := e.client.Do(ctx, s, command); err != nil {
+			t.Fatalf("ordinary saturation blocked interaction: %v", err)
+		}
 	}
 	once.Do(func() { close(release) })
 	for range 10 {
@@ -74,7 +84,7 @@ func TestFullExecutionSlotsQueueNinthCommandAndCoalesceDuplicate(t *testing.T) {
 			t.Fatal("queued request never completed")
 		}
 	}
-	if n := e.backend.sendCount(); n != 9 {
+	if n := executions.Load(); n != 9 {
 		t.Fatalf("wanted nine unique callbacks, got %d", n)
 	}
 }

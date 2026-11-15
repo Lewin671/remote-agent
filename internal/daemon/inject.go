@@ -167,7 +167,9 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 	// The lifecycle lock gives admission and automatic shutdown one order.
 	// Never hold it while asking resume to acquire that same lock.
 	for retries := 0; ; retries++ {
-		s.lifecycleMu.Lock()
+		if err := s.lifecycleMu.LockContext(ctx); err != nil {
+			return 0, err
+		}
 		s.mu.Lock()
 		// A durable retry must not start a new CLI lifetime or claim ownership.
 		if requestID != "" && s.queue.seen(requestID) {

@@ -119,7 +119,7 @@ func testEndpoint(t *testing.T, r *Relay) *endpoint {
 	if r == nil {
 		r = New(nil)
 	}
-	link := transport.NewLink(context.Background(), r.admissions, r.calls)
+	link := transport.NewLink(context.Background())
 	t.Cleanup(link.Close)
 	publisher := &conn{r: r, lifetime: link.Context()}
 	return &endpoint{r: r, lifetime: link.Context(), link: link, sessionKey: publisher.sessionKey}

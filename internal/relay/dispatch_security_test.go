@@ -3,103 +3,78 @@ package relay
 import (
 	"context"
 	"errors"
+	"io"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/transport"
 )
 
-// A malicious relay can send arbitrary frames without client authentication.
-// Hold every handler open and flood frames: retained requests and workers
-// must stay bounded, and cancellation must unblock the reader and workers.
 func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	r := New(nil)
-	limit := cap(r.admissions)
-	link := transport.NewLink(ctx, r.admissions, r.calls)
-	defer func() { cancel(); link.Close() }()
-	var reads, starts atomic.Int32
-	done := make(chan error, 1)
-	workers := make(chan struct{}, limit)
-	go func() {
-		done <- readForwardCalls(ctx, link, func() (*pb.ServerFrame, error) {
-			reads.Add(1)
-			return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
-		}, func(ctx context.Context, call *pb.ForwardCall) {
-			starts.Add(1)
-			<-ctx.Done()
-			workers <- struct{}{}
-		})
-	}()
-	deadline := time.After(3 * time.Second)
-	for starts.Load() < int32(limit) || reads.Load() < int32(limit+1) {
-		select {
-		case <-deadline:
-			t.Fatal("workers did not fill")
-		case <-time.After(time.Millisecond):
+	e := testEndpoint(t, New(nil))
+	client := endpointClient(t, e)
+	env := commandEnvelope(t, client, e.acct.DeviceID, "reader-flood-request", &pb.Command{Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
+	a := e.admissionOwner()
+	entered := make(chan struct{}, 2)
+	release := make(chan struct{})
+	var starts atomic.Int32
+	a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {
+		if starts.Add(1) <= 2 {
+			entered <- struct{}{}
 		}
+		<-release
+		return nil, deviceauth.ErrInvalid
 	}
-	if n := reads.Load(); n != int32(limit+1) {
-		t.Fatalf("unbounded retained requests: %d", n)
+	defer func() { close(release); a.close() }()
+	for range 2 {
+		e.dispatch(context.Background(), &pb.ForwardCall{Command: env}, func(*pb.ForwardReply) {})
+		<-entered
 	}
-	cancel()
-	select {
-	case err := <-done:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("reader = %v", err)
+	read := 0
+	err := readForwardCalls(context.Background(), func() (*pb.ServerFrame, error) {
+		if read == 1000 {
+			return nil, io.EOF
 		}
-	case <-time.After(time.Second):
-		t.Fatal("reader remained blocked after cancellation")
+		read++
+		return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{Command: env}}}, nil
+	}, func(f *pb.ForwardCall) { e.dispatch(context.Background(), f, func(*pb.ForwardReply) {}) })
+	if !errors.Is(err, io.EOF) || read != 1000 {
+		t.Fatal("reader blocked on full authentication queue")
 	}
-	for range limit {
-		select {
-		case <-workers:
-		case <-time.After(time.Second):
-			t.Fatal("worker did not cancel")
-		}
-	}
-	if n := starts.Load(); n != int32(limit) {
-		t.Fatalf("started %d workers", n)
+	a.mu.Lock()
+	queued, retained := a.frames.Len(), a.frames.UsedBytes()
+	a.mu.Unlock()
+	if queued != 8 || retained > 1<<20 || starts.Load() != 2 {
+		t.Fatalf("auth bounds: queued=%d bytes=%d workers=%d", queued, retained, starts.Load())
 	}
 }
-
 func TestForwardReadFailureLeavesExecutionWithProcess(t *testing.T) {
-	process, stop := context.WithCancel(context.Background())
-	defer stop()
-	entered, release := make(chan struct{}), make(chan struct{})
-	link := transport.NewLink(process, make(chan struct{}, 1), make(chan struct{}, 1))
+	link := transport.NewLink(context.Background())
 	defer link.Close()
-	done := make(chan error, 1)
+	defer link.DrainCalls()
+	entered, release := make(chan struct{}), make(chan struct{})
+	defer close(release)
 	failure := errors.New("stream ended")
 	reads := 0
-	go func() {
-		done <- readForwardCalls(context.Background(), link, func() (*pb.ServerFrame, error) {
-			reads++
-			if reads == 1 {
-				return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
-			}
-			<-entered
-			return nil, failure
-		}, func(ctx context.Context, _ *pb.ForwardCall) {
+	err := readForwardCalls(context.Background(), func() (*pb.ServerFrame, error) {
+		reads++
+		if reads == 1 {
+			return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
+		}
+		<-entered
+		return nil, failure
+	}, func(*pb.ForwardCall) {
+		link.Run(func(ctx context.Context) {
 			close(entered)
 			<-release
 			if ctx.Err() != nil {
 				t.Error("path failure canceled execution")
 			}
 		})
-	}()
-	<-entered
-	select {
-	case err := <-done:
-		if !errors.Is(err, failure) {
-			t.Error(err)
-		}
-	case <-time.After(time.Second):
-		t.Error("path waited for execution")
+	})
+	if !errors.Is(err, failure) {
+		t.Fatal(err)
 	}
-	close(release)
-	link.DrainCalls()
 }

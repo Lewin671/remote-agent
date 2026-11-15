@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -49,7 +50,7 @@ func (l *blockedDirectoryLocal) ListDirectories(ctx context.Context, _ *connect.
 	}
 	return connect.NewResponse(&pb.ListDirectoriesResponse{}), nil
 }
-func TestBlockedDirectoryReadReturnsDeadlineAndDoesNotPreventReconnect(t *testing.T) {
+func TestBlockedDirectoryReadRetainsSlotButDoesNotPreventReconnect(t *testing.T) {
 	var streams atomic.Int32
 	e := setupWithHandler(t, func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +61,8 @@ func TestBlockedDirectoryReadReturnsDeadlineAndDoesNotPreventReconnect(t *testin
 		})
 	})
 	backend := &blockedDirectoryBackend{e.backend, make(chan time.Time, contextio.Limit), make(chan struct{})}
-	defer close(backend.release)
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(backend.release) })
 	r := e.startRelayBackend(backend)
 	waitFor(t, "connected", r.Connected)
 	list := &pb.Command{Kind: &pb.Command_ListDirectories{ListDirectories: &pb.ListDirectoriesRequest{Path: "/synthetic/blocked"}}}
@@ -80,7 +82,7 @@ func TestBlockedDirectoryReadReturnsDeadlineAndDoesNotPreventReconnect(t *testin
 		}
 	})
 	var ce *remoteclient.CommandError
-	if !errors.As(err, &ce) || ce.Code != "deadline_exceeded" || !ce.FromDaemon || remoteclient.Uncertain(err) {
+	if !errors.As(err, &ce) || ce.Code != "unknown_outcome" || !ce.FromDaemon || !remoteclient.Uncertain(err) {
 		t.Fatalf("phone result=%v", err)
 	}
 	// The raw OS-reader replacement remains blocked through stream teardown/reconnect.
@@ -90,7 +92,13 @@ func TestBlockedDirectoryReadReturnsDeadlineAndDoesNotPreventReconnect(t *testin
 	go func() { e.stopRelay(); close(stopped) }()
 	select {
 	case <-stopped:
+		t.Fatal("relay Close released an unreturned OS call")
+	case <-time.After(30 * time.Millisecond):
+	}
+	releaseOnce.Do(func() { close(backend.release) })
+	select {
+	case <-stopped:
 	case <-time.After(time.Second):
-		t.Fatal("relay Close waited for directory OS call")
+		t.Fatal("relay Close did not finish after directory OS call exited")
 	}
 }

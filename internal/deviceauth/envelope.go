@@ -282,18 +282,8 @@ func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (He
 	if err != nil {
 		return h, Hash{}, err
 	}
-	if err := h.Scope(s); err != nil {
+	if err := h.scopeAt(s, head, live, now); err != nil {
 		return h, Hash{}, err
-	}
-	if live {
-		if _, ok := head.Core.Member(h.Sender); !ok {
-			return h, Hash{}, ErrUntrusted
-		}
-		if h.Purpose.Control() {
-			if head.Core.IssuedAt > now+MaxClockSkew || head.Core.ContentEpoch != h.ContentEpoch {
-				return h, Hash{}, ErrStale
-			}
-		}
 	}
 	commit, err := c.Commitment()
 	if err != nil {
@@ -305,6 +295,24 @@ func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (He
 		return h, commit, ErrUntrusted
 	}
 	return h, commit, nil
+}
+
+// scopeAt is the live authority recheck for already authenticated bytes.
+func (h Header) scopeAt(s State, head State, live bool, now uint64) error {
+	if err := h.Scope(s); err != nil {
+		return err
+	}
+	if live {
+		if _, ok := head.Core.Member(h.Sender); !ok {
+			return ErrUntrusted
+		}
+		if h.Purpose.Control() {
+			if head.Core.IssuedAt > now+MaxClockSkew || head.Core.ContentEpoch != h.ContentEpoch {
+				return ErrStale
+			}
+		}
+	}
+	return nil
 }
 func Seal(secret, sessionSeed []byte, h Header, plain []byte, writer ed25519.PrivateKey) (c Ciphertext, err error) {
 	if len(plain) > MaxCipherBytes-16 || len(writer) != 64 || ID(writer.Public().(ed25519.PublicKey)) != h.Sender {

@@ -100,7 +100,7 @@ func TestReadLoopPathCancelLeavesAdmittedExecutionDurable(t *testing.T) {
 	r := New(blockingScheduleBackend{calls: &calls, entered: entered, release: release})
 	procCtx, cancelProc := context.WithCancel(context.Background())
 	defer cancelProc()
-	link := transport.NewLink(procCtx, r.admissions, r.calls)
+	link := transport.NewLink(procCtx)
 	defer func() { releaseOnce.Do(func() { close(release) }); link.Close() }()
 
 	ep := &endpoint{r: r, lifetime: link.Context(), link: link}
@@ -161,7 +161,7 @@ func TestReadLoopPathCancelLeavesAdmittedExecutionDurable(t *testing.T) {
 
 	// Replay the same sealed command on a fresh path: the durable result must be returned.
 	replayed := make(chan *pb.ForwardReply, 1)
-	ep.handleCall(link.Context(), context.Background(), &pb.ForwardCall{CallId: 2, AttemptId: "att-2", Command: env}, func(rep *pb.ForwardReply) {
+	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 2, AttemptId: "att-2", Command: env}, func(rep *pb.ForwardReply) {
 		replayed <- rep
 	})
 	rep := <-replayed

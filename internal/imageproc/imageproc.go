@@ -11,6 +11,7 @@ package imageproc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"image"
@@ -113,16 +114,21 @@ func Config(b []byte) (pb.ImageFormat, int, int, error) {
 // decoded pixels and derived copies. A permit is used by one goroutine.
 type Permit struct{ active bool }
 
-func Acquire() *Permit {
+func Acquire() *Permit { p, _ := AcquireContext(context.Background()); return p }
+func AcquireContext(ctx context.Context) (*Permit, error) {
 	admission.L.Lock()
-	for admittedImages == 2 {
+	defer admission.L.Unlock()
+	stop := context.AfterFunc(ctx, func() { admission.L.Lock(); admission.Broadcast(); admission.L.Unlock() })
+	defer stop()
+	for admittedImages == 2 && ctx.Err() == nil {
 		admission.Wait()
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	admittedImages++
-	admission.L.Unlock()
-	return &Permit{active: true}
+	return &Permit{active: true}, nil
 }
-
 func (p *Permit) Release() {
 	p.checkActive()
 	p.active = false

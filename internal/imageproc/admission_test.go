@@ -1,8 +1,10 @@
 package imageproc
 
 import (
+	"context"
 	"testing"
 	"testing/synctest"
+	"time"
 )
 
 func TestAdmissionCoversDecodedImageAndNestedMetadata(t *testing.T) {
@@ -37,5 +39,34 @@ func TestAdmissionCoversDecodedImageAndNestedMetadata(t *testing.T) {
 		}
 		first.Release()
 		<-admitted
+	})
+}
+
+func TestImagePermitWaitRespectsDeadline(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		first, second := Acquire(), Acquire()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() {
+			p, err := AcquireContext(ctx)
+			if p != nil {
+				p.Release()
+			}
+			done <- err
+		}()
+		synctest.Wait()
+		time.Sleep(2 * time.Second)
+		synctest.Wait()
+		select {
+		case err := <-done:
+			if err != context.DeadlineExceeded {
+				t.Errorf("permit wait=%v", err)
+			}
+		default:
+			t.Error("expired permit waiter stayed blocked")
+		}
+		first.Release()
+		second.Release()
 	})
 }

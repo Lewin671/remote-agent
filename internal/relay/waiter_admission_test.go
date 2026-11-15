@@ -2,15 +2,14 @@ package relay
 
 import (
 	"context"
-	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
-	"github.com/Lewin671/remote-agent/internal/transport"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,14 +24,10 @@ func (c *registeredWaitContext) Done() <-chan struct{} {
 	return c.Context.Done()
 }
 
-func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	c := &conn{r: New(nil)}
-	link := transport.NewLink(ctx, c.r.admissions, c.r.calls)
-	defer link.Close()
-	keys := initializeTestSecurityKeys(t, c)
-	pin, _, _ := c.security.endpoint.Snapshot()
+func endpointClient(t *testing.T, e *endpoint) *deviceauth.Endpoint {
+	t.Helper()
+	keys := initializeEndpointSecurityKeys(t, e)
+	pin, _, _ := e.security.endpoint.Snapshot()
 	member := keys.states[0].Core.Members[0]
 	lease, err := deviceauth.BuildLease(keys.states[1], keys.phone, keys.states[1].Core.IssuedAt)
 	if err != nil {
@@ -42,107 +37,74 @@ func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
-	now := uint64(time.Now().UnixMilli())
-	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
-	makeWire := func(id string) deviceauth.Wire {
-		w, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: id, Deadline: now + 60000}, nil, body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return w
+	t.Cleanup(func() { client.Close() })
+	return client
+}
+func commandEnvelope(t *testing.T, client *deviceauth.Endpoint, machine, id string, cmd *pb.Command) *pb.Envelope {
+	t.Helper()
+	cmd.ProtocolVersion = protocol.Version
+	body, err := proto.Marshal(cmd)
+	if err != nil {
+		t.Fatal(err)
 	}
-	original, fresh := makeWire("reader-original-request"), makeWire("reader-fresh-request")
-	running, release := make(chan struct{}), make(chan struct{})
-	var releaseOnce sync.Once
-	first := make(chan error, 1)
-	go func() {
-		_, err := c.security.acceptWith(ctx, original, nil, now, link.Acquire, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
-			close(running)
-			<-release
-			return deviceauth.Final(nil), nil
-		})
-		first <- err
-	}()
-	<-running
-	for range maxConcurrentCalls - 1 {
-		c.r.calls <- struct{}{}
-	}
-	frames := make(chan *pb.ServerFrame)
-	registered := make(chan struct{}, deviceauth.MaxWaiters)
-	fullReply, slotQueue, newReply := make(chan error, 1), make(chan struct{}, 1), make(chan error, 1)
-	reader := make(chan error, 1)
-	defer func() { cancel(); releaseOnce.Do(func() { close(release) }); <-reader; link.Close(); <-first }()
-	go func() {
-		reader <- readForwardCalls(ctx, link, func() (*pb.ServerFrame, error) {
-			select {
-			case f := <-frames:
-				return f, nil
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-		}, func(ctx context.Context, call *pb.ForwardCall) {
-			if call.CallId <= uint64(deviceauth.MaxWaiters) {
-				_, err := c.security.acceptWith(&registeredWaitContext{Context: ctx, registered: registered}, original, nil, now, link.Acquire, nil)
-				if err != nil && !errors.Is(err, deviceauth.ErrOutcomeUnknown) {
-					t.Error(err)
-				}
-			} else if call.CallId == uint64(deviceauth.MaxWaiters+1) {
-				_, err := c.security.acceptWith(ctx, original, nil, now, link.Acquire, nil)
-				fullReply <- err
-			} else {
-				acquire := func(ctx context.Context) (func(), error) { slotQueue <- struct{}{}; return link.Acquire(ctx) }
-				_, err := c.security.acceptWith(ctx, fresh, nil, now, acquire, func(deviceauth.Header, []byte) (deviceauth.Completion, error) { return deviceauth.Final(nil), nil })
-				newReply <- err
-			}
-		})
-	}()
-	send := func(id int) {
-		t.Helper()
-		select {
-		case frames <- &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: uint64(id)}}}:
-		case <-time.After(5 * time.Second):
-			t.Fatal("waiters stalled reader")
+	session := ""
+	if kind := cmd.ProtoReflect().WhichOneof(cmd.ProtoReflect().Descriptor().Oneofs().ByName("kind")); kind != nil && cmd.GetSchedule() == nil {
+		message := cmd.ProtoReflect().Get(kind).Message()
+		if field := message.Descriptor().Fields().ByName("session_id"); field != nil {
+			session = message.Get(field).String()
 		}
 	}
-	for i := 1; i <= deviceauth.MaxWaiters; i++ {
-		send(i)
+	wire, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: machine, Session: session, Request: id, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, nil, body)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for range deviceauth.MaxWaiters {
+	env, err := wire.Envelope()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return env
+}
+func TestFullDuplicateWaitTableLeavesReaderAndFreshAdmissionRoom(t *testing.T) {
+	var calls atomic.Int32
+	entered, release := make(chan struct{}), make(chan struct{})
+	e := testEndpoint(t, New(blockingScheduleBackend{calls: &calls, entered: entered, release: release}))
+	client := endpointClient(t, e)
+	defer func() { close(release); e.link.DrainCalls(); e.admissionOwner().close() }()
+	env := commandEnvelope(t, client, e.acct.DeviceID, "reader-original-request", &pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
+	results := make(chan *pb.ForwardReply, deviceauth.MaxWaitersPerKey+2)
+	reply := func(r *pb.ForwardReply) { results <- r }
+	e.dispatch(context.Background(), &pb.ForwardCall{Command: env}, reply)
+	<-entered
+	registered := make(chan struct{}, 1)
+	for i := range deviceauth.MaxWaitersPerKey {
+		waiting := &registeredWaitContext{Context: context.Background(), registered: registered}
+		e.dispatch(waiting, &pb.ForwardCall{CallId: uint64(i + 1), Command: env}, reply)
 		select {
 		case <-registered:
-		case <-time.After(5 * time.Second):
-			t.Fatal("waiters not registered")
+		case <-time.After(time.Second):
+			t.Fatal("duplicate did not reach independent waiter table")
 		}
 	}
-	if len(c.r.calls) != maxConcurrentCalls {
-		t.Fatal("duplicate changed execution slots")
-	}
-	send(deviceauth.MaxWaiters + 1)
+	e.dispatch(context.Background(), &pb.ForwardCall{CallId: 100, Command: env}, reply)
 	select {
-	case err := <-fullReply:
-		if !errors.Is(err, deviceauth.ErrOutcomeUnknown) {
-			t.Fatal(err)
+	case r := <-results:
+		if r.CallId != 100 || r.Outcome != "unknown" || r.Reason != "busy" {
+			t.Fatalf("full waiter reply: id=%d outcome=%s reason=%s", r.CallId, r.Outcome, r.Reason)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("full wait table blocked reader")
+		t.Fatal("full wait table blocked")
 	}
-	send(deviceauth.MaxWaiters + 2)
-	select {
-	case <-slotQueue:
-	case <-time.After(time.Second):
-		t.Fatal("fresh request could not reach slot queue")
+	if got := e.admission.scheduler.Active(); got != [3]int{0, 1, 0} {
+		t.Fatalf("duplicates took execution slots: %v", got)
 	}
-	<-c.r.calls // one of the seven synthetic occupied slots becomes free
+	fresh := commandEnvelope(t, client, e.acct.DeviceID, "reader-fresh-request", &pb.Command{Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
+	e.dispatch(context.Background(), &pb.ForwardCall{CallId: 101, Command: fresh}, reply)
 	select {
-	case err := <-newReply:
-		if err != nil {
-			t.Fatal(err)
+	case r := <-results:
+		if r.CallId != 101 || r.Outcome != "executed" {
+			t.Fatalf("fresh result: id=%d outcome=%s reason=%s", r.CallId, r.Outcome, r.Reason)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("fresh request could not execute")
-	}
-	if cap(c.r.admissions) != maxConcurrentCalls+deviceauth.MaxWaiters+16 {
-		t.Fatal("production budget drift")
+		t.Fatal("waiters exhausted authentication workers")
 	}
 }

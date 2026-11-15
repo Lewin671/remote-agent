@@ -65,7 +65,7 @@ type session struct {
 	// images are the session's images and their display copies.
 	images *imageStore
 
-	lifecycleMu sync.Mutex   // serializes exit/stop/resume/fork/terminal attachment for this session
+	lifecycleMu controlMutex // serializes exit/stop/resume/fork/terminal attachment for this session
 	readMu      sync.Mutex   // serializes rollout reads
 	ctlMu       controlMutex // serializes use of the PTY host: inject, answer, interrupt
 	parser      agent.Parser
@@ -1612,9 +1612,13 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 // idleFor is how long an idle close needs the session to have been idle.
 func (s *session) killFor(ctx context.Context, cause exitCause, idleFor time.Duration) error {
 	scheduledOnly := cause == exitScheduled
-	s.lifecycleMu.Lock()
+	if err := s.lifecycleMu.LockContext(ctx); err != nil {
+		return err
+	}
 	defer s.lifecycleMu.Unlock()
-	s.ctlMu.Lock()
+	if err := s.ctlMu.LockContext(ctx); err != nil {
+		return err
+	}
 	defer s.ctlMu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return err

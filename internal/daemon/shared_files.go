@@ -257,6 +257,12 @@ func (u *uploads) sweepShared(session string, now time.Time) {
 // sharedChunk reads the block at offset, padded with zeros to the fixed
 // block length, so every result has the same size.
 func (u *uploads) sharedChunk(session, id string, offset int64) (*pb.GetSharedFileChunkResponse, error) {
+	return u.sharedChunkContext(context.Background(), session, id, offset)
+}
+func (u *uploads) sharedChunkContext(ctx context.Context, session, id string, offset int64) (*pb.GetSharedFileChunkResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	r, err := u.loadShared(session, id)
 	if err != nil {
 		return nil, err
@@ -281,6 +287,9 @@ func (u *uploads) sharedChunk(session, id string, offset int64) (*pb.GetSharedFi
 	data := make([]byte, sharedChunkBytes)
 	want := min(int64(sharedChunkBytes), r.Size-offset)
 	if want > 0 {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if _, err := f.ReadAt(data[:want], offset); err != nil {
 			return nil, err
 		}

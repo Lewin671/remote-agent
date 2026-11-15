@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/i18n"
@@ -27,8 +28,9 @@ const (
 	maxVolatileBytes    = 16 << 20
 	bodyOverhead        = 32 + 128 // key hash and logical entry/index overhead
 	acceptedGrace       = uint64(ResultRetention / time.Millisecond)
-	MaxWaiters          = 128 // Max simultaneous duplicate waiters across all paths.
-	defaultWaitTimeout  = 25 * time.Second
+	MaxWaiters          = 256 // Max simultaneous duplicate waiters across all paths.
+	MaxWaitersPerKey    = 32
+	defaultWaitTimeout  = 30 * time.Second
 )
 
 type acceptanceState uint32
@@ -70,6 +72,9 @@ type runningCall struct {
 	done        chan struct{}
 	payload     Hash
 	retainUntil uint64
+	deadline    uint64
+	waiters     int
+	abandoned   atomic.Bool
 }
 
 // AcceptOptions separates authentication of old results from new admission.
@@ -81,6 +86,8 @@ type AcceptOptions struct {
 	Acquire  func(ctx context.Context) (release func(), err error)
 	Validate func(Header, []byte) error
 	Evidence bool
+	NoWait   bool                 // scheduler transfers duplicates to the independent waiter table
+	Running  func(abandon func()) // callback lifetime, independent of the path
 }
 
 type acceptedExpiry struct {
@@ -412,19 +419,25 @@ func acceptedResult(a accepted) ([]byte, error) {
 	return bytes.Clone(a.Result), nil
 }
 func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint64, options AcceptOptions, fn func(Header, []byte) (Completion, error)) (result []byte, failure error) {
-	started := time.Now()
-	h, plain, err := e.openAuthenticated(w, seed, false, now)
+	a, err := e.Authenticate(w, seed, now)
 	if err != nil {
 		return nil, err
 	}
+	return e.AcceptAuthenticated(ctx, a, now, options, fn)
+}
+
+// AcceptAuthenticated rechecks current authority and durable identity after the
+// scheduler grants a slot. Only this endpoint can issue the capability.
+func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, now uint64, options AcceptOptions, fn func(Header, []byte) (Completion, error)) (result []byte, failure error) {
+	if a == nil || a.owner != e {
+		return nil, ErrInvalid
+	}
+	started := time.Now()
+	h, plain, payload, key := a.header, a.body, a.payload, a.key
 	if !h.Purpose.Control() {
 		return nil, ErrInvalid
 	}
-	payload, err := payloadHash(h, plain)
-	if err != nil {
-		return nil, err
-	}
-	key := acceptedKey(h)
+	var err error
 	// Every decision below is authenticated and bound, including invalid Command bodies.
 	defer func() {
 		if failure == nil {
@@ -446,7 +459,8 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 				decision.ConflictKind = "identity"
 			}
 		}
-		decision.Key, decision.Payload, _ = RequestIdentity(h, plain)
+		copy(decision.Key[:], key)
+		decision.Payload = payload
 		failure = decision
 	}()
 	var release func()
@@ -475,6 +489,10 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 			}
 			if run := e.running[key]; a.State == running && run != nil {
 				releaseSlot()
+				if options.NoWait {
+					e.mu.Unlock()
+					return nil, ErrRunning
+				}
 				return e.waitLocked(ctx, key, run, observed)
 			}
 			out, err := acceptedResult(a)
@@ -488,6 +506,10 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 				return nil, ErrIdentityConflict
 			}
 			releaseSlot()
+			if options.NoWait {
+				e.mu.Unlock()
+				return nil, ErrRunning
+			}
 			return e.waitLocked(ctx, key, run, observed)
 		}
 		// An expired missing identity may have executed before pruning or migration.
@@ -526,7 +548,7 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 			e.mu.Unlock()
 			return nil, notAdmitted("lease", err)
 		}
-		if _, err := w.VerifyOrigin(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
+		if err := h.scopeAt(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
 			e.mu.Unlock()
 			return nil, err
 		}
@@ -570,7 +592,7 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 	}
 	if readOnly {
 		e.mu.Unlock()
-		c, _ := fn(h, plain)
+		c, _ := fn(h, bytes.Clone(plain))
 		if !c.final {
 			return nil, ErrOutcomeUnknown
 		}
@@ -579,12 +601,18 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 	if e.running == nil {
 		e.running = map[string]*runningCall{}
 	}
-	run := &runningCall{done: make(chan struct{}), payload: payload, retainUntil: e.data.Accepted[key].RetainUntil}
+	run := &runningCall{done: make(chan struct{}), payload: payload, retainUntil: e.data.Accepted[key].RetainUntil, deadline: h.Deadline}
 	e.running[key] = run
+	if options.Running != nil {
+		options.Running(func() { run.abandoned.Store(true); run.notify.Do(func() { close(run.done) }) })
+	}
 	e.mu.Unlock()
 	// Elapsed monotonic time prevents a late callback using its old admission time.
 	defer func() { e.mu.Lock(); delete(e.running, key); run.notify.Do(func() { close(run.done) }); e.mu.Unlock() }()
-	c, _ := fn(h, plain)
+	c, _ := fn(h, bytes.Clone(plain))
+	if run.abandoned.Load() {
+		c = Undetermined()
+	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	finished := maxU64(clock+uint64(time.Since(clockAt)/time.Millisecond), e.data.Floor)
@@ -597,42 +625,74 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 	return acceptedResult(e.data.Accepted[key])
 }
 func (e *Endpoint) waitLocked(ctx context.Context, key string, run *runningCall, now uint64) ([]byte, error) {
+	wait, err := e.registerWaitLocked(ctx, key, run, now)
+	e.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return wait.Wait()
+}
+
+func (e *Endpoint) registerWaitLocked(ctx context.Context, key string, run *runningCall, now uint64) (*ResultWaiter, error) {
 	now = maxU64(maxU64(now, e.data.Floor), e.data.AcceptedFloor)
-	if e.waiters >= MaxWaiters || now >= run.retainUntil {
-		e.mu.Unlock()
+	if run.abandoned.Load() || now >= run.deadline || now >= run.retainUntil {
 		return nil, ErrOutcomeUnknown
+	}
+	if e.waiters >= MaxWaiters || run.waiters >= MaxWaitersPerKey {
+		return nil, notAdmitted("busy", ErrOutcomeUnknown)
 	}
 	timeout := e.waitTimeout
 	if timeout == 0 {
 		timeout = defaultWaitTimeout
 	}
-	remaining := time.Duration(run.retainUntil-now) * time.Millisecond
+	remaining := time.Duration(run.deadline-now) * time.Millisecond
 	if remaining < timeout {
 		timeout = remaining
 	}
+	until := time.Now().Add(timeout)
 	e.waiters++
-	e.mu.Unlock()
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-	defer func() { e.mu.Lock(); e.waiters--; e.mu.Unlock() }()
-	select {
-	case <-ctx.Done():
-		return nil, ErrOutcomeUnknown
-	case <-timer.C:
-		return nil, ErrOutcomeUnknown
-	case <-run.done:
-	}
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.closed {
-		return nil, ErrOutcomeUnknown
-	}
-	a, ok := e.data.Accepted[key]
-	if !ok {
-		return nil, ErrOutcomeUnknown
-	}
-	return acceptedResult(a)
+	run.waiters++
+	ctx, cancel := context.WithCancel(ctx)
+	return &ResultWaiter{cancel: cancel, wait: func() ([]byte, error) {
+		defer cancel()
+		defer func() { e.mu.Lock(); e.waiters--; run.waiters--; e.mu.Unlock() }()
+		timer := time.NewTimer(time.Until(until))
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return nil, ErrOutcomeUnknown
+		case <-timer.C:
+			return nil, ErrOutcomeUnknown
+		case <-run.done:
+		}
+		e.mu.Lock()
+		defer e.mu.Unlock()
+		if e.closed || run.abandoned.Load() {
+			return nil, ErrOutcomeUnknown
+		}
+		a, ok := e.data.Accepted[key]
+		if !ok {
+			return nil, ErrOutcomeUnknown
+		}
+		return acceptedResult(a)
+	}}, nil
 }
+
+// ResultWaiter owns one registered duplicate wait, never execution.
+type ResultWaiter struct {
+	wait   func() ([]byte, error)
+	cancel context.CancelFunc
+}
+
+func (w *ResultWaiter) Wait() ([]byte, error) { return w.wait() }
+func (w *ResultWaiter) Cancel()               { w.cancel() }
+
+type runningEntry struct{}
+
+func (*runningEntry) Error() string { return ErrOutcomeUnknown.Error() }
+
+// ErrRunning requests a bounded waiter handoff, never a second execution.
+var ErrRunning error = &runningEntry{}
 
 var (
 	ErrIdentityConflict = errors.New(i18n.SecurityRequestIdentityConflict("en"))

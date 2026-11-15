@@ -113,7 +113,7 @@ func (h *handler) Send(ctx context.Context, req *connect.Request[pb.SendRequest]
 		if err != nil {
 			return messageUploads{}, err
 		}
-		return s.d.uploads.takeUploads(req.Msg.ImageIds, req.Msg.FileIds, owner, s.meta.ID, id)
+		return s.d.uploads.takeUploadsContext(ctx, req.Msg.ImageIds, req.Msg.FileIds, owner, s.meta.ID, id)
 	})
 	if err != nil {
 		return nil, h.d.rpcErr(err)
@@ -374,7 +374,7 @@ func (h *handler) BeginImageUpload(ctx context.Context, req *connect.Request[pb.
 	if err != nil {
 		return nil, err
 	}
-	st, err := h.d.uploads.begin(req.Msg, owner)
+	st, err := h.d.uploads.beginContext(ctx, req.Msg, owner)
 	if err != nil {
 		return nil, h.d.uploadErr(err)
 	}
@@ -386,7 +386,7 @@ func (h *handler) PutImageChunk(ctx context.Context, req *connect.Request[pb.Put
 	if err != nil {
 		return nil, err
 	}
-	st, err := h.d.uploads.put(req.Msg, owner)
+	st, err := h.d.uploads.putContext(ctx, req.Msg, owner)
 	if err != nil {
 		return nil, h.d.uploadErr(err)
 	}
@@ -413,7 +413,7 @@ func (h *handler) CompleteImageUpload(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, err
 	}
-	st, err := h.d.uploads.complete(req.Msg.TransferId, owner)
+	st, err := h.d.uploads.completeContext(ctx, req.Msg.TransferId, owner)
 	if err != nil {
 		return nil, h.d.uploadErr(err)
 	}
@@ -425,7 +425,7 @@ func (h *handler) AbortImageUpload(ctx context.Context, req *connect.Request[pb.
 	if err != nil {
 		return nil, err
 	}
-	if err := h.d.uploads.abort(req.Msg.TransferId, owner); err != nil {
+	if err := h.d.uploads.abortContext(ctx, req.Msg.TransferId, owner); err != nil {
 		return nil, h.d.uploadErr(err)
 	}
 	return connect.NewResponse(&pb.AbortImageUploadResponse{}), nil
@@ -474,7 +474,7 @@ func (h *handler) GetSharedFileChunk(ctx context.Context, req *connect.Request[p
 	default:
 		return nil, outcome.FinalError(connect.NewError(connect.CodePermissionDenied, errors.New(i18n.AttachmentSharedClientsOnly("zh-CN"))))
 	}
-	res, err := h.d.uploads.sharedChunk(req.Msg.SessionId, req.Msg.FileId, req.Msg.Offset)
+	res, err := h.d.uploads.sharedChunkContext(ctx, req.Msg.SessionId, req.Msg.FileId, req.Msg.Offset)
 	if err != nil {
 		return nil, sharedErr(err)
 	}

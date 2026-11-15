@@ -60,12 +60,12 @@ type ImageUpload struct {
 
 // Relay keeps the daemon connected to the server.
 type Relay struct {
+	observeApproval func(acquired bool, wait time.Duration)
+	scheduling      atomic.Pointer[transport.Scheduler]
 	observeRecovery func(recoveryEvent)
 	recoveryBudget  *transport.Budget
 	readyCount      atomic.Uint64
 	backend         Backend
-	admissions      chan struct{} // bounded authentication and same-ID wait workers
-	calls           chan struct{} // bounds command workers across reconnects
 	machineRPCs     chan struct{} // bounds session uploads across reconnects
 	// backlog admits one ended session at a time to its first sync after
 	// connecting, so that the other RPC slot stays free for live sessions.
@@ -105,7 +105,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, calls: make(chan struct{}, maxConcurrentCalls), admissions: make(chan struct{}, maxConcurrentAdmissions), machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 60 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
+	return &Relay{backend: backend, machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 60 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.
@@ -387,16 +387,6 @@ func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 	_, err = c.machine.PutMachine(ctx, connect.NewRequest(&pb.PutMachineRequest{Meta: env}))
 	return err
 }
-
-// maxConcurrentCalls bounds memory and goroutines even when an untrusted
-// server floods the stream with large commands or repeats an inflight one.
-const maxConcurrentCalls = 8
-
-// Even with every execution and duplicate-wait slot occupied, leave 16
-// admission workers for fresh slot queues and immediate excess-wait replies.
-// Thus duplicate waiters alone cannot backpressure the stream reader. Fresh
-// work remains bounded and can backpressure it, as before this refactor.
-const maxConcurrentAdmissions = maxConcurrentCalls + deviceauth.MaxWaiters + 16
 
 // errKeyLost means the server holds a session whose key is missing here.
 var errKeyLost = errors.New("the session's key is missing locally but the server already has the session")

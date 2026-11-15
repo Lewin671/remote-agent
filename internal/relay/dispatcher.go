@@ -47,7 +47,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	security.lifetime = maintenance
 	security.credentials = securityCredentials
 	d := &dispatcher{ctx: ctx, cancel: cancel, security: security, acct: acct, maintenance: maintenance, stopMaintenance: stopMaintenance}
-	d.link = transport.NewLink(ctx, r.admissions, r.calls)
+	d.link = transport.NewLink(ctx)
 	if recovering {
 		security.setAuthorized(false)
 	}
@@ -71,6 +71,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	d.publisher = &conn{r: r, acct: acct, security: security, lifetime: ctx, diskAlertNow: r.retryTime().now, publishNow: make(chan struct{}, 1),
 		machine: remoteagentv1connect.NewMachineServiceClient(httpClient(), acct.Server, connect.WithInterceptors(publishCredentials.bearer(), r.limitMachineRPCs()))}
 	d.endpoint = &endpoint{r: r, acct: acct, security: security, lifetime: d.link.Context(), link: d.link, sessionKey: d.publisher.sessionKey}
+	d.endpoint.admissionOwner()
 	// Each loop has its own budget and credentials; no network I/O lock or RPC
 	// slot used by publication is shared with membership synchronization.
 	initialSync := make(chan struct{})
@@ -88,6 +89,9 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 }
 func (d *dispatcher) close() {
 	d.cancel()
+	if d.endpoint.admission != nil {
+		d.endpoint.admission.close()
+	}
 	for _, c := range d.credentials {
 		c.close()
 	}
@@ -170,6 +174,9 @@ func (d *dispatcher) retire() {
 	}
 	d.security.setAuthorized(false)
 	d.workers.Wait()
+	if d.endpoint.admission != nil {
+		d.endpoint.admission.close()
+	}
 	d.link.DrainCalls()
 	d.cancel()
 	d.link.Close()

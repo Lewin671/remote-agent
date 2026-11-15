@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -111,7 +112,7 @@ func (u *uploads) mkdirUploadDir(dir string) error {
 // Caller holds u.mu. Hash through an open descriptor without holding the
 // global lock, then reload ownership/state and verify this is still the same
 // partial file (abort + re-begin must never complete the old bytes).
-func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
+func (u *uploads) completeFile(ctx context.Context, t *transfer) (*pb.ImageUploadStatus, error) {
 	f, err := os.Open(u.partial(t.ID) + ".part")
 	if err != nil {
 		return nil, err
@@ -129,7 +130,7 @@ func (u *uploads) completeFile(t *transfer) (*pb.ImageUploadStatus, error) {
 	}
 	h := sha256.New()
 	u.mu.Unlock()
-	n, hashErr := hash(h, f)
+	n, hashErr := hash(h, &uploadReader{ctx: ctx, reader: f})
 	u.mu.Lock()
 	current, err := u.load(t.ID)
 	if err != nil {
@@ -270,7 +271,12 @@ func (u *uploads) checkUploads(images, files []string, device string) error {
 	return err
 }
 func (u *uploads) takeUploads(images, files []string, device, session, request string) (messageUploads, error) {
-	u.mu.Lock()
+	return u.takeUploadsContext(context.Background(), images, files, device, session, request)
+}
+func (u *uploads) takeUploadsContext(ctx context.Context, images, files []string, device, session, request string) (messageUploads, error) {
+	if err := u.mu.LockContext(ctx); err != nil {
+		return messageUploads{}, err
+	}
 	defer u.mu.Unlock()
 	out := messageUploads{}
 	ts, err := u.selectUploads(images, files, device, session)
@@ -443,4 +449,21 @@ func fileLinePath(line string) string {
 		}
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(line, "File: "), "@")
+}
+
+// Hide File.WriteTo/ReaderFrom optimizations so hashing checks cancellation
+// between at most 64 KiB reads, while retaining the pinned file identity.
+type uploadReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r *uploadReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	if len(p) > 64<<10 {
+		p = p[:64<<10]
+	}
+	return r.reader.Read(p)
 }

@@ -60,4 +60,10 @@ func ObserveRecoveryForTest(r *Relay, observer func(string)) {
 	r.observeRecovery = func(event recoveryEvent) { observer([]string{"hint", "suspect", "lost", "dial", "ready"}[event]) }
 }
 
-func ActiveCallsForTest(r *Relay) int { return len(r.calls) }
+func ActiveCallsForTest(r *Relay) int {
+	if s := r.scheduling.Load(); s != nil {
+		n := s.Active()
+		return n[0] + n[1] + n[2]
+	}
+	return 0
+}

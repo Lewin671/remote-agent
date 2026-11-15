@@ -1173,7 +1173,9 @@ func (d *Daemon) resumeContextBy(ctx context.Context, id string, origin *pb.Orig
 	if err != nil {
 		return nil, err
 	}
-	s.lifecycleMu.Lock()
+	if err := s.lifecycleMu.LockContext(ctx); err != nil {
+		return nil, err
+	}
 	defer s.lifecycleMu.Unlock()
 	resumed, err := d.resumeSessionLocked(ctx, s, origin)
 	if errors.Is(err, errRunning) && humanOrigin(origin) {
@@ -1268,7 +1270,9 @@ drain:
 		s.lifecycleMu.Lock()
 		// Recheck both liveness and generation after relinquishing ownership.
 	}
-	s.ctlMu.Lock()
+	if err := s.ctlMu.LockContext(ctx); err != nil {
+		return nil, err
+	}
 	defer s.ctlMu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return nil, err

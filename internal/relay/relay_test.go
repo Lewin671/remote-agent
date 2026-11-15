@@ -52,6 +52,7 @@ type fakeBackend struct {
 	resolved      []*pb.ResolveApprovalRequest
 	stopDeadlines chan time.Time
 	sendResult    func(context.Context) error
+	normalResult  func(context.Context) error
 	// images are display copies by image ID; imageResults the IDs whose
 	// upload finished, in order.
 	origins []*pb.Origin
@@ -215,6 +216,11 @@ func (f *fakeLocal) Send(ctx context.Context, req *connect.Request[pb.SendReques
 }
 
 func (f *fakeLocal) RenameSession(ctx context.Context, req *connect.Request[pb.RenameSessionRequest]) (*connect.Response[pb.RenameSessionResponse], error) {
+	if f.b.normalResult != nil {
+		if err := f.b.normalResult(ctx); err != nil {
+			return nil, err
+		}
+	}
 	l, err := f.b.log(req.Msg.SessionId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)

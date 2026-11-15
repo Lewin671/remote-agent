@@ -261,7 +261,7 @@ func TestRecoveryMeasurements(t *testing.T) {
 			call := func() bool {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 				defer cancel()
-				_, err := e.client.Do(ctx, session, &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: session.ID, Title: "measured"}}})
+				_, err := e.client.Do(ctx, session, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: session.ID, Text: "measured"}}})
 				return err == nil
 			}
 			if !call() {
@@ -277,7 +277,7 @@ func TestRecoveryMeasurements(t *testing.T) {
 					}
 					release = make(chan struct{})
 					entered := make(chan struct{}, count)
-					e.backend.sendResult = func(ctx context.Context) error {
+					e.backend.normalResult = func(ctx context.Context) error {
 						entered <- struct{}{}
 						select {
 						case <-release:
@@ -290,10 +290,10 @@ func TestRecoveryMeasurements(t *testing.T) {
 						calls.Go(func() {
 							ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 							defer cancel()
-							_, _ = e.client.Do(ctx, session, &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: session.ID, Text: "load"}}})
+							_, _ = e.client.Do(ctx, session, &pb.Command{Kind: &pb.Command_RenameSession{RenameSession: &pb.RenameSessionRequest{SessionId: session.ID, Title: "load"}}})
 						})
 					}
-					for range count {
+					for range 4 {
 						select {
 						case <-entered:
 						case <-time.After(5 * time.Second):
@@ -384,7 +384,7 @@ func TestRecoveryMeasurements(t *testing.T) {
 					close(release)
 					calls.Wait()
 					waitFor(t, "load execution finished", func() bool { return relay.ActiveCallsForTest(r) == 0 })
-					e.backend.sendResult = nil
+					e.backend.normalResult = nil
 				}
 				if !row.Ready {
 					t.Fatal("path did not recover; no later samples taken")

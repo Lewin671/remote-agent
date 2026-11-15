@@ -154,7 +154,8 @@ func TestRepeatedBeginKeepsActiveHashAndDescriptorThroughCompletion(t *testing.T
 	hashed, resume := make(chan struct{}), make(chan struct{})
 	var descriptor *os.File
 	u.hashFile = func(w io.Writer, r io.Reader) (int64, error) {
-		descriptor = r.(*os.File)
+		// Cancellation wraps reads; the pinned descriptor must still outlive commit.
+		descriptor = r.(*uploadReader).reader.(*os.File)
 		n, err := io.Copy(w, r)
 		close(hashed)
 		<-resume
