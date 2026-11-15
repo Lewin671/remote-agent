@@ -1,0 +1,82 @@
+// 草案，待负责人冻结。Standalone only; NOT imported by production protos.
+syntax = "proto3";
+package transport.lab.draft;
+
+enum FrameClass { FRAME_CLASS_UNSPECIFIED = 0; SIGNAL = 1; CONTROL = 2; }
+message DirectedPeerFrame { bytes to_device = 1; FrameClass frame_class = 2; bytes frame_id = 3; bytes sealed = 4; }
+message PeerFrameDelivery { bytes from_device = 1; bytes to_device = 2; FrameClass frame_class = 3; bytes frame_id = 4; bytes sealed = 5; }
+message PeerFrameResult {
+  enum Status { UNSPECIFIED = 0; DELIVERED = 1; OFFLINE = 2; LIMITED = 3; }
+  bytes frame_id = 1; Status status = 2; uint32 retry_after_ms = 3;
+}
+message TypedPayload { uint32 type_id = 1; bytes payload = 2; }
+message PeerSignal { TypedPayload body = 1; }
+message TransportControl { TypedPayload body = 1; }
+enum Role { ROLE_UNSPECIFIED = 0; CLIENT = 1; MACHINE = 2; }
+enum PCUse { PC_USE_UNSPECIFIED = 0; INTERACTIVE = 1; BULK = 2; }
+message Context {
+  bytes domain = 1; bytes account = 2; bytes sender = 3; bytes receiver = 4;
+  Role sender_role = 5; Role receiver_role = 6; bytes machine = 7; uint32 protocol = 8;
+  uint64 member_epoch = 9; bytes member_head = 10;
+  bytes sender_instance = 11; bytes receiver_instance = 12;
+  bytes sender_boot_nonce = 13; bytes receiver_boot_nonce = 14;
+  bytes connection = 15; PCUse use = 16; uint64 generation = 17;
+  uint64 seq = 18; int64 issued_at_ms = 19; int64 deadline_ms = 20;
+  FrameClass purpose = 21; bytes direction = 22;
+}
+message SealedPeerPacket {
+  bytes context_nonce = 1; bytes encrypted_context = 2;
+  bytes body_nonce = 3; bytes encrypted_body = 4; bytes signature = 5;
+}
+message Probe { bytes probe_id = 1; bytes sender_instance = 2; bytes sender_boot_nonce = 3; }
+message Challenge { bytes probe_id = 1; bytes sender_instance = 2; bytes sender_boot_nonce = 3; bytes peer_boot_nonce = 4; bool stale_instance = 5; }
+message SDP { bytes original_utf8_crlf = 1; bytes sha256 = 2; }
+message Candidate { bytes original_utf8 = 1; bytes ufrag = 2; bytes mid = 3; uint32 mline_index = 4; uint64 generation = 5; }
+message Candidates { repeated Candidate candidates = 1; uint32 batch_index = 2; }
+message EndCandidates { bytes ufrag = 1; uint32 candidate_count = 2; uint32 batch_count = 3; }
+message Confirm { bytes offer_sha256 = 1; bytes answer_sha256 = 2; bytes offer_fingerprint = 3; bytes answer_fingerprint = 4; }
+message Restart { uint64 current_generation = 1; uint32 reason = 2; }
+message Close { uint32 reason = 1; }
+
+message Fragment {
+  bytes message_id = 1; uint32 index = 2; uint32 count = 3; uint32 ciphertext_length = 4;
+  bytes ciphertext_sha256 = 5; uint64 path_generation = 6; bytes fragment = 7;
+}
+enum Direction { DIRECTION_UNSPECIFIED = 0; TO_DAEMON = 1; TO_CLIENT = 2; }
+message LogicalFrame {
+  bytes stream = 1; Direction direction = 2; uint64 seq = 3; int64 original_deadline_ms = 4;
+  bytes original_envelope = 5; // Preserve existing signed business envelope exactly.
+}
+enum FrameOutcome {
+  FRAME_OUTCOME_UNSPECIFIED = 0; APPLIED = 1; NON_INPUT_FAILED = 2;
+  INPUT_PARTIAL_OR_UNKNOWN = 3; INPUT_BLOCKED = 4; NOT_APPLIED = 5; EXPIRED_NOT_APPLIED = 6;
+}
+message FrameStatus {
+  uint64 seq = 1; bytes original_payload_sha256 = 2; FrameOutcome outcome = 3;
+  uint32 definitely_injected_prefix = 4; uint32 possibly_injected_prefix = 5;
+  uint32 input_bytes = 6; uint32 failure_reason = 7;
+}
+message Watermark {
+  uint64 processed = 1; uint64 input_success = 2; uint64 failed_input_seq = 3;
+  repeated FrameStatus details = 4;
+}
+message FlowState { Watermark to_daemon = 1; Watermark to_client = 2; }
+message Capabilities { bytes capability_id = 1; repeated uint32 control_types = 2; repeated uint32 signal_types = 3; int64 expires_at_ms = 4; bool file_download = 5; uint32 max_message_bytes = 6; }
+message AttachPath { bytes stream = 1; bytes session = 2; bytes sender = 3; bytes leg_id = 4; uint64 path_generation = 5; FlowState state = 6; }
+message InputStatus { bytes stream = 1; bytes query_id = 2; uint64 from_seq = 3; uint32 limit = 4; bytes snapshot_token = 5; }
+message InputStatusReply {
+  bytes stream = 1; bytes query_id = 2; bool available = 3; bytes snapshot_token = 4;
+  FlowState state = 5; uint64 next_seq = 6; bool complete = 7;
+}
+message Ack {
+  bytes stream = 1; Direction direction = 2; Watermark state = 3;
+  FrameClass signal_or_control = 4; uint64 acknowledged_seq = 5; bytes acknowledged_sha256 = 6;
+}
+message Replay { bytes stream = 1; Direction direction = 2; uint64 from_seq = 3; uint64 through_seq = 4; uint32 max_bytes = 5; uint32 max_frames = 6; }
+message Barrier { bytes stream = 1; bytes barrier_id = 2; FlowState requested = 3; bool stop_admission = 4; bytes new_leg_id = 5; uint64 path_generation = 6; }
+message BarrierReply { bytes stream = 1; bytes barrier_id = 2; FlowState state = 3; bool final = 4; bool accepted = 5; }
+message StreamFailed { bytes stream = 1; FrameStatus input_failure = 2; FlowState state = 3; }
+message ClosePath { bytes stream = 1; bytes leg_id = 2; uint64 path_generation = 3; uint32 reason = 4; }
+message DirectPolicy { bytes policy_scope_peer = 1; uint64 revision = 2; bool enabled = 3; }
+message PolicyReply { uint64 revision = 1; bool applied = 2; bool enabled = 3; }
+message Unsupported { FrameClass original_purpose = 1; uint32 original_type_id = 2; uint64 original_seq = 3; bytes original_sha256 = 4; }

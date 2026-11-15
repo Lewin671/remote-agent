@@ -1,0 +1,226 @@
+[
+  {
+    "file": "pion-offer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "61c2d3fb3fc301bb05caac1acde1dbdd441e6aa424db3aef4b7a9322aa8f1fd8",
+    "bytes": 479
+  },
+  {
+    "file": "pion-answer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "8b2a041964f7e7cf2c2697973480afe982e12ffc3cf8acb866a94717a38df15c",
+    "bytes": 478
+  },
+  {
+    "file": "pion-restart.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "5080c9f0ed3b11d08955aadcddbd8eb6ee6d696b2e3a541b55e358dea33728f6",
+    "bytes": 479
+  },
+  {
+    "file": "chrome-offer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "60dbe4d1d12309b93140b61e46782be70c9f0659c86ba31780f9b35cef7915ce",
+    "bytes": 456
+  },
+  {
+    "file": "chrome-answer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "6a3cf73e18adda6dc70b6d2cce29ab3e48e5cfb1b2b7adb8257f396259690d09",
+    "bytes": 457
+  },
+  {
+    "file": "chrome-restart.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "2386030a6de1cb3715f886585b44f302af49bde2f4c10f23f577da5704179ae4",
+    "bytes": 456
+  },
+  {
+    "file": "webkit-offer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "6a36e9b10ce9c44e9a3fa6da42b657aa37f559f0f608ce029c3fe45633ab6051",
+    "bytes": 458
+  },
+  {
+    "file": "webkit-answer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "b613bb308c7f4badc267c7d349fcc18e0ef05c88d762db6b06a7b9ed86ddf422",
+    "bytes": 457
+  },
+  {
+    "file": "webkit-restart.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "2440962cb9c3a19ee87601637ee182b72e2c0338817e76047595811520518d61",
+    "bytes": 458
+  },
+  {
+    "file": "android-offer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "38f2361d7437a7d4e50d8128796c832d504c32cf59fe3dbab4194eceb638cff0",
+    "bytes": 471
+  },
+  {
+    "file": "android-answer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "9a29ef8d31a43a6c8171859190bb6c89b9a06208003ab60bedabbeebc35809e3",
+    "bytes": 470
+  },
+  {
+    "file": "android-restart.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "6b34269d68074f041447e5e481c44c40fa31ea6ae9135d8dc3a3e1eb3c0df0ff",
+    "bytes": 471
+  },
+  {
+    "file": "ios-offer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "fa29f0c9a45d160c8b6ffcafce575de85980a52f83dc57b2d3f1edc6e8d4e5b8",
+    "bytes": 470
+  },
+  {
+    "file": "ios-answer.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "fb02e19dfde98e74cb20ae2a4f3065278969ee644a3db1afd5d2915cd100c7fa",
+    "bytes": 470
+  },
+  {
+    "file": "ios-restart.sdp",
+    "accept": true,
+    "source": "SDK original; ephemeral test peer",
+    "sha256": "23c911c443f9b8acd5234ddc8384eb51ae27de07757b3c303a5f0be7455ddd94",
+    "bytes": 470
+  },
+  {
+    "file": "bad-lf-only.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "f445d651b4d06f086d212e34ec5ba5bd7668d1644fd20aa296232b18fc120cc7",
+    "bytes": 439
+  },
+  {
+    "file": "bad-bare-cr.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "d4b448781f4f3d54487161a30f9064c1cf2ff321fa3aaa6d99ee304f17014d77",
+    "bytes": 455
+  },
+  {
+    "file": "bad-no-final-crlf.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "f37a77a5ce37f22c0ecece7860bf4a016135ef5e31149587fdd785735c345a38",
+    "bytes": 454
+  },
+  {
+    "file": "bad-nul.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "6e9e54acfb4d927fc92bc1ba0165d0456a9d0c07316b3d5c051aac8feee1fa81",
+    "bytes": 457
+  },
+  {
+    "file": "bad-invalid-utf8.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "8440042c7cc5202bc5fe7b5913293f235468d6cea86a80068c67007ed4f4834e",
+    "bytes": 457
+  },
+  {
+    "file": "bad-audio.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "9a673a29b0317cabb2508806b5ce19b46916c07863354b92665b3ef0c2bbfb13",
+    "bytes": 489
+  },
+  {
+    "file": "bad-two-application.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "a560412a2982f16ffb7b18554bb10085f0ae53189eb68a187e482fd1c38689ee",
+    "bytes": 791
+  },
+  {
+    "file": "bad-ice-lite.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "5715fa7e458054d98b98757c348abca99eee8454ddb5f59406d7fbda18e2437a",
+    "bytes": 468
+  },
+  {
+    "file": "bad-duplicate-fingerprint.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "8317abfca5ceedc1ac2522d458506640852ae76ced677c7ade335d2ebec89789",
+    "bytes": 575
+  },
+  {
+    "file": "bad-fingerprint-sha1.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "60f01a2c794945f3b6f9ac7d7c60183b62a3dc8662cc39dfbacb08d8d1261332",
+    "bytes": 454
+  },
+  {
+    "file": "bad-fingerprint-short.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "d5d8da037db7dda9c3351641f44ab5fe80ddeaa21560ed21899ed880e85cb9fa",
+    "bytes": 366
+  },
+  {
+    "file": "bad-fingerprint-missing.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "1814fb749002d5933f97ffd3df3b9623a8f4e2435695a041c1c23c5445f91223",
+    "bytes": 337
+  },
+  {
+    "file": "bad-fingerprint-conflict.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "76c0b4297e0b59065d68371837d3e92a87acb0275bb81e9bd817f951e5f4612e",
+    "bytes": 575
+  },
+  {
+    "file": "bad-duplicate-ufrag.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "cc181b214fbdad559a6ffd5af637f48d31af08ac69c5ff65802e8e8b87a16e5c",
+    "bytes": 474
+  },
+  {
+    "file": "bad-unknown-media.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "6f27121548562af947900720e9296ae3da13b0e954baffc852a667c57cbb366a",
+    "bytes": 452
+  },
+  {
+    "file": "bad-oversize.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "9c6f77df5ec684de571b456af20b174536a56b087e27e83c0bd0c8b18360dd2c",
+    "bytes": 66006
+  },
+  {
+    "file": "good-inherited-fingerprint.sdp",
+    "accept": true,
+    "source": "same fingerprint at session and media scopes",
+    "sha256": "d1e31afb8c80a3d9ab3ddaad5760719bbf55770f881e9915a333c8da0abd3e8d",
+    "bytes": 575
+  }
+]

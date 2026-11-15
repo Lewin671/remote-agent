@@ -93,31 +93,95 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 
 上述是 [transport.md](transport.md) 前提与改造位置的依据；新目标和决策仅在那里维护，阶段验收结果仍需另行取得。
 
-## 6. 信令重试与缺口期限的模型反例
+## 6. 信令重试与缺口期限的模型验证
 
 **虚拟时钟模型，非 SDK/产品实测（2026-11-14，v0.76.2、协议 15 基线）**：
-[可复跑模型](../spike/transport-1a/README.md)按当前设计的初发后 500/1500 ms 重试、
-50 ms 候选汇集、32 条/1 秒缺口和 10 秒总期限运行。Signal/Control 为两个独立假路径；
-认证、boot challenge、角色、head 和租约有效作为前提，没有实现密码学或真实 SDP。
+[可复跑模型](../spike/transport-1a/README.md)落实负责人裁定：接收缺口从首次乱序帧到达起
+固定 2.5 秒、重发不刷新；每方向最多 32 个未确认序号。重试点仍为初发后 500/1500 ms，
+总期限仍 10 秒。Signal/Control 为独立假路径，身份与认证有效作为前提。
 
-| 虚拟时刻 | 事件 |
+| 模型场景 | 观察 |
 |---|---|
-| 0 ms | Offer seq=1 初发，丢弃 |
-| 50 ms | 已攒满 16 个候选的 seq=2 到达，等待 seq=1，启动 1 秒缺口期限 |
-| 500 ms | 原 Offer 第一次重试，丢弃 |
-| 1050 ms | 缺口超时，接收方退休该 generation |
-| 1500 ms | 原 Offer 最后一次重试到达，因旧 generation 被拒绝 |
+| Offer 前两份丢失、候选 50 ms 先到 | 1500 ms 补齐并按序处理，未退休代次；原 1050 ms 提前换代反例已消除 |
+| 候选批 seq=2 前两份丢失、seq=3 先到 | 1550 ms 补齐，候选不越过缺口；每帧只处理一次 |
+| ACK 丢失 | 重发同一逻辑帧只重复确认，不重复处理 |
+| limited 两次、retry_after 为 800/900 ms | Offer 实际发送点 0/800/1700 ms，仍三份，同序号、同字节 |
+| retry_after 超过总期限 | 不越过 10 秒补发；不能宣称建立成功 |
+| 每代 Offer 前两份丢失 | 第一代已能补齐，只建一代 |
+| Offer 三份全丢 | 零成本立即重开的有利模型中，10 秒内最多开始 4 代、退休 3 代，未处理 SDP；总期限不变 |
+| 64 条合成消息、ACK 延迟 600 ms | 未确认窗口峰值 32，等待 ACK 才继续；这不是允许每代 64 个候选批 |
 
-无丢包、一次 Offer 丢失、一次 ACK 丢失的对照都能按序处理 Offer 和候选，且不会重复处理。
-两次 Offer 丢失时没有任何 SDK 观察点被调用；候选并未越过未经安装的 SDP。
-即使收到缓存候选就 ACK、减少候选重发，缺口仍早于最后一次 Offer 重试到期。
+2.5 秒是接收方故障期限，与发送方重试重叠，成功补齐时不额外等待。因此不额外给原算术
+1.25 秒节流 +1.5 秒重试 +3 秒 relay +1 秒引导 +3 秒 ICE/DTLS 的 9.75 秒加一次 2.5 秒；
+但完整引导的串行重试另有下界反例，见第 8 节，9.75 秒不能据此视为恢复上界。
+最后重试未在缺口期限内到达、缺口到期后的新代次及超长 retry_after 须另列失败/耗时，
+不沿用此成功预算或延长 10 秒。当前只有模型结果，不是四端 SDK 或 16 PC 恢复实测。
 
-允许新代次零成本立即重开，并在**每一代**只丢 Offer 前两份的压力模型，10 秒内开始 10 代、
-退休 9 代，仍没有 SDP 可处理。这不是总共两帧丢失，也不含真实 Restart/引导/ICE 的成本。
-全部是虚拟时刻，合成标记的字节数不代表 wire 字节；没有四端 SDK、16 PC、128 帧/3 MiB
-或真实 9.75 秒恢复实测结果。
+## 7. 四端 SDK 原串与独立实验
 
-反例的关键前提是候选可在前序信令 ACK 前发送，当前设计没有规定发送窗口。
-它证明该允许时序不能用到最后一次重试，不证明所有调度策略都不能连接。
-若要求逐序号等待 ACK，则需要重新验证串行 RTT/重试成本；若改变缺口或重试期限，则需要负责人调整设计。
-本轮按任务停止条件保留反例，不冻结 wire、不调整数字、不把未运行的 SDK 判成失败；裁定见 [计划](plan.md#传输模块与直连)。
+**SDK 运行与离线向量实测（2026-11-14，v0.76.2/协议 15 工作树；无产品接入）**：
+[实验源码](../spike/transport-1a/README.md)单独运行 Pion v4.2.26、Chrome 157.0.8103.52、
+Playwright 1.65.1 的 WebKit 27.2（build 2388）、Android `io.github.webrtc-sdk:android:150.7871.04`
+和 iOS `stasel/WebRTC 157.0.0`。移动端是独立空壳 App，分别在自建 API 36 arm64 / iOS 27 模拟器运行；
+不是主工程、手机或 Safari/iOS PWA 的验收。
+
+每个实现均产生原始 Offer/Answer/Restart，固定 negotiated ID 0/1，业务通道可靠有序、探测通道 maxRetransmits=0，
+同 SDK 两端收到测试消息；未创建音视频 track 或配置 STUN/TURN。原串经过实验验证器后直接传入 SDK，
+输入未裁剪或重编码。浏览器 getter 在追加候选后会变化，因此在追加候选前核对 remoteDescription 与传入原串相同。
+正常协商未产生额外 DCEP 回调；**恶意额外通道与跨 generation 候选尚未做运行攻击测试**，不能据此宣称直连安全门槛完成。
+
+[共享原串与正负向量](../testdata/transport/sdp/manifest.json)有 15 份 SDK 原串、1 份相同指纹继承正例和 16 份负例，
+共 32 项；Go、JavaScript、Java/JVM 与 Swift 验证器消费同一 vectors.tsv。
+覆盖 LF/裸 CR/末尾缺失、NUL、无效 UTF-8、额外音频/application/未知媒体、ice-lite、指纹缺失/算法/长度/冲突/同 scope 重复、
+重复 ufrag 和尺寸超限。SDP 在候选收集前取得，只含临时实验凭据与公用占位地址；没有用户身份、私钥或实际网卡候选地址。
+这些有限向量不是完整 RFC 语法/fuzz 或密码学认证证明。
+
+候选数（每侧）Pion/Chrome/WebKit 为 1，Android 为 2，iOS 为 4。
+Android 第一次独立运行触及 10 秒 SDK 期限，没有足够诊断定位；后续两次消息传递成功；最后一次已修复夹具释放顺序，先注销 DataChannel 回调再释放对象。
+iOS 最初空壳未采用 iOS 27 scene 生命周期，启动崩溃；修正夹具后运行成功。这些中间失败不计入成功数，不能用最后一条耗时冒充恢复分位或稳定性保证。
+
+**同构空壳包体对照**：Android arm64 未压缩 JNI、16 KiB ZIP 对齐、相同临时签名，空包 8,585 B，SDK 包 12,505,571 B，
+增量 12,496,986 B。它是独立 debug 空壳、未跑 R8 的打包增量，不是产品 release APK 测量或设备安装空间。
+iOS 真机 arm64 目标编译成功，但没有运行/安装真机：未签名 App 从 75,643 B 到 12,959,436 B（增量 12,883,793 B），
+相同 ZIP 参数的未签名 IPA 从 9,032 B 到 5,957,625 B（增量 5,948,593 B）；不是 App Store thinning/加密后的下载量。
+
+SDK 候选建议为继续实验 Pion v4.2.26、浏览器原生、Android 标准 webrtc-sdk 150.7871.04 和 iOS stasel 157.0.0，
+均不加入主工程。Android prefixed/stripped、自建 data-only libwebrtc、iOS webrtc-sdk/Specs 是尚未运行的备选，不能按归档大小推荐发布。
+Pion LICENSE 为 MIT；Android Maven POM 声明 BSD-3-Clause，分发仓库脚本 LICENSE 为 MIT；iOS XCFramework 附 WebRTC 三条款许可与 PrivacyInfo。
+Android arm64 ELF 的三个 PT_LOAD 对齐均为 16 KiB，APK ZIP 对齐检查通过；未在 16 KiB 页设备运行。完整第三方 notices、Android R8、iOS 商店/本地网络权限和供应链签名复核仍属于冻结门槛。
+来源：[Pion 固定版本](https://github.com/pion/webrtc/releases/tag/v4.2.26)、[Android 分发](https://github.com/webrtc-sdk/android)、
+[stasel 固定 Package.swift](https://github.com/stasel/WebRTC/blob/157.0.0/Package.swift)。固定下载 URL、SHA-256 及包体摘要另存实验 manifest；
+SPM zip 校验值已与 Package.swift 一致，不把下载 hash 当作独立的发布者签名证明。
+
+## 8. 完整引导链的串行重试下界
+
+**虚拟时钟反例，非 SDK 时延实测**：[handshake-budget.py](../spike/transport-1a/handshake-budget.py)
+把原来“双方 challenge 已知”的前提展开，主场景采用 Probe 请求、Challenge 应答的冷引导。Signal/Control 为独立假路径，Control 健康，
+确定较小 device ID 的客户端作 Offerer；成员/head/租约有效。relay 恢复用允许的 3 秒，
+密码学、传播、调度、SDK 和 ICE/DTLS 全部设为零成本。每条 Probe、Challenge、Offer、Answer、Confirm 各丢前两份，
+第三份送达，其他帧不丢；**不是整轮只丢两帧**。
+
+| 最早时刻 | 必须完成的依赖 |
+|---|---|
+| 3000 ms | relay Ready；Probe 初发 |
+| 4500 ms | Probe 第三份到达，接收方才生成相应 Challenge |
+| 6000 ms | Challenge 第三份到达，Offerer 取得当前接收方 boot nonce，才能发绑定的 Offer |
+| 7500 ms | Offer 第三份到达，Answerer 安装后才能产生 Answer |
+| 9000 ms | Answer 第三份到达，Offerer 才知道两个 SDP hash 并能发 Confirm |
+| 10500 ms | Offerer Confirm 第三份最早可送达；已越过固定 10000 ms 总期限 |
+
+Answerer 的 Confirm 已允许与 Answer 重试并行；不要求 Confirm 等 ICE，不能再通过重叠它消除 Offerer 的因果依赖。
+2.5 秒缺口从首次乱序到达起算，重传不刷新；该模型没有任何 gap 超时或 generation 重开。
+8 客户端×2 PC 的初发每方向 120 帧（≤128），未确认窗口峰值 7、乱序缓冲峰值 5，候选每 PC 64 个/4批；
+截至 10 秒，客户端方向发送 184 帧、daemon 方向 200 帧，均低于各自 384 帧含重试预算，却是 **0/16 Ready**。
+每条关键消息只丢初发的对照与无丢包对照均 16/16 Ready。
+
+模型分别载入五个 SDK/引擎的原串，均复现相同时序；仍是同一个 Python 模型，不冒称五套 SDK 信令状态机。
+它只统计原始 payload 字节，不包含尚未冻结的加密/wire 编码，所以不判 3 MiB 生产帧预算通过。
+即使把这些开销免费处理，下界 **3+5×1.5=10.5 秒**仍大于 10 秒。
+
+这证明“每条逻辑信令最多丢两份”不能由只加一次 1.5 秒的算术保证本次 10 秒成功。
+另做更有利的变体：假定 daemon 已知客户端 nonce，主动发 Challenge，完全省去等待 Probe；同时允许 Confirm 与 ICE/DTLS 并行。即便如此，ICE/DTLS 用设计允许的 3 秒、从双方 SDP 可安装后完成，仍有 `3+3×1.5+max(1.5,3)=10.5 秒`，模型也是 0/16 Ready。这不是当前 SDK 实际耗时，而是设计分项允许值内的反例；没有把主动 Challenge 宣布为已冻结规则。
+
+如果负责人本意是**整轮恢复合计最多丢两帧**，本反例不在那个成功前提内，需要明确这个口径与按消息三份重传的区别。
+本轮按停止条件保留反例，不改重试、10 秒、128 帧/3 MiB，不继续终端或冻结 wire；裁定入口见 [plan](plan.md#传输模块与直连)。

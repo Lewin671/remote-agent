@@ -25,13 +25,25 @@ class Frame:
 
 class Experiment:
     RETRIES = (0, 500, 1500)
-    GAP_MS = 1000
+    GAP_MS = 2500
+    WINDOW = 32
     DEADLINE_MS = 10000
 
-    def __init__(self, dropped_offers, *, replace=False, drop_ack=False):
+    def __init__(self, dropped_offers, *, replace=False, drop_ack=False,
+                 drop_seq=1, frames=2, ack_delay=0, limited=()):
         self.dropped_offers = dropped_offers
         self.replace = replace
         self.drop_ack = drop_ack
+        self.drop_seq = drop_seq
+        self.frames = frames
+        self.ack_delay = ack_delay
+        self.limited = limited
+        self.waiting = []
+        self.outstanding = set()
+        self.started = {}
+        self.window_peak = 0
+        self.buffer_peak = 0
+        self.gaps = {}
         self.events = []
         self.order = 0
         self.now = 0
@@ -59,14 +71,27 @@ class Experiment:
         self.expected[generation] = 1
         self.buffer[generation] = {}
         self.record("start_generation", generation=generation)
-        # Both boot challenges, roles, head, and lease are already valid.
-        # A full batch of 16 candidates is available at the first 50 ms tick.
-        # Sending it before the SDP ACK is not prohibited by the design.
-        for seq, kind, delay in ((1, "Offer", 0), (2, "Candidate16", 50)):
+        # Boot challenges, roles, head, lease, and authentication are premises.
+        for seq in range(1, self.frames + 1):
+            kind = "Offer" if seq == 1 else "Candidate16"
             frame = Frame(generation, seq, kind, f"synthetic/{generation}/{seq}".encode())
-            for attempt, offset in enumerate(self.RETRIES):
-                self.event(self.now + delay + offset,
-                           lambda f=frame, a=attempt: self.send(f, a))
+            delay = 0 if seq == 1 else 50
+            self.event(self.now + delay, lambda f=frame: self.enqueue(f))
+
+    def enqueue(self, frame):
+        self.waiting.append(frame)
+        self.pump()
+
+    def pump(self):
+        while self.waiting and len(self.outstanding) < self.WINDOW:
+            frame = self.waiting.pop(0)
+            if frame.generation in self.retired:
+                continue
+            key = (frame.generation, frame.seq)
+            self.outstanding.add(key)
+            self.started[key] = self.now
+            self.window_peak = max(self.window_peak, len(self.outstanding))
+            self.send(frame, 0)
 
     def send(self, frame, attempt):
         key = (frame.generation, frame.seq)
@@ -78,11 +103,24 @@ class Experiment:
         digest = hashlib.sha256(frame.payload).hexdigest()
         self.record("signal_send", generation=frame.generation, seq=frame.seq,
                     kind=frame.kind, attempt=attempt, sha256=digest)
-        if frame.kind == "Offer" and attempt < self.dropped_offers:
+        if frame.seq == self.drop_seq and attempt < len(self.limited):
+            retry_after = self.limited[attempt]
+            self.record("limited", generation=frame.generation, seq=frame.seq,
+                        retry_after_ms=retry_after)
+            self.schedule_retry(frame, attempt, self.now + retry_after)
+            return
+        self.schedule_retry(frame, attempt, self.now)
+        if frame.seq == self.drop_seq and attempt < self.dropped_offers:
             self.record("signal_drop", generation=frame.generation, seq=frame.seq)
             return
-        # Signal fake path: zero propagation delay after injected loss.
         self.receive(frame)
+
+    def schedule_retry(self, frame, attempt, not_before):
+        if attempt == len(self.RETRIES) - 1:
+            return
+        origin = self.started[(frame.generation, frame.seq)]
+        when = max(origin + self.RETRIES[attempt + 1], not_before)
+        self.event(when, lambda: self.send(frame, attempt + 1))
 
     def acknowledge(self, frame):
         self.ack_sends += 1
@@ -92,7 +130,12 @@ class Experiment:
             self.record("ack_drop", generation=frame.generation, seq=frame.seq)
             return
         # Independent Control fake path: no ACK-of-ACK.
-        self.acked.add((frame.generation, frame.seq))
+        def arrive():
+            key = (frame.generation, frame.seq)
+            self.acked.add(key)
+            self.outstanding.discard(key)
+            self.pump()
+        self.event(self.now + self.ack_delay, arrive)
 
     def receive(self, frame):
         gen = frame.generation
@@ -110,19 +153,20 @@ class Experiment:
         pending = self.buffer[gen]
         if frame.seq > self.expected[gen]:
             if frame.seq in pending:
-                assert pending[frame.seq] == frame
+                assert pending[frame.seq][0] == frame
                 return  # Duplicate cannot extend the fixed gap deadline.
-            if not pending:
-                self.event(self.now + self.GAP_MS, lambda g=gen: self.gap_timeout(g))
             assert len(pending) < 32
-            pending[frame.seq] = frame
+            pending[frame.seq] = (frame, self.now)
+            self.buffer_peak = max(self.buffer_peak, len(pending))
+            self.update_gap(gen)
             self.record("buffer_gap", generation=gen, seq=frame.seq,
-                        gap_deadline_ms=self.now + self.GAP_MS)
+                        gap_deadline_ms=self.gaps[gen][1])
             return
         assert frame.seq == self.expected[gen]
         self.apply(frame)
         while self.expected[gen] in pending:
-            self.apply(pending.pop(self.expected[gen]))
+            self.apply(pending.pop(self.expected[gen])[0])
+        self.update_gap(gen)
 
     def apply(self, frame):
         key = (frame.generation, frame.seq)
@@ -132,15 +176,26 @@ class Experiment:
         self.record("would_call_sdk", generation=frame.generation, kind=frame.kind)
         self.acknowledge(frame)
 
-    def gap_timeout(self, generation):
-        if not self.buffer[generation] or generation in self.retired:
+    def update_gap(self, gen):
+        pending = self.buffer[gen]
+        if not pending:
+            self.gaps.pop(gen, None)
+            return
+        gap = (self.expected[gen], min(at for _, at in pending.values()) + self.GAP_MS)
+        if self.gaps.get(gen) == gap:
+            return
+        self.gaps[gen] = gap
+        self.event(max(self.now, gap[1]), lambda: self.gap_timeout(gen, gap))
+
+    def gap_timeout(self, generation, gap):
+        if self.gaps.get(generation) != gap or generation in self.retired:
             return
         self.retired.add(generation)
         self.buffer[generation].clear()
         self.record("gap_timeout_retire", generation=generation)
         if self.replace:
-            # Most favorable possible replacement: zero Restart/ACK overhead,
-            # no backoff, no relay/boot/ICE cost. Not a wire implementation.
+            self.outstanding = {key for key in self.outstanding if key[0] != generation}
+            # Favorable zero-cost replacement, not a real Restart handshake.
             self.start_generation(generation + 1)
 
     def run(self):
@@ -154,7 +209,8 @@ class Experiment:
             action()
         return dict(signal_sends=self.signal_sends, ack_sends=self.ack_sends,
                     generations=self.current, retired=sorted(self.retired),
-                    sdk_observer_calls=self.sdk_calls, trace=self.trace)
+                    sdk_observer_calls=self.sdk_calls, window_peak=self.window_peak,
+                    buffer_peak=self.buffer_peak, trace=self.trace)
 
 
 def main():
@@ -162,25 +218,34 @@ def main():
     if not isolated.startswith("/tmp/"):
         raise SystemExit("REMOTE_AGENT_HOME must be explicitly under /tmp")
     scenarios = {}
-    for name, experiment in (
-        ("no_loss", Experiment(0)),
-        ("one_offer_loss", Experiment(1)),
-        ("ack_loss", Experiment(0, drop_ack=True)),
-        ("two_offer_losses", Experiment(2)),
-        ("two_losses_each_generation", Experiment(2, replace=True)),
-    ):
-        scenarios[name] = experiment.run()
-
-    assert len(scenarios["no_loss"]["sdk_observer_calls"]) == 2
-    assert len(scenarios["one_offer_loss"]["sdk_observer_calls"]) == 2
-    assert len(scenarios["ack_loss"]["sdk_observer_calls"]) == 2
+    cases = (
+        ("no_loss", Experiment(0), 2),
+        ("one_offer_loss", Experiment(1), 2),
+        ("ack_loss", Experiment(0, drop_ack=True), 2),
+        ("two_offer_losses", Experiment(2), 2),
+        ("candidate_batch_gap", Experiment(2, drop_seq=2, frames=3), 3),
+        ("limited_retry_after", Experiment(0, limited=(800, 900)), 2),
+        ("limited_beyond_total", Experiment(0, limited=(12000,)), 0),
+        ("two_losses_each_generation", Experiment(2, replace=True), 2),
+        ("all_offer_copies_lost", Experiment(3, replace=True), 0),
+        # Synthetic window test, not a claim that 64 candidate batches are valid.
+        ("window_backpressure", Experiment(0, frames=64, ack_delay=600), 64),
+    )
+    for name, experiment, count in cases:
+        result = experiment.run()
+        assert len(result["sdk_observer_calls"]) == count, name
+        assert result["window_peak"] <= 32 and result["buffer_peak"] <= 32
+        scenarios[name] = result
     two = scenarios["two_offer_losses"]
-    assert two["sdk_observer_calls"] == []
-    assert any(t["action"] == "gap_timeout_retire" and t["ms"] == 1050 for t in two["trace"])
-    assert any(t["action"] == "stale_generation" and t["ms"] == 1500 for t in two["trace"])
-    churn = scenarios["two_losses_each_generation"]
-    assert churn["sdk_observer_calls"] == []
-    assert churn["generations"] == 10 and len(churn["retired"]) == 9
+    assert two["retired"] == []
+    assert any(t["action"] == "would_call_sdk" and t["ms"] == 1500 for t in two["trace"])
+    assert scenarios["two_losses_each_generation"]["generations"] == 1
+    assert scenarios["all_offer_copies_lost"]["generations"] == 4
+    assert scenarios["all_offer_copies_lost"]["retired"] == [1, 2, 3]
+    assert scenarios["window_backpressure"]["window_peak"] == 32
+    limited = scenarios["limited_retry_after"]
+    assert [t["ms"] for t in limited["trace"] if t["action"] == "signal_send" and t["seq"] == 1] == [0, 800, 1700]
+    assert scenarios["limited_beyond_total"]["signal_sends"] == 4
     # Check immutability across retries, independent of the receiver cache.
     for result in scenarios.values():
         hashes = {}
@@ -191,6 +256,7 @@ def main():
     print(json.dumps(dict(evidence="virtual_time_model_not_sdk",
                           parameters=dict(retries_ms=Experiment.RETRIES,
                                           gap_ms=Experiment.GAP_MS,
+                                          sender_window=Experiment.WINDOW,
                                           deadline_ms=Experiment.DEADLINE_MS),
                           scenarios=scenarios), indent=2))
 

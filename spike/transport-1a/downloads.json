@@ -1,0 +1,187 @@
+{
+  "scope": "SDK experiment downloads; checksums pin bytes, not a publisher signature audit",
+  "ios_spm_checksum_verified": true,
+  "android_maven_sha256_verified": true,
+  "downloads": [
+    {
+      "artifact": "android.aar",
+      "url": "https://repo.maven.apache.org/maven2/io/github/webrtc-sdk/android/150.7871.04/android-150.7871.04.aar",
+      "bytes": 49068339,
+      "sha256": "1872dda4e3bf7d6ea6f7c6e11861332081c57081a1e62fc82fab72415c69c84c"
+    },
+    {
+      "artifact": "ios.zip",
+      "url": "https://github.com/stasel/WebRTC/releases/download/157.0.0/WebRTC-M157.xcframework.zip",
+      "bytes": 46383167,
+      "sha256": "ffb1221be2138ecc6bc92300ae4f0157e18694d652db9921e4251992ea91a328"
+    },
+    {
+      "artifact": "webkit.zip",
+      "url": "https://cdn.playwright.dev/dbazure/download/playwright/builds/webkit/2388/webkit-mac-26-arm64.zip",
+      "bytes": 85789503,
+      "sha256": "d3cc730027105a014d0cbf53925bd7eababbdf8dbccbb4a3a1713c5f631dbcaf"
+    },
+    {
+      "artifact": "playwright.tgz",
+      "url": "https://registry.npmjs.org/playwright/-/playwright-1.65.1.tgz",
+      "bytes": 909830,
+      "sha256": "e2ebec5abb40f511c7a4442e83042fd8a4e654c3367e120b76e94a61a8f91e01"
+    },
+    {
+      "artifact": "playwright-core.tgz",
+      "url": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.65.1.tgz",
+      "bytes": 3232772,
+      "sha256": "6f5a60be62a4fddfbe7d10c448d8fbd54547da3358f2f8a04211440471ee863e"
+    },
+    {
+      "artifact": "github.com/pion/logging/@v/v0.2.4.zip",
+      "url": "https://proxy.golang.org/github.com/pion/logging/@v/v0.2.4.zip",
+      "bytes": 20167,
+      "sha256": "b904074dd76009e71b4e4e0e004a2c7862bff0a8690b4f47410c46b172b3830c"
+    },
+    {
+      "artifact": "github.com/pion/interceptor/@v/v0.1.51.zip",
+      "url": "https://proxy.golang.org/github.com/pion/interceptor/@v/v0.1.51.zip",
+      "bytes": 240326,
+      "sha256": "01b35843072c2bed4715f9750e9b39ef2ab388a2e31dc32614d31e88d7f3ca57"
+    },
+    {
+      "artifact": "github.com/pion/srtp/v3/@v/v3.1.3.zip",
+      "url": "https://proxy.golang.org/github.com/pion/srtp/v3/@v/v3.1.3.zip",
+      "bytes": 109371,
+      "sha256": "16cf9a9bb9475eb21a61fcfe05a159e93044bb451c7cf72dede423474eb31eba"
+    },
+    {
+      "artifact": "github.com/pion/webrtc/v4/@v/v4.2.26.zip",
+      "url": "https://proxy.golang.org/github.com/pion/webrtc/v4/@v/v4.2.26.zip",
+      "bytes": 804859,
+      "sha256": "cde8d4783d75428ec780f54d9b1018ca549e148dfbbf43898e69d547c45bf0eb"
+    },
+    {
+      "artifact": "github.com/pion/rtcp/@v/v1.2.20.zip",
+      "url": "https://proxy.golang.org/github.com/pion/rtcp/@v/v1.2.20.zip",
+      "bytes": 112308,
+      "sha256": "20e95900aa6d31b753e1fd874ee2dbde95e0500555d65b29037ae6762930a7db"
+    },
+    {
+      "artifact": "github.com/pion/sctp/@v/v1.12.0.zip",
+      "url": "https://proxy.golang.org/github.com/pion/sctp/@v/v1.12.0.zip",
+      "bytes": 236781,
+      "sha256": "94472ad3f15ab3a7d1f0fc59d4b5ae691c51309645602452b720160b80e0b9a1"
+    },
+    {
+      "artifact": "github.com/pion/rtp/@v/v1.10.6.zip",
+      "url": "https://proxy.golang.org/github.com/pion/rtp/@v/v1.10.6.zip",
+      "bytes": 187963,
+      "sha256": "4b213b2127b3179a2268ba219915d69e8a2987bebedd7ef759157e6cccfcb283"
+    },
+    {
+      "artifact": "github.com/pion/sdp/v3/@v/v3.0.20.zip",
+      "url": "https://proxy.golang.org/github.com/pion/sdp/v3/@v/v3.0.20.zip",
+      "bytes": 60395,
+      "sha256": "7441a81b54b3c02e2882711c01b7cf8a14d692bcba551b40ab9200c685f6364f"
+    },
+    {
+      "artifact": "github.com/pion/dtls/v3/@v/v3.1.15.zip",
+      "url": "https://proxy.golang.org/github.com/pion/dtls/v3/@v/v3.1.15.zip",
+      "bytes": 513432,
+      "sha256": "d4632201d26699c7bc5f2692c7b59e58fa6f60397949a3cd5a1409dbe128c33c"
+    },
+    {
+      "artifact": "github.com/pion/turn/v5/@v/v5.1.3.zip",
+      "url": "https://proxy.golang.org/github.com/pion/turn/v5/@v/v5.1.3.zip",
+      "bytes": 289136,
+      "sha256": "e206a6fb86d295f0d6109a62421e83ada450c3c7e6c6e4be44213e351164f984"
+    },
+    {
+      "artifact": "github.com/pion/mdns/v2/@v/v2.2.2.zip",
+      "url": "https://proxy.golang.org/github.com/pion/mdns/v2/@v/v2.2.2.zip",
+      "bytes": 95523,
+      "sha256": "8ffd39b3118b760b24555c02d489b688bca5184c21d1bd16b49b564b5c92b74d"
+    },
+    {
+      "artifact": "github.com/pion/ice/v4/@v/v4.4.8.zip",
+      "url": "https://proxy.golang.org/github.com/pion/ice/v4/@v/v4.4.8.zip",
+      "bytes": 321941,
+      "sha256": "1388bdc17d1815dcb859fbc595ab65fc81cb2baaa3ee7806a8c80e59bf603bdb"
+    },
+    {
+      "artifact": "github.com/pion/datachannel/@v/v1.6.3.zip",
+      "url": "https://proxy.golang.org/github.com/pion/datachannel/@v/v1.6.3.zip",
+      "bytes": 29510,
+      "sha256": "2e0a1a4f6c4e6c06ed6ac5ad0a710097f6bb6525cea08f4b93ba0dbaacf9e4b2"
+    },
+    {
+      "artifact": "github.com/pion/stun/v4/@v/v4.0.1.zip",
+      "url": "https://proxy.golang.org/github.com/pion/stun/v4/@v/v4.0.1.zip",
+      "bytes": 141187,
+      "sha256": "5491d3c230f0a1fccbb88d259d0baf4feca256e8d7b262e6b8058e9af982bfd4"
+    },
+    {
+      "artifact": "github.com/pion/randutil/@v/v0.1.0.zip",
+      "url": "https://proxy.golang.org/github.com/pion/randutil/@v/v0.1.0.zip",
+      "bytes": 13546,
+      "sha256": "35161b7c4ff98bb09fd8055537f9b2499116c19a89b9700b9b1986b7147b6805"
+    },
+    {
+      "artifact": "github.com/pion/transport/v5/@v/v5.1.4.zip",
+      "url": "https://proxy.golang.org/github.com/pion/transport/v5/@v/v5.1.4.zip",
+      "bytes": 184989,
+      "sha256": "b75455974b6a39ef0ad3f172a44ee8660a592f4a9606f0ee2617041a17e698ef"
+    },
+    {
+      "artifact": "github.com/wlynxg/anet/@v/v0.0.5.zip",
+      "url": "https://proxy.golang.org/github.com/wlynxg/anet/@v/v0.0.5.zip",
+      "bytes": 5480183,
+      "sha256": "5d6e471ccaa553e0cac56e17f8e44499f99ca1a1e37d80d5fdb3c64d4d50d02a"
+    },
+    {
+      "artifact": "github.com/google/uuid/@v/v1.6.0.zip",
+      "url": "https://proxy.golang.org/github.com/google/uuid/@v/v1.6.0.zip",
+      "bytes": 31981,
+      "sha256": "d0f02f377217f42702e259684e06441edbf5140dddcc34ba9bea56038b38a6ed"
+    },
+    {
+      "artifact": "github.com/stretchr/testify/@v/v1.12.1.zip",
+      "url": "https://proxy.golang.org/github.com/stretchr/testify/@v/v1.12.1.zip",
+      "bytes": 208461,
+      "sha256": "6874ed1c4b0b7e9feb27989b16c179b36590020633436ae260cefc5f5565589f"
+    },
+    {
+      "artifact": "golang.org/toolchain/@v/v0.0.1-go1.26.11.darwin-arm64.zip",
+      "url": "https://proxy.golang.org/golang.org/toolchain/@v/v0.0.1-go1.26.11.darwin-arm64.zip",
+      "bytes": 69689778,
+      "sha256": "776232345ce5f4113adf4109cfa0a11f6a221ac6650e5d85b82f492402d321ba"
+    },
+    {
+      "artifact": "golang.org/x/sys/@v/v0.41.0.zip",
+      "url": "https://proxy.golang.org/golang.org/x/sys/@v/v0.41.0.zip",
+      "bytes": 2005850,
+      "sha256": "c48084c62177045c1091e3cab99aa03ebb003027435ca8bd36bb851340480a40"
+    },
+    {
+      "artifact": "golang.org/x/time/@v/v0.14.0.zip",
+      "url": "https://proxy.golang.org/golang.org/x/time/@v/v0.14.0.zip",
+      "bytes": 15014,
+      "sha256": "0e2d2e47d107859130c7088346966d99a14ec0f7a42290c4acc0e2cc568e7a81"
+    },
+    {
+      "artifact": "golang.org/x/net/@v/v0.50.0.zip",
+      "url": "https://proxy.golang.org/golang.org/x/net/@v/v0.50.0.zip",
+      "bytes": 1945101,
+      "sha256": "6220d72153daf7606758a35790cbf0d15fd1c0bad584ec526bee32e7a463d3e9"
+    },
+    {
+      "artifact": "golang.org/x/crypto/@v/v0.48.0.zip",
+      "url": "https://proxy.golang.org/golang.org/x/crypto/@v/v0.48.0.zip",
+      "bytes": 2224771,
+      "sha256": "837297a50ca77a6a18ea2f2936bfe31aaf2ad36d5bcd8c545709da3b6c600fd2"
+    },
+    {
+      "artifact": "go.yaml.in/yaml/v3/@v/v3.0.5.zip",
+      "url": "https://proxy.golang.org/go.yaml.in/yaml/v3/@v/v3.0.5.zip",
+      "bytes": 107640,
+      "sha256": "f2d70caa35f66283aec58b889af8c5f07c374c5934be27a738c1215263e19205"
+    }
+  ]
+}
