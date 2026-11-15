@@ -179,4 +179,34 @@ class StreamTeardownTest {
         assertEquals(1, physicalClose)
         remote.close(); runCurrent()
     }
+
+    @Test fun oversizedMainStreamFrameIsRejectedBeforeParsingProtobuf() = runTest {
+        val peer = ColdOpenPeer(ColdOpenFixture(2), this)
+        lateinit var events: okhttp3.WebSocketListener
+        lateinit var socket: okhttp3.WebSocket
+        var cancelled = false
+        val factory = okhttp3.WebSocket.Factory { request, listener ->
+            events = listener
+            val underlying = peer.newWebSocket(request, listener)
+            object : okhttp3.WebSocket by underlying {
+                override fun cancel() { cancelled = true; underlying.cancel() }
+            }.also { socket = it }
+        }
+        val remote = peer.remote(sockets = factory)
+        var parseCalls = 0
+        remote.parseServerFrame = { bytes ->
+            parseCalls++
+            io.github.lewin671.remoteagent.proto.ServerFrame.parseFrom(bytes)
+        }
+        try {
+            remote.start(); runCurrent()
+            assertEquals(ConnState.ONLINE, remote.state.value.conn)
+            parseCalls = 0
+            val oversized = ByteArray((2 * 1024 * 1024) + 1)
+            events.onMessage(socket, okio.ByteString.of(*oversized))
+            runCurrent()
+            assertTrue("oversized frame should cancel stream", cancelled)
+            assertEquals("oversized frame must not be parsed", 0, parseCalls)
+        } finally { remote.close(); runCurrent() }
+    }
 }

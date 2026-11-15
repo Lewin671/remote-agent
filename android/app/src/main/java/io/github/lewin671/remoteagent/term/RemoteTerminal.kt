@@ -37,7 +37,14 @@ import java.io.ByteArrayOutputStream
  * stream is dropped and reopened for a fresh snapshot rather than skipping
  * bytes.
  */
-class RemoteTerminal(private val remote: Remote, private val sessionId: String, private val scope: CoroutineScope) {
+class RemoteTerminal internal constructor(
+    private val remote: Remote,
+    private val sessionId: String,
+    private val scope: CoroutineScope,
+    private val recovery: TerminalRecovery,
+) {
+    constructor(remote: Remote, sessionId: String, scope: CoroutineScope) :
+        this(remote, sessionId, scope, TerminalRecovery(remote::monotonicMillis))
     sealed interface State {
         data object Connecting : State
         /** The screen shows the remote terminal and what is typed goes to it. */
@@ -87,7 +94,6 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     private var autoFit = false
     private var released = false
     private var frames = TerminalFrames(MAX_BACKLOG)
-    private val recovery = TerminalRecovery()
     private var reopenJob: Job? = null
     private var stabilityJob: Job? = null
 
@@ -205,7 +211,11 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                 })
                 if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
-                if (gen == generation) _state.value = State.Closed(displayError(e).messageText())
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (gen == generation) {
+                    recovery.recordFailureIfUnstabilized()
+                    _state.value = State.Closed(displayError(e).messageText())
+                }
             }
         }
     }

@@ -428,6 +428,8 @@ class Remote(
         observe = { id -> relayObservation.let { RelayPath.discovery(it.machines[id], it.conn == ConnState.ONLINE, !it.removed, it.unlinked) } },
     ))
     fun peer(machineId: String?) = state.value.peer(machineId)
+    fun monotonicMillis(): Long = monotonic()
+    @Volatile internal var parseServerFrame: (ByteArray) -> ServerFrame = ServerFrame::parseFrom
     val security =
         DeviceSecurityClient(
             securityStorage ?: MissingDeviceSecurityStorage,
@@ -1034,11 +1036,6 @@ class Remote(
                     }
 
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
-                        val now = monotonic()
-                        val isHeartbeat = runCatching {
-                            ServerFrame.parseFrom(bytes).kindCase == ServerFrame.KindCase.HEARTBEAT
-                        }.getOrDefault(false)
-                        activity.onFrame(now, isHeartbeat)
                         if (bytes.size > STREAM_FRAME_BYTES) {
                             cleanup({ stream.cancel() }, { frames.cancel() })
                             return
@@ -1048,6 +1045,11 @@ class Remote(
                             cleanup({ stream.cancel() }, { frames.cancel() })
                             return
                         }
+                        val now = monotonic()
+                        val isHeartbeat = runCatching {
+                            parseServerFrame(bytes).kindCase == ServerFrame.KindCase.HEARTBEAT
+                        }.getOrDefault(false)
+                        activity.onFrame(now, isHeartbeat)
                         if (frames.trySend(bytes).isFailure) {
                             queuedBytes.addAndGet(-bytes.size.toLong())
                             cleanup({ stream.cancel() }, { frames.cancel() })

@@ -20,8 +20,15 @@ internal class RecoveryBudget(private val capacity: Double = 4.0, private val ra
         return ceil(maxOf(0.0, (1 - tokens) * 1000 / rate)).toLong()
     }
     fun take() { tokens-- }
+    internal fun resetForTest() {
+        tokens = capacity
+        at = null
+    }
 }
 private val processBudget = RecoveryBudget()
+fun resetProcessBudgetForTest() {
+    synchronized(processBudget) { processBudget.resetForTest() }
+}
 internal class PathChanged : Exception()
 
 /** One target owns its backoff across network generations. Global credit is
@@ -40,8 +47,18 @@ internal class Recovery(
     fun take(): Boolean = synchronized(global) {
         if (delayAt(now()) > 0) false else { target.take(); global.take(); true }
     }
-    fun failed() { retryAt = now() + (random() * minOf(1000L shl minOf(failures++, 5), 30_000)).toLong() }
-    fun ready() { failures = 0; retryAt = 0; generation.value++ }
+    fun failed() {
+        synchronized(global) {
+            retryAt = now() + (random() * minOf(1000L shl minOf(failures++, 5), 30_000)).toLong()
+        }
+    }
+    fun ready() {
+        synchronized(global) {
+            failures = 0
+            retryAt = 0
+            generation.value++
+        }
+    }
     suspend fun <T> follow(send: suspend () -> T): T = supervisorScope {
         val before = generation.value
         val delivery = async { send() }
@@ -83,21 +100,23 @@ internal class LegLiveness(initialNow: Long, private val clock: () -> Long = ::m
  * sharing the process-wide token bucket (4/2s).
  */
 class TerminalRecovery internal constructor(
-    now: () -> Long = ::monotonicMillis,
-    random: () -> Double = { Random.nextDouble() },
-    global: RecoveryBudget = processBudget,
+    now: () -> Long,
+    random: () -> Double,
+    global: RecoveryBudget,
 ) {
-    constructor() : this(::monotonicMillis, { Random.nextDouble() }, processBudget)
+    constructor(now: () -> Long) : this(now, { Random.nextDouble() }, processBudget)
 
     private val recovery = Recovery(now = now, random = random, global = global)
     private var reopenedInStreak = false
 
+    @Synchronized
     fun recordFailureIfUnstabilized() {
         if (reopenedInStreak) {
             recovery.failed()
         }
     }
 
+    @Synchronized
     fun takeOrDelayMs(): Long? {
         if (recovery.take()) {
             reopenedInStreak = true
@@ -106,15 +125,23 @@ class TerminalRecovery internal constructor(
         return maxOf(1L, recovery.delay())
     }
 
+    @Synchronized
     fun delayMs(): Long = recovery.delay()
 
+    @Synchronized
     fun onStabilized() {
         reopenedInStreak = false
         recovery.ready()
     }
 
+    @Synchronized
     fun reset() {
         reopenedInStreak = false
         recovery.ready()
+    }
+
+    companion object {
+        fun forTest(now: () -> Long, random: () -> Double): TerminalRecovery =
+            TerminalRecovery(now, random, RecoveryBudget())
     }
 }
