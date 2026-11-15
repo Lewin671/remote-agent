@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -78,9 +79,12 @@ type Relay struct {
 	timing           retryTiming
 	// These durations are per relay so integration tests can exercise the
 	// real timeout and retry paths without waiting on production intervals.
-	networkChanges func(context.Context) <-chan uint64
-	readyTimeout   time.Duration
-	syncRetryBase  time.Duration
+	networkChanges   func(context.Context) <-chan uint64
+	wakeEvents       func(context.Context) <-chan struct{}
+	routeAvailable   func(net.IP) bool
+	beforeDialResult func(uint64)
+	readyTimeout     time.Duration
+	syncRetryBase    time.Duration
 	// keyMu makes reading or creating a session's key one step across
 	// concurrent uploads and terminal requests.
 	keyMu sync.Mutex
@@ -221,18 +225,23 @@ type conn struct {
 }
 
 func login(ctx context.Context, acct *Account) (string, error) {
+	token, _, err := loginWithExpiry(ctx, acct)
+	return token, err
+}
+
+func loginWithExpiry(ctx context.Context, acct *Account) (string, int64, error) {
 	auth := remoteagentv1connect.NewAuthServiceClient(httpClient(), acct.Server)
 	ch, err := auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: acct.DeviceID}))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version,
 		DeviceId: acct.DeviceID, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge),
 	}))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return res.Msg.Token, nil
+	return res.Msg.Token, res.Msg.ExpiresMs, nil
 }
 
 // Keep history synchronization below the server's RPC admission limit, leaving

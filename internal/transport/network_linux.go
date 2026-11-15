@@ -2,7 +2,9 @@ package transport
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"net"
 	"os"
 	"syscall"
 )
@@ -37,28 +39,60 @@ func routeHints(ctx context.Context) <-chan struct{} {
 	}()
 	return out
 }
-func defaultRoutes() []string {
+func defaultRouteEntries() []defaultRoute {
 	b, err := syscall.NetlinkRIB(syscall.RTM_GETROUTE, syscall.AF_UNSPEC)
 	if err != nil {
 		return nil
 	}
+	return defaultRouteEntriesFromNetlink(b)
+}
+
+func defaultRouteEntriesFromNetlink(b []byte) []defaultRoute {
 	msgs, err := syscall.ParseNetlinkMessage(b)
 	if err != nil {
 		return nil
 	}
-	var routes []string
+	var routes []defaultRoute
 	for _, m := range msgs {
-		if m.Header.Type != syscall.RTM_NEWROUTE || len(m.Data) < 12 || m.Data[1] != 0 {
+		// rtmsg: [0]=family, [1]=dst_len, [2]=src_len, [4]=table, [7]=type.
+		if m.Header.Type != syscall.RTM_NEWROUTE || len(m.Data) < 12 || m.Data[1] != 0 || m.Data[2] != 0 || m.Data[7] != syscall.RTN_UNICAST {
+			continue
+		}
+		family := ""
+		switch m.Data[0] {
+		case syscall.AF_INET:
+			family = "v4"
+		case syscall.AF_INET6:
+			family = "v6"
+		default:
 			continue
 		}
 		attrs, err := syscall.ParseNetlinkRouteAttr(&m)
 		if err != nil {
 			continue
 		}
+		r := defaultRoute{
+			Family: family,
+			Table:  fmt.Sprintf("%d", m.Data[4]),
+		}
 		for _, a := range attrs {
-			if a.Attr.Type == syscall.RTA_GATEWAY || a.Attr.Type == syscall.RTA_OIF || a.Attr.Type == syscall.RTA_TABLE {
-				routes = append(routes, fmt.Sprintf("%d/%d/%x", m.Data[0], a.Attr.Type, a.Value))
+			switch a.Attr.Type {
+			case syscall.RTA_OIF:
+				if len(a.Value) == 4 {
+					r.IfIndex = int(binary.NativeEndian.Uint32(a.Value))
+				}
+			case syscall.RTA_GATEWAY:
+				if ip := net.IP(a.Value); len(ip) > 0 {
+					r.Gateway = ip.String()
+				}
+			case syscall.RTA_TABLE:
+				if len(a.Value) == 4 {
+					r.Table = fmt.Sprintf("%d", binary.NativeEndian.Uint32(a.Value))
+				}
 			}
+		}
+		if r.IfIndex > 0 {
+			routes = append(routes, r)
 		}
 	}
 	return routes

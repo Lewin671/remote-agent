@@ -15,21 +15,24 @@ type relaySession struct {
 	dispatcher   *dispatcher
 	pathLifetime context.Context
 	path         transport.Path
-	activity     func()
+	activity     func(isHeartbeat bool)
 }
 
 func (c *relaySession) readLoop(ctx context.Context) error {
 	return readForwardCalls(ctx, c.dispatcher.link, func() (*pb.ServerFrame, error) {
 		b, err := c.path.Read(ctx)
-		if err == nil && c.activity != nil {
-			c.activity()
-		}
 		if err != nil {
 			return nil, err
 		}
 		f := &pb.ServerFrame{}
 		if err := proto.Unmarshal(b, f); err != nil {
+			if c.activity != nil {
+				c.activity(false)
+			}
 			return nil, transport.ErrInvalidFrame
+		}
+		if c.activity != nil {
+			c.activity(f.GetHeartbeat() != nil)
 		}
 		return f, nil
 	}, func(execution context.Context, call *pb.ForwardCall) {

@@ -3,6 +3,7 @@ package relay_test
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -99,6 +100,16 @@ func TestRecoveryBlackholeBecomesUsableWithoutSocketClose(t *testing.T) {
 			ready, _ := proto.Marshal(&pb.ServerFrame{Kind: &pb.ServerFrame_Ready{Ready: &pb.Ready{}}})
 			if ws.Write(r.Context(), websocket.MessageBinary, ready) != nil {
 				return
+			}
+			// Establish a 1s heartbeat cadence before the leg goes silent.
+			hb, _ := proto.Marshal(&pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}})
+			for i := 0; i < 2; i++ {
+				if ws.Write(r.Context(), websocket.MessageBinary, hb) != nil {
+					return
+				}
+				if i == 0 {
+					time.Sleep(1050 * time.Millisecond)
+				}
 			}
 			firstReady <- time.Now()
 			// A silent application path; neither EOF nor a reset wakes the reader.
@@ -221,4 +232,237 @@ func TestRecoveryNetworkHintKeepsHealthyTerminalAndExecution(t *testing.T) {
 		t.Fatal("original request was not deduplicated")
 	}
 
+}
+
+func TestRecoveryDoesNotSuspectBeforeTwoHeartbeats(t *testing.T) {
+	var attempts atomic.Int32
+	firstReady := make(chan struct{}, 1)
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/v1/stream" || attempts.Add(1) > 1 {
+				next.ServeHTTP(w, r)
+				return
+			}
+			ws, err := websocket.Accept(w, r, nil)
+			if err != nil {
+				return
+			}
+			defer ws.CloseNow()
+			if _, _, err = ws.Read(r.Context()); err != nil {
+				return
+			}
+			ready, _ := proto.Marshal(&pb.ServerFrame{Kind: &pb.ServerFrame_Ready{Ready: &pb.Ready{}}})
+			if ws.Write(r.Context(), websocket.MessageBinary, ready) != nil {
+				return
+			}
+			hb, _ := proto.Marshal(&pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}})
+			if ws.Write(r.Context(), websocket.MessageBinary, hb) != nil {
+				return
+			}
+			close(firstReady)
+			_, _, _ = ws.Read(r.Context())
+		})
+	})
+	e.backend.add(t, "no-suspect")
+	e.startRelay()
+	<-firstReady
+	// With only 1 heartbeat observed, silence threshold must remain at 60s rather than 3s.
+	time.Sleep(3500 * time.Millisecond)
+	if got := attempts.Load(); got != 1 {
+		t.Fatalf("suspected leg before 2 heartbeats: attempts=%d", got)
+	}
+}
+
+func TestRecoveryPreservesReadyCandidateOnHintUnlessRouteGone(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		routeAvailable bool
+		wantAttempts   int32
+	}{
+		{name: "valid_route_kept", routeAvailable: true, wantAttempts: 2},
+		{name: "gone_route_discarded", routeAvailable: false, wantAttempts: 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var attempts atomic.Int32
+			e := setupWithHandler(t, func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/v1/stream" {
+						attempts.Add(1)
+					}
+					next.ServeHTTP(w, r)
+				})
+			})
+			e.backend.add(t, "candidate")
+			changes := make(chan uint64, 4)
+			ready := make(chan struct{}, 8)
+			hintSeen := make(chan struct{}, 8)
+			var injected atomic.Bool
+			e.startRelayBackend(e.backend, func(r *relay.Relay) {
+				relay.SetNetworkChangesForTest(r, changes)
+				relay.SetRouteAvailableForTest(r, func(net.IP) bool { return tc.routeAvailable })
+				relay.ObserveRecoveryForTest(r, func(ev string) {
+					if ev == "ready" {
+						ready <- struct{}{}
+					} else if ev == "hint" {
+						hintSeen <- struct{}{}
+					}
+				})
+				relay.SetBeforeDialResultForTest(r, func(gen uint64) {
+					if gen == 1 && injected.CompareAndSwap(false, true) {
+						changes <- 2
+						select {
+						case <-hintSeen:
+						case <-time.After(2 * time.Second):
+						}
+					}
+				})
+			})
+			select {
+			case <-ready:
+			case <-time.After(3 * time.Second):
+				t.Fatal("initial ready timeout")
+			}
+			changes <- 1
+			select {
+			case <-ready:
+			case <-time.After(3 * time.Second):
+				t.Fatal("recovery ready timeout")
+			}
+			time.Sleep(200 * time.Millisecond)
+			if got := attempts.Load(); got != tc.wantAttempts {
+				t.Fatalf("%s: /v1/stream attempts=%d, want %d", tc.name, got, tc.wantAttempts)
+			}
+		})
+	}
+}
+
+func TestRecoveryDialBudgetFirstLoginVsCachedNetworkChange(t *testing.T) {
+	var relayStarted, firstReady atomic.Bool
+	var streamAttempts atomic.Int32
+	stream2Canceled := make(chan time.Duration, 1)
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if relayStarted.Load() && !firstReady.Load() && strings.HasSuffix(r.URL.Path, "/Login") {
+				// Longer than 3s, shorter than 5.5s readyTimeout: succeeds only while initial dial keeps >3s budget.
+				select {
+				case <-time.After(3200 * time.Millisecond):
+				case <-r.Context().Done():
+					return
+				}
+			}
+			if relayStarted.Load() && r.URL.Path == "/v1/stream" {
+				n := streamAttempts.Add(1)
+				if n == 2 {
+					// Hang the second dial; with a valid cached token, recovery dial context must cancel at 3s (<< 5.5s readyTimeout).
+					started := time.Now()
+					<-r.Context().Done()
+					stream2Canceled <- time.Since(started)
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	e.backend.add(t, "budget")
+	changes := make(chan uint64, 1)
+	ready := make(chan time.Time, 4)
+	dials := make(chan time.Time, 8)
+	relayStarted.Store(true)
+	e.startRelayBackend(e.backend, func(r *relay.Relay) {
+		relay.SetReadyTimeoutForTest(r, 5500*time.Millisecond)
+		relay.SetNetworkChangesForTest(r, changes)
+		relay.ObserveRecoveryForTest(r, func(ev string) {
+			if ev == "ready" {
+				ready <- time.Now()
+			} else if ev == "dial" {
+				dials <- time.Now()
+			}
+		})
+	})
+	<-dials // initial dial
+	select {
+	case <-ready:
+	case <-time.After(5200 * time.Millisecond):
+		t.Fatal("first dial did not keep full readyTimeout (>3s)")
+	}
+	firstReady.Store(true)
+	if streamAttempts.Load() != 1 || len(dials) != 0 {
+		t.Fatalf("first dial retried unexpectedly: streamAttempts=%d, extraDials=%d", streamAttempts.Load(), len(dials))
+	}
+
+	changes <- 1
+	select {
+	case elapsed := <-stream2Canceled:
+		if elapsed > 3800*time.Millisecond {
+			t.Fatalf("cached network recovery dial did not narrow to 3s budget: elapsed=%v", elapsed)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("cached network recovery dial did not time out within 5s")
+	}
+	select {
+	case <-ready:
+	case <-time.After(5 * time.Second):
+		t.Fatal("recovery did not become ready after narrowed dial timeout")
+	}
+}
+
+func TestRecoverySecurityFailureBlocksWakeNotNetworkChange(t *testing.T) {
+	var failSecurity atomic.Bool
+	var secCalls atomic.Int32
+	e := setupWithHandler(t, func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/GetSecurityStates") {
+				secCalls.Add(1)
+				if failSecurity.Load() {
+					http.Error(w, "unavailable", http.StatusServiceUnavailable)
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+	e.backend.add(t, "security-gate")
+	changes := make(chan uint64, 2)
+	wakes := make(chan struct{}, 2)
+	ready := make(chan struct{}, 8)
+	e.startRelayBackend(e.backend, func(r *relay.Relay) {
+		relay.SetSecurityIntervalForTest(r, 40*time.Millisecond)
+		relay.SetNetworkChangesForTest(r, changes)
+		relay.SetWakeEventsForTest(r, wakes)
+		relay.ObserveRecoveryForTest(r, func(ev string) {
+			if ev == "ready" {
+				ready <- struct{}{}
+			}
+		})
+	})
+	select {
+	case <-ready:
+	case <-time.After(3 * time.Second):
+		t.Fatal("initial ready timeout")
+	}
+	failSecurity.Store(true)
+	beforeCalls := secCalls.Load()
+	changes <- 1
+	select {
+	case <-ready:
+	case <-time.After(3 * time.Second):
+		t.Fatal("pure network change must not be blocked by GetSecurityStates failure")
+	}
+	time.Sleep(120 * time.Millisecond)
+	if secCalls.Load() <= beforeCalls {
+		t.Fatal("expected background security sync to keep polling after network change")
+	}
+
+	wakes <- struct{}{}
+	select {
+	case <-ready:
+		t.Fatal("wake must remain blocked while GetSecurityStates fails")
+	case <-time.After(350 * time.Millisecond):
+	}
+	failSecurity.Store(false)
+	select {
+	case <-ready:
+	case <-time.After(3 * time.Second):
+		t.Fatal("wake did not recover once GetSecurityStates succeeded")
+	}
 }

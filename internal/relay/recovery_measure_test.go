@@ -21,15 +21,17 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/coder/websocket"
+	"google.golang.org/protobuf/proto"
 )
 
 // This opt-in measurement uses real relay authentication, HTTP Forward,
 // signatures, the process Link/endpoint, and a counting backend. Native CLI
 // acceptance is separate; its model response time is not a recovery timer.
 type recoveryLeg struct {
-	down, up  *websocket.Conn
-	raw       net.Conn
-	blackhole atomic.Bool
+	down, up   *websocket.Conn
+	raw        net.Conn
+	blackhole  atomic.Bool
+	heartbeats atomic.Int32
 }
 type hijackedRecovery struct {
 	http.ResponseWriter
@@ -156,6 +158,12 @@ func (p *recoveryProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if down.Write(ctx, kind, b) != nil {
 			return
+		}
+		if kind == websocket.MessageBinary {
+			f := &pb.ServerFrame{}
+			if proto.Unmarshal(b, f) == nil && f.GetHeartbeat() != nil {
+				leg.heartbeats.Add(1)
+			}
 		}
 	}
 }
@@ -293,6 +301,19 @@ func TestRecoveryMeasurements(t *testing.T) {
 						}
 					}
 				}
+				leg := proxy.latest()
+				if leg == nil {
+					t.Fatal("missing authenticated path")
+				}
+				if scenario == "blackhole" {
+					deadline := time.Now().Add(5 * time.Second)
+					for leg.heartbeats.Load() < 2 {
+						if time.Now().After(deadline) {
+							t.Fatal("leg did not establish 2 heartbeats before blackhole")
+						}
+						time.Sleep(25 * time.Millisecond)
+					}
+				}
 				ready := make(chan time.Time, 1)
 				started := time.Now()
 				observation.mu.Lock()
@@ -301,10 +322,6 @@ func TestRecoveryMeasurements(t *testing.T) {
 				observation.ready = ready
 				observation.attempts = 0
 				observation.mu.Unlock()
-				leg := proxy.latest()
-				if leg == nil {
-					t.Fatal("missing authenticated path")
-				}
 				switch scenario {
 				case "rst":
 					if tcp, ok := leg.raw.(*net.TCPConn); ok {

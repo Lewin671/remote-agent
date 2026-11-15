@@ -3,12 +3,28 @@ package relay
 import (
 	"context"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"net"
 	"time"
 )
 
 // SetNetworkChangesForTest injects OS observations without changing host networking.
 func SetNetworkChangesForTest(r *Relay, changes <-chan uint64) {
 	r.networkChanges = func(context.Context) <-chan uint64 { return changes }
+}
+
+// SetWakeEventsForTest injects scheduler-pause/wake events without waiting for wall jumps.
+func SetWakeEventsForTest(r *Relay, wakes <-chan struct{}) {
+	r.wakeEvents = func(context.Context) <-chan struct{} { return wakes }
+}
+
+// SetRouteAvailableForTest overrides route verification on a new network hint.
+func SetRouteAvailableForTest(r *Relay, available func(net.IP) bool) {
+	r.routeAvailable = available
+}
+
+// SetBeforeDialResultForTest runs inside the dial goroutine just before sending dialResult.
+func SetBeforeDialResultForTest(r *Relay, hook func(uint64)) {
+	r.beforeDialResult = hook
 }
 
 // SetSyncIntervalForTest changes only this relay's polling schedule. Set it

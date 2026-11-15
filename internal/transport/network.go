@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"net"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -51,22 +52,133 @@ func observeNetworkChanges(ctx context.Context, hints <-chan struct{}, ticks <-c
 	}()
 	return out
 }
-func networkFingerprint() [32]byte {
+type defaultRoute struct {
+	IfIndex int
+	Family  string
+	Gateway string
+	Table   string
+}
+
+type networkSnapshot struct {
+	interfaces []net.Interface
+	addrs      func(net.Interface) ([]net.Addr, error)
+	routes     []defaultRoute
+	dnsLines   []string
+}
+
+func dnsFingerprintLines(resolvPath string) []string {
+	data, err := os.ReadFile(resolvPath)
+	if err != nil {
+		return nil
+	}
+	var lines []string
+	for _, raw := range strings.Split(string(data), "\n") {
+		if i := strings.IndexAny(raw, "#;"); i >= 0 {
+			raw = raw[:i]
+		}
+		fields := strings.Fields(raw)
+		if len(fields) < 2 {
+			continue
+		}
+		switch fields[0] {
+		case "nameserver", "search", "domain":
+			lines = append(lines, "dns:"+strings.Join(fields, " "))
+		}
+	}
+	return lines
+}
+
+func fingerprintSnapshot(s networkSnapshot) [32]byte {
+	defaultIfs := make(map[int]bool, len(s.routes))
 	var parts []string
-	interfaces, err := net.Interfaces()
-	if err == nil {
-		for _, i := range interfaces {
-			if i.Flags&net.FlagLoopback != 0 {
-				continue
+	for _, r := range s.routes {
+		if r.IfIndex > 0 {
+			defaultIfs[r.IfIndex] = true
+		}
+		parts = append(parts, fmt.Sprintf("route:%s:%d:%s:%s", r.Family, r.IfIndex, r.Gateway, r.Table))
+	}
+	for _, iface := range s.interfaces {
+		if !defaultIfs[iface.Index] || iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		var addrsStr []string
+		if s.addrs != nil {
+			if addrs, err := s.addrs(iface); err == nil {
+				for _, a := range addrs {
+					addrsStr = append(addrsStr, a.String())
+				}
 			}
-			parts = append(parts, fmt.Sprint(i.Index, "/", i.Flags))
-			addresses, _ := i.Addrs()
-			for _, a := range addresses {
-				parts = append(parts, fmt.Sprint(i.Index, "/", a.String()))
+		}
+		sort.Strings(addrsStr)
+		parts = append(parts, fmt.Sprintf("if:%d:%s:%s:%s", iface.Index, iface.Name, iface.Flags.String(), strings.Join(addrsStr, ",")))
+	}
+	parts = append(parts, s.dnsLines...)
+	sort.Strings(parts)
+	return sha256.Sum256([]byte(strings.Join(parts, "\n")))
+}
+
+// RouteAvailable reports whether a non-loopback local IP still has an UP
+// default-route interface matching its address family. Loopback and nil IPs
+// are not treated as unavailable by host default-route checks.
+func RouteAvailable(localIP net.IP) bool {
+	if localIP == nil || localIP.IsLoopback() {
+		return true
+	}
+	ifaces, _ := net.Interfaces()
+	return routeAvailableSnapshot(networkSnapshot{
+		interfaces: ifaces,
+		addrs:      func(i net.Interface) ([]net.Addr, error) { return i.Addrs() },
+		routes:     defaultRouteEntries(),
+	}, localIP)
+}
+
+func routeAvailableSnapshot(s networkSnapshot, localIP net.IP) bool {
+	if localIP == nil || localIP.IsLoopback() {
+		return true
+	}
+	wantFamily := "v6"
+	if localIP.To4() != nil {
+		wantFamily = "v4"
+	}
+	routeIfs := make(map[int]bool)
+	for _, r := range s.routes {
+		if r.Family == wantFamily && r.IfIndex > 0 {
+			routeIfs[r.IfIndex] = true
+		}
+	}
+	for _, iface := range s.interfaces {
+		if iface.Flags&net.FlagUp == 0 || !routeIfs[iface.Index] || s.addrs == nil {
+			continue
+		}
+		addrs, err := s.addrs(iface)
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			var ip net.IP
+			switch v := a.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip != nil && ip.Equal(localIP) {
+				return true
 			}
 		}
 	}
-	parts = append(parts, defaultRoutes()...)
-	sort.Strings(parts)
-	return sha256.Sum256([]byte(strings.Join(parts, "\n")))
+	return false
+}
+
+func networkFingerprint() [32]byte {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		interfaces = nil
+	}
+	return fingerprintSnapshot(networkSnapshot{
+		interfaces: interfaces,
+		addrs:      func(i net.Interface) ([]net.Addr, error) { return i.Addrs() },
+		routes:     defaultRouteEntries(),
+		dnsLines:   dnsFingerprintLines("/etc/resolv.conf"),
+	})
 }

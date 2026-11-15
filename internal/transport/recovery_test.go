@@ -48,3 +48,57 @@ func TestRecoveryFullJitterDoesNotMoveForNotifications(t *testing.T) {
 		t.Fatal("authenticated recovery did not reset failure sequence")
 	}
 }
+
+func TestAdaptiveLivenessThresholds(t *testing.T) {
+	l := NewAdaptiveLiveness(0)
+	if got := l.Threshold(); got != 60*time.Second {
+		t.Fatalf("initial threshold = %v, want 60s", got)
+	}
+	if l.Suspect(int64(59 * time.Second)) {
+		t.Fatal("suspected before 60s with 0 heartbeats")
+	}
+	l.OnFrame(int64(1*time.Second), true)
+	if got := l.Threshold(); got != 60*time.Second {
+		t.Fatalf("after 1 heartbeat threshold = %v, want 60s", got)
+	}
+	if l.Suspect(int64(59 * time.Second)) {
+		t.Fatal("suspected before 60s with 1 heartbeat")
+	}
+	if !l.Suspect(int64(61 * time.Second)) {
+		t.Fatal("did not suspect at 60s silence with <2 heartbeats")
+	}
+
+	// 1s heartbeat cadence -> max(3s, 3*1s) = 3s
+	l.OnFrame(int64(2*time.Second), true)
+	if got := l.Threshold(); got != 3*time.Second {
+		t.Fatalf("1s cadence threshold = %v, want 3s", got)
+	}
+	if l.Suspect(int64(4 * time.Second)) {
+		t.Fatal("suspected too early at 2s silence")
+	}
+	if !l.Suspect(int64(5 * time.Second)) {
+		t.Fatal("did not suspect at 3s silence")
+	}
+
+	// 20s legacy server cadence -> max(3s, 3*20s) = 60s
+	legacy := NewAdaptiveLiveness(0)
+	legacy.OnFrame(int64(20*time.Second), true)
+	legacy.OnFrame(int64(40*time.Second), true)
+	if got := legacy.Threshold(); got != 60*time.Second {
+		t.Fatalf("20s cadence threshold = %v, want 60s", got)
+	}
+	if legacy.Suspect(int64(99 * time.Second)) {
+		t.Fatal("20s legacy server falsely suspected before 60s")
+	}
+	if !legacy.Suspect(int64(100 * time.Second)) {
+		t.Fatal("20s legacy server not suspected at 60s")
+	}
+
+	// Sub-second bursts still respect 3s minimum floor.
+	burst := NewAdaptiveLiveness(0)
+	burst.OnFrame(int64(100*time.Millisecond), true)
+	burst.OnFrame(int64(200*time.Millisecond), true)
+	if got := burst.Threshold(); got != 3*time.Second {
+		t.Fatalf("burst floor threshold = %v, want 3s", got)
+	}
+}

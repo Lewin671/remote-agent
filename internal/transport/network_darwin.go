@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"syscall"
 
@@ -34,16 +35,82 @@ func routeHints(ctx context.Context) <-chan struct{} {
 	}()
 	return out
 }
-func defaultRoutes() []string {
+func defaultRouteEntries() []defaultRoute {
 	b, err := route.FetchRIB(syscall.AF_UNSPEC, route.RIBType(syscall.NET_RT_DUMP), 0)
 	if err != nil {
 		return nil
 	}
-	return routesFromRIB(b)
+	return defaultRouteEntriesFromRIB(b)
 }
 
 // The legacy syscall decoder casts message offsets to aligned Go pointers.
 // Darwin route records can begin on a four-byte boundary; decode their bytes.
+func defaultRouteEntriesFromRIB(b []byte) []defaultRoute {
+	msgs, err := route.ParseRIB(route.RIBType(syscall.NET_RT_DUMP), b)
+	if err != nil {
+		return nil
+	}
+	var routes []defaultRoute
+	for _, msg := range msgs {
+		m, ok := msg.(*route.RouteMessage)
+		if !ok || m.Flags&syscall.RTF_UP == 0 {
+			continue
+		}
+		addrs := m.Addrs
+		if len(addrs) <= syscall.RTAX_GATEWAY {
+			continue
+		}
+		if len(addrs) > syscall.RTAX_NETMASK && addrs[syscall.RTAX_NETMASK] != nil {
+			switch mask := addrs[syscall.RTAX_NETMASK].(type) {
+			case *route.Inet4Addr:
+				if mask.IP != [4]byte{} {
+					continue
+				}
+			case *route.Inet6Addr:
+				if mask.IP != [16]byte{} {
+					continue
+				}
+			}
+		}
+		family := ""
+		switch a := addrs[syscall.RTAX_DST].(type) {
+		case *route.Inet4Addr:
+			if a.IP == [4]byte{} {
+				family = "v4"
+			}
+		case *route.Inet6Addr:
+			if a.IP == [16]byte{} {
+				family = "v6"
+			}
+		}
+		if family == "" {
+			continue
+		}
+		routes = append(routes, defaultRoute{
+			IfIndex: m.Index,
+			Family:  family,
+			Gateway: formatDarwinAddr(addrs[syscall.RTAX_GATEWAY]),
+		})
+	}
+	return routes
+}
+
+func formatDarwinAddr(a route.Addr) string {
+	switch v := a.(type) {
+	case *route.Inet4Addr:
+		return net.IP(v.IP[:]).String()
+	case *route.Inet6Addr:
+		if v.ZoneID != 0 {
+			return fmt.Sprintf("%s%%%d", net.IP(v.IP[:]).String(), v.ZoneID)
+		}
+		return net.IP(v.IP[:]).String()
+	case *route.LinkAddr:
+		return fmt.Sprintf("link:%d:%s", v.Index, v.Name)
+	default:
+		return fmt.Sprintf("%#v", a)
+	}
+}
+
 func routesFromRIB(b []byte) []string {
 	msgs, err := route.ParseRIB(route.RIBType(syscall.NET_RT_DUMP), b)
 	if err != nil {

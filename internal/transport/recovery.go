@@ -9,6 +9,67 @@ import (
 
 const HeartbeatInterval = time.Second
 const SuspectAfter = 3 * HeartbeatInterval
+const DefaultDeadAfter = 60 * time.Second
+
+// AdaptiveLiveness tracks observed server heartbeat intervals on a single leg.
+// Before two heartbeats are observed, silence uses DefaultDeadAfter (60s);
+// afterwards, it uses max(SuspectAfter, 3*observedInterval).
+type AdaptiveLiveness struct {
+	mu               sync.Mutex
+	lastFrameAt      int64
+	heartbeats       int
+	lastHeartbeatAt  int64
+	observedInterval int64
+}
+
+func NewAdaptiveLiveness(now int64) *AdaptiveLiveness {
+	return &AdaptiveLiveness{lastFrameAt: now}
+}
+
+func (l *AdaptiveLiveness) OnFrame(now int64, isHeartbeat bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if now > l.lastFrameAt {
+		l.lastFrameAt = now
+	}
+	if !isHeartbeat {
+		return
+	}
+	l.heartbeats++
+	if l.heartbeats >= 2 {
+		if delta := now - l.lastHeartbeatAt; delta >= 0 {
+			l.observedInterval = delta
+		} else {
+			l.observedInterval = 0
+		}
+	}
+	l.lastHeartbeatAt = now
+}
+
+func (l *AdaptiveLiveness) Threshold() time.Duration {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.heartbeats < 2 {
+		return DefaultDeadAfter
+	}
+	if threshold := 3 * time.Duration(l.observedInterval); threshold > SuspectAfter {
+		return threshold
+	}
+	return SuspectAfter
+}
+
+func (l *AdaptiveLiveness) Suspect(now int64) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	threshold := int64(DefaultDeadAfter)
+	if l.heartbeats >= 2 {
+		threshold = 3 * l.observedInterval
+		if threshold < int64(SuspectAfter) {
+			threshold = int64(SuspectAfter)
+		}
+	}
+	return now-l.lastFrameAt >= threshold
+}
 
 // Budget is shared by all targets in one process. A notification never refills
 // it. Both buckets are checked before either is charged.

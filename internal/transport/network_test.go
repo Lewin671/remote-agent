@@ -3,6 +3,9 @@ package transport
 import (
 	"context"
 	"crypto/sha256"
+	"net"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -57,4 +60,103 @@ func TestNetworkObservationsCoalesceAndNoticeSameInterfaceAddressChanges(t *test
 			t.Fatal("network observer leaked")
 		}
 	})
+}
+
+func TestFingerprintIgnoresNonDefaultInterfacesAndDetectsRouteOrDNSChanges(t *testing.T) {
+	en0 := net.Interface{Index: 4, Name: "en0", Flags: net.FlagUp | net.FlagMulticast}
+	awdl0 := net.Interface{Index: 9, Name: "awdl0", Flags: net.FlagUp | net.FlagMulticast}
+	llw0 := net.Interface{Index: 10, Name: "llw0", Flags: net.FlagUp}
+	utun5 := net.Interface{Index: 15, Name: "utun5", Flags: net.FlagUp | net.FlagPointToPoint}
+	docker0 := net.Interface{Index: 20, Name: "docker0", Flags: net.FlagUp}
+	veth9 := net.Interface{Index: 21, Name: "veth9", Flags: net.FlagUp}
+
+	addrs := map[int][]net.Addr{
+		4:  {&net.IPNet{IP: net.ParseIP("192.0.2.10"), Mask: net.CIDRMask(24, 32)}},
+		9:  {&net.IPNet{IP: net.ParseIP("fe80::1"), Mask: net.CIDRMask(64, 128)}},
+		10: {&net.IPNet{IP: net.ParseIP("fe80::2"), Mask: net.CIDRMask(64, 128)}},
+		15: {&net.IPNet{IP: net.ParseIP("10.8.0.2"), Mask: net.CIDRMask(24, 32)}},
+		20: {&net.IPNet{IP: net.ParseIP("172.17.0.1"), Mask: net.CIDRMask(16, 32)}},
+		21: {&net.IPNet{IP: net.ParseIP("172.17.0.99"), Mask: net.CIDRMask(16, 32)}},
+	}
+	lookup := func(i net.Interface) ([]net.Addr, error) { return addrs[i.Index], nil }
+	base := networkSnapshot{
+		interfaces: []net.Interface{en0, awdl0},
+		addrs:      lookup,
+		routes:     []defaultRoute{{IfIndex: 4, Family: "v4", Gateway: "192.0.2.1"}},
+		dnsLines:   []string{"dns:nameserver 192.0.2.53"},
+	}
+	want := fingerprintSnapshot(base)
+
+	noisy := base
+	noisy.interfaces = []net.Interface{en0, awdl0, llw0, utun5, docker0, veth9}
+	if got := fingerprintSnapshot(noisy); got != want {
+		t.Fatal("non-default interfaces changed network fingerprint")
+	}
+	addrs[9] = append(addrs[9], &net.IPNet{IP: net.ParseIP("fe80::99"), Mask: net.CIDRMask(64, 128)})
+	if got := fingerprintSnapshot(noisy); got != want {
+		t.Fatal("non-default interface address churn changed network fingerprint")
+	}
+
+	changedIP := base
+	changedIP.addrs = func(i net.Interface) ([]net.Addr, error) {
+		if i.Index == 4 {
+			return []net.Addr{&net.IPNet{IP: net.ParseIP("192.0.2.20"), Mask: net.CIDRMask(24, 32)}}, nil
+		}
+		return addrs[i.Index], nil
+	}
+	if fingerprintSnapshot(changedIP) == want {
+		t.Fatal("default interface address change did not change fingerprint")
+	}
+
+	changedGW := base
+	changedGW.routes = []defaultRoute{{IfIndex: 4, Family: "v4", Gateway: "192.0.2.254"}}
+	if fingerprintSnapshot(changedGW) == want {
+		t.Fatal("default gateway change did not change fingerprint")
+	}
+
+	resolv := filepath.Join(t.TempDir(), "resolv.conf")
+	if err := os.WriteFile(resolv, []byte("# comment\nsearch corp.example\nnameserver 192.0.2.53\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dnsA := base
+	dnsA.dnsLines = dnsFingerprintLines(resolv)
+	if err := os.WriteFile(resolv, []byte("search corp.example\nnameserver 192.0.2.54\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dnsB := base
+	dnsB.dnsLines = dnsFingerprintLines(resolv)
+	if fingerprintSnapshot(dnsA) == fingerprintSnapshot(dnsB) {
+		t.Fatal("DNS configuration change did not change fingerprint")
+	}
+}
+
+func TestRouteAvailableSnapshot(t *testing.T) {
+	en0 := net.Interface{Index: 4, Name: "en0", Flags: net.FlagUp}
+	candidateIP := net.ParseIP("192.0.2.10")
+	snap := networkSnapshot{
+		interfaces: []net.Interface{en0},
+		addrs: func(i net.Interface) ([]net.Addr, error) {
+			if i.Index == 4 {
+				return []net.Addr{&net.IPNet{IP: candidateIP, Mask: net.CIDRMask(24, 32)}}, nil
+			}
+			return nil, nil
+		},
+		routes: []defaultRoute{{IfIndex: 4, Family: "v4", Gateway: "192.0.2.1"}},
+	}
+	if !routeAvailableSnapshot(snap, candidateIP) {
+		t.Fatal("expected IPv4 route on UP default interface to remain available")
+	}
+	if !routeAvailableSnapshot(snap, net.ParseIP("127.0.0.1")) {
+		t.Fatal("loopback candidate should remain available")
+	}
+	movedRoute := snap
+	movedRoute.routes = []defaultRoute{{IfIndex: 5, Family: "v4", Gateway: "198.51.100.1"}}
+	if routeAvailableSnapshot(movedRoute, candidateIP) {
+		t.Fatal("candidate should be unavailable once default route moves off its interface")
+	}
+	wrongFamily := snap
+	wrongFamily.routes = []defaultRoute{{IfIndex: 4, Family: "v6", Gateway: "fe80::1"}}
+	if routeAvailableSnapshot(wrongFamily, candidateIP) {
+		t.Fatal("IPv4 candidate should be unavailable without an IPv4 default route on its interface")
+	}
 }
