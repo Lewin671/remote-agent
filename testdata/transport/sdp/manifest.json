@@ -196,6 +196,13 @@
     "bytes": 575
   },
   {
+    "file": "bad-bom.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "2d59379a829d4ab3b65435fb5a92f66363775e9d6a6d7e41c475e6d4607c2e9f",
+    "bytes": 459
+  },
+  {
     "file": "bad-duplicate-ufrag.bin",
     "accept": false,
     "source": "mutation of chrome-offer.sdp",
@@ -217,17 +224,66 @@
     "bytes": 66006
   },
   {
+    "file": "bad-inline-candidate.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "b60f9e62a654c4f2903bc7bf025fd1907edcd2360f55ac6a59e4874153e08d8a",
+    "bytes": 523
+  },
+  {
+    "file": "bad-inline-candidate-65.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "64460e6ea9540edd459565be722c1fd1d0c785f5899732995ba8ab4bb4d25d77",
+    "bytes": 4811
+  },
+  {
+    "file": "bad-inline-candidate-wrong-ufrag.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "1513d0dbdf4174a8de794682cbfa822c6d17867b5cc2509e8b63afbc5a147e2c",
+    "bytes": 524
+  },
+  {
+    "file": "bad-inline-candidate-long.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "e0881fea2cd2dc1e82e2a77d6ef945d7c5ad2d5aab68ec4c1b96b3a5a9fc5c2c",
+    "bytes": 1630
+  },
+  {
+    "file": "bad-inline-candidate-session.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "4a0436e38df3a24d01727dcfb640e971a113690c4156a3755be31586aa5989e0",
+    "bytes": 523
+  },
+  {
+    "file": "bad-inline-candidate-bare.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "8cced1297f19a171ac3afd581ecfdf8bd24d828cd7f0e541fc58629eb3846b35",
+    "bytes": 469
+  },
+  {
+    "file": "bad-inline-candidate-answer.bin",
+    "accept": false,
+    "source": "mutation of pion-answer.sdp",
+    "sha256": "f0510a58167a84f7e1667462c82a97d83a6bb99ddce4ae9f8b8530625f7f357a",
+    "bytes": 545
+  },
+  {
+    "file": "bad-inline-candidate-restart.bin",
+    "accept": false,
+    "source": "mutation of pion-restart.sdp",
+    "sha256": "001de4ee3082871f296af8c14e6b777ee65202162d997818078354783474c3ec",
+    "bytes": 546
+  },
+  {
     "file": "good-inherited-fingerprint.sdp",
     "accept": true,
     "source": "same fingerprint at session and media scopes",
     "sha256": "d1e31afb8c80a3d9ab3ddaad5760719bbf55770f881e9915a333c8da0abd3e8d",
     "bytes": 575
-  },
-  {
-    "file": "bad-bom.bin",
-    "accept": false,
-    "source": "mutation of chrome-offer.sdp",
-    "sha256": "2d59379a829d4ab3b65435fb5a92f66363775e9d6a6d7e41c475e6d4607c2e9f",
-    "bytes": 459
   }
 ]

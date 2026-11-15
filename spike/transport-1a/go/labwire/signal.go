@@ -20,7 +20,7 @@ type Signal struct {
 	Connection                                                                         []byte
 	Use, Generation, Next                                                              uint64
 	BootReady, LocalSDP, RemoteSDP, DTLS, Confirmed, Closed, Retired, Ended            bool
-	ChallengeHash                                                                      []byte
+	Challenge                                                                          *Opened
 	LocalHash, RemoteHash, RemoteUfrag, RemoteMid, LocalFingerprint, RemoteFingerprint []byte
 	Candidates, Batches                                                                int
 	Seen                                                                               map[string][]byte
@@ -99,13 +99,12 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		return nil, ErrSignal
 	}
 	if c.Class == 2 {
-		if !s.BootReady && o.Type == 4 && len(s.ChallengeHash) > 0 {
-			f, e := Parse(o.Payload, 5)
-			if e != nil || len(f) != 5 || f[4].U != 1 || f[5].U != 1 || !bytes.Equal(f[6].B, s.ChallengeHash) || f[7].U != 0 || f[8].U != s.Use {
-				return nil, ErrSignal
+		if o.Type == 4 {
+			if e := s.acceptACK(o); e != nil {
+				return nil, e
 			}
-			s.BootReady = true
 		}
+
 		// ACK/Unsupported are idempotent controls, never ACKed back.
 		if o.Type != 4 && o.Type != 10 {
 			s.Unsupported++
@@ -118,7 +117,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		return []Action{{2, o.Type, o.Payload, c.Generation}}, nil
 	}
 	if o.Type == 1 || o.Type == 2 {
-		if string(c.Domain) != "bootstrap" {
+		if string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 {
 			s.Rejected++
 			return nil, ErrSignal
 		}
@@ -152,6 +151,15 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			}
 		}
 		return []Action{{1, o.Type, o.Payload, 0}}, nil
+	}
+	// Receive has authenticated both current instances/nonces before Accept.
+	// An Offer can overtake Control: its nonce proof is bootstrap admission,
+	// not a substitute for a hash-bound transport sequence ACK.
+	if !s.BootReady && !s.Closed && !s.Offerer() && o.Type == 3 && c.Class == 1 && string(c.Domain) == "signal" && c.Use == s.Use && c.Generation == s.Generation && c.Seq == 1 && bytes.Equal(c.ReceiverBoot, s.Self.Boot) && bytes.Equal(c.SenderBoot, s.Peer.Boot) && bytes.Equal(c.ReceiverInstance, s.Self.Instance) && bytes.Equal(c.SenderInstance, s.Peer.Instance) {
+		if _, _, e := ReadSDPBody(o.Payload); e != nil {
+			return nil, e
+		}
+		s.BootReady = true
 	}
 	if (s.Closed && !(s.Retired && c.Generation == s.Generation+1)) || !s.BootReady || c.Use != s.Use || c.Generation < s.Generation || c.Generation > s.Generation+1 {
 		s.Rejected++
@@ -333,4 +341,61 @@ func (s *Signal) refreshGap() {
 			s.GapDeadline = due
 		}
 	}
+}
+
+// RememberChallenge freezes the outgoing record after sealing, before dispatch.
+func (s *Signal) RememberChallenge(sent Opened) error {
+	c := sent.Context
+	if sent.Type != 2 || c.Class != 1 || string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 || c.Seq == 0 || len(sent.Hash) != 32 || !bytes.Equal(c.From, s.Self.ID) || !bytes.Equal(c.To, s.Peer.ID) || !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.SenderBoot, s.Self.Boot) || !bytes.Equal(c.ReceiverBoot, s.Peer.Boot) || !bytes.Equal(c.SenderInstance, s.Self.Instance) || !bytes.Equal(c.ReceiverInstance, s.Peer.Instance) {
+		return ErrSignal
+	}
+	copyContext, e := parseContext(c.Encode())
+	if e != nil {
+		return e
+	}
+	s.Challenge = &Opened{Context: copyContext, Type: 2, Hash: append([]byte(nil), sent.Hash...)}
+	return nil
+}
+func (s *Signal) acceptACK(ack Opened) error {
+	raw := ack.Payload
+	f, e := Parse(raw, 5)
+	if e != nil || len(f) != 5 {
+		return ErrSignal
+	}
+	for _, n := range []uint64{4, 5, 7, 8} {
+		v, ok := f[n]
+		if !ok || v.Bytes {
+			return ErrSignal
+		}
+	}
+	h, ok := f[6]
+	if !ok || !h.Bytes || len(h.B) != 32 || f[4].U < 1 || f[4].U > 2 || f[5].U == 0 || f[8].U > 2 {
+		return ErrSignal
+	}
+	challenge := s.Challenge
+	// With no outgoing Challenge, this is a transport ACK (e.g. for Probe).
+	// The sender matches its frozen hash; it cannot establish BootReady here.
+	if challenge == nil {
+		if f[7].U == 0 && (f[4].U != 1 || f[8].U != 0) {
+			return ErrSignal
+		}
+		return nil
+	}
+	if f[7].U == 0 || (challenge != nil && bytes.Equal(h.B, challenge.Hash)) {
+		if challenge == nil {
+			return ErrSignal
+		}
+		c := challenge.Context
+		a := ack.Context
+		if !bytes.Equal(a.From, c.To) || !bytes.Equal(a.To, c.From) || !bytes.Equal(a.Connection, c.Connection) || !bytes.Equal(a.SenderBoot, c.ReceiverBoot) || !bytes.Equal(a.ReceiverBoot, c.SenderBoot) || !bytes.Equal(a.SenderInstance, c.ReceiverInstance) || !bytes.Equal(a.ReceiverInstance, c.SenderInstance) {
+			return ErrSignal
+		}
+		if f[4].U != c.Class || f[5].U != c.Seq || !bytes.Equal(h.B, challenge.Hash) || f[7].U != c.Generation || f[8].U != c.Use {
+			return ErrSignal
+		}
+		s.BootReady = true
+	} else if !s.BootReady {
+		return ErrSignal
+	}
+	return nil
 }

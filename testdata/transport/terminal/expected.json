@@ -70,6 +70,13 @@
       ]
     },
     "physical_loss_preserves_execution": true,
+    "r2_output_encoded_byte_budget": {
+      "after_render": 0,
+      "one_512k_payload_encoded_bytes": 524665
+    },
+    "r2_output_gap_resolution_before_render": true,
+    "r2_output_independent_ten_second_deadline": true,
+    "r2_successive_output_gaps_keep_own_deadlines": true,
     "rekey_same_authorized_hash": true,
     "reorder_and_duplicate": {
       "available": true,

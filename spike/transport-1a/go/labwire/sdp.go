@@ -23,7 +23,7 @@ func ValidateSDP(raw []byte) error {
 	}
 	scopes := [2]map[string]string{{}, {}}
 	section := 0
-	allowed := strings.Fields("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size candidate end-of-candidates extmap-allow-mixed sendrecv")
+	allowed := strings.Fields("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size end-of-candidates extmap-allow-mixed sendrecv")
 	for _, line := range strings.Split(strings.TrimSuffix(string(raw), "\r\n"), "\r\n") {
 		if strings.HasPrefix(line, "m=") {
 			section++
@@ -45,7 +45,7 @@ func ValidateSDP(raw []byte) error {
 			if !ok {
 				return fail
 			}
-			if _, exists := scopes[section][name]; exists && name != "candidate" {
+			if _, exists := scopes[section][name]; exists {
 				return fail
 			}
 			scopes[section][name] = value

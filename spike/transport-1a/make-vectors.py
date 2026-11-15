@@ -38,10 +38,22 @@ vectors={
     'unknown-media':raw.replace(b'm=application',b'm=unknown'),
     'oversize':raw+b'a=candidate:'+b'A'*65536+b'\r\n',
 }
+candidate=b'a=candidate:1 1 UDP 2122260223 192.0.2.1 5000 typ host ufrag '+re.search(rb'a=ice-ufrag:([^\r]+)',raw).group(1)+b'\r\n'
+vectors.update({
+    'inline-candidate':raw+candidate,
+    'inline-candidate-65':raw+candidate*65,
+    'inline-candidate-wrong-ufrag':raw+b'a=candidate:1 1 UDP 2122260223 192.0.2.1 5000 typ host ufrag WRONG\r\n',
+    'inline-candidate-long':raw+candidate[:-2]+b' x-lab '+b'x'*1100+b'\r\n',
+    'inline-candidate-session':raw.replace(b'm=application',candidate+b'm=application',1),
+    'inline-candidate-bare':raw+b'a=candidate\r\n',
+})
 for name,data in vectors.items():add('bad-'+name+'.bin',data,False,'mutation of chrome-offer.sdp')
+for kind in ['answer','restart']:
+    source='pion-'+kind+'.sdp'
+    add('bad-inline-candidate-'+kind+'.bin',(args.source/source).read_bytes()+candidate,False,'mutation of '+source)
 inherited=raw.replace(b'm=application',fp+b'm=application',1)
 add('good-inherited-fingerprint.sdp',inherited,True,'same fingerprint at session and media scopes')
-assert len(rows)==33
+assert len(rows)==41
 (args.output/'vectors.tsv').write_text('\n'.join(rows)+'\n')
 (args.output/'manifest.json').write_text(json.dumps(metadata,indent=2)+'\n')
 (args.output/'.gitattributes').write_text('*.sdp -text -diff\n*.bin -text -diff\n')

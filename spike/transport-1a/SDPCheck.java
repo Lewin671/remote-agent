@@ -13,13 +13,13 @@ public final class SDPCheck {
     require(bytes.length<=60*1024 && raw.endsWith("\r\n") && !raw.contains("\0"));
     String rest=raw.replace("\r\n",""); require(!rest.contains("\r")&&!rest.contains("\n"));
     List<Map<String,String>> scopes=Arrays.asList(new HashMap<>(),new HashMap<>());int section=0;
-    Set<String> allowed=new HashSet<>(Arrays.asList("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size candidate end-of-candidates extmap-allow-mixed sendrecv".split(" ")));
+    Set<String> allowed=new HashSet<>(Arrays.asList("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size end-of-candidates extmap-allow-mixed sendrecv".split(" ")));
     for(String line:raw.substring(0,raw.length()-2).split("\r\n",-1)){
       if(line.startsWith("m=")){section++;require(section==1&&match("m=application [1-9][0-9]* UDP/DTLS/SCTP webrtc-datachannel",line));}
       require(!line.equals("a=ice-lite"));
       if(line.startsWith("a=")){
         String[] parts=line.substring(2).split(":",2);String key=parts[0],value=parts.length==2?parts[1]:"";
-        require(allowed.contains(key)&&(!scopes.get(section).containsKey(key)||key.equals("candidate")));scopes.get(section).put(key,value);
+        require(allowed.contains(key)&&!scopes.get(section).containsKey(key));scopes.get(section).put(key,value);
       }else require(match("[vostcm]=.*",line));
     }
     require(section==1);String fp=null;

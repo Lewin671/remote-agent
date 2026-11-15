@@ -31,7 +31,7 @@ func main() {
 		case "CASE":
 			a, b := labwire.Fixture(p[2], n(p[3])), labwire.Fixture(p[4], n(p[5]))
 			conn := labwire.Hash([]byte("signal/" + p[1]))[:16]
-			gates = [2]*labwire.Signal{labwire.NewSignal(a, b.Public(), conn, 1), labwire.NewSignal(b, a.Public(), conn, 1)}
+			gates = [2]*labwire.Signal{labwire.NewSignal(a, b.Public(), conn, n(p[6])), labwire.NewSignal(b, a.Public(), conn, n(p[6]))}
 			cases++
 		case "BATCH_CASE":
 			batch = &labwire.CandidateBatcher{Generation: n(p[2])}
@@ -66,7 +66,10 @@ func main() {
 			}
 			assertions++
 		case "CHALLENGE":
-			gates[n(p[1])].ChallengeHash = raw(p[2])
+			which := n(p[1])
+			sent, e := labwire.Open(raw(p[2]), gates[which].Self.Public(), gates[1-which].Self, 1700000000000)
+			must(e)
+			must(gates[which].RememberChallenge(sent))
 		case "RX":
 			_, e := gates[n(p[1])].Receive(raw(p[4]), 1700000000000+n(p[2]))
 			if (e == nil) != (p[3] == "1") {

@@ -9,7 +9,7 @@ ICE/DTLS completion. Both miss the deadline. SDKs supply raw SDP sizes and
 hashes, but this script does not run a PeerConnection.
 """
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import heapq
 import json
@@ -26,6 +26,9 @@ class Frame:
     seq: int
     kind: str
     body: bytes
+    generation: int = 1
+    use: int = 0
+    receiver_nonce: bytes = b""
 
 
 class Experiment:
@@ -35,9 +38,13 @@ class Experiment:
     CRITICAL = {'Probe','Challenge','Offer','Answer','Confirm'}
 
     def __init__(self, offer, answer, losses=2, relay_ms=3000,
-                 proactive_challenge=False, ice_ms=0, faults=None, peers=8, discovery_ms=0, offerer="client"):
+                 proactive_challenge=False, ice_ms=0, faults=None, peers=8, discovery_ms=0, offerer="client", ack_delay_ms=0, delivery_delays=None, implicit_offer=True):
         self.offer, self.answer, self.losses = offer, answer, losses
         self.faults,self.peers=faults,peers
+        self.ack_delay_ms=ack_delay_ms;self.delivery_delays=delivery_delays or {};self.implicit_offer=implicit_offer
+        self.boot_ready={'client':set(),'daemon':set()};self.challenges={};self.learned_nonce={}
+        self.implicit_proofs=[];self.gate_rejections=0;self.challenge_ack_at={};self.offer_installed_at={}
+        self.retired_pcs=set()
         self.offerer=offerer;self.answerer="daemon" if offerer=="client" else "client";self.offer_started=set()
         self.deliveries=[];self.dropped=[];self.ack_ordinals={}
         self.proactive_challenge,self.ice_ms=proactive_challenge,ice_ms
@@ -63,7 +70,20 @@ class Experiment:
             row.update(sender=frame.sender,pc=frame.pc,seq=frame.seq,kind=frame.kind)
         self.trace.append(row)
 
+    @staticmethod
+    def nonce(side,peer):return f'current-{side}-{peer}'.encode()
+
+    @staticmethod
+    def ack_binding(frame):
+        # Symbolic authenticated Context + frozen-frame identity, not crypto.
+        identity=repr(frame).encode()
+        return (1,frame.seq,hashlib.sha256(identity).digest(),frame.generation,frame.use)
+
     def send(self,frame):
+        receiver='daemon' if frame.sender=='client' else 'client'
+        frame=replace(frame,generation=0 if frame.pc==-1 else 1,use=0 if frame.pc==-1 else frame.pc+1,
+                      receiver_nonce=frame.receiver_nonce or self.learned_nonce.get((frame.sender,frame.peer),b"unknown"))
+        if frame.kind=='Challenge':self.challenges[frame.peer]=frame
         key=(frame.sender,frame.peer,frame.pc,frame.seq)
         self.initial[frame.sender]+=1
         lane=key[:3];self.outstanding.setdefault(lane,set()).add(key)
@@ -83,15 +103,27 @@ class Experiment:
         if (self.faults is not None and delivery in self.faults) or (self.faults is None and frame.kind in self.CRITICAL and attempt<self.losses):
             self.dropped.append(delivery)
             self.log('drop',frame);return
-        self.receive(frame)
+        delay=self.delivery_delays.get(delivery,0)
+        if delay:self.event(self.now+delay,lambda:self.receive(frame))
+        else:self.receive(frame)
 
     def receive(self,f):
         key=(f.sender,f.peer,f.pc,f.seq);lane=key[:3]
-        # Assume valid identity, signature, epoch/head, lease, nonce and deadline.
+        # Crypto/identity/head/lease are premises; admission below is explicit.
+        receiver='daemon' if f.sender=='client' else 'client';pc_key=(f.peer,f.pc)
+        if f.pc>=0:
+            valid_context=f.generation==1 and f.use==f.pc+1 and f.receiver_nonce==self.nonce(receiver,f.peer)
+            if not valid_context or pc_key in self.retired_pcs:
+                self.gate_rejections+=1;self.log('context_rejected',f);return
+            if pc_key not in self.boot_ready[receiver]:
+                if self.implicit_offer and f.kind=='Offer' and f.sender==self.offerer and f.seq==1:
+                    self.boot_ready[receiver].add(pc_key);self.implicit_proofs.append((receiver,f.peer,f.pc,self.now));self.log('offer_nonce_proof',f)
+                else:self.gate_rejections+=1;self.log('bootstrap_gate_rejected',f);return
+        elif f.generation!=0 or f.use!=0:return
         if key in self.cache:
-            assert self.cache[key]==f.body
+            assert self.cache[key]==f
         else:
-            self.cache[key]=f.body
+            self.cache[key]=f
             if f.pc==-1:self.process(f)
             else:
                 expected=self.expected.setdefault(lane,1)
@@ -117,8 +149,22 @@ class Experiment:
         self.deliveries.append(delivery)
         if self.faults is not None and delivery in self.faults:
             self.dropped.append(delivery);return
-        self.acked.add(key);self.outstanding[lane].discard(key)
-        if f.kind=="Challenge" and self.offerer=="daemon":self.begin_offers(f.peer)
+        delay=self.delivery_delays.get(delivery,self.ack_delay_ms)
+        binding=self.ack_binding(f)
+        if delay:self.event(self.now+delay,lambda:self.acknowledge(f,binding))
+        else:self.acknowledge(f,binding)
+
+    def acknowledge(self,f,binding):
+        if binding!=self.ack_binding(f):return False
+        if f.kind=='Challenge':
+            original=self.challenges.get(f.peer)
+            if original is None or binding!=self.ack_binding(original):return False
+            self.challenge_ack_at[f.peer]=self.now
+            self.boot_ready['daemon'].update((f.peer,pc) for pc in range(2))
+            self.log('challenge_ack',f,use=binding[4],generation=binding[3])
+        key=(f.sender,f.peer,f.pc,f.seq);self.acked.add(key);self.outstanding[key[:3]].discard(key)
+        if f.kind=='Challenge' and self.offerer=='daemon':self.begin_offers(f.peer)
+        return True
 
     def update_gap(self,lane):
         arrivals=self.pending_at.get(lane,{})
@@ -130,7 +176,7 @@ class Experiment:
 
     def gap(self,lane):
         if self.gaps.get(lane)==self.now and self.pending.get(lane):
-            self.retired+=1;self.log('gap_expired')
+            self.retired+=1;self.retired_pcs.add((lane[1],lane[2]));self.log('gap_expired')
 
     def candidates(self,sender,peer,pc):
         # A bounded maximum: 64 synthetic, documentation-address candidates.
@@ -150,18 +196,23 @@ class Experiment:
             if self.proactive_challenge:
                 # Optimistically assume the daemon already knows the client's
                 # current nonce; remove the Probe dependency entirely.
-                self.send(Frame('daemon',peer,-1,1,'Challenge',b'fresh-daemon-nonce'))
-            else:self.send(Frame('client',peer,-1,1,'Probe',b'fresh-client-nonce'))
+                self.learned_nonce[('daemon',peer)]=self.nonce('client',peer)
+                self.send(Frame('daemon',peer,-1,1,'Challenge',self.nonce('daemon',peer)))
+            else:self.send(Frame('client',peer,-1,1,'Probe',self.nonce('client',peer)))
 
     def process(self,f):
         self.log('process',f)
         k=(f.peer,f.pc)
         if f.kind=='Probe':
-            self.send(Frame('daemon',f.peer,-1,1,'Challenge',b'fresh-daemon-nonce'))
+            self.learned_nonce[('daemon',f.peer)]=f.body
+            self.send(Frame('daemon',f.peer,-1,1,'Challenge',self.nonce('daemon',f.peer)))
         elif f.kind=='Challenge':
+            assert f.receiver_nonce==self.nonce('client',f.peer)
+            self.learned_nonce[('client',f.peer)]=f.body
+            self.boot_ready['client'].update((f.peer,pc) for pc in range(2))
             if self.offerer=='client':self.begin_offers(f.peer)
         elif f.kind=='Offer':
-            assert k not in self.installed_offers;self.installed_offers.add(k)
+            assert k not in self.installed_offers;self.installed_offers.add(k);self.offer_installed_at[k]=self.now
             self.send(Frame(self.answerer,f.peer,f.pc,1,'Answer',self.answer))
             self.event(self.now+50,lambda p=f.peer,c=f.pc:self.answer_tail(p,c))
         elif f.kind=='Answer':
@@ -197,7 +248,7 @@ class Experiment:
         self.ice_ready.add(k);self.maybe_ready(k)
 
     def maybe_ready(self,k):
-        if k in self.ice_ready and k in self.confirms['daemon'] and k in self.confirms['client']:
+        if k not in self.retired_pcs and k in self.ice_ready and k in self.confirms['daemon'] and k in self.confirms['client']:
             self.ready.add(k);self.last_ready_ms=self.now
 
     def answer_tail(self,peer,pc):
@@ -211,13 +262,12 @@ class Experiment:
             at,order,action=heapq.heappop(self.events)
             if at>=self.DEADLINE:break
             self.now=at;action()
-        assert self.retired==0  # The lead's 2.5-second fix is respected.
         assert all(n<=128 for n in self.initial.values())
         assert all(n<=384 for n in self.sends.values())
         timed_out=len(self.ready)!=2*self.peers
         pending_before=sum(len(q) for q in self.outstanding.values())
         self.events.clear();self.pending.clear();self.pending_at.clear();self.gaps.clear();self.outstanding.clear()
-        return dict(timed_out=timed_out,relay_available=True,
+        return dict(timed_out=timed_out,relay_available=True,bootstrap_gate_rejections=self.gate_rejections,implicit_offer_proofs=len(self.implicit_proofs),
                     active_timers=0,pending_frames=0,owned_pcs=0 if timed_out else 2*self.peers,
                     tombstone_hashes=len(self.cache),unacked_at_deadline=pending_before,
                     next_retry_ms=self.DEADLINE+500 if timed_out else None,

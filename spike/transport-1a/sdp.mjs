@@ -13,9 +13,9 @@ export function validateSDP(bytes) {
     if (line.startsWith('a=')) {
       const match = /^a=([^:]+)(?::(.*))?$/.exec(line);
       const name = match[1], value = match[2] ?? '';
-      const allowed = new Set(['group','msid-semantic','fingerprint','ice-ufrag','ice-pwd','ice-options','setup','mid','sctp-port','max-message-size','candidate','end-of-candidates','extmap-allow-mixed','sendrecv']);
+      const allowed = new Set(['group','msid-semantic','fingerprint','ice-ufrag','ice-pwd','ice-options','setup','mid','sctp-port','max-message-size','end-of-candidates','extmap-allow-mixed','sendrecv']);
       if (!allowed.has(name)) throw Error('attribute');
-      if (scopes[section].has(name) && name !== 'candidate') throw Error('duplicate');
+      if (scopes[section].has(name)) throw Error('duplicate');
       scopes[section].set(name, value);
     } else if (!/^[vostcm]=/.test(line)) throw Error('line');
   }

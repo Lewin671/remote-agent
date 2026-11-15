@@ -26,8 +26,16 @@ bad-fingerprint-sha1.bin	0
 bad-fingerprint-short.bin	0
 bad-fingerprint-missing.bin	0
 bad-fingerprint-conflict.bin	0
+bad-bom.bin	0
 bad-duplicate-ufrag.bin	0
 bad-unknown-media.bin	0
 bad-oversize.bin	0
+bad-inline-candidate.bin	0
+bad-inline-candidate-65.bin	0
+bad-inline-candidate-wrong-ufrag.bin	0
+bad-inline-candidate-long.bin	0
+bad-inline-candidate-session.bin	0
+bad-inline-candidate-bare.bin	0
+bad-inline-candidate-answer.bin	0
+bad-inline-candidate-restart.bin	0
 good-inherited-fingerprint.sdp	1
-bad-bom.bin	0

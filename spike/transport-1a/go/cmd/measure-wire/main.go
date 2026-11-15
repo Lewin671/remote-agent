@@ -67,6 +67,9 @@ func main() {
 					ackSeq := uint64(0)
 					emit := func(typ, seq, generation uint64, payload []byte, boot bool) {
 						ctx := labwire.NewContext(from, to.Public(), conn, use, generation, seq, now, 1, boot)
+						if boot {
+							ctx.Use = 0
+						}
 						packet, e := labwire.Seal(from, to.Public(), ctx, typ, payload, nil, nil, nil)
 						must(e)
 						opened, e := labwire.Open(packet, from.Public(), to, now)
@@ -94,8 +97,8 @@ func main() {
 							m.RetryFrames++
 							m.RetryBytes += len(packet)
 							ackSeq++
-							ackCtx := labwire.NewContext(to, from.Public(), conn, use, max(uint64(1), generation), ackSeq, now, 2, false)
-							ackBody := labwire.PB(labwire.U(4, 1), labwire.U(5, seq), labwire.B(6, labwire.Hash(packet)), labwire.U(7, generation), labwire.U(8, use))
+							ackCtx := labwire.NewContext(to, from.Public(), conn, ctx.Use, max(uint64(1), generation), ackSeq, now, 2, false)
+							ackBody := labwire.PB(labwire.U(4, 1), labwire.U(5, seq), labwire.B(6, labwire.Hash(packet)), labwire.U(7, ctx.Generation), labwire.U(8, ctx.Use))
 							ack, e := labwire.Seal(to, from.Public(), ackCtx, 4, ackBody, nil, nil, nil)
 							must(e)
 							_, e = labwire.Open(ack, to.Public(), from, now)

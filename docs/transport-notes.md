@@ -130,10 +130,10 @@ Playwright 1.65.1 的 WebKit 27.2（build 2388）、Android `io.github.webrtc-sd
 输入未裁剪或重编码。跨 SDK 时浏览器 getter 即使在追加候选前也可能规范化 Pion SDP；应用核对传入参数与验证原串相同，hash 不取 getter。
 正常协商未产生额外 DCEP 回调；后续恶意通道、候选负例和跨 SDK 证据见第 9 节。
 
-[共享原串与正负向量](../testdata/transport/sdp/manifest.json)有 15 份 SDK 原串、1 份相同指纹继承正例和 17 份负例，
-共 33 项；Go、JavaScript、Java/JVM 与 Swift 验证器消费同一 vectors.tsv。
+[共享原串与正负向量](../testdata/transport/sdp/manifest.json)有 15 份 SDK 原串、1 份相同指纹继承正例和 25 份负例，
+共 41 项；Go、JavaScript、Java/JVM 与 Swift 验证器消费同一 vectors.tsv。
 覆盖 BOM/LF/裸 CR/末尾缺失、NUL、无效 UTF-8、额外音频/application/未知媒体、ice-lite、指纹缺失/算法/长度/冲突/同 scope 重复、
-重复 ufrag 和尺寸超限。SDP 在候选收集前取得，只含临时实验凭据与公用占位地址；没有用户身份、私钥或实际网卡候选地址。
+重复 ufrag、尺寸超限，以及 session/媒体级单个、65 个、错误 ufrag、过长/无值候选和 Answer/Restart 的内嵌候选。SDP 在候选收集前取得，只含临时实验凭据与公用占位地址；没有用户身份、私钥或实际网卡候选地址。
 这些有限向量不是完整 RFC 语法/fuzz 或密码学认证证明。
 
 候选数（每侧）Pion/Chrome/WebKit 为 1，Android 为 2，iOS 为 4。
@@ -186,22 +186,24 @@ Answerer 的 Confirm 已允许与 Answer 重试并行；不要求 Confirm 等 IC
 负责人已裁定成功前提为整轮合计最多丢两帧；上面的逐消息丢两份保留为超出前提的退路场景。每条最多三份、2.5 秒缺口、32 条窗口、10 秒总期限及 128 帧/3 MiB 均保留。超时释放本轮资源，保留防重放依据并按全抖动退避，不能因新网络通知延长本轮或清零退避。
 
 
-**裁定后的有限事件枚举（2026-11-15）**：[round-loss-matrix.py](../spike/transport-1a/round-loss-matrix.py)
-枚举两个 peer、每个两个 PC 的事件位置，丢失范围同时包含 Signal 和 Control ACK，第二个丢失点也包含首次丢失诱发的重试。
-连同 8 peer×2 PC 对照分别让 client/daemon 作固定 Offerer（后者等待 Challenge ACK 证明当前 nonce），共 14,884 例：0 丢失 2 例、1 丢失 240 例、2 丢失 14,642 例，全部 Ready；
-在 relay 3 秒、发现 1 秒、ICE 3 秒的条件下最晚 8,550 ms。大规模场景每方向初发 120 帧、16/16 Ready。
-这里按事件等价类覆盖分布，**不是穷举任意连续网络时延或同时运行 16 个 SDK PC**；两次丢失后发送量仍在突发桶内。
-逐消息丢两份的超前提场景在 10 秒失败，PC/待发帧/计时器均为零、relay 可用，下次示例重试 10,500 ms。
-退避测试覆盖 1/2/4/…/30 秒全抖动和 1,000 次网络代次通知，不重置已选择的重试期限。
+**裁定后的有限事件枚举（2026-11-15，含 r2 准入门）**：[round-loss-matrix.py](../spike/transport-1a/round-loss-matrix.py)
+分别在即时 ACK、Control ACK 晚 10 ms 两种顺序下重跑原 14,884 例（各含两个固定 Offerer 角色与 8 peer×2 PC 对照），
+再加入审查指定的两次丢 Challenge ACK、第三份于 5510 ms 到达场景，合计 **29,769 例**。最多两帧丢失均 Ready，最慢 **8560 ms**。
+审查序列中，Offer 4000 ms 的 nonce 证明已通过，7050 ms Ready；5510 ms 的显式 ACK 晚于最后计划的 Offer 重试点 5500 ms。
+仅禁用隐式证明时，同序列会在 8050 ms 缺口退休并超时；该负对照保留，避免模型再次跳过真实准入门。
+模型显式跟踪从 Probe/Challenge 学到的 nonce、各 PC 的引导就绪和原 Challenge ACK 绑定；加密/身份/成员/租约仍是模型前提，四语言真实 codec 另验。
+每方向初发 120 帧，大规模对照 16/16 Ready。relay 3 秒、发现 1 秒、ICE 3 秒是注入条件；
+有限事件枚举**不是穷举任意连续网络时延或同时运行 16 个 SDK PC**，不能据此放宽分项时延前提。
+逐消息丢两份仍是超前提的退路测试：10 秒失败，PC/待发帧/计时器清空、relay 可用，退避不被换网重置。
 
 ## 9. 四端信令、真实封装与跨 SDK 互连
 
 **独立实验，2026-11-15；仍非产品直连验收。** Go、浏览器 WebCrypto（Chrome/WebKit）、Java/JVM（Bouncy Castle 1.85）
 和 Swift/CryptoKit 各实现同一草案 codec、信令接收器、发送窗口及候选汇集器。
 [共享 sealed 轨迹](../testdata/transport/signal/scenarios.tsv)分 Signal/Control 两条可乱序、重放或丢失的假管道，
-20 个共享场景（17 个信令/策略、3 个候选汇集）、523 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
+29 个共享场景（26 个信令/策略、3 个候选汇集）、636 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
 旧 SDK callback token、未来代候选先到、同序号冲突、固定缺口期限和未知类型认证 Unsupported。
-Probe 只可触发受限 Challenge；发送方收到绑定双方 nonce 的 Challenge ACK 后才能以 responder 身份开始 PC。
+Probe 只可触发受限 Challenge；等待显式 ACK 的接收方也可用合法首份 Offer 的当前 nonce 证明解除引导门，详见第 12 节。
 单独收到重放 Probe 不能进入 SDK；接收器返回的 action 才是 SDK 调用许可，计数不是实际 API 调用次数。
 Close 与缺口退休分开：前者终结连接，后者允许固定 Offerer 开下一代，沿用整轮期限与防重放缓存。
 
@@ -240,7 +242,7 @@ iOS 早一轮完整四组通过、restart 5,929 ms；新增探测曾超时，最
 
 **Go 有限状态实验，2026-11-15**：[terminal/](../spike/transport-1a/terminal/)
 复用现有 deviceauth 的真实成员状态、租约、业务信封和 RequestIdentity；两条路径与 tmux 注入后端是测试替身。
-24 组场景输出在[共用预期](../testdata/transport/terminal/expected.json)。未调用产品 Endpoint.Accept 或真实 tmux，
+28 组场景输出在[共用预期](../testdata/transport/terminal/expected.json)。未调用产品 Endpoint.Accept 或真实 tmux，
 Accept 观察点只在重组、认证、绑定和连续序号通过后触发；不能作为持久接受日志/CLI 端到端验收。
 
 覆盖整密文重组后认证、双路乱序/重复/冲突、5 秒碎片清理、10 秒缺口恢复、渲染后 ACK、20 ms/16 帧合并、
@@ -275,3 +277,20 @@ processed/input_success/failed_seq、每条原授权 hash 和 outcome/注入前�
 终端仅有 Go 原型，新增四组回归进入共用 expected.json；原有 20 组结果逐项保持，合计 24 组。
 `verify.py` 已纳入 JS 共享轨迹检查并完整通过；14,884 个整轮丢失模型用例最慢仍为 8,550 ms，真实封装容量未超预算。
 本轮不重跑移动 SDK 安装或 ICE 时延采样，保留第 9 节原有失败边界；未运行产品端到端验收或宣布 wire 已冻结。
+
+
+## 12. 冻结前复核 r2 的五项修复
+
+**回归实测，2026-11-15，沿用 v0.77.0 / 协议 15 基线。** 规则见 [transport §5](transport.md#5-协议与安全绑定)与 [wire 草案](transport-wire-draft.md)。
+
+| 复核项 | 观察与共享回归 |
+|---|---|
+| Offer 先于 Challenge ACK | PC 用途 1/2 均可凭有效首份 Offer 的当前 nonce 证明准入，重复两次不增加 SDK 动作；迟到的合法 ACK 接受，错 nonce/错误角色/无效 SDP 不开引导门。模型显式执行同一门，结果见第 8 节 |
+| ACK 误用接收 PC 上下文 | 保存发送时完整 Challenge Context/hash；共享 CHALLENGE 事件携带原 sealed 包供四端核对，不再直接赋一个 hash。use=0 正例通过，use=1、generation、seq、hash、purpose 错配拒绝；首份 Offer 已准入后也不能接受错标 ACK。普通 Probe ACK 仍可交发送窗口处理，但不标记引导就绪 |
+| SDP 绕过候选门 | 四种校验器拒绝所有内嵌 `a=candidate`；新增 8 份负例，15 份真实 pre-gather SDP 原串仍全部通过。另在共享状态机中验 Offer/Answer/Restart 均不产生 SDK 动作；未重跑移动 SDK 安装或 ICE 时延采样 |
+| 输出缓存越过字节预算 | 512 KiB 输出编码后为 524,665 B；seq1 缺失时第一份可留，随后两份均在插入前拒绝，实际计费保持一份。相同副本不重复计费，渲染逐帧扣费并恢复容量 |
+| 输出缺口无期限 | 独立输出期限在 10,000 ms 进入网络恢复，输入推进/重发不刷新，不触发 Input fail-stop；缺口先补齐则即使尚未渲染也不误报。两个先后缺口各保留首次发现时间，11,999 ms 补齐或 12,000 ms 到期分别验证 |
+
+Go、JS/Node、Java/JVM、Swift 共用 **29 场景/636 断言**，四端 SDP 共 **41 项**；Chrome 157.0.8103.52 和 WebKit 27.2 也在各自引擎中通过同样的场景及 SDP 向量。
+终端新增四组命名预期，原有 24 组结果不变，共 28 组。完整 `verify.py`、更新后的丢失矩阵、Pion 实验包测试与容量封装检查通过。
+本轮修复与验证只在实验模块，不表示产品 DirectPath、完整四端适配闭环、手机性能或真实 CLI E2E 已验收，也未冻结 wire。

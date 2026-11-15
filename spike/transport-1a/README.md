@@ -47,10 +47,10 @@ REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
 
 共享材料：
 
-- `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、17 份负例，共 33 项；原串禁文本换行转换。
+- `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、25 份负例，共 41 项；原串禁文本换行转换。
 - `testdata/transport/wire`：16 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
-- `testdata/transport/signal/scenarios.tsv`：20 个共享场景、523 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
-- `testdata/transport/terminal/expected.json`：24 组终端模型预期；不是四套终端引擎均已执行的声明。
+- `testdata/transport/signal/scenarios.tsv`：29 个共享场景、636 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
+- `testdata/transport/terminal/expected.json`：28 组终端模型预期；不是四套终端引擎均已执行的声明。
 
 `signal-vectors.mjs testdata/transport/sdp /tmp/transport-lab/signal` 可重新生成并先用 JS 执行轨迹；
 seal 使用新随机数，所以重生成的包字节不同，语义预期不变。同一发送的副本则必须逐字节相同。
@@ -60,9 +60,15 @@ CryptoKit 的签名可随机化；Swift CLI 先核对固定随机输入下密文
 逐个到达的 5/63/64 个候选、两个缺口先后出现及同一缺口拆分。BATCH_ADD/FLUSH 同时核对批长与原字节，
 不只检查总帧数；POLICY 核对回复与冻结原请求。终端回归覆盖实际保留字节/伪小总长与输出两阶段身份冲突。
 
-只复验真实浏览器中的共享轨迹时，可使用 `check-browser-signal.mjs PLAYWRIGHT_MODULE TRACE_TSV OUTPUT_JSON`；
-沿用上述 /tmp 环境与固定浏览器目录。它只监听本机临时 HTTP 端口提供公开测试模块，执行后关闭浏览器和监听，
+只复验真实浏览器中的共享轨迹时，可使用 `check-browser-signal.mjs PLAYWRIGHT_MODULE TRACE_TSV OUTPUT_JSON SDP_DIRECTORY`；
+沿用上述 /tmp 环境与固定浏览器目录。它只监听本机临时 HTTP 端口提供公开测试模块，同时检查 SDP 向量，执行后关闭浏览器和监听，
 无需启动 Pion peer 或移动模拟器。它不会再次测量 SDK 时延。
+
+r2 增加 Offer 的隐式引导确认、原 Challenge Context 的 ACK 绑定和 trickle-only SDP 门；
+CASE 显式声明 PC use，CHALLENGE 保存原 sealed 包；正确 bootstrap ACK 的 acknowledged generation/use 均为 0。
+普通 Probe ACK 不替代 Challenge。共享终端预期另验完整编码字节计费及输出独立 10 秒缺口，连续已收但未渲染不算丢帧。
+整轮丢失模型执行相同的 nonce/ACK 准入顺序：两种 Control ACK 顺序各 14,884 例，加审查指定时序共 29,769 例，
+最慢 8,560 ms；关闭隐式证明的负对照按预期超时。它不把合法 Offer 的隐式引导确认当作原 hash 的传输序号 ACK。
 
 ## 真实 SDK 独立实验
 

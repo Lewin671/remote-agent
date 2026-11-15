@@ -229,6 +229,9 @@ type Stream struct {
 	stopped, networkRecovery, paused                 bool
 	rendered                                         uint64
 	output                                           map[uint64]queued
+	outputBytes                                      int
+	outputReceivedAt                                 map[uint64]uint64
+	outputGapDeadline                                uint64
 	renderedIdentity                                 map[uint64]outputIdentity
 	renderReady                                      *queued
 	replay                                           []Envelope
@@ -243,7 +246,7 @@ type Stream struct {
 }
 
 func newStream(sec *Security, id string) *Stream {
-	return &Stream{sec: sec, id: id, instance: "daemon-instance-a", now: base, legs: map[string]uint64{"relay": 1, "direct": 1}, assemblies: map[string]*Assembly{}, details: map[uint64]Detail{}, pending: map[uint64]queued{}, output: map[uint64]queued{}, renderedIdentity: map[uint64]outputIdentity{}, inputCache: map[uint64]Envelope{}, inputAt: map[uint64]uint64{}, tmuxConnections: 1, openCalls: 1}
+	return &Stream{sec: sec, id: id, instance: "daemon-instance-a", now: base, legs: map[string]uint64{"relay": 1, "direct": 1}, assemblies: map[string]*Assembly{}, details: map[uint64]Detail{}, pending: map[uint64]queued{}, output: map[uint64]queued{}, outputReceivedAt: map[uint64]uint64{}, renderedIdentity: map[uint64]outputIdentity{}, inputCache: map[uint64]Envelope{}, inputAt: map[uint64]uint64{}, tmuxConnections: 1, openCalls: 1}
 }
 func (s *Stream) receive(path, instance string, f Fragment) error {
 	if s.legs[path] != f.pathGen || instance != s.instance || s.stopped {
@@ -484,10 +487,13 @@ func (s *Stream) outputFrame(q queued) error {
 	// Conservative lab backpressure: retain identities through the original
 	// deadline, independently of evictable replay bodies. Never ACK an unknown
 	// old sequence after its identity expires or silently evict a live digest.
-	if len(s.output) >= 128 || len(s.output)+len(s.renderedIdentity) >= 512 {
+	if len(s.output) >= 128 || len(s.output)+len(s.renderedIdentity) >= 512 || q.rawBytes > (1<<20)-s.outputBytes {
 		return errors.New("output gap")
 	}
 	s.output[q.header.Seq] = q
+	s.outputBytes += q.rawBytes
+	s.outputReceivedAt[q.header.Seq] = s.now
+	s.refreshOutputGap()
 	if s.renderReady == nil {
 		if next, ok := s.output[s.rendered+1]; ok {
 			copy := next
@@ -500,8 +506,11 @@ func (s *Stream) render() {
 	check(s.renderReady != nil, "no render ready")
 	s.rendered = s.renderReady.header.Seq
 	s.renderedIdentity[s.rendered] = outputIdentity{s.renderReady.hash, s.renderReady.header.Deadline}
+	s.outputBytes -= s.renderReady.rawBytes
 	delete(s.output, s.rendered)
+	delete(s.outputReceivedAt, s.rendered)
 	s.renderReady = nil
+	s.refreshOutputGap()
 	s.dirtyACK++
 	if s.dirtyACK >= 16 {
 		s.emitACK()
@@ -509,6 +518,26 @@ func (s *Stream) render() {
 	if next, ok := s.output[s.rendered+1]; ok {
 		copy := next
 		s.renderReady = &copy
+	}
+}
+func (s *Stream) refreshOutputGap() {
+	// Rendering may lag behind a fully received prefix. Only a missing sequence
+	// starts network recovery; buffered-but-unrendered contiguous frames do not.
+	missing := s.rendered + 1
+	for {
+		if _, ok := s.output[missing]; !ok {
+			break
+		}
+		missing++
+	}
+	s.outputGapDeadline = 0
+	for seq, at := range s.outputReceivedAt {
+		if seq > missing {
+			due := at + 10000
+			if s.outputGapDeadline == 0 || due < s.outputGapDeadline {
+				s.outputGapDeadline = due
+			}
+		}
 	}
 }
 func (s *Stream) pruneOutputIdentities() {
@@ -577,6 +606,9 @@ func (s *Stream) advance(ms uint64) {
 		}
 	}
 	if s.gap != 0 && s.now >= s.gap {
+		s.networkRecovery = true
+	}
+	if !s.stopped && s.outputGapDeadline != 0 && s.now >= s.outputGapDeadline {
 		s.networkRecovery = true
 	}
 	for seq, e := range s.inputCache {
@@ -816,6 +848,7 @@ func main() {
 	results["authenticated_controls"] = map[string]int{"packets": s.controlPackets, "bytes": s.controlBytes}
 	recoveryCases(sec, results)
 	reviewCases(sec, results)
+	reviewR2Cases(sec, results)
 	encoded, err := json.MarshalIndent(map[string]any{"evidence": "two fake paths; real existing business envelope; fake tmux", "scenarios": results}, "", "  ")
 	must(err)
 	fmt.Println(string(encoded))

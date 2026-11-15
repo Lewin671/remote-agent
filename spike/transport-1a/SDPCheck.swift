@@ -13,7 +13,7 @@ enum SDPCheck {
         let rest = raw.replacingOccurrences(of: "\r\n", with: "")
         try require(!rest.contains("\r") && !rest.contains("\n"))
         var scopes: [[String:String]] = [[:],[:]], section = 0
-        let allowed = Set("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size candidate end-of-candidates extmap-allow-mixed sendrecv".split(separator: " ").map(String.init))
+        let allowed = Set("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size end-of-candidates extmap-allow-mixed sendrecv".split(separator: " ").map(String.init))
         for line in raw.components(separatedBy: "\r\n").dropLast() {
             if line.hasPrefix("m=") {
                 section += 1
@@ -23,7 +23,7 @@ enum SDPCheck {
             if line.hasPrefix("a=") {
                 let parts = line.dropFirst(2).split(separator: ":",maxSplits: 1,omittingEmptySubsequences: false)
                 let key = String(parts[0]), value = parts.count == 2 ? String(parts[1]) : ""
-                try require(allowed.contains(key) && (scopes[section][key] == nil || key == "candidate"))
+                try require(allowed.contains(key) && scopes[section][key] == nil)
                 scopes[section][key] = value
             } else { try require(matches("^[vostcm]=",line)) }
         }
