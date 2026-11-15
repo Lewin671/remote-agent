@@ -43,6 +43,11 @@ func defaultRouteEntries() []defaultRoute {
 	return defaultRouteEntriesFromRIB(b)
 }
 
+// darwinRTFIfscope mirrors RTF_IFSCOPE from Darwin <net/route.h>. Per-interface
+// scoped default routes (e.g., utun VPN/Private Relay interfaces) do not change
+// the host primary default route and must not trigger network-change churn.
+const darwinRTFIfscope = 0x1000000
+
 // The legacy syscall decoder casts message offsets to aligned Go pointers.
 // Darwin route records can begin on a four-byte boundary; decode their bytes.
 func defaultRouteEntriesFromRIB(b []byte) []defaultRoute {
@@ -50,10 +55,11 @@ func defaultRouteEntriesFromRIB(b []byte) []defaultRoute {
 	if err != nil {
 		return nil
 	}
+	seen := make(map[string]bool, 2)
 	var routes []defaultRoute
 	for _, msg := range msgs {
 		m, ok := msg.(*route.RouteMessage)
-		if !ok || m.Flags&syscall.RTF_UP == 0 {
+		if !ok || m.Flags&syscall.RTF_UP == 0 || m.Flags&darwinRTFIfscope != 0 {
 			continue
 		}
 		addrs := m.Addrs
@@ -83,9 +89,10 @@ func defaultRouteEntriesFromRIB(b []byte) []defaultRoute {
 				family = "v6"
 			}
 		}
-		if family == "" {
+		if family == "" || seen[family] {
 			continue
 		}
+		seen[family] = true
 		routes = append(routes, defaultRoute{
 			IfIndex: m.Index,
 			Family:  family,
