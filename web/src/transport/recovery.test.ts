@@ -177,9 +177,21 @@ test("a temporary daemon gap keeps the original live call pending within the rec
   } finally {await remote.dispose();}
 });
 
-test("PathChanged retries in forwardCall do not consume attempt budget", async () => {
+test.each(["synchronous", "microtask"] as const)("PathChanged retries in forwardCall do not consume attempt budget (%s Ready)", async readyTiming => {
   const remote = await SyntheticRemote.create();
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date", "performance"] });
+  // Authorization and the Go fixture use real async work. A fixed number of
+  // fake-clock advances can finish before that work schedules a retry, leaving
+  // its timer frozen forever. Keep the real event loop and shorten only the
+  // three retry backoffs; this test checks retry credit, not elapsed time.
+  const schedule = globalThis.setTimeout;
+  const retryDelays: number[] = [];
+  const timers = vi.spyOn(globalThis, "setTimeout").mockImplementation((callback, ms, ...args) => {
+    if (ms === 1000 || ms === 2000 || ms === 3000) {
+      retryDelays.push(ms);
+      return schedule(callback, 0, ...args);
+    }
+    return schedule(callback, ms, ...args);
+  });
   const runtime = remote as unknown as { begun: boolean; api: unknown; connect(): Promise<void>; recovery: Recovery };
   runtime.begun = true;
   vi.spyOn(runtime, "connect").mockResolvedValue();
@@ -188,7 +200,9 @@ test("PathChanged retries in forwardCall do not consume attempt budget", async (
     forward: async (q: { command: Envelope }) => {
       calls++;
       if (calls <= 4) {
-        queueMicrotask(() => runtime.recovery.ready());
+        // Even Ready during dispatch must find the stranded HTTP waiter.
+        if (readyTiming === "synchronous") runtime.recovery.ready();
+        else queueMicrotask(() => runtime.recovery.ready());
         return new Promise(() => {});
       }
       if (calls <= 7) {
@@ -199,16 +213,11 @@ test("PathChanged retries in forwardCall do not consume attempt budget", async (
     },
   };
   try {
-    let settled = false;
-    const pending = remote.machineCommand(remote.machine, { case: "getSettings", value: {} }).finally(() => { settled = true; });
-    for (let i = 0; i < 100 && !settled; i++) {
-      await vi.advanceTimersByTimeAsync(200);
-    }
-    await expect(pending).resolves.toBeDefined();
+    await expect(remote.machineCommand(remote.machine, { case: "getSettings", value: {} })).resolves.toBeDefined();
     expect(calls).toBe(8);
+    expect(retryDelays).toEqual([1000, 2000, 3000]);
   } finally {
-    vi.useRealTimers();
+    timers.mockRestore();
     await remote.dispose();
   }
-  // Real WebCrypto key setup and sealing run outside the fake clock and are slow on CI runners.
-}, 20000);
+});
