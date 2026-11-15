@@ -47,10 +47,10 @@ REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
 
 共享材料：
 
-- `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、25 份负例，共 41 项；原串禁文本换行转换。
-- `testdata/transport/wire`：16 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
-- `testdata/transport/signal/scenarios.tsv`：29 个共享场景、636 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
-- `testdata/transport/terminal/expected.json`：28 组终端模型预期；不是四套终端引擎均已执行的声明。
+- `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、29 份负例，共 45 项；原串禁文本换行转换。
+- `testdata/transport/wire`：27 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
+- `testdata/transport/signal/scenarios.tsv`：74 个共享场景、929 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
+- `testdata/transport/terminal/expected.json`：39 组终端模型预期；不是四套终端引擎均已执行的声明。
 
 `signal-vectors.mjs testdata/transport/sdp /tmp/transport-lab/signal` 可重新生成并先用 JS 执行轨迹；
 seal 使用新随机数，所以重生成的包字节不同，语义预期不变。同一发送的副本则必须逐字节相同。
@@ -103,3 +103,12 @@ Android 只用自己的 AVD/ADB server，iOS 只用自己创建的模拟器；�
 新的探测是否在 2.5 秒完成单独记录，超时是失败观察，随后继续诊断 SDK 是否最终恢复；后面的诊断耗时不是允许产品延长总期限。
 
 结束时关闭自己记录的 peer PID、私有 ADB/emulator、iOS shutdown/delete，并确认不存在；不使用 pkill/killall。
+
+
+## r3 系统自查
+
+`testdata/transport/audit/parity.json` 列出缓冲路径与对应共享场景；报告的对照表分别说明四语言与模型覆盖，不以总数替代规则核验。
+所有 Signal 从仅含成员身份/公钥的 peer 开始，禁止预加载对端 instance/boot。Context 24 和 Challenge 6 是未冻结 wire 的直接变更，旧实验包不兼容；生产协议仍未改。
+新增的 SDK dispatch、发送 write-admit、候选 flush、查询 reply 等入口是在交付时检查的边界；外围产品适配器仍未接入。
+Sender 的原 expiry 与 binding 来自冻结发送记录；owner 必须在真实身份/代次变化时更新 binding，不把网络 hint 当作新授权。
+Python 的 `audit-models.py` 单独复核有限事件模型的过期/身份/代次路径；终端使用真实业务信封，后端与路径仍是假实现。

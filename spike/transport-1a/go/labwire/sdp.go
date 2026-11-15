@@ -18,7 +18,7 @@ func ValidateSDP(raw []byte) error {
 		return fail
 	}
 	without := strings.ReplaceAll(string(raw), "\r\n", "")
-	if strings.ContainsAny(without, "\r\n") {
+	if strings.ContainsAny(without, "\r\n\v\f\u0085\u2028\u2029") {
 		return fail
 	}
 	scopes := [2]map[string]string{{}, {}}

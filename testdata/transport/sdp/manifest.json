@@ -266,6 +266,34 @@
     "bytes": 469
   },
   {
+    "file": "bad-line-separator.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "e7da09eda54b82b8474dc410080a019d7bb647460b8aa7c6f138c73b11aca500",
+    "bytes": 459
+  },
+  {
+    "file": "bad-ufrag-final-separator.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "f7461e84f66397fc2ae0bec7f5ce176390caf861e98cdff1661d24b2cad79cac",
+    "bytes": 459
+  },
+  {
+    "file": "bad-vertical-tab.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "8a390efad5221c6f580634da4ba30d5722595e57d13780dc6921fbe856ab3bda",
+    "bytes": 457
+  },
+  {
+    "file": "bad-next-line.bin",
+    "accept": false,
+    "source": "mutation of chrome-offer.sdp",
+    "sha256": "fb6a5fff12ca3f469c9c7b5f056e2b8d2408566c87b187cdd704a98163e6db52",
+    "bytes": 458
+  },
+  {
     "file": "bad-inline-candidate-answer.bin",
     "accept": false,
     "source": "mutation of pion-answer.sdp",

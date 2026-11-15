@@ -39,8 +39,8 @@ SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。�
    X25519 shared secret 经 HKDF-SHA256 导出设备对 context 包装密钥。info 采用长度前缀编码的固定域
    `remote-agent/peer-context/v1`、账户、账户 domain、按原始字节排序的两个设备 ID、发送 ID、接收 ID。
 2. Context 的原 protobuf 字节用 AES-256-GCM 加密，随机 12 字节 nonce；AAD 绑定固定域、协议、账户、
-   登录来源/目标、外层类别和本地 frame ID。Context 内含双方角色/实例/boot nonce、connection、用途、
-   generation、head、信令/控制方向与 seq、原签发时间和短 deadline。正式上下文所有字段必需。
+   登录来源/目标、外层类别和本地 frame ID。Context 用字段 24 `recipient_unknown` 明确表示接收方进程未知。仅 Probe 允许该值为 true，此时 receiver_instance/receiver_boot_nonce 必须为空；false 时两字段须为完整已知值。其他任何消息带 true 一律拒绝，不从空字段猜状态。Context 内含双方角色/实例/boot nonce、connection、用途、
+   generation、head、信令/控制方向与 seq、原签发时间和短 deadline。除显式 recipient_unknown 的 Probe 两个接收方字段为空外，正式上下文所有字段必需。
 3. 正式 payload 密钥再次从同一设备对 secret 派生，HKDF info 加入双方已认证实例/boot nonce、connection、
    PC 用途、generation、方向与 PeerSignal/TransportControl 域。TypedPayload 的原字节用独立 AES-GCM nonce
    加密；AAD 加入完整加密 Context 的 hash，防止交换 context 和 body。
@@ -48,8 +48,8 @@ SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。�
    不直接串接可变长字符串；签名覆盖精确编码，未知 type 也受保护。接收方先做总大小/来源/角色范围检查，
    验签后才解 Context，核对当前 head/租约/nonce/实例/期限/序号，再解 body、查 type；通过后才交 SDK。
 5. Probe/Challenge 使用独立 bootstrap 域，只含源实例与 boot challenge、探测关联 ID 和已知的目标信息，
-   不含 SDP、不创建 PC、不执行控制。双方 nonce 验证完成才允许正式密钥。旧实例仅产生受限的当前 Challenge。Challenge 字段 5 `stale_instance` 接受布尔 true；省略与显式 false 均表示当前协议的 false，非布尔 wire type 或数值大于 1 拒绝。该标志保留给恢复处理器，不跳过身份/nonce 校验，也不直接创建 PC。
-   同一 bootstrap 授权的副本不能无限生成新 PC、清空缓存或改变正式代次。收到 Probe 仅记待证明状态。已认证、固定角色/connection/用途/代次/原串有效的首份 Offer 若绑定接收方当前 boot nonce，即作为隐式引导确认直接准入；不能因为独立 Control ACK 晚到而耗尽三份 Offer。旧 nonce 或无效 SDP 仍拒绝，Probe ACK 本身不能跳过 Challenge。
+   不含 SDP、不创建 PC、不执行控制。双方 nonce 验证完成才允许正式密钥。Challenge 只能响应已验证的 Probe，字段 6 `probe_sha256` 绑定其首次冻结整包的 hash，并回传响应者自己的实例/nonce；发起方与仍有效的本地 Probe 原包匹配后才安装对端进程信息。成员记录只提供身份、公钥和角色，不能预置进程 nonce。Challenge 字段 5 `stale_instance` 接受布尔 true；省略与显式 false 均表示当前协议的 false，非布尔 wire type 或数值大于 1 拒绝。该标志保留给恢复处理器，不跳过身份/nonce 校验，也不直接创建 PC。
+   同一 bootstrap 授权的副本不能无限生成新 PC、清空缓存或改变正式代次。收到 Probe 仅记待证明状态；它不预先知道接收方实例/nonce。Probe 的确认由关联 Challenge 完成，不再要求一个早于 Challenge、尚无法按已知进程身份验证的独立 Probe ACK。已认证、固定角色/connection/用途/代次/原串有效的首份 Offer 若绑定接收方当前 boot nonce，即作为隐式引导确认直接准入；不能因为独立 Control ACK 晚到而耗尽三份 Offer。旧 nonce 或无效 SDP 仍拒绝，Probe ACK 本身不能跳过 Challenge。
    显式 Challenge ACK 绑定发送时冻结的完整原 Context 与 hash：回显原 seq、generation、use，bootstrap generation/use 为 0；还核对相反身份方向、实例、nonce 和同一 connection，不能用接收 PC 的 use=1/2 代替原 use。Offer 证明只解除引导等待，发送窗口的序号确认仍按原冻结包匹配；副本继续走有界重试，不会反向 ACK ACK。
 
 该双层封装是本次安全编码**候选**，四种语言的加密/验签向量已通过，尚须负责人审定与产品安全复核，不能直接宣布冻结。
@@ -101,3 +101,19 @@ PolicyReply 只证明哪个请求的结果；不替代 DirectPolicy 原有角色
 固定编码冻结后，新增类型且旧端认证后返回 Unsupported、发起方保留 relay、不改变原操作语义，
 可在同一协议内扩展。已有字段、角色、类别、授权、ACK 水位或未知类型处理含义变化须升协议，不能添加旧协议推断分支。
 本草案未涉及存储迁移；实际实施若需要数据重建或协同升级，必须写清公开升级要求。
+
+
+## 缓存与延迟交付契约
+
+issued_at 必须早于 deadline；交付截止统一为 `now < deadline`。既有 MaxClockSkew 只用于签发时钟检查，不延长 deadline；到原 deadline 即失效，重试、限流、重组、换腿或出队不延长它。
+信令接收器保存冻结原包，出乱序缓存与 SDK 动作实际交付前，按当前成员/进程绑定、connection、用途/代次重新验证；
+缺口期限取仍跨越缺口的首次到达时间 +2.5 秒与等待帧原 deadline、整轮截止时间的最小值。
+已经确认过的旧代重复只可作原身份的幂等确认，不重新推进当前代次或调用 SDK。
+发送窗口、候选汇集和传输写队列必须携带原期限及 owner 的身份/代次绑定标记；换绑定清空旧队列，网络通知不能重置总期限。
+SDK 创建描述的回调属于该 round/generation；已发出的 SDK 动作另保留原认证消息，不能靠一次到达时验签授权迟到执行。
+
+终端输入/输出均按各缺口自身的首次发现时间计算 `min(first_seen+10s, waiting_frame.original_deadline)`。
+在 Admit、输入队列出队、渲染、replay、缓存补发和状态查询回调交付前重新检查逻辑流、daemon 实例、当前身份/租约和原期限；
+物理腿代次只约束分片/腿，不能取消已准入的后端执行。已经完成的后端证据须保留在原 owner 下，
+过期或新实例的等待者不再接收回复，不能把已执行改成未执行或再次注入。
+候选字符串采用 ASCII token，`ufrag` 扩展必须小写且最多出现一次（相同值重复也拒绝）；非 CRLF 的行分隔符不进入 SDP。

@@ -44,6 +44,7 @@ func main() {
 				conn := labwire.Hash([]byte(fmt.Sprintf("capacity/%d/%d", peer, use)))[:16]
 				var local [2]labwire.SDPInfo
 				var hashes [2][]byte
+				var probeHash []byte
 				ids := []labwire.Identity{client, daemon}
 				for i, id := range ids {
 					kind := "answer"
@@ -69,6 +70,9 @@ func main() {
 						ctx := labwire.NewContext(from, to.Public(), conn, use, generation, seq, now, 1, boot)
 						if boot {
 							ctx.Use = 0
+							if typ == 1 {
+								ctx = labwire.NewProbeContext(from, to.Public().Member(), conn, seq, now)
+							}
 						}
 						packet, e := labwire.Seal(from, to.Public(), ctx, typ, payload, nil, nil, nil)
 						must(e)
@@ -84,6 +88,9 @@ func main() {
 								label, other = other, label
 							}
 							fmt.Fprintf(corpus, "%s\t%d\t%s\t%d\t%s\n", label, from.Role, other, to.Role, hex.EncodeToString(packet))
+						}
+						if typ == 1 {
+							probeHash = labwire.Hash(packet)
 						}
 						m.InitialFrames++
 						m.InitialBytes += len(packet)
@@ -111,7 +118,7 @@ func main() {
 					if side == 0 {
 						emit(1, 1, 0, labwire.PB(labwire.B(1, conn), labwire.B(2, from.Instance), labwire.B(3, from.Boot)), true)
 					} else {
-						emit(2, 1, 0, labwire.PB(labwire.B(1, conn), labwire.B(2, from.Instance), labwire.B(3, from.Boot), labwire.B(4, to.Boot)), true)
+						emit(2, 1, 0, labwire.PB(labwire.B(1, conn), labwire.B(2, from.Instance), labwire.B(3, from.Boot), labwire.B(4, to.Boot), labwire.U(5, 0), labwire.B(6, probeHash)), true)
 					}
 					typ := uint64(4)
 					if bytes.Compare(from.ID, to.ID) < 0 {

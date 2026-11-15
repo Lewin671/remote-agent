@@ -36,6 +36,10 @@ bad-inline-candidate-wrong-ufrag.bin	0
 bad-inline-candidate-long.bin	0
 bad-inline-candidate-session.bin	0
 bad-inline-candidate-bare.bin	0
+bad-line-separator.bin	0
+bad-ufrag-final-separator.bin	0
+bad-vertical-tab.bin	0
+bad-next-line.bin	0
 bad-inline-candidate-answer.bin	0
 bad-inline-candidate-restart.bin	0
 good-inherited-fingerprint.sdp	1

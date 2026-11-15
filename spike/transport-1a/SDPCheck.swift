@@ -10,6 +10,7 @@ enum SDPCheck {
         try require(!bytes.starts(with: [239,187,191]))
         guard let raw = String(data: bytes, encoding: .utf8) else { throw Invalid.sdp }
         try require(bytes.count <= 60*1024 && raw.hasSuffix("\r\n") && !raw.contains("\0"))
+        try require(!raw.unicodeScalars.contains{[11,12,133,8232,8233].contains(Int($0.value))})
         let rest = raw.replacingOccurrences(of: "\r\n", with: "")
         try require(!rest.contains("\r") && !rest.contains("\n"))
         var scopes: [[String:String]] = [[:],[:]], section = 0

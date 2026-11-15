@@ -21,6 +21,7 @@ class Frame:
     seq: int
     kind: str
     payload: bytes
+    deadline: int = 10000
 
 
 class Experiment:
@@ -85,7 +86,7 @@ class Experiment:
     def pump(self):
         while self.waiting and len(self.outstanding) < self.WINDOW:
             frame = self.waiting.pop(0)
-            if frame.generation in self.retired:
+            if frame.generation!=self.current or frame.generation in self.retired or self.now>=frame.deadline:
                 continue
             key = (frame.generation, frame.seq)
             self.outstanding.add(key)
@@ -97,7 +98,7 @@ class Experiment:
         key = (frame.generation, frame.seq)
         if key in self.acked:
             return
-        if self.replace and frame.generation in self.retired:
+        if frame.generation!=self.current or frame.generation in self.retired or self.now>=frame.deadline:
             return
         self.signal_sends += 1
         digest = hashlib.sha256(frame.payload).hexdigest()
@@ -131,6 +132,7 @@ class Experiment:
             return
         # Independent Control fake path: no ACK-of-ACK.
         def arrive():
+            if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return
             key = (frame.generation, frame.seq)
             self.acked.add(key)
             self.outstanding.discard(key)
@@ -140,7 +142,7 @@ class Experiment:
     def receive(self, frame):
         gen = frame.generation
         key = (gen, frame.seq)
-        if gen in self.retired:
+        if gen!=self.current or gen in self.retired or self.now>=frame.deadline:
             self.record("stale_generation", generation=gen, seq=frame.seq)
             return
         digest = hashlib.sha256(frame.payload).digest()
@@ -165,23 +167,25 @@ class Experiment:
         assert frame.seq == self.expected[gen]
         self.apply(frame)
         while self.expected[gen] in pending:
-            self.apply(pending.pop(self.expected[gen])[0])
+            if not self.apply(pending.pop(self.expected[gen])[0]):break
         self.update_gap(gen)
 
     def apply(self, frame):
+        if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return False
         key = (frame.generation, frame.seq)
         self.seen[key] = hashlib.sha256(frame.payload).digest()
         self.expected[frame.generation] += 1
         self.sdk_calls.append((frame.generation, frame.kind))
         self.record("would_call_sdk", generation=frame.generation, kind=frame.kind)
         self.acknowledge(frame)
+        return True
 
     def update_gap(self, gen):
         pending = self.buffer[gen]
         if not pending:
             self.gaps.pop(gen, None)
             return
-        gap = (self.expected[gen], min(at for _, at in pending.values()) + self.GAP_MS)
+        gap = (self.expected[gen], min(min(at+self.GAP_MS, f.deadline) for f,at in pending.values()))
         if self.gaps.get(gen) == gap:
             return
         self.gaps[gen] = gap

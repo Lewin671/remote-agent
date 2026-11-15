@@ -3,9 +3,20 @@
   "scenarios": {
     "active_retired_query_budgets": true,
     "attach_no_new_tmux": true,
+    "audit_assembly_expiry_identity_and_leg": true,
+    "audit_completion_vs_new_admission": true,
+    "audit_contiguous_render_deadline": true,
+    "audit_current_membership_before_admission": true,
+    "audit_input_buffer_identity": true,
+    "audit_input_original_deadline": true,
+    "audit_input_successive_and_split_gaps": true,
+    "audit_output_buffer_identity": true,
+    "audit_output_original_deadline": true,
+    "audit_output_successive_and_split_gaps": true,
+    "audit_replay_and_send_cache_bounds": true,
     "authenticated_ack_batching": true,
     "authenticated_controls": {
-      "bytes": 1353,
+      "bytes": 1359,
       "packets": 2
     },
     "authentication_before_accept": true,
@@ -129,7 +140,7 @@
       ]
     },
     "status_reply_and_old_stream_resend": {
-      "control_bytes": 3706,
+      "control_bytes": 3721,
       "control_packets": 5
     }
   }

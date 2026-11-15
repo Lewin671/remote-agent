@@ -186,7 +186,7 @@ type Context struct {
 	FromRole, ToRole                                                       uint64
 	Machine                                                                []byte
 	SenderInstance, ReceiverInstance, SenderBoot, ReceiverBoot, Connection []byte
-	Use, Generation, Seq, Issued, Deadline, Class                          uint64
+	Use, Generation, Seq, Issued, Deadline, Class, RecipientUnknown        uint64
 }
 
 func NewContext(from Identity, to Public, connection []byte, use, generation, seq, now, class uint64, boot bool) Context {
@@ -201,20 +201,20 @@ func NewContext(from Identity, to Public, connection []byte, use, generation, se
 	if from.Role == 2 {
 		machine = from.ID
 	}
-	return Context{domain, from.ID, to.ID, from.Role, to.Role, machine, from.Instance, to.Instance, from.Boot, to.Boot, connection, use, generation, seq, now, now + 10000, class}
+	return Context{domain, from.ID, to.ID, from.Role, to.Role, machine, from.Instance, to.Instance, from.Boot, to.Boot, connection, use, generation, seq, now, now + 10000, class, 0}
 }
 func (c Context) Encode() []byte {
-	return PB(B(1, c.Domain), B(2, Account), B(3, c.From), B(4, c.To), U(5, c.FromRole), U(6, c.ToRole), B(7, c.Machine), U(8, Protocol), U(9, MemberEpoch), B(10, Head), B(11, c.SenderInstance), B(12, c.ReceiverInstance), B(13, c.SenderBoot), B(14, c.ReceiverBoot), B(15, c.Connection), U(16, c.Use), U(17, c.Generation), U(18, c.Seq), U(19, c.Issued), U(20, c.Deadline), U(21, c.Class), B(22, c.From), B(23, AccountDomain))
+	return PB(B(1, c.Domain), B(2, Account), B(3, c.From), B(4, c.To), U(5, c.FromRole), U(6, c.ToRole), B(7, c.Machine), U(8, Protocol), U(9, MemberEpoch), B(10, Head), B(11, c.SenderInstance), B(12, c.ReceiverInstance), B(13, c.SenderBoot), B(14, c.ReceiverBoot), B(15, c.Connection), U(16, c.Use), U(17, c.Generation), U(18, c.Seq), U(19, c.Issued), U(20, c.Deadline), U(21, c.Class), B(22, c.From), B(23, AccountDomain), U(24, c.RecipientUnknown))
 }
 func parseContext(raw []byte) (Context, error) {
-	f, e := Parse(raw, 23)
-	if e != nil || need(f, "bbbbuubuubbbbbbuuuuuubb") != nil {
+	f, e := Parse(raw, 24)
+	if e != nil || need(f, "bbbbuubuubbbbbbuuuuuubbu") != nil {
 		return Context{}, ErrPacket
 	}
 	if !bytes.Equal(f[23].B, AccountDomain) || !bytes.Equal(f[2].B, Account) || f[8].U != Protocol || f[9].U != MemberEpoch || !bytes.Equal(f[10].B, Head) || !bytes.Equal(f[22].B, f[3].B) {
 		return Context{}, ErrPacket
 	}
-	return Context{f[1].B, f[3].B, f[4].B, f[5].U, f[6].U, f[7].B, f[11].B, f[12].B, f[13].B, f[14].B, f[15].B, f[16].U, f[17].U, f[18].U, f[19].U, f[20].U, f[21].U}, nil
+	return Context{f[1].B, f[3].B, f[4].B, f[5].U, f[6].U, f[7].B, f[11].B, f[12].B, f[13].B, f[14].B, f[15].B, f[16].U, f[17].U, f[18].U, f[19].U, f[20].U, f[21].U, f[24].U}, nil
 }
 func route(from, to []byte, class uint64, frameID []byte) []byte {
 	return PB(B(1, from), B(2, to), U(3, class), B(4, frameID))
@@ -279,13 +279,38 @@ func Seal(from Identity, to Public, c Context, typ uint64, payload, frameID, non
 }
 
 type Opened struct {
-	Context                Context
-	Type                   uint64
-	Payload, FrameID, Hash []byte
+	Context                     Context
+	Type                        uint64
+	Payload, FrameID, Hash, Raw []byte
 }
 
 func Open(raw []byte, from Public, to Identity, now uint64) (Opened, error) {
+	shared, e := to.Box.ECDH(from.Box)
+	if e != nil {
+		return Opened{}, e
+	}
+	return openShared(raw, from, to.Public(), shared, now)
+}
+func OpenSent(raw []byte, from Identity, to Public, now uint64) (Opened, error) {
+	shared, e := from.Box.ECDH(to.Box)
+	if e != nil {
+		return Opened{}, e
+	}
+	o, e := openShared(raw, from.Public(), to, shared, now)
+	if e != nil {
+		return o, e
+	}
+	if !bytes.Equal(o.Context.SenderInstance, from.Instance) || !bytes.Equal(o.Context.SenderBoot, from.Boot) {
+		return Opened{}, ErrPacket
+	}
+	return o, nil
+}
+func openShared(raw []byte, from, to Public, shared []byte, now uint64) (Opened, error) {
 	fail := func() (Opened, error) { return Opened{}, ErrPacket }
+	if len(raw) > 65536 {
+		return fail()
+	}
+	raw = append([]byte(nil), raw...)
 	f, e := Parse(raw, 5)
 	if e != nil || need(f, "bbubb") != nil {
 		return fail()
@@ -303,10 +328,6 @@ func Open(raw []byte, from Public, to Identity, now uint64) (Opened, error) {
 	if len(nc) != 12 || len(nb) != 12 || len(sig) != 64 || !ed25519.Verify(from.Sign, sigInput(ad, nc, ec, nb, eb), sig) {
 		return fail()
 	}
-	shared, e := to.Box.ECDH(from.Box)
-	if e != nil {
-		return fail()
-	}
 	rawCtx, e := GCM(KDF(shared, wrapInfo(from.ID, to.ID)), nc, ad, ec, false)
 	if e != nil {
 		return fail()
@@ -315,7 +336,7 @@ func Open(raw []byte, from Public, to Identity, now uint64) (Opened, error) {
 	if e != nil {
 		return fail()
 	}
-	if !bytes.Equal(c.From, from.ID) || !bytes.Equal(c.To, to.ID) || c.Class != class || c.FromRole != from.Role || c.ToRole != to.Role || from.Role == to.Role || len(c.Connection) != 16 || c.Seq == 0 || c.Issued > c.Deadline || c.Deadline-c.Issued > 30000 || now > c.Deadline || c.Issued > now+300000 {
+	if !bytes.Equal(c.From, from.ID) || !bytes.Equal(c.To, to.ID) || c.Class != class || c.FromRole != from.Role || c.ToRole != to.Role || from.Role == to.Role || len(c.Connection) != 16 || c.Seq == 0 || c.Issued >= c.Deadline || c.Deadline-c.Issued > 30000 || now >= c.Deadline || c.Issued > now+300000 {
 		return fail()
 	}
 	machine := to.ID
@@ -326,7 +347,10 @@ func Open(raw []byte, from Public, to Identity, now uint64) (Opened, error) {
 		return fail()
 	}
 	boot := string(c.Domain) == "bootstrap"
-	if len(c.SenderInstance) != 16 || len(c.ReceiverInstance) != 16 || len(c.SenderBoot) != 32 || len(c.ReceiverBoot) != 32 || c.FromRole < 1 || c.FromRole > 2 || c.ToRole < 1 || c.ToRole > 2 {
+	if len(c.SenderInstance) != 16 || len(c.SenderBoot) != 32 || c.FromRole < 1 || c.FromRole > 2 || c.ToRole < 1 || c.ToRole > 2 {
+		return fail()
+	}
+	if c.RecipientUnknown > 1 || (c.RecipientUnknown == 1 && (len(c.ReceiverInstance) != 0 || len(c.ReceiverBoot) != 0)) || (c.RecipientUnknown == 0 && (len(c.ReceiverInstance) != 16 || len(c.ReceiverBoot) != 32 || !bytes.Equal(c.ReceiverInstance, to.Instance) || !bytes.Equal(c.ReceiverBoot, to.Boot))) {
 		return fail()
 	}
 	expectedDomain := "signal"
@@ -351,14 +375,24 @@ func Open(raw []byte, from Public, to Identity, now uint64) (Opened, error) {
 	if e != nil || need(t, "ub") != nil || t[1].U > 0xffffffff {
 		return fail()
 	}
-	if boot && (class != 1 || (t[1].U != 1 && t[1].U != 2)) {
+	if boot && (class != 1 || c.Use != 0 || c.Generation != 0 || (t[1].U != 1 && t[1].U != 2)) {
 		return fail()
 	}
 	if !boot && class == 1 && c.Use == 0 && t[1].U != 8 && t[1].U != 9 {
 		return fail()
 	}
-	return Opened{c, t[1].U, t[2].B, f[4].B, Hash(raw)}, nil
+	if c.RecipientUnknown == 1 && (!boot || class != 1 || t[1].U != 1) {
+		return fail()
+	}
+	return Opened{c, t[1].U, t[2].B, f[4].B, Hash(raw), append([]byte(nil), raw...)}, nil
 }
 func Key(c Context) string {
 	return fmt.Sprintf("%x/%x/%x/%d/%d/%d/%d", c.From, c.SenderInstance, c.Connection, c.Use, c.Generation, c.Class, c.Seq)
+}
+
+func (p Public) Member() Public { p.Instance = nil; p.Boot = nil; return p }
+func NewProbeContext(from Identity, to Public, conn []byte, seq, now uint64) Context {
+	c := NewContext(from, to.Member(), conn, 0, 0, seq, now, 1, true)
+	c.RecipientUnknown = 1
+	return c
 }

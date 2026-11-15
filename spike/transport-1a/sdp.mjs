@@ -2,7 +2,7 @@
 export function validateSDP(bytes) {
   if (bytes.length > 60 * 1024 || (bytes[0]===239 && bytes[1]===187 && bytes[2]===191)) throw Error('size');
   const raw = new TextDecoder('utf-8', {fatal:true}).decode(bytes);
-  if (!raw.endsWith('\r\n') || raw.includes('\0') || /(^|[^\r])\n|\r(?!\n)/.test(raw)) throw Error('lines');
+  if (!raw.endsWith('\r\n') || raw.includes('\0') || /[\v\f\u0085\u2028\u2029]/.test(raw) || /(^|[^\r])\n|\r(?!\n)/.test(raw)) throw Error('lines');
   let section = 0;
   const scopes = [new Map(), new Map()];
   for (const line of raw.slice(0,-2).split('\r\n')) {

@@ -81,6 +81,7 @@ func security() *Security {
 }
 
 type Envelope struct {
+	ownerInstance string
 	seq, deadline uint64
 	raw, plain    []byte
 	header        deviceauth.Header
@@ -122,7 +123,7 @@ func (s *Security) seal(stream string, seq, now uint64, purpose deviceauth.Purpo
 	must(e)
 	_, identity, e := deviceauth.RequestIdentity(h, raw)
 	must(e)
-	return Envelope{seq, h.Deadline, encoded, raw, h, identity.String(), purpose, len(data)}
+	return Envelope{"", seq, h.Deadline, encoded, raw, h, identity.String(), purpose, len(data)}
 }
 func (s *Security) open(raw []byte, stream string, now uint64) (deviceauth.Header, *pb.TerminalFrame, error) {
 	if e := s.lease.Valid(s.state, now); e != nil {
@@ -195,6 +196,8 @@ type Status struct {
 	Details                         []Detail
 }
 type queued struct {
+	raw      []byte
+	instance string
 	header   deviceauth.Header
 	body     *pb.TerminalFrame
 	hash     string
@@ -215,6 +218,7 @@ type Stream struct {
 	processed, inputSuccess, failed                  uint64
 	details                                          map[uint64]Detail
 	pending                                          map[uint64]queued
+	inputReceivedAt                                  map[uint64]uint64
 	pendingBytes                                     int
 	gap                                              uint64
 	accepted                                         []uint64
@@ -223,6 +227,8 @@ type Stream struct {
 	dirtyACK                                         int
 	failInput, failResize, hold                      bool
 	inflight                                         *queued
+	inflightDetail                                   *Detail
+	retiredCompletion                                *Detail
 	waitingStatus                                    []func(Status)
 	barrierWaiting                                   bool
 	barrierReply                                     func(Status)
@@ -246,7 +252,7 @@ type Stream struct {
 }
 
 func newStream(sec *Security, id string) *Stream {
-	return &Stream{sec: sec, id: id, instance: "daemon-instance-a", now: base, legs: map[string]uint64{"relay": 1, "direct": 1}, assemblies: map[string]*Assembly{}, details: map[uint64]Detail{}, pending: map[uint64]queued{}, output: map[uint64]queued{}, outputReceivedAt: map[uint64]uint64{}, renderedIdentity: map[uint64]outputIdentity{}, inputCache: map[uint64]Envelope{}, inputAt: map[uint64]uint64{}, tmuxConnections: 1, openCalls: 1}
+	return &Stream{sec: sec, id: id, instance: "daemon-instance-a", now: base, legs: map[string]uint64{"relay": 1, "direct": 1}, assemblies: map[string]*Assembly{}, details: map[uint64]Detail{}, pending: map[uint64]queued{}, inputReceivedAt: map[uint64]uint64{}, output: map[uint64]queued{}, outputReceivedAt: map[uint64]uint64{}, renderedIdentity: map[uint64]outputIdentity{}, inputCache: map[uint64]Envelope{}, inputAt: map[uint64]uint64{}, tmuxConnections: 1, openCalls: 1}
 }
 func (s *Stream) receive(path, instance string, f Fragment) error {
 	if s.legs[path] != f.pathGen || instance != s.instance || s.stopped {
@@ -257,6 +263,11 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 	}
 	key := fmt.Sprintf("%s/%d/%s", path, f.pathGen, f.id)
 	a := s.assemblies[key]
+	if a != nil && s.now-a.started >= 5000 {
+		s.assemblyBytes -= a.retained
+		delete(s.assemblies, key)
+		return errors.New("fragment assembly expired")
+	}
 	if a == nil {
 		if len(s.assemblies) >= 128 {
 			return errors.New("reassembly budget")
@@ -303,7 +314,10 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 	must(e)
 	_, identity, e := deviceauth.RequestIdentity(h, plain)
 	must(e)
-	q := queued{h, m, identity.String(), len(raw)}
+	q := queued{append([]byte(nil), raw...), s.instance, h, m, identity.String(), len(raw)}
+	if s.fresh(q) != nil {
+		return errors.New("expired or stale completed envelope")
+	}
 	if h.Purpose == deviceauth.TerminalOutput {
 		return s.outputFrame(q)
 	}
@@ -318,6 +332,12 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 		if p.hash != q.hash {
 			return errors.New("pending conflict")
 		}
+		if s.pendingBytes-p.rawBytes+q.rawBytes > 1<<20 {
+			return errors.New("gap budget")
+		}
+		s.pendingBytes += q.rawBytes - p.rawBytes
+		s.pending[h.Seq] = q
+		s.refreshInputGap()
 		return nil
 	}
 	if s.inflight != nil && s.inflight.header.Seq == h.Seq {
@@ -332,15 +352,14 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 		}
 		s.pending[h.Seq] = q
 		s.pendingBytes += q.rawBytes
-		if s.gap == 0 {
-			s.gap = s.now + 10000
-		}
+		s.inputReceivedAt[h.Seq] = s.now
+		s.refreshInputGap()
 		return nil
 	}
 	return s.apply(q)
 }
 func (s *Stream) apply(q queued) error {
-	if s.now > q.header.Deadline {
+	if s.fresh(q) != nil {
 		s.networkRecovery = true
 		return errors.New("expired gap")
 	}
@@ -349,14 +368,19 @@ func (s *Stream) apply(q queued) error {
 	}
 	// This is the first point at which Accept/backend may be called.
 	s.accepted = append(s.accepted, q.header.Seq)
+	d := s.execute(q)
 	if s.hold && q.header.Purpose == deviceauth.TerminalInput {
 		s.inflight = &q
+		s.inflightDetail = &d
 		return nil
 	}
-	s.finish(q)
+	s.finish(q, d)
 	return nil
 }
-func (s *Stream) finish(q queued) {
+
+// Mock backend runs at admission. A held callback carries completed evidence,
+// not permission to inject again when its response is finally delivered.
+func (s *Stream) execute(q queued) Detail {
 	d := Detail{Seq: q.header.Seq, Hash: q.hash, Outcome: "applied", Total: len(q.body.GetInput())}
 	switch q.header.Purpose {
 	case deviceauth.TerminalInput:
@@ -368,11 +392,8 @@ func (s *Stream) finish(q queued) {
 			d.Known = min(n, 256)
 			d.Possible = min(n, 512)
 			s.injectedChunks++
-			s.failed = q.header.Seq
-			s.acks++
 		} else {
 			s.injectedChunks += (len(q.body.GetInput()) + 255) / 256
-			s.inputSuccess = q.header.Seq
 			d.Known = len(q.body.GetInput())
 			d.Possible = d.Known
 		}
@@ -381,6 +402,29 @@ func (s *Stream) finish(q queued) {
 			d.Outcome = "non_input_failed"
 		}
 	}
+	return d
+}
+func (s *Stream) finish(q queued, d Detail) {
+	if q.instance != s.instance {
+		s.retiredCompletion = &d
+		s.networkRecovery = true
+		s.paused = true
+		s.inflight = nil
+		s.inflightDetail = nil
+		for _, reply := range s.waitingStatus {
+			reply(Status{})
+		}
+		s.waitingStatus = nil
+		return
+	}
+	if d.Outcome == "partial_or_unknown" {
+		s.failed = q.header.Seq
+		s.acks++
+	}
+	if q.header.Purpose == deviceauth.TerminalInput && d.Outcome == "applied" {
+		s.inputSuccess = q.header.Seq
+	}
+
 	s.processed = q.header.Seq
 	s.details[q.header.Seq] = d
 	s.dirtyACK++
@@ -389,6 +433,7 @@ func (s *Stream) finish(q queued) {
 	}
 	if s.inflight != nil {
 		s.inflight = nil
+		s.inflightDetail = nil
 	}
 	for _, reply := range s.waitingStatus {
 		reply(s.status(false))
@@ -406,12 +451,11 @@ func (s *Stream) finish(q queued) {
 	}
 	if next, ok := s.pending[s.processed+1]; ok {
 		delete(s.pending, s.processed+1)
+		delete(s.inputReceivedAt, s.processed+1)
 		s.pendingBytes -= next.rawBytes
 		_ = s.apply(next)
 	}
-	if len(s.pending) == 0 {
-		s.gap = 0
-	}
+	s.refreshInputGap()
 }
 func (s *Stream) emitACK() {
 	if s.dirtyACK > 0 {
@@ -424,7 +468,8 @@ func (s *Stream) release() {
 	check(s.inflight != nil, "no inflight")
 	q := *s.inflight
 	s.hold = false
-	s.finish(q)
+	d := *s.inflightDetail
+	s.finish(q, d)
 }
 func (s *Stream) status(final bool) Status {
 	r := Status{Available: true, Final: final, Processed: s.processed, InputSuccess: s.inputSuccess, Failed: s.failed}
@@ -436,7 +481,14 @@ func (s *Stream) status(final bool) Status {
 }
 func (s *Stream) query(reply func(Status)) {
 	if s.inflight != nil {
-		s.waitingStatus = append(s.waitingStatus, reply)
+		until, instance := s.now+10000, s.instance
+		s.waitingStatus = append(s.waitingStatus, func(st Status) {
+			if s.now >= until || s.instance != instance {
+				reply(Status{})
+				return
+			}
+			reply(st)
+		})
 	} else {
 		reply(s.status(false))
 	}
@@ -504,6 +556,10 @@ func (s *Stream) outputFrame(q queued) error {
 }
 func (s *Stream) render() {
 	check(s.renderReady != nil, "no render ready")
+	if s.fresh(*s.renderReady) != nil {
+		s.networkRecovery = true
+		return
+	}
 	s.rendered = s.renderReady.header.Seq
 	s.renderedIdentity[s.rendered] = outputIdentity{s.renderReady.hash, s.renderReady.header.Deadline}
 	s.outputBytes -= s.renderReady.rawBytes
@@ -533,7 +589,7 @@ func (s *Stream) refreshOutputGap() {
 	s.outputGapDeadline = 0
 	for seq, at := range s.outputReceivedAt {
 		if seq > missing {
-			due := at + 10000
+			due := min(at+10000, s.output[seq].header.Deadline)
 			if s.outputGapDeadline == 0 || due < s.outputGapDeadline {
 				s.outputGapDeadline = due
 			}
@@ -548,6 +604,7 @@ func (s *Stream) pruneOutputIdentities() {
 	}
 }
 func (s *Stream) rememberOutput(e Envelope) {
+	e.ownerInstance = s.instance
 	s.replay = append(s.replay, e)
 	s.replayAt = append(s.replayAt, s.now)
 	s.replayBytes += len(e.raw)
@@ -569,12 +626,24 @@ func (s *Stream) replayFrom(seq uint64) ([]Envelope, error) {
 	var out []Envelope
 	for _, e := range s.replay {
 		if e.seq >= seq {
+			if e.ownerInstance != s.instance || s.now >= e.deadline || s.stopped {
+				s.networkRecovery = true
+				return nil, errors.New("stale replay")
+			}
+			if _, _, err := s.sec.open(e.raw, s.id, s.now); err != nil {
+				s.networkRecovery = true
+				return nil, err
+			}
 			out = append(out, e)
 		}
 	}
 	return out, nil
 }
 func (s *Stream) cacheInput(e Envelope) error {
+	e.ownerInstance = s.instance
+	if s.now >= e.deadline {
+		return errors.New("expired input cache")
+	}
 	charge := len(e.raw) + len(e.plain) + 128
 	if s.paused || s.inputCacheBytes+charge > 64<<10 || len(s.inputCache) >= 128 {
 		s.paused = true
@@ -605,6 +674,16 @@ func (s *Stream) advance(ms uint64) {
 			delete(s.assemblies, key)
 		}
 	}
+	for _, q := range s.pending {
+		if s.now >= q.header.Deadline {
+			s.networkRecovery = true
+		}
+	}
+	for _, q := range s.output {
+		if s.now >= q.header.Deadline {
+			s.networkRecovery = true
+		}
+	}
 	if s.gap != 0 && s.now >= s.gap {
 		s.networkRecovery = true
 	}
@@ -612,7 +691,7 @@ func (s *Stream) advance(ms uint64) {
 		s.networkRecovery = true
 	}
 	for seq, e := range s.inputCache {
-		if s.now-s.inputAt[seq] >= 30000 || s.now > e.deadline {
+		if s.now-s.inputAt[seq] >= 30000 || s.now >= e.deadline {
 			s.paused = true
 		}
 	}
@@ -623,6 +702,12 @@ func (s *Stream) advance(ms uint64) {
 	s.pruneOutputIdentities()
 }
 func send(s *Stream, path string, e Envelope, reverse bool) error {
+	if e.ownerInstance != "" && e.ownerInstance != s.instance {
+		return errors.New("old instance send")
+	}
+	if s.now >= e.deadline {
+		return errors.New("expired send")
+	}
 	f := fragments(e, s.legs[path])
 	if reverse {
 		for i, j := 0, len(f)-1; i < j; i, j = i+1, j-1 {
@@ -672,7 +757,11 @@ func (s *Stream) reseal(e Envelope) Envelope {
 	h.Epoch = s.sec.state.Core.Epoch
 	h.ContentEpoch = s.sec.state.Core.ContentEpoch
 	h.State = head
-	c, err := deviceauth.Seal(s.sec.secret, s.sec.seed, h, e.plain, s.sec.clientEd)
+	signer := s.sec.clientEd
+	if h.Purpose == deviceauth.TerminalOutput {
+		signer = s.sec.machineEd
+	}
+	c, err := deviceauth.Seal(s.sec.secret, s.sec.seed, h, e.plain, signer)
 	must(err)
 	raw, err := c.MarshalBinary()
 	must(err)
@@ -849,7 +938,43 @@ func main() {
 	recoveryCases(sec, results)
 	reviewCases(sec, results)
 	reviewR2Cases(sec, results)
+	auditCases(sec, results)
 	encoded, err := json.MarshalIndent(map[string]any{"evidence": "two fake paths; real existing business envelope; fake tmux", "scenarios": results}, "", "  ")
 	must(err)
 	fmt.Println(string(encoded))
+}
+
+func (s *Stream) fresh(q queued) error {
+	if s.stopped || s.now >= q.header.Deadline || q.instance != s.instance || q.header.Request != s.id {
+		return errors.New("deferred scope/deadline")
+	}
+	h, _, err := s.sec.open(q.raw, s.id, s.now)
+	if err != nil {
+		return err
+	}
+	if h.Seq != q.header.Seq || h.Sender != q.header.Sender || h.Purpose != q.header.Purpose {
+		return errors.New("deferred identity")
+	}
+	return nil
+}
+func (s *Stream) refreshInputGap() {
+	missing := s.processed + 1
+	if s.inflight != nil && s.inflight.header.Seq == missing {
+		missing++
+	}
+	for {
+		if _, ok := s.pending[missing]; !ok {
+			break
+		}
+		missing++
+	}
+	s.gap = 0
+	for seq, at := range s.inputReceivedAt {
+		if seq > missing {
+			due := min(at+10000, s.pending[seq].header.Deadline)
+			if s.gap == 0 || due < s.gap {
+				s.gap = due
+			}
+		}
+	}
 }

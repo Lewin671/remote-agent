@@ -20,7 +20,10 @@ type Signal struct {
 	Connection                                                                         []byte
 	Use, Generation, Next                                                              uint64
 	BootReady, LocalSDP, RemoteSDP, DTLS, Confirmed, Closed, Retired, Ended            bool
-	Challenge                                                                          *Opened
+	Challenge, Probe, ReceivedProbe                                                    *Opened
+	Clock, RoundDeadline                                                               uint64
+	Allowed, Dispatched                                                                map[string][]byte
+	Dispatches                                                                         int
 	LocalHash, RemoteHash, RemoteUfrag, RemoteMid, LocalFingerprint, RemoteFingerprint []byte
 	Candidates, Batches                                                                int
 	Seen                                                                               map[string][]byte
@@ -33,13 +36,13 @@ type Signal struct {
 
 var ErrSignal = errors.New("invalid signal transition")
 
-func NewSignal(self Identity, peer Public, connection []byte, use uint64) *Signal {
-	return &Signal{Self: self, Peer: peer, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
+func NewSignal(self Identity, peer Public, connection []byte, use uint64, now uint64) *Signal {
+	return &Signal{Self: self, Peer: peer.Member(), Clock: now, RoundDeadline: now + 10000, Allowed: map[string][]byte{}, Dispatched: map[string][]byte{}, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
 }
 func (s *Signal) Offerer() bool { return bytes.Compare(s.Self.ID, s.Peer.ID) < 0 }
 func (s *Signal) Ready() bool   { return !s.Closed && s.LocalSDP && s.RemoteSDP && s.DTLS && s.Confirmed }
 func (s *Signal) SetLocal(raw []byte, offer bool, generation uint64) error {
-	if generation != s.Generation || s.Closed || !s.BootReady || offer != s.Offerer() || (offer && s.LocalSDP) || (!offer && !s.RemoteSDP) {
+	if s.Clock >= s.RoundDeadline || generation != s.Generation || s.Closed || !s.BootReady || offer != s.Offerer() || (offer && s.LocalSDP) || (!offer && !s.RemoteSDP) {
 		return ErrSignal
 	}
 	info, e := InspectSDP(raw)
@@ -52,7 +55,7 @@ func (s *Signal) SetLocal(raw []byte, offer bool, generation uint64) error {
 	return nil
 }
 func (s *Signal) NextGeneration(gen uint64) error {
-	if s.Closed && !s.Retired || gen != s.Generation+1 || gen == 0 {
+	if s.Clock >= s.RoundDeadline || s.Closed && !s.Retired || gen != s.Generation+1 || gen == 0 {
 		return ErrSignal
 	}
 	s.Generation = gen
@@ -64,6 +67,8 @@ func (s *Signal) NextGeneration(gen uint64) error {
 	s.DTLS = false
 	s.Confirmed = false
 	s.Pending = map[uint64]Opened{}
+	s.Allowed = map[string][]byte{}
+	s.Dispatched = map[string][]byte{}
 	s.PendingAt = map[uint64]uint64{}
 	s.GapDeadline = 0
 	s.Candidates = 0
@@ -72,7 +77,8 @@ func (s *Signal) NextGeneration(gen uint64) error {
 	return nil
 }
 func (s *Signal) Receive(packet []byte, now uint64) ([]Action, error) {
-	opened, e := Open(packet, s.Peer, s.Self, now)
+	s.Tick(now)
+	opened, e := Open(packet, s.Peer, s.Self, s.Clock)
 	if e != nil {
 		s.Rejected++
 		return nil, e
@@ -80,7 +86,16 @@ func (s *Signal) Receive(packet []byte, now uint64) ([]Action, error) {
 	return s.Accept(opened, now)
 }
 func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
+	s.Tick(now)
+	fresh, e := Open(o.Raw, s.Peer, s.Self, s.Clock)
+	if e != nil {
+		return nil, e
+	}
+	o = fresh
 	c := o.Context
+	if s.Clock >= s.RoundDeadline {
+		return nil, ErrSignal
+	}
 	if !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.From, s.Peer.ID) {
 		s.Rejected++
 		return nil, ErrSignal
@@ -93,6 +108,9 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		}
 		s.Duplicates++
 		return nil, nil
+	}
+	if s.Closed && !s.Retired {
+		return nil, ErrSignal
 	}
 	if len(s.Seen) >= 2048 {
 		s.Rejected++
@@ -121,7 +139,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			s.Rejected++
 			return nil, ErrSignal
 		}
-		f, e := Parse(o.Payload, 5)
+		f, e := Parse(o.Payload, 6)
 		if e != nil {
 			return nil, e
 		}
@@ -130,26 +148,33 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 				return nil, ErrSignal
 			}
 		} else {
-			schema := "bbbb"
-			if len(f) == 5 {
-				schema = "bbbbu"
+			if s.Probe != nil {
+				if _, err := OpenSent(s.Probe.Raw, s.Self, s.Peer, s.Clock); err != nil {
+					return nil, err
+				}
 			}
-			if need(f, schema) != nil || (len(f) == 5 && f[5].U > 1) || !bytes.Equal(f[1].B, c.Connection) || !bytes.Equal(f[2].B, c.SenderInstance) || !bytes.Equal(f[3].B, c.SenderBoot) || !bytes.Equal(f[4].B, s.Self.Boot) {
+			if need(f, "bbbbub") != nil || f[5].U > 1 || len(f[6].B) != 32 || s.Probe == nil || s.Clock >= s.Probe.Context.Deadline || !bytes.Equal(f[6].B, s.Probe.Hash) || !bytes.Equal(f[1].B, c.Connection) || !bytes.Equal(f[2].B, c.SenderInstance) || !bytes.Equal(f[3].B, c.SenderBoot) || !bytes.Equal(f[4].B, s.Self.Boot) {
 				return nil, ErrSignal
 			}
 		}
-		if !s.LocalSDP && !s.RemoteSDP {
-			s.Peer.Instance = append([]byte(nil), c.SenderInstance...)
-			s.Peer.Boot = append([]byte(nil), c.SenderBoot...)
+		if len(s.Peer.Boot) > 0 && (!bytes.Equal(s.Peer.Boot, c.SenderBoot) || !bytes.Equal(s.Peer.Instance, c.SenderInstance)) {
+			s.retire(false)
+			return nil, ErrSignal
 		}
+		if o.Type == 1 {
+			s.ReceivedProbe = &o
+		}
+		s.Peer.Instance = append([]byte(nil), c.SenderInstance...)
+		s.Peer.Boot = append([]byte(nil), c.SenderBoot...)
 		s.Seen[key] = o.Hash
 		s.CacheUntil[key] = c.Deadline + 300000
 		if o.Type == 2 {
 			s.BootReady = true
-			if len(f) == 5 && f[5].U == 1 {
+			if f[5].U == 1 {
 				s.StaleChallenges++
 			}
 		}
+
 		return []Action{{1, o.Type, o.Payload, 0}}, nil
 	}
 	// Receive has authenticated both current instances/nonces before Accept.
@@ -192,6 +217,12 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 	}
 	var actions []Action
 	for {
+		live, e := Open(o.Raw, s.Peer, s.Self, s.Clock)
+		if e != nil || live.Context.Generation != s.Generation || live.Context.Use != s.Use || !bytes.Equal(live.Context.Connection, s.Connection) {
+			s.retire(true)
+			return nil, ErrSignal
+		}
+		o = live
 		key = Key(o.Context)
 		s.Seen[key] = o.Hash
 		s.CacheUntil[key] = o.Context.Deadline + 300000
@@ -206,6 +237,9 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		s.Next++
 		if action.Type != 0 {
 			actions = append(actions, action)
+			if action.Class == 1 && action.Type >= 3 && action.Type <= 6 {
+				s.Allowed[key] = append([]byte(nil), o.Hash...)
+			}
 		}
 		next, ok := s.Pending[s.Next]
 		if !ok {
@@ -293,6 +327,8 @@ func (s *Signal) apply(o Opened) (Action, error) {
 	case 9:
 		s.Closed = true
 		s.Pending = map[uint64]Opened{}
+		s.Allowed = map[string][]byte{}
+		s.Dispatched = map[string][]byte{}
 		s.PendingAt = map[uint64]uint64{}
 		s.GapDeadline = 0
 	default:
@@ -302,6 +338,12 @@ func (s *Signal) apply(o Opened) (Action, error) {
 	return action, nil
 }
 func (s *Signal) Tick(now uint64) bool {
+	s.Clock = max(s.Clock, now)
+	now = s.Clock
+	if now >= s.RoundDeadline {
+		s.retire(false)
+		return true
+	}
 	for key, until := range s.CacheUntil {
 		if now > until {
 			delete(s.Seen, key)
@@ -312,6 +354,8 @@ func (s *Signal) Tick(now uint64) bool {
 		s.Closed = true
 		s.Retired = true
 		s.Pending = map[uint64]Opened{}
+		s.Allowed = map[string][]byte{}
+		s.Dispatched = map[string][]byte{}
 		s.PendingAt = map[uint64]uint64{}
 		s.GapDeadline = 0
 		return true
@@ -335,8 +379,8 @@ func (s *Signal) ConfirmBody() []byte {
 // At most 32 witnesses avoids allocating by an untrusted sequence distance.
 func (s *Signal) refreshGap() {
 	s.GapDeadline = 0
-	for _, at := range s.PendingAt {
-		due := at + 2500
+	for seq, at := range s.PendingAt {
+		due := min(at+2500, s.Pending[seq].Context.Deadline, s.RoundDeadline)
 		if s.GapDeadline == 0 || due < s.GapDeadline {
 			s.GapDeadline = due
 		}
@@ -345,15 +389,30 @@ func (s *Signal) refreshGap() {
 
 // RememberChallenge freezes the outgoing record after sealing, before dispatch.
 func (s *Signal) RememberChallenge(sent Opened) error {
+	if s.Closed {
+		return ErrSignal
+	}
+	fresh, e := OpenSent(sent.Raw, s.Self, s.Peer, s.Clock)
+	if e != nil {
+		return e
+	}
+	sent = fresh
 	c := sent.Context
-	if sent.Type != 2 || c.Class != 1 || string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 || c.Seq == 0 || len(sent.Hash) != 32 || !bytes.Equal(c.From, s.Self.ID) || !bytes.Equal(c.To, s.Peer.ID) || !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.SenderBoot, s.Self.Boot) || !bytes.Equal(c.ReceiverBoot, s.Peer.Boot) || !bytes.Equal(c.SenderInstance, s.Self.Instance) || !bytes.Equal(c.ReceiverInstance, s.Peer.Instance) {
+	if s.Clock >= c.Deadline || s.ReceivedProbe == nil || s.Clock >= s.ReceivedProbe.Context.Deadline {
+		return ErrSignal
+	}
+	f, e := Parse(sent.Payload, 6)
+	if e != nil || need(f, "bbbbub") != nil || !bytes.Equal(f[6].B, s.ReceivedProbe.Hash) {
+		return ErrSignal
+	}
+	if c.RecipientUnknown != 0 || sent.Type != 2 || c.Class != 1 || string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 || c.Seq == 0 || len(sent.Hash) != 32 || !bytes.Equal(c.From, s.Self.ID) || !bytes.Equal(c.To, s.Peer.ID) || !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.SenderBoot, s.Self.Boot) || !bytes.Equal(c.ReceiverBoot, s.Peer.Boot) || !bytes.Equal(c.SenderInstance, s.Self.Instance) || !bytes.Equal(c.ReceiverInstance, s.Peer.Instance) {
 		return ErrSignal
 	}
 	copyContext, e := parseContext(c.Encode())
 	if e != nil {
 		return e
 	}
-	s.Challenge = &Opened{Context: copyContext, Type: 2, Hash: append([]byte(nil), sent.Hash...)}
+	s.Challenge = &Opened{Context: copyContext, Type: 2, Hash: append([]byte(nil), sent.Hash...), Raw: append([]byte(nil), sent.Raw...), Payload: append([]byte(nil), sent.Payload...)}
 	return nil
 }
 func (s *Signal) acceptACK(ack Opened) error {
@@ -385,6 +444,9 @@ func (s *Signal) acceptACK(ack Opened) error {
 		if challenge == nil {
 			return ErrSignal
 		}
+		if s.Clock >= challenge.Context.Deadline {
+			return ErrSignal
+		}
 		c := challenge.Context
 		a := ack.Context
 		if !bytes.Equal(a.From, c.To) || !bytes.Equal(a.To, c.From) || !bytes.Equal(a.Connection, c.Connection) || !bytes.Equal(a.SenderBoot, c.ReceiverBoot) || !bytes.Equal(a.ReceiverBoot, c.SenderBoot) || !bytes.Equal(a.SenderInstance, c.ReceiverInstance) || !bytes.Equal(a.ReceiverInstance, c.SenderInstance) {
@@ -398,4 +460,52 @@ func (s *Signal) acceptACK(ack Opened) error {
 		return ErrSignal
 	}
 	return nil
+}
+
+func (s *Signal) RememberProbe(sent Opened) error {
+	if s.Closed {
+		return ErrSignal
+	}
+	fresh, e := OpenSent(sent.Raw, s.Self, s.Peer, s.Clock)
+	if e != nil {
+		return e
+	}
+	sent = fresh
+	c := sent.Context
+	if sent.Type != 1 || c.Class != 1 || string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 || s.Clock >= c.Deadline || !bytes.Equal(c.From, s.Self.ID) || !bytes.Equal(c.To, s.Peer.ID) || !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.SenderBoot, s.Self.Boot) || !bytes.Equal(c.SenderInstance, s.Self.Instance) || len(sent.Hash) != 32 {
+		return ErrSignal
+	}
+	copyContext, e := parseContext(c.Encode())
+	if e != nil {
+		return e
+	}
+	s.Probe = &Opened{Context: copyContext, Type: 1, Hash: append([]byte(nil), sent.Hash...), Raw: append([]byte(nil), sent.Raw...)}
+	return nil
+}
+func (s *Signal) retire(retry bool) {
+	s.Closed = true
+	s.Retired = retry
+	s.Pending = map[uint64]Opened{}
+	s.PendingAt = map[uint64]uint64{}
+	s.Allowed = map[string][]byte{}
+	s.Dispatched = map[string][]byte{}
+	s.GapDeadline = 0
+}
+func (s *Signal) ForgetPeer() { s.Peer = s.Peer.Member(); s.retire(false) }
+func (s *Signal) Dispatch(raw []byte, now uint64) bool {
+	s.Tick(now)
+	if s.Closed {
+		return false
+	}
+	o, e := Open(raw, s.Peer, s.Self, s.Clock)
+	if e != nil || o.Context.Generation != s.Generation || o.Context.Use != s.Use || !bytes.Equal(o.Context.Connection, s.Connection) {
+		return false
+	}
+	key := Key(o.Context)
+	if !bytes.Equal(s.Allowed[key], o.Hash) || s.Dispatched[key] != nil {
+		return false
+	}
+	s.Dispatched[key] = append([]byte(nil), o.Hash...)
+	s.Dispatches++
+	return true
 }

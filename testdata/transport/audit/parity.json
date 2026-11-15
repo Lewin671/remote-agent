@@ -1,0 +1,191 @@
+[
+  {
+    "id": "C01",
+    "rule": "cold recipient-unknown shape and Probe-only type",
+    "vectors": [
+      "wire/vectors.json"
+    ],
+    "implementations": "four codecs"
+  },
+  {
+    "id": "C02",
+    "rule": "Probe hash correlation and no preloaded peer process",
+    "vectors": [
+      "audit-cold-no-preloaded-process",
+      "audit-challenge-probe-correlation",
+      "audit-unsolicited-challenge"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A01",
+    "rule": "outgoing Probe/Challenge record expiry",
+    "vectors": [
+      "audit-outgoing-probe-record-expiry",
+      "audit-outgoing-challenge-record-expiry",
+      "audit-probe-correlation-expiry"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A02",
+    "rule": "authenticated transport queue expiry/generation/identity",
+    "vectors": [
+      "audit-transport-queue-expiry",
+      "audit-transport-queue-generation",
+      "audit-transport-queue-identity"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A03",
+    "rule": "buffer drain deadline and boundary",
+    "vectors": [
+      "audit-buffer-deadline-drain",
+      "audit-buffer-deadline-equality",
+      "audit-buffer-before-deadline"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A04",
+    "rule": "buffer generation, identity and close invalidation",
+    "vectors": [
+      "audit-buffer-owner-generation",
+      "audit-buffer-owner-identity",
+      "audit-buffer-owner-close"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A05",
+    "rule": "SDK action dispatch expiry/generation/identity/close/duplicate",
+    "vectors": [
+      "audit-sdk-dispatch-expiry",
+      "audit-sdk-dispatch-generation",
+      "audit-sdk-dispatch-identity",
+      "audit-sdk-dispatch-close",
+      "audit-sdk-dispatch-duplicate"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A06",
+    "rule": "local SDP callback original round and generation",
+    "vectors": [
+      "audit-round-deadline-local-callback",
+      "full-lifecycle"
+    ],
+    "implementations": "four signal cores"
+  },
+  {
+    "id": "A07",
+    "rule": "sender retry/limited and transport-write expiry/binding",
+    "vectors": [
+      "audit-send-expiry",
+      "audit-send-identity",
+      "audit-send-generation",
+      "audit-send-limited",
+      "audit-transport-write-expiry",
+      "audit-transport-write-binding"
+    ],
+    "implementations": "four senders"
+  },
+  {
+    "id": "A08",
+    "rule": "candidate collector expiry/generation/identity",
+    "vectors": [
+      "audit-batch-expiry",
+      "audit-batch-generation",
+      "audit-batch-identity"
+    ],
+    "implementations": "four collectors"
+  },
+  {
+    "id": "A09",
+    "rule": "cached policy response scope and expiry",
+    "vectors": [
+      "policy-reply-request-and-scope"
+    ],
+    "implementations": "four codecs"
+  },
+  {
+    "id": "B01",
+    "rule": "successive/split gaps, duplicate non-refresh and original deadline",
+    "vectors": [
+      "successive-gaps-recover",
+      "successive-gaps-expire",
+      "split-gap-keeps-first-observation",
+      "audit-buffer-deadline-drain"
+    ],
+    "implementations": "four signal cores + Python"
+  },
+  {
+    "id": "C03",
+    "rule": "candidate duplicates, same-value duplicates, case and token bytes",
+    "vectors": [
+      "audit-ufrag-duplicate",
+      "audit-ufrag-duplicate-same",
+      "audit-ufrag-case",
+      "audit-ufrag-missing-value",
+      "audit-candidate-tab",
+      "audit-candidate-nel",
+      "audit-candidate-bom"
+    ],
+    "implementations": "four candidate validators"
+  },
+  {
+    "id": "C04",
+    "rule": "SDP UTF-8, CRLF, media, fingerprint, singleton fields, size, trickle-only",
+    "vectors": [
+      "sdp/manifest.json"
+    ],
+    "implementations": "four SDP validators"
+  },
+  {
+    "id": "T01",
+    "rule": "reassembly TTL and leg generation at final fragment",
+    "vectors": [
+      "audit_assembly_expiry_identity_and_leg"
+    ],
+    "implementations": "terminal Go"
+  },
+  {
+    "id": "T02",
+    "rule": "input/output gap first observation and original deadline",
+    "vectors": [
+      "audit_input_original_deadline",
+      "audit_output_original_deadline",
+      "audit_input_successive_and_split_gaps",
+      "audit_output_successive_and_split_gaps"
+    ],
+    "implementations": "terminal Go"
+  },
+  {
+    "id": "T03",
+    "rule": "queued input/output current identity and membership",
+    "vectors": [
+      "audit_input_buffer_identity",
+      "audit_output_buffer_identity",
+      "audit_current_membership_before_admission"
+    ],
+    "implementations": "terminal Go"
+  },
+  {
+    "id": "T04",
+    "rule": "render/replay/send-cache delivery deadline and instance",
+    "vectors": [
+      "audit_contiguous_render_deadline",
+      "audit_replay_and_send_cache_bounds"
+    ],
+    "implementations": "terminal Go"
+  },
+  {
+    "id": "T05",
+    "rule": "deferred completion evidence vs new admission/reply TTL",
+    "vectors": [
+      "audit_completion_vs_new_admission"
+    ],
+    "implementations": "terminal Go"
+  }
+]

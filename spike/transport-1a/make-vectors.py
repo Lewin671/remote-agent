@@ -46,6 +46,10 @@ vectors.update({
     'inline-candidate-long':raw+candidate[:-2]+b' x-lab '+b'x'*1100+b'\r\n',
     'inline-candidate-session':raw.replace(b'm=application',candidate+b'm=application',1),
     'inline-candidate-bare':raw+b'a=candidate\r\n',
+    'line-separator':raw.replace(b's=-',b's=-'+chr(0x2028).encode()),
+    'ufrag-final-separator':raw.replace(ufrag,ufrag[:-2]+chr(0x2028).encode()+b'\r\n'),
+    'vertical-tab':raw.replace(b's=-',b's=-\x0b'),
+    'next-line':raw.replace(b's=-',b's=-'+chr(0x85).encode()),
 })
 for name,data in vectors.items():add('bad-'+name+'.bin',data,False,'mutation of chrome-offer.sdp')
 for kind in ['answer','restart']:
@@ -53,7 +57,7 @@ for kind in ['answer','restart']:
     add('bad-inline-candidate-'+kind+'.bin',(args.source/source).read_bytes()+candidate,False,'mutation of '+source)
 inherited=raw.replace(b'm=application',fp+b'm=application',1)
 add('good-inherited-fingerprint.sdp',inherited,True,'same fingerprint at session and media scopes')
-assert len(rows)==41
+assert len(rows)==45
 (args.output/'vectors.tsv').write_text('\n'.join(rows)+'\n')
 (args.output/'manifest.json').write_text(json.dumps(metadata,indent=2)+'\n')
 (args.output/'.gitattributes').write_text('*.sdp -text -diff\n*.bin -text -diff\n')

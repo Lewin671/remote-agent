@@ -43,12 +43,12 @@ enum Wire {
     static func shared(_ from:Identity,_ to:Identity)throws->Bytes { try from.box.sharedSecretFromKeyAgreement(with:to.box.publicKey).withUnsafeBytes{Array($0)} }
     struct Context {
         var domain,from,to,machine,senderInstance,receiverInstance,senderBoot,receiverBoot,connection:Bytes
-        var fromRole,toRole,use,generation,seq,issued,deadline,cls:UInt64
+        var fromRole,toRole,use,generation,seq,issued,deadline,cls:UInt64;var recipientUnknown:UInt64=0
         init(_ a:Identity,_ z:Identity,_ conn:Bytes,_ use:UInt64,_ gen:UInt64,_ seq:UInt64,_ now:UInt64,_ cls:UInt64=1,_ boot:Bool=false){domain=utf8(boot ? "bootstrap":cls==1 ? "signal":"control");from=a.id;to=z.id;fromRole=a.role;toRole=z.role;machine=a.role==2 ? a.id:z.id;senderInstance=a.instance;receiverInstance=z.instance;senderBoot=a.boot;receiverBoot=z.boot;connection=conn;self.use=use;generation=gen;self.seq=seq;issued=now;deadline=now+10000;self.cls=cls}
-        init(_ f:[Int:Field]) {domain=f[1]!.data;from=f[3]!.data;to=f[4]!.data;fromRole=f[5]!.value;toRole=f[6]!.value;machine=f[7]!.data;senderInstance=f[11]!.data;receiverInstance=f[12]!.data;senderBoot=f[13]!.data;receiverBoot=f[14]!.data;connection=f[15]!.data;use=f[16]!.value;generation=f[17]!.value;seq=f[18]!.value;issued=f[19]!.value;deadline=f[20]!.value;cls=f[21]!.value}
-        func encode()->Bytes {pb([b(1,domain),b(2,account),b(3,from),b(4,to),u(5,fromRole),u(6,toRole),b(7,machine),u(8,16),u(9,1),b(10,head),b(11,senderInstance),b(12,receiverInstance),b(13,senderBoot),b(14,receiverBoot),b(15,connection),u(16,use),u(17,generation),u(18,seq),u(19,issued),u(20,deadline),u(21,cls),b(22,from),b(23,accountDomain)])}
+        init(_ f:[Int:Field]) {domain=f[1]!.data;from=f[3]!.data;to=f[4]!.data;fromRole=f[5]!.value;toRole=f[6]!.value;machine=f[7]!.data;senderInstance=f[11]!.data;receiverInstance=f[12]!.data;senderBoot=f[13]!.data;receiverBoot=f[14]!.data;connection=f[15]!.data;use=f[16]!.value;generation=f[17]!.value;seq=f[18]!.value;issued=f[19]!.value;deadline=f[20]!.value;cls=f[21]!.value;recipientUnknown=f[24]!.value}
+        func encode()->Bytes {pb([b(1,domain),b(2,account),b(3,from),b(4,to),u(5,fromRole),u(6,toRole),b(7,machine),u(8,16),u(9,1),b(10,head),b(11,senderInstance),b(12,receiverInstance),b(13,senderBoot),b(14,receiverBoot),b(15,connection),u(16,use),u(17,generation),u(18,seq),u(19,issued),u(20,deadline),u(21,cls),b(22,from),b(23,accountDomain),u(24,recipientUnknown)])}
     }
-    static func context(_ raw:Bytes)throws->Context {let f=try parse(raw,23);try need(f,"bbbbuubuubbbbbbuuuuuubb");try check(f[23]!.data==accountDomain && f[2]!.data==account && f[8]!.value==16 && f[9]!.value==1 && f[10]!.data==head && f[22]!.data==f[3]!.data);return Context(f)}
+    static func context(_ raw:Bytes)throws->Context {let f=try parse(raw,24);try need(f,"bbbbuubuubbbbbbuuuuuubbu");try check(f[23]!.data==accountDomain && f[2]!.data==account && f[8]!.value==16 && f[9]!.value==1 && f[10]!.data==head && f[22]!.data==f[3]!.data);return Context(f)}
     static func wrapInfo(_ a:Bytes,_ z:Bytes)->Bytes {let sorted=[a,z].sorted{$0.lexicographicallyPrecedes($1)};return lp(utf8("remote-agent/peer-context/v1"),account,accountDomain,sorted[0],sorted[1],a,z)}
     static func bodyInfo(_ c:Context)->Bytes {if c.domain==utf8("bootstrap"){return lp(utf8("remote-agent/peer-bootstrap/v1"),account,accountDomain,c.from,c.to)};return lp(utf8("remote-agent/peer-body/v1"),account,accountDomain,c.from,c.to,c.senderInstance,c.receiverInstance,c.senderBoot,c.receiverBoot,c.connection,num(c.use),num(c.generation),num(c.cls))}
     static func aad(_ a:Bytes,_ z:Bytes,_ cls:UInt64,_ id:Bytes)->Bytes {lp(utf8("remote-agent/peer-aad/v1"),account,accountDomain,num(16),pb([b(1,a),b(2,z),u(3,cls),b(4,id)]))}
@@ -61,30 +61,35 @@ enum Wire {
         let sig=Array(try a.sign.signature(for:Data(sigInput(ad,nc,ec,nb,eb))))
         let packet=pb([b(1,a.id),b(2,z.id),u(3,c.cls),b(4,id),b(5,pb([b(1,nc),b(2,ec),b(3,nb),b(4,eb),b(5,sig)]))]);try check(packet.count<=(c.cls==2 ? 16384:65536));return packet
     }
-    struct Opened {let ctx:Context;let type:UInt64;let payload,frameID,hash:Bytes}
-    static func open(_ raw:Bytes,_ a:Identity,_ z:Identity,_ now:UInt64)throws->Opened {
+    struct Opened {let ctx:Context;let type:UInt64;let payload,frameID,hash,raw:Bytes}
+    static func open(_ raw:Bytes,_ a:Identity,_ z:Identity,_ now:UInt64)throws->Opened {try openShared(raw,a,z,now,shared(z,a))}
+    static func openSent(_ raw:Bytes,_ a:Identity,_ z:Identity,_ now:UInt64)throws->Opened {let o=try openShared(raw,a,z,now,shared(a,z));try check(o.ctx.senderInstance==a.instance && o.ctx.senderBoot==a.boot);return o}
+    static func openShared(_ raw:Bytes,_ a:Identity,_ z:Identity,_ now:UInt64,_ dh:Bytes)throws->Opened {
         let f=try parse(raw,5);try need(f,"bbubb");let cls=f[3]!.value,id=f[4]!.data
         try check((cls==1 || cls==2) && raw.count<=(cls==2 ? 16384:65536) && id.count==16 && f[1]!.data==a.id && f[2]!.data==z.id)
         let p=try parse(f[5]!.data,5);try need(p,"bbbbb");let nc=p[1]!.data,ec=p[2]!.data,nb=p[3]!.data,eb=p[4]!.data,sig=p[5]!.data,ad=aad(a.id,z.id,cls,id)
         try check(nc.count==12 && nb.count==12 && sig.count==64 && a.sign.publicKey.isValidSignature(sig,for:sigInput(ad,nc,ec,nb,eb)))
-        let dh=try shared(z,a),c=try context(gcm(kdf(dh,wrapInfo(a.id,z.id)),nc,ad,ec,false))
-        try check(c.from==a.id && c.to==z.id && c.cls==cls && c.fromRole==a.role && c.toRole==z.role && a.role != z.role && c.connection.count==16 && c.seq != 0 && c.issued<=c.deadline && c.deadline-c.issued<=30000 && now<=c.deadline && c.issued<=now+300000)
+        let c=try context(gcm(kdf(dh,wrapInfo(a.id,z.id)),nc,ad,ec,false))
+        try check(c.from==a.id && c.to==z.id && c.cls==cls && c.fromRole==a.role && c.toRole==z.role && a.role != z.role && c.connection.count==16 && c.seq != 0 && c.issued<c.deadline && c.deadline-c.issued<=30000 && now<c.deadline && c.issued<=now+300000)
         try check(c.machine==(a.role==2 ? a.id:z.id));let boot=c.domain==utf8("bootstrap")
-        try check(c.senderInstance.count==16 && c.receiverInstance.count==16 && c.senderBoot.count==32 && c.receiverBoot.count==32 && (1...2).contains(c.fromRole) && (1...2).contains(c.toRole))
+        try check(c.senderInstance.count==16 && c.senderBoot.count==32 && (1...2).contains(c.fromRole) && (1...2).contains(c.toRole))
+        try check(c.recipientUnknown<=1);if c.recipientUnknown==1{try check(c.receiverInstance.isEmpty && c.receiverBoot.isEmpty)}else{try check(c.receiverInstance.count==16 && c.receiverBoot.count==32 && c.receiverInstance==z.instance && c.receiverBoot==z.boot)}
         if !boot {try check(c.domain==utf8(cls==1 ? "signal":"control"));try check(c.senderInstance==a.instance && c.receiverInstance==z.instance && c.senderBoot==a.boot && c.receiverBoot==z.boot && c.generation != 0 && c.use<=2)}
         let body=try gcm(kdf(dh,bodyInfo(c)),nb,lp(ad,hash(ec)),eb,false),w=try parse(body,1);try need(w,"b");let t=try parse(w[1]!.data,2);try need(t,"ub");let type=t[1]!.value
         try check(boot || cls != 1 || c.use != 0 || type==8 || type==9)
-        try check(type<=0xffffffff && (!boot || (cls==1 && (type==1 || type==2))))
-        return Opened(ctx:c,type:type,payload:t[2]!.data,frameID:id,hash:hash(raw))
+        try check(type<=0xffffffff && (!boot || (cls==1 && c.use==0 && c.generation==0 && (type==1 || type==2))))
+        try check(c.recipientUnknown != 1 || (boot && cls==1 && type==1));return Opened(ctx:c,type:type,payload:t[2]!.data,frameID:id,hash:hash(raw),raw:raw)
     }
-    static func validatePolicyReply(_ request:Opened,_ reply:Opened)throws {
-        let a=request.ctx,z=reply.ctx;try check(a.cls==2 && z.cls==2 && request.type==9 && reply.type==13 && a.from==z.to && a.to==z.from && a.connection==z.connection)
+    static func validatePolicyReply(_ request:Opened,_ reply:Opened,_ now:UInt64)throws {
+        let a=request.ctx,z=reply.ctx;try check(now<a.deadline && now<z.deadline && a.generation==z.generation && a.use==z.use && a.senderInstance==z.receiverInstance && a.receiverInstance==z.senderInstance && a.senderBoot==z.receiverBoot && a.receiverBoot==z.senderBoot);try check(a.cls==2 && z.cls==2 && request.type==9 && reply.type==13 && a.from==z.to && a.to==z.from && a.connection==z.connection)
         let q=try parse(request.payload,4),r=try parse(reply.payload,7);try need(q,"buuu");try need(r,"uuuubub")
         try check(q[2]!.value != 0 && q[3]!.value<=1 && r[2]!.value<=1 && r[3]!.value<=1)
         try check((q[4]!.value==1 && q[1]!.data.isEmpty) || (q[4]!.value==2 && q[1]!.data.count==32))
         try check(r[1]!.value==q[2]!.value && r[4]!.value==a.seq && r[5]!.data.count==32 && r[5]!.data==request.hash && r[6]!.value==q[4]!.value && r[7]!.data==q[1]!.data)
         try check(r[2]!.value != 1 || r[3]!.value==q[3]!.value)
     }
+    static func member(_ peer:Identity)->Identity{var p=peer;p.instance=[];p.boot=[];return p}
+    static func probeContext(_ a:Identity,_ z:Identity,_ conn:Bytes,_ seq:UInt64,_ now:UInt64)->Context{var c=Context(a,member(z),conn,0,0,seq,now,1,true);c.recipientUnknown=1;return c}
 
 }
 

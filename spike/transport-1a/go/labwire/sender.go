@@ -3,9 +3,9 @@ package labwire
 import "bytes"
 
 type Pending struct {
-	Raw, Hash        []byte
-	First, NotBefore uint64
-	Attempts         int
+	Raw, Hash                         []byte
+	First, NotBefore, Expiry, Binding uint64
+	Attempts                          int
 }
 type Sender struct {
 	Deadline                   uint64
@@ -14,13 +14,16 @@ type Sender struct {
 	Frames, Bytes              int
 	RetryAt, NetworkGeneration uint64
 	Failures                   uint32
+	Binding, Clock             uint64
 }
 
 func NewSender(deadline uint64) *Sender {
-	return &Sender{Deadline: deadline, Pending: map[string]*Pending{}}
+	return &Sender{Deadline: deadline, Binding: 1, Pending: map[string]*Pending{}}
 }
-func (s *Sender) Enqueue(raw []byte, now uint64) bool {
-	if s.TimedOut || now >= s.Deadline || len(s.Pending) >= 32 {
+func (s *Sender) Enqueue(raw []byte, now, expiry, binding uint64) bool {
+	s.Clock = max(s.Clock, now)
+	now = s.Clock
+	if s.TimedOut || binding != s.Binding || now >= expiry || now >= s.Deadline || len(s.Pending) >= 32 {
 		return false
 	}
 	hash := Hash(raw)
@@ -28,17 +31,23 @@ func (s *Sender) Enqueue(raw []byte, now uint64) bool {
 	if _, ok := s.Pending[key]; ok {
 		return true
 	}
-	s.Pending[key] = &Pending{Raw: append([]byte(nil), raw...), Hash: hash, First: now}
+	s.Pending[key] = &Pending{Raw: append([]byte(nil), raw...), Hash: hash, First: now, Expiry: min(expiry, s.Deadline), Binding: binding}
 	return true
 }
 func (s *Sender) Tick(now uint64) [][]byte {
+	s.Clock = max(s.Clock, now)
+	now = s.Clock
 	if now >= s.Deadline {
 		s.Pending = map[string]*Pending{}
 		s.TimedOut = true
 		return nil
 	}
 	var out [][]byte
-	for _, p := range s.Pending {
+	for key, p := range s.Pending {
+		if now >= p.Expiry || p.Binding != s.Binding {
+			delete(s.Pending, key)
+			continue
+		}
 		if p.Attempts == 3 {
 			continue
 		}
@@ -50,7 +59,7 @@ func (s *Sender) Tick(now uint64) [][]byte {
 			if !bytes.Equal(Hash(p.Raw), p.Hash) {
 				panic("mutable frozen frame")
 			}
-			out = append(out, p.Raw)
+			out = append(out, append([]byte(nil), p.Raw...))
 			p.Attempts++
 			s.Frames++
 			s.Bytes += len(p.Raw)
@@ -92,15 +101,20 @@ func (s *Sender) NetworkChanged(g uint64) { s.NetworkGeneration = max(s.NetworkG
 // CandidateBatcher owns one SDK callback generation and a 50ms collection timer.
 // It returns original candidate bytes; the adapter adds the bound ufrag/mid.
 type CandidateBatcher struct {
-	Generation     uint64
-	Due            uint64
-	Pending        [][]byte
-	Count, Batches int
-	Ended          bool
+	Generation, Deadline, Binding uint64
+	Due                           uint64
+	Pending                       [][]byte
+	Count, Batches                int
+	Ended                         bool
 }
 
-func (b *CandidateBatcher) Add(raw []byte, g, now uint64) bool {
-	if b.Ended || g != b.Generation || b.Count >= 64 || len(raw) > 1024 {
+func (b *CandidateBatcher) Add(raw []byte, g, now, binding uint64) bool {
+	if now >= b.Deadline {
+		b.Ended = true
+		b.Pending = nil
+		b.Due = 0
+	}
+	if b.Ended || binding != b.Binding || g != b.Generation || b.Count >= 64 || len(raw) > 1024 {
 		return false
 	}
 	if len(b.Pending) == 0 {
@@ -110,7 +124,13 @@ func (b *CandidateBatcher) Add(raw []byte, g, now uint64) bool {
 	b.Count++
 	return true
 }
-func (b *CandidateBatcher) Flush(now uint64, end bool) [][][]byte {
+func (b *CandidateBatcher) Flush(now uint64, end bool, g, binding uint64) [][][]byte {
+	if now >= b.Deadline || g != b.Generation || binding != b.Binding {
+		b.Ended = true
+		b.Pending = nil
+		b.Due = 0
+		return nil
+	}
 	if end {
 		b.Ended = true
 	}
@@ -132,4 +152,12 @@ func (b *CandidateBatcher) Flush(now uint64, end bool) [][][]byte {
 		b.Due = now + 50
 	}
 	return out
+}
+
+func (s *Sender) Rebind(binding uint64) { s.Binding = binding; s.Pending = map[string]*Pending{} }
+
+func (s *Sender) Admit(raw []byte, now uint64) bool {
+	s.Clock = max(s.Clock, now)
+	p := s.Pending[string(Hash(raw))]
+	return p != nil && !s.TimedOut && p.Binding == s.Binding && s.Clock < p.Expiry && s.Clock < s.Deadline
 }

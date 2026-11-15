@@ -54,8 +54,39 @@ func main() {
 	add("authenticated-unknown-type", c, 31337, []byte{0, 255, 1}, true)
 	ack := labwire.NewContext(a, b.Public(), conn, 1, 1, 1, now, 2, false)
 	add("ack", ack, 4, labwire.PB(labwire.U(5, 1), labwire.B(6, labwire.Hash([]byte("original")))), true)
-	boot := labwire.NewContext(a, b.Public(), conn, 0, 0, 1, now, 1, true)
+	boot := labwire.NewProbeContext(a, b.Public().Member(), conn, 1, now)
 	add("probe", boot, 1, labwire.PB(labwire.B(1, conn), labwire.B(2, a.Instance), labwire.B(3, a.Boot)), true)
+	badUnknown := boot
+	badUnknown.RecipientUnknown = 0
+	add("empty-recipient-without-marker", badUnknown, 1, nil, false)
+	badUnknown = boot
+	badUnknown.RecipientUnknown = 2
+	add("invalid-unknown-marker", badUnknown, 1, nil, false)
+	badUnknown = boot
+	badUnknown.ReceiverInstance = b.Instance
+	add("unknown-with-instance", badUnknown, 1, nil, false)
+	badUnknown = boot
+	badUnknown.ReceiverBoot = b.Boot
+	add("unknown-with-nonce", badUnknown, 1, nil, false)
+	add("unknown-challenge", boot, 2, nil, false)
+	add("unknown-control", boot, 4, nil, false)
+	badUnknown = boot
+	badUnknown.SenderBoot = nil
+	add("unknown-sender", badUnknown, 1, nil, false)
+	exact := c
+	exact.Deadline = now
+	exact.Issued = now - 1
+	add("deadline-boundary", exact, 3, nil, false)
+	exact = c
+	exact.Deadline = now + 1
+	add("deadline-one-ms-left", exact, 3, nil, true)
+	exact = c
+	exact.Issued = now + 100
+	exact.Deadline = now + 100
+	add("zero-validity-interval", exact, 3, nil, false)
+	exact = c
+	exact.Domain = append([]byte{239, 187, 191}, []byte("signal")...)
+	add("domain-bom", exact, 3, nil, false)
 	bad := c
 	bad.ReceiverBoot = labwire.Hash([]byte("stale receiver boot"))
 	add("stale-boot", bad, 3, nil, false)

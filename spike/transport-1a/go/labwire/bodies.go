@@ -52,10 +52,19 @@ func ReadCandidates(raw []byte) ([]Candidate, uint64, error) {
 		if !utf8.Valid(f[1].B) || bytes.ContainsAny(f[1].B, "\x00\r\n") || !bytes.HasPrefix(f[1].B, []byte("candidate:")) {
 			return nil, 0, ErrPacket
 		}
-		tokens := strings.Fields(string(f[1].B))
-		for i, v := range tokens {
-			if v == "ufrag" && (i+1 >= len(tokens) || tokens[i+1] != string(f[2].B)) {
+		for _, b := range f[1].B {
+			if b < 32 || b > 126 {
 				return nil, 0, ErrPacket
+			}
+		}
+		tokens := strings.Fields(string(f[1].B))
+		ufrags := 0
+		for i, v := range tokens {
+			if strings.EqualFold(v, "ufrag") {
+				ufrags++
+				if v != "ufrag" || ufrags > 1 || i+1 >= len(tokens) || tokens[i+1] != string(f[2].B) {
+					return nil, 0, ErrPacket
+				}
 			}
 		}
 		result = append(result, Candidate{f[1].B, f[2].B, f[3].B, f[4].U, f[5].U})

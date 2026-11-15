@@ -11,7 +11,7 @@ public final class SDPCheck {
   public static void validate(byte[] bytes) throws Exception {
     String raw=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
     require(bytes.length<=60*1024 && raw.endsWith("\r\n") && !raw.contains("\0"));
-    String rest=raw.replace("\r\n",""); require(!rest.contains("\r")&&!rest.contains("\n"));
+    require(!raw.matches("(?s).*[\\x0b\\x0c\\x{85}\\x{2028}\\x{2029}].*"));String rest=raw.replace("\r\n",""); require(!rest.contains("\r")&&!rest.contains("\n"));
     List<Map<String,String>> scopes=Arrays.asList(new HashMap<>(),new HashMap<>());int section=0;
     Set<String> allowed=new HashSet<>(Arrays.asList("group msid-semantic fingerprint ice-ufrag ice-pwd ice-options setup mid sctp-port max-message-size end-of-candidates extmap-allow-mixed sendrecv".split(" ")));
     for(String line:raw.substring(0,raw.length()-2).split("\r\n",-1)){

@@ -29,6 +29,9 @@ class Frame:
     generation: int = 1
     use: int = 0
     receiver_nonce: bytes = b""
+    recipient_unknown: bool = False
+    probe_hash: bytes = b""
+    deadline: int = 10000
 
 
 class Experiment:
@@ -42,7 +45,7 @@ class Experiment:
         self.offer, self.answer, self.losses = offer, answer, losses
         self.faults,self.peers=faults,peers
         self.ack_delay_ms=ack_delay_ms;self.delivery_delays=delivery_delays or {};self.implicit_offer=implicit_offer
-        self.boot_ready={'client':set(),'daemon':set()};self.challenges={};self.learned_nonce={}
+        self.boot_ready={'client':set(),'daemon':set()};self.challenges={};self.probes={};self.received_probes={};self.learned_nonce={}
         self.implicit_proofs=[];self.gate_rejections=0;self.challenge_ack_at={};self.offer_installed_at={}
         self.retired_pcs=set()
         self.offerer=offerer;self.answerer="daemon" if offerer=="client" else "client";self.offer_started=set()
@@ -81,8 +84,11 @@ class Experiment:
 
     def send(self,frame):
         receiver='daemon' if frame.sender=='client' else 'client'
-        frame=replace(frame,generation=0 if frame.pc==-1 else 1,use=0 if frame.pc==-1 else frame.pc+1,
-                      receiver_nonce=frame.receiver_nonce or self.learned_nonce.get((frame.sender,frame.peer),b"unknown"))
+        frame=replace(frame,generation=0 if frame.pc==-1 else frame.generation,use=0 if frame.pc==-1 else frame.pc+1,
+                      recipient_unknown=frame.kind=='Probe',receiver_nonce=b'' if frame.kind=='Probe' else frame.receiver_nonce or self.learned_nonce.get((frame.sender,frame.peer),b'unknown'))
+        if frame.kind=='Probe':self.probes[(frame.sender,frame.peer)]=frame
+        if frame.kind=='Challenge':
+            request=self.received_probes.get((frame.sender,frame.peer));frame=replace(frame,probe_hash=self.ack_binding(request)[2] if request else b'')
         if frame.kind=='Challenge':self.challenges[frame.peer]=frame
         key=(frame.sender,frame.peer,frame.pc,frame.seq)
         self.initial[frame.sender]+=1
@@ -94,7 +100,7 @@ class Experiment:
 
     def attempt(self,frame,attempt,digest):
         key=(frame.sender,frame.peer,frame.pc,frame.seq)
-        if key in self.acked:return
+        if key in self.acked or self.now>=frame.deadline or (frame.pc>=0 and (frame.generation!=1 or frame.receiver_nonce!=self.learned_nonce.get((frame.sender,frame.peer)))):return
         assert hashlib.sha256(frame.body).hexdigest()==digest
         self.sends[frame.sender]+=1;self.body_bytes[frame.sender]+=len(frame.body)
         self.log('send',frame,attempt=attempt)
@@ -111,8 +117,13 @@ class Experiment:
         key=(f.sender,f.peer,f.pc,f.seq);lane=key[:3]
         # Crypto/identity/head/lease are premises; admission below is explicit.
         receiver='daemon' if f.sender=='client' else 'client';pc_key=(f.peer,f.pc)
+        if self.now>=f.deadline:self.gate_rejections+=1;self.log('expired_delivery',f);return
+        if f.recipient_unknown and (f.kind!='Probe' or f.receiver_nonce):self.gate_rejections+=1;return
+        if f.kind=='Challenge':
+            request=self.probes.get((receiver,f.peer))
+            if not request or self.now>=request.deadline or f.probe_hash!=self.ack_binding(request)[2] or f.receiver_nonce!=self.nonce(receiver,f.peer):self.gate_rejections+=1;return
         if f.pc>=0:
-            valid_context=f.generation==1 and f.use==f.pc+1 and f.receiver_nonce==self.nonce(receiver,f.peer)
+            valid_context=not f.recipient_unknown and f.generation==1 and f.use==f.pc+1 and f.receiver_nonce==self.nonce(receiver,f.peer)
             if not valid_context or pc_key in self.retired_pcs:
                 self.gate_rejections+=1;self.log('context_rejected',f);return
             if pc_key not in self.boot_ready[receiver]:
@@ -138,10 +149,13 @@ class Experiment:
                     self.process(f);self.expected[lane]+=1
                     pending=self.pending.setdefault(lane,{})
                     while self.expected[lane] in pending:
-                        next_frame=pending.pop(self.expected[lane]);self.pending_at[lane].pop(self.expected[lane]);self.process(next_frame);self.expected[lane]+=1
+                        next_frame=pending.pop(self.expected[lane]);self.pending_at[lane].pop(self.expected[lane])
+                        if self.now>=next_frame.deadline or next_frame.generation!=1 or next_frame.receiver_nonce!=self.nonce(receiver,next_frame.peer):self.retired_pcs.add(pc_key);self.retired+=1;pending.clear();self.pending_at[lane].clear();self.log('stale_buffer',next_frame);return
+                        self.process(next_frame);self.expected[lane]+=1
                     self.update_gap(lane)
         # Independent Control fake pipe; fault sets may also drop ACKs.
         # acknowledging a buffered candidate does not install it in the SDK.
+        if f.kind=='Probe':return  # The correlated Challenge acknowledges Probe.
         ack_sender='daemon' if f.sender=='client' else 'client'
         self.acks[ack_sender]+=1
         ordinal=self.ack_ordinals.get(key,0);self.ack_ordinals[key]=ordinal+1
@@ -155,6 +169,8 @@ class Experiment:
         else:self.acknowledge(f,binding)
 
     def acknowledge(self,f,binding):
+        receiver='daemon' if f.sender=='client' else 'client'
+        if self.now>=f.deadline or (f.pc>=0 and ((f.peer,f.pc) in self.retired_pcs or f.generation!=1 or f.receiver_nonce!=self.nonce(receiver,f.peer))):return False
         if binding!=self.ack_binding(f):return False
         if f.kind=='Challenge':
             original=self.challenges.get(f.peer)
@@ -169,7 +185,7 @@ class Experiment:
     def update_gap(self,lane):
         arrivals=self.pending_at.get(lane,{})
         if not arrivals:self.gaps.pop(lane,None);return
-        deadline=min(arrivals.values())+self.GAP
+        deadline=min(min(at+self.GAP,self.pending[lane][seq].deadline) for seq,at in arrivals.items())
         if self.gaps.get(lane)==deadline:return
         self.gaps[lane]=deadline
         self.event(deadline,lambda:self.gap(lane))
@@ -204,9 +220,11 @@ class Experiment:
         self.log('process',f)
         k=(f.peer,f.pc)
         if f.kind=='Probe':
+            self.received_probes[('daemon',f.peer)]=f
             self.learned_nonce[('daemon',f.peer)]=f.body
             self.send(Frame('daemon',f.peer,-1,1,'Challenge',self.nonce('daemon',f.peer)))
         elif f.kind=='Challenge':
+            request=self.probes[('client',f.peer)];key=(request.sender,request.peer,request.pc,request.seq);self.acked.add(key);self.outstanding[key[:3]].discard(key)
             assert f.receiver_nonce==self.nonce('client',f.peer)
             self.learned_nonce[('client',f.peer)]=f.body
             self.boot_ready['client'].update((f.peer,pc) for pc in range(2))

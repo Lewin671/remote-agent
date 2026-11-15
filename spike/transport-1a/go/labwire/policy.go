@@ -5,8 +5,11 @@ import "bytes"
 // ValidatePolicyReply compares an authenticated reply with the frozen outgoing
 // request record. The tests also authenticate that request at its recipient.
 // Context.Seq belongs to the reply; it cannot identify the original request.
-func ValidatePolicyReply(request, reply Opened) error {
+func ValidatePolicyReply(request, reply Opened, now uint64) error {
 	a, z := request.Context, reply.Context
+	if now >= a.Deadline || now >= z.Deadline || a.Generation != z.Generation || a.Use != z.Use || !bytes.Equal(a.SenderInstance, z.ReceiverInstance) || !bytes.Equal(a.ReceiverInstance, z.SenderInstance) || !bytes.Equal(a.SenderBoot, z.ReceiverBoot) || !bytes.Equal(a.ReceiverBoot, z.SenderBoot) {
+		return ErrPacket
+	}
 	if a.Class != 2 || z.Class != 2 || request.Type != 9 || reply.Type != 13 || !bytes.Equal(a.From, z.To) || !bytes.Equal(a.To, z.From) || !bytes.Equal(a.Connection, z.Connection) {
 		return ErrPacket
 	}

@@ -35,6 +35,8 @@ def run(name, command, output=None):
     print(name+': passed', flush=True)
 
 run('retry/window', ['python3', lab/'retry-gap.py'], 'retry.json')
+run('model deferred-path audit', ['python3',lab/'audit-models.py',root/'testdata/transport/sdp'], 'model-audit.json')
+run('causal retry model', ['python3',lab/'handshake-budget.py',root/'testdata/transport/sdp'], 'causal.json')
 run('whole-round loss', ['python3', lab/'round-loss-matrix.py', root/'testdata/transport/sdp'], 'round-loss.json')
 run('Go SDK and sender', [a.go, '-C', lab/'go', 'test', './...', '-count=1'])
 run('Go SDP', [a.go, '-C', lab/'go', 'run', '.', 'vectors', root/'testdata/transport/sdp'])
@@ -68,5 +70,13 @@ assert json.loads((a.out/'terminal.json').read_text()) == json.loads((root/'test
 run('proto syntax', ['protoc','--proto_path='+str(lab/'wire'),'--descriptor_set_out='+str(a.out/'draft.pb'),lab/'wire/transport-draft.proto'])
 for row in json.loads((root/'testdata/transport/sdp/manifest.json').read_text()):
     assert hashlib.sha256((root/'testdata/transport/sdp'/row['file']).read_bytes()).hexdigest()==row['sha256']
+# The parity inventory must point to actual shared scenarios, not prose-only claims.
+cases={row.split('\t')[1] for row in (root/'testdata/transport/signal/scenarios.tsv').read_text().splitlines() if row.split('\t')[0] in ['CASE','BATCH_CASE','SENDER_CASE']}
+terminal=json.loads((root/'testdata/transport/terminal/expected.json').read_text())['scenarios']
+for rule in json.loads((root/'testdata/transport/audit/parity.json').read_text()):
+    for vector in rule['vectors']:
+        if '/' in vector: assert (root/'testdata/transport'/vector).exists()
+        elif rule['implementations']=='terminal Go': assert vector in terminal
+        else: assert vector in cases
 run('diff whitespace', ['git','diff','--check'])
 print('All finite offline checks passed; SDK runs remain separately recorded.')

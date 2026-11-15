@@ -22,14 +22,14 @@ message Context {
   bytes sender_boot_nonce = 13; bytes receiver_boot_nonce = 14;
   bytes connection = 15; optional PCUse use = 16; optional uint64 generation = 17;
   uint64 seq = 18; int64 issued_at_ms = 19; int64 deadline_ms = 20;
-  FrameClass purpose = 21; bytes direction = 22; bytes account_domain = 23;
+  FrameClass purpose = 21; bytes direction = 22; bytes account_domain = 23; bool recipient_unknown = 24;
 }
 message SealedPeerPacket {
   bytes context_nonce = 1; bytes encrypted_context = 2;
   bytes body_nonce = 3; bytes encrypted_body = 4; bytes signature = 5;
 }
 message Probe { bytes probe_id = 1; bytes sender_instance = 2; bytes sender_boot_nonce = 3; }
-message Challenge { bytes probe_id = 1; bytes sender_instance = 2; bytes sender_boot_nonce = 3; bytes peer_boot_nonce = 4; bool stale_instance = 5; }
+message Challenge { bytes probe_id = 1; bytes sender_instance = 2; bytes sender_boot_nonce = 3; bytes peer_boot_nonce = 4; bool stale_instance = 5; bytes probe_sha256 = 6; }
 message SDP { bytes original_utf8_crlf = 1; bytes sha256 = 2; }
 message Candidate { bytes original_utf8 = 1; bytes ufrag = 2; bytes mid = 3; uint32 mline_index = 4; uint64 generation = 5; }
 message Candidates { repeated Candidate candidates = 1; uint32 batch_index = 2; }

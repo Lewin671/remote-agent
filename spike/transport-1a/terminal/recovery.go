@@ -73,6 +73,8 @@ func (s *Stream) reply(typ uint64, body []byte) []byte {
 	return opened.Payload
 }
 func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
+	requestDeadline := s.now + 10000
+	requestInstance := s.instance
 	id := labwire.Hash([]byte(fmt.Sprintf("query/%s/%d", s.id, s.controlSeq)))[:16]
 	typ := uint64(3)
 	body := labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.U(3, 1), labwire.U(4, 128), labwire.B(5, nil))
@@ -86,6 +88,10 @@ func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 			return errors.New("query binding")
 		}
 		deliver := func(st Status) {
+			if s.now >= requestDeadline || s.instance != requestInstance {
+				reply(Status{})
+				return
+			}
 			full := watermark(st)
 			token := labwire.Hash(full)
 			result := Status{Available: st.Available, Final: st.Final, Processed: st.Processed, InputSuccess: st.InputSuccess, Failed: st.Failed}
