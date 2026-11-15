@@ -417,6 +417,8 @@ class Remote(
     private val onSessionRemoved: suspend (String) -> Unit = {},
     private val monotonic: () -> Long = { System.nanoTime() / 1_000_000 },
 ) {
+    private val peerResponder = io.github.lewin671.remoteagent.core.peer.PeerResponder(account.deviceSeed)
+    private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     @Volatile private var relayObservation = RemoteState()
@@ -1036,6 +1038,23 @@ class Remote(
                     }
 
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
+                        val peerBody = io.github.lewin671.remoteagent.core.peer.PeerResponder.body(bytes)
+                        if (peerBody != null) {
+                            if (peerJobs.incrementAndGet() > 8) { peerJobs.decrementAndGet(); return }
+                            scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                                try {
+                                    if (!running || gen != generation || networkGen != networkGeneration) return@launch
+                                    val record = security.record()
+                                    val delivery = io.github.lewin671.remoteagent.proto.PeerFrameDelivery.parseFrom(peerBody)
+                                    val member = record.head.core.member(delivery.fromDevice.toStringUtf8()) ?: return@launch
+                                    if (!record.member || member.kind != 1u) return@launch
+                                    val reply = peerResponder.receive(peerBody, record.pin.account, record.pin.domain, DeviceSecurity.stateHash(record.head), record.head.core.epoch.toLong(), account.deviceId, record.peerBoxKey(), member.id, member.ed, member.x, maxOf(System.currentTimeMillis(), record.floor.toLong()), record.leaseExpiration())
+                                    if (reply != null && running && gen == generation && networkGen == networkGeneration && DeviceSecurity.stateHash(security.record().head).contentEquals(DeviceSecurity.stateHash(record.head))) stream.send(reply)
+                                } catch (_: Exception) { /* Optional peer traffic cannot close the main stream. */ }
+                                finally { peerJobs.decrementAndGet() }
+                            }
+                            return
+                        }
                         if (bytes.size > STREAM_FRAME_BYTES) {
                             cleanup({ stream.cancel() }, { frames.cancel() })
                             return

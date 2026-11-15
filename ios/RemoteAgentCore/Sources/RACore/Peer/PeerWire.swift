@@ -1,0 +1,91 @@
+import Foundation
+import CryptoKit
+
+// Authenticated protocol 16 codec. No account scope or fixture key is global.
+enum PeerWire {
+    typealias Bytes = [UInt8]
+    enum Invalid: Error { case packet }
+    static func check(_ ok: Bool) throws { if !ok { throw Invalid.packet } }
+    static func utf8(_ s: String) -> Bytes { Array(s.utf8) }
+    static func hash(_ b: Bytes) -> Bytes { Array(SHA256.hash(data: Data(b))) }
+    static func hex(_ b: Bytes) -> String { b.map { String(format: "%02x",$0) }.joined() }
+    static func unhex(_ s: String) -> Bytes { let c=Array(s.utf8);return stride(from:0,to:c.count,by:2).map { UInt8(String(bytes:c[$0...$0+1],encoding:.utf8)!,radix:16)! } }
+    static func num(_ n: UInt64) -> Bytes { (0..<8).reversed().map { UInt8(truncatingIfNeeded:n >> ($0*8)) } }
+    static func lp(_ values: Bytes...) -> Bytes { values.flatMap { Array(num(UInt64($0.count)).suffix(4)) + $0 } }
+    static func vint(_ value: UInt64) -> Bytes { var n=value,out=Bytes();repeat { var b=UInt8(n&127);n >>= 7;if n != 0 { b |= 128 };out.append(b) } while n != 0;return out }
+    struct Field { let n:Int; var data:Bytes=[];var value:UInt64=0;var bytes:Bool=false }
+    static func b(_ n:Int,_ value:Bytes)->Field { Field(n:n,data:value,bytes:true) }
+    static func u(_ n:Int,_ value:UInt64)->Field { Field(n:n,value:value) }
+    static func pb(_ fields:[Field])->Bytes { fields.sorted{$0.n<$1.n}.flatMap { vint(UInt64($0.n*8+($0.bytes ? 2:0))) + ($0.bytes ? vint(UInt64($0.data.count))+$0.data : vint($0.value)) } }
+    static func parse(_ raw:Bytes,_ max:Int)throws->[Int:Field] {
+        try check(raw.count<=65536);var at=0,last:UInt64=0,out:[Int:Field]=[:]
+        func read()throws->UInt64 { let start=at;var n:UInt64=0
+            for i in 0..<10 { try check(at<raw.count);let c=raw[at];at+=1;try check(i != 9 || c<=1);n |= UInt64(c&127) << (i*7)
+                if c&128==0 { try check(Array(raw[start..<at])==vint(n));return n }
+            };throw Invalid.packet
+        }
+        while at<raw.count { let tag=try read(),n=tag>>3,wire=tag&7;try check(n>last && n<=4095 && out.count<max);last=n
+            if wire==0 {out[Int(n)]=u(Int(n),try read())}else{try check(wire==2);let size=try read();try check(size<=UInt64(raw.count-at));out[Int(n)]=b(Int(n),Array(raw[at..<at+Int(size)]));at+=Int(size)}
+        };return out
+    }
+    static func need(_ fields:[Int:Field],_ schema:String)throws { let chars=Array(schema);try check(fields.count==chars.count);for i in chars.indices {guard let f=fields[i+1] else {throw Invalid.packet};try check(f.bytes==(chars[i]=="b"))} }
+    struct Scope: Sendable { let account, accountDomain, head: Bytes; let epoch: UInt64 }
+    static func kdf(_ secret:Bytes,_ info:Bytes)->Bytes { let key=HKDF<SHA256>.deriveKey(inputKeyMaterial:SymmetricKey(data:secret),salt:hash(utf8("remote-agent/peer-hkdf/v1")),info:info,outputByteCount:32);return key.withUnsafeBytes { Array($0) } }
+    static func gcm(_ key:Bytes,_ nonce:Bytes,_ aad:Bytes,_ body:Bytes,_ seal:Bool)throws->Bytes {
+        try check(nonce.count==12);let k=SymmetricKey(data:key),n=try AES.GCM.Nonce(data:nonce)
+        if seal {let result=try AES.GCM.seal(Data(body),using:k,nonce:n,authenticating:Data(aad));return Array(result.ciphertext)+Array(result.tag)}
+        try check(body.count>=16);let box=try AES.GCM.SealedBox(nonce:n,ciphertext:body.dropLast(16),tag:body.suffix(16));return Array(try AES.GCM.open(box,using:k,authenticating:Data(aad)))
+    }
+    struct Public: Sendable { var id,instance,boot:Bytes; let role:UInt64; let sign:Curve25519.Signing.PublicKey;let box:Curve25519.KeyAgreement.PublicKey }
+    struct Identity: Sendable { var peer:Public; let sign:Curve25519.Signing.PrivateKey;let box:Curve25519.KeyAgreement.PrivateKey
+      var id:Bytes {peer.id};var instance:Bytes {peer.instance};var boot:Bytes {peer.boot};var role:UInt64 {peer.role}
+    }
+    static func shared(_ from:Identity,_ to:Public)throws->Bytes { try from.box.sharedSecretFromKeyAgreement(with:to.box).withUnsafeBytes{Array($0)} }
+    struct Context: Sendable {
+        var domain,from,to,machine,senderInstance,receiverInstance,senderBoot,receiverBoot,connection:Bytes
+        var fromRole,toRole,use,generation,seq,issued,deadline,cls:UInt64;var recipientUnknown:UInt64=0
+        init(_ a:Public,_ z:Public,_ conn:Bytes,_ use:UInt64,_ gen:UInt64,_ seq:UInt64,_ now:UInt64,_ cls:UInt64=1,_ boot:Bool=false){domain=utf8(boot ? "bootstrap":cls==1 ? "signal":"control");from=a.id;to=z.id;fromRole=a.role;toRole=z.role;machine=a.role==2 ? a.id:z.id;senderInstance=a.instance;receiverInstance=z.instance;senderBoot=a.boot;receiverBoot=z.boot;connection=conn;self.use=use;generation=gen;self.seq=seq;issued=now;deadline=now+10000;self.cls=cls}
+        init(_ f:[Int:Field]) {domain=f[1]!.data;from=f[3]!.data;to=f[4]!.data;fromRole=f[5]!.value;toRole=f[6]!.value;machine=f[7]!.data;senderInstance=f[11]!.data;receiverInstance=f[12]!.data;senderBoot=f[13]!.data;receiverBoot=f[14]!.data;connection=f[15]!.data;use=f[16]!.value;generation=f[17]!.value;seq=f[18]!.value;issued=f[19]!.value;deadline=f[20]!.value;cls=f[21]!.value;recipientUnknown=f[24]!.value}
+        func encode(_ scope:Scope)->Bytes {pb([b(1,domain),b(2,scope.account),b(3,from),b(4,to),u(5,fromRole),u(6,toRole),b(7,machine),u(8,UInt64(protocolVersion)),u(9,scope.epoch),b(10,scope.head),b(11,senderInstance),b(12,receiverInstance),b(13,senderBoot),b(14,receiverBoot),b(15,connection),u(16,use),u(17,generation),u(18,seq),u(19,issued),u(20,deadline),u(21,cls),b(22,from),b(23,scope.accountDomain),u(24,recipientUnknown)])}
+    }
+    static func context(_ scope:Scope,_ raw:Bytes)throws->Context {let f=try PeerSchema.fields(raw,"Context");try need(f,"bbbbuubuubbbbbbuuuuuubbu");try check(f[23]!.data==scope.accountDomain && f[2]!.data==scope.account && f[8]!.value==UInt64(protocolVersion) && f[9]!.value==scope.epoch && f[10]!.data==scope.head && f[22]!.data==f[3]!.data);return Context(f)}
+    static func wrapInfo(_ scope:Scope,_ a:Bytes,_ z:Bytes)->Bytes {let sorted=[a,z].sorted{$0.lexicographicallyPrecedes($1)};return lp(utf8("remote-agent/peer-context/v1"),scope.account,scope.accountDomain,sorted[0],sorted[1],a,z)}
+    static func bodyInfo(_ scope:Scope,_ c:Context)->Bytes {if c.domain==utf8("bootstrap"){return lp(utf8("remote-agent/peer-bootstrap/v1"),scope.account,scope.accountDomain,c.from,c.to)};return lp(utf8("remote-agent/peer-body/v1"),scope.account,scope.accountDomain,c.from,c.to,c.senderInstance,c.receiverInstance,c.senderBoot,c.receiverBoot,c.connection,num(c.use),num(c.generation),num(c.cls))}
+    static func aad(_ scope:Scope,_ a:Bytes,_ z:Bytes,_ cls:UInt64,_ id:Bytes)->Bytes {lp(utf8("remote-agent/peer-aad/v1"),scope.account,scope.accountDomain,num(UInt64(protocolVersion)),pb([b(1,a),b(2,z),u(3,cls),b(4,id)]))}
+    static func sigInput(_ ad:Bytes,_ nc:Bytes,_ ec:Bytes,_ nb:Bytes,_ eb:Bytes)->Bytes {lp(utf8("remote-agent/peer-signature/v1"),ad,nc,ec,nb,eb)}
+    static func random(_ n:Int)->Bytes {(0..<n).map{_ in UInt8.random(in:0...255)}}
+    static func seal(_ scope:Scope,_ a:Identity,_ z:Public,_ c:Context,_ type:UInt64,_ payload:Bytes,_ frameID:Bytes?=nil,_ contextNonce:Bytes?=nil,_ bodyNonce:Bytes?=nil)throws->Bytes {
+        let id=frameID ?? random(16),nc=contextNonce ?? random(12),nb=bodyNonce ?? random(12),dh=try shared(a,z),ad=aad(scope,a.id,z.id,c.cls,id)
+        let ec=try gcm(kdf(dh,wrapInfo(scope,a.id,z.id)),nc,ad,c.encode(scope),true)
+        let eb=try gcm(kdf(dh,bodyInfo(scope,c)),nb,lp(ad,hash(ec)),pb([b(1,pb([u(1,type),b(2,payload)]))]),true)
+        let sig=Array(try a.sign.signature(for:Data(sigInput(ad,nc,ec,nb,eb))))
+        let packet=pb([b(1,a.id),b(2,z.id),u(3,c.cls),b(4,id),b(5,pb([b(1,nc),b(2,ec),b(3,nb),b(4,eb),b(5,sig)]))]);try check(packet.count<=(c.cls==2 ? 16384:65536));return packet
+    }
+    struct Opened {let ctx:Context;let type:UInt64;var payload:Bytes;let frameID,hash,raw:Bytes}
+    static func open(_ scope:Scope,_ raw:Bytes,_ a:Public,_ z:Identity,_ now:UInt64)throws->Opened {try openShared(scope,raw,a,z.peer,now,shared(z,a))}
+    static func openSent(_ scope:Scope,_ raw:Bytes,_ a:Identity,_ z:Public,_ now:UInt64)throws->Opened {let o=try openShared(scope,raw,a.peer,z,now,shared(a,z));try check(o.ctx.senderInstance==a.instance && o.ctx.senderBoot==a.boot);return o}
+    static func openShared(_ scope:Scope,_ raw:Bytes,_ a:Public,_ z:Public,_ now:UInt64,_ dh:Bytes)throws->Opened {
+        let f=try PeerSchema.fields(raw,"PeerFrameDelivery");try need(f,"bbubb");let cls=f[3]!.value,id=f[4]!.data
+        try check((cls==1 || cls==2) && raw.count<=(cls==2 ? 16384:65536) && id.count==16 && f[1]!.data==a.id && f[2]!.data==z.id)
+        let p=try PeerSchema.fields(f[5]!.data,"SealedPeerPacket");try need(p,"bbbbb");let nc=p[1]!.data,ec=p[2]!.data,nb=p[3]!.data,eb=p[4]!.data,sig=p[5]!.data,ad=aad(scope,a.id,z.id,cls,id)
+        try check(nc.count==12 && nb.count==12 && sig.count==64 && a.sign.isValidSignature(sig,for:sigInput(ad,nc,ec,nb,eb)))
+        let c=try context(scope,gcm(kdf(dh,wrapInfo(scope,a.id,z.id)),nc,ad,ec,false))
+        try check(c.from==a.id && c.to==z.id && c.cls==cls && c.fromRole==a.role && c.toRole==z.role && a.role != z.role && c.connection.count==16 && c.seq != 0 && c.issued<c.deadline && c.deadline-c.issued<=30000 && now<c.deadline && c.issued<=now+300000)
+        try check(c.machine==(a.role==2 ? a.id:z.id));let boot=c.domain==utf8("bootstrap")
+        try check(c.senderInstance.count==16 && c.senderBoot.count==32 && (1...2).contains(c.fromRole) && (1...2).contains(c.toRole))
+        try check(c.recipientUnknown<=1);if c.recipientUnknown==1{try check(c.receiverInstance.isEmpty && c.receiverBoot.isEmpty)}else{try check(c.receiverInstance.count==16 && c.receiverBoot.count==32 && c.receiverInstance==z.instance && c.receiverBoot==z.boot)}
+        if !boot {try check(c.domain==utf8(cls==1 ? "signal":"control"));try check(c.senderInstance==a.instance && c.receiverInstance==z.instance && c.senderBoot==a.boot && c.receiverBoot==z.boot && c.generation != 0 && c.use<=2)}
+        let body=try gcm(kdf(dh,bodyInfo(scope,c)),nb,lp(ad,hash(ec)),eb,false),w=try PeerSchema.fields(body,"PeerSignal");try need(w,"b");let t=try PeerSchema.fields(w[1]!.data,"TypedPayload");try need(t,"ub");let type=t[1]!.value
+        try check(boot || cls != 1 || c.use != 0 || type==8 || type==9)
+        try check(type<=0xffffffff && (!boot || (cls==1 && c.use==0 && c.generation==0 && (type==1 || type==2))))
+        try check(c.recipientUnknown != 1 || (boot && cls==1 && type==1));return Opened(ctx:c,type:type,payload:t[2]!.data,frameID:id,hash:hash(raw),raw:raw)
+    }
+    static func validatePolicyReply(_ request:Opened,_ reply:Opened,_ now:UInt64)throws {
+        let a=request.ctx,z=reply.ctx;try check(now<a.deadline && now<z.deadline && a.generation==z.generation && a.use==z.use && a.senderInstance==z.receiverInstance && a.receiverInstance==z.senderInstance && a.senderBoot==z.receiverBoot && a.receiverBoot==z.senderBoot);try check(a.cls==2 && z.cls==2 && request.type==9 && reply.type==13 && a.from==z.to && a.to==z.from && a.connection==z.connection)
+        let q=try PeerSchema.fields(request.payload,"DirectPolicy"),r=try PeerSchema.fields(reply.payload,"PolicyReply");try need(q,"buuu");try need(r,"uuuubub")
+        try check(q[2]!.value != 0 && q[3]!.value<=1 && r[2]!.value<=1 && r[3]!.value<=1)
+        try check((q[4]!.value==1 && q[1]!.data.isEmpty) || (q[4]!.value==2 && q[1]!.data.count==32))
+        try check(r[1]!.value==q[2]!.value && r[4]!.value==a.seq && r[5]!.data.count==32 && r[5]!.data==request.hash && r[6]!.value==q[4]!.value && r[7]!.data==q[1]!.data)
+        try check(r[2]!.value != 1 || r[3]!.value==q[3]!.value)
+    }
+}

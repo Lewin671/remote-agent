@@ -151,6 +151,20 @@ func withTimeout<T: Sendable>(
 }
 
 public actor Remote {
+    private let peerResponder = PeerResponder()
+    private let peerBudget = StreamByteBudget(limit: 8 * 65536)
+    private func peerFrame(_ bytes: Data, socket: any FrameStream, generation: Int, network: UInt64) async {
+        defer { peerBudget.release(65536) }
+        guard self.generation == generation, networkGeneration == network, ws === socket else { return }
+        do {
+            let record = try await securitySession().record()
+            let reply = await peerResponder.receive(bytes, record: record, seed: account.deviceSeed, now: UInt64(max(1,clock())))
+            guard self.generation == generation, networkGeneration == network, ws === socket,
+                  let reply, let current = try? await securitySession().record(), current.member,
+                  try DeviceSecurity.stateHash(current.state) == DeviceSecurity.stateHash(record.state) else { return }
+            socket.send(reply)
+        } catch { /* Authenticated peer refusal is optional; relay stays available. */ }
+    }
     public nonisolated let account: Account
     public nonisolated let api: Api
     lazy var deviceLink = Link(relay: RelayPath(api: api, sleep: sleep,
@@ -977,8 +991,15 @@ public actor Remote {
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
         let budget = StreamByteBudget(limit: frameQueueBytes)
         let parse = frameParser.withLock { $0 }
-        let receive = Task.detached {
+        let peerBudget = self.peerBudget
+        let receive = Task.detached { [weak self] in
             while let bytes = try? await socket.receive() {
+                if let body = PeerResponder.body(bytes) {
+                    if peerBudget.reserve(65536) {
+                        Task { if let self { await self.peerFrame(body, socket:socket, generation:gen, network:networkGen) } else { peerBudget.release(65536) } }
+                    }
+                    continue
+                }
                 guard bytes.count <= streamFrameBytes, budget.reserve(bytes.count) else {
                     socket.cancel()
                     break

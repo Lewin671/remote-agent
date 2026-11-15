@@ -1073,6 +1073,8 @@ object DeviceSecurity {
                 stateHash(chain[other.chain.lastIndex]).contentEquals(stateHash(other.head)) &&
                 (chain.size > other.chain.size || xPrivate.contentEquals(other.xPrivate))
 
+        internal fun peerBoxKey(): ByteArray = xPrivate.copyOf()
+
         fun leaseExpiration(): Long =
             lease?.takeIf { runCatching { it.verify(head) }.isSuccess }?.notAfter?.toLong() ?: 0L
 
