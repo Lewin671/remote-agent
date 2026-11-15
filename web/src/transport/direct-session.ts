@@ -12,7 +12,7 @@ export interface DirectSessionOptions {
   send: (frame: DirectedOutput) => boolean;
   chosen: () => void; beforeOffer: () => void;
   ready: (use: number, channel: DirectChannel) => void;
-  closed: () => void; frame: (raw: w.Bytes, use: number) => void;
+  closed: (use?: number) => void; frame: (raw: w.Bytes, use: number) => void;
   capability: (opened: w.Opened) => void;
   probe?: (use: number, milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
@@ -214,7 +214,7 @@ export class DirectSession {
       p.channel = new DirectChannel({ peer: w.text(this.options.peer.id), connection: this.options.connection, use: index + 1, generation: p.gate.generation, deadline: this.options.deadline, budget: this.options.budget, stun: this.options.stun, valid: () => this.active, factory: this.options.factory,
         candidate: candidate => { void this.queue(async () => { if (!this.active) return; if (candidate === null) p.ended = true; else if (!p.batch.add(w.utf8(candidate.candidate ?? ""), p.gate.generation, Date.now(), 1)) p.channel?.close(); }); },
         state: state => { if (["failed", "disconnected"].includes(state)) void this.queue(() => this.restartPC(index)); if (state === "connected") void this.queue(async () => { p.gate.dtls = true; await this.maybeReady(index); }); },
-        frame: raw => this.options.frame(raw, index + 1), closed: () => this.options.closed(), probe: elapsed => this.options.probe?.(index + 1, elapsed),
+        frame: raw => this.options.frame(raw, index + 1), closed: () => this.options.closed(index + 1), probe: elapsed => this.options.probe?.(index + 1, elapsed),
       }); this.options.chosen(); return true;
     } catch { return false; }
   }

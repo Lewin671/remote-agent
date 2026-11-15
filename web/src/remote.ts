@@ -1142,6 +1142,7 @@ export class Remote {
   private setupProgress?: () => void;
   readonly direct: DirectEngine;
   private unwatchDirectInstall?: () => void;
+  private directReadSamples = new Set<string>();
   private directTransfers = new Map<string, "image" | "file">();
   private directHint(machineId: string, cmd: CommandKind): RouteHint | undefined {
     if (cmd?.case === "getSharedFileChunk") return { kind: "bulk", file: `${cmd.value.sessionId}/${cmd.value.fileId}` };
@@ -3597,6 +3598,7 @@ export class Remote {
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
+        if (routeHint?.kind === "read" && !delivery.direct) this.sampleDirectRead(machineId, sid, cmd, prepared.plain);
         if (routeHint) { const bytes = cmd?.case === "putImageChunk" ? cmd.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0; this.direct.observe(machineId, routeHint, delivery.direct, bytes, performance.now() - routeStarted); }
         if (cmd?.case === "beginImageUpload") { if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!); this.directTransfers.set(`${machineId}/${cmd.value.transferId}`, cmd.value.fileName ? "file" : "image"); }
         if (cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload") this.directTransfers.delete(`${machineId}/${cmd.value.transferId}`);
@@ -3611,7 +3613,7 @@ export class Remote {
             await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId: cmd.value.transferId } });
           }
           if (e instanceof PathChanged && Date.now() < deadline) { attempt--; continue; }
-          if (e instanceof PathChanged) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, true, "unknown");
+          if (e instanceof PathChanged) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, readOnlyCommand(cmd), "unknown");
         }
         // Only transport failures are automatically retried here. Interrupted
         // daemon answers still freeze the caller's request slot.
@@ -3672,6 +3674,24 @@ export class Remote {
         throw e;
       }
     }
+  }
+
+  private sampleDirectRead(machineId: string, sid: string, cmd: CommandKind, plain: Uint8Array<ArrayBuffer>) {
+    if (this.closed || !readOnlyCommand(cmd) || this.directReadSamples.has(machineId) || this.directReadSamples.size >= 4 || !this.direct.needsReadSamples(machineId)) return;
+    this.directReadSamples.add(machineId);
+    const slot = newSlot(), hint = { kind: "read" } as const;
+    // The probe is its own read authorization. Its completion cannot change
+    // the user's already verified result or extend that request's deadline.
+    void this.deviceLink.call(slot, async call => {
+      const delivery = this.deviceLink.delivery(call, handoff => this.direct.attempt(machineId, hint, handoff, true));
+      if (!delivery.direct) return;
+      await this.checkNetworkSecurity(); await delivery.prepare();
+      const envelope = await this.sealSecureMessage({ kind: PayloadKind.COMMAND, machineId, sessionId: sid, requestId: slot.requestId, deadlineMs: BigInt(slot.deadline), sender: this.account.deviceId }, CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }), undefined, plain);
+      const started = performance.now(), response = await delivery.send(machineId, envelope);
+      const opened = await this.openSecureMessage(response.result, { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: sid, requestId: slot.requestId }, CommandResultSchema);
+      const identity = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), plain), msg = opened.msg;
+      if (!msg.errorCode && verifiedOutcome(msg, identity.key, identity.payload, msg.outcome, msg.reason, false) === "executed") this.direct.observe(machineId, hint, true, 0, performance.now() - started);
+    }).catch(() => { this.direct.failed(machineId, hint); }).finally(() => { this.directReadSamples.delete(machineId); });
   }
 
   /** Sends a chat message. A retry passes the first attempt's slot, so

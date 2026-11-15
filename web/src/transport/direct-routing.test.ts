@@ -53,3 +53,10 @@ test("keeps read preference behind duration and sample requirements", () => {
   now = 5000; routing.observe(hint, "direct", 1, 40);
   expect(routing.choose(hint, true)).toBe("direct"); expect(routing.choose(hint, true)).toBe("direct");
 });
+
+
+test("foreground reads stay on relay until authenticated background samples qualify",()=>{
+ let now=0;const route=new DirectRouting(()=>now),hint={kind:"read"} as const;
+ for(let i=0;i<100;i++){expect(route.choose(hint,true)).toBe("relay");now+=150;route.observe(hint,"relay",0,150);route.observe(hint,"direct",0,30);}
+ expect(route.needsReadSamples()).toBe(false);expect(route.choose(hint,true)).toBe("direct");
+});

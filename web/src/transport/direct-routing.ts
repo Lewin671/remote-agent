@@ -18,17 +18,17 @@ export class DirectRouting {
   private readBad = 0;
   private readWindow = 0;
   private sample = 0;
-  private alternate = false;
   private files = new Map<string, Bulk>();
   filePath: RouteName = "relay";
   constructor(private readonly now = () => performance.now()) { this.readWindow = Math.floor(now() / 5000); }
+  needsReadSamples() { return this.readPreferred === "relay" && this.now() >= this.readStableAfter; }
   choose(hint: RouteHint, ready: boolean): RouteName {
     if (!ready) return "relay";
     if (hint.kind === "read") {
       this.advanceReads();
       if (this.now() < this.readStableAfter) return "relay";
       if (this.readPreferred === "direct") return ++this.sample % 8 === 0 ? "relay" : "direct";
-      this.alternate = !this.alternate; return this.alternate ? "relay" : "direct";
+      return "relay";
     }
     const file = this.file(hint.file); this.advanceBulk(hint, file);
     if (this.now() < file.stableAfter) return "relay";
@@ -39,7 +39,7 @@ export class DirectRouting {
     if (hint.kind === "read") {
       this.advanceReads();
       const sample = { at: now, milliseconds, queued }; this.reads[path].push(sample); this.recentReads[path].push(sample);
-      for (const samples of Object.values(this.reads)) while (samples.length > 512 || samples.length && now - samples[0].at > 15_000) samples.shift();
+      for (const samples of Object.values(this.reads)) while (samples.length > 512 || samples.length && now - samples[0].at > 60_000) samples.shift();
       const {relay,direct} = this.reads;
       const queueStable = direct.length > 0 && direct.at(-1)!.queued <= direct[0].queued;
       if (relay.length >= 100 && direct.length >= 100 && now - Math.max(relay[0].at,direct[0].at) >= 5000 && now >= this.readStableAfter && queueStable && p95(direct) <= p95(relay) + Math.max(5,p95(relay)*.10)) this.readPreferred = "direct";

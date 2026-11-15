@@ -14,7 +14,7 @@ import { DirectRouting, type RouteHint } from "./direct-routing";
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; redialAt?: number; };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 /** Account owner for optional direct paths. It never owns a logical request or
@@ -34,6 +34,7 @@ export class DirectEngine {
   private routes = new Map<string, DirectRouting>();
   private pending = new Map<string, Pending>();
   private incoming = 0;
+  private inboundPeers = new Map<string, {frames:number;bytes:number}>();
   private incomingBytes = 0;
   private chain = Promise.resolve();
   private leg?: FrameStream;
@@ -100,6 +101,12 @@ export class DirectEngine {
     if (!this.current() || !this.leg?.ready) return;
     const head = this.head;
     for (const member of this.record!.states.at(-1)!.core.members) {
+      const prior=this.peers.get(member.id);
+      if(prior?.redialAt && Date.now()>=prior.redialAt && prior.session.active){
+        // A failed use starts a new bounded pair round after cooldown. Closing
+        // the old SDK objects remains charged to the shared budget.
+        prior.session.retire();this.peers.delete(member.id);this.retryAfter.delete(member.id);
+      }
       if (member.kind !== 1 || !this.enabled(member.id) || this.peers.get(member.id)?.session.active || Date.now() < (this.retryAfter.get(member.id) ?? 0)) continue;
       if (this.peers.size >= 4) break;
       try { const peer = await this.public(member.id); if (!this.current() || head !== this.head) return; const p = this.create(peer, crypto.getRandomValues(new Uint8Array(16)), Date.now() + 10_000); if (p) await p.session.start(); } catch { /* Direct discovery is optional. */ }
@@ -109,13 +116,13 @@ export class DirectEngine {
     const id = w.text(peer.id), now = Date.now();
     for (const [key, p] of this.sessions) if (now > p.session.retainUntil) { p.live = false; p.session.close(); this.sessions.delete(key); }
     if (!this.current() || !this.enabled(id) || this.sessions.size >= 128 || [...this.sessions.values()].filter(p => p.id === id).length >= 32 || !this.peers.has(id) && this.peers.size >= 4) return;
-    const p = { id, head: this.head, paths: new Map<number, DirectChannel>(), live: true, snapshotUntil: 0, downloadUntil: 0 } as Peer;
+    const p = { id, head: this.head, paths: new Map<number, DirectChannel>(), live: true, snapshotUntil: 0, downloadUntil: 0, snapshotSeq: 0n, downloadSeq: 0n } as Peer;
     const choose = () => { for (const old of this.sessions.values()) if (old !== p && old.id === id) old.session.retire(); this.peers.set(id, p); };
     p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun,
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
       ready: (use, path) => { p.paths.set(use, path); this.notify(); },
-      closed: () => { if (![...p.paths.values()].some(path => path.ready)) { this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
+      closed: use => { if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+5000;this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
       frame: (raw, use) => this.frame(p, raw, use), capability: opened => this.capability(p, opened),
     });
     this.sessions.set(w.hex(connection), p); this.peers.set(id, p); return p;
@@ -123,10 +130,11 @@ export class DirectEngine {
   private capability(p: Peer, opened: w.Opened) {
     if (!this.valid(p)) return;
     if (opened.type === 14) {
+      if (opened.context.seq <= p.snapshotSeq) return;
       const snapshot = fromBinary(CapabilitySnapshotSchema, opened.payload);
       if (!snapshot.capabilities) return;
-      p.capabilities = snapshot.capabilities; p.snapshotUntil = Number(snapshot.expiresAtMs);
-    } else { const fields = w.fields(opened.payload, "Capabilities"); p.downloadUntil = w.getUint(fields, 5) === 1n ? Number(w.getUint(fields, 4)) : 0; }
+      p.snapshotSeq = opened.context.seq; p.capabilities = snapshot.capabilities; p.snapshotUntil = Number(snapshot.expiresAtMs);
+    } else { if (opened.context.seq <= p.downloadSeq) return; p.downloadSeq = opened.context.seq; const fields = w.fields(opened.payload, "Capabilities"); p.downloadUntil = w.getUint(fields, 5) === 1n ? Number(w.getUint(fields, 4)) : 0; }
     this.notify();
   }
   private send(p: Peer, out: DirectedOutput) {
@@ -141,15 +149,25 @@ export class DirectEngine {
   }
   receive(raw: w.Bytes, leg: FrameStream) {
     if (leg !== this.leg || !this.current() || raw.byteLength > 65536 || this.incoming >= 64 || this.incomingBytes + raw.length > 4 << 20) return;
+    let source: string;
+    try {
+      const f=w.parse(raw,5), cls=w.getUint(f,3); source=w.text(w.getBytes(f,1));
+      if(f.size!==5||w.getBytes(f,1).length!==32||!w.equal(w.getBytes(f,2),this.self!.id)||w.getBytes(f,4).length!==16||cls<1n||cls>2n||cls===2n&&raw.length>16384||!this.record!.states.at(-1)!.core.members.some(m=>m.id===source&&m.kind===1))return;
+    } catch {return;}
+    const usage=this.inboundPeers.get(source)??{frames:0,bytes:0};
+    if(usage.frames>=8||usage.bytes+raw.length>1<<20)return;
+    usage.frames++;usage.bytes+=raw.length;this.inboundPeers.set(source,usage);
     this.incoming++; this.incomingBytes += raw.length;
     const copy = raw.slice();
     this.chain = this.chain.then(async () => {
       if (!this.current() || leg !== this.leg) return;
       const fields = w.parse(copy, 5), id = w.text(w.getBytes(fields, 1));
       if (!w.equal(w.getBytes(fields, 2), this.self!.id) || !this.enabled(id)) return;
-      const peer = await this.public(id), head = this.head;
+      const head = this.head, codec = this.codec!, self = this.self!;
+      const peer = await this.public(id);
+      if (!this.current() || head !== this.head) return;
       let opened: w.Opened | undefined, target: Peer | undefined;
-      try { opened = await this.codec!.open(copy, peer, this.self!, Date.now()); } catch { /* Bound packets need the proven bootstrap nonce. */ }
+      try { opened = await codec.open(copy, peer, self, Date.now()); } catch { /* Bound packets need the proven bootstrap nonce. */ }
       if (!this.current() || head !== this.head) return;
       if (opened && opened.context.cls === 1n && opened.type === 1) {
         target = this.sessions.get(w.hex(opened.context.connection));
@@ -161,11 +179,11 @@ export class DirectEngine {
       } else {
         for (const p of this.sessions.values()) {
           if (p.id !== id || p.head !== head) continue;
-          try { const o = await this.codec!.open(copy, p.session.peer, this.self!, Date.now()); if (w.equal(o.context.connection, p.session.options.connection)) { target = p; break; } } catch { /* Try only bounded current scopes. */ }
+          try { const o = await codec.open(copy, p.session.peer, self, Date.now()); if (w.equal(o.context.connection, p.session.options.connection)) { target = p; break; } } catch { /* Try only bounded current scopes. */ }
         }
       }
       if (target && this.valid(target)) target.session.receive(copy);
-    }).catch(() => undefined).finally(() => { this.incoming--; this.incomingBytes -= copy.length; });
+    }).catch(() => undefined).finally(() => { this.incoming--; this.incomingBytes -= copy.length;usage.frames--;usage.bytes-=copy.length;if(!usage.frames)this.inboundPeers.delete(source); });
   }
   result(raw: w.Bytes, leg: FrameStream) {
     if (leg !== this.leg) return;
@@ -185,8 +203,9 @@ export class DirectEngine {
     if (hint.kind === "bulk" && hint.upload) { const caps = this.capabilities(id); return !!caps && !!hint.bytes && hint.bytes <= caps.maxChunkBytes && (hint.upload === "file" ? caps.fileUpload : caps.imageUpload); }
     return hint.kind !== "bulk" || Date.now() < p.downloadUntil;
   }
-  attempt(id: string, hint: RouteHint, handoff: () => void): PathAttempt | undefined {
-    if (this.routing(id).choose(hint, this.ready(id, hint)) !== "direct") return;
+  needsReadSamples(id: string) { return this.ready(id, {kind:"read"}) && this.routing(id).needsReadSamples(); }
+  attempt(id: string, hint: RouteHint, handoff: () => void, sample = false): PathAttempt | undefined {
+    if (sample ? hint.kind !== "read" || !this.needsReadSamples(id) : this.routing(id).choose(hint, this.ready(id, hint)) !== "direct") return;
     const peer = this.peers.get(id)!, use = hint.kind === "read" ? 1 : 2, path = peer.paths.get(use)!;
     const attemptId = newRequestID();
     return { direct: true, attemptId, prepare: async () => { if (!this.ready(id, hint)) throw new PathChanged(); }, refusal: () => undefined, refreshAuth: async () => this.authorize(),
@@ -205,6 +224,6 @@ export class DirectEngine {
   }
   observe(id: string, hint: RouteHint, direct: boolean, bytes: number, milliseconds: number) { this.routing(id).observe(hint, direct ? "direct" : "relay", bytes, milliseconds, this.peers.get(id)?.paths.get(hint.kind === "read" ? 1 : 2)?.queuedBytes ?? 0); this.notify(); }
   failed(id: string, hint: RouteHint) { this.routing(id).fail(hint); this.notify(); }
-  filePath(id: string) { return this.enabled(id) && [...(this.peers.get(id)?.paths.values() ?? [])].some(p => p.ready) ? this.routing(id).filePath : "relay"; }
+  filePath(id: string) { const p=this.peers.get(id);return p && this.valid(p) && p.paths.get(2)?.ready ? this.routing(id).filePath : "relay"; }
   close() { clearInterval(this.timer); this.timer = undefined; this.leg = undefined; this.invalidate(); }
 }
