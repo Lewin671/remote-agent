@@ -39,6 +39,17 @@ iOS full 在本轮新建的 iPhone 18 Pro／iOS 27 模拟器上通过，App 488 
 本轮没有重跑原生 CLI 和恢复分位数；本节前文的真实链路与 160 个恢复样本只代表首次交付。真机网络、正式恢复测量和执行槽全满时的业务恢复边界仍见 [计划](plan.md#待确认)。没有 push、发版或部署。
 
 
+### 原生网络基线与重试期限复核（2026-11-14）
+
+在 v0.75.3、协议 15 的本地分支上修复 Android/iOS 的网络基线接入与 Forward 无界换路等待。`fca78200` 保存账户加载前的网络观察，接入引擎时先播种签名；首次观察晚于 Ready 也只记录基线。`3d1e2b60` 用原 deadline + daemon 结果保留期约束 Forward，并让过期 iOS waiter 退出共享授权等待，保留 owner 与原错误类别。设计约束见 [transport](transport.md#第-0c-期活性与重连)。
+
+12 组撤销对照全部得到运行时断言失败：Android 4、iOS 7、共享常量生成 1。覆盖 Ready 前的阻塞登录在真实签名变化时退休、首次观察的两种接入顺序和晚于 Ready 的情形、持续换路与无下一次 Ready 的黑洞、共享授权取消隔离及登录超时的错误类别。Go remoteclient 的 Forward 没有 Ready 自动重试循环，无需改运行时；仅扩展常量生成器并核对三端与同一 Go 策略一致。网页和 internal 源码保持原样。
+
+Go full、Android full（core 603、App 802、terminal 7，零失败/跳过，lintVitalRelease 通过）、RACore（运行器报告 823 项，另有 17、2 项运行器及 XCTest 1 项；保留既有真实 CLI opt-in 跳过）、i18n generate --check/lint 全部通过。iOS full 在本轮自建的 iPhone 18 Pro／iOS 27 模拟器上通过 App 492 项，零失败/跳过；源码摘要确认额外撤销对照恢复后的 iOS 内容与 full 验证时一致。未改 iOS UI，本轮未运行 UI 自动化。
+
+本轮不把其他任务的真实 CLI 或性能测量计入自己的验收。独立模拟器、DerivedData、Swift scratch 与 Android 构建目录在收尾时删除，共享 checkout 输出及其他任务的测试环境保留；仅本地提交。
+
+
 ## 1. 验证等级
 
 下文和 [plan.md](plan.md) 用同一组说法，它们不能互相替代：
