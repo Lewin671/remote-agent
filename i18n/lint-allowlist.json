@@ -1733,5 +1733,705 @@
     "path": "internal/transport/peerwire/signal.go",
     "literal": "gen=%d next=%d sdk=%d duplicate=%d conflict=%d rejected=%d unsupported=%d",
     "reason": "Internal signal validation or bounded state summary, never product text; does not include keys, SDP, candidates or identifiers."
+  },
+  {
+    "path": "internal/transport/direct/path.go",
+    "literal": "direct_closed",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "internal/transport/direct/path.go",
+    "literal": "direct_limit",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sender.js",
+    "literal": "mutable frame",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sender.js",
+    "literal": "batch cap",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "SDP hash",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "short",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "integer",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "length",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate bounds",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Candidate",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "bbbuu",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate ASCII",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "ufrag",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "batch",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "closed",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Probe record",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale Probe",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Challenge record",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale Challenge",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "ACK schema",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "ACK range",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "bootstrap ACK scope",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Challenge ACK",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "unproven ACK",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "bootstrap body",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate shape",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "EndCandidates",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "end shape",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Confirm",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Confirm shape",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Restart binding",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "local role/state",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale SDK callback",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "generation",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "authorization",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "binding",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale preflight",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "conflict",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "cache full",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "bootstrap scope",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Probe",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Challenge",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "bbb",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "bootstrap binding",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "Challenge correlation",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale bootstrap callback",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "new peer needs new connection",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale bootstrap",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "scope",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "generation role",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "old seq",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "gap full",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale buffered signal",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale drain",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "SDP role",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "stale SDK install",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate state",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate cap",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "candidate binding",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "end state",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "buu",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "end counts",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "confirm",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/signal.js",
+    "literal": "restart role",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "size",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "utf-8",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "lines",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "media",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "a=ice-lite",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "ice-lite",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "attribute",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "duplicate",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "line",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "fingerprint",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "fingerprint-conflict",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "ice-ufrag",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "ice-pwd",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "setup",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "ice-inheritance",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "credentials",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "active",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "passive",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "actpass",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "sctp-port",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "sctp",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/sdp.js",
+    "literal": "mid",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "schema size",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "short integer",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "overflow",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "nonminimal",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "integer",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "schema field",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "range",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "length",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "wire type",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "count",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "packed",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "packed overflow",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "packed integer",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "body relation",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "body bounds",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "Restart targets",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/schema.js",
+    "literal": "Restart empty",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "utf-8",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "integer",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "size",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "short",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "overflow",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "nonminimal",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "fields",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "length",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "wire",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "schema",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "scope",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "remote-agent/peer-hkdf/v1",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "sent identity",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "PeerFrameDelivery",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "bbubb",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "route",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "SealedPeerPacket",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "bbbbb",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "signature",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "context",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "machine",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "bootstrap",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "shape",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "recipient binding",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "signal",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "control",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "domain",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "instance",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "peer-scope type",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "type",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "unknown recipient type",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "stale policy reply",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "policy binding",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "policy fields",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "policy reply",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "web/src/transport/peer/wire.js",
+    "literal": "wire_type",
+    "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
   }
 ]
