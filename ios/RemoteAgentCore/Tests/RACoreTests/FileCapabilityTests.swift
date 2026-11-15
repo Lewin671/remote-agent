@@ -114,7 +114,7 @@ extension ServerTests {
             try await world { w, r in
                 let p = try r.prepare(machineId: w.daemon.id, sessionId: "s1", fileCommand(create: false))
                 let hash = try await r.authorizationStateHash()
-                _ = p.authorizationTask(stateHash: hash) { verify in Task {
+                _ = p.authorizationResult(stateHash: hash) { verify in Task {
                     let sealed = try await r.authorizePrepared(p, verifyObservation: verify)
                     try await advertise(w, r, fileUpload: false)
                     return sealed

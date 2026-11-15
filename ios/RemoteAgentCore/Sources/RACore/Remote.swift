@@ -52,7 +52,7 @@ public final class PreparedCommand: @unchecked Sendable {
         command=try PBCommand(serializedBytes:record.payload)
     }
     private let sealLock = NSLock()
-    private var sealJob: Task<PBEnvelope, Error>?
+    private var sealResult: SharedResult<PBEnvelope>?
     private var sealID: UUID?
     private var sealState: Data?
     private var everAuthorized = false
@@ -62,7 +62,7 @@ public final class PreparedCommand: @unchecked Sendable {
         sealLock.lock()
         defer { sealLock.unlock() }
         if sealID == id {
-            sealJob = nil
+            sealResult = nil
             sealID = nil
             sealState = nil
         }
@@ -72,28 +72,29 @@ public final class PreparedCommand: @unchecked Sendable {
         defer { sealLock.unlock() }
         if sealID == id { everAuthorized = true }
     }
-    func authorizationTask(
+    func authorizationResult(
         stateHash: Data, _ make: @escaping @Sendable (Bool) -> Task<PBEnvelope, Error>
-    ) -> Task<PBEnvelope, Error> {
+    ) -> SharedResult<PBEnvelope> {
         sealLock.lock()
         defer { sealLock.unlock() }
-        if let sealJob, sealState == stateHash { return sealJob }
+        if let sealResult, sealState == stateHash { return sealResult }
         let id = UUID()
         sealID = id
         sealState = stateHash
         let verifyObservation = !everAuthorized
-        let task = Task {
+        let result = SharedResult<PBEnvelope>()
+        Task {
             do {
                 let envelope = try await make(verifyObservation).value
                 self.authorized(id)
-                return envelope
+                result.resolve(.success(envelope))
             } catch {
                 self.clearAuthorization(id)
-                throw error
+                result.resolve(.failure(error))
             }
         }
-        sealJob = task
-        return task
+        sealResult = result
+        return result
     }
 
     public init(

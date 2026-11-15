@@ -120,7 +120,35 @@ extension Remote {
         }
     }
 
+    private func forwardLifetimeExpired() -> CommandError {
+        CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
+    }
+
     private func forwardPrepared(_ p: PreparedCommand, call: DispatchState.Call) async throws -> PBCommandResult {
+        // PathChanged never consumes retries or moves the original recovery cutoff.
+        let (sum, overflow) = p.deadlineMs.addingReportingOverflow(resultRetentionMs)
+        let recoveryDeadline = overflow ? Int64.max : sum
+        let now = clock()
+        guard now < recoveryDeadline else {
+            if !call.uncertain { throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent()) }
+            throw forwardLifetimeExpired()
+        }
+        let remaining = recoveryDeadline - now
+        let outcome: Result<PBCommandResult, Error>
+        do {
+            outcome = try await withTimeout(remaining, sleep: sleep) {
+                // Preserve errors from inner steps; only this timer owns the cutoff.
+                do { return .success(try await self.forwardWithinLifetime(p, call: call, recoveryDeadline: recoveryDeadline)) }
+                catch { return .failure(error) }
+            }
+        } catch {
+            if error is TimedOut || call.uncertain { throw forwardLifetimeExpired() }
+            throw error
+        }
+        return try outcome.get()
+    }
+
+    private func forwardWithinLifetime(_ p: PreparedCommand, call: DispatchState.Call, recoveryDeadline: Int64) async throws -> PBCommandResult {
         let prior = call.uncertain
         if verifiedNetworkGeneration != networkGeneration {
             let gen=networkGeneration
@@ -152,13 +180,14 @@ extension Remote {
         // Authorize only after login. A prepared intent keeps plaintext locally;
         // no old-key ciphertext is sent while authority freshness is unknown.
         while true {
+            guard clock() < recoveryDeadline else { throw forwardLifetimeExpired() }
             let delivery = deviceLink.delivery(call)
             let attemptId = delivery.attemptId
             do {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 try await delivery.prepare(prior: call.uncertain)
                 let stateHash = try await authorizationStateHash()
-                let envelope = try await p.authorizationTask(stateHash: stateHash) {
+                let envelope = try await p.authorizationResult(stateHash: stateHash) {
                     verifyObservation in
                     Task {
                         try await self.authorizePrepared(p, verifyObservation: verifyObservation && !call.hasPrior)
@@ -168,6 +197,7 @@ extension Remote {
                 // Login, authorization and signing can suspend across a machine refresh.
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 let binding = try await securitySession().commandIdentity(envelope)
+                guard clock() < recoveryDeadline else { throw forwardLifetimeExpired() }
                 let res = try await recovery.follow { try await delivery.send(machineId: p.machineId, command: envelope) }
                 let msg: PBCommandResult
                 do {

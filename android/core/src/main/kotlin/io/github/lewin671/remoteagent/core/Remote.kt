@@ -3517,7 +3517,25 @@ class Remote(
     suspend fun forward(p: PreparedCommand, retryOfUnknown: Boolean = false): CommandResult =
         deviceLink.call(p, retryOfUnknown, dispatcher) { call -> forwardOnWorker(p, call) }
 
+    private fun forwardLifetimeExpired() = CommandException(CommandException.UNKNOWN,
+        UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult().messageText(),
+        failureKind = CommandFailureKind.UNKNOWN, outcome = Outcome.UNKNOWN)
+
     private suspend fun forwardOnWorker(p: PreparedCommand, call: DispatchState.Call): CommandResult {
+        // PathChanged never consumes retries or moves the original recovery cutoff.
+        val recoveryDeadline = p.deadlineMs.coerceAtMost(Long.MAX_VALUE - RESULT_RETENTION_MS) + RESULT_RETENTION_MS
+        val now = clock()
+        if (now >= recoveryDeadline) {
+            if (!call.uncertain) throw CommandException(CommandException.EXPIRED, UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText())
+            throw forwardLifetimeExpired()
+        }
+        val remaining = recoveryDeadline - now
+        return kotlinx.coroutines.withTimeoutOrNull(remaining) {
+            forwardWithinLifetime(p, call, recoveryDeadline)
+        } ?: throw forwardLifetimeExpired()
+    }
+
+    private suspend fun forwardWithinLifetime(p: PreparedCommand, call: DispatchState.Call, recoveryDeadline: Long): CommandResult {
         val prior = call.uncertain
         if (verifiedNetworkGeneration != networkGeneration) {
             val gen = networkGeneration
@@ -3551,6 +3569,7 @@ class Remote(
         // "machine offline" then says nothing about it.
         try {
             while (true) {
+                if (clock() >= recoveryDeadline) throw forwardLifetimeExpired()
                 val delivery = deviceLink.delivery(call)
                 val attemptId = delivery.attemptId
                 try {
@@ -3561,6 +3580,7 @@ class Remote(
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
                     val binding = security.commandIdentity(authorized)
+                    if (clock() >= recoveryDeadline) throw forwardLifetimeExpired()
                     val res = recovery.follow { delivery.send(p.machineId, authorized) }
                     val (_, msg) =
                         try {
