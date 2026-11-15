@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -92,6 +93,8 @@ func TestControlPrioritySessionLimitAndPathIndependence(t *testing.T) {
 		scheduler := NewScheduler(link)
 		defer scheduler.Close()
 		release := make(chan struct{})
+		var releaseOnce sync.Once
+		defer releaseOnce.Do(func() { close(release) })
 		approvalRelease := make(chan struct{})
 		defer close(approvalRelease)
 		order := make(chan string, 8)
@@ -124,7 +127,7 @@ func TestControlPrioritySessionLimitAndPathIndependence(t *testing.T) {
 			t.Fatal("same session occupied two interactive slots")
 		}
 		cancel()
-		close(release)
+		releaseOnce.Do(func() { close(release) })
 		synctest.Wait()
 		if got := <-order; got != "control" {
 			t.Fatalf("input jumped ahead of control: %s", got)
@@ -150,7 +153,7 @@ func TestQueueExpiryAndQuarantineKeepOriginalSlot(t *testing.T) {
 		if scheduler.Active()[1] != 1 {
 			t.Fatal("deadline released a running callback")
 		}
-		if scheduler.Submit(context.Background(), &Job{Class: Ordinary, Peer: "other", Resources: []string{"resource"}, Bytes: 1, Deadline: time.Now().Add(time.Minute)}) {
+		if scheduler.Submit(context.Background(), &Job{Class: Ordinary, Peer: "other", Resources: []string{"resource"}, Bytes: 1, Deadline: time.Now().Add(time.Minute), Run: func(context.Context, *Execution) {}, Reject: func() {}}) {
 			t.Fatal("quarantined resource admitted work")
 		}
 		ran := false
@@ -175,4 +178,132 @@ func TestQueueSkipsBlockedResourceInSamePeerFlow(t *testing.T) {
 	if q.Len() != 1 {
 		t.Fatal("blocked request was discarded")
 	}
+}
+
+func TestControlPriorityLevelsKeepSnapshotLast(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		link := NewLink(context.Background())
+		defer link.Close()
+		defer link.DrainCalls()
+		s := NewScheduler(link)
+		defer s.Close()
+		holdInput, holdApproval := make(chan struct{}), make(chan struct{})
+		var inputOnce, approvalOnce sync.Once
+		defer inputOnce.Do(func() { close(holdInput) })
+		defer approvalOnce.Do(func() { close(holdApproval) })
+		order := make(chan int, 8)
+		job := func(id int, priority uint8, approval bool, hold <-chan struct{}) *Job {
+			return &Job{Class: Control, Priority: priority, Approval: approval, Peer: "peer", Session: fmt.Sprintf("session-%d", id), Bytes: 1, Deadline: time.Now().Add(time.Minute), Reject: func() { t.Errorf("rejected %d", id) }, Run: func(context.Context, *Execution) {
+				order <- id
+				if hold != nil {
+					<-hold
+				}
+			}}
+		}
+		s.Submit(context.Background(), job(10, 1, false, holdInput))
+		s.Submit(context.Background(), job(11, 0, true, holdApproval))
+		synctest.Wait()
+		<-order
+		<-order
+		for _, p := range []uint8{3, 2, 1, 0} {
+			if !s.Submit(context.Background(), job(int(p), p, p == 0, nil)) {
+				t.Fatal("queue refusal")
+			}
+		}
+		approvalOnce.Do(func() { close(holdApproval) })
+		synctest.Wait()
+		if got := <-order; got != 0 {
+			t.Fatalf("approval lost priority: %d", got)
+		}
+		inputOnce.Do(func() { close(holdInput) })
+		synctest.Wait()
+		for _, want := range []int{1, 2, 3} {
+			if got := <-order; got != want {
+				t.Fatalf("control priority: got %d want %d", got, want)
+			}
+		}
+	})
+}
+
+func TestInteractiveSessionNeverUsesTwoSlots(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		link := NewLink(context.Background())
+		defer link.Close()
+		defer link.DrainCalls()
+		s := NewScheduler(link)
+		defer s.Close()
+		release := make(chan struct{})
+		defer close(release)
+		started := make(chan string, 3)
+		job := func(peer, session, id string) *Job {
+			return &Job{Class: Control, Approval: true, Peer: peer, Session: session, Bytes: 1, Deadline: time.Now().Add(time.Minute), Reject: func() {}, Run: func(context.Context, *Execution) { started <- id; <-release }}
+		}
+		s.Submit(context.Background(), job("one", "same", "first"))
+		synctest.Wait()
+		<-started
+		s.Submit(context.Background(), job("two", "same", "second"))
+		s.Submit(context.Background(), job("two", "other", "healthy"))
+		synctest.Wait()
+		if got := <-started; got != "healthy" {
+			t.Fatalf("two IDs/peers occupied the same session concurrently: %s", got)
+		}
+	})
+}
+func TestQueuedControlExpiresWithoutCallback(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		link := NewLink(context.Background())
+		defer link.Close()
+		defer link.DrainCalls()
+		s := NewScheduler(link)
+		defer s.Close()
+		release := make(chan struct{})
+		defer close(release)
+		for i := range 2 {
+			s.Submit(context.Background(), &Job{Class: Control, Approval: true, Peer: "peer", Session: fmt.Sprint(i), Bytes: 1, Deadline: time.Now().Add(time.Minute), Reject: func() {}, Run: func(context.Context, *Execution) { <-release }})
+		}
+		synctest.Wait()
+		ran, rejected := false, false
+		s.Submit(context.Background(), &Job{Class: Control, Approval: true, Peer: "peer", Session: "queued", Bytes: 1, Deadline: time.Now().Add(time.Minute), Reject: func() { rejected = true }, Run: func(context.Context, *Execution) { ran = true }})
+		time.Sleep(100 * time.Millisecond)
+		synctest.Wait()
+		if ran || !rejected {
+			t.Fatalf("expired control: ran=%v rejected=%v", ran, rejected)
+		}
+		if s.Active()[0] != 2 {
+			t.Fatal("queue expiry altered occupied slots")
+		}
+	})
+}
+
+func TestExecutionDeadlinesUseClassAndOriginalCaps(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		link := NewLink(context.Background())
+		defer link.Close()
+		defer link.DrainCalls()
+		s := NewScheduler(link)
+		defer s.Close()
+		for class, want := range map[Class]time.Duration{Control: 5 * time.Second, Input: 5 * time.Second, Ordinary: 60 * time.Second, Bulk: 10 * time.Second} {
+			for _, original := range []time.Duration{2 * time.Minute, 2 * time.Second} {
+				ran := false
+				deadline := time.Now().Add(original)
+				if !s.Submit(context.Background(), &Job{Class: class, Peer: "peer", Session: "session", Approval: class == Control, Bytes: 1, Deadline: deadline, Reject: func() { t.Error("deadline fixture rejected") }, Run: func(ctx context.Context, e *Execution) {
+					ran = true
+					actual, ok := ctx.Deadline()
+					expected := e.GrantedAt().Add(want)
+					if deadline.Before(expected) {
+						expected = deadline
+					}
+					if !ok || !actual.Equal(expected) {
+						t.Errorf("class %d deadline=%v expected=%v", class, actual, expected)
+					}
+				}}) {
+					t.Fatal("submit")
+				}
+				synctest.Wait()
+				if !ran {
+					t.Fatal("callback missing")
+				}
+			}
+		}
+	})
 }

@@ -23,7 +23,10 @@ type heldMembershipClient struct {
 func (c *heldMembershipClient) GetSecurityStates(ctx context.Context, _ *connect.Request[pb.GetSecurityStatesRequest]) (*connect.Response[pb.GetSecurityStatesResponse], error) {
 	c.calls.Add(1)
 	<-c.release
-	return nil, ctx.Err()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return nil, context.Canceled
 }
 
 func TestUnknownEpochWaitQueueIsBoundedAndLeavesAuthenticationFree(t *testing.T) {
@@ -59,7 +62,19 @@ func TestUnknownEpochWaitQueueIsBoundedAndLeavesAuthenticationFree(t *testing.T)
 		}
 		results := make(chan *pb.ForwardReply, 16)
 		reply := func(r *pb.ForwardReply) { results <- r }
-		for i := range 8 {
+		e.dispatch(context.Background(), &pb.ForwardCall{CallId: 0, Command: unknown(0)}, reply)
+		synctest.Wait()
+		e.dispatch(context.Background(), &pb.ForwardCall{CallId: 99, Command: unknown(0)}, reply)
+		synctest.Wait()
+		select {
+		case result := <-results:
+			if result.CallId != 99 || result.Reason != "busy" {
+				t.Fatal("same peer obtained a second epoch wait")
+			}
+		default:
+			t.Fatal("same peer was not rejected while global queue had room")
+		}
+		for i := 1; i < 8; i++ {
 			e.dispatch(context.Background(), &pb.ForwardCall{CallId: uint64(i), Command: unknown(i)}, reply)
 		}
 		synctest.Wait()

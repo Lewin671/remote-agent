@@ -68,13 +68,16 @@ type ResultUnavailable struct{ Category Category }
 func (*ResultUnavailable) Error() string { return i18n.SecurityResultBodyUnavailable("en") }
 
 type runningCall struct {
-	notify      sync.Once
-	done        chan struct{}
-	payload     Hash
-	retainUntil uint64
-	deadline    uint64
-	waiters     int
-	abandoned   atomic.Bool
+	readOnly, completed bool
+	result              []byte
+	resultErr           error
+	notify              sync.Once
+	done                chan struct{}
+	payload             Hash
+	retainUntil         uint64
+	deadline            uint64
+	waiters             int
+	abandoned           atomic.Bool
 }
 
 // AcceptOptions separates authentication of old results from new admission.
@@ -506,6 +509,11 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 				return nil, ErrIdentityConflict
 			}
 			releaseSlot()
+			if run.readOnly && run.completed {
+				body, err := bytes.Clone(run.result), run.resultErr
+				e.mu.Unlock()
+				return body, err
+			}
 			if options.NoWait {
 				e.mu.Unlock()
 				return nil, ErrRunning
@@ -590,18 +598,14 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 			return nil, err
 		}
 	}
-	if readOnly {
-		e.mu.Unlock()
-		c, _ := fn(h, bytes.Clone(plain))
-		if !c.final {
-			return nil, ErrOutcomeUnknown
-		}
-		return c.result, nil
-	}
 	if e.running == nil {
 		e.running = map[string]*runningCall{}
 	}
-	run := &runningCall{done: make(chan struct{}), payload: payload, retainUntil: e.data.Accepted[key].RetainUntil, deadline: h.Deadline}
+	retainUntil := h.Deadline
+	if !readOnly {
+		retainUntil = e.data.Accepted[key].RetainUntil
+	}
+	run := &runningCall{done: make(chan struct{}), payload: payload, retainUntil: retainUntil, deadline: h.Deadline, readOnly: readOnly}
 	e.running[key] = run
 	if options.Running != nil {
 		options.Running(func() { run.abandoned.Store(true); run.notify.Do(func() { close(run.done) }) })
@@ -618,6 +622,15 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 	finished := maxU64(clock+uint64(time.Since(clockAt)/time.Millisecond), e.data.Floor)
 	if e.closed {
 		return nil, ErrOutcomeUnknown
+	}
+	if readOnly {
+		run.completed = true
+		if !c.final {
+			run.resultErr = ErrOutcomeUnknown
+			return nil, run.resultErr
+		}
+		run.result = bytes.Clone(c.result)
+		return bytes.Clone(run.result), nil
 	}
 	if err = e.finishAccepted(key, c, finished); err != nil {
 		return nil, ErrOutcomeUnknown
@@ -669,6 +682,9 @@ func (e *Endpoint) registerWaitLocked(ctx context.Context, key string, run *runn
 		defer e.mu.Unlock()
 		if e.closed || run.abandoned.Load() {
 			return nil, ErrOutcomeUnknown
+		}
+		if run.readOnly {
+			return bytes.Clone(run.result), run.resultErr
 		}
 		a, ok := e.data.Accepted[key]
 		if !ok {

@@ -144,3 +144,65 @@ func TestLargeDecodedSendAndApprovalKeepTheirClass(t *testing.T) {
 		}
 	}
 }
+
+type inflightChunkBackend struct {
+	Backend
+	entered, release chan struct{}
+	calls            atomic.Int32
+}
+type inflightChunkLocal struct {
+	remoteagentv1connect.UnimplementedLocalServiceHandler
+	b *inflightChunkBackend
+}
+
+func (b *inflightChunkBackend) Local() remoteagentv1connect.LocalServiceHandler {
+	return inflightChunkLocal{b: b}
+}
+func (b *inflightChunkBackend) SessionIDs() []string { return []string{"session"} }
+func (l inflightChunkLocal) GetSharedFileChunk(context.Context, *connect.Request[pb.GetSharedFileChunkRequest]) (*connect.Response[pb.GetSharedFileChunkResponse], error) {
+	if l.b.calls.Add(1) == 1 {
+		close(l.b.entered)
+	}
+	<-l.b.release
+	return connect.NewResponse(&pb.GetSharedFileChunkResponse{Data: make([]byte, 768<<10), TotalBytes: proto.Uint64(1)}), nil
+}
+func TestInflightSharedFileDuplicateKeepsUncompressedResult(t *testing.T) {
+	b := &inflightChunkBackend{entered: make(chan struct{}), release: make(chan struct{})}
+	e := testEndpoint(t, New(b))
+	client := endpointClient(t, e)
+	var once sync.Once
+	defer func() { once.Do(func() { close(b.release) }); e.link.DrainCalls(); e.admissionOwner().close() }()
+	env := commandEnvelope(t, client, e.acct.DeviceID, "inflight-chunk-identity", &pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: "session", FileId: "fixture"}}})
+	replies := make(chan *pb.ForwardReply, 2)
+	reply := func(r *pb.ForwardReply) { replies <- r }
+	e.dispatch(context.Background(), &pb.ForwardCall{Command: env}, reply)
+	<-b.entered
+	registered := make(chan struct{}, 1)
+	e.dispatch(&registeredWaitContext{Context: context.Background(), registered: registered}, &pb.ForwardCall{Command: env}, reply)
+	select {
+	case <-registered:
+	case <-time.After(time.Second):
+		t.Fatal("download duplicate was not coordinated")
+	}
+	if got := e.admission.scheduler.Active(); got != [3]int{0, 0, 1} {
+		t.Fatalf("duplicate consumed a second bulk slot: %v", got)
+	}
+	once.Do(func() { close(b.release) })
+	for range 2 {
+		select {
+		case r := <-replies:
+			h := &pb.Header{}
+			if err := proto.Unmarshal(r.Result.GetHeader(), h); err != nil {
+				t.Fatal(err)
+			}
+			if h.Compression != pb.Compression_COMPRESSION_NONE {
+				t.Fatal("coalesced block reply was compressed")
+			}
+		case <-time.After(time.Second):
+			t.Fatal("download reply missing")
+		}
+	}
+	if b.calls.Load() != 1 {
+		t.Fatal("duplicate repeated the file read")
+	}
+}

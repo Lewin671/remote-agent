@@ -69,6 +69,12 @@ func (e *Endpoint) Lookup(ctx context.Context, a *Authenticated, now uint64) (bo
 		copy(key[:], a.key)
 		return nil, &EntryDecision{Outcome: "conflict", Reason: "identity_conflict", ConflictKind: "identity", Key: key, Payload: a.payload, cause: ErrIdentityConflict}, nil, true
 	}
+	if run != nil && run.readOnly && run.completed {
+		if run.resultErr != nil {
+			return nil, a.resultError(run.resultErr), nil, true
+		}
+		return bytes.Clone(run.result), nil, nil, true
+	}
 	if run != nil && (!exists || record.State == running) {
 		w, err := e.registerWaitLocked(ctx, a.key, run, now)
 		if err != nil {

@@ -43,6 +43,7 @@ type Job struct {
 	Bytes         int
 	Deadline      time.Time
 	Approval      bool
+	Priority      uint8
 	Run           func(context.Context, *Execution)
 	Reject        func()
 	state         uint8
@@ -121,7 +122,7 @@ func (s *Scheduler) pumpLocked() {
 	for _, class := range []Class{Control, Input, Ordinary, Bulk} {
 		pool := class.pool()
 		for s.used[pool] < limits[pool] {
-			j, ok := s.queues[class].Pop(func(j *Job) bool {
+			eligible := func(j *Job) bool {
 				if s.blocked(j) {
 					return false
 				}
@@ -136,7 +137,14 @@ func (s *Scheduler) pumpLocked() {
 					}
 				}
 				return true
-			})
+			}
+			var j *Job
+			var ok bool
+			if class == Control {
+				j, ok = s.queues[class].PopPriority(eligible, func(j *Job) uint8 { return j.Priority })
+			} else {
+				j, ok = s.queues[class].Pop(eligible)
+			}
 			if !ok {
 				break
 			}

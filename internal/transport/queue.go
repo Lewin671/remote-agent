@@ -75,6 +75,18 @@ func (q *FairQueue[T]) Pop(eligible func(T) bool) (T, bool) {
 	var zero T
 	return zero, false
 }
+
+// PopPriority keeps round robin fairness within the highest eligible priority.
+func (q *FairQueue[T]) PopPriority(eligible func(T) bool, priority func(T) uint8) (T, bool) {
+	best := uint8(255)
+	for _, item := range q.items {
+		if eligible(item.value) && priority(item.value) < best {
+			best = priority(item.value)
+		}
+	}
+	return q.Pop(func(value T) bool { return eligible(value) && priority(value) == best })
+}
+
 func (q *FairQueue[T]) Remove(value T) bool {
 	for i, item := range q.items {
 		if item.value != value {

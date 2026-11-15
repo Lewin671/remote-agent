@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestLinkOwnsExecutionsAndStreamsUntilClose(t *testing.T) {
@@ -23,7 +24,15 @@ func TestLinkOwnsExecutionsAndStreamsUntilClose(t *testing.T) {
 	if !link.ServeStream(func() { <-link.Context().Done(); stream <- link.Context().Err() }) {
 		t.Fatal("stream refused")
 	}
-	link.Close()
+	closed := make(chan struct{})
+	go func() { link.Close(); close(closed) }()
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Error("close did not cancel stream ownership")
+		link.cancel()
+		<-closed
+	}
 	if !errors.Is(<-stream, context.Canceled) {
 		t.Fatal("stream was not canceled")
 	}

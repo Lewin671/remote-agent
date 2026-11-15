@@ -209,7 +209,7 @@ func classifyCommand(cmd *pb.Command) (transport.Class, bool) {
 	switch cmd.Kind.(type) {
 	case *pb.Command_ResolveApproval:
 		return transport.Control, true
-	case *pb.Command_Interrupt, *pb.Command_AnswerQuestion, *pb.Command_AnswerPlan, *pb.Command_CancelInput, *pb.Command_ResumeInput:
+	case *pb.Command_Interrupt, *pb.Command_AnswerQuestion, *pb.Command_AnswerPlan, *pb.Command_CancelInput, *pb.Command_ResumeInput, *pb.Command_GetLiveSnapshot:
 		return transport.Control, false
 	case *pb.Command_Send:
 		return transport.Input, false
@@ -219,6 +219,21 @@ func classifyCommand(cmd *pb.Command) (transport.Class, bool) {
 		return transport.Ordinary, false
 	}
 }
+func controlPriority(cmd *pb.Command) uint8 {
+	switch cmd.Kind.(type) {
+	case *pb.Command_ResolveApproval:
+		return 0
+	case *pb.Command_AnswerQuestion, *pb.Command_AnswerPlan, *pb.Command_Interrupt:
+		return 1
+	case *pb.Command_CancelInput, *pb.Command_ResumeInput:
+		return 2
+	case *pb.Command_GetLiveSnapshot:
+		return 3
+	default:
+		return 0
+	}
+}
+
 func commandResources(h deviceauth.Header, cmd *pb.Command) []string {
 	var resources []string
 	if h.Session != "" {
@@ -263,7 +278,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 	class, approval := classifyCommand(cmd)
 	raw := cmd.GetGetSharedFileChunk() != nil
-	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval}
+	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval, Priority: controlPriority(cmd)}
 	queuedAt := time.Now()
 	observe := func(acquired bool, at time.Time) {
 		if approval && a.endpoint.r.observeApproval != nil {

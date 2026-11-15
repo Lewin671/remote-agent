@@ -2,6 +2,7 @@ package contextio
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -13,6 +14,8 @@ func TestTrackedReadRetainsExecutionAfterWrapperTimeout(t *testing.T) {
 		defer cancel()
 		ctx, work := Track(ctx)
 		release := make(chan struct{})
+		var releaseOnce sync.Once
+		defer releaseOnce.Do(func() { close(release) })
 		result := make(chan error, 1)
 		go func() { _, err := Read(ctx, func() (int, error) { <-release; return 1, nil }); result <- err }()
 		synctest.Wait()
@@ -34,7 +37,7 @@ func TestTrackedReadRetainsExecutionAfterWrapperTimeout(t *testing.T) {
 			t.Fatal("execution released while I/O is running")
 		default:
 		}
-		close(release)
+		releaseOnce.Do(func() { close(release) })
 		synctest.Wait()
 		<-drained
 	})

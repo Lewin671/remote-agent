@@ -112,6 +112,8 @@ func (c *endpoint) replyResult(route *callRoute, header deviceauth.Header, raw b
 		return
 	}
 
+	// Inflight read-only duplicates also use the uncompressed file-block path.
+	raw = raw || proof.GetGetSharedFileChunk() != nil
 	env, err := c.security.sealResult(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, nil, result, raw)
 	if err != nil {
 		fail("result_authorization_failed")
