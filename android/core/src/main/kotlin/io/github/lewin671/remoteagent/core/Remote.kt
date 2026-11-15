@@ -12,6 +12,7 @@ import io.github.lewin671.remoteagent.core.transport.FrameStream
 import io.github.lewin671.remoteagent.core.transport.FrameListener
 
 import io.github.lewin671.remoteagent.core.transport.Recovery
+import io.github.lewin671.remoteagent.core.transport.LegLiveness
 import io.github.lewin671.remoteagent.core.transport.PathChanged
 import io.github.lewin671.remoteagent.core.transport.DispatchState
 
@@ -550,7 +551,7 @@ class Remote(
     private var everReady = false
     private var startedOnce = false
     private var liveness: Job? = null
-    private var activeActivity: java.util.concurrent.atomic.AtomicLong? = null
+    private var activeActivity: LegLiveness? = null
     private var running = false
     private var removed = false
     private val signingIn = Mutex()
@@ -788,7 +789,7 @@ class Remote(
                     try { security.touch() } catch (e: Exception) { report(e) }
                 }
                 last = now; wall = currentWall
-                if (woke || (ws != null && now - (activeActivity?.get() ?: now) >= 3000)) {
+                if (woke || (ws != null && activeActivity?.suspect(now) == true)) {
                     if (conn == ConnState.ONLINE) { conn = ConnState.CONNECTING; publish() }
                     beginConnect()
                 }
@@ -1023,7 +1024,7 @@ class Remote(
                 .toByteArray()
         val refused = java.util.concurrent.atomic.AtomicBoolean(false)
         val broken = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
-        val activity = java.util.concurrent.atomic.AtomicLong(monotonic())
+        val activity = LegLiveness(monotonic(), monotonic)
         val socket =
             deviceLink.router.path.openStream(
                 url,
@@ -1033,7 +1034,11 @@ class Remote(
                     }
 
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
-                        activity.set(monotonic())
+                        val now = monotonic()
+                        val isHeartbeat = runCatching {
+                            ServerFrame.parseFrom(bytes).kindCase == ServerFrame.KindCase.HEARTBEAT
+                        }.getOrDefault(false)
+                        activity.onFrame(now, isHeartbeat)
                         if (bytes.size > STREAM_FRAME_BYTES) {
                             cleanup({ stream.cancel() }, { frames.cancel() })
                             return

@@ -74,4 +74,46 @@ class TerminalTeardownTest {
         }finally{terminal.close();scope.cancel();remote.close()}
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun repeatedClosedAndOverflowBeforeStabilityBackOffInsteadOfSpinning() {
+        val remote = Remote(Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, "fixture-device"), Api.defaultHttp())
+        remote.showForTest(RemoteState(conn = ConnState.ONLINE, machines = mapOf("machine" to MachineView("machine", true, 0)), sessions = mapOf("session" to SessionView("session", "machine"))))
+        val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher()
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val terminal = RemoteTerminal(remote, "session", scope)
+        val type = Class.forName("io.github.lewin671.remoteagent.core.transport.FrameStream")
+        val socket = Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { _, method, _ -> if (method.name in listOf("send", "close")) true else null }
+        val connection = TermConn::class.java.declaredConstructors.single().newInstance(socket, { _: TerminalFrame -> Unit }, { }) as TermConn
+        val connField = RemoteTerminal::class.java.getDeclaredField("conn").apply { isAccessible = true }
+        val genField = RemoteTerminal::class.java.getDeclaredField("generation").apply { isAccessible = true }
+        val reopenJobField = RemoteTerminal::class.java.getDeclaredField("reopenJob").apply { isAccessible = true }
+        val applyMethod = RemoteTerminal::class.java.getDeclaredMethod("apply", TerminalFrame::class.java).apply { isAccessible = true }
+        try {
+            // Reset shared process token bucket via connect() then test reopen streak.
+            connField.set(terminal, connection)
+            applyMethod.invoke(terminal, TerminalFrame.newBuilder().setClosed("first drop").build())
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            assertEquals(RemoteTerminal.State.Connecting, terminal.state.value)
+            assertNull("first reopen must not wait in backoff", reopenJobField.get(terminal))
+
+            // Second close before 5s stability must back off via reopenJob instead of spinning connect().
+            connField.set(terminal, connection)
+            applyMethod.invoke(terminal, TerminalFrame.newBuilder().setClosed("second drop").build())
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            val genAfterClosed = genField.getInt(terminal)
+            assertNotNull("second failure before 5s stability must schedule backoff reopenJob", reopenJobField.get(terminal))
+            assertTrue(terminal.state.value is RemoteTerminal.State.Closed)
+
+            // OVERFLOW also goes through reopen backoff rather than spinning connect().
+            val scheduleReopen = RemoteTerminal::class.java.getDeclaredMethod("scheduleReopen", Int::class.javaPrimitiveType).apply { isAccessible = true }
+            reopenJobField.set(terminal, null)
+            connField.set(terminal, connection)
+            scheduleReopen.invoke(terminal, genAfterClosed)
+            assertNotNull("overflow must schedule backoff reopenJob", reopenJobField.get(terminal))
+            assertTrue(terminal.state.value is RemoteTerminal.State.Closed)
+        } finally {
+            terminal.close(); scope.cancel(); remote.close()
+        }
+    }
+
 }

@@ -50,3 +50,71 @@ internal class Recovery(
         finally { delivery.cancel(); changed.cancel() }
     }
 }
+
+internal class LegLiveness(initialNow: Long, private val clock: () -> Long = ::monotonicMillis) {
+    private var lastFrameAt = initialNow
+    private var heartbeats = 0
+    private var lastHeartbeatAt = 0L
+    private var observedIntervalMs = 0L
+
+    @Synchronized
+    fun onFrame(now: Long = clock(), isHeartbeat: Boolean = false) {
+        if (now > lastFrameAt) lastFrameAt = now
+        if (!isHeartbeat) return
+        heartbeats++
+        if (heartbeats >= 2) {
+            observedIntervalMs = maxOf(0L, now - lastHeartbeatAt)
+        }
+        lastHeartbeatAt = now
+    }
+
+    @Synchronized
+    fun thresholdMs(): Long {
+        if (heartbeats < 2) return 60_000L
+        return maxOf(3_000L, 3L * observedIntervalMs)
+    }
+
+    @Synchronized
+    fun suspect(now: Long = clock()): Boolean = now - lastFrameAt >= thresholdMs()
+}
+
+/**
+ * Coordinates per-terminal reopen backoff (1/2/4..30s full jitter, target 2/1s)
+ * sharing the process-wide token bucket (4/2s).
+ */
+class TerminalRecovery internal constructor(
+    now: () -> Long = ::monotonicMillis,
+    random: () -> Double = { Random.nextDouble() },
+    global: RecoveryBudget = processBudget,
+) {
+    constructor() : this(::monotonicMillis, { Random.nextDouble() }, processBudget)
+
+    private val recovery = Recovery(now = now, random = random, global = global)
+    private var reopenedInStreak = false
+
+    fun recordFailureIfUnstabilized() {
+        if (reopenedInStreak) {
+            recovery.failed()
+        }
+    }
+
+    fun takeOrDelayMs(): Long? {
+        if (recovery.take()) {
+            reopenedInStreak = true
+            return null
+        }
+        return maxOf(1L, recovery.delay())
+    }
+
+    fun delayMs(): Long = recovery.delay()
+
+    fun onStabilized() {
+        reopenedInStreak = false
+        recovery.ready()
+    }
+
+    fun reset() {
+        reopenedInStreak = false
+        recovery.ready()
+    }
+}

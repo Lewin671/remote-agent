@@ -1597,7 +1597,12 @@ class RemoteTest {
     fun silentMainPathIsProbedWithoutClosingItsHealthyIndependentTerminal() = runBlocking<Unit> {
         val acct = approvedClient(daemon.phone, http)
         val hole = StreamBlackhole { socket ->
-            StreamBlackhole.writeFrame(socket.getOutputStream(), ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(System.currentTimeMillis())).build().toByteArray())
+            val out = socket.getOutputStream()
+            StreamBlackhole.writeFrame(out, ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(System.currentTimeMillis())).build().toByteArray())
+            val hb = ServerFrame.newBuilder().setHeartbeat(io.github.lewin671.remoteagent.proto.Heartbeat.getDefaultInstance()).build().toByteArray()
+            StreamBlackhole.writeFrame(out, hb)
+            Thread.sleep(1050)
+            StreamBlackhole.writeFrame(out, hb)
         }
         closers += hole
         val routed = http.newBuilder().addInterceptor { chain ->
@@ -2473,6 +2478,27 @@ class RemoteTest {
         removeAsAuthority(daemon.phone,daemon.account.deviceId,http)
         r.refresh()
         assertNull(memory.blob(key));assertNull(r.cachedSchedules(daemon.account.deviceId))
+    }
+
+    @Test
+    fun silentMainPathKeeps60sThresholdWithoutTwoHeartbeats() = runBlocking<Unit> {
+        val acct = approvedClient(daemon.phone, http)
+        val hole = StreamBlackhole { socket ->
+            val out = socket.getOutputStream()
+            StreamBlackhole.writeFrame(out, ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(System.currentTimeMillis())).build().toByteArray())
+            StreamBlackhole.writeFrame(out, ServerFrame.newBuilder().setHeartbeat(io.github.lewin671.remoteagent.proto.Heartbeat.getDefaultInstance()).build().toByteArray())
+        }
+        closers += hole
+        val routed = http.newBuilder().addInterceptor { chain ->
+            val q = chain.request()
+            chain.proceed(if (q.url.encodedPath == "/v1/stream") q.newBuilder().url(hole.url + q.url.encodedPath).build() else q)
+        }.build()
+        val r = fixtureRemote(acct, routed)
+        closers += AutoCloseable { r.close() }
+        r.start(); r.awaitState("first ready") { it.conn == ConnState.ONLINE }
+        delay(3_500)
+        assertEquals(1, hole.attempts.get())
+        assertEquals(ConnState.ONLINE, r.state.value.conn)
     }
 
 }

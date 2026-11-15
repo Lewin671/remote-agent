@@ -17,11 +17,13 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
+import io.github.lewin671.remoteagent.core.transport.TerminalRecovery
 import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.TerminalResize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -85,15 +87,78 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     private var autoFit = false
     private var released = false
     private var frames = TerminalFrames(MAX_BACKLOG)
+    private val recovery = TerminalRecovery()
+    private var reopenJob: Job? = null
+    private var stabilityJob: Job? = null
 
     val session = TerminalSession(10000, SessionClient(), object : TerminalSession.Sink {
         override fun onInput(data: ByteArray) = send(data)
         override fun onViewSize(columns: Int, rows: Int) {}
     })
 
-    fun connectIfNeeded() { if (_state.value is State.Closed || (conn == null && job?.isActive != true)) connect() }
+    fun connectIfNeeded() {
+        if (_state.value is State.Closed || (conn == null && job?.isActive != true)) {
+            resumeConnect()
+        }
+    }
 
     fun connect() {
+        reopenJob?.cancel(); reopenJob = null
+        stabilityJob?.cancel(); stabilityJob = null
+        recovery.reset()
+        openAttempt()
+    }
+
+    private fun resumeConnect() {
+        if (reopenJob?.isActive == true) return
+        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
+        scheduleTakeOrDelay(generation)
+    }
+
+    private fun scheduleReopen(expectedGen: Int) {
+        if (expectedGen != generation || reopenJob?.isActive == true) return
+        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) return
+        stabilityJob?.cancel(); stabilityJob = null
+        recovery.recordFailureIfUnstabilized()
+        scheduleTakeOrDelay(expectedGen)
+    }
+
+    private fun scheduleTakeOrDelay(expectedGen: Int) {
+        if (expectedGen != generation || reopenJob?.isActive == true) return
+        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) return
+        val waitMs: Long = recovery.takeOrDelayMs() ?: run {
+            openAttempt()
+            return
+        }
+        val nextGen = ++generation
+        frames.close()
+        val previous = conn
+        conn = null
+        job?.cancel()
+        previous?.close()
+        if (_state.value !is State.Closed) {
+            _state.value = State.Closed(UiMessages.terminalAndroidClosed().messageText())
+        }
+        reopenJob = scope.launch {
+            var pendingDelay: Long = waitMs
+            while (pendingDelay > 0L) {
+                delay(pendingDelay)
+                if (nextGen != generation) return@launch
+                if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) return@launch
+                val nextWait = recovery.takeOrDelayMs()
+                if (nextWait == null) break
+                pendingDelay = nextWait
+            }
+            main.post {
+                reopenJob = null
+                if (nextGen == generation) openAttempt()
+            }
+        }
+    }
+
+    private fun openAttempt() {
+        reopenJob?.cancel(); reopenJob = null
+        stabilityJob?.cancel(); stabilityJob = null
         history.close()
         if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
         job?.cancel()
@@ -113,7 +178,12 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         fun enqueue(frame: TerminalFrame) {
             when (queue.offer(frame)) {
                 TerminalFrames.Offer.SCHEDULE -> main.postDelayed({ flush() }, FRAME_INTERVAL_MS)
-                TerminalFrames.Offer.OVERFLOW -> main.post { if (gen == generation) connect() }
+                TerminalFrames.Offer.OVERFLOW -> main.post {
+                    if (gen == generation) {
+                        history.disconnected()
+                        scheduleReopen(gen)
+                    }
+                }
                 else -> {}
             }
         }
@@ -183,7 +253,7 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                     if (opened) {
                         val gen = generation
                         main.post {
-                            if (gen == generation && remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) connectIfNeeded()
+                            if (gen == generation) scheduleReopen(gen)
                         }
                     }
                 }
@@ -223,6 +293,19 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
         if (!pictured || conn == null) return
         if (_state.value == State.Connecting) _state.value = State.Live
         fitOnOpen()
+        if (stabilityJob?.isActive != true) {
+            val liveGen = generation
+            stabilityJob = scope.launch {
+                delay(5_000L)
+                if (liveGen == generation && _state.value == State.Live) {
+                    main.post {
+                        if (liveGen == generation && _state.value == State.Live) {
+                            recovery.onStabilized()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun fitOnOpen() {
@@ -243,6 +326,8 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
     }
 
     fun close() {
+        reopenJob?.cancel(); reopenJob = null
+        stabilityJob?.cancel(); stabilityJob = null
         history.disconnected()
         generation++
         frames.close()
