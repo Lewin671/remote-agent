@@ -66,6 +66,19 @@ func PB(fields ...Field) []byte {
 	return out
 }
 
+// ServerFrameBody strips the single outer oneof while retaining the signed
+// delivery bytes. The four-byte wrapper is not part of the 64 KiB frame limit.
+func ServerFrameBody(raw []byte, field byte) ([]byte, error) {
+	if len(raw) < 2 || len(raw) > 65540 || raw[0] != field<<3|2 {
+		return nil, ErrPacket
+	}
+	n, k := binary.Uvarint(raw[1:])
+	if k <= 0 || !bytes.Equal(raw[1:1+k], varint(n)) || n > 65536 || n != uint64(len(raw)-1-k) {
+		return nil, ErrPacket
+	}
+	return raw[1+k:], nil
+}
+
 // Parse rejects duplicate fields, reordered fields, non-minimal integers,
 // unknown wire types and lengths before slicing/allocating payloads.
 func Parse(raw []byte, maxFields int) (map[uint64]Field, error) {

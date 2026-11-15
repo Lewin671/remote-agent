@@ -1,7 +1,9 @@
 // Protocol 16 peer codec. Every instance binds one immutable verified member head.
 import {PROTOCOL_VERSION} from "../../protocol";
 import {normalize} from './schema.js';
-export const fields=(raw,name)=>parse(normalize(raw,name),64);
+// A validated schema permits repeated fields. This convenience view keeps
+// the first occurrence; repeated-field readers use the authenticated original.
+export const fields=(raw,name)=>{raw=normalize(raw,name);let at=0;const out=new Map();const read=()=>{let n=0n,s=0n;for(;;){const v=raw[at++];n|=BigInt(v&127)<<s;if(!(v&128))return n;s+=7n}};while(at<raw.length){const tag=read(),n=Number(tag>>3n),bytes=(tag&7n)===2n;let value;if(bytes){const size=Number(read());value=raw.slice(at,at+size);at+=size}else value=read();if(!out.has(n))out.set(n,{n,bytes,value})}return out;};
 const subtle=()=>globalThis.crypto.subtle;
 const te=new TextEncoder();
 export const utf8=s=>te.encode(s);

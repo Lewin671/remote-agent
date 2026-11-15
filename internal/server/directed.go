@@ -55,11 +55,17 @@ func (h *hub) directedTarget(source *peer, id string) *peer {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if source.dev.kind == pb.DeviceKind_DEVICE_KIND_CLIENT {
+		if h.directClients[source.dev.id] != source {
+			return nil
+		}
 		p := h.machines[id]
 		if p != nil && p.dev.account == source.dev.account {
 			return p
 		}
 	} else if source.dev.kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
+		if h.machines[source.dev.id] != source {
+			return nil
+		}
 		// A device has one current directed receiver. Older client sockets may
 		// still receive history, but cannot replace the newest process binding.
 		p := h.directClients[id]

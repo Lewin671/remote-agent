@@ -43,8 +43,8 @@ func (c *relaySession) readLoop(ctx context.Context) error {
 		}
 		if manager := c.dispatcher.direct; manager != nil {
 			if f.GetPeerFrameDelivery() != nil {
-				if fields, err := peerwire.Parse(b, 1); err == nil && len(fields) == 1 && fields[11].Bytes {
-					manager.receive(fields[11].B)
+				if body, err := peerwire.ServerFrameBody(b, 11); err == nil {
+					manager.receive(body)
 				}
 			}
 			if result := f.GetPeerFrameResult(); result != nil {

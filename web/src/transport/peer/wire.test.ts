@@ -56,3 +56,8 @@ describe("production protocol 16 peer codec", () => {
     await expect(codec.open(raw, a, b, now)).resolves.toMatchObject({ type: 31337 });
   });
 });
+
+it("reads a capability with repeated type lists without changing its bytes",()=>{
+ const raw=w.pb(w.b(1,new Uint8Array(16)),w.u(2,1),w.u(2,14),w.u(3,1),w.u(3,9),w.u(4,1700000060000n),w.u(5,1),w.u(6,1048576));
+ knownPayload(2,1,raw);const f=w.fields(raw,"Capabilities");expect(w.getUint(f,5)).toBe(1n);expect(w.getUint(f,4)).toBe(1700000060000n);
+});

@@ -165,7 +165,28 @@ func ParseMessage(raw []byte, name string) (map[uint64]Field, error) {
 	if e != nil {
 		return nil, e
 	}
-	return Parse(normalized, len(schemaRules[name]))
+	// normalizeMessage already validated repeated fields. This convenience
+	// view returns the first occurrence; list consumers retain the original.
+	out := map[uint64]Field{}
+	for len(normalized) > 0 {
+		tag, n := binary.Uvarint(normalized)
+		normalized = normalized[n:]
+		field := tag >> 3
+		f := U(field, 0)
+		if tag&7 == 0 {
+			f.U, n = binary.Uvarint(normalized)
+			normalized = normalized[n:]
+		} else {
+			size, k := binary.Uvarint(normalized)
+			normalized = normalized[k:]
+			f = B(field, normalized[:size])
+			normalized = normalized[size:]
+		}
+		if _, exists := out[field]; !exists {
+			out[field] = f
+		}
+	}
+	return out, nil
 }
 
 var signalSchemas = map[uint64]string{1: "Probe", 2: "Challenge", 3: "SDP", 4: "SDP", 5: "Candidates", 6: "EndCandidates", 7: "Confirm", 8: "Restart", 9: "Close"}

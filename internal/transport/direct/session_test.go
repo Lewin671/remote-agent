@@ -30,7 +30,7 @@ func identity(t *testing.T, role uint64) peerwire.Identity {
 	return peerwire.Identity{ID: []byte(hex.EncodeToString(hash[:16])), Role: role, Instance: instance, Boot: boot, Sign: private, Box: box}
 }
 func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
-	for _, lost := range []int32{0, 2} {
+	for _, lost := range []int32{0, 2, -1} {
 		t.Run(hex.EncodeToString([]byte{byte(lost)}), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
@@ -45,6 +45,7 @@ func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 			var ar, br atomic.Pointer[Session]
 			var dropped atomic.Int32
 			var frames atomic.Int32
+			var highest atomic.Uint64
 			type ready struct {
 				which int
 				use   uint64
@@ -55,6 +56,16 @@ func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 			cfg := func(self peerwire.Identity, other peerwire.Public, which int) SessionConfig {
 				return SessionConfig{Self: self, Peer: other.Member(), Codec: codec, Connection: connection, Deadline: deadline, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Ready: func(use uint64, p *Path) { paths <- ready{which, use, p} }, Send: func(out Outbound) bool {
 					raw := out.Raw
+					if packet, e := codec.OpenSent(raw, self, other, uint64(time.Now().UnixMilli())); e == nil && packet.Context.Class == 1 {
+						if packet.Context.Generation > highest.Load() {
+							highest.Store(packet.Context.Generation)
+						}
+						// Permanently lose sequence 2 of the first generation;
+						// later frames witness a real gap, requiring new SDK PCs.
+						if lost == -1 && string(self.ID) < string(other.ID) && packet.Context.Generation == 1 && packet.Context.Seq == 2 {
+							return true
+						}
+					}
 					frames.Add(1)
 					if which == 0 && dropped.Add(1) <= lost {
 						return true
@@ -79,13 +90,23 @@ func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 			br.Store(sb)
 			defer sb.Close()
 			var connected [2][2]*Path
-			for i := 0; i < 4; i++ {
+			complete := 0
+			for complete < 4 {
 				select {
 				case p := <-paths:
+					if lost == -1 && p.path.cfg.Generation < 2 {
+						continue
+					}
+					if connected[p.which][p.use-1] == nil {
+						complete++
+					}
 					connected[p.which][p.use-1] = p.path
 				case <-ctx.Done():
 					t.Fatalf("handshake timed out after %d frames", frames.Load())
 				}
+			}
+			if lost == -1 && highest.Load() < 2 {
+				t.Fatal("missing frame did not restart the PC generation")
 			}
 			for i := 0; i < 2; i++ {
 				raw := []byte("authenticated encrypted frame")

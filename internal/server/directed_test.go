@@ -218,3 +218,21 @@ func TestDirectedWebSocketDeliveredAndLostReceipt(t *testing.T) {
 		}
 	}
 }
+
+func TestReplacedMainSocketCannotOriginateDirectedTraffic(t *testing.T) {
+	h, old, machine := directedFixture(t)
+	current := &peer{dev: old.dev, out: make(chan queuedFrame, sendQueue)}
+	h.initDirected(current)
+	h.directClients[old.dev.id] = current
+	h.directed(old, directedRequest(machine, 1, pb.FrameClass_SIGNAL), time.Now())
+	if machine.direct.count[0] != 0 {
+		t.Fatal("replaced main socket forwarded peer traffic")
+	}
+	if popDirected(t, h, old, 2).GetPeerFrameResult().Status != pb.PeerFrameResult_OFFLINE {
+		t.Fatal("stale source was acknowledged as delivered")
+	}
+	h.directed(current, directedRequest(machine, 2, pb.FrameClass_SIGNAL), time.Now())
+	if machine.direct.count[0] != 1 {
+		t.Fatal("current source stopped working")
+	}
+}

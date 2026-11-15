@@ -87,3 +87,17 @@ func TestCapabilitySnapshotVectors(t *testing.T) {
 		})
 	}
 }
+
+func TestCapabilitiesRepeatedTypesRemainReadable(t *testing.T) {
+	const now = uint64(1700000000000)
+	a, b := fixture("machine", 2), fixture("client", 1)
+	body := PB(B(1, make([]byte, 16)), U(2, 1), U(2, 14), U(3, 1), U(3, 9), U(4, now+60000), U(5, 1), U(6, 1<<20))
+	opened := Opened{Context: NewContext(a, b.Public(), make([]byte, 16), 0, 1, 1, now, 2, false), Type: 1, Payload: body}
+	if until, err := CapabilityExpiry(opened, now); err != nil || until != now+60000 {
+		t.Fatal("valid repeated capability list rejected", err)
+	}
+	f, err := ParseMessage(body, "Capabilities")
+	if err != nil || f[5].U != 1 {
+		t.Fatal("download flag unreadable", err)
+	}
+}

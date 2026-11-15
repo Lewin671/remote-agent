@@ -38,6 +38,7 @@ type SessionConfig struct {
 }
 type sessionEvent struct {
 	use         uint64
+	generation  uint64
 	candidate   *webrtc.ICECandidateInit
 	state       webrtc.PeerConnectionState
 	kind        int
@@ -46,6 +47,10 @@ type sessionEvent struct {
 }
 type sessionPC struct {
 	business                    atomic.Bool
+	generation                  uint64
+	currentGeneration           atomic.Uint64
+	actions                     []peerwire.Action
+	restartSent                 bool
 	signal                      *peerwire.Signal
 	sender                      *peerwire.Sender
 	seq                         uint64
@@ -75,6 +80,7 @@ type Session struct {
 	challenge     []byte
 	receipts      map[string][]byte
 	controlSeen   map[string][]byte
+	peerScopes    map[uint64]*peerScopeWindow
 }
 type deliveryResult struct {
 	id     []byte
@@ -98,7 +104,8 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 		g.RoundDeadline = cfg.Deadline
 		g.Current = cfg.Allow
 		g.LeaseUntil = ^uint64(0)
-		s.pcs[i] = sessionPC{signal: g, sender: peerwire.NewSender(cfg.Deadline), batch: peerwire.CandidateBatcher{Generation: 1, Deadline: cfg.Deadline, Binding: 1}}
+		s.pcs[i] = sessionPC{generation: 1, signal: g, sender: peerwire.NewSender(cfg.Deadline), batch: peerwire.CandidateBatcher{Generation: 1, Deadline: cfg.Deadline, Binding: 1}}
+		s.pcs[i].currentGeneration.Store(1)
 	}
 	if initiate {
 		c := peerwire.NewProbeContext(cfg.Self, cfg.Peer, cfg.Connection, 1, now)
@@ -222,6 +229,12 @@ func (s *Session) run() {
 	}
 }
 func (s *Session) flush(now uint64) {
+	for _, window := range s.peerScopes {
+		if window.gap != 0 && now >= window.gap {
+			s.Retire()
+			return
+		}
+	}
 	if s.controlWindow != nil {
 		for _, raw := range s.controlWindow.Tick(now) {
 			s.transmit(raw)
@@ -235,6 +248,7 @@ func (s *Session) flush(now uint64) {
 	for i := range s.pcs {
 		p := &s.pcs[i]
 		p.signal.Prune(now)
+		s.maybeReady(i, now)
 		if !p.announced {
 			p.signal.Tick(now)
 		}
@@ -243,11 +257,18 @@ func (s *Session) flush(now uint64) {
 			s.closedPaths = append(s.closedPaths, p.path)
 			p.path = nil
 		}
+		if !p.announced && p.signal.Retired && now < s.cfg.Deadline {
+			s.restartPC(i, now)
+		}
+		if !p.signal.Closed {
+			s.maybeOffer(i, now)
+			s.drainActions(i, now)
+		}
 		batchIndex := p.batch.Batches
-		for _, group := range p.batch.Flush(now, p.ended, 1, 1) {
+		for _, group := range p.batch.Flush(now, p.ended, p.signal.Generation, 1) {
 			candidates := make([]peerwire.Candidate, len(group))
 			for j, raw := range group {
-				candidates[j] = peerwire.Candidate{Original: raw, Ufrag: p.localUfrag, Mid: p.localMid, Generation: 1}
+				candidates[j] = peerwire.Candidate{Original: raw, Ufrag: p.localUfrag, Mid: p.localMid, Generation: p.signal.Generation}
 			}
 			if !s.sendSignal(i, 5, peerwire.CandidateBody(candidates, uint64(batchIndex)), now) {
 				return
@@ -269,7 +290,7 @@ func (s *Session) flush(now uint64) {
 func (s *Session) sendSignal(i int, typ uint64, body []byte, now uint64) bool {
 	p := &s.pcs[i]
 	p.seq++
-	c := peerwire.NewContext(s.cfg.Self, p.signal.Peer, s.cfg.Connection, uint64(i+1), 1, p.seq, now, 1, false)
+	c := peerwire.NewContext(s.cfg.Self, p.signal.Peer, s.cfg.Connection, uint64(i+1), p.signal.Generation, p.seq, now, 1, false)
 	c.Deadline = s.cfg.Deadline
 	raw, err := s.cfg.Codec.Seal(s.cfg.Self, p.signal.Peer, c, typ, body, nil, nil, nil)
 	return err == nil && p.sender.Enqueue(raw, now, c.Deadline, 1)
@@ -476,6 +497,10 @@ func (s *Session) receive(raw []byte, now uint64) {
 		}
 		return
 	}
+	if c.Class == 1 && c.Use == 0 {
+		s.receivePeerScope(o, now)
+		return
+	}
 	if c.Use < 1 || c.Use > 2 {
 		return
 	}
@@ -489,21 +514,43 @@ func (s *Session) receive(raw []byte, now uint64) {
 	if p.signal.ReplyAllowed(raw, now) {
 		s.acknowledge(o, now)
 	}
+
 	for _, a := range actions {
 		if a.Class == 2 && a.Type == 10 {
 			original, err := s.cfg.Codec.Open(a.Original, p.signal.Peer, s.cfg.Self, now)
-			if err != nil {
-				continue
+			if err == nil {
+				if reply := s.controlUntil(10, a.Payload, now, original.Context.Deadline); reply != nil {
+					s.receipts[string(original.Hash)] = reply
+					s.transmit(reply)
+				}
 			}
-			reply := s.controlUntil(10, a.Payload, now, original.Context.Deadline)
-			if reply != nil {
-				s.transmit(reply)
+		} else if a.Class == 1 {
+			if a.Type == 3 && s.cfg.BeforeOffer != nil {
+				s.cfg.BeforeOffer()
 			}
+			if len(p.actions) >= 32 {
+				s.Retire()
+				return
+			}
+			p.actions = append(p.actions, a)
+		}
+	}
+	s.drainActions(i, now)
+	s.maybeReady(i, now)
+}
+func (s *Session) drainActions(i int, now uint64) {
+	p := &s.pcs[i]
+	for len(p.actions) > 0 && s.Active() {
+		a := p.actions[0]
+		if a.Generation != p.signal.Generation {
+			p.actions = p.actions[1:]
 			continue
 		}
-		if a.Class != 1 {
-			continue
+		if a.Type >= 3 && a.Type <= 6 && !s.makePC(i, now) {
+			return
 		}
+		p.actions = p.actions[1:]
+		var err error
 		switch a.Type {
 		case 3, 4:
 			if a.Type == 3 && s.cfg.BeforeOffer != nil {
@@ -521,7 +568,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 				if err != nil {
 					return
 				}
-				if err = p.signal.SetLocal(answer, false, 1); err != nil {
+				if err = p.signal.SetLocal(answer, false, p.signal.Generation); err != nil {
 					return
 				}
 				info, _ := peerwire.InspectSDP(answer)
@@ -547,16 +594,21 @@ func (s *Session) receive(raw []byte, now uint64) {
 				return
 			}
 			_ = p.path.AddCandidate(webrtc.ICECandidateInit{})
+		case 8:
+			s.restartPC(i, now)
 		case 9:
 			if p.path != nil {
 				p.path.Close()
 			}
 		}
 	}
-	s.maybeReady(i, now)
 }
+
 func (s *Session) makePC(i int, now uint64) bool {
 	p := &s.pcs[i]
+	if p.generation != p.signal.Generation {
+		s.resetPC(i)
+	}
 	if p.path != nil {
 		return true
 	}
@@ -565,20 +617,21 @@ func (s *Session) makePC(i int, now uint64) bool {
 	}
 	use := uint64(i + 1)
 	expires := s.cfg.Deadline
+	generation := p.signal.Generation
 	live := func() bool { return p.business.Load() || uint64(time.Now().UnixMilli()) < expires }
-	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: 1, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool {
+	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool {
 		return !s.retired.Load() && live() && (s.cfg.Policy == nil || s.cfg.Policy()) && s.cfg.Allow() && live() && !s.retired.Load() && (s.cfg.Policy == nil || s.cfg.Policy())
 	}, LoopbackOnly: s.cfg.LoopbackOnly,
 		Candidate: func(c *webrtc.ICECandidateInit) {
 			select {
-			case s.events <- sessionEvent{use: use, candidate: c, kind: 1}:
+			case s.events <- sessionEvent{use: use, generation: generation, candidate: c, kind: 1}:
 			default:
 				s.cancel()
 			}
 		},
 		State: func(state webrtc.PeerConnectionState) {
 			select {
-			case s.events <- sessionEvent{use: use, state: state, kind: 2}:
+			case s.events <- sessionEvent{use: use, generation: generation, state: state, kind: 2}:
 			default:
 				s.cancel()
 			}
@@ -602,7 +655,7 @@ func (s *Session) maybeOffer(i int, now uint64) {
 	if err != nil {
 		return
 	}
-	if err = p.signal.SetLocal(offer, true, 1); err != nil {
+	if err = p.signal.SetLocal(offer, true, p.signal.Generation); err != nil {
 		return
 	}
 	info, _ := peerwire.InspectSDP(offer)
@@ -647,16 +700,18 @@ func (s *Session) event(e sessionEvent, now uint64) {
 	}
 	i := int(e.use) - 1
 	p := &s.pcs[i]
-	if p.path == nil {
+	if p.path == nil || e.generation != p.signal.Generation {
 		return
 	}
 	if e.kind == 1 {
 		if e.candidate == nil {
 			p.ended = true
-		} else if !p.batch.Add([]byte(e.candidate.Candidate), 1, now, 1) {
+		} else if !p.batch.Add([]byte(e.candidate.Candidate), p.signal.Generation, now, 1) {
 			p.path.Close()
 			return
 		}
+	} else if e.state == webrtc.PeerConnectionStateFailed || e.state == webrtc.PeerConnectionStateDisconnected {
+		s.restartPC(i, now)
 	} else if e.state == webrtc.PeerConnectionStateConnected {
 		p.signal.DTLS = true
 		s.maybeReady(i, now)
@@ -670,7 +725,7 @@ func (s *Session) maybeReady(i int, now uint64) {
 	if !p.confirmed && p.signal.LocalSDP && p.signal.RemoteSDP && p.signal.DTLS {
 		p.confirmed = s.sendSignal(i, 7, p.signal.ConfirmBody(), now)
 	}
-	if p.confirmed && !p.announced && p.signal.Ready() {
+	if p.path.TraversalReady() && p.confirmed && !p.announced && p.signal.Ready() {
 		p.announced = true
 		p.business.Store(true)
 		s.established.Store(true)
@@ -723,6 +778,13 @@ func (s *Session) transmit(raw []byte) bool {
 	deadline := original.Context.Deadline
 	return s.cfg.Send(Outbound{Raw: raw, Deadline: deadline, Critical: original.Context.Class == 2 || original.Type != 5 && original.Type != 6,
 		Valid: func() bool {
+			c := original.Context
+			if c.Class == 1 && (original.Type == 1 || original.Type >= 3 && original.Type <= 8) && s.retired.Load() {
+				return false
+			}
+			if c.Class == 1 && c.Use > 0 && c.Use <= 2 && c.Generation != s.pcs[c.Use-1].currentGeneration.Load() {
+				return false
+			}
 			if original.Context.Class == 1 && original.Type == 1 && !s.cfg.Pool.ownerAvailable(string(s.cfg.Peer.ID), string(s.cfg.Connection)) {
 				return false
 			}
@@ -747,5 +809,45 @@ func (s *Session) SendControl(typ uint64, body []byte) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// Replacement SDK objects are reserved only after the old PC actually closes.
+// The actor retries pending actions; neither a gap nor restart resets the round.
+func (s *Session) resetPC(i int) {
+	p := &s.pcs[i]
+	if p.path != nil {
+		p.path.Close()
+		s.closedPaths = append(s.closedPaths, p.path)
+		p.path = nil
+	}
+	p.generation = p.signal.Generation
+	p.currentGeneration.Store(p.generation)
+	p.seq = 0
+	p.sender = peerwire.NewSender(s.cfg.Deadline)
+	p.batch = peerwire.CandidateBatcher{Generation: p.signal.Generation, Deadline: s.cfg.Deadline, Binding: 1}
+	p.business.Store(false)
+	p.confirmed = false
+	p.announced = false
+	p.ended = false
+	p.restartSent = false
+	p.localUfrag = nil
+	p.localMid = nil
+}
+func (s *Session) restartPC(i int, now uint64) {
+	p := &s.pcs[i]
+	if now >= s.cfg.Deadline || !s.Active() {
+		return
+	}
+	if p.signal.Offerer() {
+		if p.signal.NextGeneration(p.signal.Generation+1) != nil {
+			return
+		}
+		s.resetPC(i)
+		p.actions = nil
+		s.maybeOffer(i, now)
+	} else if !p.restartSent {
+		body := peerwire.PB(peerwire.B(1, peerwire.PB(peerwire.U(1, uint64(i+1)), peerwire.U(2, p.signal.Generation))))
+		p.restartSent = s.sendSignal(i, 8, body, now)
 	}
 }

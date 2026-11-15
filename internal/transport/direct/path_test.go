@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -145,4 +146,41 @@ func TestAuthorizationLossClosesIdlePC(t *testing.T) {
 	if err := p.Write(context.Background(), []byte{1}); err == nil {
 		t.Fatal("unauthorized send")
 	}
+}
+
+func TestRealSDKPeerBudgetIncludesClosingReplacements(t *testing.T) {
+	pool := NewPool(8)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var paths []*Path
+	defer func() {
+		for _, p := range paths {
+			p.Close()
+		}
+		for _, p := range paths {
+			p.Wait()
+		}
+	}()
+	for peer := 0; peer < 8; peer++ {
+		for use := uint64(1); use <= 2; use++ {
+			p, err := New(ctx, Config{Peer: fmt.Sprintf("fixture-%d", peer), Owner: "round", Use: use, Generation: 1, Pool: pool, Allow: func() bool { return true }, LoopbackOnly: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			paths = append(paths, p)
+		}
+	}
+	if _, err := New(ctx, Config{Peer: "fixture-extra", Owner: "round", Use: 1, Generation: 1, Pool: pool, Allow: func() bool { return true }, LoopbackOnly: true}); err == nil {
+		t.Fatal("ninth peer allocated an SDK PC")
+	}
+	if _, err := New(ctx, paths[0].cfg); err == nil {
+		t.Fatal("same-use replacement escaped the PC budget")
+	}
+	paths[0].Close()
+	paths[0].Wait()
+	next, err := New(ctx, paths[0].cfg)
+	if err != nil {
+		t.Fatal("closed SDK reservation not released", err)
+	}
+	paths = append(paths, next)
 }

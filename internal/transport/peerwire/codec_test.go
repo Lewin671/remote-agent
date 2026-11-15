@@ -86,3 +86,17 @@ func FuzzPeerPacket(f *testing.F) {
 	f.Add([]byte{10, 255, 255, 255, 255, 255})
 	f.Fuzz(func(t *testing.T, raw []byte) { _, _ = codec.Open(raw, a.Public(), b, now) })
 }
+
+func TestServerWrapperDoesNotStealDeliveryBudget(t *testing.T) {
+	body := make([]byte, 65536)
+	raw := PB(B(11, body))
+	got, err := ServerFrameBody(raw, 11)
+	if err != nil || len(got) != 65536 {
+		t.Fatal("maximum valid delivery was rejected with outer wrapper")
+	}
+	for _, bad := range [][]byte{append(raw, 0), PB(B(11, make([]byte, 65537))), PB(B(12, body)), {90, 128, 0}} {
+		if _, err = ServerFrameBody(bad, 11); err == nil {
+			t.Fatal("invalid outer frame accepted")
+		}
+	}
+}
