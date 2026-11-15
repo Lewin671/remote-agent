@@ -161,6 +161,7 @@ public actor Remote {
             let reply = await peerResponder.receive(bytes, record: record, seed: account.deviceSeed, now: UInt64(max(1,clock())))
             guard self.generation == generation, networkGeneration == network, ws === socket,
                   let reply, let current = try? await securitySession().record(), current.member,
+                  max(UInt64(max(1,clock())),current.floor) < (try await securitySession().leaseExpiration()),
                   try DeviceSecurity.stateHash(current.state) == DeviceSecurity.stateHash(record.state) else { return }
             socket.send(reply)
         } catch { /* Authenticated peer refusal is optional; relay stays available. */ }

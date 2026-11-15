@@ -13,7 +13,7 @@ enum PeerSchema {
   while at<raw.count{let tag=try integer(raw,&at),n=Int(tag>>3),wire=tag&7;guard let r=spec[n]else{throw PeerWire.Invalid.packet};try PeerWire.check(n>=last && (r.repeated || values[n]==nil));last=n;var list=values[n] ?? [];let numeric=r.kind != "b" && !r.kind.hasPrefix("m")
    if numeric && wire==0{let value=try integer(raw,&at);try PeerWire.check(value<=limit(r.kind));list.append(PeerWire.u(n,value))}
    else if wire==2{let size=try integer(raw,&at);try PeerWire.check(size<=UInt64(raw.count-at));let body=Array(raw[at..<at+Int(size)]);at+=Int(size)
-    if numeric{try PeerWire.check(r.repeated);var p=0;while p<body.count{let value=try integer(body,&p);try PeerWire.check(value<=limit(r.kind));list.append(PeerWire.u(n,value))}}
+    if numeric{try PeerWire.check(r.repeated);var p=0;while p<body.count{try PeerWire.check(list.count<cap(name,n));let value=try integer(body,&p);try PeerWire.check(value<=limit(r.kind));list.append(PeerWire.u(n,value))}}
     else{if r.kind.hasPrefix("m"){_ = try normalize(body,String(r.kind.dropFirst()),depth+1,shape)};list.append(PeerWire.b(n,body))}
    }else{throw PeerWire.Invalid.packet};try PeerWire.check(list.count<=cap(name,n));values[n]=list
   }

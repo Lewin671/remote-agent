@@ -1048,8 +1048,9 @@ class Remote(
                                     val delivery = io.github.lewin671.remoteagent.proto.PeerFrameDelivery.parseFrom(peerBody)
                                     val member = record.head.core.member(delivery.fromDevice.toStringUtf8()) ?: return@launch
                                     if (!record.member || member.kind != 1u) return@launch
-                                    val reply = peerResponder.receive(peerBody, record.pin.account, record.pin.domain, DeviceSecurity.stateHash(record.head), record.head.core.epoch.toLong(), account.deviceId, record.peerBoxKey(), member.id, member.ed, member.x, maxOf(System.currentTimeMillis(), record.floor.toLong()), record.leaseExpiration())
-                                    if (reply != null && running && gen == generation && networkGen == networkGeneration && DeviceSecurity.stateHash(security.record().head).contentEquals(DeviceSecurity.stateHash(record.head))) stream.send(reply)
+                                    val reply = peerResponder.receive(peerBody, record.pin.account, record.pin.domain, DeviceSecurity.stateHash(record.head), record.head.core.epoch.toLong(), account.deviceId, record.peerBoxKey(), member.id, member.ed, member.x, maxOf(clock().coerceAtLeast(1).toULong(), record.floor).toLong(), record.leaseExpiration())
+                                    val current = security.record()
+                                    if (reply != null && running && gen == generation && networkGen == networkGeneration && current.member && maxOf(clock().coerceAtLeast(1).toULong(), current.floor) < current.leaseExpiration().coerceAtLeast(0).toULong() && DeviceSecurity.stateHash(current.head).contentEquals(DeviceSecurity.stateHash(record.head))) stream.send(reply)
                                 } catch (_: Exception) { /* Optional peer traffic cannot close the main stream. */ }
                                 finally { peerJobs.decrementAndGet() }
                             }
