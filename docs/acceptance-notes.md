@@ -76,7 +76,15 @@ Go full、Android full（core 603、App 802、terminal 7，零失败/跳过，li
 
 基线 v0.76.2（`123418d1`）、协议 15。独立临时状态目录、CGO_ENABLED=0，通过 Go build overlay 运行一次离线反例；生产代码未改。用现有 daemon 测试会话建立普通待审批事件，携带当前 observedEventSeq 和客户端 origin 调用真实 ResolveApproval RPC handler，拒绝理由为固定种子生成的 384 KiB 文本。原 handler 成功，测试 hook 收到完整拒绝理由，持久 ApprovalResolved 事件内容一致。业务 protobuf 为 393,265 字节，控制子队列全局预算为 262,144 字节；即使该 peer 没有任何排队项，仍不满足全局预算。
 
-反例成功编译并在“合法请求能进入空控制队列”的运行时断言处失败，不是编译失败，也不是已实现调度器的回归结果。未经过签名网络往返或原生 CLI；客户端 origin/事件观察沿用既有 remote-answer 安全测试夹具，不声称完成完整审批链路。其待决项见 [plan](plan.md#传输模块与直连)，不将本次发现扩大为新的设计决策。
+反例成功编译并在“合法请求能进入空控制队列”的运行时断言处失败，不是编译失败，也不是已实现调度器的回归结果。未经过签名网络往返或原生 CLI；客户端 origin/事件观察沿用既有 remote-answer 安全测试夹具，不声称完成完整审批链路。该容量问题已通过控制队列 4 MiB 及各执行队列的容量下限规则解决，规范见 [transport](transport.md#2-路径与资源隔离)。
+
+### 1b 分类调度候选与审批前置依赖（2026-11-14）
+
+本地候选 `258cf35a`，协议 15、共享产品版本保持 v0.76.2，未发布。实现认证队列、未知 epoch 有界等待、分类队列与 2/4/2 执行池、控制优先、peer/会话轮转、重复等待表及后端 I/O 的槽所有权；属于 daemon 进程内部改动，未修改 wire 或客户端。Go full、daemon/relay/deviceauth/server/transport 五包 race 通过；文案生成核对和 lint 通过。定向回归覆盖大解码请求、普通池饱和、断路后的独立执行、超期回调和 contextio 的原槽保留、资源隔离、文件分段哈希与取消等待。
+
+候选核对中发现了不同于字节容量的新边界：网页 `commandWithDispatch`、Android `commandOnWorker` 和 iOS `authorizeIntent` 在新审批发送前都要重新获取 GetLiveSnapshot，当前候选将它归普通池。隔离的实际 relay、生产调度器及加密客户端测试中，四个其他会话的普通回调占满普通池；新的快照请求已到达 server，观察 150 ms 期间，快照 handler 和审批 handler 都执行 0 次。释放普通回调后，新的快照和审批各完成 1 次，签名结果有效。运行时断言明确检出此前置阻塞，不是编译失败。
+
+此反例使用有界测试后端，并按真实客户端的依赖顺序调用两个实际加密 RPC；不是直接界面操作或真实 CLI。统计排除了后台发布 checkpoint 对 LiveSnapshot 的调用，普通任务与审批使用不同会话。它证明直接发送 ResolveApproval 的队列指标不足以验收完整审批流程。分类裁定见 [plan](plan.md#传输模块与直连)；本候选尚未完成每条新回归的撤销对照、恢复重测、三端对应回归及 Claude Code/Codex 真实链路验收，不能据上述检查认定 1b 已完成。
 
 
 ## 1. 验证等级

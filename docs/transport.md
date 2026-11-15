@@ -151,14 +151,16 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 
 | 队列 | 命令 | 条数 / 字节 |
 |---|---|---|
-| 交互控制 | Interrupt、ResolveApproval、AnswerQuestion、AnswerPlan、CancelInput、ResumeInput | 32 条 / 256 KiB |
+| 交互控制 | Interrupt、ResolveApproval、AnswerQuestion、AnswerPlan、CancelInput、ResumeInput | 32 条 / 4 MiB |
 | 交互输入 | Send | 16 条 / 4 MiB |
 | 普通 | 普通指令与非 bulk 只读 | 64 条 / 4 MiB |
 | bulk | 上传与 GetSharedFileChunk | 16 条 / 4 MiB |
 
-两个交互子队列共用 2 个交互槽；槽空出时**控制子队列严格优先**，Send 不得排在已排队的控制操作之前，也不得占用控制子队列的字节。每个（子）队列内按 peer 公平调度，每 peer 的条数和字节都限制为该队列全局预算的 1/4。唯一例外：该 peer 在此（子）队列中当前没有排队项时，一条请求可以超过 peer 字节份额，但必须放得进该队列剩余的全局字节预算，并完整计费；不能用多个 request ID 叠加例外。上传块仍为 768 KiB，MaxChunkBytes、wire 字段和已密封请求不变；大 Send 仍进入交互输入队列。
+两个交互子队列共用 2 个交互槽；槽空出时**控制子队列严格优先**，Send 不得排在已排队的控制操作之前，也不得占用控制子队列的字节。交互池内非 ResolveApproval 操作同时最多占 1 槽，为审批留出 1 槽；审批可使用两个槽，并仍受每会话最多 1 槽限制。每个（子）队列内按 peer 公平调度，每 peer 的条数和字节都限制为该队列全局预算的 1/4。唯一例外：该 peer 在此（子）队列中当前没有排队项时，一条请求可以超过 peer 字节份额，但必须放得进该队列剩余的全局字节预算，并完整计费；不能用多个 request ID 叠加例外。上传块仍为 768 KiB，MaxChunkBytes、wire 字段和已密封请求不变；大 Send 仍进入交互输入队列。
 
-控制子队列对合法大消息的容量边界尚待裁定，见 [plan](plan.md#传输模块与直连)；不能仅由 peer 空队列例外推导所有合法控制请求都能进入空队列。
+每个执行（子）队列的全局字节预算不得小于合法解码正文上限 4 MiB，配合空 peer 单条例外，使合法的大控制请求、输入和上传块都能进入空队列；计费口径变化时也必须保持这一容量下限。
+
+审批发送前所需 GetLiveSnapshot 的池归属及优先级尚待裁定，见 [plan](plan.md#传输模块与直连)。当前候选仍将其归入普通只读；直接发送 ResolveApproval 的获槽指标不能代替包含此前置读取的完整审批验收。
 
 执行消费者先查同 ID 协调状态，重复进等待表；新请求**先取槽，再在执行闸门内复查并持久受理**。队列满或排队期限内仍无槽，未持久化终态拒绝时回复 unknown/busy，Router 按证据矩阵合并并退避原 ID；不留虚假的 in-progress。认证队列堵塞只拒当前帧，不阻塞读取审批、心跳或结果。
 
