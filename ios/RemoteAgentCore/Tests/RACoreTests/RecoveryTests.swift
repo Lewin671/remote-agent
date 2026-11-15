@@ -263,6 +263,101 @@ extension ServerTests {
                 #expect(await remote.networkGeneration==generation+1)
             }
         }
+
+        @Test func oversizedMainStreamFrameIsRejectedBeforeParsingProtobuf() async throws {
+            let listener = try Listener()
+            defer { listener.close() }
+            let attempts = Counter()
+            let dropped = Signal()
+            let sendOversized = DispatchSemaphore(value: 0)
+            let payloadLen = (2 << 20) + 1
+            try await World.run(setUp: { w in try await w.daemon.connect() }) { w in
+                let upstreamPort = w.server.port
+                listener.serve { fd in
+                    guard let head = readHead(fd) else { return }
+                    if head.first?.hasPrefix("GET /v1/stream ") == true {
+                        guard acceptUpgrade(fd, head) else { return }
+                        let attempt = attempts.increment()
+                        if attempt == 1 {
+                            var ready = PBServerFrame()
+                            ready.ready = PBReady.with { $0.serverTimeMs = Int64(Date().timeIntervalSince1970 * 1000) }
+                            let readyBytes: Data = (try? ready.serializedData()) ?? Data()
+                            _ = writeAll(fd, Data([0x82, UInt8(readyBytes.count)]) + readyBytes)
+                            _ = sendOversized.wait(timeout: .now() + 5)
+                            var header = Data([0x82, 0x7f])
+                            var bigLen = UInt64(payloadLen).bigEndian
+                            withUnsafeBytes(of: &bigLen) { header.append(contentsOf: $0) }
+                            _ = writeAll(fd, header + Data(count: payloadLen))
+                            var b: UInt8 = 0
+                            while read(fd, &b, 1) == 1 {}
+                            dropped.set()
+                        } else {
+                            var b: UInt8 = 0
+                            while read(fd, &b, 1) == 1 {}
+                        }
+                        return
+                    }
+                    let up = socket(AF_INET, SOCK_STREAM, 0)
+                    guard up >= 0 else { return }
+                    defer { Darwin.close(up) }
+                    var yes: Int32 = 1
+                    setsockopt(up, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
+                    var addr = sockaddr_in()
+                    addr.sin_family = sa_family_t(AF_INET)
+                    addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+                    addr.sin_port = UInt16(upstreamPort).bigEndian
+                    let ok = withUnsafePointer(to: &addr) {
+                        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                            connect(up, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                        }
+                    }
+                    guard ok == 0 else { return }
+                    let headData = Data((head.joined(separator: "\r\n") + "\r\n\r\n").utf8)
+                    guard writeAll(up, headData) else { return }
+                    let done = DispatchGroup()
+                    done.enter()
+                    Thread.detachNewThread {
+                        var buf = [UInt8](repeating: 0, count: 16384)
+                        while true {
+                            let n = read(up, &buf, buf.count)
+                            if n <= 0 || !writeAll(fd, Data(buf[..<n])) { break }
+                        }
+                        shutdown(fd, SHUT_RDWR)
+                        done.leave()
+                    }
+                    var buf = [UInt8](repeating: 0, count: 16384)
+                    while true {
+                        let n = read(fd, &buf, buf.count)
+                        if n <= 0 || !writeAll(up, Data(buf[..<n])) { break }
+                    }
+                    shutdown(up, SHUT_RDWR)
+                    done.wait()
+                }
+                let acct = try await w.join()
+                let proxied = Account(
+                    server: "http://127.0.0.1:\(listener.port)",
+                    root: acct.root,
+                    deviceSeed: acct.deviceSeed,
+                    deviceId: acct.deviceId,
+                    accountId: acct.accountId
+                )
+                let remote = try await w.remote(proxied)
+                let parseCalls = Counter()
+                remote.frameParser.withLock {
+                    $0 = { data in
+                        parseCalls.increment()
+                        return try PBServerFrame(serializedBytes: data)
+                    }
+                }
+                remote.start()
+                _ = try await remote.awaitState("online") { $0.conn == .online }
+                let prior = parseCalls.value
+                sendOversized.signal()
+                #expect(await dropped.wait(5_000))
+                try await eventually("socket replaced after oversized frame") { attempts.value >= 2 }
+                #expect(parseCalls.value == prior)
+            }
+        }
     }
 }
 

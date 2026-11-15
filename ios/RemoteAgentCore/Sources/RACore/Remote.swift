@@ -22,6 +22,8 @@ public let commandTTLMs: Int64 = 60_000
 
 /// How long after the lists could not be fetched they are asked for again; twice as long each time, up to half a minute.
 let listRetryMs: Int64 = 2_000
+/// Matches server maxFrameBytes and Android STREAM_FRAME_BYTES.
+private let streamFrameBytes = 2 << 20
 
 /// An immutable local intent; retries reuse its request ID, deadline and payload.
 public final class PreparedCommand: @unchecked Sendable {
@@ -179,6 +181,9 @@ public actor Remote {
     var recovery: Recovery
     nonisolated let sleep: Sleeper
     nonisolated let jitter: @Sendable () -> Double
+    nonisolated let frameParser = OSAllocatedUnfairLock<@Sendable (Data) throws -> PBServerFrame>(
+        initialState: { try PBServerFrame(serializedBytes: $0) }
+    )
     /// Stream frames waiting to be handled before the stream is dropped and caught up from history.
     nonisolated let frameQueue: Int
     nonisolated let frameQueueBytes: Int
@@ -970,19 +975,20 @@ public actor Remote {
         let (frames, queue) = AsyncStream<Data>.makeStream(
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
         let budget = StreamByteBudget(limit: frameQueueBytes)
+        let parse = frameParser.withLock { $0 }
         let receive = Task.detached {
             while let bytes = try? await socket.receive() {
+                guard bytes.count <= streamFrameBytes, budget.reserve(bytes.count) else {
+                    socket.cancel()
+                    break
+                }
                 let isHeartbeat: Bool
-                if case .heartbeat? = (try? PBServerFrame(serializedBytes: bytes))?.kind {
+                if case .heartbeat? = (try? parse(bytes))?.kind {
                     isHeartbeat = true
                 } else {
                     isHeartbeat = false
                 }
                 activity.received(monotonic(), isHeartbeat: isHeartbeat)
-                guard budget.reserve(bytes.count) else {
-                    socket.cancel()
-                    break
-                }
                 if case .dropped = queue.yield(bytes) {
                     budget.release(bytes.count)
                     socket.cancel()
@@ -1007,11 +1013,12 @@ public actor Remote {
     /// Handles a stream's frames in order until it ends or is replaced.
     private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ networkGen: UInt64, _ activity: PathActivity, _ budget: StreamByteBudget, _ credential: String) async {
         defer { mainLegs.removeValue(forKey:ObjectIdentifier(socket)) }
+        let parse = frameParser.withLock { $0 }
         for await bytes in frames {
             defer { budget.release(bytes.count) }
             if ws !== socket && candidate !== socket { break }
             do {
-                let f = try PBServerFrame(serializedBytes: bytes)
+                let f = try parse(bytes)
                 if candidate === socket {
                     guard case .ready? = f.kind else {throw UserError(L10nMessage.errorsInvalidPushFrame())}
                     opening?.task.cancel();opening=nil;candidate=nil

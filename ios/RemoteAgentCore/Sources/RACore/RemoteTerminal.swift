@@ -146,6 +146,11 @@ extension Remote {
             var last: UInt64 = 0
             while let bytes = try? await socket.receive() {
                 if closed.withLock({ $0 }) { continue }
+                guard bytes.count <= 1 << 20 else {
+                    finish(L10n.errorsTerminalConnectionDropped())
+                    socket.cancel()
+                    break
+                }
                 do {
                     let (h, frame) = try await security.openMessage(
                         PBEnvelope(serializedBytes: bytes), as: PBTerminalFrame.self,
