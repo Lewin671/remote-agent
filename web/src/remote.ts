@@ -1,3 +1,7 @@
+import { DirectEngine } from "./transport/direct-engine";
+import type { RouteHint } from "./transport/direct-routing";
+import { watchSecurityInstall } from "./device-security-store";
+import { peerFrameBody } from "./transport/peer-frame";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
 import { Recovery, PathChanged, abortable, ownedRound, scopedClient } from "./transport/recovery";
 import { cleanup } from "./cleanup";
@@ -1136,10 +1140,21 @@ export class Remote {
   private openTimer?: ReturnType<typeof setTimeout>;
   private idleTimer?: ReturnType<typeof setTimeout>;
   private setupProgress?: () => void;
+  readonly direct: DirectEngine;
+  private unwatchDirectInstall?: () => void;
+  private directTransfers = new Map<string, "image" | "file">();
+  private directHint(machineId: string, cmd: CommandKind): RouteHint | undefined {
+    if (cmd?.case === "getSharedFileChunk") return { kind: "bulk", file: `${cmd.value.sessionId}/${cmd.value.fileId}` };
+    if (cmd?.case === "putImageChunk") { const upload = this.directTransfers.get(`${machineId}/${cmd.value.transferId}`); return upload ? { kind: "bulk", file: cmd.value.transferId!, upload, bytes: cmd.value.data?.length } : undefined; }
+    // Recovery status stays on the independent relay before a chunk is retried.
+    if (cmd?.case !== "getImageUploadStatus" && readOnlyCommand(cmd)) return { kind: "read" };
+    return undefined;
+  }
   readonly deviceLink = new DeviceLink(new RelayPath(
     id => {
       const m = this.machines.get(id);
-      return { relayRequired: true, unlinked: this.unlinked, reachable: !!m?.online, ready: this.conn === "online", authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)), protocolVersion: m?.meta?.protocolVersion, capabilities: m?.meta?.capabilities };
+      const direct = this.direct?.ready(id, { kind: "read" }) ?? false;
+      return { relayRequired: !direct, unlinked: this.unlinked, reachable: direct || !!m?.online, ready: direct || this.conn === "online", authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)), protocolVersion: direct ? PROTOCOL_VERSION : m?.meta?.protocolVersion, capabilities: this.direct?.capabilities(id) ?? m?.meta?.capabilities };
     },
     () => this.relayEpoch(),
     (request, options) => this.api.forward(request, options),
@@ -1207,6 +1222,9 @@ export class Remote {
       securityStorage,
       () => this.roundBudget(),
     );
+    this.direct = new DirectEngine(account, async () => { await this.checkNetworkSecurity(); await this.security.verifiedRecord(); }, () => { if (!this.closed) this.changed(); });
+    this.security.onSync = (record, started) => { void this.direct.synced(record, started); };
+    this.security.onSyncFailed = () => this.direct.invalidate();
     const pairing = createClient(PairingService, createConnectTransport({
       fetch: relayFetch, baseUrl: apiBase(account.server), useBinaryFormat: true,
       defaultTimeoutMs: RPC_TIMEOUT_MS, interceptors: [auth],
@@ -1690,7 +1708,9 @@ export class Remote {
     clearInterval(this.securityTimer);
     // Foreground state pull: a lease renewal or removal reaches this page
     // within a minute, and an unknown state is fetched at once.
-    this.securityTimer = setInterval(() => void this.syncSecurity(), 60_000);
+    this.unwatchDirectInstall?.();
+    this.unwatchDirectInstall = watchSecurityInstall(record => this.direct.install(record));
+    this.securityTimer = setInterval(() => void this.syncSecurity(), 15_000);
     void this.watchPairingDelivery();
     this.scheduleReconnect();
   }
@@ -1771,7 +1791,7 @@ export class Remote {
   async syncSecurity() {
     if (this.closed) return;
     try {
-      const record = await this.security.sync();
+      const record = await this.security.sync(undefined, 5000);
       this.authorityDeviceId = record.states.at(-1)!.core.authorityID;
       this.maintainAuthority();
       this.changed();
@@ -1816,6 +1836,8 @@ export class Remote {
 
   stop() {
     this.closed = true;
+    this.direct.close();
+    this.unwatchDirectInstall?.(); this.unwatchDirectInstall = undefined;
     this.retireNetworkIO();
     const unwatch = this.unwatchSecurityPush;
     this.unwatchSecurityPush = undefined;
@@ -1858,6 +1880,7 @@ export class Remote {
   }
 
   private retireNetworkIO() {
+    this.direct.invalidate();
     this.loginController?.abort(new PathChanged());
     this.loginController = undefined; this.loggingIn = undefined;
     this.security.networkChanged();
@@ -2223,6 +2246,7 @@ export class Remote {
       clearTimeout(opening);
       if (this.candidate === ws) this.candidate = undefined;
       if (this.ws === ws) this.ws = undefined;
+      this.direct.detach(ws);
       cleanup(
         () => { if (code === 1008 && this.token === token) this.discardToken(); },
         () => ws.close(),
@@ -2250,6 +2274,7 @@ export class Remote {
         clearTimeout(opening);
         const old = this.ws;
         this.ws = ws; this.candidate = undefined; this.generation++;
+        this.direct.attach(ws);
         this.activeNetworkGeneration = networkGeneration;
         old?.close();
         this.recovery.ready();
@@ -2261,6 +2286,11 @@ export class Remote {
       }
       if (this.ws === ws && this.activeNetworkGeneration === this.networkGeneration && this.foreground && this.conn === "connecting" && frame.kind.case !== "ready") {
         this.conn = "online"; this.changed(true);
+      }
+      if (frame.kind.case === "peerFrameDelivery" || frame.kind.case === "peerFrameResult") {
+        const raw = peerFrameBody(new Uint8Array(data), frame.kind.case === "peerFrameDelivery" ? 11 : 12);
+        if (raw) { if (frame.kind.case === "peerFrameDelivery") this.direct.receive(raw, ws); else this.direct.result(raw, ws); }
+        return;
       }
       queuedBytes += data.byteLength; queuedFrames++;
       if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
@@ -3514,9 +3544,12 @@ export class Remote {
     // request can say it did not run.
     let recoveryUntil: number | undefined;
     let attempted = false;
+    const routeHint = this.directHint(machineId, cmd);
+    let forceRelay = false;
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
-      const delivery = this.deviceLink.delivery(call);
+      const delivery = this.deviceLink.delivery(call, routeHint && !forceRelay ? handoff => this.direct.attempt(machineId, routeHint, handoff) : undefined);
+      const routeStarted = performance.now();
       const attemptId = delivery.attemptId;
       try {
         if (attempted && Date.now() >= deadline + (call.uncertain ? RESULT_RETENTION_MS : 0))
@@ -3550,8 +3583,8 @@ export class Remote {
             l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
         }
         const binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), prepared.plain);
-        const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && res.outcome===msg.outcome && res.reason===msg.reason && (msg.outcome==="conflict" || msg.conflictKind==="");
-        const category = verifiedOutcome(msg,binding.key,binding.payload,res.outcome,res.reason,false);
+        const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && (delivery.direct || res.outcome===msg.outcome && res.reason===msg.reason) && (msg.outcome==="conflict" || msg.conflictKind==="");
+        const category = verifiedOutcome(msg,binding.key,binding.payload,delivery.direct ? msg.outcome : res.outcome,delivery.direct ? msg.reason : res.reason,false);
         if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
 
         if (category === "executed" && !msg.resultAvailable || category === "conflict" && msg.conflictKind === "identity") {
@@ -3564,8 +3597,22 @@ export class Remote {
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
+        if (routeHint) { const bytes = cmd?.case === "putImageChunk" ? cmd.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0; this.direct.observe(machineId, routeHint, delivery.direct, bytes, performance.now() - routeStarted); }
+        if (cmd?.case === "beginImageUpload") { if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!); this.directTransfers.set(`${machineId}/${cmd.value.transferId}`, cmd.value.fileName ? "file" : "image"); }
+        if (cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload") this.directTransfers.delete(`${machineId}/${cmd.value.transferId}`);
         return msg;
       } catch (e) {
+        if (delivery.direct && routeHint) {
+          forceRelay = true; this.direct.failed(machineId, routeHint);
+          signal?.throwIfAborted();
+          if (cmd?.case === "putImageChunk") {
+            // The status read is relay-only and precedes the original chunk
+            // retry. It does not manufacture a result for that authorization.
+            await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId: cmd.value.transferId } });
+          }
+          if (e instanceof PathChanged && Date.now() < deadline) { attempt--; continue; }
+          if (e instanceof PathChanged) throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, true, "unknown");
+        }
         // Only transport failures are automatically retried here. Interrupted
         // daemon answers still freeze the caller's request slot.
         if (e instanceof PathChanged) { signal?.throwIfAborted(); attempt--; continue; }

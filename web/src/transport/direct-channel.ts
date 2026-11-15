@@ -53,6 +53,7 @@ export class DirectChannel {
   private readonly probe: RTCDataChannel;
   private readonly lifetime = new AbortController();
   private confirmed = false;
+  private stunReady = false;
   private ended = false;
   private chain = Promise.resolve();
   private partial = new Map<string, PartialMessage>();
@@ -80,7 +81,7 @@ export class DirectChannel {
     this.data.onclose = this.probe.onclose = () => this.close();
     this.data.onerror = this.probe.onerror = () => this.close();
     this.pc.ondatachannel = event => { event.channel.close(); this.close(); };
-    this.pc.onicecandidate = event => { if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null); };
+    this.pc.onicecandidate = event => { if (event.candidate?.type === "srflx") this.stunReady = true; if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null); };
     this.pc.onconnectionstatechange = () => {
       if (this.ended) return;
       options.state(this.pc.connectionState);
@@ -117,6 +118,8 @@ export class DirectChannel {
   }
   private valid() { return !this.ended && this.options.valid() && (this.confirmed || Date.now() < this.options.deadline); }
   get ready() { return this.confirmed && this.valid() && this.data.readyState === "open"; }
+  get traversalReady() { return this.stunReady; }
+  get queuedBytes() { return this.data.bufferedAmount; }
   get signal() { return this.lifetime.signal; }
   async description(offer: boolean, restart = false): Promise<w.Bytes> {
     if (!this.valid()) throw new PathChanged();

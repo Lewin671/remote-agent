@@ -3,7 +3,7 @@ import { ConnectError } from "@connectrpc/connect";
 import { DispatchRegistry, type DispatchCall } from "./dispatch";
 import { RequestSlot, CommandError, uncertain } from "./request";
 import * as l10n from "../i18n";
-import type { Path } from "./path";
+import type { Path, PathAttempt } from "./path";
 import { Router } from "./router";
 
 /** Owns authorizations, delivery evidence and logical streams across paths.
@@ -38,11 +38,13 @@ export class Link {
     } finally { call.close(); this.sweep(); }
   }
 
-  delivery(call: DispatchCall) {
+  delivery(call: DispatchCall, direct?: (handoff: () => void) => PathAttempt | undefined) {
     const evidence = call.delivery();
-    const attempt = this.router.path.attempt(() => evidence.dispatch());
+    const handoff = () => evidence.dispatch();
+    const attempt = direct?.(handoff) ?? this.router.path.attempt(handoff);
     return {
       attemptId: attempt.attemptId,
+      direct: !!attempt.direct,
       prepare: () => attempt.prepare(),
       send: (...args: Parameters<typeof attempt.send>) => attempt.send(...args),
       refreshAuth: (prior: boolean, signal?: AbortSignal) => attempt.refreshAuth(prior, signal),

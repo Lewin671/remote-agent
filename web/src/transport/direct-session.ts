@@ -2,7 +2,7 @@ import { DirectBudget, DirectChannel } from "./direct-channel";
 import * as w from "./peer/wire";
 import { Signal, candidateBody, endBody, inspectSDP, readCandidates, sdpBody, type Action, type Candidate } from "./peer/signal";
 import { CandidateBatcher, Sender } from "./peer/sender";
-import { knownPayload } from "./peer/schema";
+import { knownPayload, restart } from "./peer/schema";
 import { PathChanged } from "./recovery";
 
 export interface DirectedOutput { raw: w.Bytes; deadline: number; critical: boolean; valid: () => boolean }
@@ -17,7 +17,7 @@ export interface DirectSessionOptions {
   probe?: (use: number, milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
 }
-type PC = { gate: Signal; sender: Sender; seq: bigint; channel?: DirectChannel; batch: CandidateBatcher; ufrag: w.Bytes; mid: w.Bytes; ended: boolean; confirmed: boolean; announced: boolean; actions: Action[] };
+type PC = { generation: bigint; restartSent: boolean; gate: Signal; sender: Sender; seq: bigint; channel?: DirectChannel; batch: CandidateBatcher; ufrag: w.Bytes; mid: w.Bytes; ended: boolean; confirmed: boolean; announced: boolean; actions: Action[] };
 
 /** Serial owner for one connection and both uses. Deferred work keeps original bytes. */
 export class DirectSession {
@@ -35,6 +35,7 @@ export class DirectSession {
   private receipts = new Map<string, { raw: w.Bytes; until: number }>();
   private controls = new Map<string, { hash: w.Bytes; until: number }>();
   private peerScope = new Map<string, number>();
+  private peerWindows = new Map<bigint, { next: bigint; pending: Map<bigint, { opened: w.Opened; at: number }>; gap: number }>();
   retainUntil: number;
   established = false;
   constructor(readonly options: DirectSessionOptions) {
@@ -43,7 +44,7 @@ export class DirectSession {
     const pc = (use: number): PC => {
       const gate = new Signal(options.codec, options.self, options.peer, options.connection, use, now);
       gate.roundDeadline = options.deadline; gate.current = options.valid; gate.leaseUntil = Number.MAX_SAFE_INTEGER;
-      return { gate, sender: new Sender(options.deadline), seq: 0n, batch: new CandidateBatcher(1n, options.deadline, 1), ufrag: new Uint8Array(), mid: new Uint8Array(), ended: false, confirmed: false, announced: false, actions: [] };
+      return { generation: 1n, restartSent: false, gate, sender: new Sender(options.deadline), seq: 0n, batch: new CandidateBatcher(1n, options.deadline, 1), ufrag: new Uint8Array(), mid: new Uint8Array(), ended: false, confirmed: false, announced: false, actions: [] };
     };
     this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.retainUntil = options.deadline + 300_000;
     this.timer = setInterval(() => {
@@ -58,6 +59,7 @@ export class DirectSession {
       void this.queue(() => this.tick()).finally(() => { this.tickQueued = false; });
     }, 25);
   }
+  get peer() { return this.pcs[0].gate.peer; }
   get active() { return !this.ended && !this.retired && this.options.valid(); }
   private queue(work: () => Promise<void>): Promise<void> {
     const job = this.chain.then(async () => { if (!this.ended) await work(); });
@@ -127,18 +129,19 @@ export class DirectSession {
     }
     if (c.cls === 2n) {
       if (oldControl) { if (w.equal(oldControl.hash, o.hash)) await this.replyCached(o); return; }
-      if (o.type === 1) {
-        const fields = w.fields(o.payload, "Capabilities"), expires = w.getUint(fields, 4);
-        if (expires <= BigInt(now) || expires > BigInt(now + 60_000)) return;
+      if (o.type === 1 || o.type === 14) {
+        const fields = w.fields(o.payload, o.type === 1 ? "Capabilities" : "CapabilitySnapshot"), expires = w.getUint(fields, o.type === 1 ? 4 : 3);
+        if (expires <= BigInt(now) || expires <= c.issued || expires - c.issued > 60_000n) return;
         this.options.capability(o);
       }
       this.controls.set(key, { hash: o.hash, until: Number(c.deadline) + 300_000 });
       if (o.type === 10) { await this.unsupported(o, now); return; }
       if ([11, 12, 13].includes(o.type)) return;
-      if (o.type === 1) await this.ack(o);
+      if (o.type === 1 || o.type === 14) await this.ack(o);
       else await this.respond(o, 10, w.pb(w.u(1, c.cls), w.u(2, o.type), w.u(3, c.seq), w.b(4, o.hash)));
       return;
     }
+    if (c.cls === 1n && c.use === 0n) { await this.receivePeerScope(o, now); return; }
     if (c.use < 1n || c.use > 2n) return;
     const index = Number(c.use) - 1, p = this.pcs[index];
     const actions = await p.gate.receive(raw, now);
@@ -148,6 +151,32 @@ export class DirectSession {
       else if (action.cls === 1) { if (action.type === 3) this.options.beforeOffer(); if (p.actions.length >= 32) { this.retire(); return; } p.actions.push(action); }
     }
     await this.drain(index); await this.maybeReady(index);
+  }
+  private validPeerScope(o: w.Opened) {
+    if (o.type === 9) return true;
+    if (o.type !== 8 || !this.pcs[0].gate.offerer()) return false;
+    const targets = restart(o.payload);
+    return [...targets].every(([use, generation]) => use >= 1n && use <= 2n && this.pcs[Number(use) - 1].gate.generation === generation);
+  }
+  private async receivePeerScope(o: w.Opened, now: number) {
+    if (now >= this.options.deadline) return;
+    const key=w.cacheKey(o.context), old=this.controls.get(key);
+    if (old) { if(w.equal(old.hash,o.hash)) await this.replyCached(o);return; }
+    if (!this.validPeerScope(o)) return;
+    let window=this.peerWindows.get(o.context.generation);
+    if(!window){if(this.peerWindows.size>=32)return;window={next:1n,pending:new Map(),gap:0};this.peerWindows.set(o.context.generation,window);}
+    if(o.context.seq<window.next||window.pending.size>=32)return;
+    this.controls.set(key,{hash:o.hash,until:Number(o.context.deadline)+300000});
+    if(o.context.seq>window.next){window.pending.set(o.context.seq,{opened:o,at:now});if(!window.gap)window.gap=Math.min(now+2500,Number(o.context.deadline),this.options.deadline);return;}
+    for(;;){
+      const fresh=await this.options.codec.open(o.raw,this.peer,this.options.self,Date.now());
+      if(!this.active||!this.validPeerScope(fresh)){this.retire();return;}
+      await this.ack(fresh);
+      if(fresh.type===9){this.retire();return;}
+      for(const [use]of restart(fresh.payload))await this.restartPC(Number(use)-1);
+      window.next++;const next=window.pending.get(window.next);if(!next)break;window.pending.delete(window.next);o=next.opened;
+    }
+    window.gap=window.pending.size?Math.min(...[...window.pending.values()].map(v=>Math.min(v.at+2500,Number(v.opened.context.deadline),this.options.deadline))):0;
   }
   private async ack(o: w.Opened) {
     if (o.context.cls === 1n && o.type === 1 || o.context.cls === 2n && [4, 10, 11, 12, 13].includes(o.type)) return;
@@ -179,12 +208,12 @@ export class DirectSession {
     return p.sender.enqueue(raw, now, Number(context.deadline), 1);
   }
   private makePC(index: number) {
-    const p = this.pcs[index]; if (p.channel) return true;
+    const p = this.pcs[index]; if (p.generation !== p.gate.generation) this.resetPC(index); if (p.channel) return true;
     if (!this.active || p.gate.closed || Date.now() >= this.options.deadline) return false;
     try {
       p.channel = new DirectChannel({ peer: w.text(this.options.peer.id), connection: this.options.connection, use: index + 1, generation: p.gate.generation, deadline: this.options.deadline, budget: this.options.budget, stun: this.options.stun, valid: () => this.active, factory: this.options.factory,
         candidate: candidate => { void this.queue(async () => { if (!this.active) return; if (candidate === null) p.ended = true; else if (!p.batch.add(w.utf8(candidate.candidate ?? ""), p.gate.generation, Date.now(), 1)) p.channel?.close(); }); },
-        state: state => { if (state === "connected") void this.queue(async () => { p.gate.dtls = true; await this.maybeReady(index); }); },
+        state: state => { if (["failed", "disconnected"].includes(state)) void this.queue(() => this.restartPC(index)); if (state === "connected") void this.queue(async () => { p.gate.dtls = true; await this.maybeReady(index); }); },
         frame: raw => this.options.frame(raw, index + 1), closed: () => this.options.closed(), probe: elapsed => this.options.probe?.(index + 1, elapsed),
       }); this.options.chosen(); return true;
     } catch { return false; }
@@ -200,6 +229,7 @@ export class DirectSession {
     const p = this.pcs[index];
     while (p.actions.length && this.active) {
       const action = p.actions[0];
+      if (action.generation !== p.gate.generation) { p.actions.shift(); continue; }
       await this.options.authorize(); if (!this.active) return;
       if ([3, 4, 5, 6].includes(action.type)) {
         if (!this.makePC(index)) return;
@@ -215,6 +245,7 @@ export class DirectSession {
           for (const candidate of readCandidates(action.payload).list) await p.channel!.addCandidate({ candidate: w.text(candidate.original), sdpMid: w.text(candidate.mid), sdpMLineIndex: Number(candidate.index), usernameFragment: w.text(candidate.ufrag) });
           break;
         case 6: await p.channel!.addCandidate(); break;
+        case 8: await this.restartPC(index); break;
         case 9: p.channel?.close(); break;
       }
     }
@@ -222,10 +253,11 @@ export class DirectSession {
   private async maybeReady(index: number) {
     const p = this.pcs[index]; if (!p.channel || !this.active) return;
     if (!p.confirmed && p.gate.localSDP && p.gate.remoteSDP && p.gate.dtls) p.confirmed = await this.signal(index, 7, p.gate.confirmBody());
-    if (p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; p.channel.confirm(); this.options.ready(index + 1, p.channel); }
+    if (p.channel.traversalReady && p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; p.channel.confirm(); this.options.ready(index + 1, p.channel); }
   }
   private async tick() {
     const now = Date.now();
+    if ([...this.peerWindows.values()].some(w => w.gap && now >= w.gap)) { this.retire(); return; }
     for (const [key, item] of this.controls) if (now > item.until) this.controls.delete(key);
     for (const [key, item] of this.receipts) if (now > item.until) this.receipts.delete(key);
     if (now >= this.options.deadline && !this.established && !this.retired) { this.close(); return; }
@@ -233,7 +265,8 @@ export class DirectSession {
     for (const [index, p] of this.pcs.entries()) {
       for (const [key, until] of p.gate.cacheUntil) if (now > until) { p.gate.cacheUntil.delete(key); p.gate.seen.delete(key); }
       if (!p.announced && (p.gate.closed || now >= this.options.deadline)) { p.channel?.close(); p.channel = undefined; }
-      if (this.active && !p.gate.closed) { await this.maybeOffer(index); await this.drain(index); }
+      if (this.active && p.gate.retired && now < this.options.deadline) await this.restartPC(index);
+      if (this.active && !p.gate.closed) { await this.maybeOffer(index); await this.drain(index); await this.maybeReady(index); }
       let batch = p.batch.batches;
       for (const group of p.batch.flush(now, p.ended, p.gate.generation, 1)) {
         const candidates: Candidate[] = group.map(original => ({ original, ufrag: p.ufrag, mid: p.mid, index: 0n, generation: p.gate.generation }));
@@ -243,9 +276,20 @@ export class DirectSession {
       for (const raw of await p.sender.tick(now)) await this.transmit(raw);
     }
   }
+  private resetPC(index: number) {
+    const p = this.pcs[index]; p.channel?.close(); p.channel = undefined;
+    p.generation = p.gate.generation; p.seq = 0n; p.sender = new Sender(this.options.deadline);
+    p.batch = new CandidateBatcher(p.gate.generation, this.options.deadline, 1);
+    p.confirmed = p.announced = p.ended = p.restartSent = false; p.ufrag = p.mid = new Uint8Array();
+  }
+  private async restartPC(index: number) {
+    const p = this.pcs[index]; if (!this.active || Date.now() >= this.options.deadline) return;
+    if (p.gate.offerer()) { p.gate.nextGeneration(p.gate.generation + 1n); this.resetPC(index); p.actions = []; await this.maybeOffer(index); }
+    else if (!p.restartSent) { p.restartSent = await this.signal(index, 8, w.pb(w.b(1, w.pb(w.u(1, index + 1), w.u(2, p.gate.generation))))); }
+  }
   private async transmit(raw: w.Bytes) {
     const o = await this.options.codec.openSent(raw, this.options.self, this.pcs[0].gate.peer, Date.now()), c = o.context;
-    return this.options.send({ raw, deadline: Number(c.deadline), critical: c.cls === 2n || ![5, 6].includes(o.type), valid: () => !this.ended && this.options.valid() && Date.now() < Number(c.deadline) && !(this.retired && c.cls === 1n && (o.type === 1 || o.type >= 3 && o.type <= 8)) && !(c.cls === 1n && o.type === 1 && !this.options.budget.ownerAvailable(w.text(this.options.peer.id), w.hex(this.options.connection))) });
+    return this.options.send({ raw, deadline: Number(c.deadline), critical: c.cls === 2n || ![5, 6].includes(o.type), valid: () => !this.ended && this.options.valid() && Date.now() < Number(c.deadline) && !(c.cls === 1n && c.use > 0n && c.use <= 2n && c.generation !== this.pcs[Number(c.use) - 1].generation) && !(this.retired && c.cls === 1n && (o.type === 1 || o.type >= 3 && o.type <= 8)) && !(c.cls === 1n && o.type === 1 && !this.options.budget.ownerAvailable(w.text(this.options.peer.id), w.hex(this.options.connection))) });
   }
   delivery(id: w.Bytes, status: number, retry: number) {
     void this.queue(async () => { for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) sender.limited(pending.hash, Date.now(), retry); if (status === 2) sender.offline(); } });
