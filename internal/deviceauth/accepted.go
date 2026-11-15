@@ -113,6 +113,10 @@ func (r *runningCall) isAbandoned() bool {
 // It must obey ctx; its returned release function must be nonblocking.
 // AllowNew is checked under the admission lock, including after slot acquisition.
 type AcceptOptions struct {
+	// PeerBinding is set only by an authenticated direct connection owner.
+	// It is rechecked atomically at new admission, including after slot waits.
+	PeerBinding *PeerBinding
+
 	AllowNew func() bool
 	Acquire  func(ctx context.Context) (release func(), err error)
 	Validate func(Header, []byte) error
@@ -571,6 +575,12 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 		if options.AllowNew != nil && !options.AllowNew() {
 			e.mu.Unlock()
 			return nil, notAdmitted("authorization_unavailable", ErrUntrusted)
+		}
+		if options.PeerBinding != nil {
+			if err := e.checkPeerLocked(*options.PeerBinding, clock); err != nil {
+				e.mu.Unlock()
+				return nil, notAdmitted("authorization_unavailable", err)
+			}
 		}
 		if h.Deadline-clock > 10*60*1000 {
 			e.mu.Unlock()

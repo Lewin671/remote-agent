@@ -11,12 +11,15 @@ type Pool struct {
 	total    [2]int
 }
 type usage struct {
+	owner string
+	uses  map[uint64]int
+
 	pcs           int
 	bytes, frames [2]int
 }
 
 func NewPool(maxPeers int) *Pool { return &Pool{MaxPeers: maxPeers, peers: map[string]*usage{}} }
-func (p *Pool) acquire(peer string) bool {
+func (p *Pool) acquire(peer, owner string, use uint64) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	u := p.peers[peer]
@@ -24,20 +27,22 @@ func (p *Pool) acquire(peer string) bool {
 		if len(p.peers) >= p.MaxPeers {
 			return false
 		}
-		u = &usage{}
+		u = &usage{owner: owner, uses: map[uint64]int{}}
 		p.peers[peer] = u
 	}
-	if u.pcs >= 2 {
+	if u.pcs >= 2 || u.owner != owner || u.uses[use] >= 1 {
 		return false
 	}
 	u.pcs++
+	u.uses[use]++
 	return true
 }
-func (p *Pool) release(peer string) {
+func (p *Pool) release(peer string, use uint64) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	u := p.peers[peer]
 	u.pcs--
+	u.uses[use]--
 	p.prune(peer, u)
 }
 func (p *Pool) prune(peer string, u *usage) {
@@ -65,4 +70,11 @@ func (p *Pool) free(peer string, direction, bytes, frames int) {
 	u.frames[direction] -= frames
 	p.total[direction] -= bytes
 	p.prune(peer, u)
+}
+
+func (p *Pool) ownerAvailable(peer, owner string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	u := p.peers[peer]
+	return u == nil || u.owner == owner
 }

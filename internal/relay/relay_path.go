@@ -4,6 +4,7 @@ import (
 	"context"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"time"
@@ -19,6 +20,12 @@ type relaySession struct {
 }
 
 func (c *relaySession) readLoop(ctx context.Context) error {
+	var directedGeneration uint64
+	if c.dispatcher.direct != nil {
+		var detach func()
+		directedGeneration, detach = c.dispatcher.direct.attach(c.path)
+		defer detach()
+	}
 	return readForwardCalls(ctx, func() (*pb.ServerFrame, error) {
 		b, err := c.path.Read(ctx)
 		if err != nil {
@@ -33,6 +40,16 @@ func (c *relaySession) readLoop(ctx context.Context) error {
 		}
 		if c.activity != nil {
 			c.activity(f.GetHeartbeat() != nil)
+		}
+		if manager := c.dispatcher.direct; manager != nil {
+			if f.GetPeerFrameDelivery() != nil {
+				if fields, err := peerwire.Parse(b, 1); err == nil && len(fields) == 1 && fields[11].Bytes {
+					manager.receive(fields[11].B)
+				}
+			}
+			if result := f.GetPeerFrameResult(); result != nil {
+				manager.delivery(result, directedGeneration)
+			}
 		}
 		return f, nil
 	}, func(call *pb.ForwardCall) {

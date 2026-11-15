@@ -18,6 +18,8 @@ import (
 // readers may add work; only process shutdown cancels and drains admitted work.
 // Its endpoint also owns the process running and bounded waiter tables.
 type dispatcher struct {
+	direct *directManager
+
 	ctx             context.Context
 	cancel          context.CancelFunc
 	workers         sync.WaitGroup
@@ -72,6 +74,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 		machine: remoteagentv1connect.NewMachineServiceClient(httpClient(), acct.Server, connect.WithInterceptors(publishCredentials.bearer(), r.limitMachineRPCs()))}
 	d.endpoint = &endpoint{r: r, acct: acct, security: security, lifetime: d.link.Context(), link: d.link, sessionKey: d.publisher.sessionKey}
 	d.endpoint.admissionOwner()
+	d.direct, _ = newDirectManager(d)
 	// Each loop has its own budget and credentials; no network I/O lock or RPC
 	// slot used by publication is shared with membership synchronization.
 	initialSync := make(chan struct{})
@@ -89,6 +92,9 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 }
 func (d *dispatcher) close() {
 	d.cancel()
+	if d.direct != nil {
+		d.direct.close()
+	}
 	if d.endpoint.admission != nil {
 		d.endpoint.admission.close()
 	}
@@ -169,6 +175,9 @@ func (c *conn) publishLoop(ctx context.Context) {
 // work. No second endpoint opens until the old generation has drained.
 func (d *dispatcher) retire() {
 	d.stopMaintenance()
+	if d.direct != nil {
+		d.direct.close()
+	}
 	for _, c := range d.credentials {
 		c.close()
 	}

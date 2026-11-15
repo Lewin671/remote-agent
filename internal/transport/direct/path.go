@@ -26,6 +26,9 @@ var ErrClosed = errors.New("direct_closed")
 var ErrLimit = errors.New("direct_limit")
 
 type Config struct {
+	Owner string
+	Use   uint64
+
 	Peer       string
 	Generation uint64
 	Pool       *Pool
@@ -46,20 +49,22 @@ type partial struct {
 }
 type message struct{ data []byte }
 type Path struct {
-	cfg         Config
-	pc          *webrtc.PeerConnection
-	data, probe *webrtc.DataChannel
-	ctx         context.Context
-	cancel      context.CancelFunc
-	once        sync.Once
-	mu          sync.Mutex
-	confirmed   bool
-	pending     map[string]*partial
-	received    chan message
-	ready, low  chan struct{}
-	closed      chan struct{}
-	sendMu      chan struct{}
-	writers     sync.WaitGroup
+	cfg          Config
+	pc           *webrtc.PeerConnection
+	data, probe  *webrtc.DataChannel
+	ctx          context.Context
+	cancel       context.CancelFunc
+	once         sync.Once
+	mu           sync.Mutex
+	confirmed    bool
+	confirmOnce  sync.Once
+	confirmation chan struct{}
+	pending      map[string]*partial
+	received     chan message
+	ready, low   chan struct{}
+	closed       chan struct{}
+	sendMu       chan struct{}
+	writers      sync.WaitGroup
 }
 
 func New(ctx context.Context, cfg Config) (*Path, error) {
@@ -71,11 +76,11 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 			return nil, ErrLimit
 		}
 	}
-	if cfg.Pool == nil || cfg.Allow == nil || !cfg.Allow() || cfg.Generation == 0 || !cfg.Pool.acquire(cfg.Peer) {
+	if cfg.Pool == nil || cfg.Allow == nil || !cfg.Allow() || cfg.Generation == 0 || cfg.Use < 1 || cfg.Use > 2 || !cfg.Pool.acquire(cfg.Peer, cfg.Owner, cfg.Use) {
 		return nil, ErrLimit
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	p := &Path{cfg: cfg, ctx: ctx, cancel: cancel, pending: map[string]*partial{}, received: make(chan message, 128), ready: make(chan struct{}, 1), low: make(chan struct{}, 1), sendMu: make(chan struct{}, 1), closed: make(chan struct{})}
+	p := &Path{cfg: cfg, ctx: ctx, cancel: cancel, pending: map[string]*partial{}, received: make(chan message, 128), ready: make(chan struct{}, 1), low: make(chan struct{}, 1), sendMu: make(chan struct{}, 1), closed: make(chan struct{}), confirmation: make(chan struct{})}
 	se := webrtc.SettingEngine{}
 	se.LoggerFactory = silentLogger{}
 	se.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeUDP4, webrtc.NetworkTypeUDP6})
@@ -92,7 +97,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 	pc, err := webrtc.NewAPI(webrtc.WithSettingEngine(se)).NewPeerConnection(webrtc.Configuration{ICEServers: servers})
 	if err != nil {
 		cancel()
-		cfg.Pool.release(cfg.Peer)
+		cfg.Pool.release(cfg.Peer, cfg.Use)
 		return nil, err
 	}
 	p.pc = pc
@@ -190,7 +195,12 @@ func (p *Path) businessReady() bool {
 
 // Confirm is called only after both SDP hashes and fingerprints have passed the
 // authenticated peer signal gate and DTLS has verified the remote certificate.
-func (p *Path) Confirm() { p.mu.Lock(); p.confirmed = true; p.mu.Unlock() }
+func (p *Path) Confirm() {
+	p.mu.Lock()
+	p.confirmed = true
+	p.mu.Unlock()
+	p.confirmOnce.Do(func() { close(p.confirmation) })
+}
 func (p *Path) Description(offer, restart bool) ([]byte, error) {
 	if !p.valid() {
 		return nil, ErrClosed
@@ -239,6 +249,13 @@ func (p *Path) AddCandidate(c webrtc.ICECandidateInit) error {
 	return p.pc.AddICECandidate(c)
 }
 func (p *Path) Read(ctx context.Context) ([]byte, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-p.ctx.Done():
+		return nil, ErrClosed
+	case <-p.confirmation:
+	}
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -341,7 +358,7 @@ func (p *Path) write(ctx context.Context, raw []byte) error {
 	return nil
 }
 func (p *Path) receive(m webrtc.DataChannelMessage) {
-	if !p.businessReady() || m.IsString || len(m.Data) > maxFrame {
+	if !p.valid() || m.IsString || len(m.Data) > maxFrame {
 		return
 	}
 	if _, err := peerwire.NormalizeMessage(m.Data, "Fragment"); err != nil {
@@ -427,9 +444,14 @@ func (p *Path) Close() {
 		p.mu.Unlock()
 		// Pion callbacks can call Close. Do not wait for that callback from inside
 		// PeerConnection.Close; the reservation stays held until SDK shutdown ends.
-		go func() { _ = p.pc.Close(); p.cfg.Pool.release(p.cfg.Peer); close(p.closed) }()
+		go func() {
+			_ = p.pc.Close()
+			p.writers.Wait()
+			p.cfg.Pool.release(p.cfg.Peer, p.cfg.Use)
+			close(p.closed)
+		}()
 	})
 }
 func (p *Path) Finish() { p.Close() }
 
-func (p *Path) Wait() { <-p.closed; p.writers.Wait() }
+func (p *Path) Wait() { <-p.closed }

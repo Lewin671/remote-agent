@@ -33,3 +33,21 @@ func TestProtocol15CannotLoginTo16(t *testing.T) {
 		t.Fatalf("current client: %v", err)
 	}
 }
+
+// Tokens have no binary/protocol field. This deliberately preserves the
+// documented upgrade boundary: a pre-upgrade token may read history until it
+// expires; login/pairing and the daemon's signed command gate enforce updates.
+func TestProtocolUpgradeDoesNotInferVersionFromExistingToken(t *testing.T) {
+	ts := newTestServer(t)
+	_, id, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := newToken()
+	if err = ts.srv.store.tenant(ts.acct()).addToken(context.Background(), hashToken(token), id, nowMs()+60000); err != nil {
+		t.Fatal(err)
+	}
+	if d, err := ts.srv.authenticate(context.Background(), token); err != nil || d.id != id {
+		t.Fatal("existing token unexpectedly rewritten/rejected", err)
+	}
+}

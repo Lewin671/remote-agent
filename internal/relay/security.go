@@ -54,6 +54,10 @@ type securityRefresh struct {
 }
 
 type securitySession struct {
+	directMu       sync.Mutex
+	directRevision uint64
+	directFresh    atomic.Pointer[directFreshness]
+
 	syncMu        sync.Mutex
 	lifetime      context.Context
 	credentials   *credentials
@@ -233,6 +237,9 @@ func (s *securitySession) sealResult(h *pb.Header, seed, plain []byte, raw bool)
 // syncOnce pulls states after the local head, verifies and installs them.
 // The connection maintenance loop separately retries current checkpoints.
 func (s *securitySession) refresh(ctx context.Context) error {
+	return s.refreshWithin(ctx, 3*time.Second)
+}
+func (s *securitySession) refreshWithin(ctx context.Context, budget time.Duration) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -248,7 +255,7 @@ func (s *securitySession) refresh(ctx context.Context) error {
 			if owner == nil {
 				owner = context.Background()
 			}
-			round, cancel := context.WithTimeout(owner, 3*time.Second)
+			round, cancel := context.WithTimeout(owner, budget)
 			flight = &securityRefresh{done: make(chan struct{}), cancel: cancel}
 			s.syncing = flight
 			s.workers.Go(func() {
@@ -281,6 +288,7 @@ func (s *securitySession) refresh(ctx context.Context) error {
 
 // The network owner retires both the pull and its credential round, never a waiter.
 func (s *securitySession) networkChanged() {
+	s.invalidateDirect()
 	s.syncMu.Lock()
 	if flight := s.syncing; flight != nil {
 		s.syncing = nil
@@ -296,13 +304,34 @@ func (s *securitySession) networkChanged() {
 	s.requestSync()
 }
 
-func (s *securitySession) syncOnce(ctx context.Context) error {
+func (s *securitySession) syncOnce(ctx context.Context) (result error) {
+	round, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ctx = round
+	started := s.now()
+	s.directMu.Lock()
+	s.directRevision++
+	revision := s.directRevision
+	s.directMu.Unlock()
+	var refreshed *directFreshness
+	defer func() {
+		s.directMu.Lock()
+		defer s.directMu.Unlock()
+		if revision != s.directRevision {
+			return
+		}
+		if result == nil && ctx.Err() == nil {
+			s.directFresh.Store(refreshed)
+		} else {
+			s.directFresh.Store(nil)
+		}
+	}()
 	if s.beforeSync != nil {
 		if err := s.beforeSync(); err != nil {
 			return err
 		}
 	}
-	_, err := s.pull(ctx)
+	epoch, err := s.pull(ctx)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -312,6 +341,15 @@ func (s *securitySession) syncOnce(ctx context.Context) error {
 			s.onAuthLost()
 		}
 	} else if err == nil {
+		_, head, _ := s.endpoint.Snapshot()
+		if head.Core.Epoch != epoch {
+			return deviceauth.ErrStale
+		}
+		hash, hashErr := head.Hash()
+		if hashErr != nil {
+			return hashErr
+		}
+		refreshed = &directFreshness{head: hash, until: started + 20000, leaseUntil: s.endpoint.LeaseExpiration()}
 		s.setAuthorized(true)
 	}
 	return err
@@ -399,8 +437,8 @@ func (s *securitySession) syncLoop(ctx context.Context, interval time.Duration, 
 		case <-ticker.C:
 		case <-s.syncNow:
 		}
-		attempt, cancel := context.WithTimeout(ctx, 15*time.Second)
-		err := s.refresh(attempt)
+		attempt, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err := s.refreshWithin(attempt, 5*time.Second)
 		cancel()
 		if initialDone != nil {
 			close(initialDone)
@@ -446,6 +484,7 @@ func (s *securitySession) setAuthorized(valid bool) {
 	s.authMu.Lock()
 	defer s.authMu.Unlock()
 	if !valid {
+		s.invalidateDirect()
 		s.blocked.Store(true)
 		if s.revoke != nil {
 			s.revoke()
@@ -518,4 +557,30 @@ func (s *securitySession) streamContext(parent context.Context, peerID string) (
 	id := s.nextStream
 	s.streams[id] = &authorizedStream{peer, cancel}
 	return ctx, func() { stop(); cancel(); s.authMu.Lock(); delete(s.streams, id); s.authMu.Unlock() }, nil
+}
+
+// directCurrent is independent of main WS state and publication. Failed or
+// incomplete sync pauses direct immediately; a stalled round expires at the
+// fixed 15-second start interval plus the 5-second whole-round budget.
+type directFreshness struct {
+	head       deviceauth.Hash
+	until      uint64
+	leaseUntil uint64
+}
+
+func (s *securitySession) invalidateDirect() {
+	s.directMu.Lock()
+	s.directRevision++
+	s.directFresh.Store(nil)
+	s.directMu.Unlock()
+}
+func (s *securitySession) directCurrent(self, peer deviceauth.Member, head deviceauth.Hash) bool {
+	fresh := s.directFresh.Load()
+	if fresh == nil || fresh.head != head || s.blocked.Load() || s.now() >= min(fresh.until, fresh.leaseUntil) {
+		return false
+	}
+	if s.endpoint.CheckPeer(self, peer, head, s.now()) != nil {
+		return false
+	}
+	return !s.blocked.Load() && s.directFresh.Load() == fresh && s.now() < min(fresh.until, fresh.leaseUntil)
 }

@@ -260,7 +260,13 @@ func TestRecoveryDoesNotSuspectBeforeTwoHeartbeats(t *testing.T) {
 				return
 			}
 			close(firstReady)
-			_, _, _ = ws.Read(r.Context())
+			// Protocol 16 may send directed peer probes while the server stays
+			// silent. Drain them without ending this deliberately quiet leg.
+			for {
+				if _, _, err := ws.Read(r.Context()); err != nil {
+					return
+				}
+			}
 		})
 	})
 	e.backend.add(t, "no-suspect")

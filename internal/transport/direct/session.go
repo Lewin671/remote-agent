@@ -15,6 +15,9 @@ import (
 // execution. A process owner keeps retired sessions until their replay window
 // ends, and owns membership, persistent policy and resource limits above it.
 type SessionConfig struct {
+	Chosen      func()
+	BeforeOffer func()
+
 	// Control handles supported authenticated types. A zero reply type means
 	// unsupported. It cannot execute a Command through this queue.
 	Control func(peerwire.Opened, uint64) (uint64, []byte)
@@ -40,6 +43,7 @@ type sessionEvent struct {
 	kind      int
 }
 type sessionPC struct {
+	business                    atomic.Bool
 	signal                      *peerwire.Signal
 	sender                      *peerwire.Sender
 	seq                         uint64
@@ -50,6 +54,7 @@ type sessionPC struct {
 }
 type Session struct {
 	retired     atomic.Bool
+	established atomic.Bool
 	retainUntil atomic.Uint64
 	finished    chan struct{}
 	closedPaths []*Path
@@ -122,6 +127,7 @@ func (s *Session) Done() <-chan struct{} { return s.finished }
 func (s *Session) Wait()                 { <-s.finished }
 func (s *Session) Active() bool          { return s.ctx.Err() == nil && !s.retired.Load() }
 func (s *Session) RetainUntil() uint64   { return s.retainUntil.Load() }
+func (s *Session) Established() bool     { return s.established.Load() }
 func (s *Session) Retire() {
 	s.retired.Store(true)
 	select {
@@ -481,6 +487,9 @@ func (s *Session) receive(raw []byte, now uint64) {
 		}
 		switch a.Type {
 		case 3, 4:
+			if a.Type == 3 && s.cfg.BeforeOffer != nil {
+				s.cfg.BeforeOffer()
+			}
 			if !s.makePC(i, now) || !p.signal.Dispatch(a.Original, now) {
 				return
 			}
@@ -536,7 +545,11 @@ func (s *Session) makePC(i int, now uint64) bool {
 		return false
 	}
 	use := uint64(i + 1)
-	path, err := New(s.ctx, Config{Peer: string(s.cfg.Peer.ID), Generation: 1, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool { return !s.retired.Load() && (s.cfg.Policy == nil || s.cfg.Policy()) && s.cfg.Allow() }, LoopbackOnly: s.cfg.LoopbackOnly,
+	expires := s.cfg.Deadline
+	live := func() bool { return p.business.Load() || uint64(time.Now().UnixMilli()) < expires }
+	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: 1, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool {
+		return !s.retired.Load() && live() && (s.cfg.Policy == nil || s.cfg.Policy()) && s.cfg.Allow() && live() && !s.retired.Load() && (s.cfg.Policy == nil || s.cfg.Policy())
+	}, LoopbackOnly: s.cfg.LoopbackOnly,
 		Candidate: func(c *webrtc.ICECandidateInit) {
 			select {
 			case s.events <- sessionEvent{use: use, candidate: c, kind: 1}:
@@ -556,6 +569,9 @@ func (s *Session) makePC(i int, now uint64) bool {
 		return false
 	}
 	p.path = path
+	if s.cfg.Chosen != nil {
+		s.cfg.Chosen()
+	}
 	return true
 }
 func (s *Session) maybeOffer(i int, now uint64) {
@@ -622,6 +638,8 @@ func (s *Session) maybeReady(i int, now uint64) {
 	}
 	if p.confirmed && !p.announced && p.signal.Ready() {
 		p.announced = true
+		p.business.Store(true)
+		s.established.Store(true)
 		p.path.Confirm()
 		if s.cfg.Ready != nil {
 			s.cfg.Ready(uint64(i+1), p.path)
@@ -670,6 +688,11 @@ func (s *Session) transmit(raw []byte) bool {
 	}
 	deadline := original.Context.Deadline
 	return s.cfg.Send(Outbound{Raw: raw, Deadline: deadline, Critical: original.Context.Class == 2 || original.Type != 5 && original.Type != 6,
-		Valid: func() bool { return s.ctx.Err() == nil && s.cfg.Allow() && uint64(time.Now().UnixMilli()) < deadline },
+		Valid: func() bool {
+			if original.Context.Class == 1 && original.Type == 1 && !s.cfg.Pool.ownerAvailable(string(s.cfg.Peer.ID), string(s.cfg.Connection)) {
+				return false
+			}
+			return s.ctx.Err() == nil && s.cfg.Allow() && uint64(time.Now().UnixMilli()) < deadline
+		},
 	})
 }

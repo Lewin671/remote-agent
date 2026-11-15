@@ -74,3 +74,5 @@ func ActivePoolsForTest(r *Relay) [3]int {
 	}
 	return [3]int{}
 }
+
+func SetDirectLoopbackForTest(r *Relay) { r.directLoopback = true; r.directSTUN = []string{} }

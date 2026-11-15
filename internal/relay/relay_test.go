@@ -1617,3 +1617,20 @@ func TestOrdinaryReconnectDoesNotRepublishCheckpoint(t *testing.T) {
 		t.Fatalf("ordinary reconnect republished checkpoint: %d metadata writes", got)
 	}
 }
+
+func TestProtocol15CommandsRefusedBy16Daemon(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "session")
+	e.startRelay()
+	s := e.session(t, "session", 0)
+	e.online(t, true)
+	cmd := &pb.Command{ProtocolVersion: 15, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: s.ID, Text: "old-protocol-fixture", RequestId: "old-protocol-request"}}}
+	_, err := e.client.Do(context.Background(), s, cmd)
+	var ce *remoteclient.CommandError
+	if !errors.As(err, &ce) || ce.Code != connect.CodeFailedPrecondition.String() || !strings.Contains(ce.Message, "update") {
+		t.Fatalf("protocol 15 was not told to update: %v", err)
+	}
+	if e.backend.sendCount() != 0 {
+		t.Fatal("protocol 15 reached the CLI backend")
+	}
+}

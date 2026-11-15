@@ -18,12 +18,12 @@ func localPair(t *testing.T) (*Path, *Path, context.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
 	ac, bc := make(chan *webrtc.ICECandidateInit, 65), make(chan *webrtc.ICECandidateInit, 65)
-	a, err := New(ctx, Config{Peer: "peer-b", Generation: 1, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Candidate: func(c *webrtc.ICECandidateInit) { ac <- c }})
+	a, err := New(ctx, Config{Use: 1, Owner: "test", Peer: "peer-b", Generation: 1, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Candidate: func(c *webrtc.ICECandidateInit) { ac <- c }})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { a.Close(); a.Wait() })
-	b, err := New(ctx, Config{Peer: "peer-a", Generation: 1, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Candidate: func(c *webrtc.ICECandidateInit) { bc <- c }})
+	b, err := New(ctx, Config{Use: 1, Owner: "test", Peer: "peer-a", Generation: 1, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Candidate: func(c *webrtc.ICECandidateInit) { bc <- c }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,11 +85,11 @@ func TestRealLocalDataChannelFragmentRoundTrip(t *testing.T) {
 func TestPoolCountsReplacementsAndAllUses(t *testing.T) {
 	p := NewPool(8)
 	for _, peer := range []string{"a", "b", "c", "d", "e", "f", "g", "h"} {
-		if !p.acquire(peer) || !p.acquire(peer) || p.acquire(peer) {
+		if !p.acquire(peer, "test", 1) || !p.acquire(peer, "test", 2) || p.acquire(peer, "test", 1) {
 			t.Fatal("per-peer PC cap")
 		}
 	}
-	if p.acquire("i") {
+	if p.acquire("i", "test", 1) {
 		t.Fatal("peer cap")
 	}
 	if !p.reserve("a", 0, 2<<20, 128) || p.reserve("a", 0, 1, 1) {
@@ -103,12 +103,12 @@ func TestPoolCountsReplacementsAndAllUses(t *testing.T) {
 }
 func TestUntrustedFragmentsChargeActualBytesAndExpire(t *testing.T) {
 	pool := NewPool(8)
-	if !pool.acquire("peer") {
+	if !pool.acquire("peer", "test", 1) {
 		t.Fatal("acquire")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	p := &Path{ctx: ctx, cancel: cancel, cfg: Config{Peer: "peer", Pool: pool, Generation: 1, Allow: func() bool { return true }}, confirmed: true, pending: map[string]*partial{}, received: make(chan message, 128)}
+	p := &Path{ctx: ctx, cancel: cancel, cfg: Config{Use: 1, Owner: "test", Peer: "peer", Pool: pool, Generation: 1, Allow: func() bool { return true }}, confirmed: true, pending: map[string]*partial{}, received: make(chan message, 128)}
 	send := func(f *pb.Fragment) { b, _ := proto.Marshal(f); p.receive(webrtc.DataChannelMessage{Data: b}) }
 	f := &pb.Fragment{MessageId: make([]byte, 16), Count: 2, CiphertextLength: 8, CiphertextSha256: make([]byte, 32), PathGeneration: 1, Fragment: []byte("123456")}
 	send(f)
@@ -125,13 +125,13 @@ func TestUntrustedFragmentsChargeActualBytesAndExpire(t *testing.T) {
 	if pool.total[1] != 0 || len(p.pending) != 0 {
 		t.Fatal("expiry did not free actual retained bytes")
 	}
-	pool.release("peer")
+	pool.release("peer", 1)
 }
 func TestAuthorizationLossClosesIdlePC(t *testing.T) {
 	var allowed atomic.Bool
 	allowed.Store(true)
 	pool := NewPool(8)
-	p, err := New(context.Background(), Config{Peer: "peer", Generation: 1, Pool: pool, Allow: allowed.Load, LoopbackOnly: true})
+	p, err := New(context.Background(), Config{Use: 1, Owner: "test", Peer: "peer", Generation: 1, Pool: pool, Allow: allowed.Load, LoopbackOnly: true})
 	if err != nil {
 		t.Fatal(err)
 	}

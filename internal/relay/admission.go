@@ -14,6 +14,10 @@ import (
 )
 
 type callRoute struct {
+	binding   *deviceauth.PeerBinding
+	directUse uint64
+	allow     func() bool // local atomic flags only; callable under endpoint admission lock
+
 	callID    uint64
 	attemptID string
 	send      func(*pb.ForwardReply)
@@ -75,8 +79,15 @@ func (c *endpoint) admissionOwner() *commandAdmission {
 // dispatch performs only bounded outer parsing. Neither queue overflow nor a
 // suspended backend can make the socket reader wait for a worker or a write.
 func (c *endpoint) dispatch(waiting context.Context, call *pb.ForwardCall, reply func(*pb.ForwardReply)) {
-	a := c.admissionOwner()
 	route := &callRoute{callID: call.CallId, attemptID: call.AttemptId, send: reply}
+	c.dispatchRoute(waiting, call, route)
+}
+func (c *endpoint) dispatchDirect(waiting context.Context, binding deviceauth.PeerBinding, use uint64, allow func() bool, env *pb.Envelope, reply func(*pb.ForwardReply)) {
+	route := &callRoute{binding: &binding, directUse: use, allow: allow, send: reply}
+	c.dispatchRoute(waiting, &pb.ForwardCall{Command: env}, route)
+}
+func (c *endpoint) dispatchRoute(waiting context.Context, call *pb.ForwardCall, route *callRoute) {
+	a := c.admissionOwner()
 	refuse := func(reason string) { a.respond(&callResult{route: route, entry: reason}) }
 	size := proto.Size(call)
 	if size > 1<<20 {
@@ -91,6 +102,9 @@ func (c *endpoint) dispatch(waiting context.Context, call *pb.ForwardCall, reply
 	h, err := deviceauth.ParseHeader(wire.Header)
 	if err != nil || h.Purpose != deviceauth.Command {
 		refuse("invalid_scope")
+		return
+	}
+	if route.binding != nil && (h.Sender != route.binding.Peer.ID || route.allow == nil || !route.allow()) {
 		return
 	}
 	f := &authFrame{wire: wire, peer: h.Sender, size: size, waiting: waiting, route: route}
@@ -147,6 +161,9 @@ func (a *commandAdmission) authenticateLoop() {
 		}
 		if err != nil {
 			a.respond(&callResult{route: frame.route, entry: "authentication_failed"})
+			continue
+		}
+		if frame.route.binding != nil && (p.Header().Sender != frame.route.binding.Peer.ID || !frame.route.allow()) {
 			continue
 		}
 		// Do not retain ciphertext in an execution closure or an auxiliary map.
@@ -256,7 +273,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 	// Run exactly the pre-admission checks (in their original order), but
 	// never persist acceptance or wait for a slot on an authentication worker.
-	options := a.endpoint.security.acceptOptions()
+	options := a.acceptOptions(route)
 	options.NoWait = true
 	options.Acquire = func(context.Context) (func(), error) { return nil, errAwaitExecution }
 	cached, err := a.endpoint.security.endpoint.AcceptAuthenticated(waiting, p, uint64(time.Now().UnixMilli()), options, nil)
@@ -277,6 +294,14 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 		return
 	}
 	class, approval := classifyCommand(cmd)
+	if route.binding != nil {
+		bulk := cmd.GetPutImageChunk() != nil || cmd.GetGetSharedFileChunk() != nil
+		allowed := route.directUse == 2 && bulk || route.directUse == 1 && deviceauth.IsReadOnlyCommand(cmd) && !bulk
+		if !allowed {
+			a.result(route, p, nil, p.Decision("path_unavailable", deviceauth.ErrUntrusted), false)
+			return
+		}
+	}
 	raw := cmd.GetGetSharedFileChunk() != nil
 	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval, Snapshot: cmd.GetGetLiveSnapshot() != nil, Priority: controlPriority(cmd)}
 	queuedAt := time.Now()
@@ -326,7 +351,7 @@ func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRout
 	// Exactly one backend goroutine per reserved execution slot. The owner
 	// below cannot release the slot until this callback and tracked I/O exit.
 	go func() {
-		options := a.endpoint.security.acceptOptions()
+		options := a.acceptOptions(route)
 		options.NoWait = true
 		options.Running = func(fn func()) {
 			runningMu.Lock()
@@ -437,3 +462,13 @@ type awaitExecution struct{}
 func (*awaitExecution) Error() string { return deviceauth.ErrCapacity.Error() }
 
 var errAwaitExecution error = &awaitExecution{}
+
+func (a *commandAdmission) acceptOptions(route *callRoute) deviceauth.AcceptOptions {
+	options := a.endpoint.security.acceptOptions()
+	if route.binding != nil {
+		options.PeerBinding = route.binding
+		original := options.AllowNew
+		options.AllowNew = func() bool { return original() && route.allow != nil && route.allow() }
+	}
+	return options
+}
