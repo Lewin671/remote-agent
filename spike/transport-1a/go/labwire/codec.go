@@ -207,7 +207,7 @@ func (c Context) Encode() []byte {
 	return PB(B(1, c.Domain), B(2, Account), B(3, c.From), B(4, c.To), U(5, c.FromRole), U(6, c.ToRole), B(7, c.Machine), U(8, Protocol), U(9, MemberEpoch), B(10, Head), B(11, c.SenderInstance), B(12, c.ReceiverInstance), B(13, c.SenderBoot), B(14, c.ReceiverBoot), B(15, c.Connection), U(16, c.Use), U(17, c.Generation), U(18, c.Seq), U(19, c.Issued), U(20, c.Deadline), U(21, c.Class), B(22, c.From), B(23, AccountDomain), U(24, c.RecipientUnknown))
 }
 func parseContext(raw []byte) (Context, error) {
-	f, e := Parse(raw, 24)
+	f, e := ParseMessage(raw, "Context")
 	if e != nil || need(f, "bbbbuubuubbbbbbuuuuuubbu") != nil {
 		return Context{}, ErrPacket
 	}
@@ -311,7 +311,7 @@ func openShared(raw []byte, from, to Public, shared []byte, now uint64) (Opened,
 		return fail()
 	}
 	raw = append([]byte(nil), raw...)
-	f, e := Parse(raw, 5)
+	f, e := ParseMessage(raw, "PeerFrameDelivery")
 	if e != nil || need(f, "bbubb") != nil {
 		return fail()
 	}
@@ -319,7 +319,7 @@ func openShared(raw []byte, from, to Public, shared []byte, now uint64) (Opened,
 	if class != 1 && class != 2 || len(raw) > 65536 || class == 2 && len(raw) > 16384 || len(f[4].B) != 16 || !bytes.Equal(f[1].B, from.ID) || !bytes.Equal(f[2].B, to.ID) {
 		return fail()
 	}
-	packet, e := Parse(f[5].B, 5)
+	packet, e := ParseMessage(f[5].B, "SealedPeerPacket")
 	if e != nil || need(packet, "bbbbb") != nil {
 		return fail()
 	}
@@ -367,11 +367,11 @@ func openShared(raw []byte, from, to Public, shared []byte, now uint64) (Opened,
 	if e != nil {
 		return fail()
 	}
-	w, e := Parse(body, 1)
+	w, e := ParseMessage(body, "PeerSignal")
 	if e != nil || need(w, "b") != nil {
 		return fail()
 	}
-	t, e := Parse(w[1].B, 2)
+	t, e := ParseMessage(w[1].B, "TypedPayload")
 	if e != nil || need(t, "ub") != nil || t[1].U > 0xffffffff {
 		return fail()
 	}

@@ -3,10 +3,18 @@
   "scenarios": {
     "active_retired_query_budgets": true,
     "attach_no_new_tmux": true,
+    "audit_ack_both_directions_expiry": true,
     "audit_assembly_expiry_identity_and_leg": true,
+    "audit_authorized_renewal_reply": true,
     "audit_completion_vs_new_admission": true,
     "audit_contiguous_render_deadline": true,
     "audit_current_membership_before_admission": true,
+    "audit_deferred_reply_and_ack_generation": true,
+    "audit_deferred_reply_and_ack_instance": true,
+    "audit_deferred_reply_and_ack_key": true,
+    "audit_deferred_reply_and_ack_lease": true,
+    "audit_deferred_reply_and_ack_member": true,
+    "audit_each_status_page_authorization": true,
     "audit_input_buffer_identity": true,
     "audit_input_original_deadline": true,
     "audit_input_successive_and_split_gaps": true,
@@ -142,6 +150,7 @@
     "status_reply_and_old_stream_resend": {
       "control_bytes": 3721,
       "control_packets": 5
-    }
+    },
+    "audit_terminal_controls_before_effects": true
   }
 }

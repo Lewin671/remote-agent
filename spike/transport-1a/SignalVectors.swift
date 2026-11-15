@@ -6,6 +6,11 @@ import Foundation
   for row in try String(contentsOfFile:CommandLine.arguments[1],encoding:.utf8).split(separator:"\n") {
    let p=row.split(separator:"\t",omittingEmptySubsequences:false).map(String.init)
    switch p[0]{
+   case "BODY":var ok=true;do{_ = try Schema.known(UInt64(p[1])!,UInt64(p[2])!,Wire.unhex(p[3]))}catch{ok=false};precondition(ok==(p[4]=="1"));assertions+=1
+   case "SCHEMA":var got:String;do{got=Wire.hex(try Schema.normalize(Wire.unhex(p[2]),p[1]))}catch{got="!"};precondition(got==p[3],p[1]);assertions+=1
+   case "AUTH":gates[Int(p[1])!].setAuthorization(1700000000000+UInt64(p[2])!,p[3]=="1",UInt64(p[4])!)
+   case "SEND_AUTH":sender!.setAuthorization(UInt64(p[1])!,p[2]=="1",UInt64(p[3])!)
+   case "REPLY":precondition(gates[Int(p[1])!].replyAllowed(Wire.unhex(p[4]),1700000000000+UInt64(p[2])!)==(p[3]=="1"));assertions+=1
    case "CASE":let a=try Wire.Identity(p[2],UInt64(p[3])!),b=try Wire.Identity(p[4],UInt64(p[5])!),conn=Array(Wire.hash(Wire.utf8("signal/"+p[1])).prefix(16));gates=[Signal(a,b,conn,UInt64(p[6])!,1700000000000),Signal(b,a,conn,UInt64(p[6])!,1700000000000)];cases+=1
    case "BATCH_CASE":batch=CandidateBatcher(UInt64(p[2])!,UInt64(p[3])!,UInt64(p[4])!);cases+=1
    case "BATCH_ADD":precondition(batch!.add(Wire.unhex(p[3]),UInt64(p[2])!,UInt64(p[1])!,1)==(p[4]=="1"));assertions+=1
@@ -30,7 +35,7 @@ import Foundation
    case "DTLS":gates[Int(p[1])!].dtls=true
    case "NEXT":try gates[Int(p[1])!].nextGeneration(UInt64(p[2])!)
    case "TICK":_ = gates[Int(p[1])!].tick(1700000000000+UInt64(p[2])!)
-   case "EXPECT":let s=gates[Int(p[1])!];let values:[String:UInt64]=["dispatches":UInt64(s.dispatches),"peer_known":s.peer.boot.count==32 ? 1:0,"stale":UInt64(s.staleChallenges),"boot":s.bootReady ? 1:0,"gap_ms":s.gapDeadline==0 ? 0:s.gapDeadline-1700000000000,"sdk":UInt64(s.sdkActions),"duplicates":UInt64(s.duplicates),"conflicts":UInt64(s.conflicts),"unsupported":UInt64(s.unsupported),"pending":UInt64(s.pending.count),"ready":s.ready ? 1:0,"closed":s.closed ? 1:0,"generation":s.generation,"next":s.next];precondition(values[p[2]]==UInt64(p[3])!,"\(p[2]) \(cases)");assertions+=1
+   case "EXPECT":let s=gates[Int(p[1])!];let values:[String:UInt64]=["seen":UInt64(s.seen.count),"dispatches":UInt64(s.dispatches),"peer_known":s.peer.boot.count==32 ? 1:0,"stale":UInt64(s.staleChallenges),"boot":s.bootReady ? 1:0,"gap_ms":s.gapDeadline==0 ? 0:s.gapDeadline-1700000000000,"sdk":UInt64(s.sdkActions),"duplicates":UInt64(s.duplicates),"conflicts":UInt64(s.conflicts),"unsupported":UInt64(s.unsupported),"pending":UInt64(s.pending.count),"ready":s.ready ? 1:0,"closed":s.closed ? 1:0,"generation":s.generation,"next":s.next];precondition(values[p[2]]==UInt64(p[3])!,"\(p[2]) \(cases)");assertions+=1
    default:preconditionFailure(p[0])
    }
   };print("Swift signal scenarios: \(cases), assertions: \(assertions)")

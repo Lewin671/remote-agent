@@ -13,11 +13,11 @@ func ValidatePolicyReply(request, reply Opened, now uint64) error {
 	if a.Class != 2 || z.Class != 2 || request.Type != 9 || reply.Type != 13 || !bytes.Equal(a.From, z.To) || !bytes.Equal(a.To, z.From) || !bytes.Equal(a.Connection, z.Connection) {
 		return ErrPacket
 	}
-	q, e := Parse(request.Payload, 4)
+	q, e := ParseMessage(request.Payload, "DirectPolicy")
 	if e != nil || need(q, "buuu") != nil {
 		return ErrPacket
 	}
-	r, e := Parse(reply.Payload, 7)
+	r, e := ParseMessage(reply.Payload, "PolicyReply")
 	if e != nil || need(r, "uuuubub") != nil {
 		return ErrPacket
 	}

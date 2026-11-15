@@ -22,6 +22,8 @@ class Frame:
     kind: str
     payload: bytes
     deadline: int = 10000
+    schema_valid: bool = True
+    authorization_revision: int = 1
 
 
 class Experiment:
@@ -45,6 +47,7 @@ class Experiment:
         self.window_peak = 0
         self.buffer_peak = 0
         self.gaps = {}
+        self.lease_until=10000;self.members_authorized=True;self.authorization_revision=1
         self.events = []
         self.order = 0
         self.now = 0
@@ -59,6 +62,16 @@ class Experiment:
         self.ack_sends = 0
         self.sdk_calls = []  # Observer only; no actual SDK is invoked.
         self.ack_dropped = False
+
+    def authorized(self,frame):
+        return self.now<self.lease_until and self.members_authorized and frame.authorization_revision==self.authorization_revision
+
+    @staticmethod
+    def decode_body(name,raw,shape=False):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('model_schema',Path(__file__).with_name('model-schema.py'))
+        codec=importlib.util.module_from_spec(spec);spec.loader.exec_module(codec)
+        return codec.normalize(raw,name,shape=shape)
 
     def event(self, at, action):
         self.order += 1
@@ -95,6 +108,7 @@ class Experiment:
             self.send(frame, 0)
 
     def send(self, frame, attempt):
+        if not frame.schema_valid or not self.authorized(frame):return False
         key = (frame.generation, frame.seq)
         if key in self.acked:
             return
@@ -124,6 +138,8 @@ class Experiment:
         self.event(when, lambda: self.send(frame, attempt + 1))
 
     def acknowledge(self, frame):
+        if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return False
+        if not frame.schema_valid or not self.authorized(frame):return False
         self.ack_sends += 1
         self.record("ack_send", generation=frame.generation, seq=frame.seq)
         if self.drop_ack and not self.ack_dropped:
@@ -132,6 +148,7 @@ class Experiment:
             return
         # Independent Control fake path: no ACK-of-ACK.
         def arrive():
+            if not self.authorized(frame):return
             if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return
             key = (frame.generation, frame.seq)
             self.acked.add(key)
@@ -140,6 +157,7 @@ class Experiment:
         self.event(self.now + self.ack_delay, arrive)
 
     def receive(self, frame):
+        if not frame.schema_valid or not self.authorized(frame):return False
         gen = frame.generation
         key = (gen, frame.seq)
         if gen!=self.current or gen in self.retired or self.now>=frame.deadline:
@@ -171,6 +189,7 @@ class Experiment:
         self.update_gap(gen)
 
     def apply(self, frame):
+        if not frame.schema_valid or not self.authorized(frame):return False
         if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return False
         key = (frame.generation, frame.seq)
         self.seen[key] = hashlib.sha256(frame.payload).digest()

@@ -64,7 +64,8 @@ Context.direction 保存 sender ID，正式 KDF 中同时有 from/to 与类别�
 明文 Context 的 seq/use/generation 只在解密后可见；bootstrap generation=0，正式 generation 从 1 开始。
 PCUse=0 是 peer scope，正式信令只允许 Restart/Close 使用它；控制消息可不针对 PC。
 
-protobuf 必需 scalar 的显式零值也由实验编码器保留，不能依赖默认生成器的 omit-default 行为重编码签名材料。
+proto3 scalar/bytes 的默认值省略与显式零值/空值具有相同语义；包括 Challenge.stale_instance=false、Context 的零值作用范围/代次和 recipient_unknown=false。消息字段的存在性及非零身份、hash、目标等应用约束仍须验证。解析器可为本地校验补默认值，签名、hash 和重传必须始终使用收到或首次冻结的原始字节，禁止将补值后的内容重新编码成签名材料。
+所有已知 Signal/Control 都先完整解析消息体，检查字段类型、范围、嵌套内容和相互约束，再写去重缓存、乱序缓存、推进代次或产生动作；Restart 还须核对目标用途及当前代次，Close 的 reason 省略为零但畸形正文仍拒绝。未知 type ID 认证后才返回 Unsupported。
 重复字段只在 schema 声明 repeated 的位置允许（Candidate/RestartPC/FrameStatus 等）；普通字段拒绝重复和非最短整数。
 CryptoKit Ed25519 可能随机化签名，跨语言必须校验相同签名输入与验签成功，不能要求所有签名器产出同一字节。
 三次发送冻结首次整个 PeerFrameDelivery 字节；初次重封装测量与重试测量分开。
@@ -115,5 +116,5 @@ SDK 创建描述的回调属于该 round/generation；已发出的 SDK 动作另
 终端输入/输出均按各缺口自身的首次发现时间计算 `min(first_seen+10s, waiting_frame.original_deadline)`。
 在 Admit、输入队列出队、渲染、replay、缓存补发和状态查询回调交付前重新检查逻辑流、daemon 实例、当前身份/租约和原期限；
 物理腿代次只约束分片/腿，不能取消已准入的后端执行。已经完成的后端证据须保留在原 owner 下，
-过期或新实例的等待者不再接收回复，不能把已执行改成未执行或再次注入。
+过期或新实例的等待者不再接收回复，不能把已执行改成未执行或再次注入。每一页 InputStatusReply、BarrierReply、结果和 ACK 在最终发出时均重查当前有效租约、双方当前成员及密钥、逻辑 owner/授权代次和原请求期限；排队时检查不能替代发送时检查。物理腿切换不改变逻辑 owner。授权失败只抑制发送，已完成的执行证据照常保留。
 候选字符串采用 ASCII token，`ufrag` 扩展必须小写且最多出现一次（相同值重复也拒绝）；非 CRLF 的行分隔符不进入 SDP。

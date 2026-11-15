@@ -201,7 +201,7 @@ r2 时序仍为 Offer 4000 ms 获准、7050 ms Ready，显式 Challenge ACK 5510
 **独立实验，2026-11-15；仍非产品直连验收。** Go、浏览器 WebCrypto（Chrome/WebKit）、Java/JVM（Bouncy Castle 1.85）
 和 Swift/CryptoKit 各实现同一草案 codec、信令接收器、发送窗口及候选汇集器。
 [共享 sealed 轨迹](../testdata/transport/signal/scenarios.tsv)分 Signal/Control 两条可乱序、重放或丢失的假管道，
-74 个共享场景、929 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
+141 个共享场景、2,005 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
 旧 SDK callback token、未来代候选先到、同序号冲突、固定缺口期限和未知类型认证 Unsupported。
 Probe 只可触发受限 Challenge；等待显式 ACK 的接收方也可用合法首份 Offer 的当前 nonce 证明解除引导门，详见第 12 节。
 单独收到重放 Probe 不能进入 SDK；接收器返回的 action 才是 SDK 调用许可，计数不是实际 API 调用次数。
@@ -311,3 +311,20 @@ Go、JS/Node、Java/JVM、Swift 共用 **29 场景/636 断言**，四端 SDP 共
 终端为 **39 组**，其中 11 组系统审计覆盖双向时序、身份、重组、缓存及完成证据边界；终端没有另外三套实现，不能把 Go 通过写成四端终端引擎通过。
 完整 `verify.py` 的 29 项与新丢包矩阵通过。Cold Context 字段和 Challenge hash 增加的封装已计入第 9 节容量数值，仍在 128 帧/3 MiB 初发预算内。
 本轮不接产品 Link/Router，不重新采样移动 SDK/ICE，不把实验时钟、mock 后端或一致性测试当作完整安全审计/真实 CLI 验收。
+
+
+## 14. 冻结前 r4：默认值、完整校验与发送授权
+
+**2026-11-15，沿用 v0.77.0/协议 15 基线，实验 wire 字段未变。** [覆盖清单](../testdata/transport/audit/parity.json)新增 (d)/(e)/(f) 列，完整语义见[编码草案](transport-wire-draft.md#缓存与延迟交付契约)。
+
+| 审计类 | 四语言观察 | 模型及补充证据 |
+|---|---|---|
+| (d) proto3 默认值省略 | 36 种 schema 各自接受省略/显式默认值，拒绝非最短整数、非法字段与重复单值字段；真实加密包验证省略 Context/Challenge 字段与空 Close 正文；Challenge 接收和记住均通过 | 517 条结构向量与 72 条已知正文向量由两个模型的独立 Python 边界读取；模型不实现密码学 |
+| (e) 先完整解析再改状态 | 9 种 Signal、13 种 Control 的坏正文都不增加 Seen/Pending、不推进 next/generation、不调用 SDK、不关闭；已知控制消息另核对字段间约束，Restart 拒绝错用途、错代次、重复/空目标 | 原始反例 `ff`、坏未来代次、默认 reason=0 正例；终端控制发送入口在封装/计数/回调前拒绝畸形正文 |
+| (f) 每次延迟发送重查授权 | 四端 Signal reply gate 与 Sender 最终 write gate 覆盖租约、成员、授权 revision、generation；真实密文 ACK/Unsupported/InputStatusReply/BarrierReply/PolicyReply 在失效后不得写出或重试 | 两模型分别覆盖准入前和准入后撤销；Go 终端使用真实租约/成员校验，覆盖截止瞬间、移除成员、密钥变化、实例/逻辑代次、分页中途失效与有效续租 |
+
+`verify.py` **30 项通过**；Go、Node、Java/JVM、Swift、Chrome 157.0.8103.52、WebKit 27.2 均通过 **141 场景/2,005 断言**，浏览器另跑 45 项 SDP。27 项密码学向量及 Swift→Go 交叉验签通过。终端 **48 组**通过；已准入成功/失败的完成证据在回复被抑制后仍保留，未再次注入。终端只有 Go 引擎，其他语言只验证共享控制编码与发送门，不能写成四套终端执行验收。
+
+重跑 **28,805 例**即时/晚 10 ms ACK 矩阵，整轮最多丢两帧全部 Ready，最慢 **8,560 ms**；r2 指定时序仍为 Offer 4,000 ms 准入、Challenge ACK 5,510 ms 到达、7,050 ms Ready。超前提按 10 秒结束、保留 relay、清理资源并退避。第 9 节真实封装预算不变。
+
+本轮使用独立 /tmp 状态、固定依赖和 CGO_ENABLED=0；仅重跑独立原型及浏览器，没有重装移动 SDK、测移动性能、接入产品 Link/Router 或做真实 CLI E2E。真实成员同步、策略持久化、peer-scope 多 PC 协调与应用生命周期仍是产品整合职责。模型中的实时授权是可撤销前提，不能替代真实租约验签。协议 16 仍是已采纳的整合建议，没有改生产常量、产品版本或生成物。

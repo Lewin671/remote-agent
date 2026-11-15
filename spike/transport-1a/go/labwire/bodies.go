@@ -9,7 +9,7 @@ import (
 
 func SDPBody(raw []byte) []byte { return PB(B(1, raw), B(2, Hash(raw))) }
 func ReadSDPBody(raw []byte) ([]byte, SDPInfo, error) {
-	f, e := Parse(raw, 2)
+	f, e := ParseMessage(raw, "SDP")
 	if e != nil || need(f, "bb") != nil || !bytes.Equal(Hash(f[1].B), f[2].B) {
 		return nil, SDPInfo{}, ErrPacket
 	}
@@ -37,6 +37,11 @@ func CandidateBody(candidates []Candidate, index uint64) []byte {
 }
 func ReadCandidates(raw []byte) ([]Candidate, uint64, error) {
 	var result []Candidate
+	var e error
+	raw, e = NormalizeMessage(raw, "Candidates")
+	if e != nil {
+		return nil, 0, e
+	}
 	for len(raw) > 0 && raw[0] == 0x0a {
 		raw = raw[1:]
 		size, n := binary.Uvarint(raw)
@@ -44,7 +49,7 @@ func ReadCandidates(raw []byte) ([]Candidate, uint64, error) {
 			return nil, 0, ErrPacket
 		}
 		raw = raw[n:]
-		f, e := Parse(raw[:size], 5)
+		f, e := ParseMessage(raw[:size], "Candidate")
 		raw = raw[size:]
 		if e != nil || need(f, "bbbuu") != nil {
 			return nil, 0, ErrPacket

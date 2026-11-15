@@ -49,8 +49,8 @@ REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
 
 - `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、29 份负例，共 45 项；原串禁文本换行转换。
 - `testdata/transport/wire`：27 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
-- `testdata/transport/signal/scenarios.tsv`：74 个共享场景、929 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
-- `testdata/transport/terminal/expected.json`：39 组终端模型预期；不是四套终端引擎均已执行的声明。
+- `testdata/transport/signal/scenarios.tsv`：141 个共享场景、2,005 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
+- `testdata/transport/terminal/expected.json`：48 组终端模型预期；不是四套终端引擎均已执行的声明。
 
 `signal-vectors.mjs testdata/transport/sdp /tmp/transport-lab/signal` 可重新生成并先用 JS 执行轨迹；
 seal 使用新随机数，所以重生成的包字节不同，语义预期不变。同一发送的副本则必须逐字节相同。
@@ -112,3 +112,12 @@ Android 只用自己的 AVD/ADB server，iOS 只用自己创建的模拟器；�
 新增的 SDK dispatch、发送 write-admit、候选 flush、查询 reply 等入口是在交付时检查的边界；外围产品适配器仍未接入。
 Sender 的原 expiry 与 binding 来自冻结发送记录；owner 必须在真实身份/代次变化时更新 binding，不把网络 hint 当作新授权。
 Python 的 `audit-models.py` 单独复核有限事件模型的过期/身份/代次路径；终端使用真实业务信封，后端与路径仍是假实现。
+
+
+## r4 编码、准入与发送授权审计
+
+`schema-generate.py` 从未修改的 draft proto 生成 36 种消息的 schema 表；`wire/body-bounds.json` 与 `wire/body-relations.json` 记录应用约束。`--check` 检查表与来源一致。四语言各自解析；Python 模型通过独立 codec 边界运行同一 SCHEMA/BODY 向量。517 条结构向量与 72 条已知正文向量覆盖默认值省略、显式默认值、重复/非最短/越界编码和消息间字段约束。真实加密轨迹另覆盖省略 Context/Challenge/空 Close 正文，不能用纯 parser 测试替代验签后的行为。
+
+已知正文在 Seen、Pending、NextGeneration、bootstrap/Close/SDK 动作前校验；乱序出队再校验。Restart 绑定当前 PC 用途和代次。实验 Signal 仍是单 PC 接收器；peer-scope 的多 PC 协调由后续产品 owner 整合。未实现的已知 Control 先验证完整 schema 再返回 Unsupported，不宣称已经实现策略持久化或全部终端控制器。
+
+Signal `replyAllowed` 和 Sender `admit` 是最终发送门。实验构造器明确给一轮有效的 fixture 授权；外围必须用 `setAuthorization` 更新当前租约上限、成员授权和单调 owner revision，并在真实写入时检查。原记录不随授权变更复活；普通网络通知不更新授权。JS 在 crypto await 后再次检查，其他实验调用在串行入口执行。终端 Go 直接用现有 `LeaseCertificate.Valid`、当前成员/密钥、状态 head 和逻辑 owner 验证每页回复与 ACK；其他三端没有终端执行引擎。两个模型把 schema_valid 与实时授权视为显式可撤销前提，既有事件矩阵继续检验时序，不承担密码学证明。

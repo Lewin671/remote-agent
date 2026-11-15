@@ -8,6 +8,8 @@ type Pending struct {
 	Attempts                          int
 }
 type Sender struct {
+	LeaseUntil                 uint64
+	MembersAuthorized          bool
 	Deadline                   uint64
 	Pending                    map[string]*Pending
 	TimedOut                   bool
@@ -18,12 +20,12 @@ type Sender struct {
 }
 
 func NewSender(deadline uint64) *Sender {
-	return &Sender{Deadline: deadline, Binding: 1, Pending: map[string]*Pending{}}
+	return &Sender{LeaseUntil: deadline, MembersAuthorized: true, Deadline: deadline, Binding: 1, Pending: map[string]*Pending{}}
 }
 func (s *Sender) Enqueue(raw []byte, now, expiry, binding uint64) bool {
 	s.Clock = max(s.Clock, now)
 	now = s.Clock
-	if s.TimedOut || binding != s.Binding || now >= expiry || now >= s.Deadline || len(s.Pending) >= 32 {
+	if !s.authorized() || s.TimedOut || binding != s.Binding || now >= expiry || now >= s.Deadline || len(s.Pending) >= 32 {
 		return false
 	}
 	hash := Hash(raw)
@@ -44,7 +46,7 @@ func (s *Sender) Tick(now uint64) [][]byte {
 	}
 	var out [][]byte
 	for key, p := range s.Pending {
-		if now >= p.Expiry || p.Binding != s.Binding {
+		if !s.authorized() || now >= p.Expiry || p.Binding != s.Binding {
 			delete(s.Pending, key)
 			continue
 		}
@@ -159,5 +161,14 @@ func (s *Sender) Rebind(binding uint64) { s.Binding = binding; s.Pending = map[s
 func (s *Sender) Admit(raw []byte, now uint64) bool {
 	s.Clock = max(s.Clock, now)
 	p := s.Pending[string(Hash(raw))]
-	return p != nil && !s.TimedOut && p.Binding == s.Binding && s.Clock < p.Expiry && s.Clock < s.Deadline
+	return s.authorized() && p != nil && !s.TimedOut && p.Binding == s.Binding && s.Clock < p.Expiry && s.Clock < s.Deadline
+}
+
+func (s *Sender) authorized() bool { return s.MembersAuthorized && s.Clock < s.LeaseUntil }
+func (s *Sender) SetAuthorization(until uint64, members bool, revision uint64) {
+	s.LeaseUntil = until
+	s.MembersAuthorized = members
+	if revision != s.Binding {
+		s.Rebind(revision)
+	}
 }

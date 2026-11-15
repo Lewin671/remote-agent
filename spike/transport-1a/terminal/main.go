@@ -196,12 +196,13 @@ type Status struct {
 	Details                         []Detail
 }
 type queued struct {
-	raw      []byte
-	instance string
-	header   deviceauth.Header
-	body     *pb.TerminalFrame
-	hash     string
-	rawBytes int
+	authorization authorization
+	raw           []byte
+	instance      string
+	header        deviceauth.Header
+	body          *pb.TerminalFrame
+	hash          string
+	rawBytes      int
 }
 
 type outputIdentity struct {
@@ -244,6 +245,9 @@ type Stream struct {
 	replayAt                                         []uint64
 	replayBytes                                      int
 	controlSeq                                       uint64
+	controlGeneration                                uint64
+	ackAuthorization                                 authorization
+	replyHook                                        func()
 	controlPackets, controlBytes                     int
 	inputCache                                       map[uint64]Envelope
 	inputAt                                          map[uint64]uint64
@@ -314,7 +318,9 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 	must(e)
 	_, identity, e := deviceauth.RequestIdentity(h, plain)
 	must(e)
-	q := queued{append([]byte(nil), raw...), s.instance, h, m, identity.String(), len(raw)}
+	auth := s.authorization()
+	auth.deadline = h.Deadline
+	q := queued{auth, append([]byte(nil), raw...), s.instance, h, m, identity.String(), len(raw)}
 	if s.fresh(q) != nil {
 		return errors.New("expired or stale completed envelope")
 	}
@@ -325,7 +331,7 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 		if old.Hash != q.hash {
 			return errors.New("logical conflict")
 		}
-		s.acks++
+		s.immediateACK(q.authorization)
 		return nil
 	}
 	if p, ok := s.pending[h.Seq]; ok {
@@ -419,7 +425,7 @@ func (s *Stream) finish(q queued, d Detail) {
 	}
 	if d.Outcome == "partial_or_unknown" {
 		s.failed = q.header.Seq
-		s.acks++
+		s.immediateACK(q.authorization)
 	}
 	if q.header.Purpose == deviceauth.TerminalInput && d.Outcome == "applied" {
 		s.inputSuccess = q.header.Seq
@@ -427,7 +433,7 @@ func (s *Stream) finish(q queued, d Detail) {
 
 	s.processed = q.header.Seq
 	s.details[q.header.Seq] = d
-	s.dirtyACK++
+	s.markACK(q.authorization)
 	if s.dirtyACK >= 16 {
 		s.emitACK()
 	}
@@ -459,6 +465,10 @@ func (s *Stream) finish(q queued, d Detail) {
 }
 func (s *Stream) emitACK() {
 	if s.dirtyACK > 0 {
+		if !s.authorized(s.ackAuthorization) {
+			s.dirtyACK = 0
+			return
+		}
 		s.acks++
 		s.lastACK = s.now
 		s.dirtyACK = 0
@@ -482,8 +492,9 @@ func (s *Stream) status(final bool) Status {
 func (s *Stream) query(reply func(Status)) {
 	if s.inflight != nil {
 		until, instance := s.now+10000, s.instance
+		auth := s.authorization()
 		s.waitingStatus = append(s.waitingStatus, func(st Status) {
-			if s.now >= until || s.instance != instance {
+			if s.now >= until || s.instance != instance || !s.authorized(auth) {
 				reply(Status{})
 				return
 			}
@@ -527,7 +538,7 @@ func (s *Stream) outputFrame(q queued) error {
 		if old.hash != q.hash {
 			return errors.New("rendered output conflict")
 		}
-		s.dirtyACK++
+		s.markACK(q.authorization)
 		return nil
 	}
 	if old, ok := s.output[q.header.Seq]; ok {
@@ -560,6 +571,7 @@ func (s *Stream) render() {
 		s.networkRecovery = true
 		return
 	}
+	auth := s.renderReady.authorization
 	s.rendered = s.renderReady.header.Seq
 	s.renderedIdentity[s.rendered] = outputIdentity{s.renderReady.hash, s.renderReady.header.Deadline}
 	s.outputBytes -= s.renderReady.rawBytes
@@ -567,7 +579,7 @@ func (s *Stream) render() {
 	delete(s.outputReceivedAt, s.rendered)
 	s.renderReady = nil
 	s.refreshOutputGap()
-	s.dirtyACK++
+	s.markACK(auth)
 	if s.dirtyACK >= 16 {
 		s.emitACK()
 	}
@@ -731,6 +743,9 @@ func (s *Stream) control(path string, typ uint64, body []byte, apply func([]byte
 	if e := s.sec.lease.Valid(s.sec.state, s.now); e != nil {
 		return e
 	}
+	if _, e := labwire.KnownPayload(2, typ, body); e != nil {
+		return e
+	}
 	s.controlSeq++
 	conn := labwire.Hash([]byte(s.id))[:16]
 	c := labwire.NewContext(s.sec.clientWire, s.sec.machineWire.Public(), conn, 0, 1, s.controlSeq, s.now, 2, false)
@@ -748,7 +763,11 @@ func (s *Stream) control(path string, typ uint64, body []byte, apply func([]byte
 	if opened.Context.Class != 2 || opened.Type != typ || !bytes.Equal(opened.Context.Connection, conn) {
 		return errors.New("control binding")
 	}
-	return apply(opened.Payload)
+	body, e = labwire.KnownPayload(2, typ, opened.Payload)
+	if e != nil {
+		return e
+	}
+	return apply(body)
 }
 func (s *Stream) reseal(e Envelope) Envelope {
 	h := e.header
@@ -925,7 +944,7 @@ func main() {
 	s.acknowledge(status)
 	check(status.Processed == 1 && len(s.inputCache) == 0, "InputStatus did not settle original input")
 	must(s.control("direct", 6, labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, bytes.Repeat([]byte{9}, 16)), labwire.U(4, 1)), func(raw []byte) error {
-		fields, err := labwire.Parse(raw, 3)
+		fields, err := labwire.ParseMessage(raw, "Barrier")
 		if err != nil || !bytes.Equal(fields[1].B, []byte(s.id)) {
 			return errors.New("barrier scope")
 		}
@@ -939,6 +958,8 @@ func main() {
 	reviewCases(sec, results)
 	reviewR2Cases(sec, results)
 	auditCases(sec, results)
+	authorizationCases(results)
+	controlValidationCases(results)
 	encoded, err := json.MarshalIndent(map[string]any{"evidence": "two fake paths; real existing business envelope; fake tmux", "scenarios": results}, "", "  ")
 	must(err)
 	fmt.Println(string(encoded))

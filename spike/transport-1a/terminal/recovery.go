@@ -24,6 +24,8 @@ func watermark(st Status) []byte {
 	return out
 }
 func parseWatermark(raw []byte) Status {
+	raw, e := labwire.NormalizeMessage(raw, "Watermark")
+	must(e)
 	var st Status
 	st.Available = true
 	last := protowire.Number(0)
@@ -50,7 +52,7 @@ func parseWatermark(raw []byte) Status {
 		b, k := protowire.ConsumeBytes(raw)
 		check(k > 0, "detail size")
 		raw = raw[k:]
-		f, e := labwire.Parse(b, 7)
+		f, e := labwire.ParseMessage(b, "FrameStatus")
 		must(e)
 		check(len(f) == 7 && len(f[2].B) == 32 && f[3].U >= 1 && f[3].U <= 6, "detail fields")
 		names := []string{"", "applied", "non_input_failed", "partial_or_unknown", "blocked", "not_applied", "expired_not_applied"}
@@ -58,10 +60,20 @@ func parseWatermark(raw []byte) Status {
 	}
 	return st
 }
-func (s *Stream) reply(typ uint64, body []byte) []byte {
+func (s *Stream) reply(typ uint64, body []byte, auth authorization) []byte {
+	if s.replyHook != nil {
+		s.replyHook()
+	}
+	if !s.authorized(auth) {
+		return nil
+	}
+	if _, e := labwire.KnownPayload(2, typ, body); e != nil {
+		return nil
+	}
 	s.controlSeq++
 	conn := labwire.Hash([]byte(s.id))[:16]
 	ctx := labwire.NewContext(s.sec.machineWire, s.sec.clientWire.Public(), conn, 0, 1, s.controlSeq, s.now, 2, false)
+	ctx.Deadline = min(ctx.Deadline, auth.deadline)
 	packet, e := labwire.Seal(s.sec.machineWire, s.sec.clientWire.Public(), ctx, typ, body, nil, nil, nil)
 	must(e)
 	check(len(packet) <= 16384, "control budget")
@@ -75,6 +87,7 @@ func (s *Stream) reply(typ uint64, body []byte) []byte {
 func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 	requestDeadline := s.now + 10000
 	requestInstance := s.instance
+	auth := s.authorization()
 	id := labwire.Hash([]byte(fmt.Sprintf("query/%s/%d", s.id, s.controlSeq)))[:16]
 	typ := uint64(3)
 	body := labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.U(3, 1), labwire.U(4, 128), labwire.B(5, nil))
@@ -83,12 +96,12 @@ func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 		body = labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.U(4, 1))
 	}
 	must(s.control(path, typ, body, func(raw []byte) error {
-		f, e := labwire.Parse(raw, 5)
+		f, e := labwire.ParseMessage(raw, map[uint64]string{3: "InputStatus", 6: "Barrier", 12: "BarrierReply"}[typ])
 		if e != nil || !bytes.Equal(f[1].B, []byte(s.id)) || !bytes.Equal(f[2].B, id) {
 			return errors.New("query binding")
 		}
 		deliver := func(st Status) {
-			if s.now >= requestDeadline || s.instance != requestInstance {
+			if s.now >= requestDeadline || s.instance != requestInstance || !s.authorized(auth) {
 				reply(Status{})
 				return
 			}
@@ -104,18 +117,26 @@ func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 				}
 				flow := labwire.PB(labwire.B(1, watermark(page)), labwire.B(2, watermark(Status{Processed: s.rendered})))
 				response := labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.U(3, 1), labwire.B(4, token), labwire.B(5, flow), labwire.U(6, uint64(n+1)), labwire.U(7, uint64(boolInt(n == pages-1))))
-				raw := s.reply(11, response)
-				r, e := labwire.Parse(raw, 7)
+				raw := s.reply(11, response, auth)
+				if raw == nil {
+					reply(Status{})
+					return
+				}
+				r, e := labwire.ParseMessage(raw, "InputStatusReply")
 				must(e)
 				check(bytes.Equal(r[1].B, []byte(s.id)) && bytes.Equal(r[2].B, id) && bytes.Equal(r[4].B, token), "snapshot binding")
-				flows, e := labwire.Parse(r[5].B, 2)
+				flows, e := labwire.ParseMessage(r[5].B, "FlowState")
 				must(e)
 				decoded := parseWatermark(flows[1].B)
 				result.Details = append(result.Details, decoded.Details...)
 			}
 			if final {
-				raw := s.reply(12, labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.B(3, labwire.PB(labwire.B(1, full))), labwire.U(4, 1), labwire.U(5, 1)))
-				f, e := labwire.Parse(raw, 5)
+				raw := s.reply(12, labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.B(3, labwire.PB(labwire.B(1, full))), labwire.U(4, 1), labwire.U(5, 1)), auth)
+				if raw == nil {
+					reply(Status{})
+					return
+				}
+				f, e := labwire.ParseMessage(raw, "BarrierReply")
 				must(e)
 				check(f[4].U == 1 && s.stopped, "nonfinal barrier")
 			}
@@ -208,8 +229,8 @@ func recoveryCases(sec *Security, results map[string]any) {
 	check(s.acks == 1, "16-frame ACK")
 	s.advance(20)
 	check(s.acks == 2, "20ms ACK")
-	ack := s.reply(4, labwire.PB(labwire.B(1, []byte(s.id)), labwire.U(2, 2), labwire.B(3, watermark(Status{Processed: s.rendered}))))
-	f, e := labwire.Parse(ack, 3)
+	ack := s.reply(4, labwire.PB(labwire.B(1, []byte(s.id)), labwire.U(2, 2), labwire.B(3, watermark(Status{Processed: s.rendered}))), s.authorization())
+	f, e := labwire.ParseMessage(ack, "Ack")
 	must(e)
 	check(parseWatermark(f[3].B).Processed == 17, "authenticated rendered watermark")
 	results["authenticated_ack_batching"] = true

@@ -30,6 +30,31 @@ func main() {
 	for _, row := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		p := strings.Split(row, "\t")
 		switch p[0] {
+		case "BODY":
+			_, e := labwire.KnownPayload(n(p[1]), n(p[2]), raw(p[3]))
+			if (e == nil) != (p[4] == "1") {
+				panic("body " + p[1] + "/" + p[2])
+			}
+			assertions++
+		case "SCHEMA":
+			v, e := labwire.NormalizeMessage(raw(p[2]), p[1])
+			got := hex.EncodeToString(v)
+			if e != nil {
+				got = "!"
+			}
+			if got != p[3] {
+				panic("schema " + p[1])
+			}
+			assertions++
+		case "AUTH":
+			gates[n(p[1])].SetAuthorization(1700000000000+n(p[2]), p[3] == "1", n(p[4]))
+		case "SEND_AUTH":
+			sender.SetAuthorization(n(p[1]), p[2] == "1", n(p[3]))
+		case "REPLY":
+			if gates[n(p[1])].ReplyAllowed(raw(p[4]), 1700000000000+n(p[2])) != (p[3] == "1") {
+				panic("reply auth")
+			}
+			assertions++
 		case "CASE":
 			a, b := labwire.Fixture(p[2], n(p[3])), labwire.Fixture(p[4], n(p[5]))
 			conn := labwire.Hash([]byte("signal/" + p[1]))[:16]
@@ -160,6 +185,7 @@ func main() {
 		case "EXPECT":
 			s := gates[n(p[1])]
 			v := map[string]uint64{"sdk": uint64(s.SDKCalls), "duplicates": uint64(s.Duplicates), "conflicts": uint64(s.Conflicts), "unsupported": uint64(s.Unsupported), "pending": uint64(len(s.Pending)), "generation": s.Generation, "next": s.Next}
+			v["seen"] = uint64(len(s.Seen))
 			v["dispatches"] = uint64(s.Dispatches)
 			if len(s.Peer.Boot) == 32 {
 				v["peer_known"] = 1

@@ -1,11 +1,13 @@
 import Foundation
 final class Sender {
  struct Pending {var raw,hash:Wire.Bytes;var first,notBefore,expiry,binding:UInt64;var attempts:Int}
- let deadline:UInt64;var pending:[String:Pending]=[:],timedOut=false,frames=0,bytes=0,failures=0;var retryAt:UInt64=0,networkGeneration:UInt64=0,binding:UInt64=1,clock:UInt64=0
- init(_ deadline:UInt64){self.deadline=deadline}
- func enqueue(_ raw:Wire.Bytes,_ now:UInt64,_ expiry:UInt64,_ binding:UInt64)->Bool{clock=max(clock,now);let now=clock;if timedOut || binding != self.binding || now>=expiry || now>=deadline || pending.count>=32{return false};let hash=Wire.hash(raw),key=Wire.hex(hash);if pending[key] != nil{return true};pending[key]=Pending(raw:raw,hash:hash,first:now,notBefore:0,expiry:min(expiry,deadline),binding:binding,attempts:0);return true}
- func tick(_ now:UInt64)->[Wire.Bytes]{clock=max(clock,now);let now=clock;if now>=deadline{pending=[:];timedOut=true;return []};var out:[Wire.Bytes]=[];for key in pending.keys.sorted(){var p=pending[key]!;if now>=p.expiry || p.binding != binding{pending.removeValue(forKey:key);continue};if p.attempts==3{continue};let due=max(p.first+[UInt64(0),500,1500][p.attempts],p.notBefore);if now>=due{precondition(Wire.hash(p.raw)==p.hash);out.append(p.raw);p.attempts+=1;pending[key]=p;frames+=1;bytes+=p.raw.count}};return out}
- func admit(_ raw:Wire.Bytes,_ now:UInt64)->Bool{clock=max(clock,now);guard let p=pending[Wire.hex(Wire.hash(raw))]else{return false};return !timedOut && p.binding==binding && clock<p.expiry && clock<deadline}
+ var leaseUntil:UInt64;var membersAuthorized=true;let deadline:UInt64;var pending:[String:Pending]=[:],timedOut=false,frames=0,bytes=0,failures=0;var retryAt:UInt64=0,networkGeneration:UInt64=0,binding:UInt64=1,clock:UInt64=0
+ init(_ deadline:UInt64){self.deadline=deadline;leaseUntil=deadline}
+ func enqueue(_ raw:Wire.Bytes,_ now:UInt64,_ expiry:UInt64,_ binding:UInt64)->Bool{clock=max(clock,now);let now=clock;if !authorized || timedOut || binding != self.binding || now>=expiry || now>=deadline || pending.count>=32{return false};let hash=Wire.hash(raw),key=Wire.hex(hash);if pending[key] != nil{return true};pending[key]=Pending(raw:raw,hash:hash,first:now,notBefore:0,expiry:min(expiry,deadline),binding:binding,attempts:0);return true}
+ func tick(_ now:UInt64)->[Wire.Bytes]{clock=max(clock,now);let now=clock;if now>=deadline{pending=[:];timedOut=true;return []};var out:[Wire.Bytes]=[];for key in pending.keys.sorted(){var p=pending[key]!;if !authorized || now>=p.expiry || p.binding != binding{pending.removeValue(forKey:key);continue};if p.attempts==3{continue};let due=max(p.first+[UInt64(0),500,1500][p.attempts],p.notBefore);if now>=due{precondition(Wire.hash(p.raw)==p.hash);out.append(p.raw);p.attempts+=1;pending[key]=p;frames+=1;bytes+=p.raw.count}};return out}
+ func admit(_ raw:Wire.Bytes,_ now:UInt64)->Bool{clock=max(clock,now);guard let p=pending[Wire.hex(Wire.hash(raw))]else{return false};return authorized && !timedOut && p.binding==binding && clock<p.expiry && clock<deadline}
+ var authorized:Bool{membersAuthorized && clock<leaseUntil}
+ func setAuthorization(_ until:UInt64,_ members:Bool,_ revision:UInt64){leaseUntil=until;membersAuthorized=members;if revision != binding{rebind(revision)}}
  func ack(_ hash:Wire.Bytes)->Bool{pending.removeValue(forKey:Wire.hex(hash)) != nil}
  func limited(_ hash:Wire.Bytes,_ now:UInt64,_ delay:UInt64){let key=Wire.hex(hash);if var p=pending[key]{p.notBefore=max(p.notBefore,(now>=deadline || delay>deadline-now) ? deadline:now+delay);pending[key]=p}}
  func backoff(_ now:UInt64,_ fraction:Double)->UInt64{let cap=failures<5 ? UInt64(1000)<<failures:30000;failures+=1;retryAt=now+UInt64(Double(min(30000,cap))*fraction);return retryAt}

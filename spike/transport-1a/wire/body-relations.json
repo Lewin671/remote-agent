@@ -1,0 +1,14 @@
+{
+  "Ack": "(size(1)>=16 and size(1)<=128 and v(2)>=1 and v(2)<=2 and has(3) and v(4)==0 and v(5)==0 and size(6)==0 and v(7)==0 and v(8)==0) or (size(1)==0 and v(2)==0 and not has(3) and v(4)>=1 and v(4)<=2 and v(5)>0 and size(6)==32 and v(8)<=2)",
+  "AttachPath": "has(6)",
+  "InputStatus": "size(5)==0 or size(5)==32",
+  "InputStatusReply": "(size(4)==0 or size(4)==32) and (v(3)==0 or (size(4)==32 and has(5)))",
+  "Barrier": "(size(5)==0 or size(5)==16) and (v(4)==1 or (size(5)==16 and v(6)>0))",
+  "BarrierReply": "(v(4)==0 or v(5)==1) and (v(5)==0 or has(3))",
+  "StreamFailed": "has(2) and has(3)",
+  "DirectPolicy": "(v(4)==1 and size(1)==0) or (v(4)==2 and size(1)==32)",
+  "PolicyReply": "(v(6)==1 and size(7)==0) or (v(6)==2 and size(7)==32)",
+  "Replay": "v(4)==0 or v(4)>=v(3)",
+  "FrameStatus": "v(4)<=v(5) and v(5)<=v(6)",
+  "Watermark": "v(2)<=v(1) and v(3)<=v(1)"
+}

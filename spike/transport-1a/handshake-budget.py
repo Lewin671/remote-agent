@@ -32,6 +32,8 @@ class Frame:
     recipient_unknown: bool = False
     probe_hash: bytes = b""
     deadline: int = 10000
+    schema_valid: bool = True
+    authorization_revision: int = 1
 
 
 class Experiment:
@@ -51,6 +53,7 @@ class Experiment:
         self.offerer=offerer;self.answerer="daemon" if offerer=="client" else "client";self.offer_started=set()
         self.deliveries=[];self.dropped=[];self.ack_ordinals={}
         self.proactive_challenge,self.ice_ms=proactive_challenge,ice_ms
+        self.lease_until=10000;self.members_authorized=True;self.authorization_revision=1
         self.events=[]; self.order=0; self.now=0; self.trace=[]
         self.acked=set(); self.cache={}; self.pending={}; self.pending_at={}; self.expected={}; self.gaps={}
         self.outstanding={}; self.peak=0; self.buffer_peak=0
@@ -61,6 +64,16 @@ class Experiment:
         self.ice_started=set();self.candidate_ready={"client":set(),"daemon":set()}
         self.event(relay_ms,lambda:self.log("relay_ready"))
         self.event(relay_ms+discovery_ms,self.start)
+
+    def authorized(self,frame):
+        return self.now<self.lease_until and self.members_authorized and frame.authorization_revision==self.authorization_revision
+
+    @staticmethod
+    def decode_body(name,raw,shape=False):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('model_schema',Path(__file__).with_name('model-schema.py'))
+        codec=importlib.util.module_from_spec(spec);spec.loader.exec_module(codec)
+        return codec.normalize(raw,name,shape=shape)
 
     def event(self,at,action):
         self.order+=1;heapq.heappush(self.events,(at,self.order,action))
@@ -83,6 +96,7 @@ class Experiment:
         return (1,frame.seq,hashlib.sha256(identity).digest(),frame.generation,frame.use)
 
     def send(self,frame):
+        if not frame.schema_valid or not self.authorized(frame):return False
         receiver='daemon' if frame.sender=='client' else 'client'
         frame=replace(frame,generation=0 if frame.pc==-1 else frame.generation,use=0 if frame.pc==-1 else frame.pc+1,
                       recipient_unknown=frame.kind=='Probe',receiver_nonce=b'' if frame.kind=='Probe' else frame.receiver_nonce or self.learned_nonce.get((frame.sender,frame.peer),b'unknown'))
@@ -99,6 +113,7 @@ class Experiment:
             self.event(self.now+offset,lambda f=frame,a=attempt,h=digest:self.attempt(f,a,h))
 
     def attempt(self,frame,attempt,digest):
+        if not frame.schema_valid or not self.authorized(frame):return False
         key=(frame.sender,frame.peer,frame.pc,frame.seq)
         if key in self.acked or self.now>=frame.deadline or (frame.pc>=0 and (frame.generation!=1 or frame.receiver_nonce!=self.learned_nonce.get((frame.sender,frame.peer)))):return
         assert hashlib.sha256(frame.body).hexdigest()==digest
@@ -114,6 +129,7 @@ class Experiment:
         else:self.receive(frame)
 
     def receive(self,f):
+        if not f.schema_valid or not self.authorized(f):return False
         key=(f.sender,f.peer,f.pc,f.seq);lane=key[:3]
         # Crypto/identity/head/lease are premises; admission below is explicit.
         receiver='daemon' if f.sender=='client' else 'client';pc_key=(f.peer,f.pc)
@@ -169,6 +185,7 @@ class Experiment:
         else:self.acknowledge(f,binding)
 
     def acknowledge(self,f,binding):
+        if not f.schema_valid or not self.authorized(f):return False
         receiver='daemon' if f.sender=='client' else 'client'
         if self.now>=f.deadline or (f.pc>=0 and ((f.peer,f.pc) in self.retired_pcs or f.generation!=1 or f.receiver_nonce!=self.nonce(receiver,f.peer))):return False
         if binding!=self.ack_binding(f):return False
@@ -217,6 +234,7 @@ class Experiment:
             else:self.send(Frame('client',peer,-1,1,'Probe',self.nonce('client',peer)))
 
     def process(self,f):
+        if not f.schema_valid or not self.authorized(f):return False
         self.log('process',f)
         k=(f.peer,f.pc)
         if f.kind=='Probe':

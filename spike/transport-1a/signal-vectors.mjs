@@ -1,3 +1,5 @@
+import schemaRules from './schema-data.mjs';
+import {normalize,knownPayload,signalSchemas,controlSchemas} from './schema.mjs';
 import {CandidateBatcher,Sender} from './sender.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -12,13 +14,13 @@ function line(...fields){rows.push(fields.join('\t'))}
 async function begin(name,use=1){conn=(await w.hash(w.utf8('signal/'+name))).slice(0,16);gates=fixtures.map((f,i)=>new Signal(f.id,fixtures[1-i].id,conn,use,base));line('CASE',name,...fixtures.flatMap(f=>[f.label,f.role]),use);}
 async function rx(sender,type,payload,seq,gen=1,expect=true,opts={}){
  const receiver=1-sender,c=type===1&&opts.boot?w.probeContext(fixtures[sender].id,gates[sender].peer,conn,seq,base):w.context(fixtures[sender].id,gates[sender].peer,conn,opts.use??gates[sender].use,gen,seq,base,opts.cls??1,opts.boot??false);if(opts.boot)c.use=0n;if(opts.receiverBoot)c.receiverBoot=opts.receiverBoot;if(opts.deadline!==undefined)c.deadline=BigInt(base+opts.deadline);if(opts.context)Object.assign(c,opts.context);
- const packet=opts.packet??await w.seal(fixtures[sender].id,fixtures[receiver].id,c,type,payload);
+ const packet=opts.packet??await w.seal(fixtures[sender].id,fixtures[receiver].id,c,type,payload,undefined,undefined,undefined,opts.omit??false);
  if(type===1&&expect&&!opts.packet){const sent=await w.open(packet,fixtures[sender].id,fixtures[receiver].id,base);await gates[sender].rememberProbe(sent);line('PROBE',sender,w.hex(packet))}
  let ok=true;try{await gates[receiver].receive(packet,base+(opts.at??0))}catch{ok=false}if(ok!==expect)throw Error(`generator transition ${type}`);
  line('RX',receiver,opts.at??0,expect?1:0,w.hex(packet));return packet;
 }
 async function local(which,raw,isOffer,gen=1,expected=true){let ok=true;try{await gates[which].setLocal(raw,isOffer,gen)}catch{ok=false}if(ok!==expected)throw Error('local');line('LOCAL',which,gen,isOffer?1:0,expected?1:0,w.hex(raw));}
-function expect(which,key,value){const s=gates[which];const actual={sdk:s.sdkActions,duplicates:s.duplicates,conflicts:s.conflicts,unsupported:s.unsupported,pending:s.pending.size,ready:Number(s.ready()),closed:Number(s.closed),generation:Number(s.generation),next:Number(s.next),stale:s.staleChallenges,boot:Number(s.bootReady),gap_ms:s.gapDeadline?s.gapDeadline-base:0,peer_known:Number(s.peer.boot.length===32),dispatches:s.dispatches}[key];if(actual!==value)throw Error(`${key}: ${actual} != ${value}`);line('EXPECT',which,key,value)}
+function expect(which,key,value){const s=gates[which];const actual={seen:s.seen.size,sdk:s.sdkActions,duplicates:s.duplicates,conflicts:s.conflicts,unsupported:s.unsupported,pending:s.pending.size,ready:Number(s.ready()),closed:Number(s.closed),generation:Number(s.generation),next:Number(s.next),stale:s.staleChallenges,boot:Number(s.bootReady),gap_ms:s.gapDeadline?s.gapDeadline-base:0,peer_known:Number(s.peer.boot.length===32),dispatches:s.dispatches}[key];if(actual!==value)throw Error(`${key}: ${actual} != ${value}`);line('EXPECT',which,key,value)}
 async function rememberChallenge(which,packet){const sent=await w.open(packet,fixtures[which].id,fixtures[1-which].id,base);await gates[which].rememberChallenge(sent);line('CHALLENGE',which,w.hex(packet));return sent}
 function ackBody(sent,changes={}){const c=sent.context;return w.pb(w.u(4,changes.cls??c.cls),w.u(5,changes.seq??c.seq),w.b(6,changes.hash??sent.hash),w.u(7,changes.generation??c.generation),w.u(8,changes.use??c.use))}
 async function boot({ack=true,challengeSeq=1,at=0,probeSender=0}={}){
@@ -155,4 +157,48 @@ async function recordAt(kind,which,packet,at,expected){gates[which].tick(base+at
 {await begin('audit-outgoing-probe-record-expiry');let c=w.probeContext(fixtures[0].id,gates[0].peer,conn,1,base);c.deadline=BigInt(base+100);let packet=await w.seal(fixtures[0].id,gates[0].peer,c,1,w.pb(w.b(1,conn),w.b(2,fixtures[0].id.instance),w.b(3,fixtures[0].id.boot)));await recordAt('probe',0,packet,100,false);expect(0,'boot',0);
 await begin('audit-outgoing-challenge-record-expiry');const rp=await rx(0,1,w.pb(w.b(1,conn),w.b(2,fixtures[0].id.instance),w.b(3,fixtures[0].id.boot)),1,0,true,{boot:true,deadline:100});c=w.context(fixtures[1].id,gates[1].peer,conn,0,0,1,base,1,true);packet=await w.seal(fixtures[1].id,gates[1].peer,c,2,w.pb(w.b(1,conn),w.b(2,fixtures[1].id.instance),w.b(3,fixtures[1].id.boot),w.b(4,gates[1].peer.boot),w.u(5,0),w.b(6,await w.hash(rp))));await recordAt('challenge',1,packet,100,false);}
 for(const reason of ['generation','identity','close']){await begin('audit-buffer-owner-'+reason);await boot();await local(0,offer,true);const old=await rx(0,5,candidates(offer),2);if(reason==='generation'){gates[1].nextGeneration(2);line('NEXT',1,2)}else if(reason==='identity')forget(1);else{await rx(0,9,w.pb(w.u(1,1)),1)}expect(1,'pending',0);expect(1,'sdk',0);await rx(0,3,await sdpBody(offer),1,1,false,{at:1});expect(1,'sdk',0)}
+// R4: schema-default equivalence and strict decoding for every draft message.
+for(const [name,fields]of Object.entries(schemaRules)){
+ const full=w.pb(...fields.filter(([,k,rep])=>!rep&&!k.startsWith('m')).map(([n,k])=>k==='b'?w.b(n,new Uint8Array()):w.u(n,0)));
+ const expected=w.hex(normalize(full,name));line('SCHEMA',name,'',expected);line('SCHEMA',name,w.hex(full),expected);
+ for(const raw of [Uint8Array.of(255),w.concat(full,Uint8Array.of(248,127,0)),Uint8Array.of(0x88,0,0)])line('SCHEMA',name,w.hex(raw),'!');
+ for(const [n,k,repeat]of fields){const tag=w.vint(n*8+(k==='b'||k.startsWith('m')?2:0));const bad=w.concat(tag,k==='b'||k.startsWith('m')?Uint8Array.of(0x80,0):Uint8Array.of(0x80,0));line('SCHEMA',name,w.hex(bad),'!');if(!repeat){const one=k==='b'||k.startsWith('m')?w.pb(w.b(n,new Uint8Array())):w.pb(w.u(n,0));line('SCHEMA',name,w.hex(w.concat(one,one)),'!')}}
+}
+await begin('r4-challenge-omitted-false');const cold=await rx(0,1,w.pb(w.b(1,conn),w.b(2,fixtures[0].id.instance),w.b(3,fixtures[0].id.boot)),1,0,true,{boot:true,omit:true});const omitted=await rx(1,2,w.pb(w.b(1,conn),w.b(2,fixtures[1].id.instance),w.b(3,fixtures[1].id.boot),w.b(4,gates[1].peer.boot),w.b(6,await w.hash(cold))),1,0,true,{boot:true,omit:true});const remembered=await rememberChallenge(1,omitted);await rx(0,4,ackBody(remembered),1,1,true,{cls:2,use:0});expect(0,'boot',1);expect(1,'boot',1);
+// Every known type: reject corrupt body before any cache, queue, or transition.
+for(const [cls,count]of [[1,9],[2,13]])for(let type=1;type<=count;type++){
+ await begin('r4-known-body-'+cls+'-'+type);await boot();const receiver=type===8?0:1,sender=1-receiver,before=gates[receiver].seen.size;
+ await rx(sender,type,Uint8Array.of(255),77,cls===1&&type<=2?0:1,false,{cls,boot:cls===1&&type<=2});
+ expect(receiver,'seen',before);expect(receiver,'next',1);expect(receiver,'generation',1);expect(receiver,'sdk',0);expect(receiver,'pending',0);expect(receiver,'closed',0);
+}
+for(const targets of [[w.pb(w.u(1,2),w.u(2,1))],[w.pb(w.u(1,1),w.u(2,2))],[w.pb(w.u(1,1),w.u(2,1)),w.pb(w.u(1,1),w.u(2,1))],[]]){
+ await begin('r4-restart-binding-'+targets.map(w.hex).join('-'));await boot();await rx(1,8,w.concat(...targets.map(t=>w.pb(w.b(1,t)))),1,1,false);expect(0,'seen',1);expect(0,'next',1);expect(0,'closed',0);
+}
+await begin('r4-close-default');await boot();await rx(0,9,new Uint8Array(),1,1,true,{omit:true});expect(1,'closed',1);
+await begin('r4-restart-default-reason');await boot();await rx(1,8,w.pb(w.b(1,w.pb(w.u(1,1),w.u(2,1)))),1);expect(0,'next',2);
+await begin('r4-bad-future-generation');await boot();await rx(0,3,Uint8Array.of(255),1,2,false);expect(1,'generation',1);expect(1,'seen',2);await rx(0,3,await sdpBody(offer),1,2);expect(1,'generation',2);expect(1,'sdk',1);
+await begin('r4-candidate-default-index');await boot();await local(0,offer,true);await rx(0,3,await sdpBody(offer),1);const ci=inspectSDP(offer),candidate=w.pb(w.b(1,w.utf8('candidate:1 1 UDP 2122260223 192.0.2.1 5000 typ host ufrag '+w.text(ci.ufrag))),w.b(2,ci.ufrag),w.b(3,ci.mid),w.u(5,1));await rx(0,5,w.pb(w.b(1,candidate)),2);expect(1,'sdk',2);
+for(const mode of ['lease','member','revision','generation','valid']){
+ await begin('r4-deferred-reply-'+mode);await boot();const request=await rx(0,31337,w.utf8('future signal'),1);
+ const until=mode==='lease'?base+50:base+10000,member=mode!=='member',revision=mode==='revision'?2:1;gates[1].setAuthorization(until,member,revision);line('AUTH',1,until-base,Number(member),revision);
+ if(mode==='generation'){gates[1].nextGeneration(2);line('NEXT',1,2)}
+ const expected=mode==='valid';if(await gates[1].replyAllowed(request,base+50)!==expected)throw Error('reply authorization');line('REPLY',1,50,Number(expected),w.hex(request));
+ const sender=new Sender(10000),raw=Uint8Array.of(1);line('SENDER_CASE','r4-deferred-send-'+mode,10000);await sender.enqueue(raw,0,10000,1);line('SEND_ADD',0,10000,1,w.hex(raw),1);await sender.tick(0);line('SEND_TICK',0,1);sender.setAuthorization(mode==='lease'?50:10000,member,mode==='revision'||mode==='generation'?2:1);line('SEND_AUTH',mode==='lease'?50:10000,Number(member),mode==='revision'||mode==='generation'?2:1);if(await sender.admit(raw,50)!==expected)throw Error('sender authorization');line('SEND_ADMIT',50,w.hex(raw),Number(expected));line('SEND_TICK',500,expected?1:0);
+}
+
+// All known bodies: actual valid shape, with every optional scalar/bytes default
+// present or omitted. These are schema vectors, not claimed SDK/control adapters.
+const z16=new Uint8Array(16),z32=new Uint8Array(32),stream=w.utf8('stream-schema-01'),water=new Uint8Array(),flow=w.pb(w.b(1,water));
+const bodies={Probe:w.pb(w.b(1,z16),w.b(2,z16),w.b(3,z32)),Challenge:w.pb(w.b(1,z16),w.b(2,z16),w.b(3,z32),w.b(4,z32),w.b(6,z32)),SDP:await sdpBody(offer),Candidates:candidates(offer),EndCandidates:endBody(inspectSDP(offer).ufrag,0,0),Confirm:w.pb(...[1,2,3,4].map(n=>w.b(n,z32))),Restart:w.pb(w.b(1,w.pb(w.u(1,1),w.u(2,1)))),Close:new Uint8Array(),Capabilities:w.pb(w.b(1,z16),w.u(4,base+10000),w.u(6,1048576)),AttachPath:w.pb(w.b(1,stream),w.b(2,stream),w.b(3,z32),w.b(4,z16),w.u(5,1),w.b(6,flow)),InputStatus:w.pb(w.b(1,stream),w.b(2,z16),w.u(3,1),w.u(4,128)),Ack:w.pb(w.u(4,1),w.u(5,1),w.b(6,z32)),Replay:w.pb(w.b(1,stream),w.u(2,1),w.u(3,1),w.u(5,1048576),w.u(6,128)),Barrier:w.pb(w.b(1,stream),w.b(2,z16),w.u(4,1)),StreamFailed:w.pb(w.b(1,stream),w.b(2,w.pb(w.u(1,1),w.b(2,z32),w.u(3,3))),w.b(3,flow)),ClosePath:w.pb(w.b(1,stream),w.b(2,z16),w.u(3,1)),DirectPolicy:w.pb(w.u(2,1),w.u(4,1)),Unsupported:w.pb(w.u(1,1),w.u(3,1),w.b(4,z32)),InputStatusReply:w.pb(w.b(1,stream),w.b(2,z16)),BarrierReply:w.pb(w.b(1,stream),w.b(2,z16)),PolicyReply:w.pb(w.u(1,1),w.u(4,1),w.b(5,z32),w.u(6,1))};
+for(const [cls,names]of [[1,signalSchemas],[2,controlSchemas]])for(const [type,name]of Object.entries(names)){const raw=bodies[name];for(const bytes of [raw,normalize(raw,name)]){knownPayload(cls,type,bytes);line('BODY',cls,type,w.hex(bytes),1)}line('BODY',cls,type,'ff',0)}
+for(const [type,raw]of [[4,new Uint8Array()],[11,w.pb(w.b(1,stream),w.b(2,z16),w.u(3,1))],[12,w.pb(w.b(1,stream),w.b(2,z16),w.u(4,1))],[9,w.pb(w.b(1,z32),w.u(2,1),w.u(4,1))],[6,w.pb(w.b(1,stream),w.b(2,z16))],[2,w.pb(w.b(1,stream),w.b(2,stream),w.b(3,z32),w.b(4,z16),w.u(5,1))]]){let rejected=false;try{knownPayload(2,type,raw)}catch{rejected=true}if(!rejected)throw Error('semantic shape');line('BODY',2,type,w.hex(raw),0);await begin('r4-semantic-control-'+type);await boot();const before=gates[1].seen.size;await rx(0,type,raw,44,1,false,{cls:2});expect(1,'seen',before);expect(1,'sdk',0);expect(1,'next',1)}
+
+
+// The final sender boundary handles actual sealed reply/result/ACK bytes.
+for(const type of [4,10,11,12,13])for(const mode of ['lease','member','revision','valid']){
+ const sender=new Sender(10000),context=w.context(fixtures[1].id,fixtures[0].id,new Uint8Array(16),0,1,1,base,2),raw=await w.seal(fixtures[1].id,fixtures[0].id,context,type,bodies[controlSchemas[type]]);
+ line('SENDER_CASE','r4-control-write-'+type+'-'+mode,10000);if(!await sender.enqueue(raw,0,10000,1))throw Error('reply enqueue');line('SEND_ADD',0,10000,1,w.hex(raw),1);await sender.tick(0);line('SEND_TICK',0,1);
+ sender.setAuthorization(mode==='lease'?50:10000,mode!=='member',mode==='revision'?2:1);line('SEND_AUTH',mode==='lease'?50:10000,Number(mode!=='member'),mode==='revision'?2:1);const expected=mode==='valid';if(await sender.admit(raw,50)!==expected)throw Error('reply write');line('SEND_ADMIT',50,w.hex(raw),Number(expected));line('SEND_TICK',500,Number(expected));
+}
+
 await fs.mkdir(out,{recursive:true});await fs.writeFile(path.join(out,'scenarios.tsv'),rows.join('\n')+'\n');console.log(`Generated and ran ${rows.filter(r=>r.startsWith('CASE\t')||r.startsWith('BATCH_CASE\t')||r.startsWith('SENDER_CASE\t')).length} shared scenarios with real sealed frames`);

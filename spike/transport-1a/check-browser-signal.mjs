@@ -12,7 +12,7 @@ for(const row of (await fs.readFile(path.join(sdpDir,'vectors.tsv'),'utf8')).tri
  sdps.push({name,accept:accept==='1',bytes:Array.from(await fs.readFile(path.join(sdpDir,name)))});
 }
 const {chromium,webkit}=await import(pathToFileURL(modulePath));
-const trace=await fs.readFile(tracePath,'utf8'),allowed=new Set(['wire.mjs','signal.mjs','sdp.mjs','sender.mjs','signal-replay.mjs']);
+const trace=await fs.readFile(tracePath,'utf8'),allowed=new Set(['schema-relations.mjs','schema-data.mjs','schema-bounds.mjs','schema.mjs','wire.mjs','signal.mjs','sdp.mjs','sender.mjs','signal-replay.mjs']);
 const server=http.createServer(async(req,res)=>{
  try{const name=req.url.slice(1);if(!name){res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>Local signal lab</title>');return}
   if(!allowed.has(name)){res.writeHead(404);res.end();return}

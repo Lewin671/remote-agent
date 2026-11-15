@@ -15,6 +15,8 @@ type Action struct {
 	Generation  uint64
 }
 type Signal struct {
+	LeaseUntil, AuthorizationRevision                                                  uint64
+	MembersAuthorized                                                                  bool
 	Self                                                                               Identity
 	Peer                                                                               Public
 	Connection                                                                         []byte
@@ -37,12 +39,12 @@ type Signal struct {
 var ErrSignal = errors.New("invalid signal transition")
 
 func NewSignal(self Identity, peer Public, connection []byte, use uint64, now uint64) *Signal {
-	return &Signal{Self: self, Peer: peer.Member(), Clock: now, RoundDeadline: now + 10000, Allowed: map[string][]byte{}, Dispatched: map[string][]byte{}, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
+	return &Signal{LeaseUntil: now + 10000, AuthorizationRevision: 1, MembersAuthorized: true, Self: self, Peer: peer.Member(), Clock: now, RoundDeadline: now + 10000, Allowed: map[string][]byte{}, Dispatched: map[string][]byte{}, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
 }
 func (s *Signal) Offerer() bool { return bytes.Compare(s.Self.ID, s.Peer.ID) < 0 }
 func (s *Signal) Ready() bool   { return !s.Closed && s.LocalSDP && s.RemoteSDP && s.DTLS && s.Confirmed }
 func (s *Signal) SetLocal(raw []byte, offer bool, generation uint64) error {
-	if s.Clock >= s.RoundDeadline || generation != s.Generation || s.Closed || !s.BootReady || offer != s.Offerer() || (offer && s.LocalSDP) || (!offer && !s.RemoteSDP) {
+	if !s.authorized() || s.Clock >= s.RoundDeadline || generation != s.Generation || s.Closed || !s.BootReady || offer != s.Offerer() || (offer && s.LocalSDP) || (!offer && !s.RemoteSDP) {
 		return ErrSignal
 	}
 	info, e := InspectSDP(raw)
@@ -93,12 +95,15 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 	}
 	o = fresh
 	c := o.Context
-	if s.Clock >= s.RoundDeadline {
+	if !s.authorized() || s.Clock >= s.RoundDeadline {
 		return nil, ErrSignal
 	}
 	if !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.From, s.Peer.ID) {
 		s.Rejected++
 		return nil, ErrSignal
+	}
+	if e := s.preflight(&o); e != nil {
+		return nil, e
 	}
 	key := Key(c)
 	if old, ok := s.Seen[key]; ok {
@@ -139,7 +144,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			s.Rejected++
 			return nil, ErrSignal
 		}
-		f, e := Parse(o.Payload, 6)
+		f, e := ParseMessage(o.Payload, signalSchemas[o.Type])
 		if e != nil {
 			return nil, e
 		}
@@ -224,8 +229,9 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		}
 		o = live
 		key = Key(o.Context)
-		s.Seen[key] = o.Hash
-		s.CacheUntil[key] = o.Context.Deadline + 300000
+		if e := s.preflight(&o); e != nil {
+			return nil, e
+		}
 		action, e := s.apply(o)
 		if e != nil {
 			s.Rejected++
@@ -305,7 +311,7 @@ func (s *Signal) apply(o Opened) (Action, error) {
 		if !s.RemoteSDP || s.Ended {
 			return Action{}, ErrSignal
 		}
-		f, e := Parse(o.Payload, 3)
+		f, e := ParseMessage(o.Payload, "EndCandidates")
 		if e != nil || need(f, "buu") != nil || !bytes.Equal(f[1].B, s.RemoteUfrag) || f[2].U != uint64(s.Candidates) || f[3].U != uint64(s.Batches) {
 			return Action{}, ErrSignal
 		}
@@ -389,7 +395,7 @@ func (s *Signal) refreshGap() {
 
 // RememberChallenge freezes the outgoing record after sealing, before dispatch.
 func (s *Signal) RememberChallenge(sent Opened) error {
-	if s.Closed {
+	if s.Closed || !s.authorized() {
 		return ErrSignal
 	}
 	fresh, e := OpenSent(sent.Raw, s.Self, s.Peer, s.Clock)
@@ -397,11 +403,14 @@ func (s *Signal) RememberChallenge(sent Opened) error {
 		return e
 	}
 	sent = fresh
+	if e := s.preflight(&sent); e != nil {
+		return e
+	}
 	c := sent.Context
 	if s.Clock >= c.Deadline || s.ReceivedProbe == nil || s.Clock >= s.ReceivedProbe.Context.Deadline {
 		return ErrSignal
 	}
-	f, e := Parse(sent.Payload, 6)
+	f, e := ParseMessage(sent.Payload, "Challenge")
 	if e != nil || need(f, "bbbbub") != nil || !bytes.Equal(f[6].B, s.ReceivedProbe.Hash) {
 		return ErrSignal
 	}
@@ -417,8 +426,8 @@ func (s *Signal) RememberChallenge(sent Opened) error {
 }
 func (s *Signal) acceptACK(ack Opened) error {
 	raw := ack.Payload
-	f, e := Parse(raw, 5)
-	if e != nil || len(f) != 5 {
+	f, e := ParseMessage(raw, "Ack")
+	if e != nil || len(f) != 7 || len(f[1].B) != 0 || f[2].U != 0 || f[3].N != 0 {
 		return ErrSignal
 	}
 	for _, n := range []uint64{4, 5, 7, 8} {
@@ -463,7 +472,7 @@ func (s *Signal) acceptACK(ack Opened) error {
 }
 
 func (s *Signal) RememberProbe(sent Opened) error {
-	if s.Closed {
+	if s.Closed || !s.authorized() {
 		return ErrSignal
 	}
 	fresh, e := OpenSent(sent.Raw, s.Self, s.Peer, s.Clock)
@@ -471,6 +480,9 @@ func (s *Signal) RememberProbe(sent Opened) error {
 		return e
 	}
 	sent = fresh
+	if e := s.preflight(&sent); e != nil {
+		return e
+	}
 	c := sent.Context
 	if sent.Type != 1 || c.Class != 1 || string(c.Domain) != "bootstrap" || c.Generation != 0 || c.Use != 0 || s.Clock >= c.Deadline || !bytes.Equal(c.From, s.Self.ID) || !bytes.Equal(c.To, s.Peer.ID) || !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.SenderBoot, s.Self.Boot) || !bytes.Equal(c.SenderInstance, s.Self.Instance) || len(sent.Hash) != 32 {
 		return ErrSignal
@@ -494,7 +506,7 @@ func (s *Signal) retire(retry bool) {
 func (s *Signal) ForgetPeer() { s.Peer = s.Peer.Member(); s.retire(false) }
 func (s *Signal) Dispatch(raw []byte, now uint64) bool {
 	s.Tick(now)
-	if s.Closed {
+	if s.Closed || !s.authorized() {
 		return false
 	}
 	o, e := Open(raw, s.Peer, s.Self, s.Clock)
@@ -508,4 +520,99 @@ func (s *Signal) Dispatch(raw []byte, now uint64) bool {
 	s.Dispatched[key] = append([]byte(nil), o.Hash...)
 	s.Dispatches++
 	return true
+}
+
+// preflight has no effects: every known body is decoded before caches, queues,
+// generation, bootstrap, or SDK state can change. Unknown IDs remain opaque.
+func (s *Signal) preflight(o *Opened) error {
+	raw, e := KnownPayload(o.Context.Class, o.Type, o.Payload)
+	if e != nil {
+		return e
+	}
+	o.Payload = raw
+	if o.Context.Class != 1 {
+		return nil
+	}
+	switch o.Type {
+	case 1, 2:
+		f, err := ParseMessage(raw, signalSchemas[o.Type])
+		if err != nil {
+			return err
+		}
+		c := o.Context
+		if !bytes.Equal(f[1].B, c.Connection) || !bytes.Equal(f[2].B, c.SenderInstance) || !bytes.Equal(f[3].B, c.SenderBoot) || (o.Type == 2 && !bytes.Equal(f[4].B, c.ReceiverBoot)) {
+			return ErrSignal
+		}
+	case 3, 4:
+		_, _, e = ReadSDPBody(raw)
+	case 5:
+		var cs []Candidate
+		cs, _, e = ReadCandidates(raw)
+		if e == nil {
+			if len(cs) == 0 {
+				return ErrSignal
+			}
+			for _, c := range cs {
+				if c.Generation != o.Context.Generation || len(c.Ufrag) < 4 || len(c.Ufrag) > 256 || len(c.Mid) == 0 || c.Index != 0 {
+					return ErrSignal
+				}
+			}
+		}
+	case 6:
+		f, err := ParseMessage(raw, "EndCandidates")
+		if err != nil {
+			return err
+		}
+		if len(f[1].B) < 4 || f[2].U > 64 || f[3].U > 4 {
+			return ErrSignal
+		}
+	case 7:
+		f, err := ParseMessage(raw, "Confirm")
+		if err != nil {
+			return err
+		}
+		for _, v := range f {
+			if len(v.B) != 32 {
+				return ErrSignal
+			}
+		}
+	case 8:
+		targets, err := ReadRestart(raw)
+		if err != nil {
+			return err
+		}
+		if !s.Offerer() || o.Context.Use != s.Use || o.Context.Generation != s.Generation || len(targets) != 1 || targets[s.Use] != s.Generation {
+			return ErrSignal
+		}
+	}
+	return e
+}
+
+// The lab supplies a live authority view; real adapters must update it on every
+// lease/member/owner change. Revision 1 is the immutable round grant.
+func (s *Signal) SetAuthorization(until uint64, members bool, revision uint64) {
+	s.LeaseUntil = until
+	s.MembersAuthorized = members
+	s.AuthorizationRevision = revision
+}
+func (s *Signal) authorized() bool {
+	return s.Clock < s.LeaseUntil && s.MembersAuthorized && s.AuthorizationRevision == 1
+}
+func (s *Signal) ReplyAllowed(raw []byte, now uint64) bool {
+	s.Tick(now)
+	if s.Closed || !s.authorized() {
+		return false
+	}
+	o, e := Open(raw, s.Peer, s.Self, s.Clock)
+	if e != nil {
+		return false
+	}
+	c := o.Context
+	if !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(s.Seen[Key(c)], o.Hash) || (c.Generation != 0 && c.Generation != s.Generation) {
+		return false
+	}
+	if e = s.preflight(&o); e != nil {
+		return false
+	}
+	return !(c.Class == 2 && (o.Type == 4 || o.Type == 10 || o.Type == 11 || o.Type == 12 || o.Type == 13))
 }

@@ -5,7 +5,10 @@
     "vectors": [
       "wire/vectors.json"
     ],
-    "implementations": "four codecs"
+    "implementations": "four codecs",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "C02",
@@ -15,7 +18,10 @@
       "audit-challenge-probe-correlation",
       "audit-unsolicited-challenge"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A01",
@@ -25,7 +31,10 @@
       "audit-outgoing-challenge-record-expiry",
       "audit-probe-correlation-expiry"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A02",
@@ -35,7 +44,10 @@
       "audit-transport-queue-generation",
       "audit-transport-queue-identity"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A03",
@@ -45,7 +57,10 @@
       "audit-buffer-deadline-equality",
       "audit-buffer-before-deadline"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A04",
@@ -55,7 +70,10 @@
       "audit-buffer-owner-identity",
       "audit-buffer-owner-close"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A05",
@@ -67,7 +85,10 @@
       "audit-sdk-dispatch-close",
       "audit-sdk-dispatch-duplicate"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A06",
@@ -76,7 +97,10 @@
       "audit-round-deadline-local-callback",
       "full-lifecycle"
     ],
-    "implementations": "four signal cores"
+    "implementations": "four signal cores",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A07",
@@ -89,7 +113,10 @@
       "audit-transport-write-expiry",
       "audit-transport-write-binding"
     ],
-    "implementations": "four senders"
+    "implementations": "four senders",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A08",
@@ -99,7 +126,10 @@
       "audit-batch-generation",
       "audit-batch-identity"
     ],
-    "implementations": "four collectors"
+    "implementations": "four collectors",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "A09",
@@ -107,7 +137,10 @@
     "vectors": [
       "policy-reply-request-and-scope"
     ],
-    "implementations": "four codecs"
+    "implementations": "four codecs",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "B01",
@@ -118,7 +151,10 @@
       "split-gap-keeps-first-observation",
       "audit-buffer-deadline-drain"
     ],
-    "implementations": "four signal cores + Python"
+    "implementations": "four signal cores + Python",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "C03",
@@ -132,7 +168,10 @@
       "audit-candidate-nel",
       "audit-candidate-bom"
     ],
-    "implementations": "four candidate validators"
+    "implementations": "four candidate validators",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "C04",
@@ -140,7 +179,10 @@
     "vectors": [
       "sdp/manifest.json"
     ],
-    "implementations": "four SDP validators"
+    "implementations": "four SDP validators",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F01/F02"
   },
   {
     "id": "T01",
@@ -148,7 +190,10 @@
     "vectors": [
       "audit_assembly_expiry_identity_and_leg"
     ],
-    "implementations": "terminal Go"
+    "implementations": "terminal Go",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F03"
   },
   {
     "id": "T02",
@@ -159,7 +204,10 @@
       "audit_input_successive_and_split_gaps",
       "audit_output_successive_and_split_gaps"
     ],
-    "implementations": "terminal Go"
+    "implementations": "terminal Go",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F03"
   },
   {
     "id": "T03",
@@ -169,7 +217,10 @@
       "audit_output_buffer_identity",
       "audit_current_membership_before_admission"
     ],
-    "implementations": "terminal Go"
+    "implementations": "terminal Go",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F03"
   },
   {
     "id": "T04",
@@ -178,7 +229,10 @@
       "audit_contiguous_render_deadline",
       "audit_replay_and_send_cache_bounds"
     ],
-    "implementations": "terminal Go"
+    "implementations": "terminal Go",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F03"
   },
   {
     "id": "T05",
@@ -186,6 +240,138 @@
     "vectors": [
       "audit_completion_vs_new_admission"
     ],
-    "implementations": "terminal Go"
+    "implementations": "terminal Go",
+    "d": "see D01",
+    "e": "see E01",
+    "f": "see F03"
+  },
+  {
+    "id": "D01",
+    "rule": "36 schemas: omitted/explicit defaults and canonical encoding; actual omitted Context/Challenge/TypedPayload ciphertext",
+    "vectors": [
+      "signal/scenarios.tsv",
+      "r4-challenge-omitted-false",
+      "r4-candidate-default-index",
+      "r4-close-default",
+      "r4-restart-default-reason"
+    ],
+    "implementations": "four codecs + both Python models",
+    "d": "517 schema + 72 body vectors",
+    "e": "semantic/default positives",
+    "f": "unchanged signed bytes"
+  },
+  {
+    "id": "E01",
+    "rule": "all 22 known types fully parse before cache/queue/state/action, including invalid future generation",
+    "vectors": [
+      "r4-bad-future-generation",
+      "r4-known-body-1-1",
+      "r4-known-body-1-2",
+      "r4-known-body-1-3",
+      "r4-known-body-1-4",
+      "r4-known-body-1-5",
+      "r4-known-body-1-6",
+      "r4-known-body-1-7",
+      "r4-known-body-1-8",
+      "r4-known-body-1-9",
+      "r4-known-body-2-1",
+      "r4-known-body-2-2",
+      "r4-known-body-2-3",
+      "r4-known-body-2-4",
+      "r4-known-body-2-5",
+      "r4-known-body-2-6",
+      "r4-known-body-2-7",
+      "r4-known-body-2-8",
+      "r4-known-body-2-9",
+      "r4-known-body-2-10",
+      "r4-known-body-2-11",
+      "r4-known-body-2-12",
+      "r4-known-body-2-13"
+    ],
+    "implementations": "four signal cores + both Python models",
+    "d": "schema-normalized view",
+    "e": "all known types; rejected state snapshot",
+    "f": "revalidated on deferred receive"
+  },
+  {
+    "id": "E02",
+    "rule": "known control shape relations and Restart target binding",
+    "vectors": [
+      "r4-semantic-control-4",
+      "r4-semantic-control-11",
+      "r4-semantic-control-12",
+      "r4-semantic-control-9",
+      "r4-semantic-control-6",
+      "r4-semantic-control-2",
+      "r4-restart-default-reason"
+    ],
+    "implementations": "four signal cores",
+    "d": "default false/zero",
+    "e": "scope, generation, fields and relations",
+    "f": "no rejected request cached"
+  },
+  {
+    "id": "F01",
+    "rule": "reply authorization at deferred boundary",
+    "vectors": [
+      "r4-deferred-reply-lease",
+      "r4-deferred-reply-member",
+      "r4-deferred-reply-revision",
+      "r4-deferred-reply-generation",
+      "r4-deferred-reply-valid"
+    ],
+    "implementations": "four signal cores + both Python models",
+    "d": "D01",
+    "e": "original known body rechecked",
+    "f": "lease, members, revision, generation"
+  },
+  {
+    "id": "F02",
+    "rule": "final write and retry gate for sealed ACK/Unsupported/InputStatusReply/BarrierReply/PolicyReply",
+    "vectors": [
+      "r4-control-write-4-lease",
+      "r4-control-write-4-member",
+      "r4-control-write-4-revision",
+      "r4-control-write-4-valid",
+      "r4-control-write-10-lease",
+      "r4-control-write-10-member",
+      "r4-control-write-10-revision",
+      "r4-control-write-10-valid",
+      "r4-control-write-11-lease",
+      "r4-control-write-11-member",
+      "r4-control-write-11-revision",
+      "r4-control-write-11-valid",
+      "r4-control-write-12-lease",
+      "r4-control-write-12-member",
+      "r4-control-write-12-revision",
+      "r4-control-write-12-valid",
+      "r4-control-write-13-lease",
+      "r4-control-write-13-member",
+      "r4-control-write-13-revision",
+      "r4-control-write-13-valid"
+    ],
+    "implementations": "four senders",
+    "d": "D01",
+    "e": "immutable original bytes",
+    "f": "every deferred control write"
+  },
+  {
+    "id": "F03",
+    "rule": "actual membership/lease validation at status pages, barriers, batched/immediate ACK; preserve completion",
+    "vectors": [
+      "audit_deferred_reply_and_ack_lease",
+      "audit_deferred_reply_and_ack_member",
+      "audit_deferred_reply_and_ack_key",
+      "audit_deferred_reply_and_ack_generation",
+      "audit_deferred_reply_and_ack_instance",
+      "audit_ack_both_directions_expiry",
+      "audit_each_status_page_authorization",
+      "audit_authorized_renewal_reply",
+      "audit_terminal_controls_before_effects"
+    ],
+    "implementations": "terminal Go",
+    "d": "shared control schemas",
+    "e": "query/reply schemas before effects",
+    "f": "current real lease/member/owner per emission"
   }
 ]
