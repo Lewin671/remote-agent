@@ -496,6 +496,10 @@ export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; 
       <div className="body ms-body" role="region" aria-label={t("machine_status.title")}>
         <h1 className="ms-title">{machineName(m)}</h1>
         <div className="ms-live"><span className={"ms-dot" + (stale ? " off" : "")} />{words}</div>
+        <div className="grp" aria-live="polite">
+          <div className="row">{t("transport.interaction_relay")}</div>
+          <div className="row">{remote.direct.filePath(id) === "direct" ? t("transport.file_direct") : t("transport.file_relay")}</div>
+        </div>
         <div className="ms-cards">
           <Hero s={last} main={main} points={points} stale={stale} glide={!reduced && visible} onLook={setLooked} looked={looked} heroRef={(el) => { heroEl.current = el; }} />
           <div className="ms-grid">

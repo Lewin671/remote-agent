@@ -96,5 +96,89 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "transport.direct",
+    "zh-CN": "直连",
+    "en": "Direct connection",
+    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.automatic",
+    "zh-CN": "自动",
+    "en": "Automatic",
+    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.off",
+    "zh-CN": "关闭",
+    "en": "Off",
+    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.interaction_relay",
+    "zh-CN": "交互：中继",
+    "en": "Interaction: Relay",
+    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.file_relay",
+    "zh-CN": "文件：中继",
+    "en": "Files: Relay",
+    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.file_direct",
+    "zh-CN": "文件：直连",
+    "en": "Files: Direct",
+    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

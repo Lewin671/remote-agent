@@ -865,6 +865,7 @@ export function MachinePage({
     next: DaemonSettings;
   }>();
   const [attempt, setAttempt] = useState(0);
+  const [directError, setDirectError] = useState("");
   const agents = machineAgents(m);
   const [defaultAgent, setDefaultAgent] = useState<Agent>(agents[0]);
   const activeAgent = agents.includes(defaultAgent) ? defaultAgent : agents[0];
@@ -1072,6 +1073,16 @@ export function MachinePage({
       <div className="body">
         <MachineRings remote={remote} id={id} go={go} />
         <QuotaSummary remote={remote} m={m} go={go} />
+        {directError && <Banner kind="err">{directError}</Banner>}
+        <div className="grp">
+          <label className="row">
+            {l10n.t("transport.direct")}
+            <select className="v" aria-label={l10n.t("transport.direct")} value={remote.direct.enabled(id) ? "auto" : "off"} onChange={event => { try { remote.direct.setEnabled(id, event.target.value === "auto"); } catch (error) { setDirectError(errorText(error)); } }}>
+              <option value="auto">{l10n.t("transport.automatic")}</option>
+              <option value="off">{l10n.t("transport.off")}</option>
+            </select>
+          </label>
+        </div>
         {versions.length > 0 && (
           <div className="grp">
             {versions.map((v) => (

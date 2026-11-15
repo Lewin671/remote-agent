@@ -2433,5 +2433,30 @@
     "path": "web/src/transport/peer/wire.js",
     "literal": "wire_type",
     "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Peer/PeerWire.swift",
+    "literal": "remote-agent/peer-hkdf/v1",
+    "reason": "Cryptographic domain separator, never displayed."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "getSharedFileChunk",
+    "reason": "Protobuf command case used by route classification, never displayed."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "unknown",
+    "reason": "Authenticated outcome enum, never displayed without its localized message."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "auto",
+    "reason": "Local preference value; the visible option uses transport.automatic."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "(); const [attempt, setAttempt] = useState(0); const [directError, setDirectError] = useState(\"\"); const agents = machineAgents(m); const [defaultAgent, setDefaultAgent] = useState",
+    "reason": "TypeScript generic syntax and local React state declarations falsely matched as JSX text; not rendered."
   }
 ]

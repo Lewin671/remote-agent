@@ -1447,6 +1447,12 @@ export interface MessageArgs {
   "tools.exit_code": { code: string };
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
+  "transport.automatic": { [name: string]: never };
+  "transport.direct": { [name: string]: never };
+  "transport.file_direct": { [name: string]: never };
+  "transport.file_relay": { [name: string]: never };
+  "transport.interaction_relay": { [name: string]: never };
+  "transport.off": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
@@ -3364,7 +3370,13 @@ export const messages = {
     "tools.elapsed_sync": "{elapsed}Waiting to sync",
     "tools.exit_code": "Exit code {code}",
     "tools.tool": "Tool",
-    "tools.waiting_sync": "Waiting to sync"
+    "tools.waiting_sync": "Waiting to sync",
+    "transport.automatic": "Automatic",
+    "transport.direct": "Direct connection",
+    "transport.file_direct": "Files: Direct",
+    "transport.file_relay": "Files: Relay",
+    "transport.interaction_relay": "Interaction: Relay",
+    "transport.off": "Off"
   },
   "zh-CN": {
     "approval.allow": "允许",
@@ -5198,6 +5210,12 @@ export const messages = {
     "tools.elapsed_sync": "{elapsed}等待同步",
     "tools.exit_code": "退出码 {code}",
     "tools.tool": "工具",
-    "tools.waiting_sync": "等待同步"
+    "tools.waiting_sync": "等待同步",
+    "transport.automatic": "自动",
+    "transport.direct": "直连",
+    "transport.file_direct": "文件：直连",
+    "transport.file_relay": "文件：中继",
+    "transport.interaction_relay": "交互：中继",
+    "transport.off": "关闭"
   }
 } as const;
