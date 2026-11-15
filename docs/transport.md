@@ -1,6 +1,6 @@
 # 传输模块与直连
 
-本文负责客户端与 daemon 间的分层、路径选择、恢复、安全绑定与路径状态展示；不定义账户、历史同步或原生 CLI 行为。范围见 [scope.md](scope.md)，既有信封与指令见 [architecture §10](architecture.md#10-报文同步和指令)，证据见 [transport-notes.md](transport-notes.md)，分期、验收和全部未决事项见 [plan.md](plan.md#传输模块与直连)。第 0a 的结果契约与第 0b 的 Link/Router/RelayPath 分层已实现；当前仍只走中继，第 0c 的中继活性与换网恢复已实现，直连、热备及终端旧流续接仍是后续设计。文中的初始预算是实现及验收的起点，不是已测性能。
+本文负责客户端与 daemon 间的分层、路径选择、恢复、安全绑定与路径状态展示；不定义账户、历史同步或原生 CLI 行为。范围见 [scope.md](scope.md)，既有信封与指令见 [architecture §10](architecture.md#10-报文同步和指令)，证据见 [transport-notes.md](transport-notes.md)，分期、验收和全部未决事项见 [plan.md](plan.md#传输模块与直连)。第 0a 的结果契约与第 0b 的 Link/Router/RelayPath 分层已实现；第 0c 的中继活性与换网恢复已实现。协议 16 的 1c 在本地实现 daemon 与网页的只读/文件 DirectPath；Android/iOS 当前只实现认证编解码与 Unsupported，保留 relay。副作用指令热备、原生移动端 DirectPath 和终端旧流续接仍属后续阶段，已发布产物尚未包含本地 1c。文中的初始预算是实现及验收的起点，不是已测性能。
 
 ## 1. 分层与职责
 
@@ -24,13 +24,13 @@ Path：RelayPath / DirectPath / 后续路径（仅收发不透明帧）
 信令组件：独立的非持久定向转发与设备身份绑定
 ```
 
-四端同构：Go `internal/transport`、网页 `web/src/transport`、Android `core/transport`、iOS `RACore/Transport`。共享取消、迟到、重复、乱序、背压和网络变化的一致性场景。iOS App 注入 WebRTC SDK 适配器，Swift core 测试不依赖二进制 SDK；Android 网络与 JNI 回调也经适配器进入 core。
+四端同构：Go `internal/transport`、网页 `web/src/transport`、Android `core/transport`、iOS `RACore/Transport`。共享取消、迟到、重复、乱序、背压和网络变化的一致性场景。后续原生直连由 iOS App 注入 WebRTC SDK 适配器、Android 网络与 JNI 回调进入 core；1c 两端不引入 WebRTC SDK，也不显示直连设置。
 
 Link 提供调用、有序可靠流、分块传输、可订阅的对端可达性和已认证能力。server 的 machine `online` 只代表中继观察，不能阻止仍可直连的操作；协议版本、文件能力改由 Link 上 daemon 签名的能力握手提供，绑定设备、进程实例、成员 head 和有效期限，最长 60 秒，变化立即更新，到期先刷新。server 转发的 machine meta 仅作发现与缓存，不作授权；在只接 RelayPath 时仍读取既有已认证 meta，保持原行为。可达不等于有权执行，能力也不替代逐次安全校验。界面不能自行按 socket 状态重发。
 
 ### 当前实现与目标边界
 
-协议 15 已包含第 0a 期的显式完成证据、进程级执行/安全状态、独立同步、v4 接受记录与五类签名结果。第 0b 在此基础上接入四端 Link/Router/RelayPath；客户端 call/delivery 证据、可达性与能力投影、逻辑流由 Link 持有，relay 登录、epoch、NotForwarded 与物理流由 RelayPath 适配；daemon 的共享 endpoint、执行与发布仍属进程。第 0b 不改 wire、存储格式、文案或纯 relay 的业务策略。验收边界和后续阶段见 [plan](plan.md#直连实施与验收)；尚未实现 DirectPath、relay/direct 的跨传输切换、能力握手或终端旧流恢复。
+协议 15 已包含第 0a 期的显式完成证据、进程级执行/安全状态、独立同步、v4 接受记录与五类签名结果。第 0b 在此基础上接入四端 Link/Router/RelayPath；客户端 call/delivery 证据、可达性与能力投影、逻辑流由 Link 持有，relay 登录、epoch、NotForwarded 与物理流由 RelayPath 适配；daemon 的共享 endpoint、执行与发布仍属进程。第 0b 不改 wire、存储格式、文案或纯 relay 的业务策略。验收边界和后续阶段见 [plan](plan.md#直连实施与验收)。1c 在同一 endpoint 上接入设备对认证信令和 daemon/网页 DirectPath：只读请求、上传块与共享文件下载可换路；有副作用的其他指令与终端仍经 relay，未启用双发或旧终端续接。
 
 现有终端物理腿结束后，Link 的纯 relay 策略仍结束该逻辑流；主 WS 与独立终端的所有权分离，不等于终端腿已能续接。下文的终端 ACK、旧流输入水位查询与 AttachPath 仍是目标设计，协议 15 尚未提供。0c 的无重复执行、无丢失输入适用于带 request ID 的 Send/Command；主流试探与重连不能取消健康独立终端、清掉已有画面或重打无法确认的按键。真实终端腿丢失沿用新流+快照；旧流续接、有界输入缓存与未知输入逐项确认在第 1/3 期实现。
 
@@ -182,6 +182,12 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 2. 同用途对照取至少 5 秒、至少 100 个交互样本。direct 交互 p95 不超过 relay `max(5 ms, 10%)` 的容差且队列不增长才允许升级；bulk 用同文件至少 4 MiB、两轮吞吐均达到 relay 的 95% 才升级，不能用 RTT 替代吞吐。样本不足保持 relay。
 3. direct 有效时交互指令热备：**只封一次，两路发送完全相同的密文字节**，取先到可信结果。重封只用于依法允许的密钥更新，业务身份不变；不按 Path 分配序号。文件正文不双发。
 4. 最近两个 5 秒窗中 direct 交互 p95 超过 relay `max(10 ms, 20%)`，或 bulk 吞吐低于 relay 90%，该用途退 relay；硬故障或软期限立即启用备用，不等 ICE `failed`。重新升级至少等 5 秒稳定且重新满足第 2 项，避免振荡。上述数值是初始策略，测量成本与能耗见计划。
+
+1c 的前台只读请求在样本不足时继续走 relay；完成后可触发一个独立授权的后台只读样本，每 peer 最多一个、客户端合计最多四个。样本只记录经签名、请求身份和载荷绑定验证的完成时间，不替代用户结果，不改变用户请求的 ID、原字节或 deadline。只读观测最多保留每路 512 条、60 秒；切换仍须满足上面的样本、时间、p95 和队列条件。文件用同一文件的不同块分段测量，不双发文件正文；热路径每八次保留一次 relay 实际完成样本，按完整五秒窗判断退路。
+
+能力通过已认证的 Control 1 与 [Control 14 CapabilitySnapshot](transport-wire-draft.md#冻结后的第一个扩展capabilitysnapshotcontrol-14) 提供；快照失效时上传立即回 relay，下载不依赖上传快照。迟到的较旧 Control 序号不能覆盖较新的能力。硬故障立即回 relay，退避至少五秒后开启新的有界协商轮并重新测量；旧 SDK 和未退出的写入继续占资源预算。上传换路先经 relay 查询持久 offset，再在有效期限内重试原授权；不延长过期授权，后续取块/续传调用使用新 ID 和已验证 offset。
+
+网页按本设备、账户与电脑保存「直连：自动／关闭」，默认自动。电脑状态页的交互栏仍显示中继，文件栏显示实际文件路径；健康的只读 PC 不能使已经关闭的 bulk PC 显示为直连。Android/iOS 的协议层认证未知类型后回 Unsupported，不分配 SDK 对象。
 
 ### 指令与结果
 
