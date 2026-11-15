@@ -52,6 +52,8 @@ test("duplicate network observations coalesce and changed observations cannot re
   try {
     vi.useFakeTimers();
     Object.defineProperty(remote, "recovery", { value: new Recovery(() => performance.now(), () => .5, new Bucket(4, 2)) });
+    remote.networkChanged("initial-route"); await Promise.resolve();
+    expect(runtime.networkGeneration).toBe(0); expect(connect).not.toHaveBeenCalled();
     for (let i = 0; i < 1000; i++) remote.networkChanged("same-interface-new-address");
     await Promise.resolve();
     expect(runtime.networkGeneration).toBe(1); expect(connect).toHaveBeenCalledOnce();
@@ -72,6 +74,8 @@ test("network generation refreshes security before authorizing another delivery"
   const forward = vi.fn();
   (remote as unknown as { api: unknown }).api = { forward };
   try {
+    remote.networkChanged("initial-route");
+    await Promise.resolve();
     remote.networkChanged("wake-after-clock-gap");
     await Promise.resolve();
     await expect(remote.machineCommand(remote.machine, { case: "getSettings", value: {} })).rejects.toMatchObject({ code: "clock" });

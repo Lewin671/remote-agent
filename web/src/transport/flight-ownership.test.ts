@@ -52,6 +52,7 @@ test.each([false,true])("a retired settings read cannot clear or overwrite its r
 
 test("a hidden main loop still retires the old network of an independent login",async()=>{
  const r=await remote(),rt=r as any,old=deferred<void>();let signal!:AbortSignal;
+ r.networkChanged("initial-route");await Promise.resolve();
  const connect=vi.spyOn(rt,"connect").mockResolvedValue(undefined);
  vi.spyOn(rt,"signIn").mockImplementationOnce((...args:unknown[])=>{signal=args[0] as AbortSignal;return old.promise}).mockResolvedValue(undefined);
  const caller=rt.login() as Promise<void>;

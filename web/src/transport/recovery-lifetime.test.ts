@@ -10,6 +10,7 @@ async function drain(){await vi.advanceTimersByTimeAsync(0);}
 test("a full successful sync releases the failed wake barrier without another hint",async()=>{
  const r=await fixture(), rt=r as any;
  vi.spyOn(rt,"connect").mockResolvedValue(undefined);
+ r.networkChanged("initial");await Promise.resolve();
  const touch=vi.spyOn(r.security,"touch").mockRejectedValue(new SecurityError("clock"));
  r.networkChanged("wake");await Promise.resolve();await rt.wakeSecurity.catch(()=>undefined);
  rt.token="fixture";rt.tokenExpires=Date.now()+2*86_400_000;
@@ -20,6 +21,7 @@ test("a full successful sync releases the failed wake barrier without another hi
 
 test("a failed local Touch can be retried safely by the next operation",async()=>{
  const r=await fixture(),rt=r as any;vi.spyOn(rt,"connect").mockResolvedValue(undefined);
+ r.networkChanged("initial");await Promise.resolve();
  const touch=vi.spyOn(r.security,"touch").mockRejectedValueOnce(new SecurityError("storage")).mockResolvedValue(undefined);
  r.networkChanged("wake");await Promise.resolve();await rt.wakeSecurity.catch(()=>undefined);
  await expect(rt.ensureWakeSecurity()).resolves.toBeUndefined();expect(touch).toHaveBeenCalledTimes(2);
@@ -78,6 +80,7 @@ test("a security gate renews the rejected token before retrying, without a main 
 
 test("an old successful sync cannot release a newer failed wake barrier",async()=>{
  const r=await fixture(),rt=r as any;vi.spyOn(rt,"connect").mockResolvedValue(undefined);
+ r.networkChanged("initial");await Promise.resolve();
  const record=await r.security.verifiedRecord();let release!:(v:typeof record)=>void,entered!:()=>void;
  const started=new Promise<void>(resolve=>{entered=resolve});
  vi.spyOn(r.security,"touch").mockRejectedValue(new SecurityError("clock"));
@@ -93,6 +96,7 @@ test("an old successful sync cannot release a newer failed wake barrier",async()
 
 test("network retirement releases a directory caller before the owner deadline",async()=>{
  const r=await fixture(),rt=r as any;vi.spyOn(rt,"connect").mockResolvedValue(undefined);
+ r.networkChanged("initial");await Promise.resolve();
  let entered!:()=>void,old:AbortSignal|undefined,calls=0;
  const started=new Promise<void>(resolve=>{entered=resolve});
  rt.api={listDevices:async(_q:unknown,options:{signal:AbortSignal})=>{if(++calls===1){old=options.signal;entered();return new Promise(()=>{});}return {devices:[]};}};

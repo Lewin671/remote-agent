@@ -70,6 +70,8 @@ it("a new network wakes an existing login owner instead of inheriting its old HT
     }
     return Promise.resolve(new Response(toBinary(LoginResponseSchema, create(LoginResponseSchema, { token: "fresh", expiresMs: BigInt(Date.now()+10*86_400_000) })), { headers: { "Content-Type": "application/proto" } }));
   });
+  r.networkChanged("initial-route");
+  await new Promise<void>(resolve => queueMicrotask(resolve));
   const login = (r as any).login() as Promise<void>;
   try {
     await started;
@@ -342,6 +344,7 @@ it.each(["storage", "socket"])("retries a synchronous %s failure instead of leav
 it("ignores a failed local read from an attempt replaced by a network change", async () => {
   const r = await probe(); vi.useFakeTimers();
   let reject!: (e: Error) => void;
+  r.networkChanged("initial-route"); await flush();
   vi.spyOn(r as any, "warm").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   const old = (r as any).connect(); await flush();
   r.networkChanged("new-route"); await flush();
@@ -514,5 +517,63 @@ it("network identity uses only onLine+type and coalesces online and change event
     expect((r as unknown as { networkGeneration: number }).networkGeneration).toBe(gen0 + 2);
   } finally {
     binding.dispose();
+  }
+});
+
+it("cold start initial network observation records signature without aborting first dial or shrinking its 15s budget", async () => {
+  vi.useFakeTimers();
+  const r = await probe(false);
+  let releaseChallenge!: () => void;
+  let challenges = 0;
+  const challenge = () => new Response(toBinary(GetChallengeResponseSchema, create(GetChallengeResponseSchema, { challenge: new Uint8Array(32) })), { headers: { "Content-Type": "application/proto" } });
+  const abortSignals: AbortSignal[] = [];
+  vi.stubGlobal("fetch", (input: unknown, init?: RequestInit) => {
+    if (String(input).endsWith("/GetChallenge")) {
+      challenges++;
+      abortSignals.push(init!.signal!);
+      return new Promise<Response>((resolve, reject) => {
+        releaseChallenge = () => resolve(challenge());
+        init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason), { once: true });
+      });
+    }
+    return Promise.resolve(new Response(toBinary(LoginResponseSchema, create(LoginResponseSchema, { token: "tok", expiresMs: BigInt(Date.now() + 10 * 86_400_000) })), { headers: { "Content-Type": "application/proto" } }));
+  });
+  const connTarget = new EventTarget() as EventTarget & { type?: string };
+  connTarget.type = "wifi";
+  const winTarget = new EventTarget() as unknown as Window;
+  const nav = { onLine: true, connection: connTarget };
+  const binding = bindNetworkChanges(r, nav, winTarget);
+  try {
+    const rt = r as unknown as { networkGeneration: number; roundBudget(): number; recovery: { take(): boolean } };
+    const connectSpy = vi.spyOn(rt as unknown as { connect(): Promise<void> }, "connect");
+    r.start();
+    binding.report();
+    await flush();
+
+    // First observation records signature only: generation stays 0, first dial is not aborted,
+    // only 1 target token was consumed (1 of 2 remains), and setup keeps the 15s/60s initial budget.
+    expect(rt.networkGeneration).toBe(0);
+    expect(connectSpy).toHaveBeenCalledOnce();
+    expect(challenges).toBe(1);
+    expect(abortSignals[0]?.aborted).toBe(false);
+    expect(rt.roundBudget()).toBe(60_000);
+    expect(rt.recovery.take()).toBe(true);
+
+    // The initial GetChallenge keeps the full 15s OPEN_TIMEOUT_MS instead of timing out at 3s.
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(abortSignals[0]?.aborted).toBe(false);
+    expect(challenges).toBe(1);
+
+    releaseChallenge();
+    await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
+
+    // Subsequent genuine network changes after initial signature do advance generation.
+    connTarget.type = "cellular";
+    connTarget.dispatchEvent(new Event("change"));
+    await flush();
+    expect(rt.networkGeneration).toBe(1);
+  } finally {
+    binding.dispose();
+    r.stop();
   }
 });

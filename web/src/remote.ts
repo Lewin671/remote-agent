@@ -1114,6 +1114,7 @@ export class Remote {
   private foreground = true;
   private networkSignature = "";
   private pendingNetwork?: string;
+  private pendingNetworkForce = false;
   private networkNoticeQueued = false;
   private lastTick = performance.now();
   private lastWallTick = Date.now();
@@ -1496,7 +1497,7 @@ export class Remote {
     this.waited = false;
     this.waitingNotice = false;
     this.changed(true);
-    this.networkChanged(signature ?? String(available));
+    this.applyNetworkChange(signature ?? String(available), true);
   }
 
   protected changed(immediate = false) {
@@ -1910,15 +1911,23 @@ export class Remote {
   }
 
   networkChanged(signature: string) {
-    if (signature === (this.pendingNetwork ?? this.networkSignature)) return;
+    this.applyNetworkChange(signature, false);
+  }
+
+  private applyNetworkChange(signature: string, force: boolean) {
+    if (!force && signature === (this.pendingNetwork ?? this.networkSignature)) return;
     this.pendingNetwork = signature;
+    if (force) this.pendingNetworkForce = true;
     if (this.networkNoticeQueued) return;
     this.networkNoticeQueued = true;
     queueMicrotask(() => {
       this.networkNoticeQueued = false;
       const latest = this.pendingNetwork; this.pendingNetwork = undefined;
-      if (latest === undefined || latest === this.networkSignature) return;
+      const forced = this.pendingNetworkForce; this.pendingNetworkForce = false;
+      if (latest === undefined || (!forced && latest === this.networkSignature)) return;
+      const changed = forced || this.networkSignature !== "" || this.everOnline;
       this.networkSignature = latest;
+      if (!changed) return;
       this.networkGeneration++;
       if (this.closed || !this.foreground) { this.retireNetworkIO(); return; }
       cleanup(

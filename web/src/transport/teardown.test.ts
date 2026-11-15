@@ -61,6 +61,8 @@ test.each(["network change", "socket drop"])("%s schedules recovery without call
   const notified = vi.fn();
   try {
     vi.useFakeTimers(); runtime.closed = false; remote.conn = "online";
+    remote.networkChanged("route-a");
+    await Promise.resolve();
     runtime.openStream(runtime.generation);
     remote.deviceLink.openStream(notified, vi.fn());
     if (kind === "network change") {
