@@ -210,4 +210,5 @@ test("PathChanged retries in forwardCall do not consume attempt budget", async (
     vi.useRealTimers();
     await remote.dispose();
   }
-});
+  // Real WebCrypto key setup and sealing run outside the fake clock and are slow on CI runners.
+}, 20000);
