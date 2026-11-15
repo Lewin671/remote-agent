@@ -1723,5 +1723,15 @@
     "path": "internal/transport/peerwire/sdp.go",
     "literal": "invalid SDP",
     "reason": "Internal transport validation/identity sentinel; never rendered or logged. The path owner reports a bounded fallback reason, not this string."
+  },
+  {
+    "path": "internal/transport/peerwire/signal.go",
+    "literal": "invalid signal transition",
+    "reason": "Internal signal validation or bounded state summary, never product text; does not include keys, SDP, candidates or identifiers."
+  },
+  {
+    "path": "internal/transport/peerwire/signal.go",
+    "literal": "gen=%d next=%d sdk=%d duplicate=%d conflict=%d rejected=%d unsupported=%d",
+    "reason": "Internal signal validation or bounded state summary, never product text; does not include keys, SDP, candidates or identifiers."
   }
 ]
