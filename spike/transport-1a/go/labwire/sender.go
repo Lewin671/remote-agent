@@ -118,7 +118,7 @@ func (b *CandidateBatcher) Flush(now uint64, end bool) [][][]byte {
 		return nil
 	}
 	var out [][][]byte
-	for len(b.Pending) > 0 {
+	for len(b.Pending) >= 16 || (end && len(b.Pending) > 0) {
 		n := min(16, len(b.Pending))
 		out = append(out, b.Pending[:n])
 		b.Pending = b.Pending[n:]
@@ -128,5 +128,8 @@ func (b *CandidateBatcher) Flush(now uint64, end bool) [][][]byte {
 		}
 	}
 	b.Due = 0
+	if len(b.Pending) > 0 {
+		b.Due = now + 50
+	}
 	return out
 }

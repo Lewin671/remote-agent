@@ -10,7 +10,7 @@
 DirectedPeerFrame 只提交目标、类别、本地随机 frame ID 和密文；PeerFrameDelivery 的来源由登录设备写入，
 接收端仍验证内层身份、角色、账户和目标。Result 绑定当前主 WS 与 frame ID，delivered 仅表示写入目标 WS。
 同 ID 的透明重投必须保持全部字节；断线不落库、不补投。Signal/Control 各自 FIFO，跨类别不保序。
-外层分片是未认证资源声明，只决定有界重组；不得推进业务水位，不能改变被双发的信封字节。
+外层分片是未认证资源声明，只决定有界重组；每片入缓存前，核对该消息已保留字节加本片长度不超过声明总长，且 peer 实际保留字节不超预算。相同分片重复不重复计费，完成/到期按实际保留量释放。不得推进业务水位，不能改变被双发的信封字节。
 
 每条逻辑流有独立双向序号，首帧 1，0 为尚未处理。路径代次仅控制腿与分片，不能重置逻辑 seq。
 Ack 同时表达 processed、input_success 和输入失败状态；非输入失败可以越过 processed，不能暗示输入成功。
@@ -18,6 +18,7 @@ InputStatus 的每条结果必须绑定原序号和原字节 hash，部分注入
 查询/关闭 Barrier 进入旧流执行序；BarrierReply 的 final 标志只在停止旧流新准入后成立。
 AttachPath 按原 stream、sender、session、双方进程实例、腿 ID/代次及双向水位挂载，不调用 OpenTerminal。
 InputStatus 的 unavailable 与 daemon 实例变化要求人工核对，不能自动重发未知输入。
+输出待渲染帧及已渲染帧均核对原授权 hash；已渲染摘要不随输出 replay 正文驱逐。摘要已到期或不可得时，不能仅按 `seq <= rendered` 当作相同重发确认。
 InputStatusReply 的 snapshot token 绑定同一次串行查询的完整水位与明细；分页不能跨快照。NotApplied 是该快照中未应用的结果，只能在旧流按原授权去重续接；换新流重新授权前还必须取得停止旧流准入的最终 BarrierReply。
 终端明细的 hash 沿用第 0a RequestIdentity 的原授权 hash，不能用换密钥后会变化的密文 hash；Fragment 的 hash 则是当前整密文 hash。
 
@@ -46,7 +47,7 @@ SDP hash 或正式代次密钥所需的全部 context 明文放在转发层。�
    不直接串接可变长字符串；签名覆盖精确编码，未知 type 也受保护。接收方先做总大小/来源/角色范围检查，
    验签后才解 Context，核对当前 head/租约/nonce/实例/期限/序号，再解 body、查 type；通过后才交 SDK。
 5. Probe/Challenge 使用独立 bootstrap 域，只含源实例与 boot challenge、探测关联 ID 和已知的目标信息，
-   不含 SDP、不创建 PC、不执行控制。双方 nonce 验证完成才允许正式密钥。旧实例仅产生受限的当前 Challenge。
+   不含 SDP、不创建 PC、不执行控制。双方 nonce 验证完成才允许正式密钥。旧实例仅产生受限的当前 Challenge。Challenge 字段 5 `stale_instance` 接受布尔 true；省略与显式 false 均表示当前协议的 false，非布尔 wire type 或数值大于 1 拒绝。该标志保留给恢复处理器，不跳过身份/nonce 校验，也不直接创建 PC。
    同一 bootstrap 授权的副本不能无限生成新 PC、清空缓存或改变正式代次。收到 Probe 仅记待证明状态；Challenge 的认证 ACK 绑定原 seq/hash、用途与 generation=0，证明对方持有当前双方 nonce 后才允许 responder 开始 PC。
 
 该双层封装是本次安全编码**候选**，四种语言的加密/验签向量已通过，尚须负责人审定与产品安全复核，不能直接宣布冻结。
@@ -68,7 +69,7 @@ CryptoKit Ed25519 可能随机化签名，跨语言必须校验相同签名输�
 实验成员/进程 fixture 用公开固定种子便于复现，真实启动的 instance/boot nonce 必须随机生成并服从现有成员授权。
 
 信令 seq 在每方向、每 generation 从 1 增长，重复确认与 SDK 安装记录共用同一个有界缓存；
-同 seq 异 hash 拒绝。每方向未确认窗口 32，乱序缓冲 32，缺口自首个乱序到达固定 2.5 秒，重发不延长。
+同 seq 异 hash 拒绝。每方向未确认窗口 32，乱序缓冲 32，每个缺口各自的首次发现时间固定 2.5 秒；补齐前一缺口不继承或刷新后一缺口的期限，口径见 [transport §5](transport.md#设备对加密指纹与防重放)。
 重试保持 seq、frame ID、Context 和密文字节；只有依法新 generation/connection 才使用新身份，不能改变原恢复总期限。
 防重放条目与关闭 tombstone 保留至 deadline+MaxClockSkew，不能因 PC 关闭提前驱逐。
 
@@ -82,6 +83,11 @@ CryptoKit Ed25519 可能随机化签名，跨语言必须校验相同签名输�
 Signal ACK 另携带被确认 generation/use；包括 bootstrap 的 generation=0，不能只靠数值 seq 关联另一条 PC 或另一代。
 Ack 不请求 ACK；Unsupported/明确回复类型也不产生确认回环。回复以关联请求 seq/hash 和双方实例绑定，
 重复回复只被原等待者消费。Capabilities 最长 60 秒；DirectPolicy revision 持久化并按角色区分机器/自身 peer 范围。
+DirectPolicy 使用显式 `scope`（machine 或单个 peer），`policy_scope_peer` 在 machine scope 必须为空，在 peer scope 必须是该 peer ID；不能只从 revision 猜作用范围。
+PolicyReply 的 `request_seq`/`request_sha256` 回显**原请求**序号和首次冻结完整定向投递包的 SHA-256，并回显 `scope`/`policy_scope_peer`。
+原请求 hash 覆盖 Context、路由和原始密文/签名；重试必须保持这些字节。回复的 Context.seq 仍属于回复自身，不能替代关联字段。
+接收方先认证回复，再与自己缓存的原发送记录核对上述字段、revision、身份方向和 connection；同 revision 的另一作用范围、peer 或请求不能被它确认。
+PolicyReply 只证明哪个请求的结果；不替代 DirectPolicy 原有角色权限和策略持久化规则。
 所有类型都不能借控制队列执行任意 Command。既有五类 CommandResult、身份/业务冲突和正文可得性原样复用。
 
 ## 协议号建议

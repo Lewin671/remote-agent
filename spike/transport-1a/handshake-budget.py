@@ -42,7 +42,7 @@ class Experiment:
         self.deliveries=[];self.dropped=[];self.ack_ordinals={}
         self.proactive_challenge,self.ice_ms=proactive_challenge,ice_ms
         self.events=[]; self.order=0; self.now=0; self.trace=[]
-        self.acked=set(); self.cache={}; self.pending={}; self.expected={}; self.gaps={}
+        self.acked=set(); self.cache={}; self.pending={}; self.pending_at={}; self.expected={}; self.gaps={}
         self.outstanding={}; self.peak=0; self.buffer_peak=0
         self.initial={'client':0,'daemon':0};self.sends={'client':0,'daemon':0}
         self.body_bytes={'client':0,'daemon':0};self.acks={'client':0,'daemon':0}
@@ -97,18 +97,17 @@ class Experiment:
                 expected=self.expected.setdefault(lane,1)
                 if f.seq>expected:
                     pending=self.pending.setdefault(lane,{})
-                    if not pending:
-                        self.gaps[lane]=self.now+self.GAP
-                        self.event(self.gaps[lane],lambda l=lane:self.gap(l))
-                    pending[f.seq]=f;self.buffer_peak=max(self.buffer_peak,len(pending))
+                    pending[f.seq]=f;self.pending_at.setdefault(lane,{})[f.seq]=self.now
+                    self.update_gap(lane)
+                    self.buffer_peak=max(self.buffer_peak,len(pending))
                     assert len(pending)<=32
                 else:
                     assert f.seq==expected
                     self.process(f);self.expected[lane]+=1
                     pending=self.pending.setdefault(lane,{})
                     while self.expected[lane] in pending:
-                        next_frame=pending.pop(self.expected[lane]);self.process(next_frame);self.expected[lane]+=1
-                    if not pending:self.gaps.pop(lane,None)
+                        next_frame=pending.pop(self.expected[lane]);self.pending_at[lane].pop(self.expected[lane]);self.process(next_frame);self.expected[lane]+=1
+                    self.update_gap(lane)
         # Independent Control fake pipe; fault sets may also drop ACKs.
         # acknowledging a buffered candidate does not install it in the SDK.
         ack_sender='daemon' if f.sender=='client' else 'client'
@@ -120,6 +119,14 @@ class Experiment:
             self.dropped.append(delivery);return
         self.acked.add(key);self.outstanding[lane].discard(key)
         if f.kind=="Challenge" and self.offerer=="daemon":self.begin_offers(f.peer)
+
+    def update_gap(self,lane):
+        arrivals=self.pending_at.get(lane,{})
+        if not arrivals:self.gaps.pop(lane,None);return
+        deadline=min(arrivals.values())+self.GAP
+        if self.gaps.get(lane)==deadline:return
+        self.gaps[lane]=deadline
+        self.event(deadline,lambda:self.gap(lane))
 
     def gap(self,lane):
         if self.gaps.get(lane)==self.now and self.pending.get(lane):
@@ -209,7 +216,7 @@ class Experiment:
         assert all(n<=384 for n in self.sends.values())
         timed_out=len(self.ready)!=2*self.peers
         pending_before=sum(len(q) for q in self.outstanding.values())
-        self.events.clear();self.pending.clear();self.gaps.clear();self.outstanding.clear()
+        self.events.clear();self.pending.clear();self.pending_at.clear();self.gaps.clear();self.outstanding.clear()
         return dict(timed_out=timed_out,relay_available=True,
                     active_timers=0,pending_frames=0,owned_pcs=0 if timed_out else 2*self.peers,
                     tombstone_hashes=len(self.cache),unacked_at_deadline=pending_before,

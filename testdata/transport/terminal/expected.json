@@ -96,6 +96,13 @@
         }
       ]
     },
+    "review_fragment_actual_peer_budget": {
+      "after_expiry": 0,
+      "peak_retained_bytes": 2097152
+    },
+    "review_fragment_declared_total_and_ownership": true,
+    "review_output_conflicts_before_after_render_and_replay": true,
+    "review_output_identity_retention_and_backpressure": true,
     "separate_replay_and_input_audit": true,
     "status_and_barrier_serial": {
       "available": true,

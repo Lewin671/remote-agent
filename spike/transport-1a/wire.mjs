@@ -82,3 +82,11 @@ export async function open(raw,from,to,now){
  return {context:c,type:Number(type),payload:value(typed,2),frameID:id,hash:await hash(raw)};
 }
 export function cacheKey(c){return [hex(c.from),hex(c.senderInstance),hex(c.connection),c.use,c.generation,c.cls,c.seq].join('/')}
+
+// Reply must pass open(); request is the frozen outgoing record. Owner authorizes policy.
+export function validatePolicyReply(request,reply){
+ const a=request.context,z=reply.context,q=parse(request.payload,4),r=parse(reply.payload,7);need(q,'buuu');need(r,'uuuubub');const v=(f,n)=>f.get(n).value;
+ if(a.cls!==2n||z.cls!==2n||request.type!==9||reply.type!==13||!equal(a.from,z.to)||!equal(a.to,z.from)||!equal(a.connection,z.connection))throw Error('policy binding');
+ if(v(q,2)===0n||v(q,3)>1n||v(r,2)>1n||v(r,3)>1n||!(v(q,4)===1n&&v(q,1).length===0||v(q,4)===2n&&v(q,1).length===32))throw Error('policy fields');
+ if(v(r,1)!==v(q,2)||v(r,4)!==a.seq||v(r,5).length!==32||!equal(v(r,5),request.hash)||v(r,6)!==v(q,4)||!equal(v(r,7),v(q,1))||(v(r,2)===1n&&v(r,3)!==v(q,3)))throw Error('policy reply');
+}

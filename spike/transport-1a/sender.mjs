@@ -12,5 +12,5 @@ export class Sender {
 export class CandidateBatcher {
  constructor(generation){Object.assign(this,{generation,due:0,pending:[],count:0,batches:0,ended:false})}
  add(raw,g,now){if(this.ended||g!==this.generation||this.count>=64||raw.length>1024)return false;if(!this.pending.length)this.due=now+50;this.pending.push(raw.slice());this.count++;return true}
- flush(now,end=false){if(end)this.ended=true;if(!end&&now<this.due)return [];const out=[];while(this.pending.length){out.push(this.pending.splice(0,16));if(++this.batches>4)throw Error('batch cap')}this.due=0;return out}
+ flush(now,end=false){if(end)this.ended=true;if(!end&&now<this.due)return [];const out=[];while(this.pending.length>=16||(end&&this.pending.length)){out.push(this.pending.splice(0,16));if(++this.batches>4)throw Error('batch cap')}this.due=this.pending.length?now+50:0;return out}
 }

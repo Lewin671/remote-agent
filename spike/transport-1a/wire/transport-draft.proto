@@ -79,6 +79,11 @@ message Barrier { bytes stream = 1; bytes barrier_id = 2; FlowState requested = 
 message BarrierReply { bytes stream = 1; bytes barrier_id = 2; FlowState state = 3; bool final = 4; bool accepted = 5; }
 message StreamFailed { bytes stream = 1; FrameStatus input_failure = 2; FlowState state = 3; }
 message ClosePath { bytes stream = 1; bytes leg_id = 2; uint64 path_generation = 3; uint32 reason = 4; }
-message DirectPolicy { bytes policy_scope_peer = 1; uint64 revision = 2; bool enabled = 3; }
-message PolicyReply { uint64 revision = 1; bool applied = 2; bool enabled = 3; }
+enum PolicyScope { POLICY_SCOPE_UNSPECIFIED = 0; POLICY_SCOPE_MACHINE = 1; POLICY_SCOPE_PEER = 2; }
+message DirectPolicy { bytes policy_scope_peer = 1; uint64 revision = 2; bool enabled = 3; PolicyScope scope = 4; }
+message PolicyReply {
+  uint64 revision = 1; bool applied = 2; bool enabled = 3;
+  uint64 request_seq = 4; bytes request_sha256 = 5;
+  PolicyScope scope = 6; bytes policy_scope_peer = 7;
+}
 message Unsupported { FrameClass original_purpose = 1; uint32 original_type_id = 2; uint64 original_seq = 3; bytes original_sha256 = 4; }

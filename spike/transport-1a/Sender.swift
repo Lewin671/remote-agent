@@ -15,5 +15,5 @@ final class CandidateBatcher {
  let generation:UInt64;var due:UInt64=0;var pending:[Wire.Bytes]=[],count=0,batches=0,ended=false
  init(_ g:UInt64){generation=g}
  func add(_ raw:Wire.Bytes,_ g:UInt64,_ now:UInt64)->Bool{if ended || g != generation || count>=64 || raw.count>1024{return false};if pending.isEmpty{due=now+50};pending.append(raw);count+=1;return true}
- func flush(_ now:UInt64,_ end:Bool=false)->[[Wire.Bytes]]{if end{ended=true};if !end && now<due{return []};var out:[[Wire.Bytes]]=[];while !pending.isEmpty{let n=min(16,pending.count);out.append(Array(pending.prefix(n)));pending.removeFirst(n);batches+=1;precondition(batches<=4)};due=0;return out}
+ func flush(_ now:UInt64,_ end:Bool=false)->[[Wire.Bytes]]{if end{ended=true};if !end && now<due{return []};var out:[[Wire.Bytes]]=[];while pending.count>=16 || (end && !pending.isEmpty){let n=min(16,pending.count);out.append(Array(pending.prefix(n)));pending.removeFirst(n);batches+=1;precondition(batches<=4)};due=pending.isEmpty ? 0:now+50;return out}
 }

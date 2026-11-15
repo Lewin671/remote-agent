@@ -199,7 +199,7 @@ Answerer 的 Confirm 已允许与 Answer 重试并行；不要求 Confirm 等 IC
 **独立实验，2026-11-15；仍非产品直连验收。** Go、浏览器 WebCrypto（Chrome/WebKit）、Java/JVM（Bouncy Castle 1.85）
 和 Swift/CryptoKit 各实现同一草案 codec、信令接收器、发送窗口及候选汇集器。
 [共享 sealed 轨迹](../testdata/transport/signal/scenarios.tsv)分 Signal/Control 两条可乱序、重放或丢失的假管道，
-12 个场景、189 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
+20 个共享场景（17 个信令/策略、3 个候选汇集）、523 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
 旧 SDK callback token、未来代候选先到、同序号冲突、固定缺口期限和未知类型认证 Unsupported。
 Probe 只可触发受限 Challenge；发送方收到绑定双方 nonce 的 Challenge ACK 后才能以 responder 身份开始 PC。
 单独收到重放 Probe 不能进入 SDK；接收器返回的 action 才是 SDK 调用许可，计数不是实际 API 调用次数。
@@ -240,7 +240,7 @@ iOS 早一轮完整四组通过、restart 5,929 ms；新增探测曾超时，最
 
 **Go 有限状态实验，2026-11-15**：[terminal/](../spike/transport-1a/terminal/)
 复用现有 deviceauth 的真实成员状态、租约、业务信封和 RequestIdentity；两条路径与 tmux 注入后端是测试替身。
-20 组场景输出在[共用预期](../testdata/transport/terminal/expected.json)。未调用产品 Endpoint.Accept 或真实 tmux，
+24 组场景输出在[共用预期](../testdata/transport/terminal/expected.json)。未调用产品 Endpoint.Accept 或真实 tmux，
 Accept 观察点只在重组、认证、绑定和连续序号通过后触发；不能作为持久接受日志/CLI 端到端验收。
 
 覆盖整密文重组后认证、双路乱序/重复/冲突、5 秒碎片清理、10 秒缺口恢复、渲染后 ACK、20 ms/16 帧合并、
@@ -255,3 +255,23 @@ processed/input_success/failed_seq、每条原授权 hash 和 outcome/注入前�
 四端 codec 可承载这些固定 type ID 与有界 protobuf；当前终端语义轨迹只在 Go 跑，Java/Swift/JS 终端移植尚未执行。
 其移植不要求端上模拟 tmux：将后端结果作为显式输入事件，以同一事件时钟和预期 JSON 核对即可；产品阶段仍须接真实后端。
 本模型在明细满时保守背压，未模拟健康长流已确认摘要的回收优化；生产实现须接现有接受记录与水位保留策略，不能直接复制实验 map。
+
+
+## 11. 冻结前复核 r1 的六项修复
+
+**回归实测，2026-11-15，重定基到 v0.77.0 / 协议 15；未接产品路径。**
+负责人采纳的六项缺陷均有命名回归；字段与规范由 [wire 草案](transport-wire-draft.md)和 [transport §5](transport.md#5-协议与安全绑定)维护。
+
+| 复核项 | 回归与结果 |
+|---|---|
+| PolicyReply 缺原请求/作用范围 | 实际 sealed 请求/回复中，同 revision 的 machine/peer 正例通过；跨请求、seq/hash、scope、peer、connection 错配与旧三字段回复均拒绝。四语言共用 10 个判断；匹配对象是冻结原发送记录，不是回复自身的 Context.seq |
+| stale-instance Challenge 被拒 | 字段 5=true 到达处理器，重复不重复处理；false 与省略通过，数值 2/bytes wire type 拒绝；原身份/nonce 绑定不放宽 |
+| 零散候选超过四批 | 5/63/64 个候选每 100 ms 到一条、每条后 50 ms flush；中途只发整批，收集结束发尾批，分别为 1/4/4 批，顺序与内容逐字节一致；旧代与结束后的回调拒绝 |
+| 后一缺口继承前一期限 | seq2@0、seq4@2000、seq1@2100 后剩 seq3：期限为 4500 ms，4400 ms 到达可继续；重发不刷新，未补齐在 4500 ms 退休。另验 seq4@0、seq2@2000、seq1@2100，剩 seq3 仍用原 2500 ms，不能无条件重置计时 |
+| 分片只按声明计费 | total=1/count=128/body=16 KiB 在存入前拒绝；累计超过 total 拒绝且旧缓存不变；peer 实际保留达到 2 MiB 后再加一字节拒绝，5 秒清理归零。缓存复制片段，调用方大 backing array 或后续修改不能改变保留内容；重复不重复收费 |
+| 输出重复未比身份 | 待渲染、已渲染、replay 正文清理后三处异 hash 同 seq 均拒绝；同授权重新加密仍只渲染一次；输出摘要独立保留至原 deadline。模型保守限制待渲染/摘要合计 512 条，满则背压、不提前驱逐；摘要过期后未知旧 seq 拒绝，且不改变输入水位/fail-stop。这是实验资源门，不是新增产品性能承诺 |
+
+共享轨迹由 Go、JS/Node、Java/JVM、Swift，以及 Chrome 157.0.8103.52/WebKit 27.2 的实际 WebCrypto 全部通过，均为 20 场景/523 断言。
+终端仅有 Go 原型，新增四组回归进入共用 expected.json；原有 20 组结果逐项保持，合计 24 组。
+`verify.py` 已纳入 JS 共享轨迹检查并完整通过；14,884 个整轮丢失模型用例最慢仍为 8,550 ms，真实封装容量未超预算。
+本轮不重跑移动 SDK 安装或 ICE 时延采样，保留第 9 节原有失败边界；未运行产品端到端验收或宣布 wire 已冻结。

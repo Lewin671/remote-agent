@@ -23,6 +23,7 @@ func main() {
 	data, e := os.ReadFile(os.Args[1])
 	must(e)
 	var gates [2]*labwire.Signal
+	var batch *labwire.CandidateBatcher
 	cases, assertions := 0, 0
 	for _, row := range strings.Split(strings.TrimSpace(string(data)), "\n") {
 		p := strings.Split(row, "\t")
@@ -32,6 +33,38 @@ func main() {
 			conn := labwire.Hash([]byte("signal/" + p[1]))[:16]
 			gates = [2]*labwire.Signal{labwire.NewSignal(a, b.Public(), conn, 1), labwire.NewSignal(b, a.Public(), conn, 1)}
 			cases++
+		case "BATCH_CASE":
+			batch = &labwire.CandidateBatcher{Generation: n(p[2])}
+			cases++
+		case "BATCH_ADD":
+			if batch.Add(raw(p[3]), n(p[2]), n(p[1])) != (p[4] == "1") {
+				panic("batch add")
+			}
+			assertions++
+		case "BATCH_FLUSH":
+			groups := batch.Flush(n(p[1]), p[2] == "1")
+			var sizes []string
+			var flat []byte
+			for _, g := range groups {
+				sizes = append(sizes, strconv.Itoa(len(g)))
+				for _, r := range g {
+					flat = append(flat, r...)
+				}
+			}
+			if strings.Join(sizes, ",") != p[3] || hex.EncodeToString(flat) != p[4] {
+				panic("batch flush")
+			}
+			assertions++
+		case "POLICY":
+			a, z := gates[0].Self, gates[1].Self
+			request, e := labwire.Open(raw(p[3]), a.Public(), z, 1700000000000)
+			must(e)
+			reply, e := labwire.Open(raw(p[4]), z.Public(), a, 1700000000000)
+			must(e)
+			if (labwire.ValidatePolicyReply(request, reply) == nil) != (p[2] == "1") {
+				panic(p[1])
+			}
+			assertions++
 		case "CHALLENGE":
 			gates[n(p[1])].ChallengeHash = raw(p[2])
 		case "RX":
@@ -55,6 +88,13 @@ func main() {
 		case "EXPECT":
 			s := gates[n(p[1])]
 			v := map[string]uint64{"sdk": uint64(s.SDKCalls), "duplicates": uint64(s.Duplicates), "conflicts": uint64(s.Conflicts), "unsupported": uint64(s.Unsupported), "pending": uint64(len(s.Pending)), "generation": s.Generation, "next": s.Next}
+			v["stale"] = uint64(s.StaleChallenges)
+			if s.BootReady {
+				v["boot"] = 1
+			}
+			if s.GapDeadline != 0 {
+				v["gap_ms"] = s.GapDeadline - 1700000000000
+			}
 			if s.Ready() {
 				v["ready"] = 1
 			}

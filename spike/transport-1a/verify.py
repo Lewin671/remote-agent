@@ -40,6 +40,7 @@ run('Go SDK and sender', [a.go, '-C', lab/'go', 'test', './...', '-count=1'])
 run('Go SDP', [a.go, '-C', lab/'go', 'run', '.', 'vectors', root/'testdata/transport/sdp'])
 run('JS SDP', ['node', lab/'check-vectors.mjs', root/'testdata/transport/sdp'])
 run('JS crypto', ['node', lab/'check-wire.mjs', root/'testdata/transport/wire/vectors.json'])
+run('JS shared trace', ['node',lab/'check-signal.mjs',root/'testdata/transport/signal/scenarios.tsv'])
 run('Go signal', [a.go, '-C', lab/'go', 'run', './cmd/signal-vectors', root/'testdata/transport/signal/scenarios.tsv'])
 run('Java compile', ['javac', '-cp', a.bc, '-d', a.out/'classes', *[lab/(n+'.java') for n in ['Wire','SDPCheck','Signal','SignalVectors','Sender','SenderVectors']]])
 cp = str(a.out/'classes')+os.pathsep+str(a.bc)
@@ -48,7 +49,7 @@ for name, source in [('SDPCheck','sdp'), ('Wire','wire'), ('SignalVectors','sign
     if source != 'sdp':
         target /= 'scenarios.tsv' if source == 'signal' else 'vectors.tsv'
     run('Java '+source, ['java', '-cp', cp, 'example.transportlab.'+name, target])
-run('Swift signal compile', ['swiftc','-O','-parse-as-library','-module-cache-path',a.out/'swift-cache',*[lab/(n+'.swift') for n in ['Wire','SDPCheck','Signal','SignalVectors']],'-o',a.out/'signal'])
+run('Swift signal compile', ['swiftc','-O','-parse-as-library','-module-cache-path',a.out/'swift-cache',*[lab/(n+'.swift') for n in ['Wire','SDPCheck','Sender','Signal','SignalVectors']],'-o',a.out/'signal'])
 run('Swift signal', [a.out/'signal', root/'testdata/transport/signal/scenarios.tsv'])
 # The Swift crypto CLI writes its independent signature beside the input.
 shutil.copy(root/'testdata/transport/wire/vectors.tsv', a.out/'vectors.tsv')

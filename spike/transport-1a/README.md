@@ -49,12 +49,20 @@ REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
 
 - `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、17 份负例，共 33 项；原串禁文本换行转换。
 - `testdata/transport/wire`：16 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
-- `testdata/transport/signal/scenarios.tsv`：12 个场景、189 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
-- `testdata/transport/terminal/expected.json`：20 组终端模型预期；不是四套终端引擎均已执行的声明。
+- `testdata/transport/signal/scenarios.tsv`：20 个共享场景、523 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
+- `testdata/transport/terminal/expected.json`：24 组终端模型预期；不是四套终端引擎均已执行的声明。
 
 `signal-vectors.mjs testdata/transport/sdp /tmp/transport-lab/signal` 可重新生成并先用 JS 执行轨迹；
 seal 使用新随机数，所以重生成的包字节不同，语义预期不变。同一发送的副本则必须逐字节相同。
 CryptoKit 的签名可随机化；Swift CLI 先核对固定随机输入下密文字节，再由 Go 交叉验证完整签名。
+
+共享轨迹还包含冻结前 r1 回归：PolicyReply 原 seq/hash/scope 绑定、stale Challenge 的布尔字段、
+逐个到达的 5/63/64 个候选、两个缺口先后出现及同一缺口拆分。BATCH_ADD/FLUSH 同时核对批长与原字节，
+不只检查总帧数；POLICY 核对回复与冻结原请求。终端回归覆盖实际保留字节/伪小总长与输出两阶段身份冲突。
+
+只复验真实浏览器中的共享轨迹时，可使用 `check-browser-signal.mjs PLAYWRIGHT_MODULE TRACE_TSV OUTPUT_JSON`；
+沿用上述 /tmp 环境与固定浏览器目录。它只监听本机临时 HTTP 端口提供公开测试模块，执行后关闭浏览器和监听，
+无需启动 Pion peer 或移动模拟器。它不会再次测量 SDK 时延。
 
 ## 真实 SDK 独立实验
 

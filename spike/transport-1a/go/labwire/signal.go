@@ -25,15 +25,16 @@ type Signal struct {
 	Candidates, Batches                                                                int
 	Seen                                                                               map[string][]byte
 	Pending                                                                            map[uint64]Opened
+	PendingAt                                                                          map[uint64]uint64
 	GapDeadline                                                                        uint64
 	CacheUntil                                                                         map[string]uint64
-	SDKCalls, Duplicates, Conflicts, Rejected, Unsupported                             int
+	SDKCalls, Duplicates, Conflicts, Rejected, Unsupported, StaleChallenges            int
 }
 
 var ErrSignal = errors.New("invalid signal transition")
 
 func NewSignal(self Identity, peer Public, connection []byte, use uint64) *Signal {
-	return &Signal{Self: self, Peer: peer, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, CacheUntil: map[string]uint64{}}
+	return &Signal{Self: self, Peer: peer, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
 }
 func (s *Signal) Offerer() bool { return bytes.Compare(s.Self.ID, s.Peer.ID) < 0 }
 func (s *Signal) Ready() bool   { return !s.Closed && s.LocalSDP && s.RemoteSDP && s.DTLS && s.Confirmed }
@@ -63,6 +64,7 @@ func (s *Signal) NextGeneration(gen uint64) error {
 	s.DTLS = false
 	s.Confirmed = false
 	s.Pending = map[uint64]Opened{}
+	s.PendingAt = map[uint64]uint64{}
 	s.GapDeadline = 0
 	s.Candidates = 0
 	s.Batches = 0
@@ -129,7 +131,11 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 				return nil, ErrSignal
 			}
 		} else {
-			if need(f, "bbbb") != nil || !bytes.Equal(f[1].B, c.Connection) || !bytes.Equal(f[2].B, c.SenderInstance) || !bytes.Equal(f[3].B, c.SenderBoot) || !bytes.Equal(f[4].B, s.Self.Boot) {
+			schema := "bbbb"
+			if len(f) == 5 {
+				schema = "bbbbu"
+			}
+			if need(f, schema) != nil || (len(f) == 5 && f[5].U > 1) || !bytes.Equal(f[1].B, c.Connection) || !bytes.Equal(f[2].B, c.SenderInstance) || !bytes.Equal(f[3].B, c.SenderBoot) || !bytes.Equal(f[4].B, s.Self.Boot) {
 				return nil, ErrSignal
 			}
 		}
@@ -141,6 +147,9 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		s.CacheUntil[key] = c.Deadline + 300000
 		if o.Type == 2 {
 			s.BootReady = true
+			if len(f) == 5 && f[5].U == 1 {
+				s.StaleChallenges++
+			}
 		}
 		return []Action{{1, o.Type, o.Payload, 0}}, nil
 	}
@@ -169,9 +178,8 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		s.Seen[key] = o.Hash
 		s.CacheUntil[key] = c.Deadline + 300000
 		s.Pending[c.Seq] = o
-		if s.GapDeadline == 0 {
-			s.GapDeadline = now + 2500
-		}
+		s.PendingAt[c.Seq] = now
+		s.refreshGap()
 		return nil, nil
 	}
 	var actions []Action
@@ -196,11 +204,10 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			break
 		}
 		delete(s.Pending, s.Next)
+		delete(s.PendingAt, s.Next)
 		o = next
 	}
-	if len(s.Pending) == 0 {
-		s.GapDeadline = 0
-	}
+	s.refreshGap()
 	return actions, nil
 }
 func (s *Signal) apply(o Opened) (Action, error) {
@@ -278,6 +285,7 @@ func (s *Signal) apply(o Opened) (Action, error) {
 	case 9:
 		s.Closed = true
 		s.Pending = map[uint64]Opened{}
+		s.PendingAt = map[uint64]uint64{}
 		s.GapDeadline = 0
 	default:
 		s.Unsupported++
@@ -296,6 +304,7 @@ func (s *Signal) Tick(now uint64) bool {
 		s.Closed = true
 		s.Retired = true
 		s.Pending = map[uint64]Opened{}
+		s.PendingAt = map[uint64]uint64{}
 		s.GapDeadline = 0
 		return true
 	}
@@ -311,4 +320,17 @@ func (s *Signal) ConfirmBody() []byte {
 		oh, ah, of, af = ah, oh, af, of
 	}
 	return PB(B(1, oh), B(2, ah), B(3, of), B(4, af))
+}
+
+// Every buffered frame witnesses each earlier missing sequence. Once the head
+// gap drains, only witnesses still beyond the next hole determine its age.
+// At most 32 witnesses avoids allocating by an untrusted sequence distance.
+func (s *Signal) refreshGap() {
+	s.GapDeadline = 0
+	for _, at := range s.PendingAt {
+		due := at + 2500
+		if s.GapDeadline == 0 || due < s.GapDeadline {
+			s.GapDeadline = due
+		}
+	}
 }

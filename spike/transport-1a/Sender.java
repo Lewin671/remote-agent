@@ -14,6 +14,6 @@ final class Sender {
  static final class CandidateBatcher {
   final long generation;long due;int count,batches;boolean ended;final List<byte[]> pending=new ArrayList<>();CandidateBatcher(long g){generation=g;}
   boolean add(byte[] raw,long g,long now){if(ended||g!=generation||count>=64||raw.length>1024)return false;if(pending.isEmpty())due=now+50;pending.add(raw.clone());count++;return true;}
-  List<List<byte[]>> flush(long now,boolean end){if(end)ended=true;if(!end&&now<due)return Collections.emptyList();List<List<byte[]>> out=new ArrayList<>();while(!pending.isEmpty()){int n=Math.min(16,pending.size());out.add(new ArrayList<>(pending.subList(0,n)));pending.subList(0,n).clear();Wire.check(++batches<=4);}due=0;return out;}
+  List<List<byte[]>> flush(long now,boolean end){if(end)ended=true;if(!end&&now<due)return Collections.emptyList();List<List<byte[]>> out=new ArrayList<>();while(pending.size()>=16||(end&&!pending.isEmpty())){int n=Math.min(16,pending.size());out.add(new ArrayList<>(pending.subList(0,n)));pending.subList(0,n).clear();Wire.check(++batches<=4);}due=pending.isEmpty()?0:now+50;return out;}
  }
 }

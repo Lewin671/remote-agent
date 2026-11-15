@@ -77,6 +77,15 @@ enum Wire {
         try check(type<=0xffffffff && (!boot || (cls==1 && (type==1 || type==2))))
         return Opened(ctx:c,type:type,payload:t[2]!.data,frameID:id,hash:hash(raw))
     }
+    static func validatePolicyReply(_ request:Opened,_ reply:Opened)throws {
+        let a=request.ctx,z=reply.ctx;try check(a.cls==2 && z.cls==2 && request.type==9 && reply.type==13 && a.from==z.to && a.to==z.from && a.connection==z.connection)
+        let q=try parse(request.payload,4),r=try parse(reply.payload,7);try need(q,"buuu");try need(r,"uuuubub")
+        try check(q[2]!.value != 0 && q[3]!.value<=1 && r[2]!.value<=1 && r[3]!.value<=1)
+        try check((q[4]!.value==1 && q[1]!.data.isEmpty) || (q[4]!.value==2 && q[1]!.data.count==32))
+        try check(r[1]!.value==q[2]!.value && r[4]!.value==a.seq && r[5]!.data.count==32 && r[5]!.data==request.hash && r[6]!.value==q[4]!.value && r[7]!.data==q[1]!.data)
+        try check(r[2]!.value != 1 || r[3]!.value==q[3]!.value)
+    }
+
 }
 
 #if WIRE_CLI

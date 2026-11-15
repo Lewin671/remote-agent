@@ -90,4 +90,13 @@ public final class Wire {
       if(p[0].equals("offer")){Context ctx=new Context(from,to,Arrays.copyOf(hash(utf8("lab/connection")),16),1,1,1,1700000000000L,1,false);byte[] encoded=seal(from,to,ctx,3,unhex(p[3]),Arrays.copyOf(hash(utf8("frame/offer")),16),Arrays.copyOf(hash(utf8("context/offer")),12),Arrays.copyOf(hash(utf8("body/offer")),12));check(hex(encoded).equals(p[4]));}count++;
     }System.out.println("Java real-crypto vectors: "+count+" passed (encode + decode)");
   }
+
+  public static void validatePolicyReply(Opened request,Opened reply){
+    Context a=request.ctx,z=reply.ctx;check(a.cls==2&&z.cls==2&&request.type==9&&reply.type==13&&Arrays.equals(a.from,z.to)&&Arrays.equals(a.to,z.from)&&Arrays.equals(a.connection,z.connection));
+    Map<Integer,Field> q=parse(request.payload,4),r=parse(reply.payload,7);need(q,"buuu");need(r,"uuuubub");
+    check(q.get(2).u!=0&&Long.compareUnsigned(q.get(3).u,1)<=0&&Long.compareUnsigned(r.get(2).u,1)<=0&&Long.compareUnsigned(r.get(3).u,1)<=0);
+    check((q.get(4).u==1&&q.get(1).b.length==0)||(q.get(4).u==2&&q.get(1).b.length==32));
+    check(r.get(1).u==q.get(2).u&&r.get(4).u==a.seq&&r.get(5).b.length==32&&Arrays.equals(r.get(5).b,request.hash)&&r.get(6).u==q.get(4).u&&Arrays.equals(r.get(7).b,q.get(1).b));
+    check(r.get(2).u!=1||r.get(3).u==q.get(3).u);
+  }
 }

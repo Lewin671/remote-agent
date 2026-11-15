@@ -175,6 +175,7 @@ func fragments(e Envelope, gen uint64) []Fragment {
 
 type Assembly struct {
 	count, total int
+	retained     int
 	hash         string
 	parts        map[int][]byte
 	started      uint64
@@ -198,6 +199,11 @@ type queued struct {
 	body     *pb.TerminalFrame
 	hash     string
 	rawBytes int
+}
+
+type outputIdentity struct {
+	hash     string
+	deadline uint64
 }
 type Stream struct {
 	sec                                              *Security
@@ -223,6 +229,7 @@ type Stream struct {
 	stopped, networkRecovery, paused                 bool
 	rendered                                         uint64
 	output                                           map[uint64]queued
+	renderedIdentity                                 map[uint64]outputIdentity
 	renderReady                                      *queued
 	replay                                           []Envelope
 	replayAt                                         []uint64
@@ -236,7 +243,7 @@ type Stream struct {
 }
 
 func newStream(sec *Security, id string) *Stream {
-	return &Stream{sec: sec, id: id, instance: "daemon-instance-a", now: base, legs: map[string]uint64{"relay": 1, "direct": 1}, assemblies: map[string]*Assembly{}, details: map[uint64]Detail{}, pending: map[uint64]queued{}, output: map[uint64]queued{}, inputCache: map[uint64]Envelope{}, inputAt: map[uint64]uint64{}, tmuxConnections: 1, openCalls: 1}
+	return &Stream{sec: sec, id: id, instance: "daemon-instance-a", now: base, legs: map[string]uint64{"relay": 1, "direct": 1}, assemblies: map[string]*Assembly{}, details: map[uint64]Detail{}, pending: map[uint64]queued{}, output: map[uint64]queued{}, renderedIdentity: map[uint64]outputIdentity{}, inputCache: map[uint64]Envelope{}, inputAt: map[uint64]uint64{}, tmuxConnections: 1, openCalls: 1}
 }
 func (s *Stream) receive(path, instance string, f Fragment) error {
 	if s.legs[path] != f.pathGen || instance != s.instance || s.stopped {
@@ -248,12 +255,10 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 	key := fmt.Sprintf("%s/%d/%s", path, f.pathGen, f.id)
 	a := s.assemblies[key]
 	if a == nil {
-		if len(s.assemblies) >= 128 || s.assemblyBytes+f.total > 2<<20 {
+		if len(s.assemblies) >= 128 {
 			return errors.New("reassembly budget")
 		}
-		a = &Assembly{f.count, f.total, f.hash, map[int][]byte{}, s.now}
-		s.assemblies[key] = a
-		s.assemblyBytes += f.total
+		a = &Assembly{count: f.count, total: f.total, hash: f.hash, parts: map[int][]byte{}, started: s.now}
 	}
 	if a.count != f.count || a.total != f.total || a.hash != f.hash {
 		return errors.New("fragment identity")
@@ -264,7 +269,15 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 		}
 		return nil
 	}
-	a.parts[f.index] = f.body
+	// The declaration is not authenticated. Charge the bytes we actually keep,
+	// and reject before inserting a new assembly or copying a fragment body.
+	if len(f.body) > a.total-a.retained || len(f.body) > (2<<20)-s.assemblyBytes {
+		return errors.New("retained fragment budget")
+	}
+	s.assemblies[key] = a
+	a.parts[f.index] = append([]byte(nil), f.body...)
+	a.retained += len(f.body)
+	s.assemblyBytes += len(f.body)
 	if len(a.parts) != a.count {
 		return nil
 	}
@@ -273,7 +286,7 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 		raw = append(raw, a.parts[i]...)
 	}
 	delete(s.assemblies, key)
-	s.assemblyBytes -= a.total
+	s.assemblyBytes -= a.retained
 	if len(raw) != a.total || digest(raw) != a.hash {
 		return errors.New("reassembly hash")
 	}
@@ -450,13 +463,28 @@ func (s *Stream) closeLeg(path string, gen uint64) {
 	}
 }
 func (s *Stream) outputFrame(q queued) error {
+	s.pruneOutputIdentities()
 	if q.header.Seq <= s.rendered {
+		old, ok := s.renderedIdentity[q.header.Seq]
+		if !ok {
+			return errors.New("output identity unavailable")
+		}
+		if old.hash != q.hash {
+			return errors.New("rendered output conflict")
+		}
+		s.dirtyACK++
 		return nil
 	}
-	if _, ok := s.output[q.header.Seq]; ok {
+	if old, ok := s.output[q.header.Seq]; ok {
+		if old.hash != q.hash {
+			return errors.New("pending output conflict")
+		}
 		return nil
 	}
-	if len(s.output) >= 128 {
+	// Conservative lab backpressure: retain identities through the original
+	// deadline, independently of evictable replay bodies. Never ACK an unknown
+	// old sequence after its identity expires or silently evict a live digest.
+	if len(s.output) >= 128 || len(s.output)+len(s.renderedIdentity) >= 512 {
 		return errors.New("output gap")
 	}
 	s.output[q.header.Seq] = q
@@ -471,6 +499,7 @@ func (s *Stream) outputFrame(q queued) error {
 func (s *Stream) render() {
 	check(s.renderReady != nil, "no render ready")
 	s.rendered = s.renderReady.header.Seq
+	s.renderedIdentity[s.rendered] = outputIdentity{s.renderReady.hash, s.renderReady.header.Deadline}
 	delete(s.output, s.rendered)
 	s.renderReady = nil
 	s.dirtyACK++
@@ -480,6 +509,13 @@ func (s *Stream) render() {
 	if next, ok := s.output[s.rendered+1]; ok {
 		copy := next
 		s.renderReady = &copy
+	}
+}
+func (s *Stream) pruneOutputIdentities() {
+	for seq, record := range s.renderedIdentity {
+		if s.now > record.deadline {
+			delete(s.renderedIdentity, seq)
+		}
 	}
 }
 func (s *Stream) rememberOutput(e Envelope) {
@@ -536,7 +572,7 @@ func (s *Stream) advance(ms uint64) {
 	s.now = base + ms
 	for key, a := range s.assemblies {
 		if s.now-a.started >= 5000 {
-			s.assemblyBytes -= a.total
+			s.assemblyBytes -= a.retained
 			delete(s.assemblies, key)
 		}
 	}
@@ -552,6 +588,7 @@ func (s *Stream) advance(ms uint64) {
 		s.emitACK()
 	}
 	s.pruneReplay()
+	s.pruneOutputIdentities()
 }
 func send(s *Stream, path string, e Envelope, reverse bool) error {
 	f := fragments(e, s.legs[path])
@@ -778,6 +815,7 @@ func main() {
 	check(send(s, "relay", sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("late")), false) != nil, "closed stream admitted late input")
 	results["authenticated_controls"] = map[string]int{"packets": s.controlPackets, "bytes": s.controlBytes}
 	recoveryCases(sec, results)
+	reviewCases(sec, results)
 	encoded, err := json.MarshalIndent(map[string]any{"evidence": "two fake paths; real existing business envelope; fake tmux", "scenarios": results}, "", "  ")
 	must(err)
 	fmt.Println(string(encoded))
