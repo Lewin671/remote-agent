@@ -124,3 +124,78 @@ func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 		})
 	}
 }
+
+func TestEightPeersBothPCsLoseTwoCriticalFramesWithinRound(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	machine := identity(t, 2)
+	domain, head := sha256.Sum256([]byte("group-domain")), sha256.Sum256([]byte("group-head"))
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := NewPool(8)
+	ready := make(chan *Path, 32)
+	var sessions []*Session
+	defer func() {
+		for _, s := range sessions {
+			s.Close()
+		}
+		for _, s := range sessions {
+			s.Wait()
+		}
+	}()
+	started := time.Now()
+	deadline := uint64(started.Add(10 * time.Second).UnixMilli())
+	for range 8 {
+		client := identity(t, 1)
+		conn := make([]byte, 16)
+		_, _ = rand.Read(conn)
+		var daemonSide, clientSide atomic.Pointer[Session]
+		var lost atomic.Int32
+		common := SessionConfig{Codec: codec, Connection: conn, Deadline: deadline, Allow: func() bool { return true }, LoopbackOnly: true, Ready: func(_ uint64, p *Path) { ready <- p }}
+		serverCfg := common
+		serverCfg.Self = machine
+		serverCfg.Peer = client.Public()
+		serverCfg.Pool = pool
+		serverCfg.Send = func(out Outbound) bool { target := clientSide.Load(); return target != nil && target.Receive(out.Raw) }
+		ds, err := NewSession(ctx, serverCfg, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		daemonSide.Store(ds)
+		sessions = append(sessions, ds)
+		clientCfg := common
+		clientCfg.Self = client
+		clientCfg.Peer = machine.Public()
+		clientCfg.Pool = NewPool(4)
+		clientCfg.Send = func(out Outbound) bool {
+			if out.Critical && lost.Add(1) <= 2 {
+				return true
+			}
+			target := daemonSide.Load()
+			return target != nil && target.Receive(out.Raw)
+		}
+		cs, err := NewSession(ctx, clientCfg, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		clientSide.Store(cs)
+		sessions = append(sessions, cs)
+	}
+	for i := 0; i < 32; i++ {
+		select {
+		case <-ready:
+		case <-ctx.Done():
+			t.Fatalf("only %d of 32 SDK PCs completed the original round", i)
+		}
+	}
+	elapsed := time.Since(started)
+	if elapsed > 10*time.Second {
+		t.Fatal("eight-peer handshake exceeded original deadline", elapsed)
+	}
+	if _, err = New(ctx, Config{Peer: "ninth-fixture", Owner: "round", Use: 1, Generation: 1, Pool: pool, Allow: func() bool { return true }, LoopbackOnly: true}); err == nil {
+		t.Fatal("connected peer budget exceeded")
+	}
+	t.Logf("8 peers, 32 real SDK PCs, 2 lost critical frames per pair: %s", elapsed)
+}

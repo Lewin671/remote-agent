@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,12 +22,16 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/relay"
+	"github.com/Lewin671/remote-agent/internal/stun"
 )
 
 // The three production client engines connect to this opt-in, loopback-only
 // fixture. The daemon's real security and scheduler run behind a bounded fake
 // backend; model/tool execution is verified by the separate native CLI pass.
 type flowBackend struct {
+	direct                              bool
+	bulkData                            []byte
+	bulkCurrent, bulkMaximum, bulkCalls int
 	*fakeBackend
 	flowMu                                 sync.Mutex
 	release                                chan struct{}
@@ -71,6 +76,24 @@ func (l flowLocal) PutImageChunk(ctx context.Context, _ *connect.Request[pb.PutI
 		return nil, err
 	}
 	return connect.NewResponse(&pb.PutImageChunkResponse{}), nil
+}
+func (l flowLocal) GetSharedFileChunk(ctx context.Context, q *connect.Request[pb.GetSharedFileChunkRequest]) (*connect.Response[pb.GetSharedFileChunkResponse], error) {
+	if !l.b.direct {
+		return l.LocalServiceHandler.GetSharedFileChunk(ctx, q)
+	}
+	l.b.flowMu.Lock()
+	l.b.bulkCurrent++
+	l.b.bulkCalls++
+	l.b.bulkMaximum = max(l.b.bulkMaximum, l.b.bulkCurrent)
+	l.b.flowMu.Unlock()
+	defer func() { l.b.flowMu.Lock(); l.b.bulkCurrent--; l.b.flowMu.Unlock() }()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(5 * time.Millisecond):
+	}
+	total := uint64(64 << 20)
+	return connect.NewResponse(&pb.GetSharedFileChunkResponse{Data: l.b.bulkData, TotalBytes: &total}), nil
 }
 func (l flowLocal) Send(ctx context.Context, _ *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
 	b := l.b
@@ -142,11 +165,30 @@ func TestApprovalClientHarness(t *testing.T) {
 	if err = os.MkdirAll(root, 0700); err != nil {
 		t.Fatal(err)
 	}
+	directFlow := os.Getenv("RA_1C_FLOW") == "1"
+	if directFlow {
+		udp, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+		t.Cleanup(func() { udp.Close() })
+		go stun.New(stun.DefaultConfig()).Serve(ctx, udp)
+		address := "stun:" + udp.LocalAddr().String()
+		t.Setenv("REMOTE_AGENT_STUN_URL", address)
+		if err = os.WriteFile(filepath.Join(root, "stun-url"), []byte(address), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	e := setup(t)
 	e.backend.machineMeta = func() *pb.MachineMeta {
-		return &pb.MachineMeta{Hostname: "fixture-machine", ProtocolVersion: protocol.Version}
+		return &pb.MachineMeta{Hostname: "fixture-machine", ProtocolVersion: protocol.Version, Capabilities: &pb.MachineCapabilities{SharedFiles: true, SharedFileChunkBytes: 768 << 10}}
 	}
-	backend := &flowBackend{fakeBackend: e.backend, closed: map[string]bool{}, snapshots: map[string]int{}, approvals: map[string]int{}}
+	backend := &flowBackend{direct: directFlow, bulkData: make([]byte, 768<<10), fakeBackend: e.backend, closed: map[string]bool{}, snapshots: map[string]int{}, approvals: map[string]int{}}
+	if _, err = rand.Read(backend.bulkData); err != nil {
+		t.Fatal(err)
+	}
 	e.backend.add(t, "flow-input")
 	for i := range 4 {
 		e.backend.add(t, fmt.Sprintf("flow-flood-%d", i))
@@ -231,7 +273,11 @@ func TestApprovalClientHarness(t *testing.T) {
 			backend.snapshots[sid] = 0
 			backend.approvals[sid] = 0
 			backend.flowMu.Unlock()
-			for i := range 6 {
+			count := 6
+			if directFlow {
+				count = 4
+			}
+			for i := range count {
 				load.Go(func() {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()
@@ -246,7 +292,7 @@ func TestApprovalClientHarness(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
 			defer cancel()
-			for range 6 {
+			for range count {
 				select {
 				case <-entered:
 				case <-ctx.Done():
@@ -254,7 +300,7 @@ func TestApprovalClientHarness(t *testing.T) {
 					return
 				}
 			}
-			if relay.ActiveCallsForTest(r) != 6 {
+			if relay.ActiveCallsForTest(r) != count {
 				http.Error(w, "fixture pools not full", 500)
 				return
 			}
@@ -274,7 +320,11 @@ func TestApprovalClientHarness(t *testing.T) {
 			case <-req.Context().Done():
 				return
 			}
-			if relay.ActivePoolsForTest(r) != [3]int{1, 4, 2} {
+			bulk := 2
+			if directFlow {
+				bulk = 0
+			}
+			if relay.ActivePoolsForTest(r) != [3]int{1, 4, bulk} {
 				http.Error(w, "overdue input did not retain slot", 500)
 				return
 			}
@@ -301,15 +351,16 @@ func TestApprovalClientHarness(t *testing.T) {
 			case <-req.Context().Done():
 				return
 			}
-			json.NewEncoder(w).Encode(map[string]any{"normal": 4, "bulk": 2, "input": 1, "input_overdue": true})
+			json.NewEncoder(w).Encode(map[string]any{"normal": 4, "bulk": bulk, "input": 1, "input_overdue": true})
 		case "stop":
 			backend.flowMu.Lock()
 			snapshots, approvals := backend.snapshots[sid], backend.approvals[sid]
 			floodCalls, floodWorkers := backend.floodCalls, backend.floodWorkers
+			bulkMax, bulkCalls := backend.bulkMaximum, backend.bulkCalls
 			backend.flowMu.Unlock()
 			active := relay.ActivePoolsForTest(r)
 			stopLoad()
-			json.NewEncoder(w).Encode(map[string]any{"snapshot_calls": snapshots, "approval_calls": approvals, "active_before_release": active, "normal": active[1], "bulk": active[2], "input": 1, "input_overdue": true, "flood_calls": floodCalls, "flood_workers_before_release": floodWorkers, "flood_peer": "same as measured client", "flood_concurrency": 4})
+			json.NewEncoder(w).Encode(map[string]any{"bulk_maximum": bulkMax, "bulk_calls": bulkCalls, "snapshot_calls": snapshots, "approval_calls": approvals, "active_before_release": active, "normal": active[1], "bulk": active[2], "input": 1, "input_overdue": true, "flood_calls": floodCalls, "flood_workers_before_release": floodWorkers, "flood_peer": "same as measured client", "flood_concurrency": 4})
 		case "finish":
 			stopLoad()
 			json.NewEncoder(w).Encode(map[string]bool{"ok": true})
