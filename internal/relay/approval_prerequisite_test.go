@@ -229,7 +229,7 @@ func TestApprovalPrerequisiteSurvivesRunningAndOverdueSend(t *testing.T) {
 	e.online(t, true)
 	input := e.session(t, "stalled-input", 0)
 	approval := e.session(t, "approval-flow-session", 0)
-	env, err := e.client.Seal(input.MachineID, input.ID, "stalled-send-reservation", time.Now().Add(500*time.Millisecond), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: input.ID, Text: "load"}}})
+	env, err := e.client.Seal(input.MachineID, input.ID, "stalled-send-reservation", time.Now().Add(2*time.Second), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: input.ID, Text: "load"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,6 +264,11 @@ func TestApprovalPrerequisiteSurvivesRunningAndOverdueSend(t *testing.T) {
 		}
 	}
 	flow("running Send")
+	select {
+	case <-canceled:
+		t.Fatal("first approval was not completed before the Send deadline")
+	default:
+	}
 	select {
 	case <-canceled:
 	case <-ctx.Done():

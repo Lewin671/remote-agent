@@ -64,6 +64,7 @@ class AdmissionFlowMeasurementTest {
    File(root,"android-flow.json").writeText(report.toString())
    assertEquals(100,completed);assertEquals(0,failed)
    assertEquals(4,counters.getValue("normal").jsonPrimitive.int);assertEquals(2,counters.getValue("bulk").jsonPrimitive.int)
+   assertEquals(1,counters.getValue("input").jsonPrimitive.int);assertTrue(counters.getValue("input_overdue").jsonPrimitive.boolean);assertEquals(4,counters.getValue("flood_workers_before_release").jsonPrimitive.int);assertTrue(counters.getValue("flood_calls").jsonPrimitive.int>0)
    assertTrue(counters.getValue("snapshot_calls").jsonPrimitive.int>=100);assertEquals(100,counters.getValue("approval_calls").jsonPrimitive.int)
    assertTrue("full flow p99=${q(.99)} ms",q(.99)<=100)
   }finally{try{if(loaded)control("stop")}finally{follow?.cancelAndJoin();remote.close();http.dispatcher.executorService.shutdown();http.connectionPool.evictAll()}}

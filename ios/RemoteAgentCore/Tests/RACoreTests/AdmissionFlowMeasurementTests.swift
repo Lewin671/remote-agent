@@ -51,6 +51,7 @@ struct AdmissionFlowMeasurementTests {
    var result=counters;result["client"]="ios";result["attempts"]=timings.count;result["warmup"]=20;result["completed"]=completed;result["failed"]=failed;result["completed_fraction"]=Double(completed)/Double(timings.count);result["full_flow_ms"]=["p50":q(0.5),"p95":q(0.95),"p99":q(0.99)]
    try JSONSerialization.data(withJSONObject:result,options:.prettyPrinted).write(to:root.appendingPathComponent("ios-flow.json"))
    #expect(completed==100);#expect(failed==0);#expect(counters["normal"] as? Int==4);#expect(counters["bulk"] as? Int==2)
+   #expect(counters["input"] as? Int==1);#expect(counters["input_overdue"] as? Bool==true);#expect(counters["flood_workers_before_release"] as? Int==4);#expect((counters["flood_calls"] as? Int ?? 0)>0)
    #expect((counters["snapshot_calls"] as? Int ?? 0)>=100);#expect(counters["approval_calls"] as? Int==100);#expect(q(0.99)<=100)
   }catch{if loaded{_=try? await control("stop")};follow?.cancel();remote.close();throw error}
   follow?.cancel();remote.close()

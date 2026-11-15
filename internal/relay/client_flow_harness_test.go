@@ -28,11 +28,14 @@ import (
 // backend; model/tool execution is verified by the separate native CLI pass.
 type flowBackend struct {
 	*fakeBackend
-	flowMu               sync.Mutex
-	release              chan struct{}
-	entered              chan struct{}
-	closed               map[string]bool
-	snapshots, approvals map[string]int
+	flowMu                                 sync.Mutex
+	release                                chan struct{}
+	entered                                chan struct{}
+	closed                                 map[string]bool
+	snapshots, approvals                   map[string]int
+	inputEntered, inputCanceled, inputDone chan struct{}
+	floodEntered                           chan struct{}
+	floodCalls, floodWorkers               int
 }
 type flowLocal struct {
 	remoteagentv1connect.LocalServiceHandler
@@ -69,6 +72,18 @@ func (l flowLocal) PutImageChunk(ctx context.Context, _ *connect.Request[pb.PutI
 	}
 	return connect.NewResponse(&pb.PutImageChunkResponse{}), nil
 }
+func (l flowLocal) Send(ctx context.Context, _ *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
+	b := l.b
+	b.flowMu.Lock()
+	release, entered, canceled, done := b.release, b.inputEntered, b.inputCanceled, b.inputDone
+	b.flowMu.Unlock()
+	defer close(done)
+	close(entered)
+	<-ctx.Done()
+	close(canceled)
+	<-release // Deliberately retain the original slot after its five-second cap.
+	return nil, ctx.Err()
+}
 func (l flowLocal) ResolveApproval(ctx context.Context, r *connect.Request[pb.ResolveApprovalRequest]) (*connect.Response[pb.ResolveApprovalResponse], error) {
 	b := l.b
 	b.flowMu.Lock()
@@ -93,8 +108,18 @@ func (b *flowBackend) LiveSnapshot(ctx context.Context, sid string) (*pb.LiveSna
 	if agent.OriginFrom(ctx).GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT {
 		b.snapshots[sid]++
 		info.Title = fmt.Sprintf("owner-read-%d", b.snapshots[sid])
+		if strings.HasPrefix(sid, "flow-flood-") {
+			b.floodCalls++
+			select {
+			case b.floodEntered <- struct{}{}:
+			default:
+			}
+		}
 	}
 	out := &pb.LiveSnapshot{Session: info}
+	if sid == "flow-input" || strings.HasPrefix(sid, "flow-flood-") {
+		return out, nil
+	}
 	for i := 0; i < 120; i++ {
 		id := fmt.Sprintf("%s-approval-%03d", sid, i)
 		if b.closed[id] {
@@ -122,6 +147,10 @@ func TestApprovalClientHarness(t *testing.T) {
 		return &pb.MachineMeta{Hostname: "fixture-machine", ProtocolVersion: protocol.Version}
 	}
 	backend := &flowBackend{fakeBackend: e.backend, closed: map[string]bool{}, snapshots: map[string]int{}, approvals: map[string]int{}}
+	e.backend.add(t, "flow-input")
+	for i := range 4 {
+		e.backend.add(t, fmt.Sprintf("flow-flood-%d", i))
+	}
 	for _, name := range []string{"web", "android", "ios"} {
 		sid := "flow-" + name
 		log := e.backend.add(t, sid)
@@ -137,13 +166,20 @@ func TestApprovalClientHarness(t *testing.T) {
 	e.online(t, true)
 	var loadMu sync.Mutex
 	var load sync.WaitGroup
+	var cancelFlood context.CancelFunc
 	stopLoad := func() {
+		if cancelFlood != nil {
+			cancelFlood()
+			cancelFlood = nil
+		}
 		backend.flowMu.Lock()
 		release := backend.release
+		inputDone := backend.inputDone
 		backend.release = nil
 		backend.flowMu.Unlock()
 		if release != nil {
 			close(release)
+			<-inputDone
 		}
 		load.Wait()
 	}
@@ -186,6 +222,11 @@ func TestApprovalClientHarness(t *testing.T) {
 			backend.flowMu.Lock()
 			backend.release = make(chan struct{})
 			backend.entered = make(chan struct{}, 6)
+			backend.inputEntered = make(chan struct{})
+			backend.inputCanceled = make(chan struct{})
+			backend.inputDone = make(chan struct{})
+			backend.floodEntered = make(chan struct{}, 1)
+			backend.floodCalls, backend.floodWorkers = 0, 0
 			entered := backend.entered
 			backend.snapshots[sid] = 0
 			backend.approvals[sid] = 0
@@ -217,14 +258,58 @@ func TestApprovalClientHarness(t *testing.T) {
 				http.Error(w, "fixture pools not full", 500)
 				return
 			}
-			json.NewEncoder(w).Encode(map[string]any{"normal": 4, "bulk": 2})
+			load.Go(func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				_, _ = e.client.Do(ctx, e.session(t, "flow-input", 0), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "flow-input", Text: "held input"}}})
+			})
+			// Wait on backend ownership events, not terminal appearance or polling.
+			select {
+			case <-backend.inputEntered:
+			case <-req.Context().Done():
+				return
+			}
+			select {
+			case <-backend.inputCanceled:
+			case <-req.Context().Done():
+				return
+			}
+			if relay.ActivePoolsForTest(r) != [3]int{1, 4, 2} {
+				http.Error(w, "overdue input did not retain slot", 500)
+				return
+			}
+			floodCtx, cancel := context.WithCancel(context.Background())
+			cancelFlood = cancel
+			backend.flowMu.Lock()
+			backend.floodWorkers = 4
+			backend.flowMu.Unlock()
+			for i := range 4 {
+				session := e.session(t, fmt.Sprintf("flow-flood-%d", i), 0)
+				load.Go(func() {
+					defer func() { backend.flowMu.Lock(); backend.floodWorkers--; backend.flowMu.Unlock() }()
+					// A finite request workload, canceled by stop; no readiness poll loop.
+					for range 10000 {
+						if floodCtx.Err() != nil {
+							return
+						}
+						_, _ = e.client.Do(floodCtx, session, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: session.ID}}})
+					}
+				})
+			}
+			select {
+			case <-backend.floodEntered:
+			case <-req.Context().Done():
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]any{"normal": 4, "bulk": 2, "input": 1, "input_overdue": true})
 		case "stop":
 			backend.flowMu.Lock()
 			snapshots, approvals := backend.snapshots[sid], backend.approvals[sid]
+			floodCalls, floodWorkers := backend.floodCalls, backend.floodWorkers
 			backend.flowMu.Unlock()
 			active := relay.ActivePoolsForTest(r)
 			stopLoad()
-			json.NewEncoder(w).Encode(map[string]any{"snapshot_calls": snapshots, "approval_calls": approvals, "active_before_release": active, "normal": active[1], "bulk": active[2]})
+			json.NewEncoder(w).Encode(map[string]any{"snapshot_calls": snapshots, "approval_calls": approvals, "active_before_release": active, "normal": active[1], "bulk": active[2], "input": 1, "input_overdue": true, "flood_calls": floodCalls, "flood_workers_before_release": floodWorkers, "flood_peer": "same as measured client", "flood_concurrency": 4})
 		case "finish":
 			stopLoad()
 			json.NewEncoder(w).Encode(map[string]bool{"ok": true})

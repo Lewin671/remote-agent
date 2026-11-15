@@ -42,7 +42,7 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
     expect(remote.liveSnapshotError(sid)).toBeUndefined();
     for (let i = 0; i < 20; i++) await remote.command(sid, approval(i));
     const load = await control("start"); loaded = true;
-    expect(load).toMatchObject({ normal: 4, bulk: 2 });
+    expect(load).toMatchObject({ normal: 4, bulk: 2, input: 1, input_overdue: true });
     const timings: number[] = []; let completed = 0; let failed = 0;
     for (let i = 20; i < 120; i++) {
       const start = performance.now();
@@ -62,6 +62,8 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
     writeFileSync(root + "/web-flow.json", JSON.stringify({ client:"web", attempts:timings.length, warmup:20, completed, failed, completed_fraction:completed/timings.length, full_flow_ms:{p50:q(.5),p95:q(.95),p99:q(.99)}, ...counters }, null, 2));
     expect(completed).toBe(100); expect(failed).toBe(0);
     expect(counters.normal).toBe(4); expect(counters.bulk).toBe(2);
+    expect(counters).toMatchObject({ input: 1, input_overdue: true, flood_workers_before_release: 4 });
+    expect(counters.flood_calls).toBeGreaterThan(0);
     expect(counters.snapshot_calls).toBeGreaterThanOrEqual(100); expect(counters.approval_calls).toBe(100);
     expect(q(.99)).toBeLessThanOrEqual(100);
   } finally { if (loaded) await control("stop"); remote.stop(); }
