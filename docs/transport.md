@@ -151,7 +151,7 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 
 | 队列 | 命令 | 条数 / 字节 |
 |---|---|---|
-| 交互控制 | Interrupt、ResolveApproval、AnswerQuestion、AnswerPlan、CancelInput、ResumeInput | 32 条 / 4 MiB |
+| 交互控制 | Interrupt、ResolveApproval、AnswerQuestion、AnswerPlan、CancelInput、ResumeInput、GetLiveSnapshot | 32 条 / 4 MiB |
 | 交互输入 | Send | 16 条 / 4 MiB |
 | 普通 | 普通指令与非 bulk 只读 | 64 条 / 4 MiB |
 | bulk | 上传与 GetSharedFileChunk | 16 条 / 4 MiB |
@@ -160,7 +160,9 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 
 每个执行（子）队列的全局字节预算不得小于合法解码正文上限 4 MiB，配合空 peer 单条例外，使合法的大控制请求、输入和上传块都能进入空队列；计费口径变化时也必须保持这一容量下限。
 
-审批发送前所需 GetLiveSnapshot 的池归属及优先级尚待裁定，见 [plan](plan.md#传输模块与直连)。当前候选仍将其归入普通只读；直接发送 ResolveApproval 的获槽指标不能代替包含此前置读取的完整审批验收。
+控制子队列内部依次优先 ResolveApproval、AnswerQuestion/AnswerPlan/Interrupt、CancelInput/ResumeInput、GetLiveSnapshot；同优先级继续按 peer / 会话公平轮转。GetLiveSnapshot 的所有用途统一归类，不靠 wire 区分，也受非 ResolveApproval 并发最多 1 的限制；仍是只读、不写接受日志，plan 的核屏步骤也受 5 秒交互期限约束。客户端发送控制命令前必须完成的读取与该控制命令同池，不能在忙时跳过重新核验或预填 observedEventSeq。
+
+审批指标覆盖三端实际发起的 GetLiveSnapshot → ResolveApproval 完整流程，**p99 ≤100 ms**，在普通池与 bulk 池同时占满时测量，并报告实际获槽 / 完成比例；不能只测直接发送 ResolveApproval。
 
 执行消费者先查同 ID 协调状态，重复进等待表；新请求**先取槽，再在执行闸门内复查并持久受理**。队列满或排队期限内仍无槽，未持久化终态拒绝时回复 unknown/busy，Router 按证据矩阵合并并退避原 ID；不留虚假的 in-progress。认证队列堵塞只拒当前帧，不阻塞读取审批、心跳或结果。
 
