@@ -89,6 +89,9 @@ export class RecoveryHistoryUnavailable extends SecurityError {
 }
 const MAX_PAGE = 8;
 export class DeviceSecurityClient {
+  onSync?: (record: SecurityRecord, started: number) => void;
+  onSyncFailed?: () => void;
+
   recoveryPending = false;
   recoveryReadyMs = 0n;
   recoveryStatusStale = true;
@@ -181,15 +184,19 @@ export class DeviceSecurityClient {
     this.syncController = undefined;
     this.syncJob = undefined;
   }
-  async sync(waiter?: AbortSignal): Promise<SecurityRecord> {
+  async sync(waiter?: AbortSignal, budget = this.roundBudget()): Promise<SecurityRecord> {
     for (;;) {
       waiter?.throwIfAborted();
       let job = this.syncJob, controller = this.syncController;
       if (!job || !controller) {
         controller = new AbortController();
         const owner = controller;
-        const pending = ownedRound(owner, this.roundBudget(), signal => this.syncLoop(signal)).catch(error => {
-          if (this.syncJob === pending && !(owner.signal.reason instanceof PathChanged)) this.recoveryStatusStale = true;
+        const started = Date.now();
+        const pending = ownedRound(owner, budget, signal => this.syncLoop(signal)).then(record => {
+          if (this.syncJob === pending && !owner.signal.aborted) this.onSync?.(record, started);
+          return record;
+        }).catch(error => {
+          if (this.syncJob === pending && !(owner.signal.reason instanceof PathChanged)) { this.recoveryStatusStale = true; this.onSyncFailed?.(); }
           throw error;
         }).finally(() => {
           if (this.syncJob === pending) { this.syncJob = undefined; this.syncController = undefined; }

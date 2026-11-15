@@ -27,7 +27,14 @@ const REVISION = "record-revision";
 // Only records bearing a revision written atomically with them are reusable.
 // An absent marker is a cache miss, never an authority to trust stored data.
 let verified: { revision: string; record: Promise<SecurityRecord> } | undefined;
+const installObservers = new Set<(record: SecurityRecord) => void>();
+/** Transport invalidation only; observers cannot interfere with a transaction. */
+export function watchSecurityInstall(observer: (record: SecurityRecord) => void): () => void {
+  installObservers.add(observer); return () => { installObservers.delete(observer); };
+}
 function putRecord(store: IDBObjectStore, record: SecurityRecord): void {
+  for (const observer of [...installObservers]) { try { observer(record); } catch { /* Fail closed in the observer, never veto persistence. */ } }
+
   store.put(record, KEY);
   store.put(record.pin, "pinned-identity");
   store.put(crypto.randomUUID(), REVISION);
