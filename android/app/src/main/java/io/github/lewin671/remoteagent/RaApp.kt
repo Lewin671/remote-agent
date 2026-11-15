@@ -126,6 +126,7 @@ class RaApp : Application() {
     private val accountLock = Mutex()
     // The device has a default network, by the system's word.
     @Volatile private var online = true
+    private var networkSignature: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -162,28 +163,18 @@ class RaApp : Application() {
                 },
             )
         // Without a network at start no callback comes.
-        online = getSystemService(ConnectivityManager::class.java).activeNetwork != null
         val connectivity = getSystemService(ConnectivityManager::class.java)
+        observeCurrentNetwork(connectivity)
         connectivity.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             private var current: Network? = connectivity.activeNetwork
             private var properties: LinkProperties? = current?.let(connectivity::getLinkProperties)
             private var capabilities: NetworkCapabilities? = current?.let(connectivity::getNetworkCapabilities)
             private fun changed() {
                 val network = current
-                online = network != null
-                // Addresses stay only in this process and are never logged or persisted.
-                val signature = networkIdentity(
-                    network?.networkHandle,
-                    properties?.interfaceName,
-                    properties?.linkAddresses?.map { it.toString() }?.sorted(),
-                    properties?.routes?.map { it.toString() }?.sorted(),
-                    properties?.dnsServers?.mapNotNull { it.hostAddress },
-                    (0..7).filter { capabilities?.hasTransport(it) == true },
-                    listOf(NetworkCapabilities.NET_CAPABILITY_INTERNET, NetworkCapabilities.NET_CAPABILITY_VALIDATED,
-                        NetworkCapabilities.NET_CAPABILITY_NOT_METERED, NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-                        .filter { capabilities?.hasCapability(it) == true },
-                )
-                _remote.value?.networkChanged(signature, online)
+                val available = network != null
+                // Account attachment and observations share the main actor's order.
+                val signature = networkIdentity(network, properties, capabilities)
+                scope.launch { observeNetwork(signature, available) }
             }
             override fun onAvailable(network: Network) {
                 current = network
@@ -210,6 +201,24 @@ class RaApp : Application() {
                 changed()
             }
         })
+    }
+
+    private fun observeCurrentNetwork(connectivity: ConnectivityManager) {
+        val network = connectivity.activeNetwork
+        observeNetwork(networkIdentity(network, network?.let(connectivity::getLinkProperties),
+            network?.let(connectivity::getNetworkCapabilities)), network != null)
+    }
+
+    /** Called on the app's main dispatcher, including observations before account loading. */
+    internal fun observeNetwork(signature: String, available: Boolean) {
+        networkSignature = signature
+        online = available
+        _remote.value?.networkChanged(signature, available)
+    }
+
+    internal fun attachNetwork(remote: Remote) {
+        if (networkSignature == null) observeCurrentNetwork(getSystemService(ConnectivityManager::class.java))
+        remote.networkChanged(checkNotNull(networkSignature), online)
     }
 
     /**
@@ -387,7 +396,7 @@ class RaApp : Application() {
                 log = { Log.i(TAG, it) },
             )
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
-        r.setNetwork(online)
+        attachNetwork(r)
         Push.open()
         _remote.value = r
         // Only in the foreground: a process started for a push just shows it.

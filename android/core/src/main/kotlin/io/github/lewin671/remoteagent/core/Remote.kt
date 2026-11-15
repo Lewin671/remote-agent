@@ -744,7 +744,7 @@ class Remote(
         scope.launch {
             for ((signature, available) in networkHints) {
                 if (signature == networkSignature) continue
-                val changed = networkSignature.isNotEmpty() || everReady
+                val changed = networkSignature.isNotEmpty()
                 networkSignature = signature
                 network = available
                 if (!changed) { publish(); continue }

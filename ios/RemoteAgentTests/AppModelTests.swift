@@ -13,6 +13,8 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     let remote: Remote
     private let lock = NSLock()
     private var log: [String] = []
+    private var signatures: [String] = []
+    var networkSignatures: [String] { lock.withLock { signatures } }
 
     init(account: Account) throws {
         remote = try Remote(account: account, http: HTTP())
@@ -27,6 +29,15 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     func start() { note("start") }
     func stop() { note("stop") }
     func setNetwork(_ available: Bool) { note("network \(available)") }
+    func networkChanged(_ signature: String, available: Bool) {
+        lock.withLock {
+            let previous = signatures.last
+            guard previous != signature else { return }
+            signatures.append(signature)
+            log.append("network \(available)")
+            if previous != nil && available { log.append("reconnect") }
+        }
+    }
     func reconnectNow() { note("reconnect") }
     func retryLogin() { note("retryLogin") }
     func close() { note("close") }
@@ -204,7 +215,8 @@ final class Harness {
         let wifi = NetworkPath(available: true, interface: "en0")
         h.model.networkChanged(wifi)
         h.model.networkChanged(wifi)
-        #expect(h.engine.calls.isEmpty)
+        #expect(h.engine.calls == ["network true"])
+        h.engine.forget()
         h.model.networkChanged(NetworkPath(available: false, interface: ""))
         #expect(h.engine.calls == ["network false"])
         h.model.networkChanged(NetworkPath(available: true, interface: "pdp_ip0"))
@@ -212,6 +224,32 @@ final class Harness {
         h.model.networkChanged(wifi)
         #expect(h.engine.calls.suffix(2) == ["network true", "reconnect"])
         #expect(h.engine.calls.count == 5)
+    }
+
+    @Test func engineReceivesTheNetworkObservedBeforeAccountLoading() async throws {
+        defer { h.cleanUp() }
+        let wifi = NetworkPath(available: true, interface: "en0")
+        let cellular = NetworkPath(available: true, interface: "pdp_ip0")
+        h.model.networkChanged(wifi)
+        try await h.ready()
+        #expect(h.engine.networkSignatures == [wifi.signature])
+        #expect(h.engine.calls == ["network true", "start"])
+        h.model.networkChanged(cellular)
+        #expect(h.engine.networkSignatures == [wifi.signature, cellular.signature])
+        #expect(h.engine.calls.suffix(2) == ["network true", "reconnect"])
+    }
+
+    @Test func firstObservationAfterEngineAttachmentIsForwardedAsItsBaseline() async throws {
+        defer { h.cleanUp() }
+        try await h.ready()
+        #expect(h.engine.networkSignatures.isEmpty)
+        let wifi = NetworkPath(available: true, interface: "en0")
+        h.model.networkChanged(wifi)
+        #expect(h.engine.networkSignatures == [wifi.signature])
+        #expect(!h.engine.calls.contains("reconnect"))
+        let cellular = NetworkPath(available: true, interface: "pdp_ip0")
+        h.model.networkChanged(cellular)
+        #expect(h.engine.calls.filter { $0 == "reconnect" }.count == 1)
     }
 
     @Test func networkChangesAreJudgedByWhatChanged() {

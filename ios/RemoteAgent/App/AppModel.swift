@@ -234,6 +234,7 @@ final class AppModel {
     /// Bumped whenever the account in use changes: a step that awaited meanwhile finds its work unwanted.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var path = NetworkPath.unknown
+    @ObservationIgnored private var hasObservedPath = false
     @ObservationIgnored private var watching = false
     @ObservationIgnored private var terminals: [UUID: TermConn] = [:]
     /// The revision of this device's metadata a description was last sent for on this connection.
@@ -299,14 +300,11 @@ final class AppModel {
 
     /// The system's default route changed, or was told for the first time.
     func networkChanged(_ new: NetworkPath) {
-        let change = NetworkChange.from(path, to: new)
+        guard !hasObservedPath || path != new else { return }
         path = new
-        switch change {
-        case .none:
-            break
-        case .lost, .gained:
-            engine?.networkChanged(new.signature, available: new.available)
-        }
+        hasObservedPath = true
+        // Remote records the first observation and retires every later change.
+        engine?.networkChanged(new.signature, available: new.available)
     }
 
     /// C calls this after the bootstrap receipt was explicitly completed.
@@ -463,7 +461,12 @@ final class AppModel {
         // What the agent shared is kept in the cache, per session, and counts in 附件存储.
         SharedFileCenter.install(remote: made.remote, root: SharedFileCenter.defaultRoot)
         stage = .ready
-        made.engine.setNetwork(path.available)
+        if hasObservedPath {
+            made.engine.networkChanged(path.signature, available: path.available)
+        } else {
+            // The monitor has not supplied a real baseline yet.
+            made.engine.setNetwork(path.available)
+        }
         follow(made.engine.state, gen: generation)
     }
 

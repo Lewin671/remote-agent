@@ -563,7 +563,7 @@ public actor Remote {
             guard let (signature,available) = networkInbox.withLock({ s in
                 defer {s.pending=nil;s.queued=false};return s.pending
             }), signature != networkSignature else { return }
-            let changed = !networkSignature.isEmpty || everReady
+            let changed = !networkSignature.isEmpty
             networkSignature = signature; network = available
             if changed {
                 networkGeneration += 1; retireCandidate()
