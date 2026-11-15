@@ -278,7 +278,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 	class, approval := classifyCommand(cmd)
 	raw := cmd.GetGetSharedFileChunk() != nil
-	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval, Priority: controlPriority(cmd)}
+	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval, Snapshot: cmd.GetGetLiveSnapshot() != nil, Priority: controlPriority(cmd)}
 	queuedAt := time.Now()
 	observe := func(acquired bool, at time.Time) {
 		if approval && a.endpoint.r.observeApproval != nil {

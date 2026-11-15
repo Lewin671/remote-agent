@@ -307,3 +307,60 @@ func TestExecutionDeadlinesUseClassAndOriginalCaps(t *testing.T) {
 		}
 	})
 }
+
+func TestSnapshotPeerLimitAndApprovalPriority(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		link := NewLink(context.Background())
+		defer link.Close()
+		defer link.DrainCalls()
+		s := NewScheduler(link)
+		defer s.Close()
+		firstRelease, otherRelease, approvalRelease := make(chan struct{}), make(chan struct{}), make(chan struct{})
+		var firstOnce, otherOnce, approvalOnce sync.Once
+		defer firstOnce.Do(func() { close(firstRelease) })
+		defer otherOnce.Do(func() { close(otherRelease) })
+		defer approvalOnce.Do(func() { close(approvalRelease) })
+		order := make(chan string, 8)
+		submit := func(name, peer string, snapshot bool, hold <-chan struct{}) {
+			priority := uint8(0)
+			if snapshot {
+				priority = 3
+			}
+			if !s.Submit(context.Background(), &Job{Class: Control, Peer: peer, Session: name, Bytes: 1, Snapshot: snapshot, Approval: !snapshot, Priority: priority, Deadline: time.Now().Add(time.Minute), Reject: func() { t.Errorf("%s rejected", name) }, Run: func(context.Context, *Execution) {
+				order <- name
+				if hold != nil {
+					<-hold
+				}
+			}}) {
+				t.Fatal("submit", name)
+			}
+		}
+		submit("first", "peer-a", true, firstRelease)
+		synctest.Wait()
+		if got := <-order; got != "first" {
+			t.Fatal(got)
+		}
+		submit("second", "peer-a", true, nil)
+		synctest.Wait()
+		if len(order) != 0 || s.Active()[0] != 1 {
+			t.Fatal("one peer ran two snapshots")
+		}
+		submit("other", "peer-b", true, otherRelease)
+		synctest.Wait()
+		if got := <-order; got != "other" {
+			t.Fatal(got)
+		}
+		submit("approval", "peer-a", false, approvalRelease)
+		synctest.Wait()
+		firstOnce.Do(func() { close(firstRelease) })
+		synctest.Wait()
+		if got := <-order; got != "approval" {
+			t.Fatalf("snapshot ran before queued approval: %s", got)
+		}
+		approvalOnce.Do(func() { close(approvalRelease) })
+		synctest.Wait()
+		if got := <-order; got != "second" {
+			t.Fatalf("snapshot peer reservation was not returned: %s", got)
+		}
+	})
+}

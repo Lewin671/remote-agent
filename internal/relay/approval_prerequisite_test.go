@@ -54,7 +54,14 @@ func (b *prerequisiteBackend) LiveSnapshot(ctx context.Context, sid string) (*pb
 	if sid != "approval-flow-session" {
 		return &pb.LiveSnapshot{Session: &pb.Session{Id: sid}}, nil
 	}
-	return &pb.LiveSnapshot{Session: &pb.Session{Id: "approval-flow-session"}, Actions: []*pb.Event{{Seq: 1, Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: "fixture-approval", Command: "true"}}}}}, nil
+	b.mu.Lock()
+	resolved := len(b.resolved)
+	b.mu.Unlock()
+	id := "fixture-approval"
+	if resolved > 0 {
+		id = fmt.Sprintf("fixture-approval-%d", resolved)
+	}
+	return &pb.LiveSnapshot{Session: &pb.Session{Id: "approval-flow-session"}, Actions: []*pb.Event{{Seq: uint64(resolved + 1), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: &pb.ApprovalRequested{ApprovalId: id, Command: "true"}}}}}, nil
 }
 
 // Regression: the production Web/Android/iOS approval entry first refreshes the owner
@@ -150,7 +157,7 @@ func TestApprovalSnapshotPrerequisiteSurvivesOrdinaryAndBulkSaturation(t *testin
 	go func() {
 		view, err := e.client.Forward(ctx, s.MachineID, env, remoteclient.NeverDispatched)
 		if err == nil {
-			_, err = e.client.Do(ctx, s, &pb.Command{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: s.ID, ApprovalId: "fixture-approval", ObservedEventSeq: view.GetLiveSnapshot().Actions[0].Seq, Allow: true}}})
+			_, err = e.client.Do(ctx, s, &pb.Command{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: s.ID, ApprovalId: view.GetLiveSnapshot().Actions[0].GetApprovalRequested().ApprovalId, ObservedEventSeq: view.GetLiveSnapshot().Actions[0].Seq, Allow: true}}})
 		}
 		completed <- err
 	}()
@@ -201,4 +208,79 @@ func TestApprovalSnapshotPrerequisiteSurvivesOrdinaryAndBulkSaturation(t *testin
 		t.Fatalf("after release: snapshots=%d approvals=%d", backend.snapshots.Load(), resolutions)
 	}
 	t.Log("after release: exactly one fresh snapshot and one approval completed through signed encrypted RPCs")
+}
+
+func TestApprovalPrerequisiteSurvivesRunningAndOverdueSend(t *testing.T) {
+	e := setup(t)
+	e.backend.add(t, "approval-flow-session")
+	e.backend.add(t, "stalled-input")
+	backend := &prerequisiteBackend{fakeBackend: e.backend}
+	entered, canceled, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(release) })
+	e.backend.sendResult = func(ctx context.Context) error {
+		close(entered)
+		<-ctx.Done()
+		close(canceled)
+		<-release
+		return ctx.Err()
+	}
+	running := e.startRelayBackend(backend)
+	e.online(t, true)
+	input := e.session(t, "stalled-input", 0)
+	approval := e.session(t, "approval-flow-session", 0)
+	env, err := e.client.Seal(input.MachineID, input.ID, "stalled-send-reservation", time.Now().Add(500*time.Millisecond), &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: input.ID, Text: "load"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendDone := make(chan error, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	go func() {
+		_, err := e.client.Forward(ctx, input.MachineID, env, remoteclient.NeverDispatched)
+		sendDone <- err
+	}()
+	select {
+	case <-entered:
+	case <-ctx.Done():
+		t.Fatal("Send did not start")
+	}
+	flow := func(label string) {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+		defer cancel()
+		view, err := e.client.Do(ctx, approval, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: approval.ID}}})
+		if err != nil {
+			t.Fatalf("%s: prerequisite could not use reserved slot: %v", label, err)
+		}
+		_, err = e.client.Do(ctx, approval, &pb.Command{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: approval.ID, ApprovalId: view.GetLiveSnapshot().Actions[0].GetApprovalRequested().ApprovalId, ObservedEventSeq: view.GetLiveSnapshot().Actions[0].Seq, Allow: true}}})
+		if err != nil {
+			t.Fatalf("%s: approval failed: %v", label, err)
+		}
+		select {
+		case <-release:
+			t.Fatal("input was released before approval")
+		default:
+		}
+	}
+	flow("running Send")
+	select {
+	case <-canceled:
+	case <-ctx.Done():
+		t.Fatal("Send deadline did not fire")
+	}
+	flow("overdue Send still running")
+	if relay.ActivePoolsForTest(running)[0] != 1 {
+		t.Fatal("overdue Send did not retain its original slot")
+	}
+	e.backend.mu.Lock()
+	approvals := len(e.backend.resolved)
+	e.backend.mu.Unlock()
+	if backend.snapshots.Load() != 2 || approvals != 2 {
+		t.Fatalf("snapshot/approval executions=%d/%d", backend.snapshots.Load(), approvals)
+	}
+	releaseOnce.Do(func() { close(release) })
+	if err := <-sendDone; err == nil {
+		t.Fatal("overdue Send returned success")
+	}
 }

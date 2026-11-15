@@ -43,6 +43,7 @@ type Job struct {
 	Bytes         int
 	Deadline      time.Time
 	Approval      bool
+	Snapshot      bool
 	Priority      uint8
 	Run           func(context.Context, *Execution)
 	Reject        func()
@@ -52,18 +53,19 @@ type Job struct {
 }
 
 type Scheduler struct {
-	link           *Link
-	mu             sync.Mutex
-	queues         [4]FairQueue[*Job]
-	used           [3]int
-	nonApproval    int
-	activeSessions map[string]bool
-	quarantined    map[string]int
-	closed         bool
+	link            *Link
+	mu              sync.Mutex
+	queues          [4]FairQueue[*Job]
+	used            [3]int
+	nonReserved     int
+	activeSnapshots map[string]bool
+	activeSessions  map[string]bool
+	quarantined     map[string]int
+	closed          bool
 }
 
 func NewScheduler(link *Link) *Scheduler {
-	s := &Scheduler{link: link, activeSessions: map[string]bool{}, quarantined: map[string]int{}}
+	s := &Scheduler{link: link, activeSessions: map[string]bool{}, activeSnapshots: map[string]bool{}, quarantined: map[string]int{}}
 	for c, count := range []int{32, 16, 64, 16} {
 		s.queues[c] = FairQueue[*Job]{Entries: count, Bytes: ExecutionQueueBytes, PeerEntries: count / 4, PeerBytes: ExecutionQueueBytes / 4, EmptyPeerException: true}
 	}
@@ -130,9 +132,12 @@ func (s *Scheduler) pumpLocked() {
 					if s.activeSessions[s.session(j)] {
 						return false
 					}
-					// One of the two interactive slots remains available to an
-					// approval while input/interrupt traffic is sustained.
-					if !j.Approval && s.nonApproval >= 1 {
+					// The reserved slot also admits the fresh owner read required
+					// before approval. A peer cannot run two snapshots at once.
+					if j.Snapshot && s.activeSnapshots[j.Peer] {
+						return false
+					}
+					if !j.Approval && !j.Snapshot && s.nonReserved >= 1 {
 						return false
 					}
 				}
@@ -154,8 +159,10 @@ func (s *Scheduler) pumpLocked() {
 			s.used[pool]++
 			if pool == 0 {
 				s.activeSessions[s.session(j)] = true
-				if !j.Approval {
-					s.nonApproval++
+				if j.Snapshot {
+					s.activeSnapshots[j.Peer] = true
+				} else if !j.Approval {
+					s.nonReserved++
 				}
 			}
 			ex := &Execution{owner: s, job: j, granted: time.Now()}
@@ -210,8 +217,10 @@ func (s *Scheduler) releaseLocked(x *Execution) {
 	s.used[j.Class.pool()]--
 	if j.Class <= Input {
 		delete(s.activeSessions, s.session(j))
-		if !j.Approval {
-			s.nonApproval--
+		if j.Snapshot {
+			delete(s.activeSnapshots, j.Peer)
+		} else if !j.Approval {
+			s.nonReserved--
 		}
 	}
 	if x.quarantined {
