@@ -8,6 +8,8 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"google.golang.org/protobuf/proto"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -226,5 +228,134 @@ func TestWaiterGlobalBudgetAcrossIndependentKeys(t *testing.T) {
 	}
 	if !found || w != nil || !errors.Is(err, ErrOutcomeUnknown) {
 		t.Error("257th duplicate bypassed the global limit while its key still had room")
+	}
+}
+
+// The callback has returned, but the endpoint lock still prevents publication.
+// Abandonment must win here even though the old pre-lock check saw a live call.
+func TestAbandonWhileFinalizationWaitsOnEndpointLock(t *testing.T) {
+	for _, readOnly := range []bool{false, true} {
+		t.Run(fmt.Sprintf("readonly=%t", readOnly), func(t *testing.T) {
+			c := newCurrentChain(t)
+			e := c.machineEndpoint(t, filepath.Join(t.TempDir(), "security.db"))
+			defer e.Close()
+			client := c.clientEndpoint(t)
+			defer client.Close()
+			body := commandBody(t)
+			session := ""
+			if readOnly {
+				session = "fixture-session"
+				var err error
+				body, err = proto.Marshal(&pb.Command{Kind: &pb.Command_GetSharedFileChunk{GetSharedFileChunk: &pb.GetSharedFileChunkRequest{SessionId: session, FileId: "fixture"}}})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			now := uint64(time.Now().UnixMilli())
+			wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Session: session, Request: "contended-final-publication", Deadline: now + 60000}, nil, body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a, err := e.Authenticate(wire, nil, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ready := make(chan func(), 1)
+			release := make(chan struct{})
+			result := make(chan error, 1)
+			go func() {
+				_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(f func()) { ready <- f }}, func(Header, []byte) (Completion, error) { <-release; return Final([]byte("success")), nil })
+				result <- err
+			}()
+			abandon := <-ready
+			_, err, wait, found := e.Lookup(context.Background(), a, now)
+			if err != nil || wait == nil || !found {
+				close(release)
+				<-result
+				t.Fatal("duplicate did not join execution")
+			}
+			defer wait.Cancel()
+			e.mu.Lock()
+			close(release)
+			// One bounded scheduling interval, followed by a stack-state assertion;
+			// there is no poll loop or assumption that sleep alone establishes order.
+			time.Sleep(50 * time.Millisecond)
+			stack := make([]byte, 1<<20)
+			n := runtime.Stack(stack, true)
+			blocked := false
+			for _, g := range strings.Split(string(stack[:n]), "\n\n") {
+				if strings.Contains(g, ".(*Endpoint).AcceptAuthenticated") && strings.Contains(g, ".(*Mutex).") {
+					blocked = true
+				}
+			}
+			if !blocked {
+				e.mu.Unlock()
+				<-result
+				_, _ = wait.Wait()
+				t.Fatal("finalizer did not block on the held endpoint lock")
+			}
+			abandon()
+			e.mu.Unlock()
+			if err := <-result; !errors.Is(err, ErrOutcomeUnknown) {
+				t.Errorf("abandoned finalizer returned success: %v", err)
+			}
+			if body, err := wait.Wait(); len(body) != 0 || !errors.Is(err, ErrOutcomeUnknown) {
+				t.Errorf("abandoned duplicate returned success: %q %v", body, err)
+			}
+			body, err, _, found = e.Lookup(context.Background(), a, now)
+			if readOnly {
+				if found {
+					t.Error("completed read-only call retained a result")
+				}
+			} else if !found || len(body) != 0 || !errors.Is(err, ErrOutcomeUnknown) {
+				t.Errorf("Lookup returned abandoned success: %q %v", body, err)
+			}
+			var finals int
+			if err := e.db.QueryRow("SELECT COUNT(*) FROM accepted WHERE state=?", final).Scan(&finals); err != nil || finals != 0 {
+				t.Errorf("persisted abandoned final: rows=%d err=%v", finals, err)
+			}
+		})
+	}
+}
+
+func TestPublishedResultWinsBeforeLateAbandonment(t *testing.T) {
+	c := newCurrentChain(t)
+	e := c.machineEndpoint(t, "")
+	defer e.Close()
+	client := c.clientEndpoint(t)
+	defer client.Close()
+	now := uint64(time.Now().UnixMilli())
+	wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "publication-wins-decision", Deadline: now + 60000}, nil, commandBody(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := e.Authenticate(wire, nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready := make(chan func(), 1)
+	release := make(chan struct{})
+	result := make(chan error, 1)
+	go func() {
+		_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(f func()) { ready <- f }}, func(Header, []byte) (Completion, error) { <-release; return Final([]byte("success")), nil })
+		result <- err
+	}()
+	abandon := <-ready
+	_, err, wait, found := e.Lookup(context.Background(), a, now)
+	if err != nil || wait == nil || !found {
+		close(release)
+		<-result
+		t.Fatal("duplicate did not join execution")
+	}
+	close(release)
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+	abandon()
+	if body, err := wait.Wait(); err != nil || string(body) != "success" {
+		t.Fatalf("late abandonment replaced published result: %q %v", body, err)
+	}
+	if body, err, _, found := e.Lookup(context.Background(), a, now); !found || err != nil || string(body) != "success" {
+		t.Fatalf("published result changed: %q %v", body, err)
 	}
 }

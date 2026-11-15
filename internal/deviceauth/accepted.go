@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/i18n"
@@ -77,7 +76,36 @@ type runningCall struct {
 	retainUntil         uint64
 	deadline            uint64
 	waiters             int
-	abandoned           atomic.Bool
+	decisionMu          sync.Mutex
+	decided, abandoned  bool // protected by decisionMu
+}
+
+// Abandonment and publication have one decision point. Publication takes this
+// lock only after acquiring e.mu; abandonment never waits for the endpoint lock.
+// No caller holds decisionMu while acquiring e.mu or doing persistent I/O.
+func (r *runningCall) abandon() {
+	r.decisionMu.Lock()
+	defer r.decisionMu.Unlock()
+	if !r.decided {
+		r.decided, r.abandoned = true, true
+		r.notify.Do(func() { close(r.done) })
+	}
+}
+
+func (r *runningCall) decide(c Completion) Completion {
+	r.decisionMu.Lock()
+	defer r.decisionMu.Unlock()
+	if r.abandoned {
+		c = Undetermined()
+	}
+	r.decided = true
+	return c
+}
+
+func (r *runningCall) isAbandoned() bool {
+	r.decisionMu.Lock()
+	defer r.decisionMu.Unlock()
+	return r.abandoned
 }
 
 // AcceptOptions separates authentication of old results from new admission.
@@ -608,17 +636,15 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 	run := &runningCall{done: make(chan struct{}), payload: payload, retainUntil: retainUntil, deadline: h.Deadline, readOnly: readOnly}
 	e.running[key] = run
 	if options.Running != nil {
-		options.Running(func() { run.abandoned.Store(true); run.notify.Do(func() { close(run.done) }) })
+		options.Running(run.abandon)
 	}
 	e.mu.Unlock()
 	// Elapsed monotonic time prevents a late callback using its old admission time.
 	defer func() { e.mu.Lock(); delete(e.running, key); run.notify.Do(func() { close(run.done) }); e.mu.Unlock() }()
 	c, _ := fn(h, bytes.Clone(plain))
-	if run.abandoned.Load() {
-		c = Undetermined()
-	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	c = run.decide(c)
 	finished := maxU64(clock+uint64(time.Since(clockAt)/time.Millisecond), e.data.Floor)
 	if e.closed {
 		return nil, ErrOutcomeUnknown
@@ -648,7 +674,7 @@ func (e *Endpoint) waitLocked(ctx context.Context, key string, run *runningCall,
 
 func (e *Endpoint) registerWaitLocked(ctx context.Context, key string, run *runningCall, now uint64) (*ResultWaiter, error) {
 	now = maxU64(maxU64(now, e.data.Floor), e.data.AcceptedFloor)
-	if run.abandoned.Load() || now >= run.deadline || now >= run.retainUntil {
+	if run.isAbandoned() || now >= run.deadline || now >= run.retainUntil {
 		return nil, ErrOutcomeUnknown
 	}
 	if e.waiters >= MaxWaiters || run.waiters >= MaxWaitersPerKey {
@@ -680,7 +706,7 @@ func (e *Endpoint) registerWaitLocked(ctx context.Context, key string, run *runn
 		}
 		e.mu.Lock()
 		defer e.mu.Unlock()
-		if e.closed || run.abandoned.Load() {
+		if e.closed || run.isAbandoned() {
 			return nil, ErrOutcomeUnknown
 		}
 		if run.readOnly {
