@@ -32,5 +32,16 @@ public interface PeerFrameOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.ForwardReply getForwardReply();
 
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   * @return Whether the directedPeerFrame field is set.
+   */
+  boolean hasDirectedPeerFrame();
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   * @return The directedPeerFrame.
+   */
+  io.github.lewin671.remoteagent.proto.DirectedPeerFrame getDirectedPeerFrame();
+
   public io.github.lewin671.remoteagent.proto.PeerFrame.KindCase getKindCase();
 }

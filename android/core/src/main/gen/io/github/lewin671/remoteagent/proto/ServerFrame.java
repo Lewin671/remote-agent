@@ -25,6 +25,8 @@ public  final class ServerFrame extends
   public enum KindCase {
     READY(1),
     HEARTBEAT(10),
+    PEER_FRAME_DELIVERY(11),
+    PEER_FRAME_RESULT(12),
     EVENTS_APPENDED(2),
     SESSION_UPDATED(3),
     MACHINE_UPDATED(4),
@@ -50,6 +52,8 @@ public  final class ServerFrame extends
       switch (value) {
         case 1: return READY;
         case 10: return HEARTBEAT;
+        case 11: return PEER_FRAME_DELIVERY;
+        case 12: return PEER_FRAME_RESULT;
         case 2: return EVENTS_APPENDED;
         case 3: return SESSION_UPDATED;
         case 4: return MACHINE_UPDATED;
@@ -198,6 +202,110 @@ public  final class ServerFrame extends
    */
   private void clearHeartbeat() {
     if (kindCase_ == 10) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int PEER_FRAME_DELIVERY_FIELD_NUMBER = 11;
+  /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPeerFrameDelivery() {
+    return kindCase_ == 11;
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.PeerFrameDelivery getPeerFrameDelivery() {
+    if (kindCase_ == 11) {
+       return (io.github.lewin671.remoteagent.proto.PeerFrameDelivery) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.PeerFrameDelivery.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPeerFrameDelivery(io.github.lewin671.remoteagent.proto.PeerFrameDelivery value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 11;
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePeerFrameDelivery(io.github.lewin671.remoteagent.proto.PeerFrameDelivery value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 11 &&
+        kind_ != io.github.lewin671.remoteagent.proto.PeerFrameDelivery.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.PeerFrameDelivery.newBuilder((io.github.lewin671.remoteagent.proto.PeerFrameDelivery) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 11;
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   */
+  private void clearPeerFrameDelivery() {
+    if (kindCase_ == 11) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int PEER_FRAME_RESULT_FIELD_NUMBER = 12;
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPeerFrameResult() {
+    return kindCase_ == 12;
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.PeerFrameResult getPeerFrameResult() {
+    if (kindCase_ == 12) {
+       return (io.github.lewin671.remoteagent.proto.PeerFrameResult) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.PeerFrameResult.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPeerFrameResult(io.github.lewin671.remoteagent.proto.PeerFrameResult value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 12;
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePeerFrameResult(io.github.lewin671.remoteagent.proto.PeerFrameResult value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 12 &&
+        kind_ != io.github.lewin671.remoteagent.proto.PeerFrameResult.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.PeerFrameResult.newBuilder((io.github.lewin671.remoteagent.proto.PeerFrameResult) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 12;
+  }
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   */
+  private void clearPeerFrameResult() {
+    if (kindCase_ == 12) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -893,6 +1001,102 @@ public  final class ServerFrame extends
     }
 
     /**
+     * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPeerFrameDelivery() {
+      return instance.hasPeerFrameDelivery();
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.PeerFrameDelivery getPeerFrameDelivery() {
+      return instance.getPeerFrameDelivery();
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+     */
+    public Builder setPeerFrameDelivery(io.github.lewin671.remoteagent.proto.PeerFrameDelivery value) {
+      copyOnWrite();
+      instance.setPeerFrameDelivery(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+     */
+    public Builder setPeerFrameDelivery(
+        io.github.lewin671.remoteagent.proto.PeerFrameDelivery.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPeerFrameDelivery(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+     */
+    public Builder mergePeerFrameDelivery(io.github.lewin671.remoteagent.proto.PeerFrameDelivery value) {
+      copyOnWrite();
+      instance.mergePeerFrameDelivery(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+     */
+    public Builder clearPeerFrameDelivery() {
+      copyOnWrite();
+      instance.clearPeerFrameDelivery();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPeerFrameResult() {
+      return instance.hasPeerFrameResult();
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.PeerFrameResult getPeerFrameResult() {
+      return instance.getPeerFrameResult();
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+     */
+    public Builder setPeerFrameResult(io.github.lewin671.remoteagent.proto.PeerFrameResult value) {
+      copyOnWrite();
+      instance.setPeerFrameResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+     */
+    public Builder setPeerFrameResult(
+        io.github.lewin671.remoteagent.proto.PeerFrameResult.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPeerFrameResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+     */
+    public Builder mergePeerFrameResult(io.github.lewin671.remoteagent.proto.PeerFrameResult value) {
+      copyOnWrite();
+      instance.mergePeerFrameResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+     */
+    public Builder clearPeerFrameResult() {
+      copyOnWrite();
+      instance.clearPeerFrameResult();
+      return this;
+    }
+
+    /**
      * <pre>
      * To clients.
      * </pre>
@@ -1352,11 +1556,13 @@ public  final class ServerFrame extends
             io.github.lewin671.remoteagent.proto.DeviceUpdated.class,
             io.github.lewin671.remoteagent.proto.DeviceRemoved.class,
             io.github.lewin671.remoteagent.proto.Heartbeat.class,
+            io.github.lewin671.remoteagent.proto.PeerFrameDelivery.class,
+            io.github.lewin671.remoteagent.proto.PeerFrameResult.class,
           };
           java.lang.String info =
-              "\u0000\n\u0001\u0000\u0001\n\n\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000\f\u0001\u0000\u0001\f\f\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
-              "\u0000";
+              "\u0000\u000b<\u0000\f<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

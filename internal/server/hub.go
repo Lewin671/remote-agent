@@ -12,6 +12,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,7 +22,9 @@ import (
 // connection, which carries forwarded commands. Requests reach it only
 // through accountHub, which is bound to one account.
 type hub struct {
-	s *Server
+	direct        directedHub
+	directClients map[string]*peer // current directed receiver for each client device
+	s             *Server
 
 	mu sync.Mutex
 	// clients are the connected clients by account.
@@ -43,8 +46,9 @@ type hub struct {
 }
 
 type peer struct {
-	dev *device
-	out chan queuedFrame
+	direct directedQueue
+	dev    *device
+	out    chan queuedFrame
 	// queued is the bytes of the frames waiting in out or being written.
 	queued atomic.Int64
 	cancel context.CancelFunc
@@ -66,7 +70,7 @@ func newHub(s *Server) *hub {
 	if s != nil && s.forwardAttempts == nil {
 		s.forwardAttempts = newAttemptLedger()
 	}
-	return &hub{s: s, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}, accountQueueBytes: map[string]int64{}}
+	return &hub{s: s, directClients: map[string]*peer{}, clients: map[string]map[*peer]bool{}, machines: map[string]*peer{}, calls: map[uint64]*call{}, accountQueueBytes: map[string]int64{}}
 }
 
 // accountHub is the hub as one account sees it.
@@ -143,6 +147,7 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	conn.SetReadLimit(maxFrameBytes)
 	p := &peer{dev: dev, out: make(chan queuedFrame, sendQueue), cancel: cancel}
+	h.initDirected(p)
 	// Ready must be the first frame: peers drop a stream that starts with
 	// anything else. Queue it before the peer can be sent broadcasts,
 	// forwarded commands or heartbeats.
@@ -151,23 +156,46 @@ func (h *hub) serve(w http.ResponseWriter, r *http.Request) {
 	defer h.remove(p)
 
 	var workers sync.WaitGroup
-	workers.Add(2)
+	workers.Add(3)
 	go func() { defer workers.Done(); h.ping(ctx, conn, p) }()
 	go func() { defer workers.Done(); h.read(ctx, conn, p) }()
+	go func() { defer workers.Done(); h.directedExpiryLoop(ctx, p) }()
 	defer func() { cancel(); conn.CloseNow(); workers.Wait() }()
+	writePush := func(q queuedFrame) error {
+		wctx, wcancel := context.WithTimeout(ctx, 30*time.Second)
+		err := conn.Write(wctx, websocket.MessageBinary, q.data)
+		wcancel()
+		h.releaseFrame(p, q.size)
+		return err
+	}
+	next := 0
 	for {
-		select {
-		case <-ctx.Done():
-			conn.Close(websocket.StatusGoingAway, "")
+		if ctx.Err() != nil {
 			return
+		}
+		// Existing application pushes always get the first opportunity.
+		select {
 		case q := <-p.out:
-			wctx, wcancel := context.WithTimeout(ctx, 30*time.Second)
-			err := conn.Write(wctx, websocket.MessageBinary, q.data)
-			wcancel()
-			h.releaseFrame(p, q.size)
-			if err != nil {
+			if writePush(q) != nil {
 				return
 			}
+			continue
+		default:
+		}
+		if q, ok := h.nextDirected(p, &next); ok {
+			if h.writeDirected(ctx, conn, p, q) != nil {
+				return
+			}
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case q := <-p.out:
+			if writePush(q) != nil {
+				return
+			}
+		case <-p.direct.wake:
 		}
 	}
 }
@@ -220,6 +248,17 @@ func (h *hub) read(ctx context.Context, conn *websocket.Conn, p *peer) {
 		if typ != websocket.MessageBinary || proto.Unmarshal(b, f) != nil {
 			return
 		}
+		if directed := f.GetDirectedPeerFrame(); directed != nil {
+			outer, err := peerwire.Parse(b, 1)
+			if err != nil || len(outer) != 1 || !outer[3].Bytes {
+				continue
+			}
+			if _, err := peerwire.NormalizeMessage(outer[3].B, "DirectedPeerFrame"); err != nil {
+				continue
+			}
+			h.directed(p, directed, time.Now())
+			continue
+		}
 		if r := f.GetForwardReply(); r != nil && p.dev.kind == pb.DeviceKind_DEVICE_KIND_MACHINE {
 			h.mu.Lock()
 			c := h.calls[r.CallId]
@@ -247,6 +286,7 @@ func (h *hub) add(p *peer) {
 			h.clients[p.dev.account] = map[*peer]bool{}
 		}
 		h.clients[p.dev.account][p] = true
+		h.directClients[p.dev.id] = p
 	}
 	h.mu.Unlock()
 	if old != nil {
@@ -261,6 +301,7 @@ func (h *hub) add(p *peer) {
 }
 
 func (h *hub) remove(p *peer) {
+	h.closeDirected(p)
 	h.closeQueue(p)
 	h.mu.Lock()
 	gone := false
@@ -277,6 +318,9 @@ func (h *hub) remove(p *peer) {
 		}
 	} else {
 		delete(h.clients[p.dev.account], p)
+		if h.directClients[p.dev.id] == p {
+			delete(h.directClients, p.dev.id)
+		}
 		if len(h.clients[p.dev.account]) == 0 {
 			delete(h.clients, p.dev.account)
 		}

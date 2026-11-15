@@ -1708,5 +1708,20 @@
     "path": "web/src/views/Terminal.tsx",
     "literal": "(\"connecting\"); const stateRef = useRef",
     "reason": "Lexical JSX scanner false positive spanning TypeScript generic angle brackets; never rendered UI text."
+  },
+  {
+    "path": "internal/transport/peerwire/codec.go",
+    "literal": "invalid peer packet",
+    "reason": "Internal transport validation/identity sentinel; never rendered or logged. The path owner reports a bounded fallback reason, not this string."
+  },
+  {
+    "path": "internal/transport/peerwire/codec.go",
+    "literal": "remote-agent/peer-hkdf/v1",
+    "reason": "Fixed cryptographic HKDF domain in protocol 16; not product copy. Lexical scanner sees the preceding internal error declaration."
+  },
+  {
+    "path": "internal/transport/peerwire/sdp.go",
+    "literal": "invalid SDP",
+    "reason": "Internal transport validation/identity sentinel; never rendered or logged. The path owner reports a bounded fallback reason, not this string."
   }
 ]

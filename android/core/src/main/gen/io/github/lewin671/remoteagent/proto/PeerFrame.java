@@ -25,6 +25,7 @@ public  final class PeerFrame extends
   public enum KindCase {
     HELLO(1),
     FORWARD_REPLY(2),
+    DIRECTED_PEER_FRAME(3),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -42,6 +43,7 @@ public  final class PeerFrame extends
       switch (value) {
         case 1: return HELLO;
         case 2: return FORWARD_REPLY;
+        case 3: return DIRECTED_PEER_FRAME;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -162,6 +164,58 @@ public  final class PeerFrame extends
    */
   private void clearForwardReply() {
     if (kindCase_ == 2) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int DIRECTED_PEER_FRAME_FIELD_NUMBER = 3;
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectedPeerFrame() {
+    return kindCase_ == 3;
+  }
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DirectedPeerFrame getDirectedPeerFrame() {
+    if (kindCase_ == 3) {
+       return (io.github.lewin671.remoteagent.proto.DirectedPeerFrame) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.DirectedPeerFrame.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectedPeerFrame(io.github.lewin671.remoteagent.proto.DirectedPeerFrame value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 3;
+  }
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectedPeerFrame(io.github.lewin671.remoteagent.proto.DirectedPeerFrame value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 3 &&
+        kind_ != io.github.lewin671.remoteagent.proto.DirectedPeerFrame.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.DirectedPeerFrame.newBuilder((io.github.lewin671.remoteagent.proto.DirectedPeerFrame) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 3;
+  }
+  /**
+   * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+   */
+  private void clearDirectedPeerFrame() {
+    if (kindCase_ == 3) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -376,6 +430,54 @@ public  final class PeerFrame extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectedPeerFrame() {
+      return instance.hasDirectedPeerFrame();
+    }
+    /**
+     * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DirectedPeerFrame getDirectedPeerFrame() {
+      return instance.getDirectedPeerFrame();
+    }
+    /**
+     * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+     */
+    public Builder setDirectedPeerFrame(io.github.lewin671.remoteagent.proto.DirectedPeerFrame value) {
+      copyOnWrite();
+      instance.setDirectedPeerFrame(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+     */
+    public Builder setDirectedPeerFrame(
+        io.github.lewin671.remoteagent.proto.DirectedPeerFrame.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectedPeerFrame(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+     */
+    public Builder mergeDirectedPeerFrame(io.github.lewin671.remoteagent.proto.DirectedPeerFrame value) {
+      copyOnWrite();
+      instance.mergeDirectedPeerFrame(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DirectedPeerFrame directed_peer_frame = 3 [json_name = "directedPeerFrame"];</code>
+     */
+    public Builder clearDirectedPeerFrame() {
+      copyOnWrite();
+      instance.clearDirectedPeerFrame();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.PeerFrame)
   }
   @java.lang.Override
@@ -396,10 +498,11 @@ public  final class PeerFrame extends
             "kindCase_",
             io.github.lewin671.remoteagent.proto.StreamHello.class,
             io.github.lewin671.remoteagent.proto.ForwardReply.class,
+            io.github.lewin671.remoteagent.proto.DirectedPeerFrame.class,
           };
           java.lang.String info =
-              "\u0000\u0002\u0001\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001<\u0000\u0002<" +
-              "\u0000";
+              "\u0000\u0003\u0001\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0003<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

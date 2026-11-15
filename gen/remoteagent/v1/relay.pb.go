@@ -3127,6 +3127,7 @@ type PeerFrame struct {
 	//
 	//	*PeerFrame_Hello
 	//	*PeerFrame_ForwardReply
+	//	*PeerFrame_DirectedPeerFrame
 	Kind          isPeerFrame_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3187,6 +3188,15 @@ func (x *PeerFrame) GetForwardReply() *ForwardReply {
 	return nil
 }
 
+func (x *PeerFrame) GetDirectedPeerFrame() *DirectedPeerFrame {
+	if x != nil {
+		if x, ok := x.Kind.(*PeerFrame_DirectedPeerFrame); ok {
+			return x.DirectedPeerFrame
+		}
+	}
+	return nil
+}
+
 type isPeerFrame_Kind interface {
 	isPeerFrame_Kind()
 }
@@ -3199,9 +3209,15 @@ type PeerFrame_ForwardReply struct {
 	ForwardReply *ForwardReply `protobuf:"bytes,2,opt,name=forward_reply,json=forwardReply,proto3,oneof"`
 }
 
+type PeerFrame_DirectedPeerFrame struct {
+	DirectedPeerFrame *DirectedPeerFrame `protobuf:"bytes,3,opt,name=directed_peer_frame,json=directedPeerFrame,proto3,oneof"`
+}
+
 func (*PeerFrame_Hello) isPeerFrame_Kind() {}
 
 func (*PeerFrame_ForwardReply) isPeerFrame_Kind() {}
+
+func (*PeerFrame_DirectedPeerFrame) isPeerFrame_Kind() {}
 
 // ServerFrame is sent by the server.
 type ServerFrame struct {
@@ -3210,6 +3226,8 @@ type ServerFrame struct {
 	//
 	//	*ServerFrame_Ready
 	//	*ServerFrame_Heartbeat
+	//	*ServerFrame_PeerFrameDelivery
+	//	*ServerFrame_PeerFrameResult
 	//	*ServerFrame_EventsAppended
 	//	*ServerFrame_SessionUpdated
 	//	*ServerFrame_MachineUpdated
@@ -3273,6 +3291,24 @@ func (x *ServerFrame) GetHeartbeat() *Heartbeat {
 	if x != nil {
 		if x, ok := x.Kind.(*ServerFrame_Heartbeat); ok {
 			return x.Heartbeat
+		}
+	}
+	return nil
+}
+
+func (x *ServerFrame) GetPeerFrameDelivery() *PeerFrameDelivery {
+	if x != nil {
+		if x, ok := x.Kind.(*ServerFrame_PeerFrameDelivery); ok {
+			return x.PeerFrameDelivery
+		}
+	}
+	return nil
+}
+
+func (x *ServerFrame) GetPeerFrameResult() *PeerFrameResult {
+	if x != nil {
+		if x, ok := x.Kind.(*ServerFrame_PeerFrameResult); ok {
+			return x.PeerFrameResult
 		}
 	}
 	return nil
@@ -3363,6 +3399,14 @@ type ServerFrame_Heartbeat struct {
 	Heartbeat *Heartbeat `protobuf:"bytes,10,opt,name=heartbeat,proto3,oneof"`
 }
 
+type ServerFrame_PeerFrameDelivery struct {
+	PeerFrameDelivery *PeerFrameDelivery `protobuf:"bytes,11,opt,name=peer_frame_delivery,json=peerFrameDelivery,proto3,oneof"`
+}
+
+type ServerFrame_PeerFrameResult struct {
+	PeerFrameResult *PeerFrameResult `protobuf:"bytes,12,opt,name=peer_frame_result,json=peerFrameResult,proto3,oneof"`
+}
+
 type ServerFrame_EventsAppended struct {
 	// To clients.
 	EventsAppended *EventsAppended `protobuf:"bytes,2,opt,name=events_appended,json=eventsAppended,proto3,oneof"`
@@ -3400,6 +3444,10 @@ type ServerFrame_ForwardCall struct {
 func (*ServerFrame_Ready) isServerFrame_Kind() {}
 
 func (*ServerFrame_Heartbeat) isServerFrame_Kind() {}
+
+func (*ServerFrame_PeerFrameDelivery) isServerFrame_Kind() {}
+
+func (*ServerFrame_PeerFrameResult) isServerFrame_Kind() {}
 
 func (*ServerFrame_EventsAppended) isServerFrame_Kind() {}
 
@@ -6268,7 +6316,7 @@ var File_remoteagent_v1_relay_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/relay.proto\x12\x0eremoteagent.v1\x1a\x1dremoteagent/v1/envelope.proto\"\xbd\x01\n" +
+	"\x1aremoteagent/v1/relay.proto\x12\x0eremoteagent.v1\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1eremoteagent/v1/transport.proto\"\xbd\x01\n" +
 	"\x12DeviceRegistration\x12,\n" +
 	"\x12account_public_key\x18\x01 \x01(\fR\x10accountPublicKey\x12*\n" +
 	"\x11device_public_key\x18\x02 \x01(\fR\x0fdevicePublicKey\x12.\n" +
@@ -6478,15 +6526,18 @@ const file_remoteagent_v1_relay_proto_rawDesc = "" +
 	"\x18ListSessionHeadsResponse\x127\n" +
 	"\bsessions\x18\x01 \x03(\v2\x1b.remoteagent.v1.SessionHeadR\bsessions\"#\n" +
 	"\vStreamHello\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\x8d\x01\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xe2\x01\n" +
 	"\tPeerFrame\x123\n" +
 	"\x05hello\x18\x01 \x01(\v2\x1b.remoteagent.v1.StreamHelloH\x00R\x05hello\x12C\n" +
-	"\rforward_reply\x18\x02 \x01(\v2\x1c.remoteagent.v1.ForwardReplyH\x00R\fforwardReplyB\x06\n" +
-	"\x04kind\"\xd8\x05\n" +
+	"\rforward_reply\x18\x02 \x01(\v2\x1c.remoteagent.v1.ForwardReplyH\x00R\fforwardReply\x12S\n" +
+	"\x13directed_peer_frame\x18\x03 \x01(\v2!.remoteagent.v1.DirectedPeerFrameH\x00R\x11directedPeerFrameB\x06\n" +
+	"\x04kind\"\xfc\x06\n" +
 	"\vServerFrame\x12-\n" +
 	"\x05ready\x18\x01 \x01(\v2\x15.remoteagent.v1.ReadyH\x00R\x05ready\x129\n" +
 	"\theartbeat\x18\n" +
-	" \x01(\v2\x19.remoteagent.v1.HeartbeatH\x00R\theartbeat\x12I\n" +
+	" \x01(\v2\x19.remoteagent.v1.HeartbeatH\x00R\theartbeat\x12S\n" +
+	"\x13peer_frame_delivery\x18\v \x01(\v2!.remoteagent.v1.PeerFrameDeliveryH\x00R\x11peerFrameDelivery\x12M\n" +
+	"\x11peer_frame_result\x18\f \x01(\v2\x1f.remoteagent.v1.PeerFrameResultH\x00R\x0fpeerFrameResult\x12I\n" +
 	"\x0fevents_appended\x18\x02 \x01(\v2\x1e.remoteagent.v1.EventsAppendedH\x00R\x0eeventsAppended\x12I\n" +
 	"\x0fsession_updated\x18\x03 \x01(\v2\x1e.remoteagent.v1.SessionUpdatedH\x00R\x0esessionUpdated\x12I\n" +
 	"\x0fmachine_updated\x18\x04 \x01(\v2\x1e.remoteagent.v1.MachineUpdatedH\x00R\x0emachineUpdated\x12I\n" +
@@ -6888,6 +6939,9 @@ var file_remoteagent_v1_relay_proto_goTypes = []any{
 	(*DeleteAccountRequest)(nil),          // 106: remoteagent.v1.DeleteAccountRequest
 	(*DeleteAccountResponse)(nil),         // 107: remoteagent.v1.DeleteAccountResponse
 	(*Envelope)(nil),                      // 108: remoteagent.v1.Envelope
+	(*DirectedPeerFrame)(nil),             // 109: remoteagent.v1.DirectedPeerFrame
+	(*PeerFrameDelivery)(nil),             // 110: remoteagent.v1.PeerFrameDelivery
+	(*PeerFrameResult)(nil),               // 111: remoteagent.v1.PeerFrameResult
 }
 var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	0,   // 0: remoteagent.v1.DeviceRegistration.kind:type_name -> remoteagent.v1.DeviceKind
@@ -6916,124 +6970,127 @@ var file_remoteagent_v1_relay_proto_depIdxs = []int32{
 	50,  // 23: remoteagent.v1.ListSessionHeadsResponse.sessions:type_name -> remoteagent.v1.SessionHead
 	52,  // 24: remoteagent.v1.PeerFrame.hello:type_name -> remoteagent.v1.StreamHello
 	62,  // 25: remoteagent.v1.PeerFrame.forward_reply:type_name -> remoteagent.v1.ForwardReply
-	56,  // 26: remoteagent.v1.ServerFrame.ready:type_name -> remoteagent.v1.Ready
-	55,  // 27: remoteagent.v1.ServerFrame.heartbeat:type_name -> remoteagent.v1.Heartbeat
-	57,  // 28: remoteagent.v1.ServerFrame.events_appended:type_name -> remoteagent.v1.EventsAppended
-	58,  // 29: remoteagent.v1.ServerFrame.session_updated:type_name -> remoteagent.v1.SessionUpdated
-	59,  // 30: remoteagent.v1.ServerFrame.machine_updated:type_name -> remoteagent.v1.MachineUpdated
-	60,  // 31: remoteagent.v1.ServerFrame.machine_removed:type_name -> remoteagent.v1.MachineRemoved
-	101, // 32: remoteagent.v1.ServerFrame.account_prefs_updated:type_name -> remoteagent.v1.AccountPrefsUpdated
-	102, // 33: remoteagent.v1.ServerFrame.device_updated:type_name -> remoteagent.v1.DeviceUpdated
-	103, // 34: remoteagent.v1.ServerFrame.device_removed:type_name -> remoteagent.v1.DeviceRemoved
-	61,  // 35: remoteagent.v1.ServerFrame.forward_call:type_name -> remoteagent.v1.ForwardCall
-	33,  // 36: remoteagent.v1.EventsAppended.events:type_name -> remoteagent.v1.StoredEvent
-	31,  // 37: remoteagent.v1.SessionUpdated.session:type_name -> remoteagent.v1.RemoteSession
-	30,  // 38: remoteagent.v1.MachineUpdated.machine:type_name -> remoteagent.v1.Machine
-	108, // 39: remoteagent.v1.ForwardCall.command:type_name -> remoteagent.v1.Envelope
-	108, // 40: remoteagent.v1.ForwardReply.result:type_name -> remoteagent.v1.Envelope
-	2,   // 41: remoteagent.v1.SetPushSubscriptionRequest.kinds:type_name -> remoteagent.v1.NotifyKind
-	70,  // 42: remoteagent.v1.PutSecurityStateRequest.states:type_name -> remoteagent.v1.SecurityState
-	70,  // 43: remoteagent.v1.GetSecurityStatesResponse.states:type_name -> remoteagent.v1.SecurityState
-	70,  // 44: remoteagent.v1.GetRecoveryContextResponse.states:type_name -> remoteagent.v1.SecurityState
-	4,   // 45: remoteagent.v1.GetRecoveryContextResponse.phase:type_name -> remoteagent.v1.GetRecoveryContextResponse.Phase
-	2,   // 46: remoteagent.v1.NotifyRequest.kind:type_name -> remoteagent.v1.NotifyKind
-	108, // 47: remoteagent.v1.NotifyRequest.content:type_name -> remoteagent.v1.Envelope
-	3,   // 48: remoteagent.v1.SetPushTargetRequest.type:type_name -> remoteagent.v1.PushType
-	2,   // 49: remoteagent.v1.SetPushTargetRequest.kinds:type_name -> remoteagent.v1.NotifyKind
-	108, // 50: remoteagent.v1.GetImageResponse.image:type_name -> remoteagent.v1.Envelope
-	108, // 51: remoteagent.v1.PutImageRequest.image:type_name -> remoteagent.v1.Envelope
-	0,   // 52: remoteagent.v1.Device.kind:type_name -> remoteagent.v1.DeviceKind
-	108, // 53: remoteagent.v1.Device.meta:type_name -> remoteagent.v1.Envelope
-	91,  // 54: remoteagent.v1.ListDevicesResponse.devices:type_name -> remoteagent.v1.Device
-	108, // 55: remoteagent.v1.PutDeviceMetaRequest.meta:type_name -> remoteagent.v1.Envelope
-	91,  // 56: remoteagent.v1.PutDeviceMetaResponse.device:type_name -> remoteagent.v1.Device
-	108, // 57: remoteagent.v1.AccountPrefsObject.envelope:type_name -> remoteagent.v1.Envelope
-	96,  // 58: remoteagent.v1.GetAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
-	108, // 59: remoteagent.v1.PutAccountPrefsRequest.envelope:type_name -> remoteagent.v1.Envelope
-	96,  // 60: remoteagent.v1.PutAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
-	96,  // 61: remoteagent.v1.AccountPrefsUpdated.object:type_name -> remoteagent.v1.AccountPrefsObject
-	91,  // 62: remoteagent.v1.DeviceUpdated.device:type_name -> remoteagent.v1.Device
-	6,   // 63: remoteagent.v1.AuthService.RegisterDevice:input_type -> remoteagent.v1.RegisterDeviceRequest
-	11,  // 64: remoteagent.v1.AuthService.GetChallenge:input_type -> remoteagent.v1.GetChallengeRequest
-	13,  // 65: remoteagent.v1.AuthService.Login:input_type -> remoteagent.v1.LoginRequest
-	7,   // 66: remoteagent.v1.AuthService.GetSignupChallenge:input_type -> remoteagent.v1.GetSignupChallengeRequest
-	18,  // 67: remoteagent.v1.PairingService.PeekPairing:input_type -> remoteagent.v1.PeekPairingRequest
-	15,  // 68: remoteagent.v1.PairingService.CreatePairing:input_type -> remoteagent.v1.CreatePairingRequest
-	20,  // 69: remoteagent.v1.PairingService.JoinPairing:input_type -> remoteagent.v1.JoinPairingRequest
-	22,  // 70: remoteagent.v1.PairingService.GetPairing:input_type -> remoteagent.v1.GetPairingRequest
-	24,  // 71: remoteagent.v1.PairingService.RevealPairing:input_type -> remoteagent.v1.RevealPairingRequest
-	26,  // 72: remoteagent.v1.PairingService.ApprovePairing:input_type -> remoteagent.v1.ApprovePairingRequest
-	28,  // 73: remoteagent.v1.PairingService.CancelPairing:input_type -> remoteagent.v1.CancelPairingRequest
-	34,  // 74: remoteagent.v1.ClientService.ListMachines:input_type -> remoteagent.v1.ListMachinesRequest
-	36,  // 75: remoteagent.v1.ClientService.ListRemoteSessions:input_type -> remoteagent.v1.ListRemoteSessionsRequest
-	38,  // 76: remoteagent.v1.ClientService.GetEvents:input_type -> remoteagent.v1.GetEventsRequest
-	40,  // 77: remoteagent.v1.ClientService.Forward:input_type -> remoteagent.v1.ForwardRequest
-	64,  // 78: remoteagent.v1.ClientService.GetPushKey:input_type -> remoteagent.v1.GetPushKeyRequest
-	66,  // 79: remoteagent.v1.ClientService.SetPushSubscription:input_type -> remoteagent.v1.SetPushSubscriptionRequest
-	84,  // 80: remoteagent.v1.ClientService.SetPushTarget:input_type -> remoteagent.v1.SetPushTargetRequest
-	87,  // 81: remoteagent.v1.ClientService.GetImage:input_type -> remoteagent.v1.GetImageRequest
-	92,  // 82: remoteagent.v1.ClientService.ListDevices:input_type -> remoteagent.v1.ListDevicesRequest
-	94,  // 83: remoteagent.v1.ClientService.PutDeviceMeta:input_type -> remoteagent.v1.PutDeviceMetaRequest
-	97,  // 84: remoteagent.v1.ClientService.GetAccountPrefs:input_type -> remoteagent.v1.GetAccountPrefsRequest
-	99,  // 85: remoteagent.v1.ClientService.PutAccountPrefs:input_type -> remoteagent.v1.PutAccountPrefsRequest
-	68,  // 86: remoteagent.v1.ClientService.PinSecurityDomain:input_type -> remoteagent.v1.PinSecurityDomainRequest
-	71,  // 87: remoteagent.v1.ClientService.PutSecurityState:input_type -> remoteagent.v1.PutSecurityStateRequest
-	73,  // 88: remoteagent.v1.ClientService.GetSecurityStates:input_type -> remoteagent.v1.GetSecurityStatesRequest
-	104, // 89: remoteagent.v1.ClientService.DeleteMachineRecords:input_type -> remoteagent.v1.DeleteMachineRecordsRequest
-	106, // 90: remoteagent.v1.ClientService.DeleteAccount:input_type -> remoteagent.v1.DeleteAccountRequest
-	43,  // 91: remoteagent.v1.MachineService.PutMachine:input_type -> remoteagent.v1.PutMachineRequest
-	45,  // 92: remoteagent.v1.MachineService.PutSession:input_type -> remoteagent.v1.PutSessionRequest
-	47,  // 93: remoteagent.v1.MachineService.UploadEvents:input_type -> remoteagent.v1.UploadEventsRequest
-	49,  // 94: remoteagent.v1.MachineService.ListSessionHeads:input_type -> remoteagent.v1.ListSessionHeadsRequest
-	83,  // 95: remoteagent.v1.MachineService.Notify:input_type -> remoteagent.v1.NotifyRequest
-	89,  // 96: remoteagent.v1.MachineService.PutImage:input_type -> remoteagent.v1.PutImageRequest
-	75,  // 97: remoteagent.v1.RecoveryService.GetRecoveryChallenge:input_type -> remoteagent.v1.GetRecoveryChallengeRequest
-	77,  // 98: remoteagent.v1.RecoveryService.GetRecoveryContext:input_type -> remoteagent.v1.GetRecoveryContextRequest
-	79,  // 99: remoteagent.v1.RecoveryService.SubmitRecovery:input_type -> remoteagent.v1.SubmitRecoveryRequest
-	81,  // 100: remoteagent.v1.RecoveryService.CompleteRecovery:input_type -> remoteagent.v1.CompleteRecoveryRequest
-	10,  // 101: remoteagent.v1.AuthService.RegisterDevice:output_type -> remoteagent.v1.RegisterDeviceResponse
-	12,  // 102: remoteagent.v1.AuthService.GetChallenge:output_type -> remoteagent.v1.GetChallengeResponse
-	14,  // 103: remoteagent.v1.AuthService.Login:output_type -> remoteagent.v1.LoginResponse
-	8,   // 104: remoteagent.v1.AuthService.GetSignupChallenge:output_type -> remoteagent.v1.GetSignupChallengeResponse
-	19,  // 105: remoteagent.v1.PairingService.PeekPairing:output_type -> remoteagent.v1.PeekPairingResponse
-	16,  // 106: remoteagent.v1.PairingService.CreatePairing:output_type -> remoteagent.v1.CreatePairingResponse
-	21,  // 107: remoteagent.v1.PairingService.JoinPairing:output_type -> remoteagent.v1.JoinPairingResponse
-	23,  // 108: remoteagent.v1.PairingService.GetPairing:output_type -> remoteagent.v1.GetPairingResponse
-	25,  // 109: remoteagent.v1.PairingService.RevealPairing:output_type -> remoteagent.v1.RevealPairingResponse
-	27,  // 110: remoteagent.v1.PairingService.ApprovePairing:output_type -> remoteagent.v1.ApprovePairingResponse
-	29,  // 111: remoteagent.v1.PairingService.CancelPairing:output_type -> remoteagent.v1.CancelPairingResponse
-	35,  // 112: remoteagent.v1.ClientService.ListMachines:output_type -> remoteagent.v1.ListMachinesResponse
-	37,  // 113: remoteagent.v1.ClientService.ListRemoteSessions:output_type -> remoteagent.v1.ListRemoteSessionsResponse
-	39,  // 114: remoteagent.v1.ClientService.GetEvents:output_type -> remoteagent.v1.GetEventsResponse
-	41,  // 115: remoteagent.v1.ClientService.Forward:output_type -> remoteagent.v1.ForwardResponse
-	65,  // 116: remoteagent.v1.ClientService.GetPushKey:output_type -> remoteagent.v1.GetPushKeyResponse
-	67,  // 117: remoteagent.v1.ClientService.SetPushSubscription:output_type -> remoteagent.v1.SetPushSubscriptionResponse
-	85,  // 118: remoteagent.v1.ClientService.SetPushTarget:output_type -> remoteagent.v1.SetPushTargetResponse
-	88,  // 119: remoteagent.v1.ClientService.GetImage:output_type -> remoteagent.v1.GetImageResponse
-	93,  // 120: remoteagent.v1.ClientService.ListDevices:output_type -> remoteagent.v1.ListDevicesResponse
-	95,  // 121: remoteagent.v1.ClientService.PutDeviceMeta:output_type -> remoteagent.v1.PutDeviceMetaResponse
-	98,  // 122: remoteagent.v1.ClientService.GetAccountPrefs:output_type -> remoteagent.v1.GetAccountPrefsResponse
-	100, // 123: remoteagent.v1.ClientService.PutAccountPrefs:output_type -> remoteagent.v1.PutAccountPrefsResponse
-	69,  // 124: remoteagent.v1.ClientService.PinSecurityDomain:output_type -> remoteagent.v1.PinSecurityDomainResponse
-	72,  // 125: remoteagent.v1.ClientService.PutSecurityState:output_type -> remoteagent.v1.PutSecurityStateResponse
-	74,  // 126: remoteagent.v1.ClientService.GetSecurityStates:output_type -> remoteagent.v1.GetSecurityStatesResponse
-	105, // 127: remoteagent.v1.ClientService.DeleteMachineRecords:output_type -> remoteagent.v1.DeleteMachineRecordsResponse
-	107, // 128: remoteagent.v1.ClientService.DeleteAccount:output_type -> remoteagent.v1.DeleteAccountResponse
-	44,  // 129: remoteagent.v1.MachineService.PutMachine:output_type -> remoteagent.v1.PutMachineResponse
-	46,  // 130: remoteagent.v1.MachineService.PutSession:output_type -> remoteagent.v1.PutSessionResponse
-	48,  // 131: remoteagent.v1.MachineService.UploadEvents:output_type -> remoteagent.v1.UploadEventsResponse
-	51,  // 132: remoteagent.v1.MachineService.ListSessionHeads:output_type -> remoteagent.v1.ListSessionHeadsResponse
-	86,  // 133: remoteagent.v1.MachineService.Notify:output_type -> remoteagent.v1.NotifyResponse
-	90,  // 134: remoteagent.v1.MachineService.PutImage:output_type -> remoteagent.v1.PutImageResponse
-	76,  // 135: remoteagent.v1.RecoveryService.GetRecoveryChallenge:output_type -> remoteagent.v1.GetRecoveryChallengeResponse
-	78,  // 136: remoteagent.v1.RecoveryService.GetRecoveryContext:output_type -> remoteagent.v1.GetRecoveryContextResponse
-	80,  // 137: remoteagent.v1.RecoveryService.SubmitRecovery:output_type -> remoteagent.v1.SubmitRecoveryResponse
-	82,  // 138: remoteagent.v1.RecoveryService.CompleteRecovery:output_type -> remoteagent.v1.CompleteRecoveryResponse
-	101, // [101:139] is the sub-list for method output_type
-	63,  // [63:101] is the sub-list for method input_type
-	63,  // [63:63] is the sub-list for extension type_name
-	63,  // [63:63] is the sub-list for extension extendee
-	0,   // [0:63] is the sub-list for field type_name
+	109, // 26: remoteagent.v1.PeerFrame.directed_peer_frame:type_name -> remoteagent.v1.DirectedPeerFrame
+	56,  // 27: remoteagent.v1.ServerFrame.ready:type_name -> remoteagent.v1.Ready
+	55,  // 28: remoteagent.v1.ServerFrame.heartbeat:type_name -> remoteagent.v1.Heartbeat
+	110, // 29: remoteagent.v1.ServerFrame.peer_frame_delivery:type_name -> remoteagent.v1.PeerFrameDelivery
+	111, // 30: remoteagent.v1.ServerFrame.peer_frame_result:type_name -> remoteagent.v1.PeerFrameResult
+	57,  // 31: remoteagent.v1.ServerFrame.events_appended:type_name -> remoteagent.v1.EventsAppended
+	58,  // 32: remoteagent.v1.ServerFrame.session_updated:type_name -> remoteagent.v1.SessionUpdated
+	59,  // 33: remoteagent.v1.ServerFrame.machine_updated:type_name -> remoteagent.v1.MachineUpdated
+	60,  // 34: remoteagent.v1.ServerFrame.machine_removed:type_name -> remoteagent.v1.MachineRemoved
+	101, // 35: remoteagent.v1.ServerFrame.account_prefs_updated:type_name -> remoteagent.v1.AccountPrefsUpdated
+	102, // 36: remoteagent.v1.ServerFrame.device_updated:type_name -> remoteagent.v1.DeviceUpdated
+	103, // 37: remoteagent.v1.ServerFrame.device_removed:type_name -> remoteagent.v1.DeviceRemoved
+	61,  // 38: remoteagent.v1.ServerFrame.forward_call:type_name -> remoteagent.v1.ForwardCall
+	33,  // 39: remoteagent.v1.EventsAppended.events:type_name -> remoteagent.v1.StoredEvent
+	31,  // 40: remoteagent.v1.SessionUpdated.session:type_name -> remoteagent.v1.RemoteSession
+	30,  // 41: remoteagent.v1.MachineUpdated.machine:type_name -> remoteagent.v1.Machine
+	108, // 42: remoteagent.v1.ForwardCall.command:type_name -> remoteagent.v1.Envelope
+	108, // 43: remoteagent.v1.ForwardReply.result:type_name -> remoteagent.v1.Envelope
+	2,   // 44: remoteagent.v1.SetPushSubscriptionRequest.kinds:type_name -> remoteagent.v1.NotifyKind
+	70,  // 45: remoteagent.v1.PutSecurityStateRequest.states:type_name -> remoteagent.v1.SecurityState
+	70,  // 46: remoteagent.v1.GetSecurityStatesResponse.states:type_name -> remoteagent.v1.SecurityState
+	70,  // 47: remoteagent.v1.GetRecoveryContextResponse.states:type_name -> remoteagent.v1.SecurityState
+	4,   // 48: remoteagent.v1.GetRecoveryContextResponse.phase:type_name -> remoteagent.v1.GetRecoveryContextResponse.Phase
+	2,   // 49: remoteagent.v1.NotifyRequest.kind:type_name -> remoteagent.v1.NotifyKind
+	108, // 50: remoteagent.v1.NotifyRequest.content:type_name -> remoteagent.v1.Envelope
+	3,   // 51: remoteagent.v1.SetPushTargetRequest.type:type_name -> remoteagent.v1.PushType
+	2,   // 52: remoteagent.v1.SetPushTargetRequest.kinds:type_name -> remoteagent.v1.NotifyKind
+	108, // 53: remoteagent.v1.GetImageResponse.image:type_name -> remoteagent.v1.Envelope
+	108, // 54: remoteagent.v1.PutImageRequest.image:type_name -> remoteagent.v1.Envelope
+	0,   // 55: remoteagent.v1.Device.kind:type_name -> remoteagent.v1.DeviceKind
+	108, // 56: remoteagent.v1.Device.meta:type_name -> remoteagent.v1.Envelope
+	91,  // 57: remoteagent.v1.ListDevicesResponse.devices:type_name -> remoteagent.v1.Device
+	108, // 58: remoteagent.v1.PutDeviceMetaRequest.meta:type_name -> remoteagent.v1.Envelope
+	91,  // 59: remoteagent.v1.PutDeviceMetaResponse.device:type_name -> remoteagent.v1.Device
+	108, // 60: remoteagent.v1.AccountPrefsObject.envelope:type_name -> remoteagent.v1.Envelope
+	96,  // 61: remoteagent.v1.GetAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
+	108, // 62: remoteagent.v1.PutAccountPrefsRequest.envelope:type_name -> remoteagent.v1.Envelope
+	96,  // 63: remoteagent.v1.PutAccountPrefsResponse.object:type_name -> remoteagent.v1.AccountPrefsObject
+	96,  // 64: remoteagent.v1.AccountPrefsUpdated.object:type_name -> remoteagent.v1.AccountPrefsObject
+	91,  // 65: remoteagent.v1.DeviceUpdated.device:type_name -> remoteagent.v1.Device
+	6,   // 66: remoteagent.v1.AuthService.RegisterDevice:input_type -> remoteagent.v1.RegisterDeviceRequest
+	11,  // 67: remoteagent.v1.AuthService.GetChallenge:input_type -> remoteagent.v1.GetChallengeRequest
+	13,  // 68: remoteagent.v1.AuthService.Login:input_type -> remoteagent.v1.LoginRequest
+	7,   // 69: remoteagent.v1.AuthService.GetSignupChallenge:input_type -> remoteagent.v1.GetSignupChallengeRequest
+	18,  // 70: remoteagent.v1.PairingService.PeekPairing:input_type -> remoteagent.v1.PeekPairingRequest
+	15,  // 71: remoteagent.v1.PairingService.CreatePairing:input_type -> remoteagent.v1.CreatePairingRequest
+	20,  // 72: remoteagent.v1.PairingService.JoinPairing:input_type -> remoteagent.v1.JoinPairingRequest
+	22,  // 73: remoteagent.v1.PairingService.GetPairing:input_type -> remoteagent.v1.GetPairingRequest
+	24,  // 74: remoteagent.v1.PairingService.RevealPairing:input_type -> remoteagent.v1.RevealPairingRequest
+	26,  // 75: remoteagent.v1.PairingService.ApprovePairing:input_type -> remoteagent.v1.ApprovePairingRequest
+	28,  // 76: remoteagent.v1.PairingService.CancelPairing:input_type -> remoteagent.v1.CancelPairingRequest
+	34,  // 77: remoteagent.v1.ClientService.ListMachines:input_type -> remoteagent.v1.ListMachinesRequest
+	36,  // 78: remoteagent.v1.ClientService.ListRemoteSessions:input_type -> remoteagent.v1.ListRemoteSessionsRequest
+	38,  // 79: remoteagent.v1.ClientService.GetEvents:input_type -> remoteagent.v1.GetEventsRequest
+	40,  // 80: remoteagent.v1.ClientService.Forward:input_type -> remoteagent.v1.ForwardRequest
+	64,  // 81: remoteagent.v1.ClientService.GetPushKey:input_type -> remoteagent.v1.GetPushKeyRequest
+	66,  // 82: remoteagent.v1.ClientService.SetPushSubscription:input_type -> remoteagent.v1.SetPushSubscriptionRequest
+	84,  // 83: remoteagent.v1.ClientService.SetPushTarget:input_type -> remoteagent.v1.SetPushTargetRequest
+	87,  // 84: remoteagent.v1.ClientService.GetImage:input_type -> remoteagent.v1.GetImageRequest
+	92,  // 85: remoteagent.v1.ClientService.ListDevices:input_type -> remoteagent.v1.ListDevicesRequest
+	94,  // 86: remoteagent.v1.ClientService.PutDeviceMeta:input_type -> remoteagent.v1.PutDeviceMetaRequest
+	97,  // 87: remoteagent.v1.ClientService.GetAccountPrefs:input_type -> remoteagent.v1.GetAccountPrefsRequest
+	99,  // 88: remoteagent.v1.ClientService.PutAccountPrefs:input_type -> remoteagent.v1.PutAccountPrefsRequest
+	68,  // 89: remoteagent.v1.ClientService.PinSecurityDomain:input_type -> remoteagent.v1.PinSecurityDomainRequest
+	71,  // 90: remoteagent.v1.ClientService.PutSecurityState:input_type -> remoteagent.v1.PutSecurityStateRequest
+	73,  // 91: remoteagent.v1.ClientService.GetSecurityStates:input_type -> remoteagent.v1.GetSecurityStatesRequest
+	104, // 92: remoteagent.v1.ClientService.DeleteMachineRecords:input_type -> remoteagent.v1.DeleteMachineRecordsRequest
+	106, // 93: remoteagent.v1.ClientService.DeleteAccount:input_type -> remoteagent.v1.DeleteAccountRequest
+	43,  // 94: remoteagent.v1.MachineService.PutMachine:input_type -> remoteagent.v1.PutMachineRequest
+	45,  // 95: remoteagent.v1.MachineService.PutSession:input_type -> remoteagent.v1.PutSessionRequest
+	47,  // 96: remoteagent.v1.MachineService.UploadEvents:input_type -> remoteagent.v1.UploadEventsRequest
+	49,  // 97: remoteagent.v1.MachineService.ListSessionHeads:input_type -> remoteagent.v1.ListSessionHeadsRequest
+	83,  // 98: remoteagent.v1.MachineService.Notify:input_type -> remoteagent.v1.NotifyRequest
+	89,  // 99: remoteagent.v1.MachineService.PutImage:input_type -> remoteagent.v1.PutImageRequest
+	75,  // 100: remoteagent.v1.RecoveryService.GetRecoveryChallenge:input_type -> remoteagent.v1.GetRecoveryChallengeRequest
+	77,  // 101: remoteagent.v1.RecoveryService.GetRecoveryContext:input_type -> remoteagent.v1.GetRecoveryContextRequest
+	79,  // 102: remoteagent.v1.RecoveryService.SubmitRecovery:input_type -> remoteagent.v1.SubmitRecoveryRequest
+	81,  // 103: remoteagent.v1.RecoveryService.CompleteRecovery:input_type -> remoteagent.v1.CompleteRecoveryRequest
+	10,  // 104: remoteagent.v1.AuthService.RegisterDevice:output_type -> remoteagent.v1.RegisterDeviceResponse
+	12,  // 105: remoteagent.v1.AuthService.GetChallenge:output_type -> remoteagent.v1.GetChallengeResponse
+	14,  // 106: remoteagent.v1.AuthService.Login:output_type -> remoteagent.v1.LoginResponse
+	8,   // 107: remoteagent.v1.AuthService.GetSignupChallenge:output_type -> remoteagent.v1.GetSignupChallengeResponse
+	19,  // 108: remoteagent.v1.PairingService.PeekPairing:output_type -> remoteagent.v1.PeekPairingResponse
+	16,  // 109: remoteagent.v1.PairingService.CreatePairing:output_type -> remoteagent.v1.CreatePairingResponse
+	21,  // 110: remoteagent.v1.PairingService.JoinPairing:output_type -> remoteagent.v1.JoinPairingResponse
+	23,  // 111: remoteagent.v1.PairingService.GetPairing:output_type -> remoteagent.v1.GetPairingResponse
+	25,  // 112: remoteagent.v1.PairingService.RevealPairing:output_type -> remoteagent.v1.RevealPairingResponse
+	27,  // 113: remoteagent.v1.PairingService.ApprovePairing:output_type -> remoteagent.v1.ApprovePairingResponse
+	29,  // 114: remoteagent.v1.PairingService.CancelPairing:output_type -> remoteagent.v1.CancelPairingResponse
+	35,  // 115: remoteagent.v1.ClientService.ListMachines:output_type -> remoteagent.v1.ListMachinesResponse
+	37,  // 116: remoteagent.v1.ClientService.ListRemoteSessions:output_type -> remoteagent.v1.ListRemoteSessionsResponse
+	39,  // 117: remoteagent.v1.ClientService.GetEvents:output_type -> remoteagent.v1.GetEventsResponse
+	41,  // 118: remoteagent.v1.ClientService.Forward:output_type -> remoteagent.v1.ForwardResponse
+	65,  // 119: remoteagent.v1.ClientService.GetPushKey:output_type -> remoteagent.v1.GetPushKeyResponse
+	67,  // 120: remoteagent.v1.ClientService.SetPushSubscription:output_type -> remoteagent.v1.SetPushSubscriptionResponse
+	85,  // 121: remoteagent.v1.ClientService.SetPushTarget:output_type -> remoteagent.v1.SetPushTargetResponse
+	88,  // 122: remoteagent.v1.ClientService.GetImage:output_type -> remoteagent.v1.GetImageResponse
+	93,  // 123: remoteagent.v1.ClientService.ListDevices:output_type -> remoteagent.v1.ListDevicesResponse
+	95,  // 124: remoteagent.v1.ClientService.PutDeviceMeta:output_type -> remoteagent.v1.PutDeviceMetaResponse
+	98,  // 125: remoteagent.v1.ClientService.GetAccountPrefs:output_type -> remoteagent.v1.GetAccountPrefsResponse
+	100, // 126: remoteagent.v1.ClientService.PutAccountPrefs:output_type -> remoteagent.v1.PutAccountPrefsResponse
+	69,  // 127: remoteagent.v1.ClientService.PinSecurityDomain:output_type -> remoteagent.v1.PinSecurityDomainResponse
+	72,  // 128: remoteagent.v1.ClientService.PutSecurityState:output_type -> remoteagent.v1.PutSecurityStateResponse
+	74,  // 129: remoteagent.v1.ClientService.GetSecurityStates:output_type -> remoteagent.v1.GetSecurityStatesResponse
+	105, // 130: remoteagent.v1.ClientService.DeleteMachineRecords:output_type -> remoteagent.v1.DeleteMachineRecordsResponse
+	107, // 131: remoteagent.v1.ClientService.DeleteAccount:output_type -> remoteagent.v1.DeleteAccountResponse
+	44,  // 132: remoteagent.v1.MachineService.PutMachine:output_type -> remoteagent.v1.PutMachineResponse
+	46,  // 133: remoteagent.v1.MachineService.PutSession:output_type -> remoteagent.v1.PutSessionResponse
+	48,  // 134: remoteagent.v1.MachineService.UploadEvents:output_type -> remoteagent.v1.UploadEventsResponse
+	51,  // 135: remoteagent.v1.MachineService.ListSessionHeads:output_type -> remoteagent.v1.ListSessionHeadsResponse
+	86,  // 136: remoteagent.v1.MachineService.Notify:output_type -> remoteagent.v1.NotifyResponse
+	90,  // 137: remoteagent.v1.MachineService.PutImage:output_type -> remoteagent.v1.PutImageResponse
+	76,  // 138: remoteagent.v1.RecoveryService.GetRecoveryChallenge:output_type -> remoteagent.v1.GetRecoveryChallengeResponse
+	78,  // 139: remoteagent.v1.RecoveryService.GetRecoveryContext:output_type -> remoteagent.v1.GetRecoveryContextResponse
+	80,  // 140: remoteagent.v1.RecoveryService.SubmitRecovery:output_type -> remoteagent.v1.SubmitRecoveryResponse
+	82,  // 141: remoteagent.v1.RecoveryService.CompleteRecovery:output_type -> remoteagent.v1.CompleteRecoveryResponse
+	104, // [104:142] is the sub-list for method output_type
+	66,  // [66:104] is the sub-list for method input_type
+	66,  // [66:66] is the sub-list for extension type_name
+	66,  // [66:66] is the sub-list for extension extendee
+	0,   // [0:66] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_relay_proto_init() }
@@ -7042,13 +7099,17 @@ func file_remoteagent_v1_relay_proto_init() {
 		return
 	}
 	file_remoteagent_v1_envelope_proto_init()
+	file_remoteagent_v1_transport_proto_init()
 	file_remoteagent_v1_relay_proto_msgTypes[48].OneofWrappers = []any{
 		(*PeerFrame_Hello)(nil),
 		(*PeerFrame_ForwardReply)(nil),
+		(*PeerFrame_DirectedPeerFrame)(nil),
 	}
 	file_remoteagent_v1_relay_proto_msgTypes[49].OneofWrappers = []any{
 		(*ServerFrame_Ready)(nil),
 		(*ServerFrame_Heartbeat)(nil),
+		(*ServerFrame_PeerFrameDelivery)(nil),
+		(*ServerFrame_PeerFrameResult)(nil),
 		(*ServerFrame_EventsAppended)(nil),
 		(*ServerFrame_SessionUpdated)(nil),
 		(*ServerFrame_MachineUpdated)(nil),

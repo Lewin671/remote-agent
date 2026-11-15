@@ -1178,11 +1178,20 @@ public struct PBPeerFrame: Sendable {
     set {kind = .forwardReply(newValue)}
   }
 
+  public var directedPeerFrame: PBDirectedPeerFrame {
+    get {
+      if case .directedPeerFrame(let v)? = kind {return v}
+      return PBDirectedPeerFrame()
+    }
+    set {kind = .directedPeerFrame(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
     case hello(PBStreamHello)
     case forwardReply(PBForwardReply)
+    case directedPeerFrame(PBDirectedPeerFrame)
 
   }
 
@@ -1212,6 +1221,22 @@ public struct PBServerFrame: Sendable {
       return PBHeartbeat()
     }
     set {kind = .heartbeat(newValue)}
+  }
+
+  public var peerFrameDelivery: PBPeerFrameDelivery {
+    get {
+      if case .peerFrameDelivery(let v)? = kind {return v}
+      return PBPeerFrameDelivery()
+    }
+    set {kind = .peerFrameDelivery(newValue)}
+  }
+
+  public var peerFrameResult: PBPeerFrameResult {
+    get {
+      if case .peerFrameResult(let v)? = kind {return v}
+      return PBPeerFrameResult()
+    }
+    set {kind = .peerFrameResult(newValue)}
   }
 
   /// To clients.
@@ -1286,6 +1311,8 @@ public struct PBServerFrame: Sendable {
     case ready(PBReady)
     /// Visible to browsers, which cannot observe WebSocket Ping/Pong.
     case heartbeat(PBHeartbeat)
+    case peerFrameDelivery(PBPeerFrameDelivery)
+    case peerFrameResult(PBPeerFrameResult)
     /// To clients.
     case eventsAppended(PBEventsAppended)
     case sessionUpdated(PBSessionUpdated)
@@ -4181,7 +4208,7 @@ extension PBStreamHello: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBPeerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PeerFrame"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hello\0\u{3}forward_reply\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hello\0\u{3}forward_reply\0\u{3}directed_peer_frame\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4215,6 +4242,19 @@ extension PBPeerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
           self.kind = .forwardReply(v)
         }
       }()
+      case 3: try {
+        var v: PBDirectedPeerFrame?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .directedPeerFrame(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .directedPeerFrame(v)
+        }
+      }()
       default: break
       }
     }
@@ -4234,6 +4274,10 @@ extension PBPeerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       guard case .forwardReply(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
     }()
+    case .directedPeerFrame?: try {
+      guard case .directedPeerFrame(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -4248,7 +4292,7 @@ extension PBPeerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
 
 extension PBServerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ServerFrame"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ready\0\u{3}events_appended\0\u{3}session_updated\0\u{3}machine_updated\0\u{3}forward_call\0\u{3}machine_removed\0\u{3}account_prefs_updated\0\u{3}device_updated\0\u{3}device_removed\0\u{1}heartbeat\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ready\0\u{3}events_appended\0\u{3}session_updated\0\u{3}machine_updated\0\u{3}forward_call\0\u{3}machine_removed\0\u{3}account_prefs_updated\0\u{3}device_updated\0\u{3}device_removed\0\u{1}heartbeat\0\u{3}peer_frame_delivery\0\u{3}peer_frame_result\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4386,6 +4430,32 @@ extension PBServerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
           self.kind = .heartbeat(v)
         }
       }()
+      case 11: try {
+        var v: PBPeerFrameDelivery?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .peerFrameDelivery(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .peerFrameDelivery(v)
+        }
+      }()
+      case 12: try {
+        var v: PBPeerFrameResult?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .peerFrameResult(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .peerFrameResult(v)
+        }
+      }()
       default: break
       }
     }
@@ -4436,6 +4506,14 @@ extension PBServerFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     case .heartbeat?: try {
       guard case .heartbeat(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    }()
+    case .peerFrameDelivery?: try {
+      guard case .peerFrameDelivery(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    }()
+    case .peerFrameResult?: try {
+      guard case .peerFrameResult(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
     }()
     case nil: break
     }

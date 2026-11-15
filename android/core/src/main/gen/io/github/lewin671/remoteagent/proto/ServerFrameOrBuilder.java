@@ -41,6 +41,28 @@ public interface ServerFrameOrBuilder extends
   io.github.lewin671.remoteagent.proto.Heartbeat getHeartbeat();
 
   /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   * @return Whether the peerFrameDelivery field is set.
+   */
+  boolean hasPeerFrameDelivery();
+  /**
+   * <code>.remoteagent.v1.PeerFrameDelivery peer_frame_delivery = 11 [json_name = "peerFrameDelivery"];</code>
+   * @return The peerFrameDelivery.
+   */
+  io.github.lewin671.remoteagent.proto.PeerFrameDelivery getPeerFrameDelivery();
+
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   * @return Whether the peerFrameResult field is set.
+   */
+  boolean hasPeerFrameResult();
+  /**
+   * <code>.remoteagent.v1.PeerFrameResult peer_frame_result = 12 [json_name = "peerFrameResult"];</code>
+   * @return The peerFrameResult.
+   */
+  io.github.lewin671.remoteagent.proto.PeerFrameResult getPeerFrameResult();
+
+  /**
    * <pre>
    * To clients.
    * </pre>

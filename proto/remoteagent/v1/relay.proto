@@ -3,6 +3,7 @@ syntax = "proto3";
 package remoteagent.v1;
 
 import "remoteagent/v1/envelope.proto";
+import "remoteagent/v1/transport.proto";
 
 // Services of remote-agent-server. Everything the server can read is
 // routing metadata: IDs, sequence numbers, times and sizes. Content only
@@ -455,6 +456,7 @@ message PeerFrame {
   oneof kind {
     StreamHello hello = 1;
     ForwardReply forward_reply = 2;
+    DirectedPeerFrame directed_peer_frame = 3;
   }
 }
 
@@ -464,6 +466,8 @@ message ServerFrame {
     Ready ready = 1;
     // Visible to browsers, which cannot observe WebSocket Ping/Pong.
     Heartbeat heartbeat = 10;
+    PeerFrameDelivery peer_frame_delivery = 11;
+    PeerFrameResult peer_frame_result = 12;
     // To clients.
     EventsAppended events_appended = 2;
     SessionUpdated session_updated = 3;
