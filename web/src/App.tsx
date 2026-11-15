@@ -12,6 +12,7 @@ import {
 } from "react";
 import { SetupReset } from "./SetupReset";
 import { Remote, resumeRegistration, errorText } from "./remote";
+import { bindNetworkChanges, stableNetworkSignature, type NetworkConnection } from "./transport/network";
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
 import { securitySetupStatus } from "./device-security-store";
 import { hasScheduleDrafts } from "./schedule-drafts";
@@ -44,6 +45,8 @@ async function loadRemote(): Promise<Remote | undefined> {
   }
   return Remote.load();
 }
+
+export { bindNetworkChanges, stableNetworkSignature };
 
 export function App() {
   useLocale();
@@ -143,6 +146,12 @@ export function App() {
       running = false;
       remote.stop();
     };
+    const netBinding = bindNetworkChanges(
+      remote,
+      navigator as Navigator & { connection?: NetworkConnection },
+      window,
+      () => running,
+    );
     const resume = () => {
       if (document.hidden) return;
       cancelHidden();
@@ -150,7 +159,7 @@ export function App() {
       // start is idempotent and also replaces a stale retained stream.
       remote.setForeground(true);
       remote.start();
-      remote.setNetwork(navigator.onLine);
+      netBinding.report();
     };
     const visibility = () => {
       remote.setForeground(!document.hidden);
@@ -159,17 +168,6 @@ export function App() {
       else if (running && hiddenTimer === undefined)
         hiddenTimer = setTimeout(pause, HIDDEN_GRACE_MS);
     };
-    const online = () => {
-      if (!running) return;
-      remote.setNetwork(true);
-      connectionChanged();
-    };
-    const offline = () => { if (running) remote.setNetwork(false); };
-    const connection = (navigator as Navigator & { connection?: EventTarget & { type?: string; effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean } }).connection;
-    const connectionChanged = () => {
-      if (running) remote.networkChanged(JSON.stringify([navigator.onLine, connection?.type, connection?.effectiveType, connection?.downlink, connection?.rtt, connection?.saveData]));
-    };
-    connection?.addEventListener("change", connectionChanged);
     document.addEventListener("visibilitychange", visibility);
     // Frozen timers cannot enforce the grace period. Release sockets in
     // the event itself, including when entering the back/forward cache.
@@ -177,19 +175,15 @@ export function App() {
     document.addEventListener("resume", resume);
     addEventListener("pagehide", pause);
     addEventListener("pageshow", resume);
-    addEventListener("online", online);
-    addEventListener("offline", offline);
     remote.setScheduleVisible(!document.hidden);
     resume();
     return () => {
-      connection?.removeEventListener("change", connectionChanged);
+      netBinding.dispose();
       document.removeEventListener("visibilitychange", visibility);
       document.removeEventListener("freeze", pause);
       document.removeEventListener("resume", resume);
       removeEventListener("pagehide", pause);
       removeEventListener("pageshow", resume);
-      removeEventListener("online", online);
-      removeEventListener("offline", offline);
       cancelHidden();
       remote.stop();
     };

@@ -172,3 +172,38 @@ test("a temporary daemon gap keeps the original live call pending within the rec
     expect(bodies).toHaveLength(2);expect(bodies[1].command).toBe(bodies[0].command);
   } finally {await remote.dispose();}
 });
+
+test("PathChanged retries in forwardCall do not consume attempt budget", async () => {
+  const remote = await SyntheticRemote.create();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date", "performance"] });
+  const runtime = remote as unknown as { begun: boolean; api: unknown; connect(): Promise<void>; recovery: Recovery };
+  runtime.begun = true;
+  vi.spyOn(runtime, "connect").mockResolvedValue();
+  let calls = 0;
+  runtime.api = {
+    forward: async (q: { command: Envelope }) => {
+      calls++;
+      if (calls <= 4) {
+        queueMicrotask(() => runtime.recovery.ready());
+        return new Promise(() => {});
+      }
+      if (calls <= 7) {
+        throw new ConnectError("transient unknown after path switches", Code.Unknown);
+      }
+      const h = parseHeader(new Uint8Array(q.command.securityHeader));
+      return { result: await remote.seal({ kind: 6, requestId: h.request }, CommandResultSchema, create(CommandResultSchema)) };
+    },
+  };
+  try {
+    let settled = false;
+    const pending = remote.machineCommand(remote.machine, { case: "getSettings", value: {} }).finally(() => { settled = true; });
+    for (let i = 0; i < 100 && !settled; i++) {
+      await vi.advanceTimersByTimeAsync(200);
+    }
+    await expect(pending).resolves.toBeDefined();
+    expect(calls).toBe(8);
+  } finally {
+    vi.useRealTimers();
+    await remote.dispose();
+  }
+});

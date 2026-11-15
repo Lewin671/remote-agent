@@ -16,7 +16,8 @@ export class Bucket {
   }
   take() { this.tokens--; }
 }
-const processBudget = new Bucket(4, 2);
+let processBudget = new Bucket(4, 2);
+export function resetProcessBudgetForTest() { processBudget = new Bucket(4, 2); }
 export class PathChanged extends Error {}
 
 /** Cancel one waiter without canceling a shared credential/security owner. */

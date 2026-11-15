@@ -7,6 +7,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
+import { TerminalReconnectController } from "../transport/terminal-recovery";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
 
 const enc = new TextEncoder();
@@ -47,6 +48,8 @@ const keys2: [ReactNode, string, string][] = [
 export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: SessionView; compact?: boolean; wide?: boolean; running: boolean }) {
   useRemote(remote);
   const online = remote.peer(session.machineId).ready;
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
   const fine = usePointerFine();
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -59,6 +62,12 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const dimsSeen = useRef(false);
   const [dims, setDims] = useState<{ cols: number; rows: number }>();
   const [state, setState] = useState<"connecting" | "live" | "closed">("connecting");
+  const stateRef = useRef<"connecting" | "live" | "closed">("connecting");
+  stateRef.current = state;
+  const setTerminalState = (next: "connecting" | "live" | "closed") => {
+    stateRef.current = next;
+    setState(next);
+  };
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState(false);
   const [, refreshHistory] = useState(0);
@@ -248,20 +257,45 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [endedPath, setEndedPath] = useState<{ remote: Remote; sid: string }>();
-  const [canOpen, setCanOpen] = useState(online);
+  const controllerRef = useRef<TerminalReconnectController | undefined>(undefined);
+  const allowOpenRef = useRef(false);
   useEffect(() => {
-    if (online) {
-      if (endedPath?.remote === remote && endedPath.sid === session.id) { setEndedPath(undefined); setAttempt(n => n + 1); }
-      setCanOpen(true);
+    const ctrl = new TerminalReconnectController(
+      () => onlineRef.current,
+      () => {
+        allowOpenRef.current = true;
+        setAttempt((n) => n + 1);
+      },
+    );
+    controllerRef.current = ctrl;
+    return () => {
+      ctrl.dispose();
+      if (controllerRef.current === ctrl) controllerRef.current = undefined;
+    };
+  }, [remote, session.id]);
+  useEffect(() => {
+    if (!online && stateRef.current === "closed") {
+      controllerRef.current?.markOfflineClosed();
+      return;
     }
-  }, [online, endedPath, remote, session.id]);
+    if (online && stateRef.current === "closed") {
+      controllerRef.current?.onMainOnline();
+    }
+  }, [online, remote, session.id]);
   useEffect(() => {
-    if (!canOpen) return;
+    const ctrl = controllerRef.current;
+    if (!onlineRef.current && !allowOpenRef.current) {
+      ctrl?.markOfflineClosed();
+      setTerminalState("closed");
+      setReason("");
+      setLinked(false);
+      return;
+    }
+    allowOpenRef.current = false;
     let alive = true, opened = false, ended = false;
     const opening = new AbortController();
     history.close();
-    setState("connecting");
+    setTerminalState("connecting");
     setReason("");
     setDetails(false);
     setFitted(false);
@@ -307,7 +341,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               const written = new Promise<void>((resolve) => t.write(data, resolve));
               scale();
               pictured.current = true;
-              if (conn.current) setState("live");
+              if (conn.current) {
+                setTerminalState("live");
+                ctrl?.onLive();
+              }
               return written;
             }
             case "output": {
@@ -321,15 +358,13 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           }
         },
         (why) => {
-          if (!alive) return;
+          if (!alive || ended) return;
           ended = true;
-          // Only a formerly opened leg recovers automatically. An opening
-          // failure stays closed instead of creating an immediate retry loop.
-          setEndedPath(opened ? { remote, sid: session.id } : undefined);
           conn.current = null;
           history.disconnected();
-          setState("closed");
+          setTerminalState("closed");
           setReason((r) => r || why);
+          ctrl?.onClosed(opened);
         },
         opening.signal,
       )
@@ -340,12 +375,19 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           conn.current = c;
           setLinked(true);
           // The snapshot can be here before the opening command has answered: live once both are.
-          if (pictured.current) setState((s) => (s === "connecting" ? "live" : s));
+          if (pictured.current && stateRef.current === "connecting") {
+            setTerminalState("live");
+            ctrl?.onLive();
+          }
         },
         (e) => {
-          if (!alive) return;
-          setState("closed");
+          if (!alive || ended) return;
+          ended = true;
+          conn.current = null;
+          history.disconnected();
+          setTerminalState("closed");
           setReason(errorText(e));
+          ctrl?.onClosed(opened);
         },
       );
     return () => {
@@ -355,7 +397,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       conn.current = null;
       history.close();
     };
-  }, [remote, session.id, attempt, canOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, session.id, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (state !== "live" || shown) return;
@@ -448,7 +490,11 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
             <b>{i18n.t("terminal.closed")}</b>
             <p>{running ? i18n.t("terminal.closed_running_note") : i18n.t("terminal.closed_ended_note")}</p>
             <div className="btns">
-              <button className="btn pri" onClick={() => setAttempt((a) => a + 1)}>
+              <button className="btn pri" onClick={() => {
+                allowOpenRef.current = true;
+                if (controllerRef.current) controllerRef.current.manualReconnect();
+                else setAttempt((a) => a + 1);
+              }}>
                 {i18n.t("terminal.reconnect")}</button>
             </div>
             {reason &&

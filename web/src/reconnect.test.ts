@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { ServerFrameSchema, GetChallengeResponseSchema, LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Bucket, Recovery } from "./transport/recovery";
+import { bindNetworkChanges, stableNetworkSignature } from "./transport/network";
 import { Remote } from "./remote";
 
 // Closing a blackholed stream does not have to produce a close event.
@@ -453,4 +454,65 @@ it("a refusal for the main leg cannot discard a newer independent login", async 
   runtime.token="refreshed";
   old.onclose?.({code:1008});await flush();
   expect(r.authHeader()).toBe("Bearer refreshed");
+});
+
+it("keeps 60s silence threshold before 2 heartbeats and uses 3x interval afterwards", async () => {
+  const r = await probe(); vi.useFakeTimers();
+  r.start(); await flush(); const ws = Socket.all[0];
+  ws.frame("ready"); await flush();
+  await vi.advanceTimersByTimeAsync(1_000); ws.frame("heartbeat"); await flush();
+  // Only 1 heartbeat observed: must stay online past 3s..59s (legacy 60s threshold).
+  await vi.advanceTimersByTimeAsync(58_000);
+  expect(r.conn).toBe("online"); expect(Socket.all).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(2_000);
+  expect(r.conn).toBe("connecting"); expect(Socket.all).toHaveLength(2);
+  const leg2 = Socket.all[1]; leg2.frame("ready"); await flush();
+  // 20s legacy server cadence -> max(3s, 3 * 20s) = 60s.
+  await vi.advanceTimersByTimeAsync(20_000); leg2.frame("heartbeat"); await flush();
+  await vi.advanceTimersByTimeAsync(20_000); leg2.frame("heartbeat"); await flush();
+  await vi.advanceTimersByTimeAsync(59_000);
+  expect(r.conn).toBe("online"); expect(Socket.all).toHaveLength(2);
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(r.conn).toBe("connecting"); expect(Socket.all).toHaveLength(3);
+});
+
+it("network identity uses only onLine+type and coalesces online and change events in a microtask", async () => {
+  vi.useFakeTimers();
+  const r = await probe();
+  const connTarget = new EventTarget() as EventTarget & {
+    type?: string; effectiveType?: string; downlink?: number; rtt?: number; saveData?: boolean;
+  };
+  connTarget.type = "wifi"; connTarget.effectiveType = "4g"; connTarget.downlink = 10; connTarget.rtt = 50; connTarget.saveData = false;
+  const winTarget = new EventTarget() as unknown as Window;
+  const nav = { onLine: true, connection: connTarget };
+  const binding = bindNetworkChanges(r, nav, winTarget);
+  try {
+    binding.report();
+    r.start(); await flush();
+    expect(Socket.all).toHaveLength(1);
+    Socket.all[0].frame("ready"); await flush();
+    const gen0 = (r as unknown as { networkGeneration: number }).networkGeneration;
+
+    // Volatile NetworkInformation metrics must not change signature or bump generation.
+    connTarget.rtt = 350; connTarget.downlink = 1.2; connTarget.effectiveType = "3g"; connTarget.saveData = true;
+    connTarget.dispatchEvent(new Event("change"));
+    await flush();
+    expect((r as unknown as { networkGeneration: number }).networkGeneration).toBe(gen0);
+    expect(stableNetworkSignature(true, connTarget)).toBe(stableNetworkSignature(true, { type: "wifi" }));
+
+    // Coalesce offline + change and then online + change into single generations per event batch.
+    nav.onLine = false;
+    winTarget.dispatchEvent(new Event("offline"));
+    connTarget.dispatchEvent(new Event("change"));
+    await flush();
+    expect((r as unknown as { networkGeneration: number }).networkGeneration).toBe(gen0 + 1);
+
+    nav.onLine = true; connTarget.type = "cellular";
+    winTarget.dispatchEvent(new Event("online"));
+    connTarget.dispatchEvent(new Event("change"));
+    await flush();
+    expect((r as unknown as { networkGeneration: number }).networkGeneration).toBe(gen0 + 2);
+  } finally {
+    binding.dispose();
+  }
 });

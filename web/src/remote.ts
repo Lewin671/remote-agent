@@ -418,6 +418,24 @@ export async function joinWithApproval(
 const OPEN_TIMEOUT_MS = 15_000;
 const STREAM_IDLE_MS = 3_000;
 const STREAM_RESUME_IDLE_MS = 3_000;
+const STREAM_DEFAULT_DEAD_MS = 60_000;
+
+class LegLiveness {
+  heartbeats = 0;
+  lastHeartbeatAt = 0;
+  observedIntervalMs = 0;
+  onHeartbeat(now: number) {
+    this.heartbeats++;
+    if (this.heartbeats >= 2) {
+      this.observedIntervalMs = Math.max(0, now - this.lastHeartbeatAt);
+    }
+    this.lastHeartbeatAt = now;
+  }
+  suspectAfterMs(): number {
+    if (this.heartbeats < 2) return STREAM_DEFAULT_DEAD_MS;
+    return Math.max(STREAM_IDLE_MS, 3 * this.observedIntervalMs);
+  }
+}
 const RECONNECT_NOTICE_MS = 1_500;
 const RPC_TIMEOUT_MS = 45_000;
 // Allow one full RPC plus local verification/storage. Progress starts a
@@ -1467,15 +1485,18 @@ export class Remote {
 
   /** Whether the device has a network at all. Losing it ends the
    * connection at once instead of at the next missed heartbeat. */
-  setNetwork(available: boolean) {
-    if (this.network === available) return;
+  setNetwork(available: boolean, signature?: string) {
+    if (this.network === available) {
+      if (signature !== undefined) this.networkChanged(signature);
+      return;
+    }
     this.network = available;
     clearTimeout(this.graceTimer);
     this.graceTimer = undefined;
     this.waited = false;
     this.waitingNotice = false;
     this.changed(true);
-    this.networkChanged(String(available));
+    this.networkChanged(signature ?? String(available));
   }
 
   protected changed(immediate = false) {
@@ -1900,9 +1921,11 @@ export class Remote {
       this.networkSignature = latest;
       this.networkGeneration++;
       if (this.closed || !this.foreground) { this.retireNetworkIO(); return; }
-      this.touchAfterWake();
-      this.retireCandidate(new Error(l10n.t("errors.network_changed_reconnecting")));
-      this.reconnectNow(true);
+      cleanup(
+        () => this.touchAfterWake(),
+        () => this.retireCandidate(new Error(l10n.t("errors.network_changed_reconnecting"))),
+        () => this.reconnectNow(true),
+      );
     });
   }
 
@@ -1942,7 +1965,8 @@ export class Remote {
       const now = performance.now(), wall = Date.now();
       const paused = now - this.lastTick > STREAM_IDLE_MS || wall - this.lastWallTick > STREAM_IDLE_MS || now < this.lastTick;
       if (paused) { this.networkGeneration++; this.touchAfterWake(); this.retireCandidate(); }
-      if (paused || (this.ws && now - this.lastFrameAt >= STREAM_IDLE_MS)) {
+      const suspectAfter = (this.ws && this.legLiveness.get(this.ws)?.suspectAfterMs()) ?? STREAM_DEFAULT_DEAD_MS;
+      if (paused || (this.ws && now - this.lastFrameAt >= suspectAfter)) {
         if (this.conn === "online") { this.lostAt = Date.now(); this.conn = "connecting"; this.changed(true); }
         this.reconnectNow(true);
       }
@@ -2173,11 +2197,14 @@ export class Remote {
   }
 
   private lastFrameAt = 0;
+  private legLiveness = new WeakMap<FrameStream, LegLiveness>();
 
   private openStream(generation: number, timeout = 3000) {
     const url = apiBase(this.account.server).replace(/^http/, "ws") + "/v1/stream";
     const token = this.token;
     const ws = this.deviceLink.openPathStream(url);
+    const liveness = new LegLiveness();
+    this.legLiveness.set(ws, liveness);
     this.candidate = ws;
     const networkGeneration = this.networkGeneration;
     let opening: ReturnType<typeof setTimeout> | undefined;
@@ -2220,6 +2247,9 @@ export class Remote {
         this.watchLiveness();
       }
       this.lastFrameAt = performance.now();
+      if (frame.kind.case === "heartbeat") {
+        liveness.onHeartbeat(this.lastFrameAt);
+      }
       if (this.ws === ws && this.activeNetworkGeneration === this.networkGeneration && this.foreground && this.conn === "connecting" && frame.kind.case !== "ready") {
         this.conn = "online"; this.changed(true);
       }
@@ -3474,13 +3504,15 @@ export class Remote {
     // Once a try may have reached the daemon, no later failure of this
     // request can say it did not run.
     let recoveryUntil: number | undefined;
+    let attempted = false;
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
       const delivery = this.deviceLink.delivery(call);
       const attemptId = delivery.attemptId;
       try {
-        if (attempt > 0 && Date.now() >= deadline + (call.uncertain ? RESULT_RETENTION_MS : 0))
+        if (attempted && Date.now() >= deadline + (call.uncertain ? RESULT_RETENTION_MS : 0))
           throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
+        attempted = true;
         // Metadata may refresh while sealing, logging in or backing off.
         // Check the immutable authorized payload, including unknown retries.
         this.checkFileCapability(machineId, cmd, call.uncertain);
@@ -3527,7 +3559,7 @@ export class Remote {
       } catch (e) {
         // Only transport failures are automatically retried here. Interrupted
         // daemon answers still freeze the caller's request slot.
-        if (e instanceof PathChanged) { signal?.throwIfAborted(); continue; }
+        if (e instanceof PathChanged) { signal?.throwIfAborted(); attempt--; continue; }
         if (!(e instanceof ConnectError)) throw e;
         const ce = e;
         const notForwarded = delivery.refusal(ce);
