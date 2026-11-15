@@ -1,6 +1,7 @@
 // Protocol 16 transport contract. Authenticate original bytes before decoding typed payloads.
 syntax = "proto3";
 package remoteagent.v1;
+import "remoteagent/v1/capabilities.proto";
 
 enum FrameClass { FRAME_CLASS_UNSPECIFIED = 0; SIGNAL = 1; CONTROL = 2; }
 message DirectedPeerFrame { bytes to_device = 1; FrameClass frame_class = 2; bytes frame_id = 3; bytes sealed = 4; }
@@ -87,3 +88,10 @@ message PolicyReply {
   PolicyScope scope = 6; bytes policy_scope_peer = 7;
 }
 message Unsupported { FrameClass original_purpose = 1; uint32 original_type_id = 2; uint64 original_seq = 3; bytes original_sha256 = 4; }
+
+// First extension after the protocol 16 freeze: authenticated Control type 14.
+message CapabilitySnapshot {
+  bytes capability_id = 1;
+  MachineCapabilities capabilities = 2;
+  int64 expires_at_ms = 3;
+}

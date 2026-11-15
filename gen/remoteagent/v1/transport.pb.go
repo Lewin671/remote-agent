@@ -3045,11 +3045,72 @@ func (x *Unsupported) GetOriginalSha256() []byte {
 	return nil
 }
 
+// First extension after the protocol 16 freeze: authenticated Control type 14.
+type CapabilitySnapshot struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CapabilityId  []byte                 `protobuf:"bytes,1,opt,name=capability_id,json=capabilityId,proto3" json:"capability_id,omitempty"`
+	Capabilities  *MachineCapabilities   `protobuf:"bytes,2,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	ExpiresAtMs   int64                  `protobuf:"varint,3,opt,name=expires_at_ms,json=expiresAtMs,proto3" json:"expires_at_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CapabilitySnapshot) Reset() {
+	*x = CapabilitySnapshot{}
+	mi := &file_remoteagent_v1_transport_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CapabilitySnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CapabilitySnapshot) ProtoMessage() {}
+
+func (x *CapabilitySnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_transport_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CapabilitySnapshot.ProtoReflect.Descriptor instead.
+func (*CapabilitySnapshot) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_transport_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *CapabilitySnapshot) GetCapabilityId() []byte {
+	if x != nil {
+		return x.CapabilityId
+	}
+	return nil
+}
+
+func (x *CapabilitySnapshot) GetCapabilities() *MachineCapabilities {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *CapabilitySnapshot) GetExpiresAtMs() int64 {
+	if x != nil {
+		return x.ExpiresAtMs
+	}
+	return 0
+}
+
 var File_remoteagent_v1_transport_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_transport_proto_rawDesc = "" +
 	"\n" +
-	"\x1eremoteagent/v1/transport.proto\x12\x0eremoteagent.v1\"\xa0\x01\n" +
+	"\x1eremoteagent/v1/transport.proto\x12\x0eremoteagent.v1\x1a!remoteagent/v1/capabilities.proto\"\xa0\x01\n" +
 	"\x11DirectedPeerFrame\x12\x1b\n" +
 	"\tto_device\x18\x01 \x01(\fR\btoDevice\x12;\n" +
 	"\vframe_class\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.FrameClassR\n" +
@@ -3297,7 +3358,11 @@ const file_remoteagent_v1_transport_proto_rawDesc = "" +
 	"\x10original_purpose\x18\x01 \x01(\x0e2\x1a.remoteagent.v1.FrameClassR\x0foriginalPurpose\x12(\n" +
 	"\x10original_type_id\x18\x02 \x01(\rR\x0eoriginalTypeId\x12!\n" +
 	"\foriginal_seq\x18\x03 \x01(\x04R\voriginalSeq\x12'\n" +
-	"\x0foriginal_sha256\x18\x04 \x01(\fR\x0eoriginalSha256*B\n" +
+	"\x0foriginal_sha256\x18\x04 \x01(\fR\x0eoriginalSha256\"\xa6\x01\n" +
+	"\x12CapabilitySnapshot\x12#\n" +
+	"\rcapability_id\x18\x01 \x01(\fR\fcapabilityId\x12G\n" +
+	"\fcapabilities\x18\x02 \x01(\v2#.remoteagent.v1.MachineCapabilitiesR\fcapabilities\x12\"\n" +
+	"\rexpires_at_ms\x18\x03 \x01(\x03R\vexpiresAtMs*B\n" +
 	"\n" +
 	"FrameClass\x12\x1b\n" +
 	"\x17FRAME_CLASS_UNSPECIFIED\x10\x00\x12\n" +
@@ -3345,7 +3410,7 @@ func file_remoteagent_v1_transport_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_transport_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_remoteagent_v1_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_remoteagent_v1_transport_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_remoteagent_v1_transport_proto_goTypes = []any{
 	(FrameClass)(0),             // 0: remoteagent.v1.FrameClass
 	(Role)(0),                   // 1: remoteagent.v1.Role
@@ -3390,6 +3455,8 @@ var file_remoteagent_v1_transport_proto_goTypes = []any{
 	(*DirectPolicy)(nil),        // 40: remoteagent.v1.DirectPolicy
 	(*PolicyReply)(nil),         // 41: remoteagent.v1.PolicyReply
 	(*Unsupported)(nil),         // 42: remoteagent.v1.Unsupported
+	(*CapabilitySnapshot)(nil),  // 43: remoteagent.v1.CapabilitySnapshot
+	(*MachineCapabilities)(nil), // 44: remoteagent.v1.MachineCapabilities
 }
 var file_remoteagent_v1_transport_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.v1.DirectedPeerFrame.frame_class:type_name -> remoteagent.v1.FrameClass
@@ -3423,11 +3490,12 @@ var file_remoteagent_v1_transport_proto_depIdxs = []int32{
 	5,  // 28: remoteagent.v1.DirectPolicy.scope:type_name -> remoteagent.v1.PolicyScope
 	5,  // 29: remoteagent.v1.PolicyReply.scope:type_name -> remoteagent.v1.PolicyScope
 	0,  // 30: remoteagent.v1.Unsupported.original_purpose:type_name -> remoteagent.v1.FrameClass
-	31, // [31:31] is the sub-list for method output_type
-	31, // [31:31] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	44, // 31: remoteagent.v1.CapabilitySnapshot.capabilities:type_name -> remoteagent.v1.MachineCapabilities
+	32, // [32:32] is the sub-list for method output_type
+	32, // [32:32] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_transport_proto_init() }
@@ -3435,6 +3503,7 @@ func file_remoteagent_v1_transport_proto_init() {
 	if File_remoteagent_v1_transport_proto != nil {
 		return
 	}
+	file_remoteagent_v1_capabilities_proto_init()
 	file_remoteagent_v1_transport_proto_msgTypes[6].OneofWrappers = []any{}
 	file_remoteagent_v1_transport_proto_msgTypes[15].OneofWrappers = []any{}
 	file_remoteagent_v1_transport_proto_msgTypes[27].OneofWrappers = []any{}
@@ -3444,7 +3513,7 @@ func file_remoteagent_v1_transport_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_transport_proto_rawDesc), len(file_remoteagent_v1_transport_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   36,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

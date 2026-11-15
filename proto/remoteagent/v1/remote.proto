@@ -3,6 +3,7 @@ syntax = "proto3";
 package remoteagent.v1;
 
 import "remoteagent/v1/event.proto";
+import "remoteagent/v1/capabilities.proto";
 import "remoteagent/v1/local.proto";
 import "remoteagent/v1/relay.proto";
 
@@ -110,33 +111,6 @@ message QuotaWindow {
   int64 window_minutes = 4;
 }
 
-message MachineCapabilities {
-  reserved 1, 7, 8, 9, 11;
-  // Images can be uploaded here: not when the remote-agent folder's path
-  // has spaces, which the CLIs do not take in image paths.
-  bool image_upload = 2;
-  int32 max_images_per_message = 3;
-  // Largest image BeginImageUpload accepts.
-  int64 max_upload_bytes = 4;
-  // Largest data in one PutImageChunk.
-  int32 max_chunk_bytes = 5;
-  // Formats BeginImageUpload accepts.
-  repeated ImageFormat upload_formats = 6;
-  // ResolveApprovalRequest.always.
-  bool approval_always = 10;
-  bool scheduled_tasks = 12;
-  // Arbitrary files, as-is; requires an upload root without whitespace.
-  bool file_upload = 13;
-  int64 max_file_upload_bytes = 14;
-  int32 max_files_per_message = 15;
-  // Files the agent offers (ToolCall.shared_files) can be fetched with
-  // GetSharedFileChunk.
-  bool shared_files = 16;
-  int64 max_shared_file_bytes = 17;
-  // Every GetSharedFileChunkResponse.data is exactly this long.
-  int32 shared_file_chunk_bytes = 18;
-  bool machine_status = 19;
-}
 
 message AgentInfo {
   Agent agent = 1;

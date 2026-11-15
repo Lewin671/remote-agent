@@ -31,6 +31,8 @@ func scalarLimit(kind string) uint64 {
 		return 1
 	case "u32":
 		return 1<<32 - 1
+	case "i32":
+		return 1<<31 - 1
 	case "i64":
 		return 1<<63 - 1
 	}
@@ -167,7 +169,7 @@ func ParseMessage(raw []byte, name string) (map[uint64]Field, error) {
 }
 
 var signalSchemas = map[uint64]string{1: "Probe", 2: "Challenge", 3: "SDP", 4: "SDP", 5: "Candidates", 6: "EndCandidates", 7: "Confirm", 8: "Restart", 9: "Close"}
-var controlSchemas = map[uint64]string{1: "Capabilities", 2: "AttachPath", 3: "InputStatus", 4: "Ack", 5: "Replay", 6: "Barrier", 7: "StreamFailed", 8: "ClosePath", 9: "DirectPolicy", 10: "Unsupported", 11: "InputStatusReply", 12: "BarrierReply", 13: "PolicyReply"}
+var controlSchemas = map[uint64]string{1: "Capabilities", 2: "AttachPath", 3: "InputStatus", 4: "Ack", 5: "Replay", 6: "Barrier", 7: "StreamFailed", 8: "ClosePath", 9: "DirectPolicy", 10: "Unsupported", 11: "InputStatusReply", 12: "BarrierReply", 13: "PolicyReply", 14: "CapabilitySnapshot"}
 
 func KnownPayload(class, typ uint64, raw []byte) ([]byte, error) {
 	names := signalSchemas

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import * as w from "./wire";
+import { knownPayload } from "./schema";
 import { validateSDP } from "./sdp";
 import { fixture, fixtureCodec } from "../../test/peer/fixture";
 import { replay } from "../../test/peer/replay";
@@ -22,6 +23,14 @@ describe("production protocol 16 peer codec", () => {
       expect(opened.raw, row.name).toEqual(raw);
     }
     expect(corpus.rows).toHaveLength(27);
+  });
+  it("authenticates the full capability snapshot and rejects expiry, wrong binding and old instances", async () => {
+    const rows = JSON.parse(readFileSync(new URL("wire/capability-snapshot.json", root), "utf8")) as {name:string;packet_hex:string;accept:boolean}[];
+    const codec=await fixtureCodec(), machine=await fixture("machine",2), client=await fixture("client",1), now=1700000000000;
+    for (const row of rows) {
+      const open=async () => { const o=await codec.open(w.unhex(row.packet_hex),machine,client,now); knownPayload(2,14,o.payload);const f=w.fields(o.payload,"CapabilitySnapshot"), expires=w.getUint(f,3); if(expires<=BigInt(now)||expires<=o.context.issued||expires-o.context.issued>60000n) throw new Error("expired");return o; };
+      if(row.accept) expect((await open()).type).toBe(14); else await expect(open(),row.name).rejects.toThrow();
+    }
   });
   it("validates every frozen native SDP original and negative fixture", () => {
     const rows = JSON.parse(readFileSync(new URL("sdp/manifest.json", root), "utf8")) as { file: string; accept: boolean }[];

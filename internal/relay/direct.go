@@ -26,6 +26,7 @@ import (
 type directPeer struct {
 	paths            [2]*direct.Path
 	nextCapabilities uint64
+	lastCapabilities *pb.MachineCapabilities
 	policyVersion    directPolicyVersion
 	processValid     atomic.Bool
 	session          *direct.Session
@@ -81,6 +82,7 @@ type directManager struct {
 	announced           uint64
 	stun                []string
 	loopback            bool
+	capabilities        atomic.Pointer[pb.MachineCapabilities]
 }
 
 func newDirectManager(d *dispatcher) (*directManager, error) {
@@ -126,6 +128,7 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	}
 	m.workers.Go(m.writeLoop)
 	m.workers.Go(m.maintenance)
+	m.workers.Go(m.capabilityLoop)
 	return m, nil
 }
 func (m *directManager) close() {
@@ -322,7 +325,10 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 				}
 				return 0, nil
 			}
-			if o.Type == 1 {
+			if o.Type == 1 || o.Type == 14 {
+				if _, err := peerwire.CapabilityExpiry(o, now); err != nil {
+					return 0, nil
+				}
 				return 4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use))
 			}
 			return 0, nil
@@ -530,6 +536,7 @@ func (m *directManager) maintenance() {
 			return
 		case <-t.C:
 		}
+		capabilities := m.capabilities.Load()
 		m.mu.Lock()
 		if m.closed {
 			m.mu.Unlock()
@@ -565,12 +572,16 @@ func (m *directManager) maintenance() {
 			}
 		}
 		for _, p := range m.active {
-			if p.session.Established() && p.session.Active() && now >= p.nextCapabilities {
+			if p.session.Established() && p.session.Active() && (now >= p.nextCapabilities || !proto.Equal(p.lastCapabilities, capabilities)) {
 				var id [16]byte
 				_, _ = rand.Read(id[:])
-				body := peerwire.PB(peerwire.B(1, id[:]), peerwire.U(2, 1), peerwire.U(2, 4), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 13), peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9), peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20))
-				if p.session.SendControl(1, body) {
+				body := peerwire.PB(peerwire.B(1, id[:]), peerwire.U(2, 1), peerwire.U(2, 4), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9), peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20))
+				snapshot, err := proto.Marshal(&pb.CapabilitySnapshot{CapabilityId: id[:], Capabilities: capabilities, ExpiresAtMs: int64(now + 60000)})
+				if p.session.SendControl(1, body) && err == nil && capabilities != nil && p.session.SendControl(14, snapshot) {
 					p.nextCapabilities = now + 55000
+					p.lastCapabilities = proto.Clone(capabilities).(*pb.MachineCapabilities)
+				} else {
+					p.nextCapabilities = now + 1000
 				}
 			}
 		}
@@ -622,4 +633,22 @@ func (m *directManager) choose(chosen *directPeer) {
 		}
 	}
 	m.active[chosen.binding.Peer.ID] = chosen
+}
+
+// Metadata reads are isolated from receipt expiry and membership refresh. A
+// backend stalled in publication cannot delay either transport deadline.
+func (m *directManager) capabilityLoop() {
+	timer := time.NewTicker(time.Second)
+	defer timer.Stop()
+	for {
+		meta := m.d.endpoint.r.backend.MachineMeta()
+		if caps := meta.GetCapabilities(); caps != nil {
+			m.capabilities.Store(proto.Clone(caps).(*pb.MachineCapabilities))
+		}
+		select {
+		case <-m.ctx.Done():
+			return
+		case <-timer.C:
+		}
+	}
 }

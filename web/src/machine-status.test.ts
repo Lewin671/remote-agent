@@ -1,7 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { MachineStatusSchema, ResourceUsageSchema, DiskStatusSchema } from "./gen/remoteagent/v1/local_pb";
-import { MachineMetaSchema, MachineCapabilitiesSchema, ProjectSummarySchema } from "./gen/remoteagent/v1/remote_pb";
+import { MachineMetaSchema, ProjectSummarySchema } from "./gen/remoteagent/v1/remote_pb";
+import { MachineCapabilitiesSchema } from "./gen/remoteagent/v1/capabilities_pb";
 import { MachineStatusController, stableUsage, machineDiskReminder, recentMachineProject, isDiskFull } from "./machine-status";
 afterEach(()=>vi.useRealTimers());
 it("polls immediately, retains values after three failures, recovers and stops when hidden", async()=>{

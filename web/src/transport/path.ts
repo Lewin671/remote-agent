@@ -1,7 +1,7 @@
 import type { Client, ConnectError } from "@connectrpc/connect";
 import type { ClientService } from "../gen/remoteagent/v1/relay_pb";
 import type { Envelope } from "../gen/remoteagent/v1/envelope_pb";
-import type { MachineCapabilities } from "../gen/remoteagent/v1/remote_pb";
+import type { MachineCapabilities } from "../gen/remoteagent/v1/capabilities_pb";
 
 /** Discovery and path readiness are separate from permission to execute.
  * Relay-only discovery keeps the existing authenticated metadata semantics. */
@@ -29,6 +29,7 @@ export interface FrameStream {
 }
 
 export interface PathAttempt {
+  readonly direct?: boolean;
   readonly attemptId: string;
   prepare(): Promise<void>;
   send(machineId: string, command: Envelope, signal?: AbortSignal): Promise<ForwardReply>;

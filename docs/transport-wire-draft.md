@@ -83,7 +83,7 @@ SDP 只允许 trickle：Offer/Answer/Restart 的任何内嵌 `a=candidate` 均�
 | 域 | 固定 ID（已冻结） | Payload 上限/补充约束 |
 |---|---|---|
 | PeerSignal | 1 Probe，2 Challenge，3 Offer，4 Answer，5 Candidate，6 EndCandidates，7 Confirm，8 Restart，9 Close | 完整 Signal ≤64 KiB；SDP 预留封装空间，候选每条编码 ≤1 KiB、批≤16、每代≤64/4批 |
-| TransportControl | 1 Capabilities，2 AttachPath，3 InputStatus，4 Ack，5 Replay，6 Barrier，7 StreamFailed，8 ClosePath，9 DirectPolicy，10 Unsupported，11 InputStatusReply，12 BarrierReply，13 PolicyReply | 完整 Control ≤16 KiB；Signal ACK ≤1 KiB；结果明细需分页且绑定同一查询/屏障快照，不能每页观察不同水位 |
+| TransportControl | 1 Capabilities，2 AttachPath，3 InputStatus，4 Ack，5 Replay，6 Barrier，7 StreamFailed，8 ClosePath，9 DirectPolicy，10 Unsupported，11 InputStatusReply，12 BarrierReply，13 PolicyReply，14 CapabilitySnapshot | 完整 Control ≤16 KiB；Signal ACK ≤1 KiB；结果明细需分页且绑定同一查询/屏障快照，不能每页观察不同水位 |
 
 Signal ACK 另携带被确认 generation/use；包括 bootstrap 的 generation=0，不能只靠数值 seq 关联另一条 PC 或另一代。
 Ack 不请求 ACK；Unsupported/明确回复类型也不产生确认回环。回复以关联请求 seq/hash 和双方实例绑定，
@@ -118,3 +118,7 @@ SDK 创建描述的回调属于该 round/generation；已发出的 SDK 动作另
 物理腿代次只约束分片/腿，不能取消已准入的后端执行。已经完成的后端证据须保留在原 owner 下，
 过期或新实例的等待者不再接收回复，不能把已执行改成未执行或再次注入。每一页 InputStatusReply、BarrierReply、结果和 ACK 在最终发出时均重查当前有效租约、双方当前成员及密钥、逻辑 owner/授权代次和原请求期限；排队时检查不能替代发送时检查。物理腿切换不改变逻辑 owner。授权失败只抑制发送，已完成的执行证据照常保留。
 候选字符串采用 ASCII token，`ufrag` 扩展必须小写且最多出现一次（相同值重复也拒绝）；非 CRLF 的行分隔符不进入 SDP。
+
+## 冻结后的第一个扩展：CapabilitySnapshot（Control 14）
+
+2026-11-15 负责人裁定：新增 type 14，完整携带现有 MachineCapabilities、capability_id 和最长 60 秒的 expires_at_ms。沿用同一设备对签名与进程实例、成员 head 绑定；过期、旧实例或绑定不符拒绝。Capabilities（type 1）的字段和语义不变。未知接收端先认证再返回 Unsupported，发起方保留 relay。直连上传须持有有效快照且其中允许上传；无快照或已过期时上传走 relay，下载不受影响。协议 16 未发布，本次不升协议号。字段定义见产品 transport.proto；MachineCapabilities 仅移到独立 proto 文件以避免循环 import，既有编号和含义未变。
