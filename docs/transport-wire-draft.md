@@ -1,9 +1,9 @@
-# 传输 wire 草案
+# 传输 wire 契约（协议 16）
 
-**草案，待负责人冻结。** 本文为第 1 期实验提出字段和安全编码，不代表产品已接入；
+**已冻结（协议 16），2026-11-15，负责人裁定 7。** 字段和既有语义已冻结；文件名保留供现有链接使用，不代表产品已接入。整合时若 16 已被占用，顺延到可用协议号。冻结后同协议只能新增可认证后返回 Unsupported、保留 relay 且不改变已有语义的类型，不能修改现有语义；
 既定语义以 [transport](transport.md) 为准，未决项在 [plan](plan.md#传输模块与直连)。
 完整引导的成功前提已裁定为整轮合计最多丢两帧；[串行重试模型](transport-notes.md#8-完整引导链的串行重试下界)中更强的丢失组合用于检查按时退路。信令轨迹、封装一致性和终端假路径证据见[实测](transport-notes.md#9-四端信令真实封装与跨-sdk-互连)；产品适配闭环与真机性能不在本实验中宣称完成。
-字段草案在 [transport-draft.proto](../spike/transport-1a/wire/transport-draft.proto)，不参与现有生成流程。
+冻结字段在 [transport-draft.proto](../spike/transport-1a/wire/transport-draft.proto)，不参与现有生成流程。
 
 ## 格式边界
 
@@ -20,12 +20,12 @@ AttachPath 按原 stream、sender、session、双方进程实例、腿 ID/代次
 InputStatus 的 unavailable 与 daemon 实例变化要求人工核对，不能自动重发未知输入。
 输出缓存同输入侧一样，在插入前核对实际保留的完整编码字节不超过 1 MiB；重复不增量，渲染消费扣除原计费量。输出序号缺口使用独立 10 秒期限，不能复用输入计时；已收到连续前缀但尚未渲染不算网络缺口。缺口未补齐进入网络恢复，不改变 Input fail-stop。
 输出待渲染帧及已渲染帧均核对原授权 hash；已渲染摘要不随输出 replay 正文驱逐。摘要已到期或不可得时，不能仅按 `seq <= rendered` 当作相同重发确认。
-InputStatusReply 的 snapshot token 绑定同一次串行查询的完整水位与明细；分页不能跨快照。NotApplied 是该快照中未应用的结果，只能在旧流按原授权去重续接；换新流重新授权前还必须取得停止旧流准入的最终 BarrierReply。
+InputStatusReply 必须先在同一个串行查询点冻结 to_daemon 和 to_client 两方向的全部水位与明细，再把完整 FlowState 绑定到 snapshot token。每页和相应 BarrierReply 必须使用这份冻结的双向状态，不能在发下一页时读取 live rendered 水位；仅输出方向变化也必须得到不同 token。分页不能跨快照。NotApplied 是该快照中未应用的结果，只能在旧流按原授权去重续接；换新流重新授权前还必须取得停止旧流准入的最终 BarrierReply。
 终端明细的 hash 沿用第 0a RequestIdentity 的原授权 hash，不能用换密钥后会变化的密文 hash；Fragment 的 hash 则是当前整密文 hash。
 
 ## 编码与认证顺序
 
-草案选择 `TypedPayload { uint32 type_id; bytes payload; }`，不用 protobuf oneof 承载可扩展类型。
+本契约使用 `TypedPayload { uint32 type_id; bytes payload; }`，不用 protobuf oneof 承载可扩展类型。
 未知 type ID 的原字节仍能完成认证，然后返回认证 Unsupported；不会执行或调用 SDK。
 已知类型 payload 只允许规定字段及范围；不以默认值补缺必需字段。所有整数先检查范围/溢出，
 单帧、候选、分片、缓存条数与时间上限在分配内存前核对，protobuf 解析有深度限制。
@@ -80,7 +80,7 @@ SDP 只允许 trickle：Offer/Answer/Restart 的任何内嵌 `a=candidate` 均�
 
 ## 类型表与大小
 
-| 域 | 固定 ID（草案） | Payload 上限/补充约束 |
+| 域 | 固定 ID（已冻结） | Payload 上限/补充约束 |
 |---|---|---|
 | PeerSignal | 1 Probe，2 Challenge，3 Offer，4 Answer，5 Candidate，6 EndCandidates，7 Confirm，8 Restart，9 Close | 完整 Signal ≤64 KiB；SDP 预留封装空间，候选每条编码 ≤1 KiB、批≤16、每代≤64/4批 |
 | TransportControl | 1 Capabilities，2 AttachPath，3 InputStatus，4 Ack，5 Replay，6 Barrier，7 StreamFailed，8 ClosePath，9 DirectPolicy，10 Unsupported，11 InputStatusReply，12 BarrierReply，13 PolicyReply | 完整 Control ≤16 KiB；Signal ACK ≤1 KiB；结果明细需分页且绑定同一查询/屏障快照，不能每页观察不同水位 |
@@ -95,13 +95,13 @@ PolicyReply 的 `request_seq`/`request_sha256` 回显**原请求**序号和首�
 PolicyReply 只证明哪个请求的结果；不替代 DirectPolicy 原有角色权限和策略持久化规则。
 所有类型都不能借控制队列执行任意 Command。既有五类 CommandResult、身份/业务冲突和正文可得性原样复用。
 
-## 协议号建议
+## 已冻结协议与扩展边界
 
-在协议 15 基线上引入这些新路由帧、Purpose 与授权语义，负责人已采纳升为 **16**，四端一起更新；
+在协议 15 基线上引入这些新路由帧、Purpose 与授权语义，负责人已冻结为 **16**，四端一起更新；
 真正整合时若 16 已被占用，顺延到当时可用的下一个号。本实验不改任何现有协议常量。
-固定编码冻结后，新增类型且旧端认证后返回 Unsupported、发起方保留 relay、不改变原操作语义，
+冻结后，新增类型且旧端认证后返回 Unsupported、发起方保留 relay、不改变原操作语义，
 可在同一协议内扩展。已有字段、角色、类别、授权、ACK 水位或未知类型处理含义变化须升协议，不能添加旧协议推断分支。
-本草案未涉及存储迁移；实际实施若需要数据重建或协同升级，必须写清公开升级要求。
+本契约未涉及存储迁移；实际实施若需要数据重建或协同升级，必须写清公开升级要求。
 
 
 ## 缓存与延迟交付契约
@@ -109,7 +109,7 @@ PolicyReply 只证明哪个请求的结果；不替代 DirectPolicy 原有角色
 issued_at 必须早于 deadline；交付截止统一为 `now < deadline`。既有 MaxClockSkew 只用于签发时钟检查，不延长 deadline；到原 deadline 即失效，重试、限流、重组、换腿或出队不延长它。
 信令接收器保存冻结原包，出乱序缓存与 SDK 动作实际交付前，按当前成员/进程绑定、connection、用途/代次重新验证；
 缺口期限取仍跨越缺口的首次到达时间 +2.5 秒与等待帧原 deadline、整轮截止时间的最小值。
-已经确认过的旧代重复只可作原身份的幂等确认，不重新推进当前代次或调用 SDK。
+已接受帧（包括 Close）关闭连接或退休 generation 后，只要当前租约/成员/双方实例、原 connection 和原 deadline 仍有效，必须仍能按首次冻结原包 hash 幂等确认。回执路径以保留的原 hash 为准，不能用 Closed 或当前 generation 阻断；它不重新开放 SDK 准入，不推进新代次，不确认冲突 hash、未见旧包或已失效授权。ACK/Unsupported/明确回复类型不产生 ACK 回环。
 发送窗口、候选汇集和传输写队列必须携带原期限及 owner 的身份/代次绑定标记；换绑定清空旧队列，网络通知不能重置总期限。
 SDK 创建描述的回调属于该 round/generation；已发出的 SDK 动作另保留原认证消息，不能靠一次到达时验签授权迟到执行。
 

@@ -82,6 +82,9 @@ func (s *Stream) reply(typ uint64, body []byte, auth authorization) []byte {
 	opened, e := labwire.Open(packet, s.sec.machineWire.Public(), s.sec.clientWire, s.now)
 	must(e)
 	check(opened.Type == typ && bytes.Equal(opened.Context.Connection, conn), "reply binding")
+	if s.replyObserver != nil {
+		s.replyObserver(typ, append([]byte(nil), opened.Payload...))
+	}
 	return opened.Payload
 }
 func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
@@ -105,7 +108,9 @@ func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 				reply(Status{})
 				return
 			}
-			full := watermark(st)
+			input := watermark(st)
+			output := watermark(Status{Processed: s.rendered})
+			full := labwire.PB(labwire.B(1, input), labwire.B(2, output))
 			token := labwire.Hash(full)
 			result := Status{Available: st.Available, Final: st.Final, Processed: st.Processed, InputSuccess: st.InputSuccess, Failed: st.Failed}
 			pages := max(1, len(st.Details))
@@ -115,7 +120,7 @@ func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 				if len(st.Details) > 0 {
 					page.Details = []Detail{st.Details[n]}
 				}
-				flow := labwire.PB(labwire.B(1, watermark(page)), labwire.B(2, watermark(Status{Processed: s.rendered})))
+				flow := labwire.PB(labwire.B(1, watermark(page)), labwire.B(2, output))
 				response := labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.U(3, 1), labwire.B(4, token), labwire.B(5, flow), labwire.U(6, uint64(n+1)), labwire.U(7, uint64(boolInt(n == pages-1))))
 				raw := s.reply(11, response, auth)
 				if raw == nil {
@@ -127,18 +132,20 @@ func (s *Stream) secureStatus(path string, final bool, reply func(Status)) {
 				check(bytes.Equal(r[1].B, []byte(s.id)) && bytes.Equal(r[2].B, id) && bytes.Equal(r[4].B, token), "snapshot binding")
 				flows, e := labwire.ParseMessage(r[5].B, "FlowState")
 				must(e)
+				check(bytes.Equal(flows[2].B, output), "output snapshot changed")
 				decoded := parseWatermark(flows[1].B)
 				result.Details = append(result.Details, decoded.Details...)
 			}
+			check(bytes.Equal(labwire.Hash(labwire.PB(labwire.B(1, watermark(result)), labwire.B(2, output))), token), "full snapshot token")
 			if final {
-				raw := s.reply(12, labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.B(3, labwire.PB(labwire.B(1, full))), labwire.U(4, 1), labwire.U(5, 1)), auth)
+				raw := s.reply(12, labwire.PB(labwire.B(1, []byte(s.id)), labwire.B(2, id), labwire.B(3, full), labwire.U(4, 1), labwire.U(5, 1)), auth)
 				if raw == nil {
 					reply(Status{})
 					return
 				}
 				f, e := labwire.ParseMessage(raw, "BarrierReply")
 				must(e)
-				check(f[4].U == 1 && s.stopped, "nonfinal barrier")
+				check(f[4].U == 1 && s.stopped && bytes.Equal(f[3].B, full), "nonfinal or changed barrier snapshot")
 			}
 			reply(result)
 		}

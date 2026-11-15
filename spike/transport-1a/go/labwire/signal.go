@@ -95,14 +95,15 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 	}
 	o = fresh
 	c := o.Context
-	if !s.authorized() || s.Clock >= s.RoundDeadline {
+	if !s.authorized() {
 		return nil, ErrSignal
 	}
 	if !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(c.From, s.Peer.ID) {
 		s.Rejected++
 		return nil, ErrSignal
 	}
-	if e := s.preflight(&o); e != nil {
+	o.Payload, e = KnownPayload(c.Class, o.Type, o.Payload)
+	if e != nil {
 		return nil, e
 	}
 	key := Key(c)
@@ -114,7 +115,10 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 		s.Duplicates++
 		return nil, nil
 	}
-	if s.Closed && !s.Retired {
+	if e := s.preflight(&o); e != nil {
+		return nil, e
+	}
+	if s.Clock >= s.RoundDeadline || s.Closed && !s.Retired {
 		return nil, ErrSignal
 	}
 	if len(s.Seen) >= 2048 {
@@ -598,9 +602,13 @@ func (s *Signal) SetAuthorization(until uint64, members bool, revision uint64) {
 func (s *Signal) authorized() bool {
 	return s.Clock < s.LeaseUntil && s.MembersAuthorized && s.AuthorizationRevision == 1
 }
+
+// A receipt ACK uses the frozen accepted hash, not current PC admission.
+// Closing/retiring a generation never authorizes another SDK call, but cannot
+// prevent a still-authorized sender from settling its original transport ACK.
 func (s *Signal) ReplyAllowed(raw []byte, now uint64) bool {
 	s.Tick(now)
-	if s.Closed || !s.authorized() {
+	if !s.authorized() {
 		return false
 	}
 	o, e := Open(raw, s.Peer, s.Self, s.Clock)
@@ -608,10 +616,10 @@ func (s *Signal) ReplyAllowed(raw []byte, now uint64) bool {
 		return false
 	}
 	c := o.Context
-	if !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(s.Seen[Key(c)], o.Hash) || (c.Generation != 0 && c.Generation != s.Generation) {
+	if !bytes.Equal(c.Connection, s.Connection) || !bytes.Equal(s.Seen[Key(c)], o.Hash) || !bytes.Equal(c.SenderInstance, s.Peer.Instance) || !bytes.Equal(c.SenderBoot, s.Peer.Boot) {
 		return false
 	}
-	if e = s.preflight(&o); e != nil {
+	if _, e = KnownPayload(c.Class, o.Type, o.Payload); e != nil {
 		return false
 	}
 	return !(c.Class == 2 && (o.Type == 4 || o.Type == 10 || o.Type == 11 || o.Type == 12 || o.Type == 13))

@@ -1,3 +1,4 @@
+import {browserModules} from './browser-modules.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -8,7 +9,7 @@ const {chromium,webkit}=await import(pathToFileURL(modulePath));const config=JSO
 for(const [engine,driver,options]of [['chrome',chromium,{channel:'chrome',headless:true}],['webkit',webkit,{headless:true}]]){
  const browser=await driver.launch(options);
  try{const page=await browser.newPage();
-  if(corpusPath){const allowed=new Set(['wire.mjs','sender.mjs','sender-check.mjs','signal.mjs','sdp.mjs','signal-replay.mjs']);await page.route('**/lab/*.mjs',async route=>{const name=new URL(route.request().url()).pathname.split('/').pop();if(!allowed.has(name))return route.abort();await route.fulfill({contentType:'text/javascript',body:await fs.readFile(new URL(name,import.meta.url))})})}
+  if(corpusPath){const allowed=browserModules;await page.route('**/lab/*.mjs',async route=>{const name=new URL(route.request().url()).pathname.split('/').pop();if(!allowed.has(name))return route.abort();await route.fulfill({contentType:'text/javascript',body:await fs.readFile(new URL(name,import.meta.url))})})}
   await page.goto(config.url);
   if(corpusPath){const corpus=await fs.readFile(corpusPath,'utf8'),trace=await fs.readFile(tracePath,'utf8');const codec=await page.evaluate(async ({url,corpus,trace})=>{const c=await import(url+'/lab/sender-check.mjs'),s=await import(url+'/lab/signal-replay.mjs');return {...await c.capacity(corpus),...await s.replay(trace)}},{url:config.url,corpus,trace});results.push({engine,mode:'native-webcrypto-and-signal',...codec})}
   for(const mode of ['client-offer','peer-offer','dcep','undeclared']){

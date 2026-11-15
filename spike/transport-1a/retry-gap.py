@@ -137,9 +137,11 @@ class Experiment:
         when = max(origin + self.RETRIES[attempt + 1], not_before)
         self.event(when, lambda: self.send(frame, attempt + 1))
 
+    def receipt_allowed(self,frame):
+        return frame.schema_valid and self.authorized(frame) and self.now<frame.deadline and self.seen.get((frame.generation,frame.seq))==hashlib.sha256(repr(frame).encode()).digest()
+
     def acknowledge(self, frame):
-        if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return False
-        if not frame.schema_valid or not self.authorized(frame):return False
+        if not self.receipt_allowed(frame):return False
         self.ack_sends += 1
         self.record("ack_send", generation=frame.generation, seq=frame.seq)
         if self.drop_ack and not self.ack_dropped:
@@ -149,7 +151,7 @@ class Experiment:
         # Independent Control fake path: no ACK-of-ACK.
         def arrive():
             if not self.authorized(frame):return
-            if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return
+            if not self.receipt_allowed(frame):return
             key = (frame.generation, frame.seq)
             self.acked.add(key)
             self.outstanding.discard(key)
@@ -159,11 +161,13 @@ class Experiment:
     def receive(self, frame):
         if not frame.schema_valid or not self.authorized(frame):return False
         gen = frame.generation
+        if self.receipt_allowed(frame):
+            self.record("duplicate",generation=gen,seq=frame.seq);self.acknowledge(frame);return
         key = (gen, frame.seq)
         if gen!=self.current or gen in self.retired or self.now>=frame.deadline:
             self.record("stale_generation", generation=gen, seq=frame.seq)
             return
-        digest = hashlib.sha256(frame.payload).digest()
+        digest = hashlib.sha256(repr(frame).encode()).digest()
         if key in self.seen:
             if self.seen[key] != digest:
                 raise AssertionError("conflicting retransmission")
@@ -192,7 +196,7 @@ class Experiment:
         if not frame.schema_valid or not self.authorized(frame):return False
         if self.now>=frame.deadline or frame.generation!=self.current or frame.generation in self.retired:return False
         key = (frame.generation, frame.seq)
-        self.seen[key] = hashlib.sha256(frame.payload).digest()
+        self.seen[key] = hashlib.sha256(repr(frame).encode()).digest()
         self.expected[frame.generation] += 1
         self.sdk_calls.append((frame.generation, frame.kind))
         self.record("would_call_sdk", generation=frame.generation, kind=frame.kind)

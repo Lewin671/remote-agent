@@ -1,4 +1,4 @@
-// 草案，待负责人冻结。Standalone only; NOT imported by production protos.
+// 已冻结（协议 16，2026-11-15）。Standalone only; NOT imported by production protos.
 syntax = "proto3";
 package transport.lab.draft;
 

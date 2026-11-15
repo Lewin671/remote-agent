@@ -177,11 +177,11 @@ Answerer 的 Confirm 已允许与 Answer 重试并行；不要求 Confirm 等 IC
 每条关键消息只丢初发的对照与无丢包对照均 16/16 Ready。
 
 模型分别载入五个 SDK/引擎的原串，均复现相同时序；仍是同一个 Python 模型，不冒称五套 SDK 信令状态机。
-它只统计原始 payload 字节，不包含尚未冻结的加密/wire 编码，所以不判 3 MiB 生产帧预算通过。
+它只统计原始 payload 字节，不包含当时模型未包含的加密/wire 编码，所以不判 3 MiB 生产帧预算通过。
 即使把这些开销免费处理，下界 **3+5×1.5=10.5 秒**仍大于 10 秒。
 
 这证明“每条逻辑信令最多丢两份”不能由只加一次 1.5 秒的算术保证本次 10 秒成功。
-另做更有利的变体：假定 daemon 已知客户端 nonce，主动发 Challenge，完全省去等待 Probe；同时允许 Confirm 与 ICE/DTLS 并行。即便如此，ICE/DTLS 用设计允许的 3 秒、从双方 SDP 可安装后完成，仍有 `3+3×1.5+max(1.5,3)=10.5 秒`，模型也是 0/16 Ready。这不是当前 SDK 实际耗时，而是设计分项允许值内的反例；没有把主动 Challenge 宣布为已冻结规则。
+r5 复核发现先前的主动 Challenge 变体漏记 Probe，结果实际停在关联检查，原先的 0/16 Ready 不能作为重试/ICE 时序证据。**2026-11-15 已修正并重新测量**：明确假设计时前已经发送、记录并收到一条仍有效的 Probe，daemon 仅从这条 Probe 获得客户端 nonce，Challenge 绑定它的原 hash；客户端仍通过正常 Challenge 才学习 daemon nonce。没有跳过关联检查，也没有把该假设当成冷启动。五组 SDK 原串都得到：无丢包对照 16/16 Ready、6,050 ms；每条关键消息丢两份时，Offer/Answer 各安装 16 个、引导拒绝为 0，16 个 ICE 完成事件排在 10,500 ms，因此在 10 秒截止为 0/16 Ready。该变体才实际支持 `3+3×1.5+max(1.5,3)=10.5 秒` 的乐观下界；它超出整轮最多丢两帧前提，不是实际 SDK 时延或无 Probe 的主动 Challenge 规则。
 
 负责人已裁定成功前提为整轮合计最多丢两帧；上面的逐消息丢两份保留为超出前提的退路场景。每条最多三份、2.5 秒缺口、32 条窗口、10 秒总期限及 128 帧/3 MiB 均保留。超时释放本轮资源，保留防重放依据并按全抖动退避，不能因新网络通知延长本轮或清零退避。
 
@@ -199,7 +199,7 @@ r2 时序仍为 Offer 4000 ms 获准、7050 ms Ready，显式 Challenge ACK 5510
 ## 9. 四端信令、真实封装与跨 SDK 互连
 
 **独立实验，2026-11-15；仍非产品直连验收。** Go、浏览器 WebCrypto（Chrome/WebKit）、Java/JVM（Bouncy Castle 1.85）
-和 Swift/CryptoKit 各实现同一草案 codec、信令接收器、发送窗口及候选汇集器。
+和 Swift/CryptoKit 各实现同一 wire codec（现已冻结为协议 16）、信令接收器、发送窗口及候选汇集器。
 [共享 sealed 轨迹](../testdata/transport/signal/scenarios.tsv)分 Signal/Control 两条可乱序、重放或丢失的假管道，
 141 个共享场景、2,005 个断言包含 Probe/Challenge、Offer/Answer、候选/End、Confirm、Restart/Close、glare 角色门、
 旧 SDK callback token、未来代候选先到、同序号冲突、固定缺口期限和未知类型认证 Unsupported。
@@ -251,7 +251,7 @@ Resize 失败不 fail-stop、换密钥仅重新加密原业务字节且只注入
 AttachPath 不调用 OpenTerminal、旧腿回调不能关新腿、实例变更要求核对、认证 InputStatus/分页回复/最终 Barrier/ACK、
 先核清再补发旧流、旧流最终停止准入后才重新授权明确未应用输入、16 活流+16 退休条目/30 秒清理。
 
-最小字段已落在 [wire 草案](transport-wire-draft.md)：应用 seq/原 deadline/原信封、path generation、整密文长度/hash、
+最小字段已落在 [wire 契约](transport-wire-draft.md)：应用 seq/原 deadline/原信封、path generation、整密文长度/hash、
 processed/input_success/failed_seq、每条原授权 hash 和 outcome/注入前缀区间、查询关联 ID/不可变 snapshot token/分页完成标志、
 最终 stop-admission barrier、Attach 的旧 stream/实例/新腿绑定。输出 replay 失效不传播成 Input fail-stop。
 四端 codec 可承载这些固定 type ID 与有界 protobuf；当前终端语义轨迹只在 Go 跑，Java/Swift/JS 终端移植尚未执行。
@@ -262,7 +262,7 @@ processed/input_success/failed_seq、每条原授权 hash 和 outcome/注入前�
 ## 11. 冻结前复核 r1 的六项修复
 
 **回归实测，2026-11-15，重定基到 v0.77.0 / 协议 15；未接产品路径。**
-负责人采纳的六项缺陷均有命名回归；字段与规范由 [wire 草案](transport-wire-draft.md)和 [transport §5](transport.md#5-协议与安全绑定)维护。
+负责人采纳的六项缺陷均有命名回归；字段与规范由 [wire 契约](transport-wire-draft.md)和 [transport §5](transport.md#5-协议与安全绑定)维护。
 
 | 复核项 | 回归与结果 |
 |---|---|
@@ -281,7 +281,7 @@ processed/input_success/failed_seq、每条原授权 hash 和 outcome/注入前�
 
 ## 12. 冻结前复核 r2 的五项修复
 
-**回归实测，2026-11-15，沿用 v0.77.0 / 协议 15 基线。** 规则见 [transport §5](transport.md#5-协议与安全绑定)与 [wire 草案](transport-wire-draft.md)。
+**回归实测，2026-11-15，沿用 v0.77.0 / 协议 15 基线。** 规则见 [transport §5](transport.md#5-协议与安全绑定)与 [wire 契约](transport-wire-draft.md)。
 
 | 复核项 | 观察与共享回归 |
 |---|---|
@@ -298,7 +298,7 @@ Go、JS/Node、Java/JVM、Swift 共用 **29 场景/636 断言**，四端 SDP 共
 
 ## 13. 冻结前 r3 与三类系统自查
 
-**2026-11-15，v0.77.0/协议 15 基线；实验 wire 仍待冻结。** 不再只按单个复现修补，
+**2026-11-15，v0.77.0/协议 15 基线；当时实验 wire 尚未冻结；r5 已冻结，见第 15 节。** 不再只按单个复现修补，
 [覆盖清单](../testdata/transport/audit/parity.json)逐项关联共享场景、实现与模型；报告另列四语言一致性表。
 
 - 冷启动：四端 Signal 构造时只保留成员身份、公钥和角色，peer instance/boot 为空。Context 24 只允许 Probe 表示未知接收方；Challenge 6 的 Probe hash 与有效本地原包匹配，才安装对端进程信息。未知表示出现在其他类型、无 Probe 的 Challenge、错 hash、过期 Probe 均拒绝。
@@ -315,7 +315,7 @@ Go、JS/Node、Java/JVM、Swift 共用 **29 场景/636 断言**，四端 SDP 共
 
 ## 14. 冻结前 r4：默认值、完整校验与发送授权
 
-**2026-11-15，沿用 v0.77.0/协议 15 基线，实验 wire 字段未变。** [覆盖清单](../testdata/transport/audit/parity.json)新增 (d)/(e)/(f) 列，完整语义见[编码草案](transport-wire-draft.md#缓存与延迟交付契约)。
+**2026-11-15，沿用 v0.77.0/协议 15 基线，实验 wire 字段未变。** [覆盖清单](../testdata/transport/audit/parity.json)新增 (d)/(e)/(f) 列，完整语义见[编码契约](transport-wire-draft.md#缓存与延迟交付契约)。
 
 | 审计类 | 四语言观察 | 模型及补充证据 |
 |---|---|---|
@@ -328,3 +328,26 @@ Go、JS/Node、Java/JVM、Swift 共用 **29 场景/636 断言**，四端 SDP 共
 重跑 **28,805 例**即时/晚 10 ms ACK 矩阵，整轮最多丢两帧全部 Ready，最慢 **8,560 ms**；r2 指定时序仍为 Offer 4,000 ms 准入、Challenge ACK 5,510 ms 到达、7,050 ms Ready。超前提按 10 秒结束、保留 relay、清理资源并退避。第 9 节真实封装预算不变。
 
 本轮使用独立 /tmp 状态、固定依赖和 CGO_ENABLED=0；仅重跑独立原型及浏览器，没有重装移动 SDK、测移动性能、接入产品 Link/Router 或做真实 CLI E2E。真实成员同步、策略持久化、peer-scope 多 PC 协调与应用生命周期仍是产品整合职责。模型中的实时授权是可撤销前提，不能替代真实租约验签。协议 16 仍是已采纳的整合建议，没有改生产常量、产品版本或生成物。
+
+
+## 15. r5 冻结收尾与浏览器互连复跑
+
+**2026-11-15，负责人裁定 7：wire 已冻结（协议 16）。** 本轮没有修改 wire 字段；整合时若协议号已占用则顺延。冻结后的扩展边界及两项产品硬性要求由[冻结契约](transport-wire-draft.md)维护；1a 完成，下一步产品实现。
+
+- 主动 Challenge 的旧关联缺失已修正，§8 已明确撤回旧模型输出作为时序证据，替换为有已记录 Probe 前提的真实复跑。五组原串的无丢包对照都在 6,050 ms 达到 16/16 Ready；逐消息丢两份的对照确实安装全部 Offer/Answer、无引导拒绝，ICE 排在 10,500 ms，按 10 秒截止退出。
+- 两个浏览器入口共用 allowlist，静态依赖图检查覆盖 10 个模块，防止再次漏掉 schema 依赖。**实际执行 README 的 cross-browser 命令**，携带容量 corpus、共享 trace 和独立本地 Pion peer；Chrome 157.0.8103.52、WebKit 27.2 均执行原生 WebCrypto 容量、150 场景/2,103 断言及四组 SDK 互连。不是用 check-browser-signal 代替跨 SDK 入口。
+- P3 回执：四语言及模型分离已接受原 hash 的幂等回执与当前 PC 准入。Close、显式换代、缺口退休和整轮结束均有共享回归；原期限/成员/实例/revision 失效、冲突、未见旧包拒绝，SDK dispatch 仍关闭，无 ACK 回环。
+- P3 快照：Go 终端在第一页之前冻结完整双向 FlowState 并计算 token。新共享预期在两页之间真实调用 render，页面输出水位仍是 `[0,0]`；后续查询是 1 且 token 改变；最终 BarrierReply 包含冻结的双向状态。终端仅有 Go 引擎，不宣称四端终端执行已完成。
+
+| 本次 Pion 互连 | Chrome | WebKit |
+|---|---:|---:|
+| 客户端 Offerer 全流程 | 608 ms | 289 ms |
+| Pion Offerer + restart 全流程 | 8,143 ms | 6,279 ms |
+| 其中 restart 诊断完成 | 6,478 ms | 5,969 ms |
+| 新探测在 2.5 秒内完成 | 否 | 否 |
+| 额外 DCEP 关闭 / 未声明 SID 不交业务 / candidate 负向门 | 通过 | 通过 |
+| 原生 WebCrypto 容量计算墙钟 | 344 ms | 679 ms |
+
+两端 restart 的 2.5 秒探测目标均未满足，保留失败观察；后续诊断完成不授权延长产品期限，也不证明真实恢复性能达标。其余三组 SDK 检查完成；双方应用传入 SDK 的 SDP 原串保持，SDK getter 的格式化单列记录。浏览器容量均为双向初发 256 帧/2,291,680 B、三份合计 768 帧/6,875,040 B；重试时钟为虚拟时间，非这些 SDK 互连的传输统计。
+
+独立 check-browser-signal 另外复跑两端共享轨迹与 45 项 SDP；verify.py 含模块图检查共 31 项，覆盖四语言、49 组终端预期、27 项密码学与完整 28,805 例矩阵。模型成功前提内最慢仍为 8,560 ms。隔离状态、固定依赖、CGO_ENABLED=0；未碰日常 daemon/手机/线上账户，未改生产协议常量或生成物，未作产品端到端验收。

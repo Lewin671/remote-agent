@@ -248,6 +248,7 @@ type Stream struct {
 	controlGeneration                                uint64
 	ackAuthorization                                 authorization
 	replyHook                                        func()
+	replyObserver                                    func(uint64, []byte)
 	controlPackets, controlBytes                     int
 	inputCache                                       map[uint64]Envelope
 	inputAt                                          map[uint64]uint64
@@ -960,6 +961,7 @@ func main() {
 	auditCases(sec, results)
 	authorizationCases(results)
 	controlValidationCases(results)
+	snapshotCases(results)
 	encoded, err := json.MarshalIndent(map[string]any{"evidence": "two fake paths; real existing business envelope; fake tmux", "scenarios": results}, "", "  ")
 	must(err)
 	fmt.Println(string(encoded))

@@ -22,6 +22,7 @@
     "audit_output_original_deadline": true,
     "audit_output_successive_and_split_gaps": true,
     "audit_replay_and_send_cache_bounds": true,
+    "audit_terminal_controls_before_effects": true,
     "authenticated_ack_batching": true,
     "authenticated_controls": {
       "bytes": 1359,
@@ -31,6 +32,16 @@
     "conflict_no_inject": true,
     "final_barrier_before_new_authorization": true,
     "fragment_expiry": true,
+    "frozen_bidirectional_status_snapshot": {
+      "barrier_output_watermark": 1,
+      "input_processed": 2,
+      "later_output_watermark": 1,
+      "output_changes_token": true,
+      "page_output_watermarks": [
+        0,
+        0
+      ]
+    },
     "gap_network_recovery": true,
     "input_cache_backpressure": {
       "bytes": 64400,
@@ -150,7 +161,6 @@
     "status_reply_and_old_stream_resend": {
       "control_bytes": 3721,
       "control_packets": 5
-    },
-    "audit_terminal_controls_before_effects": true
+    }
   }
 }

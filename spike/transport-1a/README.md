@@ -2,7 +2,7 @@
 
 只验证设计前提与字段，不导入产品 Link/Router，不启用直连、不修改生产协议常量。
 [设计](../../docs/transport.md)、[实测与证据边界](../../docs/transport-notes.md#6-信令重试与缺口期限的模型验证)、
-[草案，待负责人冻结](../../docs/transport-wire-draft.md)分别负责规则、结果和候选编码。
+[已冻结（协议 16）](../../docs/transport-wire-draft.md)分别负责规则、结果和冻结编码。
 
 ## 代码与证据分层
 
@@ -49,8 +49,8 @@ REMOTE_AGENT_HOME=/tmp/transport-lab/state CGO_ENABLED=0 \
 
 - `testdata/transport/sdp`：15 份 SDK 原串、1 份继承指纹正例、29 份负例，共 45 项；原串禁文本换行转换。
 - `testdata/transport/wire`：27 项真实密码学向量。所有身份种子是公开测试材料；绝不能用于账户。
-- `testdata/transport/signal/scenarios.tsv`：141 个共享场景、2,005 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
-- `testdata/transport/terminal/expected.json`：48 组终端模型预期；不是四套终端引擎均已执行的声明。
+- `testdata/transport/signal/scenarios.tsv`：150 个共享场景、2,103 个断言；RX 的类别在签名包内，顺序/时间/拒绝结果显式记录。
+- `testdata/transport/terminal/expected.json`：49 组终端模型预期；不是四套终端引擎均已执行的声明。
 
 `signal-vectors.mjs testdata/transport/sdp /tmp/transport-lab/signal` 可重新生成并先用 JS 执行轨迹；
 seal 使用新随机数，所以重生成的包字节不同，语义预期不变。同一发送的副本则必须逐字节相同。
@@ -67,7 +67,7 @@ CryptoKit 的签名可随机化；Swift CLI 先核对固定随机输入下密文
 r2 增加 Offer 的隐式引导确认、原 Challenge Context 的 ACK 绑定和 trickle-only SDP 门；
 CASE 显式声明 PC use，CHALLENGE 保存原 sealed 包；正确 bootstrap ACK 的 acknowledged generation/use 均为 0。
 普通 Probe ACK 不替代 Challenge。共享终端预期另验完整编码字节计费及输出独立 10 秒缺口，连续已收但未渲染不算丢帧。
-整轮丢失模型执行相同的 nonce/ACK 准入顺序：两种 Control ACK 顺序各 14,884 例，加审查指定时序共 29,769 例，
+整轮丢失模型执行相同的 nonce/ACK 准入顺序：冷启动修正后的两种 Control ACK 顺序各 14,402 例，加审查指定时序共 28,805 例，
 最慢 8,560 ms；关闭隐式证明的负对照按预期超时。它不把合法 Offer 的隐式引导确认当作原 hash 的传输序号 ACK。
 
 ## 真实 SDK 独立实验
@@ -108,7 +108,7 @@ Android 只用自己的 AVD/ADB server，iOS 只用自己创建的模拟器；�
 ## r3 系统自查
 
 `testdata/transport/audit/parity.json` 列出缓冲路径与对应共享场景；报告的对照表分别说明四语言与模型覆盖，不以总数替代规则核验。
-所有 Signal 从仅含成员身份/公钥的 peer 开始，禁止预加载对端 instance/boot。Context 24 和 Challenge 6 是未冻结 wire 的直接变更，旧实验包不兼容；生产协议仍未改。
+所有 Signal 从仅含成员身份/公钥的 peer 开始，禁止预加载对端 instance/boot。Context 24 和 Challenge 6 是 r3 当时未冻结 wire 的直接变更（r5 已冻结），旧实验包不兼容；生产协议仍未改。
 新增的 SDK dispatch、发送 write-admit、候选 flush、查询 reply 等入口是在交付时检查的边界；外围产品适配器仍未接入。
 Sender 的原 expiry 与 binding 来自冻结发送记录；owner 必须在真实身份/代次变化时更新 binding，不把网络 hint 当作新授权。
 Python 的 `audit-models.py` 单独复核有限事件模型的过期/身份/代次路径；终端使用真实业务信封，后端与路径仍是假实现。
@@ -121,3 +121,12 @@ Python 的 `audit-models.py` 单独复核有限事件模型的过期/身份/代�
 已知正文在 Seen、Pending、NextGeneration、bootstrap/Close/SDK 动作前校验；乱序出队再校验。Restart 绑定当前 PC 用途和代次。实验 Signal 仍是单 PC 接收器；peer-scope 的多 PC 协调由后续产品 owner 整合。未实现的已知 Control 先验证完整 schema 再返回 Unsupported，不宣称已经实现策略持久化或全部终端控制器。
 
 Signal `replyAllowed` 和 Sender `admit` 是最终发送门。实验构造器明确给一轮有效的 fixture 授权；外围必须用 `setAuthorization` 更新当前租约上限、成员授权和单调 owner revision，并在真实写入时检查。原记录不随授权变更复活；普通网络通知不更新授权。JS 在 crypto await 后再次检查，其他实验调用在串行入口执行。终端 Go 直接用现有 `LeaseCertificate.Valid`、当前成员/密钥、状态 head 和逻辑 owner 验证每页回复与 ACK；其他三端没有终端执行引擎。两个模型把 schema_valid 与实时授权视为显式可撤销前提，既有事件矩阵继续检验时序，不承担密码学证明。
+
+
+## r5 冻结收尾
+
+Wire 已冻结（协议 16）；当前生产协议常量不变。冻结后同协议仅新增可返回 Unsupported 的类型，不改已有语义。`browser-modules.mjs` 供两个浏览器入口共享 allowlist，`check-browser-modules.mjs` 检查完整静态依赖图（10 个模块），`verify.py` 会执行；上面的 cross-browser 命令必须携带容量 corpus 和共享 trace 才能同时检查 SDK、WebCrypto 和状态机。
+
+主动 Challenge 的虚拟对照明确预置一条已发送/记录/收到且仍有效的 Probe，绝不绕过 hash 关联；无丢包必须进入 Offer/ICE 并 Ready，逐消息丢两份的失败必须确实发生在 ICE 时序预算，不能以关联拒绝冒充时间证据。它不是无 Probe 的产品流程。
+
+`r5-*` 共享轨迹检验 Close、换代、缺口退休、整轮结束后的原 hash 回执仍可发送；SDK dispatch 仍关闭，冲突、未见旧包、过期/撤销/换实例拒绝，无 ACK 回环。`frozen_bidirectional_status_snapshot` 共享终端预期在两页之间推进输出：两页仍显示原水位，后续查询 token 随输出变化，BarrierReply 使用同一双向快照。

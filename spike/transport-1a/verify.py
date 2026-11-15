@@ -34,6 +34,7 @@ def run(name, command, output=None):
         raise RuntimeError(name+': '+result.stderr[-1500:])
     print(name+': passed', flush=True)
 
+run('browser module graph', ['node',lab/'check-browser-modules.mjs'])
 run('draft schema tables', ['python3',lab/'schema-generate.py','--check'])
 run('retry/window', ['python3', lab/'retry-gap.py'], 'retry.json')
 run('model deferred-path audit', ['python3',lab/'audit-models.py',root/'testdata/transport/sdp'], 'model-audit.json')

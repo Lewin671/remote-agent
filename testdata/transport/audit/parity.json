@@ -373,5 +373,35 @@
     "d": "shared control schemas",
     "e": "query/reply schemas before effects",
     "f": "current real lease/member/owner per emission"
+  },
+  {
+    "id": "F04",
+    "rule": "Close/retired generation receipt ACK remains hash-bound and idempotent without SDK admission",
+    "vectors": [
+      "r5-close-receipt",
+      "r5-old-generation-receipt",
+      "r5-retired-restart-receipt",
+      "r5-gap-retirement-receipt",
+      "r5-round-expiry-receipt-original-deadline",
+      "r5-no-ack-loop",
+      "r5-closed-receipt-authority-member",
+      "r5-closed-receipt-authority-revision",
+      "r5-closed-receipt-authority-identity"
+    ],
+    "implementations": "four signal cores + both Python models",
+    "d": "unchanged frozen encoding",
+    "e": "cached original hash bypasses current PC admission only",
+    "f": "current membership/instances/lease and original deadline"
+  },
+  {
+    "id": "T06",
+    "rule": "freeze complete bidirectional FlowState before pagination and hash both directions into snapshot token",
+    "vectors": [
+      "frozen_bidirectional_status_snapshot"
+    ],
+    "implementations": "terminal Go",
+    "d": "unchanged FlowState and token fields",
+    "e": "freeze once before first page; validate reassembled full token",
+    "f": "each page still checks current authority"
   }
 ]

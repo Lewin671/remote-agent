@@ -61,6 +61,7 @@ class Experiment:
         self.body_bytes={'client':0,'daemon':0};self.acks={'client':0,'daemon':0}
         self.installed_offers=set();self.installed_answers=set();self.confirms={'client':set(),'daemon':set()}
         self.retired=0;self.ready=set();self.ice_ready=set();self.last_ready_ms=None
+        self.ice_due={}
         self.ice_started=set();self.candidate_ready={"client":set(),"daemon":set()}
         self.event(relay_ms,lambda:self.log("relay_ready"))
         self.event(relay_ms+discovery_ms,self.start)
@@ -140,9 +141,9 @@ class Experiment:
             if not request or self.now>=request.deadline or f.probe_hash!=self.ack_binding(request)[2] or f.receiver_nonce!=self.nonce(receiver,f.peer):self.gate_rejections+=1;return
         if f.pc>=0:
             valid_context=not f.recipient_unknown and f.generation==1 and f.use==f.pc+1 and f.receiver_nonce==self.nonce(receiver,f.peer)
-            if not valid_context or pc_key in self.retired_pcs:
+            if not valid_context or (pc_key in self.retired_pcs and self.cache.get(key)!=f):
                 self.gate_rejections+=1;self.log('context_rejected',f);return
-            if pc_key not in self.boot_ready[receiver]:
+            if pc_key not in self.boot_ready[receiver] and self.cache.get(key)!=f:
                 if self.implicit_offer and f.kind=='Offer' and f.sender==self.offerer and f.seq==1:
                     self.boot_ready[receiver].add(pc_key);self.implicit_proofs.append((receiver,f.peer,f.pc,self.now));self.log('offer_nonce_proof',f)
                 else:self.gate_rejections+=1;self.log('bootstrap_gate_rejected',f);return
@@ -184,10 +185,14 @@ class Experiment:
         if delay:self.event(self.now+delay,lambda:self.acknowledge(f,binding))
         else:self.acknowledge(f,binding)
 
+    def receipt_allowed(self,f):
+        receiver='daemon' if f.sender=='client' else 'client'
+        return f.schema_valid and self.authorized(f) and self.now<f.deadline and self.cache.get((f.sender,f.peer,f.pc,f.seq))==f and (f.recipient_unknown or f.receiver_nonce==self.nonce(receiver,f.peer))
+
     def acknowledge(self,f,binding):
         if not f.schema_valid or not self.authorized(f):return False
         receiver='daemon' if f.sender=='client' else 'client'
-        if self.now>=f.deadline or (f.pc>=0 and ((f.peer,f.pc) in self.retired_pcs or f.generation!=1 or f.receiver_nonce!=self.nonce(receiver,f.peer))):return False
+        if not self.receipt_allowed(f):return False
         if binding!=self.ack_binding(f):return False
         if f.kind=='Challenge':
             original=self.challenges.get(f.peer)
@@ -227,9 +232,18 @@ class Experiment:
         self.log('bootstrap_start')
         for peer in range(self.peers):
             if self.proactive_challenge:
-                # Optimistically assume the daemon already knows the client's
-                # current nonce; remove the Probe dependency entirely.
-                self.learned_nonce[('daemon',peer)]=self.nonce('client',peer)
+                # Hypothetical optimization only: a still-authorized Probe was
+                # already sent, recorded and received before this timing start.
+                # Do not preload the daemon nonce at the client or bypass the
+                # ordinary Challenge correlation check.
+                probe=Frame('client',peer,-1,1,'Probe',self.nonce('client',peer),generation=0,use=0,recipient_unknown=True)
+                self.probes[('client',peer)]=probe
+                self.received_probes[('daemon',peer)]=probe
+                key=('client',peer,-1,1)
+                self.cache[key]=probe
+                self.outstanding.setdefault(key[:3],set()).add(key)
+                self.learned_nonce[('daemon',peer)]=probe.body
+                self.log('recorded_probe_precondition',probe)
                 self.send(Frame('daemon',peer,-1,1,'Challenge',self.nonce('daemon',peer)))
             else:self.send(Frame('client',peer,-1,1,'Probe',self.nonce('client',peer)))
 
@@ -278,7 +292,8 @@ class Experiment:
         if k in self.ice_started or k not in self.installed_answers:return
         if any(k not in ready for ready in self.candidate_ready.values()):return
         self.ice_started.add(k)
-        self.event(self.now+self.ice_ms,lambda:self.ice_complete(k))
+        self.ice_due[k]=self.now+self.ice_ms
+        self.event(self.ice_due[k],lambda:self.ice_complete(k))
 
     def ice_complete(self,k):
         self.ice_ready.add(k);self.maybe_ready(k)
@@ -313,7 +328,7 @@ class Experiment:
                     retired_generations=self.retired,ready_pcs=len(self.ready),
                     all_ready_at_ms=self.last_ready_ms if len(self.ready)==2*self.peers else None,
                     offers_installed=len(self.installed_offers),answers_installed=len(self.installed_answers),
-                    ice_ready_pcs=len(self.ice_ready),proactive_challenge=self.proactive_challenge,ice_ms=self.ice_ms,
+                    ice_ready_pcs=len(self.ice_ready),ice_scheduled_pcs=len(self.ice_due),latest_ice_due_ms=max(self.ice_due.values(),default=None),proactive_challenge=self.proactive_challenge,ice_ms=self.ice_ms,
                     total_deadline_ms=self.DEADLINE,trace=self.trace)
 
 
@@ -327,15 +342,20 @@ def main():
             result=Experiment(offer,answer,losses).run()
             assert result['ready_pcs']==(0 if losses==2 else 16)
             results[sdk][str(losses)]=result
+        control=Experiment(offer,answer,0,proactive_challenge=True,ice_ms=3000).run()
+        assert control['ready_pcs']==16 and control['bootstrap_gate_rejections']==0 and control['offers_installed']==16
+        results[sdk]['proactive_challenge_zero_loss_control']=control
         optimistic=Experiment(offer,answer,2,proactive_challenge=True,ice_ms=3000).run()
         assert optimistic['ready_pcs']==0 and optimistic['ice_ready_pcs']==0
+        assert optimistic['bootstrap_gate_rejections']==0 and optimistic['offers_installed']==16 and optimistic['answers_installed']==16
+        assert optimistic['ice_scheduled_pcs']==16 and optimistic['latest_ice_due_ms']==10500
         results[sdk]['proactive_challenge_within_ice_budget']=optimistic
     print(json.dumps(dict(evidence='causal_virtual_model_not_sdk_latency',
         causal_chain=['Probe','Challenge','Offer','Answer','offerer Confirm'],
         relay_ms=3000,retry_points_ms=[0,500,1500],gap_ms=2500,sender_window=32,
         favorable_lower_bound_ms=3000+5*1500,
         optimistic_bound_ms=3000+3*1500+max(1500,3000),
-        note='Primary case: all non-retry costs except relay are zero. Optimistic proactive bootstrap: ICE/DTLS is 3000 ms. Payload byte counts exclude framing/crypto.',
+        note='Primary case: all non-retry costs except relay are zero. Optimistic variant assumes an already recorded and received valid Probe; it is not a cold start or an unsolicited Challenge. ICE/DTLS is 3000 ms. Payload byte counts exclude framing/crypto.',
         results=results),indent=2))
 
 if __name__=='__main__':main()
