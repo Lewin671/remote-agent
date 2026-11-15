@@ -67,3 +67,10 @@ func ActiveCallsForTest(r *Relay) int {
 	}
 	return 0
 }
+
+func ActivePoolsForTest(r *Relay) [3]int {
+	if s := r.scheduling.Load(); s != nil {
+		return s.Active()
+	}
+	return [3]int{}
+}
