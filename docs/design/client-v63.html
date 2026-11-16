@@ -19,7 +19,7 @@
     --glass: rgba(255,255,255,.72); --glass-line: rgba(0,0,0,.07);
     --glass-shadow: 0 6px 24px rgba(0,0,0,.11), inset 0 1px 0 rgba(255,255,255,.72);
     --float: 0 16px 40px rgba(0,0,0,.18);
-    --edge-b-end: 68%;
+    --edge-b-top: 68%; --edge-b-mid: 94%;
     --bar-fg: color-mix(in srgb, var(--ink) 30%, transparent);
     --term: #131315;
   }
@@ -35,7 +35,7 @@
     --glass: rgba(34,34,38,.68); --glass-line: rgba(255,255,255,.12);
     --glass-shadow: 0 6px 24px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.10);
     --float: 0 14px 36px rgba(0,0,0,.65);
-    --edge-b-end: 72%;
+    --edge-b-top: 72%; --edge-b-mid: 95%;
     --bar-fg: color-mix(in srgb, var(--ink) 32%, transparent);
     --term: #0d0d0f;
   }
@@ -89,12 +89,12 @@
   .phone:has(> .sheet.full) > .sb i { border-color: rgba(245,245,247,.55); }
   .sb i { width: 26px; height: 12px; border-radius: 4px; border: 1px solid var(--ink3); position: relative; }
   .sb i::after { content: ""; position: absolute; inset: 1.5px; right: 5px; background: currentColor; border-radius: 2px; }
-  /* 上下边缘渐隐：全高滚动，终点绝不到 100% 不透明 paper，让文字滑入玻璃底下时仍有折射 */
+  /* 上下边缘渐隐：全高滚动；顶栏保留通透，底栏（124px）在玻璃上沿留折射、在按钮周围及下方收实，避免按钮空隙透出半截残字 */
   .edge { position: absolute; left: 0; right: 0; z-index: 4; pointer-events: none; }
   .edge.t { top: 0; height: 72px; background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 76%, transparent) 0%, color-mix(in srgb, var(--paper) 36%, transparent) 52%, transparent 100%); }
   .edge.t.tall { height: 108px; background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 76%, transparent) 0%, color-mix(in srgb, var(--paper) 32%, transparent) 45%, transparent 100%); }
   .edge.t.low { height: 52px; background: linear-gradient(to bottom, color-mix(in srgb, var(--paper) 76%, transparent) 0%, transparent 100%); }
-  .edge.b { bottom: 0; height: 68px; background: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--paper) var(--edge-b-end), transparent) 100%); }
+  .edge.b { bottom: 0; height: 124px; background: linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--paper) var(--edge-b-top), transparent) 30%, color-mix(in srgb, var(--paper) var(--edge-b-mid), transparent) 46%, color-mix(in srgb, var(--paper) 99%, transparent) 58%, var(--paper) 68%); }
   .tbar { position: absolute; top: 54px; left: 16px; right: 16px; z-index: 6; display: flex; align-items: center; gap: 10px; }
   .tbar .sp { flex: 1; }
   .tbar .ttl { flex: 1; min-width: 0; text-align: center; }
@@ -596,7 +596,7 @@
 <div class="note" id="v63-changelog">
   <h4>相对 v62 的改动</h4><ul>
   <li><b>手机深色阶梯与停靠主次</b>：手机深色改用 <code>#000</code>（命令槽）&lt; <code>#0c0c0e</code>（页面底）&lt; <code>#141417</code>（深色卡）&lt; <code>#1c1c20</code>（分组卡）&lt; <code>#26262b</code>（气泡）&lt; <code>#28282d</code>（弹层内组 / 对话框），深色卡不再比分组卡更浅；会话停靠区展开待处理卡时，下方输入框主动作圆钮自动降为次级（<code>fill2</code> 底 + <code>ink</code> 图标），长命令滚到底前禁止点允许。</li>
-  <li><b>同心圆角收敛与全高玻璃</b>：淘汰散落的 13 档和 30/38 大圆角，手机收为 <code>6 / 12 / 18 / 24 / 28</code> 五档（<code>.tc</code> 外 24 / 边距 12 / 内 12 同心），宽屏收为 <code>6 / 8 / 14 / 18</code> 四档（<code>.wbox</code> 与 <code>.wcomp</code> 外 14 / 内按钮与胶囊 8 同心）；全高滚动配合半透明 <code>edge</code> 渐隐（76%→0% / 0%→68%），让内容真正从玻璃下折射滑过。</li>
+  <li><b>同心圆角收敛与全高玻璃</b>：淘汰散落的 13 档和 30/38 大圆角，手机收为 <code>6 / 12 / 18 / 24 / 28</code> 五档（<code>.tc</code> 外 24 / 边距 12 / 内 12 同心），宽屏收为 <code>6 / 8 / 14 / 18</code> 四档（<code>.wbox</code> 与 <code>.wcomp</code> 外 14 / 内按钮与胶囊 8 同心）；全高滚动配合分段 <code>edge</code> 渐隐（顶栏 76%→0%，底栏 124px 在玻璃上沿保留折射并在按钮周围及下方收实），既保住玻璃通透感，又不让按钮空隙透出半截文字。</li>
   <li><b>落后章节与宽屏统一</b>：<a href="#new">手机新建</a>更新为两行无底色顶栏 + 底部 <code>.pbox</code> 输入框 + CLI 弹出菜单 + 模型浮层面板（去掉右上发送、造句和完全放行）；全稿所有<a href="#wide">宽屏窗口</a>统一为四级 <code>s0–s3</code> 表面（去掉红黄绿窗口灯，侧栏 288 + 次级新任务钮 + 不重叠底栏，对话列 760 + 双行 14 圆角输入框，折叠工具行箭头紧跟文字）；修好 <a href="#direct-edge">200% 字号</a>演示卡状态文字挤压。</li>
   <li><b>交互与排版细节</b>：<a href="#home">主页焦点卡</a>支持 ≤3 选项简短单选提问原地作答，拒绝写理由保留 5 行命令；<a href="#input">运行中发送</a>在有草稿时显式露出「插入这一轮 ⌄」轻胶囊；<a href="#account-management">未登录首屏与启动壳</a>改用 <code>AppMark</code> 呼吸感布局，电脑卡额度条减重为 4px + 30% 墨色，推送未开提示统一用中性灰底。</li>
   <li><b>Token 输出速度（按 agent + 模型被动记录）</b>：在<a href="#models">会话设置</a>和<a href="#machine-status">电脑状态页</a>新增速度摘要入口，进入独立的<a href="#speed">输出速度</a>页（今天 / 7 天 / 30 天 / 自定义，切换输出速度与首字延迟，单色线型+节点形状多线区分 + p10–p90 浅色带 + 对比表，覆盖没有数据、样本太少、电脑离线、正在补算历史四种状态）。</li>
@@ -796,14 +796,14 @@ git status --short gen/</div><div class="ml">还有 2 行没显示</div><div cla
 <section id="conversation" class="sx-conversation">
 <h2>会话</h2>
 <div class="note"><h4>全高滚动、玻璃与停靠区</h4><ul>
-<li>会话页的正文滚动区（<code>.scroll</code>）铺满整屏，顶栏、聊天/终端分段和底部输入框浮在内容之上；上下 <code>edge</code> 渐隐终点透明度保持低于 100%（带分段顶栏 108px 终点 76%，底部 68px 终点 68%/72%），让滑过去的气泡与代码在毛玻璃下微微折射。</li>
+<li>会话页的正文滚动区（<code>.scroll</code>）铺满整屏，顶栏、聊天/终端分段和底部输入框浮在内容之上；顶部 <code>edge.t.tall</code>（108px，76%→0%）与底部 <code>edge.b</code>（124px 分段曲线：胶囊上沿 68%/72% 保留折射，58% 处收至 99%，68% 以下 100% <code>paper</code>）让滑过去的气泡与代码在毛玻璃上沿折射，同时按钮周围与底边绝不漏出可读的半截文字。</li>
 <li>审批、提问、计划、终端弹窗、图片确认这些要你处理的事，进会话时停靠在输入框上方，默认展开；停靠区有展开的待处理卡时，下方输入框里的发送或停止圆钮自动降为次级样式（<code>fill2</code> 底 + <code>ink</code> 图标），不和卡里的白色主按钮争抢焦点。</li>
 <li>头部一行「● 类型　还有 N 项 · 剩 X 分钟　收起」，只写剩多少时间；计划的「展开全文 ›」在「收起」前面。摘要只在收起时显示。</li>
 <li>卡片内容区最高约占会话可视高度的 60%（至少 240），放不下时内容区自己滚动，按钮固定在下面；长命令未滚到底时底部渐隐，右钮写「往下看完整命令」，看全最后一行前不出现「允许」。</li>
 <li>点「收起」后只剩一行「● 类型 · 摘要 · 处理 ⌄」，按事项记住，换成新的一项又默认展开。输入框里有没发出的草稿时，新来的一项也只留这一行。只有状态点用橙色。</li>
 </ul></div>
 <div class="screens">
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>运行中 · 自动</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div><div class="tl"><span class="g">思考了 8 秒</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">运行了 3 条命令</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></div><div class="ai">问题在 <code>auth/login.go:58</code>：</div><div class="ai"><ul><li>每次登录都新建 Redis 连接</li><li>连接没设超时，池子耗尽后请求挂住</li></ul></div><div class="ai">我改成复用连接池并加上 <code>2s</code> 超时。</div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">编辑了 2 个文件　+18 −7</span></div><div class="now"><i class="spin"></i><code>go test ./auth/...</code><span>已运行 0:12</span></div><div class="queued"><div>顺便看下 lint 有没有报错</div><span>这一轮结束后发<a>取消</a></span></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>运行中</b>：正文全高滚过顶栏、分段与底部玻璃胶囊下方；折叠工具行的展开箭头紧贴文字右侧 4px。输入框空着时右边是停止，点一下中断这一轮。排队的消息是细边框气泡，留在对话末尾。</p></div>
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>运行中 · 自动</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="turn">9:18 · ~/Code/foo</div><div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div><div class="tl"><span class="g">思考了 8 秒</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">运行了 3 条命令</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></div><div class="ai">问题在 <code>auth/login.go:58</code>：</div><div class="ai"><ul><li>每次登录都新建 Redis 连接，没有复用池</li><li>连接未设超时，池子耗尽后请求一直挂住</li><li>失败重试没有释放旧连接句柄</li></ul></div><div class="ai">我改成复用连接池并加上 <code>2s</code> 超时，同时补一组并发压测复现池满退避。</div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">编辑了 2 个文件　+18 −7</span></div><div class="now"><i class="spin"></i><code>go test ./auth/...</code><span>已运行 0:12</span></div><div class="queued"><div>顺便看下 lint 有没有报错</div><span>这一轮结束后发<a>取消</a></span></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>运行中</b>：正文全高滚过顶栏、分段与底部玻璃胶囊下方；折叠工具行的展开箭头紧贴文字右侧 4px。输入框空着时右边是停止，点一下中断这一轮。排队的消息是细边框气泡，留在对话末尾。</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>重构 API 层</b><span>等待审批 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me src"><div>把 handler 拆到单独的包里</div><small>MacBook 终端</small></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">编辑了 5 个文件　+84 −61</span></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>mkdir -p internal/handler</code><span class="rt">已允许</span></div><div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div></div><div class="dock"><div class="tc"><div class="k"><i></i>请求执行<span>剩 8 分钟</span><a>收起</a></div><div class="body"><div class="cmd mono"><b>❯ </b>go test ./... -count=1</div><div class="y">跑一遍全部测试，确认拆包没有破坏行为</div></div><div class="bs"><button class="cb no">拒绝</button><button class="cb">允许</button></div></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>审批停靠与主动作避让</b>：进会话时待处理卡停靠在输入框上方，默认展开（圆角 24、内嵌命令块与按钮圆角 12 同心）。停靠卡展开时，下方输入框里的停止/发送圆钮自动降为次级（<code>fill2</code> 底 + <code>ink</code> 图标），整屏只留卡里的「允许」一个高亮主动作。</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>清理旧表迁移</b><span>等待审批 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>把预发布库里的测试夹具清掉，重新导入基线</div></div><div class="ai">准备执行清库与基线导入脚本，请先核对完整参数。</div></div><div class="dock"><div class="tc"><div class="k"><i></i>请求执行<span>剩 9 分钟</span><a>收起</a></div><div class="body"><div class="cmd mono fade-b"><b>❯ </b>psql "$STAGING_DATABASE_URL" \
   --single-transaction \
