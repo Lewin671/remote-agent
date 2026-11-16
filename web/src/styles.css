@@ -2169,3 +2169,13 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
   .ms-xl { white-space: normal; }
   .ms-xl small { display: inline-block; }
 }
+
+/* 诊断信息 sheet (design-system §6 「连接」组): one sentence, then rows whose values wrap. */
+.diag-verdict { margin: 4px 12px 8px; font-size: 17px; font-weight: var(--w6); line-height: 1.35; }
+.diag-list .mi .mv { white-space: normal; overflow: visible; text-overflow: clip; max-width: 66%; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; display: block; }
+.diag-list .mi { align-items: flex-start; }
+.diag-list .mi .mt { padding: 13px 0; }
+.diag-list .mi .mv { padding: 13px 0; }
+.diag-acts { margin-top: 16px; }
+.diag-acts .mi { justify-content: flex-start; min-height: 50px; }
+.diag-acts .mi:disabled { opacity: .4; }

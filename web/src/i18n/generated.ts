@@ -1448,6 +1448,111 @@ export interface MessageArgs {
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
   "transport.conn_footer_unsupported": { [name: string]: never };
+  "transport.diag": { [name: string]: never };
+  "transport.diag_at": { seconds: string; state: string };
+  "transport.diag_cand": { count: number; kind: string; scope: string };
+  "transport.diag_channel": { [name: string]: never };
+  "transport.diag_copy": { [name: string]: never };
+  "transport.diag_copy_failed": { [name: string]: never };
+  "transport.diag_count": { count: number };
+  "transport.diag_dtls": { [name: string]: never };
+  "transport.diag_family_unknown": { [name: string]: never };
+  "transport.diag_footer": { [name: string]: never };
+  "transport.diag_g_checks": { [name: string]: never };
+  "transport.diag_g_local": { [name: string]: never };
+  "transport.diag_g_peer": { [name: string]: never };
+  "transport.diag_g_result": { [name: string]: never };
+  "transport.diag_gather": { [name: string]: never };
+  "transport.diag_hidden": { [name: string]: never };
+  "transport.diag_ice": { [name: string]: never };
+  "transport.diag_ipv4": { [name: string]: never };
+  "transport.diag_ipv6": { [name: string]: never };
+  "transport.diag_no_attempt": { [name: string]: never };
+  "transport.diag_none": { [name: string]: never };
+  "transport.diag_not_sampled": { [name: string]: never };
+  "transport.diag_pair": { local: string; remote: string };
+  "transport.diag_pair_failed": { count: number };
+  "transport.diag_pair_ok": { count: number };
+  "transport.diag_pair_traffic": { got: number; sent: number };
+  "transport.diag_pair_wait": { count: number };
+  "transport.diag_range_cgnat": { [name: string]: never };
+  "transport.diag_range_global": { [name: string]: never };
+  "transport.diag_range_link_local": { [name: string]: never };
+  "transport.diag_range_loopback": { [name: string]: never };
+  "transport.diag_range_other": { [name: string]: never };
+  "transport.diag_range_private": { [name: string]: never };
+  "transport.diag_range_public": { [name: string]: never };
+  "transport.diag_range_ula": { [name: string]: never };
+  "transport.diag_rej_browser": { [name: string]: never };
+  "transport.diag_rej_candidates": { [name: string]: never };
+  "transport.diag_rej_confirm": { [name: string]: never };
+  "transport.diag_rej_end": { [name: string]: never };
+  "transport.diag_rej_sdp": { [name: string]: never };
+  "transport.diag_rej_signal": { [name: string]: never };
+  "transport.diag_rej_value": { count: number; kind: string; reason: string };
+  "transport.diag_rejected": { [name: string]: never };
+  "transport.diag_report_browser": { value: string };
+  "transport.diag_report_round": { age: string; n: number };
+  "transport.diag_report_title": { [name: string]: never };
+  "transport.diag_report_verdict": { verdict: string };
+  "transport.diag_result_cancelled": { [name: string]: never };
+  "transport.diag_result_lost": { [name: string]: never };
+  "transport.diag_result_no_response": { [name: string]: never };
+  "transport.diag_result_ok": { [name: string]: never };
+  "transport.diag_result_refused": { [name: string]: never };
+  "transport.diag_result_retired": { [name: string]: never };
+  "transport.diag_result_timeout": { [name: string]: never };
+  "transport.diag_result_trying": { [name: string]: never };
+  "transport.diag_retry": { [name: string]: never };
+  "transport.diag_round": { result: string; seconds: string };
+  "transport.diag_rtt": { ms: number };
+  "transport.diag_sig_limited": { count: number };
+  "transport.diag_sig_offline": { count: number };
+  "transport.diag_sig_refused": { [name: string]: never };
+  "transport.diag_signal": { [name: string]: never };
+  "transport.diag_stage": { [name: string]: never };
+  "transport.diag_stage_channel": { [name: string]: never };
+  "transport.diag_stage_confirm": { [name: string]: never };
+  "transport.diag_stage_dtls": { [name: string]: never };
+  "transport.diag_stage_handshake": { [name: string]: never };
+  "transport.diag_stage_ice": { [name: string]: never };
+  "transport.diag_stage_ready": { [name: string]: never };
+  "transport.diag_stage_sdp": { [name: string]: never };
+  "transport.diag_state_closed": { [name: string]: never };
+  "transport.diag_state_doing": { [name: string]: never };
+  "transport.diag_state_dropped": { [name: string]: never };
+  "transport.diag_state_failed": { [name: string]: never };
+  "transport.diag_state_none": { [name: string]: never };
+  "transport.diag_state_ok": { [name: string]: never };
+  "transport.diag_stun_error": { code: number; count: number; family: string };
+  "transport.diag_stun_errors": { [name: string]: never };
+  "transport.diag_type_host": { [name: string]: never };
+  "transport.diag_type_other": { [name: string]: never };
+  "transport.diag_type_prflx": { [name: string]: never };
+  "transport.diag_type_relay": { [name: string]: never };
+  "transport.diag_type_srflx": { [name: string]: never };
+  "transport.diag_use_file": { [name: string]: never };
+  "transport.diag_use_read": { [name: string]: never };
+  "transport.diag_verdict_all_failed": { [name: string]: never };
+  "transport.diag_verdict_budget": { [name: string]: never };
+  "transport.diag_verdict_cancelled": { [name: string]: never };
+  "transport.diag_verdict_channel": { [name: string]: never };
+  "transport.diag_verdict_confirm": { [name: string]: never };
+  "transport.diag_verdict_connected": { [name: string]: never };
+  "transport.diag_verdict_create_failed": { [name: string]: never };
+  "transport.diag_verdict_dtls": { [name: string]: never };
+  "transport.diag_verdict_ipv6_silent": { [name: string]: never };
+  "transport.diag_verdict_lost": { [name: string]: never };
+  "transport.diag_verdict_no_local": { [name: string]: never };
+  "transport.diag_verdict_no_remote": { [name: string]: never };
+  "transport.diag_verdict_no_reply": { [name: string]: never };
+  "transport.diag_verdict_no_sdp": { [name: string]: never };
+  "transport.diag_verdict_no_stun": { [name: string]: never };
+  "transport.diag_verdict_none": { [name: string]: never };
+  "transport.diag_verdict_peer_refused": { [name: string]: never };
+  "transport.diag_verdict_signal_limited": { [name: string]: never };
+  "transport.diag_verdict_signal_offline": { [name: string]: never };
+  "transport.diag_verdict_unknown": { [name: string]: never };
   "transport.direct": { [name: string]: never };
   "transport.file_speed_both": { direct: string; relay: string };
   "transport.file_speed_direct": { direct: string };
@@ -3394,6 +3499,111 @@ export const messages = {
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
     "transport.conn_footer_unsupported": "This browser doesn't support direct connections.",
+    "transport.diag": "Diagnostics",
+    "transport.diag_at": "{state} {seconds} s",
+    "transport.diag_cand": "{kind} ×{count} ({scope})",
+    "transport.diag_channel": "Data channel",
+    "transport.diag_copy": "Copy diagnostics",
+    "transport.diag_copy_failed": "Couldn't copy",
+    "transport.diag_count": "×{count}",
+    "transport.diag_dtls": "Encryption handshake",
+    "transport.diag_family_unknown": "unknown",
+    "transport.diag_footer": "Diagnostics show address types and ranges only, never the addresses themselves.",
+    "transport.diag_g_checks": "Connectivity checks",
+    "transport.diag_g_local": "This device's addresses",
+    "transport.diag_g_peer": "The computer's addresses",
+    "transport.diag_g_result": "Result",
+    "transport.diag_gather": "Gathering",
+    "transport.diag_hidden": "Hidden addresses",
+    "transport.diag_ice": "ICE state",
+    "transport.diag_ipv4": "IPv4",
+    "transport.diag_ipv6": "IPv6",
+    "transport.diag_no_attempt": "No connection was created",
+    "transport.diag_none": "None",
+    "transport.diag_not_sampled": "No check records were read",
+    "transport.diag_pair": "{local} → {remote}",
+    "transport.diag_pair_failed": "{count} failed",
+    "transport.diag_pair_ok": "{count} succeeded",
+    "transport.diag_pair_traffic": "sent {sent} · got {got}",
+    "transport.diag_pair_wait": "{count} pending",
+    "transport.diag_range_cgnat": "carrier-shared",
+    "transport.diag_range_global": "global",
+    "transport.diag_range_link_local": "link-local",
+    "transport.diag_range_loopback": "loopback",
+    "transport.diag_range_other": "other",
+    "transport.diag_range_private": "private",
+    "transport.diag_range_public": "public",
+    "transport.diag_range_ula": "unique-local",
+    "transport.diag_rej_browser": "Address refused by the browser",
+    "transport.diag_rej_candidates": "Candidate addresses",
+    "transport.diag_rej_confirm": "Confirmation",
+    "transport.diag_rej_end": "End of candidates",
+    "transport.diag_rej_sdp": "Connection details",
+    "transport.diag_rej_signal": "Other handshake message",
+    "transport.diag_rej_value": "{kind}: {reason} ×{count}",
+    "transport.diag_rejected": "Refused messages",
+    "transport.diag_report_browser": "Browser: {value}",
+    "transport.diag_report_round": "Attempt {n} · {age}",
+    "transport.diag_report_title": "Direct connection diagnostics",
+    "transport.diag_report_verdict": "Summary: {verdict}",
+    "transport.diag_result_cancelled": "Cancelled",
+    "transport.diag_result_lost": "Dropped after connecting",
+    "transport.diag_result_no_response": "No answer",
+    "transport.diag_result_ok": "Connected",
+    "transport.diag_result_refused": "Refused",
+    "transport.diag_result_retired": "Replaced by a newer round",
+    "transport.diag_result_timeout": "Didn't connect",
+    "transport.diag_result_trying": "In progress",
+    "transport.diag_retry": "Try again",
+    "transport.diag_round": "{result} · {seconds} s",
+    "transport.diag_rtt": "{ms} ms",
+    "transport.diag_sig_limited": "Rate-limited by the relay ×{count}",
+    "transport.diag_sig_offline": "Computer offline ×{count}",
+    "transport.diag_sig_refused": "The computer replied it is unsupported",
+    "transport.diag_signal": "Handshake messages",
+    "transport.diag_stage": "Stopped at",
+    "transport.diag_stage_channel": "Opening the data channel",
+    "transport.diag_stage_confirm": "Waiting for the computer to confirm",
+    "transport.diag_stage_dtls": "Encryption handshake",
+    "transport.diag_stage_handshake": "Waiting for the computer's handshake",
+    "transport.diag_stage_ice": "Connectivity checks",
+    "transport.diag_stage_ready": "Done",
+    "transport.diag_stage_sdp": "Exchanging connection details",
+    "transport.diag_state_closed": "Closed",
+    "transport.diag_state_doing": "In progress",
+    "transport.diag_state_dropped": "Dropped",
+    "transport.diag_state_failed": "Failed",
+    "transport.diag_state_none": "Not started",
+    "transport.diag_state_ok": "Done",
+    "transport.diag_stun_error": "{code} · {family} ×{count}",
+    "transport.diag_stun_errors": "STUN errors",
+    "transport.diag_type_host": "Local interface",
+    "transport.diag_type_other": "Other",
+    "transport.diag_type_prflx": "Peer-learned",
+    "transport.diag_type_relay": "Relay",
+    "transport.diag_type_srflx": "Public mapped",
+    "transport.diag_use_file": "Files",
+    "transport.diag_use_read": "Loading",
+    "transport.diag_verdict_all_failed": "Both sides have addresses, but every connectivity check failed",
+    "transport.diag_verdict_budget": "No free direct slot on this device, so nothing was tried",
+    "transport.diag_verdict_cancelled": "This attempt was cancelled (direct was turned off or the network changed)",
+    "transport.diag_verdict_channel": "Encrypted, but the data channel didn't open",
+    "transport.diag_verdict_confirm": "The data channel opened, but the computer didn't confirm",
+    "transport.diag_verdict_connected": "Direct is connected",
+    "transport.diag_verdict_create_failed": "The browser couldn't create the connection",
+    "transport.diag_verdict_dtls": "Connected, but the encryption handshake didn't finish",
+    "transport.diag_verdict_ipv6_silent": "This device has IPv6, but the computer's IPv6 address didn't answer",
+    "transport.diag_verdict_lost": "Direct connected, then dropped",
+    "transport.diag_verdict_no_local": "This device got no usable address",
+    "transport.diag_verdict_no_remote": "No addresses arrived from the computer",
+    "transport.diag_verdict_no_reply": "The computer didn't answer the direct handshake; direct may be off there",
+    "transport.diag_verdict_no_sdp": "Connection details were not exchanged with the computer",
+    "transport.diag_verdict_no_stun": "This device got no public mapped address; its network may block STUN",
+    "transport.diag_verdict_none": "No direct attempts recorded yet",
+    "transport.diag_verdict_peer_refused": "The computer refused this direct attempt (version, policy or limit)",
+    "transport.diag_verdict_signal_limited": "The relay rate-limited the handshake messages; it will retry",
+    "transport.diag_verdict_signal_offline": "The handshake didn't arrive: the computer is offline",
+    "transport.diag_verdict_unknown": "Couldn't connect; the cause is unknown",
     "transport.direct": "Direct connection",
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
     "transport.file_speed_direct": "Direct {direct} MiB/s",
@@ -5256,6 +5466,111 @@ export const messages = {
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
     "transport.conn_footer_unsupported": "这个浏览器不支持直连。",
+    "transport.diag": "诊断信息",
+    "transport.diag_at": "{state} {seconds} 秒",
+    "transport.diag_cand": "{kind} ×{count}（{scope}）",
+    "transport.diag_channel": "数据通道",
+    "transport.diag_copy": "复制诊断信息",
+    "transport.diag_copy_failed": "没能复制",
+    "transport.diag_count": "×{count}",
+    "transport.diag_dtls": "加密握手",
+    "transport.diag_family_unknown": "未知",
+    "transport.diag_footer": "诊断信息只包含地址的类型和范围，不含具体地址。",
+    "transport.diag_g_checks": "连通检查",
+    "transport.diag_g_local": "本机地址",
+    "transport.diag_g_peer": "电脑地址",
+    "transport.diag_g_result": "结果",
+    "transport.diag_gather": "收集地址",
+    "transport.diag_hidden": "已隐藏的地址",
+    "transport.diag_ice": "ICE 状态",
+    "transport.diag_ipv4": "IPv4",
+    "transport.diag_ipv6": "IPv6",
+    "transport.diag_no_attempt": "没有创建连接",
+    "transport.diag_none": "没有",
+    "transport.diag_not_sampled": "没有读到检查记录",
+    "transport.diag_pair": "{local} → {remote}",
+    "transport.diag_pair_failed": "失败 {count}",
+    "transport.diag_pair_ok": "成功 {count}",
+    "transport.diag_pair_traffic": "发出 {sent} · 收到 {got}",
+    "transport.diag_pair_wait": "进行中 {count}",
+    "transport.diag_range_cgnat": "运营商共享",
+    "transport.diag_range_global": "全球",
+    "transport.diag_range_link_local": "链路本地",
+    "transport.diag_range_loopback": "回环",
+    "transport.diag_range_other": "其他",
+    "transport.diag_range_private": "私网",
+    "transport.diag_range_public": "公网",
+    "transport.diag_range_ula": "本地唯一",
+    "transport.diag_rej_browser": "浏览器拒绝的地址",
+    "transport.diag_rej_candidates": "候选地址",
+    "transport.diag_rej_confirm": "确认",
+    "transport.diag_rej_end": "地址结束标记",
+    "transport.diag_rej_sdp": "连接信息",
+    "transport.diag_rej_signal": "其他握手消息",
+    "transport.diag_rej_value": "{kind}：{reason} ×{count}",
+    "transport.diag_rejected": "被拒绝的消息",
+    "transport.diag_report_browser": "浏览器：{value}",
+    "transport.diag_report_round": "第 {n} 次 · {age}",
+    "transport.diag_report_title": "直连诊断",
+    "transport.diag_report_verdict": "结论：{verdict}",
+    "transport.diag_result_cancelled": "已取消",
+    "transport.diag_result_lost": "连上后断开",
+    "transport.diag_result_no_response": "电脑没回应",
+    "transport.diag_result_ok": "已连上",
+    "transport.diag_result_refused": "电脑拒绝",
+    "transport.diag_result_retired": "被新一轮替换",
+    "transport.diag_result_timeout": "没连上",
+    "transport.diag_result_trying": "进行中",
+    "transport.diag_retry": "重新尝试",
+    "transport.diag_round": "{result} · {seconds} 秒",
+    "transport.diag_rtt": "{ms} ms",
+    "transport.diag_sig_limited": "被中继限速 ×{count}",
+    "transport.diag_sig_offline": "电脑不在线 ×{count}",
+    "transport.diag_sig_refused": "电脑回复不支持",
+    "transport.diag_signal": "握手消息",
+    "transport.diag_stage": "停在",
+    "transport.diag_stage_channel": "打开数据通道",
+    "transport.diag_stage_confirm": "等电脑确认",
+    "transport.diag_stage_dtls": "加密握手",
+    "transport.diag_stage_handshake": "等电脑回应握手",
+    "transport.diag_stage_ice": "连通检查",
+    "transport.diag_stage_ready": "已完成",
+    "transport.diag_stage_sdp": "交换连接信息",
+    "transport.diag_state_closed": "已关闭",
+    "transport.diag_state_doing": "进行中",
+    "transport.diag_state_dropped": "已断开",
+    "transport.diag_state_failed": "失败",
+    "transport.diag_state_none": "未开始",
+    "transport.diag_state_ok": "已完成",
+    "transport.diag_stun_error": "{code} · {family} ×{count}",
+    "transport.diag_stun_errors": "STUN 错误",
+    "transport.diag_type_host": "本机网卡",
+    "transport.diag_type_other": "其他",
+    "transport.diag_type_prflx": "对端发现",
+    "transport.diag_type_relay": "中继",
+    "transport.diag_type_srflx": "公网映射",
+    "transport.diag_use_file": "文件",
+    "transport.diag_use_read": "加载",
+    "transport.diag_verdict_all_failed": "两边地址都有，连通检查全部失败",
+    "transport.diag_verdict_budget": "本机的直连名额已满，这次没有尝试",
+    "transport.diag_verdict_cancelled": "这次尝试被取消了（直连被关闭或网络变了）",
+    "transport.diag_verdict_channel": "加密握手完成，数据通道没有打开",
+    "transport.diag_verdict_confirm": "数据通道已打开，但电脑没有确认",
+    "transport.diag_verdict_connected": "直连已连上",
+    "transport.diag_verdict_create_failed": "浏览器没能创建直连",
+    "transport.diag_verdict_dtls": "已连上，加密握手没完成",
+    "transport.diag_verdict_ipv6_silent": "本机拿到了 IPv6，但电脑的 IPv6 地址没有回应",
+    "transport.diag_verdict_lost": "直连连上后又断开了",
+    "transport.diag_verdict_no_local": "本机没有拿到任何可用地址",
+    "transport.diag_verdict_no_remote": "没有收到电脑的任何地址",
+    "transport.diag_verdict_no_reply": "电脑没有回应直连握手，可能在电脑上关了直连",
+    "transport.diag_verdict_no_sdp": "和电脑没有完成连接信息的交换",
+    "transport.diag_verdict_no_stun": "本机没有拿到公网映射地址，网络可能挡了 STUN",
+    "transport.diag_verdict_none": "还没有直连尝试的记录",
+    "transport.diag_verdict_peer_refused": "电脑拒绝了这次直连（版本、策略或数量上限）",
+    "transport.diag_verdict_signal_limited": "握手消息被中继限速了，稍后会自动再试",
+    "transport.diag_verdict_signal_offline": "握手消息没送到：电脑当前不在线",
+    "transport.diag_verdict_unknown": "没连上，原因不明",
     "transport.direct": "直连",
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",
     "transport.file_speed_direct": "直连 {direct} MiB/s",

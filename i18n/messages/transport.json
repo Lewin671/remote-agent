@@ -531,5 +531,1604 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "transport.diag",
+    "zh-CN": "诊断信息",
+    "en": "Diagnostics",
+    "notes": "「连接」组最后一行的名称，也是诊断页的标题。导航行，行尾 ›。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_copy",
+    "zh-CN": "复制诊断信息",
+    "en": "Copy diagnostics",
+    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：把同样内容（地址已隐去）复制成纯文字，方便发给支持。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_copy_failed",
+    "zh-CN": "没能复制",
+    "en": "Couldn't copy",
+    "notes": "复制诊断信息失败时，替换操作文字一会儿。成功时用 common.copied。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_retry",
+    "zh-CN": "重新尝试",
+    "en": "Try again",
+    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：立即再试一次直连。正在建立或已连上时置灰。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_footer",
+    "zh-CN": "诊断信息只包含地址的类型和范围，不含具体地址。",
+    "en": "Diagnostics show address types and ranges only, never the addresses themselves.",
+    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）底部的一句隐私说明。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_none",
+    "zh-CN": "还没有直连尝试的记录",
+    "en": "No direct attempts recorded yet",
+    "notes": "诊断页顶部的一句结论：本次打开页面后还没有尝试过直连。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_connected",
+    "zh-CN": "直连已连上",
+    "en": "Direct is connected",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_lost",
+    "zh-CN": "直连连上后又断开了",
+    "en": "Direct connected, then dropped",
+    "notes": "诊断页顶部的一句结论：这一轮曾经连上，后来断了。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_cancelled",
+    "zh-CN": "这次尝试被取消了（直连被关闭或网络变了）",
+    "en": "This attempt was cancelled (direct was turned off or the network changed)",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_no_reply",
+    "zh-CN": "电脑没有回应直连握手，可能在电脑上关了直连",
+    "en": "The computer didn't answer the direct handshake; direct may be off there",
+    "notes": "诊断页顶部的一句结论：握手消息发出后电脑一直没有回应。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_peer_refused",
+    "zh-CN": "电脑拒绝了这次直连（版本、策略或数量上限）",
+    "en": "The computer refused this direct attempt (version, policy or limit)",
+    "notes": "诊断页顶部的一句结论：电脑明确回复了不支持。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_signal_limited",
+    "zh-CN": "握手消息被中继限速了，稍后会自动再试",
+    "en": "The relay rate-limited the handshake messages; it will retry",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_signal_offline",
+    "zh-CN": "握手消息没送到：电脑当前不在线",
+    "en": "The handshake didn't arrive: the computer is offline",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_no_local",
+    "zh-CN": "本机没有拿到任何可用地址",
+    "en": "This device got no usable address",
+    "notes": "诊断页顶部的一句结论：浏览器没有收集到任何网络地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_no_stun",
+    "zh-CN": "本机没有拿到公网映射地址，网络可能挡了 STUN",
+    "en": "This device got no public mapped address; its network may block STUN",
+    "notes": "诊断页顶部的一句结论：STUN 是用来发现本机公网地址的服务。保留 STUN 一词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_no_remote",
+    "zh-CN": "没有收到电脑的任何地址",
+    "en": "No addresses arrived from the computer",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_no_sdp",
+    "zh-CN": "和电脑没有完成连接信息的交换",
+    "en": "Connection details were not exchanged with the computer",
+    "notes": "诊断页顶部的一句结论：握手通了，但双方的连接描述没有交换完。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_ipv6_silent",
+    "zh-CN": "本机拿到了 IPv6，但电脑的 IPv6 地址没有回应",
+    "en": "This device has IPv6, but the computer's IPv6 address didn't answer",
+    "notes": "诊断页顶部的一句结论：两边都给出了公网 IPv6，本机发出的检查一个回应也没收到。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_all_failed",
+    "zh-CN": "两边地址都有，连通检查全部失败",
+    "en": "Both sides have addresses, but every connectivity check failed",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_dtls",
+    "zh-CN": "已连上，加密握手没完成",
+    "en": "Connected, but the encryption handshake didn't finish",
+    "notes": "诊断页顶部的一句结论：网络层连上了，DTLS 加密握手没完成。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_channel",
+    "zh-CN": "加密握手完成，数据通道没有打开",
+    "en": "Encrypted, but the data channel didn't open",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_confirm",
+    "zh-CN": "数据通道已打开，但电脑没有确认",
+    "en": "The data channel opened, but the computer didn't confirm",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_budget",
+    "zh-CN": "本机的直连名额已满，这次没有尝试",
+    "en": "No free direct slot on this device, so nothing was tried",
+    "notes": "诊断页顶部的一句结论：本机同时直连的电脑数已到上限。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_create_failed",
+    "zh-CN": "浏览器没能创建直连",
+    "en": "The browser couldn't create the connection",
+    "notes": "诊断页顶部的一句结论。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_verdict_unknown",
+    "zh-CN": "没连上，原因不明",
+    "en": "Couldn't connect; the cause is unknown",
+    "notes": "诊断页顶部的一句结论：兜底。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_g_local",
+    "zh-CN": "本机地址",
+    "en": "This device's addresses",
+    "notes": "诊断页分组标题。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_g_peer",
+    "zh-CN": "电脑地址",
+    "en": "The computer's addresses",
+    "notes": "诊断页分组标题：电脑通过中继告诉本机的候选地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_g_checks",
+    "zh-CN": "连通检查",
+    "en": "Connectivity checks",
+    "notes": "诊断页分组标题：双方地址两两配对后的检查。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_g_result",
+    "zh-CN": "结果",
+    "en": "Result",
+    "notes": "诊断页分组标题：停在哪一步，以及最近几次的结果。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_ipv4",
+    "zh-CN": "IPv4",
+    "en": "IPv4",
+    "notes": "行名。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_ipv6",
+    "zh-CN": "IPv6",
+    "en": "IPv6",
+    "notes": "行名。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_hidden",
+    "zh-CN": "已隐藏的地址",
+    "en": "Hidden addresses",
+    "notes": "行名：浏览器用 mDNS 名字代替了局域网地址，对方看不到具体地址。值是个数。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stun_errors",
+    "zh-CN": "STUN 错误",
+    "en": "STUN errors",
+    "notes": "行名：值是错误码和个数。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rejected",
+    "zh-CN": "被拒绝的消息",
+    "en": "Refused messages",
+    "notes": "行名：电脑发来、被本机校验或浏览器拒绝的地址或连接信息。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_gather",
+    "zh-CN": "收集地址",
+    "en": "Gathering",
+    "notes": "行名：浏览器收集本机地址的过程，值是状态与时间。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_ice",
+    "zh-CN": "ICE 状态",
+    "en": "ICE state",
+    "notes": "行名：连通检查的状态与时间。ICE 是术语，保留。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_dtls",
+    "zh-CN": "加密握手",
+    "en": "Encryption handshake",
+    "notes": "行名。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_channel",
+    "zh-CN": "数据通道",
+    "en": "Data channel",
+    "notes": "行名。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage",
+    "zh-CN": "停在",
+    "en": "Stopped at",
+    "notes": "行名：这一轮卡在哪一步，值是 diag_stage_* 之一。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_signal",
+    "zh-CN": "握手消息",
+    "en": "Handshake messages",
+    "notes": "行名：值是被限速或没送到的次数。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_none",
+    "zh-CN": "没有",
+    "en": "None",
+    "notes": "值：这一族一个地址也没有。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_no_attempt",
+    "zh-CN": "没有创建连接",
+    "en": "No connection was created",
+    "notes": "行名：这一轮没走到创建连接这一步，值用「—」。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_not_sampled",
+    "zh-CN": "没有读到检查记录",
+    "en": "No check records were read",
+    "notes": "行名：连通检查的数据没读到。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_count",
+    "zh-CN": "×{count}",
+    "en": "×{count}",
+    "notes": "只有个数的值，例如「×2」。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_use_read",
+    "zh-CN": "加载",
+    "en": "Loading",
+    "notes": "两条直连通道之一的名字：用于加载会话和列表。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_use_file",
+    "zh-CN": "文件",
+    "en": "Files",
+    "notes": "两条直连通道之一的名字：用于文件传输。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_type_host",
+    "zh-CN": "本机网卡",
+    "en": "Local interface",
+    "notes": "候选地址类型 host：来自本机网卡的地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_type_srflx",
+    "zh-CN": "公网映射",
+    "en": "Public mapped",
+    "notes": "候选地址类型 srflx：STUN 看到的公网地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_type_prflx",
+    "zh-CN": "对端发现",
+    "en": "Peer-learned",
+    "notes": "候选地址类型 prflx：检查过程中学到的地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_type_relay",
+    "zh-CN": "中继",
+    "en": "Relay",
+    "notes": "候选地址类型 relay。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_type_other",
+    "zh-CN": "其他",
+    "en": "Other",
+    "notes": "无法识别的候选类型。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_private",
+    "zh-CN": "私网",
+    "en": "private",
+    "notes": "IPv4 范围：10.x、172.16–31.x、192.168.x。小写词，放在括号里。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_public",
+    "zh-CN": "公网",
+    "en": "public",
+    "notes": "IPv4 范围。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_cgnat",
+    "zh-CN": "运营商共享",
+    "en": "carrier-shared",
+    "notes": "IPv4 范围：100.64.0.0/10，运营商级 NAT。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_link_local",
+    "zh-CN": "链路本地",
+    "en": "link-local",
+    "notes": "地址范围：169.254.x 或 fe80::。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_loopback",
+    "zh-CN": "回环",
+    "en": "loopback",
+    "notes": "地址范围：127.x 或 ::1。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_global",
+    "zh-CN": "全球",
+    "en": "global",
+    "notes": "IPv6 范围：2000::/3，公网可路由。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_ula",
+    "zh-CN": "本地唯一",
+    "en": "unique-local",
+    "notes": "IPv6 范围：fc00::/7。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_range_other",
+    "zh-CN": "其他",
+    "en": "other",
+    "notes": "无法归类的地址范围。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_cand",
+    "zh-CN": "{kind} ×{count}（{scope}）",
+    "en": "{kind} ×{count} ({scope})",
+    "notes": "一类候选地址：类型、个数和范围，例如「本机网卡 ×1（私网）」。",
+    "params": {
+      "kind": {
+        "type": "string",
+        "example": "本机网卡"
+      },
+      "count": {
+        "type": "integer",
+        "example": 1
+      },
+      "scope": {
+        "type": "string",
+        "example": "私网"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_pair",
+    "zh-CN": "{local} → {remote}",
+    "en": "{local} → {remote}",
+    "notes": "一组候选地址对：本机一侧的地址族 → 电脑一侧的地址族，例如「IPv6 → IPv6」。",
+    "params": {
+      "local": {
+        "type": "string",
+        "example": "IPv6"
+      },
+      "remote": {
+        "type": "string",
+        "example": "IPv6"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_pair_ok",
+    "zh-CN": "成功 {count}",
+    "en": "{count} succeeded",
+    "notes": "一组检查里成功的个数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_pair_failed",
+    "zh-CN": "失败 {count}",
+    "en": "{count} failed",
+    "notes": "一组检查里失败的个数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_pair_wait",
+    "zh-CN": "进行中 {count}",
+    "en": "{count} pending",
+    "notes": "一组检查里还在进行的个数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_pair_traffic",
+    "zh-CN": "发出 {sent} · 收到 {got}",
+    "en": "sent {sent} · got {got}",
+    "notes": "一组检查发出了多少探测、收到多少回应。",
+    "params": {
+      "sent": {
+        "type": "integer",
+        "example": 36
+      },
+      "got": {
+        "type": "integer",
+        "example": 0
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rtt",
+    "zh-CN": "{ms} ms",
+    "en": "{ms} ms",
+    "notes": "往返时间。",
+    "params": {
+      "ms": {
+        "type": "integer",
+        "example": 48
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_state_none",
+    "zh-CN": "未开始",
+    "en": "Not started",
+    "notes": "状态词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_state_doing",
+    "zh-CN": "进行中",
+    "en": "In progress",
+    "notes": "状态词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_state_ok",
+    "zh-CN": "已完成",
+    "en": "Done",
+    "notes": "状态词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_state_failed",
+    "zh-CN": "失败",
+    "en": "Failed",
+    "notes": "状态词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_state_dropped",
+    "zh-CN": "已断开",
+    "en": "Dropped",
+    "notes": "状态词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_state_closed",
+    "zh-CN": "已关闭",
+    "en": "Closed",
+    "notes": "状态词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_at",
+    "zh-CN": "{state} {seconds} 秒",
+    "en": "{state} {seconds} s",
+    "notes": "一个状态和它出现的时刻（这一轮开始后的秒数，一位小数）。",
+    "params": {
+      "state": {
+        "type": "string",
+        "example": "进行中"
+      },
+      "seconds": {
+        "type": "string",
+        "example": "0.4"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_handshake",
+    "zh-CN": "等电脑回应握手",
+    "en": "Waiting for the computer's handshake",
+    "notes": "这一轮停在的步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_sdp",
+    "zh-CN": "交换连接信息",
+    "en": "Exchanging connection details",
+    "notes": "这一轮停在的步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_ice",
+    "zh-CN": "连通检查",
+    "en": "Connectivity checks",
+    "notes": "这一轮停在的步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_dtls",
+    "zh-CN": "加密握手",
+    "en": "Encryption handshake",
+    "notes": "这一轮停在的步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_channel",
+    "zh-CN": "打开数据通道",
+    "en": "Opening the data channel",
+    "notes": "这一轮停在的步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_confirm",
+    "zh-CN": "等电脑确认",
+    "en": "Waiting for the computer to confirm",
+    "notes": "这一轮停在的步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stage_ready",
+    "zh-CN": "已完成",
+    "en": "Done",
+    "notes": "这一轮走完了全部步骤。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_sig_limited",
+    "zh-CN": "被中继限速 ×{count}",
+    "en": "Rate-limited by the relay ×{count}",
+    "notes": "握手消息被中继限速的次数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_sig_offline",
+    "zh-CN": "电脑不在线 ×{count}",
+    "en": "Computer offline ×{count}",
+    "notes": "握手消息因电脑不在线没送到的次数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_sig_refused",
+    "zh-CN": "电脑回复不支持",
+    "en": "The computer replied it is unsupported",
+    "notes": "电脑对握手消息回复了不支持。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_sdp",
+    "zh-CN": "连接信息",
+    "en": "Connection details",
+    "notes": "被拒绝的消息种类。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_candidates",
+    "zh-CN": "候选地址",
+    "en": "Candidate addresses",
+    "notes": "被拒绝的消息种类。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_end",
+    "zh-CN": "地址结束标记",
+    "en": "End of candidates",
+    "notes": "被拒绝的消息种类。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_confirm",
+    "zh-CN": "确认",
+    "en": "Confirmation",
+    "notes": "被拒绝的消息种类。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_signal",
+    "zh-CN": "其他握手消息",
+    "en": "Other handshake message",
+    "notes": "被拒绝的消息种类。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_browser",
+    "zh-CN": "浏览器拒绝的地址",
+    "en": "Address refused by the browser",
+    "notes": "被拒绝的消息种类：浏览器拒绝添加电脑的候选地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_rej_value",
+    "zh-CN": "{kind}：{reason} ×{count}",
+    "en": "{kind}: {reason} ×{count}",
+    "notes": "一类被拒绝的消息：种类、原因（校验器给的短词，不翻译）和次数。",
+    "params": {
+      "kind": {
+        "type": "string",
+        "example": "候选地址"
+      },
+      "reason": {
+        "type": "string",
+        "example": "candidate cap"
+      },
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stun_error",
+    "zh-CN": "{code} · {family} ×{count}",
+    "en": "{code} · {family} ×{count}",
+    "notes": "一类 STUN 错误：错误码、本机网卡的地址族和次数。",
+    "params": {
+      "code": {
+        "type": "integer",
+        "example": 701
+      },
+      "family": {
+        "type": "string",
+        "example": "IPv4"
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_family_unknown",
+    "zh-CN": "未知",
+    "en": "unknown",
+    "notes": "地址族未知。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_ok",
+    "zh-CN": "已连上",
+    "en": "Connected",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_lost",
+    "zh-CN": "连上后断开",
+    "en": "Dropped after connecting",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_trying",
+    "zh-CN": "进行中",
+    "en": "In progress",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_no_response",
+    "zh-CN": "电脑没回应",
+    "en": "No answer",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_refused",
+    "zh-CN": "电脑拒绝",
+    "en": "Refused",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_timeout",
+    "zh-CN": "没连上",
+    "en": "Didn't connect",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_cancelled",
+    "zh-CN": "已取消",
+    "en": "Cancelled",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_result_retired",
+    "zh-CN": "被新一轮替换",
+    "en": "Replaced by a newer round",
+    "notes": "最近几次尝试的结果词。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_round",
+    "zh-CN": "{result} · {seconds} 秒",
+    "en": "{result} · {seconds} s",
+    "notes": "一次尝试的行值：结果词和持续时间。",
+    "params": {
+      "result": {
+        "type": "string",
+        "example": "没连上"
+      },
+      "seconds": {
+        "type": "string",
+        "example": "10.0"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_report_title",
+    "zh-CN": "直连诊断",
+    "en": "Direct connection diagnostics",
+    "notes": "复制出的诊断文字的第一行。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_report_verdict",
+    "zh-CN": "结论：{verdict}",
+    "en": "Summary: {verdict}",
+    "notes": "复制出的诊断文字的一行。",
+    "params": {
+      "verdict": {
+        "type": "string",
+        "example": "两边地址都有，连通检查全部失败"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_report_browser",
+    "zh-CN": "浏览器：{value}",
+    "en": "Browser: {value}",
+    "notes": "复制出的诊断文字的一行。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Chrome 131 on macOS"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_report_round",
+    "zh-CN": "第 {n} 次 · {age}",
+    "en": "Attempt {n} · {age}",
+    "notes": "复制出的诊断文字里一次尝试的标题。",
+    "params": {
+      "n": {
+        "type": "integer",
+        "example": 2
+      },
+      "age": {
+        "type": "string",
+        "example": "1 分钟前"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

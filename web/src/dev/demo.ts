@@ -25,6 +25,9 @@
 //   ?demo&longcmd=1#/s/s-appr               an approval of a 40-line command with a long description
 //   ?demo&direct=direct|file|read|measuring|relay|relay-faster|trying|none|peer_unsupported|no_response|no_traversal|failed|off|unsupported|mix&speeds=both|direct|relay|none#/m/mac
 //                                         the direct path of the computers: 「连接」 on the computer's page, the connection check's lines (direct-demo.ts)
+//   ?demo&diag=ipv6|all|nolocal|nostun|noremote|dtls|channel|refused|noreply|limited|budget|connected|trying#/m/mac
+//                                         the 「诊断信息」 row of the 「连接」 group (open it to see the sheet): one failure class each (direct-demo.ts);
+//                                         add &diagsheet=1 to open the sheet at once
 //   ?demo&conncheck=1#/settings            opens the connection check sheet at once
 
 import { localeStore, t, type Locale } from "../i18n";

@@ -2463,5 +2463,35 @@
     "path": "web/src/views/ConnectionGroup.tsx",
     "literal": "err",
     "reason": "Banner kind enum value, never displayed; the banner text comes from the error's own message."
+  },
+  {
+    "path": "web/src/transport/direct-diag.ts",
+    "literal": "string",
+    "reason": "typeof check on an SDK value; not text."
+  },
+  {
+    "path": "web/src/dev/direct-demo.ts",
+    "literal": "gather",
+    "reason": "Collector state name in dev-only demo data; the sheet shows it through transport.diag_state_* messages."
+  },
+  {
+    "path": "web/src/views/direct-diag-view.ts",
+    "literal": "dtls",
+    "reason": "Collector state kind used as a key, never displayed."
+  },
+  {
+    "path": "web/src/views/direct-diag-view.ts",
+    "literal": "dc",
+    "reason": "Collector state kind used as a key, never displayed."
+  },
+  {
+    "path": "web/src/views/DirectDiagSheet.tsx",
+    "literal": "ok",
+    "reason": "Internal copy-result state value, never displayed; the labels use transport.* and common.* messages."
+  },
+  {
+    "path": "web/src/views/DirectDiagSheet.tsx",
+    "literal": "fail",
+    "reason": "Internal copy-result state value, never displayed; the labels use transport.* and common.* messages."
   }
 ]

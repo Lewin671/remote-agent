@@ -6,7 +6,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as l10n from "../i18n";
 import { Swap, useGrow } from "../motion";
 import { errorText, type Remote } from "../remote";
+import { ChevronRight } from "../icons";
 import { Banner, StateMark, Switch, useRemote } from "../ui";
+import { DirectDiagSheet } from "./DirectDiagSheet";
 import { directTrying, directView, type DirectView } from "./direct-status";
 
 /** How long a direct path just turned on may say "trying" before it reports
@@ -22,6 +24,13 @@ function GroupRow({ className, enter, children }: { className: string; enter: bo
   return <div ref={ref} className={className}>{children}</div>;
 }
 
+/** A row of this group that opens a page: like GroupRow, a button with its chevron. */
+function NavRow({ enter, onClick, children }: { enter: boolean; onClick: () => void; children: ReactNode }) {
+  const ref = useRef(null as HTMLButtonElement | null);
+  useGrow(ref, { enter });
+  return <button ref={ref} className="row" onClick={onClick}>{children}<ChevronRight className="chev" /></button>;
+}
+
 /** The second line under a state word: opens and closes with the line. */
 function SubLine({ text, enter }: { text: string; enter: boolean }) {
   const ref = useRef(null as HTMLElement | null);
@@ -32,6 +41,7 @@ function SubLine({ text, enter }: { text: string; enter: boolean }) {
 export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: string; online: boolean }) {
   useRemote(remote);
   const [error, setError] = useState("");
+  const [diag, setDiag] = useState(() => remote.demoFlag("diagsheet"));
   const [turnedOn, setTurnedOn] = useState(undefined as number | undefined);
   const armed = useRef(false);
   useEffect(() => { armed.current = true; }, []);
@@ -83,8 +93,10 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
             <span>{s.name}</span><span className="v">{s.value}</span>
           </GroupRow>
         ))}
+        {on && <NavRow enter={enter} onClick={() => setDiag(true)}>{l10n.t("transport.diag")}</NavRow>}
       </div>
       <p className="gf">{l10n.t("transport.footer")}</p>
+      {diag && <DirectDiagSheet remote={remote} id={id} onClose={() => setDiag(false)} />}
     </>
   );
 }
