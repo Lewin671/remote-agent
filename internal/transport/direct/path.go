@@ -442,9 +442,16 @@ func (p *Path) Close() {
 		for key, part := range p.pending {
 			p.drop(key, part)
 		}
-		for len(p.received) > 0 {
-			m := <-p.received
-			p.cfg.Pool.free(p.cfg.Peer, 1, len(m.data), 1)
+		// Read competes for these messages without holding p.mu. The last
+		// message can disappear at any moment; never wait for another one.
+	drain:
+		for {
+			select {
+			case m := <-p.received:
+				p.cfg.Pool.free(p.cfg.Peer, 1, len(m.data), 1)
+			default:
+				break drain
+			}
 		}
 		p.mu.Unlock()
 		// Pion callbacks can call Close. Do not wait for that callback from inside

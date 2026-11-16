@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -183,4 +184,46 @@ func TestRealSDKPeerBudgetIncludesClosingReplacements(t *testing.T) {
 		t.Fatal("closed SDK reservation not released", err)
 	}
 	paths = append(paths, next)
+}
+
+// One reader races Close for the final buffered message. Using one inert SDK
+// connection keeps the stress on queue ownership rather than SDK allocation.
+func TestReadCloseConcurrentDrain(t *testing.T) {
+	previous := runtime.GOMAXPROCS(2)
+	defer runtime.GOMAXPROCS(previous)
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pc.Close()
+	confirmed := make(chan struct{})
+	close(confirmed)
+	deadline := time.NewTimer(20 * time.Second)
+	defer deadline.Stop()
+	for i := 0; i < 20000; i++ {
+		pool := NewPool(1)
+		if !pool.acquire("peer", "round", 1) || !pool.reserve("peer", 1, 1, 1) {
+			t.Fatal("fixture reservation failed")
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		p := &Path{pc: pc, ctx: ctx, cancel: cancel, cfg: Config{Peer: "peer", Use: 1, Pool: pool, Allow: func() bool { return true }}, confirmed: true, confirmation: confirmed, pending: map[string]*partial{}, received: make(chan message, 1), closed: make(chan struct{})}
+		p.received <- message{[]byte{1}}
+		start, done := make(chan struct{}), make(chan struct{}, 2)
+		go func() { <-start; _, _ = p.Read(context.Background()); done <- struct{}{} }()
+		go func() { <-start; p.Close(); p.Wait(); done <- struct{}{} }()
+		close(start)
+		for range 2 {
+			select {
+			case <-done:
+			case <-deadline.C:
+				t.Fatalf("Read/Close drain deadlocked at iteration %d", i)
+			}
+		}
+		pool.mu.Lock()
+		empty := len(pool.peers) == 0 && pool.total == [2]int{}
+		pool.mu.Unlock()
+		if !empty {
+			t.Fatal("close leaked receive or SDK reservations")
+		}
+	}
 }
