@@ -707,6 +707,30 @@ class DirectTransportTest {
     }
 
     @Test
+    fun directRetryDelayIsFullJitterBelowADoublingCeilingAndStartsAgainAfterAStablePath() {
+        var j = 1.0
+        val retry = DirectRetry { j }
+        val ceilings = (1..8).map { retry.delay("m", null, 0L) }
+        assertEquals(listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L, 30_000L, 30_000L, 30_000L), ceilings)
+        j = 0.25
+        assertEquals("full jitter: a fraction of the ceiling", 7_500L, retry.delay("m", null, 0L))
+        j = 0.0
+        assertEquals("and it can be nothing", 0L, retry.delay("m", null, 0L))
+        j = 1.0
+        // A path that stayed up 30 s starts the sequence again; one that did not, does not.
+        assertEquals(30_000L, retry.delay("m", 1_000L, 30_999L))
+        assertEquals(1_000L, retry.delay("m", 1_000L, 31_000L))
+        assertEquals(2_000L, retry.delay("m", null, 0L))
+        // A new start (main connection back, new computer process, switch turned on) clears it.
+        retry.reset("m")
+        assertEquals(1_000L, retry.delay("m", null, 0L))
+        // Each computer has its own sequence.
+        assertEquals(1_000L, retry.delay("other", null, 0L))
+        retry.clear()
+        assertEquals(1_000L, retry.delay("m", null, 0L))
+    }
+
+    @Test
     fun directRoutingReadAndBulkUpgradeFallbackHysteresis() {
         var now = 10_000L
         val routing = DirectRouting(now = { now })
@@ -988,6 +1012,7 @@ class DirectTransportTest {
                 rtcFactory = bridge.phoneFactory,
                 directPrefs = InMemoryDirectPreferenceStore(),
                 stunUrls = emptyList(),
+                directJitter = { 1.0 }, // the ceiling itself: 1 s, then 2 s
             )
             val id = daemonAccount.deviceId
             try {
@@ -1008,13 +1033,27 @@ class DirectTransportTest {
                 assertEquals(RouteName.RELAY, remote.direct.routing(id).readPath())
                 val droppedAt = System.nanoTime()
 
-                // Designed backoff: 5 s wait plus at most one 1 s discovery tick plus the handshake.
+                // Full-jitter backoff (docs/transport.md §4), here at its ceiling: 1 s for the first
+                // failure, plus at most one 1 s discovery tick plus the handshake.
                 awaitCondition("direct is re-established after the path drop", 15_000) {
                     remote.direct.ready(id, RouteHint.Read) && remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))
                 }
                 val backMs = (System.nanoTime() - droppedAt) / 1_000_000
-                assertTrue("re-established after ${backMs}ms, expected within the 5 s backoff plus a tick", backMs in 4_000..9_000)
+                assertTrue("re-established after ${backMs}ms, expected within the first 1 s step (+ a tick and the handshake)", backMs in 900..4_000)
                 assertTrue("a new peer connection was made", bridge.phonePcs.size > before)
+
+                // A second drop soon after is the second failure: the ceiling doubles to 2 s.
+                awaitCondition("the re-established path is ready to drop again", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+                val second = bridge.phonePcs.size
+                bridge.phonePcs.toList().forEach { it.dropAllChannels() }
+                awaitCondition("the second drop stops being ready", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
+                val droppedAgain = System.nanoTime()
+                awaitCondition("direct is re-established after the second drop", 20_000) {
+                    remote.direct.ready(id, RouteHint.Read) && remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))
+                }
+                val backAgainMs = (System.nanoTime() - droppedAgain) / 1_000_000
+                assertTrue("second failure waits up to 2 s, took ${backAgainMs}ms", backAgainMs in 1_900..5_500)
+                assertTrue("a new peer connection again", bridge.phonePcs.size > second)
                 // It measures again after the stability wait, on both paths.
                 awaitCondition("the new path is warmed up again", 20_000) {
                     daemon.directCommands.count { it.hasGetMachineStatus() } > probesBefore

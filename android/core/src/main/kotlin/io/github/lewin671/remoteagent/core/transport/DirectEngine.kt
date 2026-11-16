@@ -58,7 +58,10 @@ internal class DirectEngine(
     private val monotonic: () -> Long = ::monotonicMillis,
     private val stunUrls: List<String> = defaultStunUrls(account.server),
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    jitter: () -> Double = { java.util.concurrent.ThreadLocalRandom.current().nextDouble() },
 ) {
+    private val retry = DirectRetry(jitter)
+
     private class PeerEntry(
         val id: String,
         val head: String,
@@ -73,6 +76,8 @@ internal class DirectEngine(
         var snapshotSeq = 0L
         var downloadSeq = 0L
         var redialAt: Long? = null
+        var readyAt: Long? = null
+        var retryDelay: Long? = null
         var selected = false
     }
 
@@ -147,6 +152,7 @@ internal class DirectEngine(
         synchronized(stateLock) {
             preferences[id] = enabled
             retryAfter.remove(id)
+            retry.reset(id)
             failReasons.remove(id)
             lifetime++
             routingOwners[id] = Any()
@@ -176,6 +182,8 @@ internal class DirectEngine(
             syncRevision++
             lifetime++
             routingOwners.clear()
+            retryAfter.clear()
+            retry.clear()
             freshUntil = 0L
             toClose = sessions.values.onEach { it.live = false }.map { it.session }
             peers.clear()
@@ -212,6 +220,8 @@ internal class DirectEngine(
                 val closedSessions = if (head != hash) {
                     lifetime++
                     routingOwners.clear()
+                    retryAfter.clear()
+                    retry.clear()
                     val list = sessions.values.onEach { it.live = false }.map { it.session }
                     peers.clear()
                     sessions.clear()
@@ -238,6 +248,8 @@ internal class DirectEngine(
         val toDiscover: List<DirectSession>
         synchronized(stateLock) {
             leg = stream
+            // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
+            retryAfter.clear()
             if (discoverTimer == null) {
                 lateinit var job: Job
                 job = scope.launch {
@@ -281,6 +293,10 @@ internal class DirectEngine(
         val member = record!!.head.core.members.firstOrNull { it.id == id && it.kind == 1u } ?: throw PathChanged()
         return Wire.Identity(Wire.utf8(id), 2L, ByteArray(0), ByteArray(0), member.ed, member.x, null, null)
     }
+
+    /** The delay for this round's end, counted once however many of its paths close. Caller holds stateLock. */
+    private fun roundDelay(id: String, p: PeerEntry): Long =
+        p.retryDelay ?: retry.delay(id, p.readyAt, clock()).also { p.retryDelay = it }
 
     private suspend fun discover() {
         if (rtcFactory == null) return
@@ -390,6 +406,7 @@ internal class DirectEngine(
                             false
                         } else {
                             p.paths[use] = path
+                            if (p.readyAt == null) p.readyAt = clock()
                             failReasons.remove(id)
                             if (use == 1) routingLocked(id).arm()
                             true
@@ -418,13 +435,13 @@ internal class DirectEngine(
                         if (peers[id] === p) {
                             shouldNotify = true
                             if (use != null && p.session.active && p.session.established) {
-                                if (p.redialAt == null) p.redialAt = clock() + 5000L
+                                if (p.redialAt == null) p.redialAt = clock() + roundDelay(id, p)
                                 routingLocked(id).fail()
                             }
                             if (p.paths.values.none { it.ready }) {
                                 routingLocked(id).fail()
                                 if (peers[id] === p) peers.remove(id)
-                                retryAfter[id] = clock() + 5000L
+                                retryAfter[id] = clock() + roundDelay(id, p)
                                 p.live = false
                             }
                         }
@@ -614,6 +631,11 @@ internal class DirectEngine(
                                 .filter { it.id == id && it.session.peer.boot.isNotEmpty() && !it.session.peer.boot.contentEquals(peer.boot) }
                                 .onEach { it.live = false }
                                 .map { it.session }
+                            // A new process of the computer starts afresh: no old failure slows it.
+                            if (staleBootToClose.isNotEmpty()) {
+                                retryAfter.remove(id)
+                                retry.reset(id)
+                            }
                             val created = createLocked(peer, opened.ctx.connection, opened.ctx.deadline)
                             expiredToClose = created.second
                             created.first

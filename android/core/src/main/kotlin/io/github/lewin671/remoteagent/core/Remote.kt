@@ -427,6 +427,8 @@ class Remote(
     private val rtcFactory: RtcFactory? = null,
     private val directPrefs: DirectPreferenceStore = InMemoryDirectPreferenceStore(),
     private val stunUrls: List<String>? = null,
+    /** Tests only: the jitter of the direct retry delay (a fraction of its ceiling). */
+    private val directJitter: (() -> Double)? = null,
 ) {
     private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
     private val cpuDispatcher: kotlinx.coroutines.CoroutineDispatcher = if (dispatcher == null) Dispatchers.Default else this.dispatcher
@@ -451,6 +453,7 @@ class Remote(
         monotonic = monotonic,
         stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
         dispatcher = directDispatcher,
+        jitter = directJitter ?: { java.util.concurrent.ThreadLocalRandom.current().nextDouble() },
     ).also { engine -> engine.probe = { id, path -> probeRead(id, path) } }
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
