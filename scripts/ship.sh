@@ -153,13 +153,21 @@ web_has() {
 	done
 	return 1
 }
+# Our own STUN host is not in this public repository: the web build reads it
+# from the environment or ~/.config/remote-agent/direct-stun (one line, a
+# comma-separated list of stun: URLs). Without it the web asks the relay's own.
+stun_url=${RA_DIRECT_STUN_URL:-}
+if [ -z "$stun_url" ] && [ -r "$HOME/.config/remote-agent/direct-stun" ]; then
+	stun_url=$(tr -d '\r\n' <"$HOME/.config/remote-agent/direct-stun")
+fi
+
 if web_has "$commit"; then
 	echo "skipped: already $tag"
 else
 	if [ "$web_only" = true ]; then
-		(cd "$work/web" && VITE_DEFAULT_SERVER=$SERVER_URL pnpm run deploy)
+		(cd "$work/web" && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
 	else
-		(cd "$work/web" && pnpm install --frozen-lockfile --silent && VITE_DEFAULT_SERVER=$SERVER_URL pnpm run deploy)
+		(cd "$work/web" && pnpm install --frozen-lockfile --silent && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
 	fi
 	i=0
 	until web_has "$commit"; do

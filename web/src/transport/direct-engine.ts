@@ -35,6 +35,17 @@ export interface DirectStatus { state: DirectState; reason?: DirectReason; file:
  * stayed up for `stableMs` starts the sequence again. */
 export const DIRECT_RETRY = { initialMs: 1000, maxMs: 30_000, stableMs: 30_000 } as const;
 
+/** The STUN servers this browser asks for its own public address. A deployment
+ * may name its own with VITE_DIRECT_STUN_URL, as a comma-separated list so one
+ * entry can be an IPv6 address literal: a resolver that drops AAAA answers
+ * (common behind proxies) would otherwise leave the browser no way to learn its
+ * public IPv6, and the computer would never send towards it. No third-party
+ * service is used; the default is the relay's own. */
+export function stunServers(host: string, configured?: string): string[] {
+  const list = (configured ?? "").split(",").map((url) => url.trim()).filter(Boolean);
+  return list.length ? list.slice(0, 2) : [`stun:${host.includes(":") ? `[${host}]` : host}:3478`];
+}
+
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
 export class DirectEngine {
@@ -77,7 +88,7 @@ export class DirectEngine {
   private warmShown = new Map<string, boolean>();
   constructor(private readonly account: StoredAccount, private readonly authorize: () => Promise<void>, private readonly changed: () => void, private readonly random: () => number = Math.random) {
     const host = new URL(account.server).hostname;
-    this.stun = [import.meta.env.VITE_DIRECT_STUN_URL || `stun:${host.includes(":") ? `[${host}]` : host}:3478`];
+    this.stun = stunServers(host, import.meta.env.VITE_DIRECT_STUN_URL);
   }
   private notify() { try { this.changed(); } catch { /* Observers do not own transport cleanup. */ } }
   private key(id: string) { return `remote-agent-direct:${this.account.server}:${this.account.deviceId}:${id}`; }

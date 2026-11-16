@@ -1,5 +1,11 @@
 # Optional independent STUN discovery. Use an unproxied DNS name such as
-# stun.example.com and allow UDP 3478 at the host and network firewall.
+# stun.example.com, with both an A and an AAAA record when the host has IPv6,
+# and allow UDP 3478 at the host and network firewall for both families.
+#
+# The host's network, not a published port: Docker's port publishing rewrites
+# the source address of an IPv6 request to an address on its IPv4-only bridge,
+# so the service would answer every IPv6 client with a useless IPv4 mapping and
+# the browser would never learn its own IPv6 address.
 # No relay database, volumes, HTTP access log or TURN service is needed.
 # Run beside the regular compose file only after deploying protocol 16.
 services:
@@ -7,7 +13,7 @@ services:
     image: remote-agent-server:local
     entrypoint: ["/remote-agent-server", "stun"]
     command: ["--listen", ":3478", "--rate", "1000", "--source-rate", "20", "--bytes", "131072", "--sources", "4096"]
-    ports: ["3478:3478/udp"]
+    network_mode: host
     restart: unless-stopped
     mem_limit: 64m
     cpus: 0.5
