@@ -254,3 +254,38 @@ test("the fallback needs 8 direct and 4 relay samples inside 30 seconds", () => 
   now += 100; route.observe(hint, "relay", 0, 175);
   expect(route.readPath()).toBe("relay");
 });
+
+test("a read PC that comes up inside a window opened while it was down still gets a whole warm-up, and is then compared", () => {
+  let now = 0; const route = new DirectRouting(() => now), hint = { kind: "read" } as const;
+  route.fail();                // the path went down: a re-measure is armed for after the 5 s stability wait (5000..10000)
+  now = 7000;                  // the new read PC is ready two seconds into that window
+  route.arm(true);
+  const issued = { relay: 0, direct: 0 };
+  for (; now < 20_000; now += 25) {
+    const path = route.nextProbe(); if (!path) continue;
+    issued[path]++; route.probeDone(path); route.observe(hint, path, 0, path === "direct" ? 13 : 335);
+  }
+  expect(issued).toEqual({ relay: 10, direct: 10 });
+  expect(route.compared()).toBe(true); expect(route.readPath()).toBe("direct");
+});
+test("a fresh trigger never starts before the stability wait ends, nor goes faster than 4 probes a second", () => {
+  let now = 0; const route = new DirectRouting(() => now), probes: number[] = [];
+  route.fail(); now = 1000; route.arm(true);
+  expect(route.measuring()).toBe(true); expect(route.warming()).toBe(false); expect(route.nextProbe()).toBeUndefined();
+  for (; now < 20_000; now += 25) { const path = route.nextProbe(); if (path) { probes.push(now); route.probeDone(path); } }
+  expect(probes[0]).toBeGreaterThanOrEqual(5000);
+  for (const at of probes) expect(probes.filter(q => q >= at && q < at + 1000).length).toBeLessThanOrEqual(4);
+});
+test("measuring covers a running warm-up and one waiting out its stability period, and nothing else; compared needs 8 live samples on both paths", () => {
+  let now = 0; const route = new DirectRouting(() => now), hint = { kind: "read" } as const;
+  expect(route.measuring()).toBe(false); expect(route.compared()).toBe(false);
+  route.arm(); expect(route.measuring()).toBe(true);
+  now = 5001; expect(route.measuring()).toBe(false);
+  route.fail(); expect(route.measuring()).toBe(true);        // waiting for the stability period
+  now = 5001 + 5000; expect(route.warming()).toBe(true); expect(route.measuring()).toBe(true);
+  now += 5001; expect(route.measuring()).toBe(false);
+  for (let i = 0; i < 7; i++) { route.observe(hint, "relay", 0, 100); route.observe(hint, "direct", 0, 100); }
+  expect(route.compared()).toBe(false);
+  route.observe(hint, "relay", 0, 100); route.observe(hint, "direct", 0, 100); expect(route.compared()).toBe(true);
+  now += 61_000; expect(route.compared()).toBe(false);       // the window aged out; retained numbers prove nothing
+});

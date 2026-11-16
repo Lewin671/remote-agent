@@ -83,7 +83,10 @@ export function directView(s: DirectStatus): DirectView {
       return { kind: "measuring", mark: "run", word, summary: word, speeds: shown };
     }
     const word = l10n.t("transport.status_relay");
-    const sub = relayNotSlower(s) ? l10n.t("transport.relay_faster") : l10n.t("transport.not_clearly_faster");
+    // Only a finished comparison says how the paths compare. Without live samples on both
+    // (the window aged out, or the warm-up was cut short) nothing is claimed: the numbers
+    // shown may be older than that, and the headline must not be driven by them.
+    const sub = !s.compared ? undefined : relayNotSlower(s) ? l10n.t("transport.relay_faster") : l10n.t("transport.not_clearly_faster");
     return { kind: "relay", mark: "off", word, sub, summary: line(word, sub), speeds: shown };
   }
   if (s.state === "connecting") {

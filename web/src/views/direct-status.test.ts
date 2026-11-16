@@ -4,7 +4,7 @@ import { localeStore, t as message } from "../i18n";
 import type { DirectStatus } from "../transport/direct-engine";
 import { directView, relayNotSlower } from "./direct-status";
 
-const base: DirectStatus = { state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, warming: false };
+const base: DirectStatus = { state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, warming: false, compared: false };
 const make = (over: Partial<DirectStatus>): DirectStatus => ({ ...base, ...over });
 
 beforeEach(() => localeStore.overrideForTesting("zh-CN"));
@@ -27,14 +27,14 @@ describe("directView", () => {
   });
 
   it("is a gray dot saying 正在用中继 once measured and not worth switching, and says which of the two reasons", () => {
-    const v = directView(make({ state: "connected" }));
+    const v = directView(make({ state: "connected", compared: true }));
     expect([v.kind, v.mark, v.word, v.summary]).toEqual(["relay", "off", "正在用中继", "正在用中继 · 直连没有明显更快"]);
     expect(v.sub).toBe("直连没有明显更快");
     // Measured on both paths and the relay is not slower: the relay is faster.
-    const faster = directView(make({ state: "connected", fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 200, relay: 180 } }));
+    const faster = directView(make({ state: "connected", compared: true, fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 200, relay: 180 } }));
     expect(faster.sub).toBe("中继更快");
     // Equal counts as not slower.
-    expect(directView(make({ state: "connected", fileMiBps: { direct: 4, relay: 4 } })).sub).toBe("中继更快");
+    expect(directView(make({ state: "connected", compared: true, fileMiBps: { direct: 4, relay: 4 } })).sub).toBe("中继更快");
   });
 
   it("says no clear win while direct is ahead only slightly, or only one path was measured", () => {
@@ -45,7 +45,27 @@ describe("directView", () => {
       { fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 12, relay: 180 } },
       {},
     ] satisfies Partial<DirectStatus>[])
-      expect(directView(make({ state: "connected", ...over })).sub).toBe("直连没有明显更快");
+      expect(directView(make({ state: "connected", compared: true, ...over })).sub).toBe("直连没有明显更快");
+  });
+
+  it("claims nothing about the comparison until one was completed: retained numbers do not drive the headline", () => {
+    // Connected, but the live window holds too few samples (aged out, or the warm-up was cut short):
+    // the numbers stay in the rows, the headline says only which path is in use.
+    const retained = make({ state: "connected", readMs: { direct: 13, relay: 335 } });
+    const v = directView(retained);
+    expect([v.kind, v.word, v.sub, v.summary]).toEqual(["relay", "正在用中继", undefined, "正在用中继"]);
+    expect(v.speeds.map((x) => x.value)).toContain("直连 13 · 中继 335 ms");
+    expect(directView({ ...retained, fileMiBps: { direct: 3, relay: 4 } }).sub).toBeUndefined();
+    // A warm-up that is running, or waiting out its stability period, is measuring, whatever is retained.
+    expect(directView({ ...retained, warming: true }).kind).toBe("measuring");
+    expect(directView({ ...retained, warming: true }).summary).toBe("直连已连上，正在测速");
+    // Not connected never speaks of a comparison, even with numbers kept from an earlier path.
+    for (const over of [{ state: "connecting" }, { state: "none" }, { state: "none", reason: "failed" }] as const) {
+      const w = directView(make({ ...over, compared: true, readMs: { direct: 13, relay: 335 } }));
+      expect(w.summary ?? "").not.toContain("没有明显更快");
+    }
+    expect(directView(make({ state: "none", reason: "failed", readMs: { direct: 13, relay: 335 } })).sub).toBe("直连不可用：没连上，稍后会自动再试");
+    expect(directView(make({ state: "connecting", readMs: { direct: 13, relay: 335 } })).word).toBe("正在建立直连…");
   });
 
   it("spins while setting up", () => {
@@ -80,7 +100,7 @@ describe("directView", () => {
     expect(v.speeds[0].value).toBe("Relay 4.1 MiB/s");
     expect(directView(make({ state: "connected", file: "direct" })).summary).toBe("Using direct · Used for files");
     expect(directView(make({ state: "connected", warming: true })).word).toBe("Direct connected, measuring speed");
-    expect(directView(make({ state: "connected" })).sub).toBe("Direct isn't clearly faster");
+    expect(directView(make({ state: "connected", compared: true })).sub).toBe("Direct isn't clearly faster");
     expect(directView(make({ state: "connecting" })).word).toBe("Setting up direct…");
   });
 

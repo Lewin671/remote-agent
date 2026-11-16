@@ -19,15 +19,15 @@
 import type { DirectEngine, DirectStatus } from "../transport/direct-engine";
 
 type Scenario = Omit<DirectStatus, "fileMiBps" | "readMs"> & { off?: boolean };
-const relay = { file: "relay", read: "relay", warming: false } as const;
+const relay = { file: "relay", read: "relay", warming: false, compared: false } as const;
 
 function scenario(name: string): Scenario {
   switch (name) {
-    case "direct": return { state: "connected", file: "direct", read: "direct", warming: false };
-    case "file": return { state: "connected", file: "direct", read: "relay", warming: false };
-    case "read": return { state: "connected", file: "relay", read: "direct", warming: false };
+    case "direct": return { state: "connected", file: "direct", read: "direct", warming: false, compared: true };
+    case "file": return { state: "connected", file: "direct", read: "relay", warming: false, compared: true };
+    case "read": return { state: "connected", file: "relay", read: "direct", warming: false, compared: true };
     case "measuring": return { state: "connected", ...relay, warming: true };
-    case "relay": case "relay-faster": return { state: "connected", ...relay };
+    case "relay": case "relay-faster": return { state: "connected", ...relay, compared: true };
     case "trying": return { state: "connecting", ...relay };
     case "peer_unsupported": case "no_response": case "no_traversal": case "failed": return { state: "none", reason: name, ...relay };
     case "off": return { state: "none", reason: "disabled", ...relay, off: true };

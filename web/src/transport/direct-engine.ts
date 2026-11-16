@@ -23,8 +23,12 @@ export type DirectState = "unsupported" | "connected" | "connecting" | "none";
 export type DirectReason = "disabled" | "peer_unsupported" | "no_response" | "no_traversal" | "failed";
 /** Read-only snapshot for display. Speeds are present only when measured. */
 export interface DirectStatus { state: DirectState; reason?: DirectReason; file: RouteName; read: RouteName; fileMiBps: Partial<Record<RouteName, number>>; readMs: Partial<Record<RouteName, number>>;
-  /** Connected, and the warm-up that decides the read path is still running (at most five seconds). */
-  warming: boolean }
+  /** Connected, and the warm-up that decides the read path is running or waiting for its stability period (at most a few seconds). */
+  warming: boolean;
+  /** Connected with a ready read path, and the live window holds enough samples on both paths for a comparison. Only then can the
+   * page say how direct compares with the relay; the numbers in readMs may be older than the window and prove nothing. */
+  compared: boolean }
+
 
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
@@ -149,7 +153,7 @@ export class DirectEngine {
     p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun,
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
-      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.failures.delete(id); if (use === 1) this.routing(id).arm(); this.notify(); },
+      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.failures.delete(id); if (use === 1) this.routing(id).arm(true); this.notify(); },
       closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+5000;this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
       frame: (raw, use) => this.frame(p, raw, use), capability: opened => this.capability(p, opened),
     });
@@ -263,7 +267,7 @@ export class DirectEngine {
         const path = route.nextProbe();
         if (path) void Promise.resolve().then(() => this.probe?.(id, path)).catch(() => undefined).finally(() => { route.probeDone(path); this.notify(); });
       }
-      if (this.warmShown.get(id) !== route.warming()) { this.warmShown.set(id, route.warming()); this.notify(); }
+      if (this.warmShown.get(id) !== route.measuring()) { this.warmShown.set(id, route.measuring()); this.notify(); }
     }
     if (more) this.pumpTimer = setTimeout(() => this.pump(), READ_RULE.warmup.minGapMs);
   }
@@ -296,10 +300,13 @@ export class DirectEngine {
   /** What the user can be told about this computer's direct path right now. */
   status(id: string): DirectStatus {
     const p = this.peers.get(id), live = !!p && this.valid(p) && p.session.active, measured = this.routes.get(id)?.measured() ?? { fileMiBps: {}, readMs: {} };
-    const base = { file: "relay", read: "relay", warming: false, ...measured } as const;
+    const base = { file: "relay", read: "relay", warming: false, compared: false, ...measured } as const;
     if (typeof RTCPeerConnection === "undefined") return { ...base, state: "unsupported" };
     if (!this.enabled(id)) return { ...base, state: "none", reason: "disabled" };
-    if (live && [...p.paths.values()].some(path => path.ready)) return { ...base, state: "connected", file: this.filePath(id), read: this.ready(id, { kind: "read" }) ? this.routing(id).readPath() : "relay", warming: this.ready(id, { kind: "read" }) && this.routing(id).warming() };
+    if (live && [...p.paths.values()].some(path => path.ready)) {
+      const read = this.ready(id, { kind: "read" }), route = this.routing(id);
+      return { ...base, state: "connected", file: this.filePath(id), read: read ? route.readPath() : "relay", warming: read && route.measuring(), compared: read && route.compared() };
+    }
     if (live) return { ...base, state: "connecting" };
     return { ...base, state: "none", reason: this.failures.get(id) };
   }

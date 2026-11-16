@@ -81,16 +81,28 @@ export class DirectRouting {
   /** Starts a warm-up: background samples of both paths, right away when the
    * read path is ready (the engine only asks then), after the stability wait
    * when a fallback just happened. A trigger while one is running is absorbed,
-   * so triggers cannot stack budgets. */
-  arm() {
+   * so triggers cannot stack budgets. `fresh` is the trigger that a new read
+   * PC became ready: a window that was already running or waiting started
+   * before there was a path to measure (a fallback arms one while the path is
+   * still down), so absorbing this trigger would leave only the rest of that
+   * window for the samples and the comparison would never complete. The new
+   * window replaces it with the same bounds, never closer than the minimum gap
+   * to the last probe and never before the stability wait ends. */
+  arm(fresh = false) {
     const now = this.now(), w = this.warm;
-    if (now >= w.start && now < w.end) return;
+    if (!fresh && now >= w.start && now < w.end) return;
     const start = Math.max(now, this.readStableAfter);
     this.warm = { start, end: start + READ_RULE.warmup.windowMs, issued: { relay: 0, direct: 0 }, inflight: w.inflight, last: "relay" };
     this.armed?.();
   }
   /** Whether a warm-up window is open or still waiting to open. */
   pending() { return this.now() < this.warm.end; }
+  /** Whether a warm-up is running, or waiting out the stability period before it
+   * starts: the page calls both measuring. */
+  measuring() { return this.warming() || this.now() < this.warm.start && this.now() < this.warm.end; }
+  /** Whether the live window holds what a decision needs on both paths: only then
+   * can it be said how direct compares, whatever numbers are still displayed. */
+  compared() { return !this.sparse(); }
   /** Whether the warm-up is running now: what the page calls measuring. */
   warming() {
     const now = this.now(), w = this.warm, cap = READ_RULE.warmup.perPath;

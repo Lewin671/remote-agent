@@ -41,7 +41,7 @@ function open(id = "mac", query = ""): DemoRemote {
   return r;
 }
 const notify = (r: DemoRemote) => act(() => (r.direct as unknown as { notify(): void }).notify());
-const status = (over: Partial<DirectStatus>): DirectStatus => ({ state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, warming: false, ...over });
+const status = (over: Partial<DirectStatus>): DirectStatus => ({ state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, warming: false, compared: false, ...over });
 function show(r: DemoRemote, over: Partial<DirectStatus>) {
   vi.spyOn(r.direct, "status").mockReturnValue(status(over));
   notify(r);
@@ -98,12 +98,12 @@ describe("the status row", () => {
 
   it("draws a gray dot, never a ring, for 正在用中继 with the reason it is in use", () => {
     const r = open();
-    show(r, { state: "connected", readMs: { direct: 160, relay: 175 } });
+    show(r, { state: "connected", compared: true, readMs: { direct: 160, relay: 175 } });
     const cls = statusRow()!.querySelector("i.mark")!.className;
     expect(cls).toContain("off"); expect(cls).not.toContain("idle");
     expect(statusRow()!.querySelector(".dx-text")!.textContent).toContain("正在用中继");
     expect(statusRow()!.querySelector("small")!.textContent).toBe("直连没有明显更快");
-    show(r, { state: "connected", fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 220, relay: 180 } });
+    show(r, { state: "connected", compared: true, fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 220, relay: 180 } });
     expect(statusRow()!.querySelector("small")!.textContent).toBe("中继更快");
   });
 

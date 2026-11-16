@@ -243,3 +243,45 @@ test("opening a screen with numbers triggers at most one bounded warm-up, and on
   engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before + 20); expect(engine.ready("machine", { kind: "read" })).toBe(true);
  } finally { vi.useRealTimers(); }
 });
+
+type Round = { session: DirectSession; paths: Map<number, DirectChannel> };
+async function rounds() {
+ vi.useFakeTimers();
+ const engine = new DirectEngine({ server: "https://example.com", deviceId: "client", devicePrivate: {} as CryptoKey }, async () => {}, () => {});
+ const self = await fixture("client", 1), member = await fixture("machine", 2), id = w.text(member.id);
+ Object.assign(engine, { self, codec: await fixtureCodec(), record: { member: true, states: [{ core: { members: [] } }] }, peers: new Map(), freshUntil: Date.now() + 1e9 });
+ const state = engine as unknown as { create(p: w.Public, c: w.Bytes, d: number): Round; peers: Map<string, Round>; retryAfter: Map<string, number>; failureCount: Map<string, number> };
+ let n = 0;
+ const round = () => state.create(member, new Uint8Array(16).fill(++n), Date.now() + 10_000);
+ return { engine, state, id, round, delayOf: () => state.retryAfter.get(id)! - Date.now() };
+}
+test("a read PC that comes up after the fallback's warm-up window opened is still measured in a whole window", async () => {
+ const { engine, state, id, round } = await rounds(); vi.stubGlobal("RTCPeerConnection", class {});
+ try {
+  const hint = { kind: "read" } as const, route = engine.routing(id), calls = { relay: 0, direct: 0 };
+  engine.probe = async (_id, path) => { calls[path]++; route.observe(hint, path, 0, path === "direct" ? 13 : 335); };
+  const p = round(); p.session.options.chosen(); Object.assign(p.session, { established: true });
+  route.fail();                                                  // the path dropped: a re-measure is armed for 5 s later
+  await vi.advanceTimersByTimeAsync(7000);                       // the new PC is ready two seconds into that window
+  p.session.options.ready(1, { ready: true, close: vi.fn() } as unknown as DirectChannel);
+  expect(engine.status(id)).toMatchObject({ state: "connected", warming: true, compared: false });
+  await vi.advanceTimersByTimeAsync(20_000);
+  // A whole window: 5 s at 4 a second (the last slot falls on its closing edge), not the 3 s that were left of the old one.
+  expect(calls.direct).toBe(10); expect(calls.relay).toBeGreaterThanOrEqual(9);
+  expect(engine.status(id)).toMatchObject({ state: "connected", read: "direct", warming: false, compared: true });
+  void state;
+ } finally { engine.close(); vi.useRealTimers(); vi.unstubAllGlobals(); }
+});
+test("connected but not yet compared is measuring while a warm-up is waiting or running, and plain relay once it ended without enough samples", async () => {
+ const { engine, id, round } = await rounds(); vi.stubGlobal("RTCPeerConnection", class {});
+ try {
+  engine.probe = async () => undefined;                           // a window in which no sample is ever recorded
+  const p = round(); p.session.options.chosen(); Object.assign(p.session, { established: true }); engine.routing(id).fail();
+  p.session.options.ready(1, { ready: true, close: vi.fn() } as unknown as DirectChannel);
+  expect(engine.status(id)).toMatchObject({ state: "connected", read: "relay", warming: true, compared: false });   // waiting out the stability period
+  await vi.advanceTimersByTimeAsync(5100);
+  expect(engine.status(id).warming).toBe(true);                                                          // and running
+  await vi.advanceTimersByTimeAsync(11_000);
+  expect(engine.status(id)).toMatchObject({ state: "connected", read: "relay", warming: false, compared: false });
+ } finally { engine.close(); vi.useRealTimers(); vi.unstubAllGlobals(); }
+});
