@@ -136,7 +136,7 @@ struct AttachMenu: View {
 struct SessionComposer: View {
     let session: SessionView
     let status: Status
-    let derived: Derived
+    let derived: PBProjectionState
     var focus: FocusState<Bool>.Binding
     /// A message is being sent from this box, with or without images. Sending is asking to see the answer.
     var onSent: () -> Void = {}

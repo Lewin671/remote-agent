@@ -55,7 +55,7 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         #expect(model.ready && model.historyPartial && !model.loaded)
         #expect(model.derived.inputs.isEmpty)
         await model.show(SessionEvents(events: [tail], loaded: true))
-        #expect(model.derived.inputs["request"] == .submitted)
+        #expect(model.derived.inputStatus("request") == .submitted)
         #expect(model.loaded && !model.historyPartial)
     }
 
@@ -103,7 +103,7 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
                     $0.running = true
                 }))
         #expect(snapshot.derived.running)
-        #expect(snapshot.derived.approvals.keys == ["A"])
+        #expect(snapshot.derived.approvals.map(\.approvalID) == ["A"])
         #expect(snapshot.spoke)
         #expect(
             await !builder.build(PagedList(events([.turnStarted(.init())])), ChatParams()).spoke)
@@ -125,7 +125,7 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
                 }),
         ])
         let snapshot = await builder.build(PagedList(list), ChatParams(texts: ["q1": "排队的"]))
-        #expect(snapshot.derived.inputs["q1"] == .queued)
+        #expect(snapshot.derived.inputStatus("q1") == .queued)
         #expect(pendingInputs(snapshot.derived).map(\.id) == ["q1"])
     }
 
@@ -186,16 +186,16 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         var snapshot = SessionEvents(events: PagedList(Array(list.prefix(1))))
         snapshot.live = live
         await model.show(snapshot)
-        #expect(model.derived.plan?.text == screen)
+        #expect(model.derived.hasPlan && model.derived.plan.text == screen)
         // No refresh of the live snapshot, and the full history is not done.
         snapshot.events = PagedList(Array(list.prefix(2)))
         await model.show(snapshot)
         #expect(!model.loaded)
-        #expect(model.derived.plan?.text == markdown)
+        #expect(model.derived.hasPlan && model.derived.plan.text == markdown)
         snapshot.events = PagedList(list)
         snapshot.loaded = true
         await model.show(snapshot)
-        #expect(model.loaded && model.derived.plan?.text == markdown)
+        #expect(model.loaded && model.derived.hasPlan && model.derived.plan.text == markdown)
 
     }
 

@@ -18,9 +18,10 @@ struct PlanScreen: View {
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
-                if let plan = chat.derived.plan, isSkeleton(plan.text) {
+                if chat.derived.hasPlan, isSkeleton(chat.derived.plan.text) {
                     PageNote(skeletonMessage)
-                } else if let s, let plan = chat.derived.plan {
+                } else if let s, chat.derived.hasPlan {
+                    let plan = chat.derived.plan
                     ScrollView {
                         MarkdownView(plan.text, bleed: 16)
                             .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 16)

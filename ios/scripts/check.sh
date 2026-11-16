@@ -40,6 +40,9 @@ compiled=$?
 rm -rf "$resources"
 [ "$compiled" = 0 ] || fail "the String Catalog did not compile"
 
+# 0: ensure the shared Go core xcframework is current (skips when up to date).
+"$ios/../scripts/core/build.sh" ios >"$out" 2>&1 || fail "failed to build Corebind.xcframework"
+
 # 1
 if [ "$mode" = std ] || [ "$mode" = full ] || [ "$mode" = core ]; then
     set --

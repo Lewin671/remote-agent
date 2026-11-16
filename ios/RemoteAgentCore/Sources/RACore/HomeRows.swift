@@ -287,7 +287,7 @@ public struct PendingRowText: Equatable, Sendable {
     public var spoken: String { [title, kind, summary.replacingOccurrences(of: " · ", with: L10n.commonIosSpokenSeparator())].filter { !$0.isEmpty }.joined(separator: L10n.commonIosSpokenSeparator()) }
 }
 
-/// `approval` and `question`: the first of each still waiting, from the session's events (`Derived`).
+/// `approval` and `question`: the first of each still waiting, from the session's events (`PBProjectionState`).
 public func pendingRowText(
     _ state: RemoteState, _ s: SessionView, scope: HomeScope, approval: PBApprovalRequested?, question: String?,
     zone: TimeZone = .current

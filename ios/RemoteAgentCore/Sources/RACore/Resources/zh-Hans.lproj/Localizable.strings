@@ -1642,6 +1642,7 @@
 "settings_ios_default_model_for_new_sessions" = "%1$@ · 新会话默认模型";
 "settings_ios_default_s_own_configuration" = "默认（%1$@ 自己的配置）";
 "settings_ios_delete_entire_account" = "删除整个账户…";
+"settings_ios_event_projection_core" = "会话事件归约";
 "settings_ios_exit_and_delete_local_keys_from_settings" = "退出并删除本机密钥在设置页";
 "settings_ios_fonts_use_the_system_s_sf_pro_pingfang_and" = "字体用的是系统自带的 SF Pro、苹方和 SF Mono，App 里没有打包字体。";
 "settings_ios_for_unverified_versions_run_remote_agent_doctor_on_the" = "未验证的版本请在电脑上运行 remote-agent doctor";
@@ -1667,6 +1668,7 @@
 "settings_ios_saving" = "正在保存…";
 "settings_ios_server_communication" = "和服务器通信";
 "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running" = "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。";
+"settings_ios_shared_core_message_encoding" = "共享核心的协议编码";
 "settings_ios_support_and_feedback" = "支持与反馈";
 "settings_ios_system" = "系统";
 "settings_ios_the_android_app_and_home_screen_web_app_can" = "Android App 和添加到主屏幕的网页可以在各自的设置里开启提醒";

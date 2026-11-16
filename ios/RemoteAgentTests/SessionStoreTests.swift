@@ -153,10 +153,10 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
     @Test func messagesTheCliRecordedAreLetGo() async {
         await store.send(computer, sid: "s", text: "甲").value
         await store.send(computer, sid: "s", text: "乙").value
-        var inputs = OrderedMap<String, PBInputState>()
-        inputs[store.outgoing("s")[0].requestId] = input(.submitted)
-        inputs[store.outgoing("s")[1].requestId] = input(.queued)
-        store.settle("s", inputs: inputs)
+        store.settle("s", inputs: [
+            projection(store.outgoing("s")[0].requestId, .submitted),
+            projection(store.outgoing("s")[1].requestId, .queued),
+        ])
         #expect(store.outgoing("s").map(\.text) == ["乙"])
     }
 
@@ -165,9 +165,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         await store.send(computer, sid: "s", text: "甲").value
         await store.send(computer, sid: "s", text: "乙").value
         #expect(store.outgoing("s").map(\.state) == [.unknown, .failed])
-        var inputs = OrderedMap<String, PBInputState>()
-        inputs[store.outgoing("s")[0].requestId] = input(.submitted)
-        store.settle("s", inputs: inputs)
+        store.settle("s", inputs: [projection(store.outgoing("s")[0].requestId, .submitted)])
         // The one the events say nothing of stays, with its retry.
         #expect(store.outgoing("s").map(\.text) == ["乙"])
     }
@@ -176,9 +174,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         computer.answer(unknown, offline)
         await store.send(computer, sid: "s", text: "甲").value
         await store.send(computer, sid: "s", text: "乙").value
-        var inputs = OrderedMap<String, PBInputState>()
-        inputs[store.outgoing("s")[0].requestId] = input(.canceled)
-        store.settle("s", inputs: inputs)
+        store.settle("s", inputs: [projection(store.outgoing("s")[0].requestId, .canceled)])
         #expect(store.outgoing("s").map(\.text) == ["乙"])
     }
 
@@ -186,19 +182,22 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         computer.answer(unknown)
         await store.send(computer, sid: "s", text: "甲").value
         let o = store.outgoing("s")[0]
-        var inputs = OrderedMap<String, PBInputState>()
-        inputs[o.requestId] = input(.canceled, reason: "exited")
-        store.settle("s", inputs: inputs)
+        store.settle("s", inputs: [projection(o.requestId, .canceled, reason: "exited")])
         // What 放回输入框 on the chat's row finds.
         #expect(store.find("s", requestId: o.requestId) === o)
         store.putBack("s", o)
         #expect(store.draft("s") == "甲" && store.outgoing("s").isEmpty)
     }
 
-    private func input(_ status: PBInputStatus, reason: String = "") -> PBInputState {
+    private func projection(_ id: String, _ status: PBInputStatus, reason: String = "") -> PBInputProjection {
         .with {
+            $0.requestID = id
             $0.status = status
-            $0.reason = reason
+            $0.detail = .with {
+                $0.requestID = id
+                $0.status = status
+                $0.reason = reason
+            }
         }
     }
 
@@ -480,10 +479,10 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         computer.answer(offline, offline)
         await store.cancel(computer, sid: "s", requestId: "q1").value
         await store.cancel(computer, sid: "s", requestId: "q2").value
-        var inputs = OrderedMap<String, PBInputStatus>()
-        inputs["q1"] = .submitted
-        inputs["q2"] = .queued
-        store.settleCancels(inputs: inputs)
+        store.settleCancels(inputs: [
+            projection("q1", .submitted),
+            projection("q2", .queued),
+        ])
         #expect(store.cancels["q1"] == nil)
         #expect(store.cancels["q2"] != nil)
     }

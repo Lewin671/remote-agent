@@ -1,5 +1,5 @@
 // A session's events turned into what its screens draw, once, off the main
-// actor: what is pending and running (`Derived`), and the chat's rows with
+// actor: what is pending and running (`PBProjectionState`), and the chat's rows with
 // their Markdown already parsed.
 //
 // The rules are the package's (`EventProjection`, `ChatProjection`,
@@ -55,7 +55,7 @@ struct ChatParams: Equatable, Sendable {
 
 /// What one pass over the events gives.
 struct ChatSnapshot: Sendable {
-    var derived = Derived()
+    var derived = PBProjectionState()
     var rows: [ChatRow] = []
     var startPrompt: StartPrompt?
     /// A message was sent in what was read of the history (`sentMessage`), which a fork needs.
@@ -98,10 +98,10 @@ actor ChatBuilder {
         _ events: PagedList<PBEvent>, _ p: ChatParams, stateEvents: PagedList<PBEvent>? = nil
     ) -> ChatSnapshot {
         let readable = stateEvents ?? events
-        let d = currentActions(reduce.update(readable, agent: p.agent), live: p.live, events: readable)
+        let d = reduce.update(readable, agent: p.agent, live: p.live)
         let local = Set(p.texts.keys)
         // The daemon queues a new session's first message under an ID of its own.
-        let initialId = p.prompt == nil ? nil : d.inputs.keys.first { !local.contains($0) }
+        let initialId = p.prompt == nil ? nil : d.inputs.first { !local.contains($0.requestID) }?.requestID
         let next = Key(
             locale: MessageLocale.current, agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
             devices: p.devices, texts: p.texts,
@@ -178,7 +178,7 @@ actor ChatBuilder {
 final class SessionModel {
     @ObservationIgnored let diagnosticEntity = ChatDiagnosticRing.shared.identity()
     private(set) var rows: [ChatRow] = []
-    private(set) var derived = Derived()
+    private(set) var derived = PBProjectionState()
     private(set) var liveError: String?
     private(set) var unavailableCount = 0
     private(set) var historyPartial = false

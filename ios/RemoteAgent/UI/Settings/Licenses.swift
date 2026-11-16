@@ -29,6 +29,8 @@ enum Licenses {
         License(files: ["MIT-GRDB"], name: "GRDB", use: L10n.settingsIosLocalCiphertextCache(), kind: "MIT", package: "grdb.swift", linked: true),
         License(files: ["MIT-SwiftTerm"], name: "SwiftTerm", use: L10n.sessionTerminal(), kind: "MIT", package: "swiftterm", linked: true),
         License(files: ["BSD-3-Clause-WebRTC"], name: "WebRTC", use: L10n.transportDirect(), kind: "BSD-3-Clause", package: "webrtc", linked: true),
+        License(files: ["BSD-3-Clause-Go"], name: "The Go Programming Language", use: L10n.settingsIosEventProjectionCore(), kind: "BSD-3-Clause", package: nil, linked: true),
+        License(files: ["BSD-3-Clause-google-protobuf"], name: "google.golang.org/protobuf", use: L10n.settingsIosSharedCoreMessageEncoding(), kind: "BSD-3-Clause", package: nil, linked: true),
         unlinked("swift-nio", notice: true),
         unlinked("swift-nio-http2", notice: true),
         unlinked("swift-nio-ssl", notice: true),

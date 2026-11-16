@@ -16,31 +16,33 @@ import Testing
 
     @Test(arguments: [PBInputStatus.queued, .heldByCli], [PBInputStatus.submitted, .canceled, .failed, .needsTerminal])
     func newerOutcomesCannotBeRevived(pending: PBInputStatus, status: PBInputStatus) {
-        let history = derive([input(1, .queued), input(2, status), Mk.ev(3, .turnEnded(.init()))])
-        let result = currentActions(history, live: live(1, [input(0, pending)]))
-        #expect(result.inputs["r"] == status)
+        var projection = EventProjection()
+        let result = projection.update([input(1, .queued), input(2, status), Mk.ev(3, .turnEnded(.init()))], live: live(1, [input(0, pending)]))
+        #expect(result.inputStatus("r") == status)
         #expect(pendingInputs(result).isEmpty && !result.running)
     }
 
     @Test func newerQueueKeepsPauseStageModeAndOtherSnapshotInputsStillRecover() {
-        let history = derive([input(2, .queued, paused: true)])
-        let empty = currentActions(history, live: live(1))
-        #expect(empty.inputs["r"] == .queued && pendingInputs(empty).count == 1)
+        var projection = EventProjection()
+        let history = projection.update([input(2, .queued, paused: true)])
+        let empty = projection.currentActions(live: live(1))
+        #expect(empty.inputStatus("r") == .queued && pendingInputs(empty).count == 1)
         var other = input(0, .queued)
         other.inputState.requestID = "other"
-        let result = currentActions(history, live: live(1, [input(0, .heldByCli), other]))
-        #expect(result.inputDetails["r"] == history.inputDetails["r"])
-        #expect(result.accepted["r"] == history.accepted["r"])
-        #expect(result.inputs["other"] == .queued && history.inputs["other"] == nil)
+        let result = projection.currentActions(live: live(1, [input(0, .heldByCli), other]))
+        #expect(result.input("r")?.detail == history.input("r")?.detail)
+        #expect(result.input("r")?.accepted == history.input("r")?.accepted)
+        #expect(result.inputStatus("other") == .queued && history.inputStatus("other") == nil)
     }
 
     @Test func refreshedSnapshotAtWatermarkRemovesOrRestoresRealPendingState() {
-        let history = derive([input(1, .queued)])
-        #expect(currentActions(history, live: live(1)).inputs["r"] == .unconfirmed)
-        let result = currentActions(history, live: live(1, [input(0, .heldByCli, paused: true)]))
-        #expect(result.inputs["r"] == .heldByCli && pendingInputs(result).count == 1)
-        #expect(result.inputDetails["r"]?.paused == true)
-        #expect(result.inputDetails["r"]?.mode == .queue && result.inputDetails["r"]?.stage == .submitting)
+        var projection = EventProjection()
+        _ = projection.update([input(1, .queued)])
+        #expect(projection.currentActions(live: live(1)).inputStatus("r") == .unconfirmed)
+        let result = projection.currentActions(live: live(1, [input(0, .heldByCli, paused: true)]))
+        #expect(result.inputStatus("r") == .heldByCli && pendingInputs(result).count == 1)
+        #expect(result.input("r")?.detail.paused == true)
+        #expect(result.input("r")?.detail.mode == .queue && result.input("r")?.detail.stage == .submitting)
     }
 
     @Test func runningUsesLastTransitionAndProjectionPreservesWatermarks() {
@@ -49,10 +51,10 @@ import Testing
         let unrelated = Mk.ev(4, .agentMessage(.with { $0.text = "reply" }))
         var projection = EventProjection()
         let first = projection.update([input(1, .queued), start])
-        #expect(currentActions(first, live: live(1, running: false)).running)
+        #expect(projection.currentActions(live: live(1, running: false)).running)
         let later = projection.update([input(1, .queued), start, end, unrelated])
-        #expect(!currentActions(later, live: live(1)).running)
-        #expect(currentActions(later, live: live(3)).running)
-        #expect(later.inputSeqs["r"] == 1 && first.runningSeq == 2 && first.running)
+        #expect(!projection.currentActions(live: live(1)).running)
+        #expect(projection.currentActions(live: live(3)).running)
+        #expect(later.input("r")?.lastSeq == 1 && first.runningSeq == 2 && first.running)
     }
 }

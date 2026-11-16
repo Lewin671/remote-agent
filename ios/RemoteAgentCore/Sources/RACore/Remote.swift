@@ -1219,16 +1219,18 @@ public actor Remote {
         snapshot.running = d.running
         snapshot.actions = list.filter { event in
             switch event.kind {
-            case .approvalRequested(let a)?: return d.approvals[a.approvalID] != nil
-            case .questionAsked(let q)?: return d.questions[q.questionID] != nil
-            case .inputState(let st)?: return d.inputs[st.requestID] == .queued || d.inputs[st.requestID] == .heldByCli
+            case .approvalRequested(let a)?: return d.pendingApproval(a.approvalID) != nil
+            case .questionAsked(let q)?: return d.pendingQuestion(q.questionID) != nil
+            case .inputState(let st)?:
+                let status = d.inputStatus(st.requestID)
+                return status == .queued || status == .heldByCli
             default: return false
             }
         }
-        if planOpen, let plan = d.plan {
+        if planOpen, d.hasPlan {
             snapshot.planEventSeq = list.last { if case .planProposed? = $0.kind { true } else { false } }?.seq ?? 1
             snapshot.planScreenHash = Data(count: 32)
-            snapshot.planScreen = plan.text
+            snapshot.planScreen = d.plan.text
         }
         return snapshot
     }

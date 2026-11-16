@@ -30,12 +30,13 @@ public func maybeNotSentText(_ why: String) -> String { L10n.composerMaybeFailur
 public var unconfirmedText: String { L10n.composerIosUnconfirmed() }
 
 /// A new session's acknowledged prompt until history records it; never resend it here.
-public func pendingStartPrompt(_ prompt: String?, events: some Sequence<PBEvent>, d: Derived, localIds: Set<String>, agent: PBAgent) -> StartPrompt? {
+public func pendingStartPrompt(_ prompt: String?, events: some Sequence<PBEvent>, d: PBProjectionState, localIds: Set<String>, agent: PBAgent) -> StartPrompt? {
     guard let prompt, !prompt.isEmpty, !events.contains(where: { if case .userMessage = $0.kind { return true } else { return false } })
     else { return nil }
-    let first = d.inputs.keys.first { !localIds.contains($0) }
-    let status = first.flatMap { d.inputs[$0] }
-    let why = failureText(reason: first.flatMap { d.failures[$0] } ?? "", agent: agent)
+    let first = d.inputs.first { !localIds.contains($0.requestID) }
+    let status = first?.status
+    let reason = first.flatMap { $0.hasFailureReason ? $0.failureReason : nil } ?? ""
+    let why = failureText(reason: reason, agent: agent)
     switch status {
     case .canceled: return nil
     case .failed: return StartPrompt(text: prompt, caption: notSentText(why), failed: true)
@@ -176,10 +177,10 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
     /// `unfinished` its turn ended first: it may still run in the background.
     public struct Running: Equatable, Sendable {
         public var key: String
-        public var tool: RunningTool
+        public var tool: PBRunningTool
         public var unfinished: Bool
 
-        public init(key: String, tool: RunningTool, unfinished: Bool) {
+        public init(key: String, tool: PBRunningTool, unfinished: Bool) {
             self.key = key
             self.tool = tool
             self.unfinished = unfinished
@@ -307,7 +308,7 @@ public func toolTitle(_ t: PBToolCall, cwd: String, home: String = "") -> String
 }
 
 /// The same for a call still running, so that its row reads the same before and after.
-public func toolTitle(_ t: RunningTool, cwd: String, home: String = "") -> String {
+public func toolTitle(_ t: PBRunningTool, cwd: String, home: String = "") -> String {
     toolTitle(kind: t.kind, title: t.title, itemType: t.itemType, cwd: cwd, home: home)
 }
 
@@ -380,39 +381,15 @@ public struct ApprovalDecisions: Equatable, Sendable {
     }
 }
 
-private struct DigestKey: Hashable {
-    var tool: String
-    var digest: String
-}
-
 /// Which decided approvals are shown on their tool call instead of a line
-/// of their own, exactly as approvalsOnCalls in web/src/model.ts. Only the
-/// daemon's digests count (ApprovalRequested.input_digest against
-/// ToolCall.input_digest, the same computation on the daemon), never one
-/// worked out here: the tool and digest must match exactly one
-/// request (including pending requests in the count), which has a decision, and exactly one call, and the call must come after the request.
-/// Codex gives no digest, so its approvals keep their
-/// own line; so do parallel or repeated calls that cannot be told apart.
-public func approvalDecisions(_ events: some Sequence<PBEvent>, d: Derived) -> ApprovalDecisions {
-    var reqs = [DigestKey: [(id: String, seq: UInt64)]]()
-    var calls = [DigestKey: [UInt64]]()
-    for e in events {
-        switch e.kind {
-        case .approvalRequested(let a):
-            if a.inputDigest.isEmpty { continue }
-            reqs[DigestKey(tool: a.toolName, digest: a.inputDigest), default: []].append((a.approvalID, e.seq))
-        case .toolCall(let t):
-            if !t.inputDigest.isEmpty { calls[DigestKey(tool: t.itemType, digest: t.inputDigest), default: []].append(e.seq) }
-        default: break
-        }
-    }
+/// of their own, using the unambiguous digest pairing computed by the core.
+public func approvalDecisions(_ d: PBProjectionState) -> ApprovalDecisions {
     var onCall = [UInt64: CallDecision]()
     var merged = Set<String>()
-    for (key, rs) in reqs {
-        let cs = calls[key] ?? []
-        guard rs.count == 1, cs.count == 1, cs[0] >= rs[0].seq, let r = d.resolved[rs[0].id] else { continue }
-        onCall[cs[0]] = CallDecision(text: decisionLine(r.decision, message: r.message), ok: r.decision != .deny && r.decision != .timeout)
-        merged.insert(rs[0].id)
+    for (callSeq, approvalID) in d.approvalCallIds {
+        guard let r = d.resolved[approvalID] else { continue }
+        onCall[callSeq] = CallDecision(text: decisionLine(r.decision, message: r.message), ok: r.decision != .deny && r.decision != .timeout)
+        merged.insert(approvalID)
     }
     return ApprovalDecisions(onCall: onCall, merged: merged)
 }
@@ -424,7 +401,7 @@ public func approvalDecisions(_ events: some Sequence<PBEvent>, d: Derived) -> A
 /// `who` names who caused an event (Event.origin), see `originLabel`.
 public func buildChat(
     _ events: some RandomAccessCollection<PBEvent>,
-    d: Derived,
+    d: PBProjectionState,
     machine: String,
     cwd: String = "",
     home: String = "",
@@ -438,7 +415,7 @@ public func buildChat(
     var run = [PBToolCall]()
     var runSeqs = [UInt64]()
     var runKey = ""
-    let decisions = approvalDecisions(events, d: d)
+    let decisions = approvalDecisions(d)
     var turnTokens: Int64 = 0
     var lastTotal: Int64 = 0
     func flush() {
@@ -452,7 +429,11 @@ public func buildChat(
     }
     // Messages that never went out, by the seq that says so.
     var unsentAt = [UInt64: [String]]()
-    for (id, seq) in d.unsent.entries { unsentAt[seq, default: []].append(id) }
+    for u in d.unsent { unsentAt[u.seq, default: []].append(u.requestID) }
+    var inputsByID = [String: PBInputProjection]()
+    for input in d.inputs { inputsByID[input.requestID] = input }
+    let unfinished = Set(d.unfinishedSeqs)
+    let typedLocally = Set(d.typedLocallySeqs)
     // A started tool keeps its place: its call, once it comes, is shown
     // where it started (the same row, updated), not where it completed.
     var callAt = [UInt64: PBEvent]()
@@ -464,14 +445,21 @@ public func buildChat(
             placed.insert(callSeq)
         }
     }
-    var running = [UInt64: RunningTool]()
+    var running = [UInt64: PBRunningTool]()
     for t in d.tools { running[t.seq] = t }
-    var startedTools = [UInt64: RunningTool]()
+    var startedTools = [UInt64: PBRunningTool]()
     for e in events {
         if case .toolStarted(let t) = e.kind {
-            startedTools[e.seq] = RunningTool(
-                title: t.title, callId: t.callID, since: eventTime(e), kind: t.kind, itemType: t.itemType, seq: e.seq,
-                input: t.input, inputDigest: t.inputDigest)
+            startedTools[e.seq] = PBRunningTool.with {
+                $0.title = t.title
+                $0.callID = t.callID
+                $0.sinceMs = eventTime(e)
+                $0.kind = t.kind
+                $0.itemType = t.itemType
+                $0.seq = e.seq
+                $0.input = t.input
+                $0.inputDigest = t.inputDigest
+            }
         }
     }
     func addCall(_ k: String, _ callEvent: PBEvent, background: Bool) {
@@ -507,8 +495,11 @@ public func buildChat(
         if let ids = unsentAt[e.seq] {
             flush()
             for id in ids {
-                let files = d.inputDetails[id]?.files ?? []
-                let text = textOf(id) ?? (files.isEmpty ? nil : d.accepted[id]?.text ?? d.inputDetails[id]?.text)
+                let input = inputsByID[id]
+                let files = input?.hasDetail == true ? input!.detail.files : []
+                let acceptedText = input?.hasAccepted == true ? input!.accepted.text : nil
+                let detailText = input?.hasDetail == true ? input!.detail.text : nil
+                let text = textOf(id) ?? (files.isEmpty ? nil : acceptedText ?? detailText)
                 out.append(.unsent(.init(key: "u\(id)", requestId: id, text: text, files: files)))
             }
         }
@@ -518,7 +509,7 @@ public func buildChat(
                 addCall(k, c, background: wentToBackground(c.toolCall))
             } else {
                 let r = running[e.seq]
-                if r != nil || d.unfinished.contains(e.seq), let tool = r ?? startedTools[e.seq] {
+                if r != nil || unfinished.contains(e.seq), let tool = r ?? startedTools[e.seq] {
                     flush()
                     out.append(.running(.init(key: k, tool: tool, unfinished: r == nil)))
                 }
@@ -530,8 +521,8 @@ public func buildChat(
             out.append(
                 .user(
                     .init(
-                        key: k, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: d.typedLocally.contains(e.seq), time: eventTime(e),
-                        from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : L10n.sessionScheduledAt(time: scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone)), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+                        key: k, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: typedLocally.contains(e.seq), time: eventTime(e),
+                        from: e.origin.scheduledRunID.isEmpty ? sender(e, typedLocally: typedLocally, machine: machine, who: who) : L10n.sessionScheduledAt(time: scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone)), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
         case .scheduledNotification(let notification):
             flush()
             out.append(.note(.init(key: k, text: L10n.sessionNotification(text: notification.text))))
@@ -557,7 +548,7 @@ public func buildChat(
             flush()
             let ok = r.decision == .allow || r.decision == .allowAlways
             let what = shortenPaths(a.command.ifEmpty(a.toolName.ifEmpty(a.description_p)), cwd: cwd, home: home)
-            let by = who(d.resolvedBy[a.approvalID])
+            let by = who(r.hasOrigin ? r.origin : nil)
             out.append(
                 .note(
                     .init(
@@ -597,8 +588,8 @@ public func buildChat(
             let by = who(e.originOrNil)
             let text: String?
             if c.compacted {
-                if let usage = d.compactions[e.seq], let before = usage.before, let after = usage.after {
-                    text = L10n.sessionIosCompactedUsage(after: Int(after), before: Int(before))
+                if let usage = d.compactions[e.seq], usage.hasBeforePercent, usage.hasAfterPercent {
+                    text = L10n.sessionIosCompactedUsage(after: Int(usage.afterPercent), before: Int(usage.beforePercent))
                 } else { text = L10n.sessionCompacted() }
             } else if !c.model.isEmpty {
                 text = (by.map { L10n.sessionModelChangedBy(origin: $0, value: c.model) } ?? L10n.sessionModelChanged(value: c.model)) + (c.effort.isEmpty ? "" : " · \(c.effort)")
@@ -610,9 +601,9 @@ public func buildChat(
                 out.append(.note(.init(key: k, text: text)))
             }
         case .turnContext:
-            if let change = d.terminalChanges[e.seq] {
+            if let list = d.terminalChanges[e.seq], !list.changes.isEmpty {
                 flush()
-                out.append(.note(.init(key: k, text: L10n.sessionIosTerminalChanges(changes: change.map(\.text).joined(separator: L10n.commonIosSpokenSeparator()), machine: machine))))
+                out.append(.note(.init(key: k, text: L10n.sessionIosTerminalChanges(changes: list.changes.map(terminalChangeText).joined(separator: L10n.commonIosSpokenSeparator()), machine: machine))))
             }
         case .sessionState(let s):
             if s.status == .exited {
@@ -632,8 +623,8 @@ public func buildChat(
 /// Who sent a message, said only when it was not this client: the
 /// daemon's word, else the computer's terminal when the client tells it
 /// was typed there.
-func sender(_ e: PBEvent, d: Derived, machine: String, who: (PBOrigin?) -> String?) -> String? {
-    who(e.originOrNil) ?? (d.typedLocally.contains(e.seq) ? terminalLabel(machine) : nil)
+func sender(_ e: PBEvent, typedLocally: Set<UInt64>, machine: String, who: (PBOrigin?) -> String?) -> String? {
+    who(e.originOrNil) ?? (typedLocally.contains(e.seq) ? terminalLabel(machine) : nil)
 }
 
 /// 12 秒, 4 分 12 秒, 1 小时 3 分: how long a turn took.
@@ -659,7 +650,7 @@ public struct ChatProjection: Sendable {
 
     /// What the rows were built from besides the events and the context: dates name the day only when it is not today.
     private struct Inputs: Equatable {
-        var d: Derived
+        var d: PBProjectionState
         var zone: TimeZone
         var day: LocalDay
         static func == (a: Inputs, b: Inputs) -> Bool { a.zone == b.zone && a.day.sameDay(b.day) && a.d == b.d }
@@ -676,7 +667,7 @@ public struct ChatProjection: Sendable {
 
     public mutating func update(
         _ events: some RandomAccessCollection<PBEvent>,
-        d: Derived,
+        d: PBProjectionState,
         machine: String,
         cwd: String = "",
         home: String = "",
@@ -705,6 +696,7 @@ public struct ChatProjection: Sendable {
             }
         }
         if messages {
+            let typedLocally = Set(d.typedLocallySeqs)
             for e in tail {
                 let key = "e\(e.seq)"
                 switch e.kind {
@@ -712,8 +704,8 @@ public struct ChatProjection: Sendable {
                     items.append(
                         .user(
                             .init(
-                                key: key, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: d.typedLocally.contains(e.seq),
-                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : L10n.sessionScheduledAt(time: scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone)), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+                                key: key, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: typedLocally.contains(e.seq),
+                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, typedLocally: typedLocally, machine: machine, who: who) : L10n.sessionScheduledAt(time: scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone)), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
                 case .agentMessage(let m): if !m.text.jvmIsBlank { items.append(.agent(.init(key: key, text: m.text))) }
                 case .reasoning(let r): if !r.text.jvmIsBlank { items.append(.thought(.init(key: key, text: r.text))) }
                 default: break

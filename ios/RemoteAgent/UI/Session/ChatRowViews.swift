@@ -23,8 +23,6 @@ struct ChatEnv: Equatable, Sendable {
     var home = ""
     /// When the connection dropped, 0 while online: timers stop there.
     var frozenAt: Int64 = 0
-    /// What waits for an answer: a running tool that asked for one says so instead of counting.
-    var approvals = OrderedMap<String, PBApprovalRequested>()
     /// Tools whose turn completed without their result.
     var noResult = Set<UInt64>()
     /// What the cards of shared files need to know: which session, which computer (and its name) and whether either is still there.
@@ -671,11 +669,9 @@ private struct RunningToolRow: View {
         }
     }
 
-    /// How the tool reads now, by the package's rule; only the pending approvals matter to it.
+    /// How the tool reads now, by the package's rule.
     private var state: ToolState {
-        var pending = Derived()
-        pending.approvals = env.approvals
-        return toolState(item.tool, unfinished: item.unfinished, d: pending, frozenAt: env.frozenAt)
+        toolState(item.tool, unfinished: item.unfinished, frozenAt: env.frozenAt)
     }
 }
 

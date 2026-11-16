@@ -85,22 +85,43 @@ build_android() {
   echo "built android: $out/corebind.aar"
 }
 
+ios_up_to_date() {
+  local xcf="$1"
+  local plist="$xcf/Info.plist"
+  [[ "${RA_CORE_FORCE:-0}" != "1" ]] || return 1
+  [[ -f "$plist" ]] || return 1
+  [[ -f "$xcf/ios-arm64/Corebind.framework/Corebind" ]] || return 1
+  [[ -f "$xcf/ios-arm64-simulator/Corebind.framework/Corebind" ]] || return 1
+  [[ -f "$xcf/macos-arm64/Corebind.framework/Corebind" ]] || return 1
+  [[ "$ROOT/scripts/core/build.sh" -nt "$plist" ]] && return 1
+  local newer
+  newer="$(find "$CORE_ROOT" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$plist" | head -n 1)"
+  [[ -z "$newer" ]]
+}
+
 build_ios() {
-  ensure_gomobile_tools
   local out="$OUT_ROOT/ios"
+  local xcf="$out/Corebind.xcframework"
+  if ios_up_to_date "$xcf"; then
+    return 0
+  fi
+  if [[ -z "${CC:-}" && -x /usr/bin/clang ]]; then
+    export CC=/usr/bin/clang
+  fi
+  ensure_gomobile_tools
   mkdir -p "$out"
-  rm -rf "$out/Corebind.xcframework"
+  rm -rf "$xcf"
   (
     cd "$CORE_ROOT"
     "$CORE_TOOL_BIN/gomobile" bind \
-      -target=ios/arm64,iossimulator/arm64 \
+      -target=ios/arm64,iossimulator/arm64,macos/arm64 \
       -iosversion=17.0 \
       -trimpath \
       -ldflags="-s -w" \
-      -o "$out/Corebind.xcframework" \
+      -o "$xcf" \
       ./corebind
   )
-  echo "built ios: $out/Corebind.xcframework"
+  echo "built ios: $xcf"
 }
 
 case "$TARGET" in

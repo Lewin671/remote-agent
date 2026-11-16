@@ -4078,5 +4078,33 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "settings.ios_event_projection_core",
+    "zh-CN": "会话事件归约",
+    "en": "Session event projection",
+    "notes": "iOS Licenses.swift 的原生界面/错误提示。说明 The Go Programming Language 的用途；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_shared_core_message_encoding",
+    "zh-CN": "共享核心的协议编码",
+    "en": "Shared core message encoding",
+    "notes": "iOS Licenses.swift 的原生界面/错误提示。说明 google.golang.org/protobuf 的用途；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

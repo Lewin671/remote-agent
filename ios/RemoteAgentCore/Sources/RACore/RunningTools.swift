@@ -17,15 +17,15 @@ public enum ToolState: Sendable {
 }
 
 /// `unfinished`: the tool's turn ended without its result. `frozenAt`: when the connection dropped, 0 while online.
-public func toolState(_ t: RunningTool, unfinished: Bool, d: Derived, frozenAt: Int64) -> ToolState {
+public func toolState(_ t: PBRunningTool, unfinished: Bool, frozenAt: Int64) -> ToolState {
     if unfinished { return .unconfirmed }
     if frozenAt > 0 { return .sync }
-    if awaitingApproval(t, d) { return .approval }
+    if t.awaitingApproval { return .approval }
     return .running
 }
 
 /// A timer reading: 已运行 2:12 in the chat; a dash while nothing runs for sure; nothing when the start is unknown.
-public func toolTimer(_ t: RunningTool, state: ToolState, now: Int64, frozenAt: Int64) -> String {
+public func toolTimer(_ t: PBRunningTool, state: ToolState, now: Int64, frozenAt: Int64) -> String {
     if state == .unconfirmed || state == .approval { return "—" }
     guard let ms = toolElapsed(t, now: now, frozenAt: frozenAt) else { return "" }
     // Says what the time is: how long it has been running.

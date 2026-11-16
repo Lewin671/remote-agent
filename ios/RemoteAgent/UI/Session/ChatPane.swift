@@ -367,11 +367,11 @@ struct ChatPane: View {
         toEnd()
     }
 
-    private func dockItems(_ d: Derived) -> [DockItem] {
+    private func dockItems(_ d: PBProjectionState) -> [DockItem] {
         var items =
-            d.approvals.values.map(DockItem.approval) + d.questions.values.map(DockItem.question)
-        if session.info?.planOpen == true, let plan = d.plan {
-            items.append(.plan(text: plan.text))
+            d.approvals.map { DockItem.approval($0.request) } + d.questions.map { DockItem.question($0.request) }
+        if session.info?.planOpen == true, d.hasPlan {
+            items.append(.plan(text: d.plan.text))
         }
         if status == .popup { items.append(.popup(title: session.info?.statusDetail ?? "")) }
         return items
@@ -395,11 +395,11 @@ struct ChatPane: View {
         let env = ChatEnv(
             agent: session.agent, cwd: session.info?.cwd ?? "",
             home: state.machines[session.machineId]?.meta?.home ?? "",
-            frozenAt: online ? 0 : state.offlineSinceMs, approvals: d.approvals,
-            noResult: d.noResult, session: sid, machine: machineLabel(state, id: session.machineId),
+            frozenAt: online ? 0 : state.offlineSinceMs,
+            noResult: Set(d.noResultSeqs), session: sid, machine: machineLabel(state, id: session.machineId),
             machineOnline: online && state.peer(session.machineId).reachable == true, sessionExited: status == .exited)
         let pending = pendingInputs(d)
-        let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputs[$0.requestId]) }
+        let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputStatus($0.requestId)) }
         let dock = dockItems(d)
         ChatCollection(
             items: listItems(rows: rows, env: env, pending: pending, outgoing: outgoing, derived: d, online: online),
@@ -489,9 +489,9 @@ struct ChatPane: View {
             MessageTextSelection(text: picked.text) { selecting = nil }
         }
         // Also when the pane comes back from the terminal with the events it already had.
-        .onChange(of: d.inputDetails, initial: true) { _, inputs in
+        .onChange(of: d.inputs, initial: true) { _, inputs in
             store.settle(sid, inputs: inputs)
-            store.settleCancels(inputs: d.inputs)
+            store.settleCancels(inputs: inputs)
         }
         .onChange(of: rows.last?.id, initial: true) { _, _ in announce(rows.last?.item, dock) }
         .onChange(of: dock.map(\.id)) { _, _ in announce(rows.last?.item, dock) }
@@ -509,7 +509,7 @@ struct ChatPane: View {
 
     /// Each auxiliary row participates in the same diffable snapshot as messages.
     private func listItems(rows: [ChatRow], env: ChatEnv, pending: [PendingInput], outgoing: [Outgoing],
-                           derived d: Derived, online: Bool) -> [ChatCollectionItem] {
+                           derived d: PBProjectionState, online: Bool) -> [ChatCollectionItem] {
         var items = [ChatCollectionItem("chat-top") { Color.clear.frame(height: 6) }]
         let sid = session.id
         if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) {
@@ -569,8 +569,8 @@ struct ChatPane: View {
         }
         for o in outgoing {
             items.append(ChatCollectionItem("out-" + o.requestId) {
-                OutgoingBubble(session: session, message: o, input: d.inputs[o.requestId],
-                               failure: d.failures[o.requestId], onTerminal: onTerminal)
+                OutgoingBubble(session: session, message: o, input: d.inputStatus(o.requestId),
+                               failure: d.failureReason(o.requestId), onTerminal: onTerminal)
             })
         }
         items.append(ChatCollectionItem("chat-end") { Color.clear.frame(height: 8) })
@@ -619,7 +619,7 @@ struct ChatPane: View {
     }
 
     /// The dock and the message box, or a card when nothing can be sent.
-    @ViewBuilder private func bottom(_ d: Derived, dock: [DockItem]) -> some View {
+    @ViewBuilder private func bottom(_ d: PBProjectionState, dock: [DockItem]) -> some View {
         let state = model.state
         let machine = state.machines[session.machineId]
         let name = machineLabel(state, id: session.machineId)

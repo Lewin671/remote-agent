@@ -33,25 +33,27 @@ import Testing
     }
 
     @Test func aPendingPlanReadsAsItsEvent() {
-        #expect(livePlanText(live(), events: history()) == markdown)
-        #expect(currentActions(derive(history()), live: live(), events: history()).plan?.text == markdown)
+        var p = EventProjection()
+        #expect(p.update(history(), live: live()).plan.text == markdown)
         // A history that does not start at the first event still holds it.
-        #expect(livePlanText(live(), events: Array(history().dropFirst())) == markdown)
+        #expect(p.update(Array(history().dropFirst()), live: live()).plan.text == markdown)
     }
 
     @Test func theScreenStandsInOnlyWithoutThatEvent() {
         // Not here yet, another kind at that place, too large to carry, or empty.
-        #expect(livePlanText(live(3), events: history()) == screen)
-        #expect(livePlanText(live(1), events: history()) == screen)
-        #expect(livePlanText(live(), events: history("长计划" + skeletonNote)) == screen)
-        #expect(livePlanText(live(), events: history("  ")) == screen)
-        #expect(currentActions(derive(history()), live: live()).plan?.text == screen)
+        var p = EventProjection()
+        #expect(p.update(history(), live: live(3)).plan.text == screen)
+        #expect(p.update(history(), live: live(1)).plan.text == screen)
+        #expect(p.update(history("长计划" + skeletonNote), live: live()).plan.text == screen)
+        #expect(p.update(history("  "), live: live()).plan.text == screen)
+        #expect(p.update([], live: live()).plan.text == screen)
     }
 
     @Test func onlyTheSnapshotSaysAPlanIsPending() {
-        #expect(currentActions(derive(history()), live: nil, events: history()).plan == nil)
+        var p = EventProjection()
+        #expect(!p.update(history(), live: nil).hasPlan)
         var none = live()
         none.planEventSeq = 0
-        #expect(currentActions(derive(history()), live: none, events: history()).plan == nil)
+        #expect(!p.update(history(), live: none).hasPlan)
     }
 }

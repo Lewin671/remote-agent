@@ -358,7 +358,7 @@ private struct FileMachineChannel: UploadChannel {
             $0.userMessage.text = ordinary + "\n\nFile: @\"\(file.path)\" (file)\nFile: \(file.path)\n" + legacy
             $0.userMessage.files = [file]
         }
-        let chat = buildChat([event], d: Derived(), machine: "Test computer")
+        let chat = buildChat([event], d: PBProjectionState(), machine: "Test computer")
         guard case .user(let message) = chat.first else { Issue.record("missing user message"); return }
         #expect(message.text == ordinary + "\n" + legacy)
         #expect(message.files == [file])

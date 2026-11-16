@@ -65,25 +65,23 @@ import Testing
     }
 
     @Test func aMatchingCodexApprovalReplacesTheRunningTimer() throws {
-        let events = [turn, start(2, "exec", "a", input: "go test ./..."), Mk.ev(3, .approvalRequested(.with { $0.approvalID = "p"; $0.command = "go test ./..." }))]
-        let d = derive(events, agent: .codex)
-        let tool = try #require(d.tools.count == 1 ? d.tools[0] : nil)
-        let state = toolState(tool, unfinished: false, d: d, frozenAt: 0)
+        let awaiting = PBRunningTool.with { $0.title = "exec"; $0.callID = "a"; $0.sinceMs = 100_000; $0.input = "go test ./..."; $0.awaitingApproval = true }
+        let state = toolState(awaiting, unfinished: false, frozenAt: 0)
         #expect(state == .approval)
-        #expect(toolTimer(tool, state: state, now: 500_000, frozenAt: 0) == "—")
-        #expect(toolState(RunningTool(title: "other", callId: "b", since: tool.since, input: "ls"), unfinished: false, d: d, frozenAt: 0) == .running)
+        #expect(toolTimer(awaiting, state: state, now: 500_000, frozenAt: 0) == "—")
+        let running = PBRunningTool.with { $0.title = "other"; $0.callID = "b"; $0.sinceMs = awaiting.sinceMs; $0.input = "ls" }
+        #expect(toolState(running, unfinished: false, frozenAt: 0) == .running)
     }
 
     // --- not in Android's tests ---
 
     @Test func aTimerReadsTheClockUntilTheConnectionDrops() {
-        let d = Derived()
-        let tool = RunningTool(title: "go test", callId: "a", since: 1_000)
-        #expect(toolState(tool, unfinished: true, d: d, frozenAt: 5_000) == .unconfirmed)
-        #expect(toolState(tool, unfinished: false, d: d, frozenAt: 5_000) == .sync)
+        let tool = PBRunningTool.with { $0.title = "go test"; $0.callID = "a"; $0.sinceMs = 1_000 }
+        #expect(toolState(tool, unfinished: true, frozenAt: 5_000) == .unconfirmed)
+        #expect(toolState(tool, unfinished: false, frozenAt: 5_000) == .sync)
         #expect(toolTimer(tool, state: .running, now: 133_000, frozenAt: 0) == "已运行 2:12")
         #expect(toolTimer(tool, state: .sync, now: 133_000, frozenAt: 61_000) == "已运行 1:00")
-        #expect(toolTimer(RunningTool(title: "x", callId: "", since: 0), state: .running, now: 9, frozenAt: 0) == "")
+        #expect(toolTimer(PBRunningTool.with { $0.title = "x" }, state: .running, now: 9, frozenAt: 0) == "")
         #expect(ToolState.unconfirmed.text == L10n.toolsIosUnconfirmed())
     }
 }

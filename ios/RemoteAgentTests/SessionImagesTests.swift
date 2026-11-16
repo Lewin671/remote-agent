@@ -276,7 +276,7 @@ import UIKit
         // The session ended while it waited: the chat offers to put it back.
         let events = [input(1, .queued), input(2, .canceled, "exited")]
         await remote.showForTest(state: RemoteState(), events: [sid: events])
-        store.settle(sid, inputs: derive(events).inputDetails)
+        store.settle(sid, inputs: derive(events).inputs)
         try await Task.sleep(nanoseconds: 200_000_000)
         #expect(store.find(sid, requestId: o.requestId) === o && o.images[0].processed != nil)
         #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
