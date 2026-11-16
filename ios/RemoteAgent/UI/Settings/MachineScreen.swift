@@ -162,6 +162,9 @@ struct MachineScreen: View {
             }
         }
 
+        // The direct path: its switch, state and measured numbers are said here and nowhere else.
+        ConnectionGroup(remote: context.remote, machine: id, online: m.pathState.reachable && !state.peer(id).unlinked)
+
         if let meta = m.meta {
             let agents = shownAgents(meta)
             GroupLabel(L10n.settingsIosCliVersions())

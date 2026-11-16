@@ -284,7 +284,7 @@ final class DirectEngine: @unchecked Sendable {
         let made: Peer? = lock.withLock {
             for (key, p) in sessions where now > p.session.retainUntil { p.live = false; expired.append(p.session); sessions.removeValue(forKey: key) }
             guard currentLocked(), enabledLocked(id), sessions.count < 128, sessions.values.filter({ $0.id == id }).count < 32, peers[id] != nil || peers.count < 4,
-                  let selfID, let codec, let factory else { return nil }
+                  let selfID, let codec, factory != nil else { return nil }
             return Peer(id: id, head: head)
         }
         expired.forEach { $0.close() }

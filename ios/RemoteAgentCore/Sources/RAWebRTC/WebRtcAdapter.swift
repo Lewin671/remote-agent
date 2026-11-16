@@ -105,7 +105,7 @@ private final class PeerConnection: RtcPeerConnection, @unchecked Sendable {
     private func description(answer: Bool, restart: Bool) async throws -> String {
         let constraints = RTCMediaConstraints(mandatoryConstraints: restart ? ["IceRestart": "true"] : nil, optionalConstraints: nil)
         return try await withCheckedThrowingContinuation { (c: CheckedContinuation<String, Error>) in
-            let done: (RTCSessionDescription?, Error?) -> Void = { s, e in
+            let done: @Sendable (RTCSessionDescription?, Error?) -> Void = { s, e in
                 if let e { c.resume(throwing: e) } else if let s { c.resume(returning: s.sdp) } else { c.resume(throwing: SdkFailure.description) }
             }
             if answer { pc.answer(for: constraints, completionHandler: done) } else { pc.offer(for: constraints, completionHandler: done) }
