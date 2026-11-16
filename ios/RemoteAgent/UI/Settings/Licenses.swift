@@ -28,6 +28,7 @@ enum Licenses {
         License(files: ["Apache-2.0-connect-swift"], name: "connect-swift", use: L10n.settingsIosServerCommunication(), kind: "Apache-2.0", package: "connect-swift", linked: true),
         License(files: ["MIT-GRDB"], name: "GRDB", use: L10n.settingsIosLocalCiphertextCache(), kind: "MIT", package: "grdb.swift", linked: true),
         License(files: ["MIT-SwiftTerm"], name: "SwiftTerm", use: L10n.sessionTerminal(), kind: "MIT", package: "swiftterm", linked: true),
+        License(files: ["BSD-3-Clause-WebRTC"], name: "WebRTC", use: L10n.transportDirect(), kind: "BSD-3-Clause", package: "webrtc", linked: true),
         unlinked("swift-nio", notice: true),
         unlinked("swift-nio-http2", notice: true),
         unlinked("swift-nio-ssl", notice: true),

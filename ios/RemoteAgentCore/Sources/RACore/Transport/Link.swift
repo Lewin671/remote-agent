@@ -6,6 +6,7 @@ import os
 /// Owns call/delivery evidence and logical streams; socket lifetimes cannot
 /// settle authorizations or call the product listener directly.
 final class Link: Sendable {
+    typealias DirectBuilder = @Sendable (@escaping @Sendable () throws -> Void) -> (any PathAttempt)?
     let router: Router
     let peers = Feed<[String: PeerState]>([:])
     private let relay: RelayPath
@@ -40,14 +41,19 @@ final class Link: Sendable {
         }
     }
 
-    func delivery(_ call: DispatchState.Call) -> Delivery { Delivery(path: router.path, evidence: call.delivery()) }
+    /// `direct` gives a DirectPath attempt for a request the routing sends there, or nothing: then the relay carries it.
+    func delivery(_ call: DispatchState.Call, direct: DirectBuilder? = nil) -> Delivery {
+        Delivery(path: router.path, evidence: call.delivery(), direct: direct)
+    }
     final class Delivery: PathAttempt {
         var attemptId: String { attempt.attemptId }
+        var isDirect: Bool { attempt.isDirect }
         private let attempt: any PathAttempt
         private let evidence: DispatchState.Call.Delivery
-        init(path: any Path, evidence: DispatchState.Call.Delivery) {
+        init(path: any Path, evidence: DispatchState.Call.Delivery, direct: DirectBuilder? = nil) {
             self.evidence = evidence
-            attempt = path.attempt { try evidence.dispatch() }
+            let handoff: @Sendable () throws -> Void = { try evidence.dispatch() }
+            attempt = direct?(handoff) ?? path.attempt(handoff: handoff)
         }
         func prepare(prior: Bool) async throws { try await attempt.prepare(prior: prior) }
         func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse { try await attempt.send(machineId: machineId, command: command) }

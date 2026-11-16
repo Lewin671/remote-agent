@@ -21,6 +21,7 @@
 import Foundation
 import Observation
 import RACore
+import RAWebRTC
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -124,7 +125,8 @@ final class AppModel {
                 // The engine hands over error texts only, never content or keys.
                 let remote = try Remote(
                     account: account, http: AppModel.http, cache: cache,
-                    log: { log.info("\($0, privacy: .public)") }, securityStorage: security)
+                    log: { log.info("\($0, privacy: .public)") }, securityStorage: security,
+                    rtc: WebRtcFactory())
                 return EngineParts(engine: remote, remote: remote)
             }
         var saveJoined: @Sendable (Vault, Account) throws -> Void = { vault, account in

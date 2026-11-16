@@ -774,7 +774,11 @@ func (s *Session) maybeReady(i int, now uint64) {
 	if !p.confirmed && p.signal.LocalSDP && p.signal.RemoteSDP && p.signal.DTLS {
 		p.confirmed = s.sendSignal(i, 7, p.signal.ConfirmBody(), now)
 	}
-	if p.path.TraversalReady() && p.confirmed && !p.announced && p.signal.Ready() {
+	// A connected DTLS transport and the peer's confirmation are the proof that
+	// the pair works; a server-reflexive candidate is not required. Requiring
+	// one would keep a computer with a public address and no NAT, or any pair
+	// whose STUN is unreachable, on the relay although the path is up.
+	if p.confirmed && !p.announced && p.signal.Ready() {
 		p.announced = true
 		p.business.Store(true)
 		s.established.Store(true)

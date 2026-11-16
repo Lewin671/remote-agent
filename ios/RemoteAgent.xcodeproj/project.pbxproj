@@ -13,6 +13,7 @@
 		A20000000000000000000033 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000043 /* SwiftTerm */; };
 		A20000000000000000000034 /* RAMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000047 /* RAMarkdown */; };
 		A20000000000000000000035 /* RAMarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000048 /* RAMarkdownUI */; };
+		A20000000000000000000036 /* RAWebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000049 /* RAWebRTC */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +71,7 @@
 				A20000000000000000000033 /* SwiftTerm in Frameworks */,
 				A20000000000000000000034 /* RAMarkdown in Frameworks */,
 				A20000000000000000000035 /* RAMarkdownUI in Frameworks */,
+				A20000000000000000000036 /* RAWebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +133,7 @@
 				A20000000000000000000043 /* SwiftTerm */,
 				A20000000000000000000047 /* RAMarkdown */,
 				A20000000000000000000048 /* RAMarkdownUI */,
+				A20000000000000000000049 /* RAWebRTC */,
 			);
 			productName = RemoteAgent;
 			productReference = A20000000000000000000002 /* RemoteAgent.app */;
@@ -503,6 +506,10 @@
 		A20000000000000000000048 /* RAMarkdownUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RAMarkdownUI;
+		};
+		A20000000000000000000049 /* RAWebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RAWebRTC;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -169,6 +169,8 @@ extension Remote {
         }
         var attempt = 0
         var recoveryUntil:Int64?
+        let routeHint = directHint(p.machineId, p.command)
+        var forceRelay = false
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
@@ -181,7 +183,10 @@ extension Remote {
         // no old-key ciphertext is sent while authority freshness is unknown.
         while true {
             guard clock() < recoveryDeadline else { throw forwardLifetimeExpired() }
-            let delivery = deviceLink.delivery(call)
+            let tracking = routeHint.flatMap { direct?.track(p.machineId, $0) }
+            let routeStarted = ContinuousClock.now
+            let build = routeHint != nil && !forceRelay ? directBuilder(direct, p.machineId, routeHint!) : nil
+            let delivery = deviceLink.delivery(call, direct: build)
             let attemptId = delivery.attemptId
             do {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
@@ -212,8 +217,9 @@ extension Remote {
                     // the command ran; retrying the same request asks again.
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), outcome: .unknown)
                 }
-                let verified = msg.requestKeyHash == binding.key && msg.payloadHash == binding.payload && res.attemptID == attemptId && res.outcome == msg.outcome && res.reason == msg.reason && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
-                let category = verifiedOutcome(msg,key:binding.key,payload:binding.payload,outerOutcome:res.outcome,outerReason:res.reason)
+                // A direct result carries no relay evidence: only the daemon's signed outcome counts.
+                let verified = msg.requestKeyHash == binding.key && msg.payloadHash == binding.payload && res.attemptID == attemptId && (delivery.isDirect || res.outcome == msg.outcome && res.reason == msg.reason) && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
+                let category = verifiedOutcome(msg,key:binding.key,payload:binding.payload,outerOutcome:delivery.isDirect ? msg.outcome : res.outcome,outerReason:delivery.isDirect ? msg.reason : res.reason)
                 if !verified || category == .unknown { throw CommandError(CommandError.unknownOutcome,L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(),fromDaemon:true,outcome:.unknown) }
 
                 if category == .executed && !msg.resultAvailable || category == .conflict && msg.conflictKind == "identity" {
@@ -228,9 +234,25 @@ extension Remote {
                    (try? decodeScheduleList(msg)) != nil, let bytes = try? res.result.serializedData() {
                     await keepScheduleSnapshot(p.machineId, data: bytes)
                 }
+                if routeHint != nil {
+                    var bytes = 0
+                    if case .putImageChunk(let c)? = p.command.kind { bytes = c.data.count }
+                    if case .getSharedFileChunk(let c)? = msg.kind { bytes = c.data.count }
+                    tracking?.observe(delivery.isDirect, bytes, Double((ContinuousClock.now - routeStarted).milliseconds))
+                }
+                trackTransfer(p)
                 return msg
             } catch is PathChanged {
                 try Task.checkCancellation()
+                if delivery.isDirect, routeHint != nil {
+                    // The relay finishes what the direct path could not, and decides alone from here: a failed direct try is no answer.
+                    forceRelay = true; tracking?.failed()
+                    if case .putImageChunk(let c)? = p.command.kind {
+                        // The status read is relay-only and comes before the original chunk is sent again.
+                        var status = PBCommand(); status.getImageUploadStatus.transferID = c.transferID
+                        _ = try? await machineCommand(p.machineId, status)
+                    }
+                }
                 continue
             } catch let ce as ConnectError {
                 let notForwarded = delivery.refusal(ce)
@@ -271,6 +293,7 @@ extension Remote {
                 }
                 throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
             } catch {
+                if delivery.isDirect, routeHint != nil { forceRelay = true; tracking?.failed() }
                 if let answer = error as? CommandError, answer.fromDaemon { throw answer }
                 if let refusal = error as? CommandError, refusal.code == "file_upload_unsupported" {
                     if call.uncertain { throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertain(value: String(describing: refusal.message)), outcome: .unknown) }

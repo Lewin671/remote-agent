@@ -247,7 +247,9 @@ extension Remote {
     /// A new head arrives within a minute; an unknown state is fetched at once.
     /// A moved head also rebuilds the member directory, so a withheld removal
     /// push cannot leave a removed machine trusted.
-    func startSecurityPolling(everyMs: UInt64 = 60_000) {
+    func startSecurityPolling(everyMs: UInt64? = nil) {
+        // A direct session lives 20 seconds past the sync that proved its head (docs/transport.md §5): it needs a sync every 15.
+        let everyMs = everyMs ?? (direct != nil ? 15_000 : 60_000)
         guard let client = try? securitySession() else { return }
         let onChange: @Sendable () async -> Void = { [weak self] in
             guard let self else { return }

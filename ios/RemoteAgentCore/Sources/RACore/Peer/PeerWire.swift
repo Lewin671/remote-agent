@@ -40,6 +40,7 @@ enum PeerWire {
     struct Identity: Sendable { var peer:Public; let sign:Curve25519.Signing.PrivateKey;let box:Curve25519.KeyAgreement.PrivateKey
       var id:Bytes {peer.id};var instance:Bytes {peer.instance};var boot:Bytes {peer.boot};var role:UInt64 {peer.role}
     }
+    static func member(_ peer:Public)->Public {var p=peer;p.instance=[];p.boot=[];return p}
     static func shared(_ from:Identity,_ to:Public)throws->Bytes { try from.box.sharedSecretFromKeyAgreement(with:to.box).withUnsafeBytes{Array($0)} }
     struct Context: Sendable {
         var domain,from,to,machine,senderInstance,receiverInstance,senderBoot,receiverBoot,connection:Bytes

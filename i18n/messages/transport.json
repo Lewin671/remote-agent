@@ -105,7 +105,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -120,7 +121,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -149,7 +151,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -164,7 +167,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -179,7 +183,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -194,7 +199,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -214,7 +220,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -238,7 +245,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -258,7 +266,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -278,7 +287,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -302,7 +312,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -322,7 +333,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -342,7 +354,8 @@
     },
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -357,7 +370,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -372,7 +386,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -387,7 +402,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -402,7 +418,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -417,7 +434,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -432,7 +450,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -447,7 +466,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -462,7 +482,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -477,7 +498,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -492,7 +514,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -507,7 +530,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -522,7 +546,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -537,7 +562,8 @@
     "params": {},
     "platforms": [
       "web",
-      "android"
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

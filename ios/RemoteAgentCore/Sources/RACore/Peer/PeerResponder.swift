@@ -17,6 +17,14 @@ actor PeerResponder {
         guard let size = try? PeerSchema.integer(raw, &at), size <= 65536, size == raw.count - at else { return nil }
         return Data(raw[at...])
     }
+    /// A PeerFrameResult (field 12) body: the relay's receipt for a directed frame this device sent.
+    static func resultBody(_ data: Data) -> Data? {
+        let raw = Array(data)
+        guard raw.count >= 2, raw.count <= 1024, raw[0] == 98 else { return nil }
+        var at = 1
+        guard let size = try? PeerSchema.integer(raw, &at), size == raw.count - at else { return nil }
+        return Data(raw[at...])
+    }
     func receive(_ data: Data, record: DeviceSecurity.Record, seed: Data, now: UInt64) -> Data? {
         do {
             guard record.member, let lease = record.lease else { return nil }

@@ -11,7 +11,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -56,7 +55,6 @@ type partial struct {
 }
 type message struct{ data []byte }
 type Path struct {
-	stunReady    atomic.Bool
 	cfg          Config
 	pc           *webrtc.PeerConnection
 	data, probe  *webrtc.DataChannel
@@ -116,9 +114,6 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 	pc.OnDataChannel(func(dc *webrtc.DataChannel) { _ = dc.Close(); p.closeWhy("unexpected_data_channel") })
 	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) { p.diag.ice(s.String()) })
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
-		if c != nil && c.Typ == webrtc.ICECandidateTypeSrflx {
-			p.stunReady.Store(true)
-		}
 		if !p.valid() {
 			return
 		}
@@ -512,5 +507,3 @@ func (p *Path) Close() {
 func (p *Path) Finish() { p.Close() }
 
 func (p *Path) Wait() { <-p.closed }
-
-func (p *Path) TraversalReady() bool { return p.cfg.LoopbackOnly || p.stunReady.Load() }

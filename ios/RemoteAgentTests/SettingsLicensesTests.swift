@@ -102,6 +102,7 @@ import Testing
             case "MIT": #expect(text.contains("Permission is hereby granted, free of charge"))
             case "Apache-2.0": #expect(text.contains("Apache License") && text.contains("Version 2.0"))
             case "ISC": #expect(text.contains("ISC License"))
+            case "BSD-3-Clause": #expect(text.contains("Redistribution and use in source and binary forms") && text.contains("Neither the name of Google"))
             default: Issue.record("\(license.name) has a licence the test does not know: \(license.kind)")
             }
         }

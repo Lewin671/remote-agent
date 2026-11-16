@@ -11,6 +11,17 @@ public struct RecoveryHistoryUnavailable: Error, Sendable {
 /// The client side of the phone-signed security domain. It keeps the local
 /// chain, seals and opens envelopes with the current content key, pulls new
 /// states from the relay.
+/// What the direct engine is told about security syncs (docs/transport.md §5 「撤销、寿命与关闭直连」).
+public struct SyncObserver: Sendable {
+    var synced: @Sendable (DeviceSecurity.Record, UInt64) async -> Void = { _, _ in }
+    var failed: @Sendable () -> Void = {}
+    var installed: @Sendable (DeviceSecurity.Record) -> Void = { _ in }
+    public init() {}
+    init(synced: @escaping @Sendable (DeviceSecurity.Record, UInt64) async -> Void, failed: @escaping @Sendable () -> Void, installed: @escaping @Sendable (DeviceSecurity.Record) -> Void) {
+        self.synced = synced; self.failed = failed; self.installed = installed
+    }
+}
+
 public actor DeviceSecurityClient {
     static let historyBatchSize = 128
     public typealias StateFetch =
@@ -21,6 +32,7 @@ public actor DeviceSecurityClient {
     private let fetchStates: StateFetch
     private let clock: @Sendable () -> UInt64
     private let pullTimeoutMs: Int64
+    private let observer: SyncObserver
     private var current: DeviceSecurity.Record?
     private struct Pull: Sendable { let id: UUID; let generation: UInt64; let task: Task<Void, Never>; let result: SharedResult<DeviceSecurity.Record> }
     private var syncJob: Pull?
@@ -36,8 +48,10 @@ public actor DeviceSecurityClient {
             UInt64(Date().timeIntervalSince1970 * 1000)
         },
         pullTimeoutMs: Int64 = 15_000,
+        observer: SyncObserver = SyncObserver(),
         fetchStates: @escaping StateFetch
     ) {
+        self.observer = observer
         self.store = store
         self.memberID = memberID
         self.signingKey = signingKey
@@ -131,6 +145,18 @@ public actor DeviceSecurityClient {
     public func touchAfterWake() throws { _ = try touch(now: clock(), persist: true) }
 
     public func sync() async throws -> DeviceSecurity.Record {
+        let started = clock()
+        do {
+            let record = try await pullShared()
+            await observer.synced(record, started)
+            return record
+        } catch {
+            // A pull that a network change replaced is retried by its caller: only a real failure ends direct.
+            if !(error is CancellationError) { observer.failed() }
+            throw error
+        }
+    }
+    private func pullShared() async throws -> DeviceSecurity.Record {
         while true {
             try Task.checkCancellation()
             let flight: Pull
@@ -260,6 +286,7 @@ public actor DeviceSecurityClient {
         let expected = try DeviceSecurity.stateHash(try read().state)
         next = try store.writeSecurity(expectedHead: expected, next)
         keep(next)
+        observer.installed(next)
         return next
     }
     private func touch(now: UInt64, persist: Bool = false) throws -> DeviceSecurity.Record {
