@@ -1,0 +1,1064 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "offlineInit": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "config": {
+              "machineId": "m-off",
+              "agent": "AGENT_CODEX"
+            },
+            "machineName": "OldMac",
+            "machineSelectable": true,
+            "agentName": "Codex",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true,
+                "selected": true
+              }
+            ],
+            "modelLabel": {
+              "key": "models.default"
+            },
+            "defaultMode": {
+              "mode": "APPROVAL_MODE_ASK",
+              "known": true,
+              "label": {
+                "key": "modes.default_named",
+                "args": [
+                  {
+                    "name": "mode",
+                    "textValue": {
+                      "key": "modes.ask"
+                    }
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "OldMac"
+                },
+                {
+                  "name": "project",
+                  "strValue": "app"
+                }
+              ]
+            },
+            "notices": [
+              {
+                "kind": "NOTICE_KIND_MACHINE_OFFLINE",
+                "severity": "NOTICE_SEVERITY_INFO",
+                "text": {
+                  "key": "new_session.machine_offline",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "OldMac"
+                    }
+                  ]
+                },
+                "action": "NOTICE_ACTION_KIND_CHANGE_MACHINE"
+              }
+            ],
+            "disabledReason": {
+              "key": "new_session.offline_no_start_named",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "OldMac"
+                }
+              ]
+            },
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default"
+              },
+              "defaultModelChecked": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "selected": true,
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "offlineWithDraftChoices": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "prompt": "Fix broken build",
+            "drafting": true,
+            "config": {
+              "machineId": "m-off",
+              "agent": "AGENT_CODEX"
+            },
+            "machineName": "OldMac",
+            "machineSelectable": true,
+            "agentName": "Codex",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true,
+                "selected": true
+              }
+            ],
+            "modelLabel": {
+              "key": "models.default"
+            },
+            "defaultMode": {
+              "mode": "APPROVAL_MODE_ASK",
+              "known": true,
+              "label": {
+                "key": "modes.default_named",
+                "args": [
+                  {
+                    "name": "mode",
+                    "textValue": {
+                      "key": "modes.ask"
+                    }
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "OldMac"
+                },
+                {
+                  "name": "project",
+                  "strValue": "app"
+                }
+              ]
+            },
+            "notices": [
+              {
+                "kind": "NOTICE_KIND_OFFLINE_DRAFT_CHOICES",
+                "severity": "NOTICE_SEVERITY_WARN",
+                "text": {
+                  "key": "new_session.offline_draft",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "OldMac"
+                    }
+                  ]
+                },
+                "hasDraftChoices": true,
+                "draftTitle": {
+                  "key": "new_session.offline_draft",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "OldMac"
+                    }
+                  ]
+                },
+                "draftSubtitle": {
+                  "key": "new_session.draft_kept"
+                },
+                "draftChoices": [
+                  {
+                    "machineId": "m-on",
+                    "title": {
+                      "key": "new_session.use_machine",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Workstation"
+                        }
+                      ]
+                    },
+                    "config": {
+                      "machineId": "m-on",
+                      "agent": "AGENT_CODEX"
+                    }
+                  }
+                ]
+              }
+            ],
+            "disabledReason": {
+              "key": "new_session.offline_no_start_named",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "OldMac"
+                }
+              ]
+            },
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default"
+              },
+              "defaultModelChecked": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "selected": true,
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sendCommand": {
+              "requestId": "cmd-1",
+              "machineId": "m-on",
+              "command": {
+                "listModels": {
+                  "agent": "AGENT_CODEX"
+                }
+              }
+            }
+          },
+          {
+            "sendCommand": {
+              "requestId": "cmd-2",
+              "machineId": "m-on",
+              "command": {
+                "getSettings": {}
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sendCommand": {
+              "requestId": "cmd-3",
+              "machineId": "m-on",
+              "command": {
+                "listModels": {
+                  "agent": "AGENT_CLAUDE"
+                }
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "readyToSubmit": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "prompt": "Fix broken build",
+            "drafting": true,
+            "config": {
+              "machineId": "m-on",
+              "agent": "AGENT_CLAUDE",
+              "model": "claude-sonnet",
+              "effort": "high"
+            },
+            "machineName": "Workstation",
+            "machineSelectable": true,
+            "agentName": "Claude Code",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
+                "installed": true,
+                "selected": true
+              },
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true
+              }
+            ],
+            "modelLabel": {
+              "literal": "Sonnet 5.5"
+            },
+            "effortLabel": "high",
+            "defaultMode": {
+              "mode": "APPROVAL_MODE_AUTO",
+              "known": true,
+              "label": {
+                "key": "modes.default_named",
+                "args": [
+                  {
+                    "name": "mode",
+                    "textValue": {
+                      "key": "modes.auto"
+                    }
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine_cli",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "Workstation"
+                },
+                {
+                  "name": "project",
+                  "strValue": "app"
+                },
+                {
+                  "name": "cli",
+                  "strValue": "Claude Code"
+                }
+              ]
+            },
+            "notices": [
+              {
+                "kind": "NOTICE_KIND_READING_PREVIOUS",
+                "severity": "NOTICE_SEVERITY_INFO",
+                "text": {
+                  "key": "new_session.reading_previous"
+                }
+              }
+            ],
+            "canStart": true,
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default_named",
+                "args": [
+                  {
+                    "name": "model",
+                    "strValue": "Haiku 4.5"
+                  }
+                ]
+              },
+              "models": [
+                {
+                  "slug": "claude-haiku",
+                  "displayName": "Haiku 4.5"
+                },
+                {
+                  "slug": "claude-sonnet",
+                  "displayName": "Sonnet 5.5",
+                  "checked": true,
+                  "supportsAuto": true,
+                  "supports1m": true
+                }
+              ],
+              "effortChoices": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "selectedEffort": "high",
+              "effortTitle": {
+                "key": "models.effort"
+              },
+              "supportsContextWindow": true,
+              "contextNote": {
+                "key": "models.extended_window"
+              },
+              "panelEnabled": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "selected": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "saveProjectPrefs": {
+              "opId": "op-5",
+              "kind": "PROJECT_PREFS_OP_KIND_SET_SETTINGS",
+              "path": "/Users/me/Code/app",
+              "settings": {
+                "path": "/Users/me/Code/app",
+                "agent": "AGENT_CLAUDE",
+                "machineId": "m-off",
+                "updatedMs": "1791078060000"
+              },
+              "atMs": "1791078060000",
+              "nextPrefs": {
+                "schema": 1,
+                "recentOps": [
+                  "op-5"
+                ],
+                "settings": [
+                  {
+                    "path": "/Users/me/Code/app",
+                    "agent": "AGENT_CLAUDE",
+                    "machineId": "m-off",
+                    "updatedMs": "1791078060000"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "sendCommand": {
+              "requestId": "create-4",
+              "machineId": "m-on",
+              "command": {
+                "createSession": {
+                  "cwd": "/Users/me/Code/app",
+                  "prompt": "Fix broken build",
+                  "model": "claude-sonnet",
+                  "effort": "high",
+                  "agent": "AGENT_CLAUDE"
+                }
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "unknownRetry": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "prompt": "Fix broken build",
+            "drafting": true,
+            "frozen": true,
+            "config": {
+              "machineId": "m-on",
+              "agent": "AGENT_CLAUDE",
+              "model": "claude-sonnet",
+              "effort": "high"
+            },
+            "machineName": "Workstation",
+            "machineSelectable": true,
+            "agentName": "Claude Code",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
+                "installed": true,
+                "selected": true
+              },
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true
+              }
+            ],
+            "modelLabel": {
+              "literal": "Sonnet 5.5"
+            },
+            "effortLabel": "high",
+            "defaultMode": {
+              "mode": "APPROVAL_MODE_AUTO",
+              "known": true,
+              "label": {
+                "key": "modes.default_named",
+                "args": [
+                  {
+                    "name": "mode",
+                    "textValue": {
+                      "key": "modes.auto"
+                    }
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine_cli",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "Workstation"
+                },
+                {
+                  "name": "project",
+                  "strValue": "app"
+                },
+                {
+                  "name": "cli",
+                  "strValue": "Claude Code"
+                }
+              ]
+            },
+            "notices": [
+              {
+                "kind": "NOTICE_KIND_UNKNOWN_START",
+                "severity": "NOTICE_SEVERITY_WARN",
+                "text": {
+                  "key": "new_session.start_unknown",
+                  "args": [
+                    {
+                      "name": "reason",
+                      "strValue": "ack lost"
+                    }
+                  ]
+                },
+                "action": "NOTICE_ACTION_KIND_ABANDON_START"
+              }
+            ],
+            "canStart": true,
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default_named",
+                "args": [
+                  {
+                    "name": "model",
+                    "strValue": "Haiku 4.5"
+                  }
+                ]
+              },
+              "models": [
+                {
+                  "slug": "claude-haiku",
+                  "displayName": "Haiku 4.5"
+                },
+                {
+                  "slug": "claude-sonnet",
+                  "displayName": "Sonnet 5.5",
+                  "checked": true,
+                  "supportsAuto": true,
+                  "supports1m": true
+                }
+              ],
+              "effortChoices": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "selectedEffort": "high",
+              "effortTitle": {
+                "key": "models.effort"
+              },
+              "supportsContextWindow": true,
+              "contextNote": {
+                "key": "models.extended_window"
+              },
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "selected": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "saveProjectPrefs": {
+              "opId": "op-6",
+              "kind": "PROJECT_PREFS_OP_KIND_SET_SETTINGS",
+              "path": "/Users/me/Code/app",
+              "settings": {
+                "path": "/Users/me/Code/app",
+                "agent": "AGENT_CLAUDE",
+                "machineId": "m-off",
+                "updatedMs": "1791078060000"
+              },
+              "atMs": "1791078060000",
+              "nextPrefs": {
+                "schema": 1,
+                "recentOps": [
+                  "op-5",
+                  "op-6"
+                ],
+                "settings": [
+                  {
+                    "path": "/Users/me/Code/app",
+                    "agent": "AGENT_CLAUDE",
+                    "machineId": "m-off",
+                    "updatedMs": "1791078060000"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "sendCommand": {
+              "requestId": "create-4",
+              "machineId": "m-on",
+              "command": {
+                "createSession": {
+                  "cwd": "/Users/me/Code/app",
+                  "prompt": "Fix broken build",
+                  "model": "claude-sonnet",
+                  "effort": "high",
+                  "agent": "AGENT_CLAUDE"
+                }
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "navigate": {
+              "route": "NAVIGATE_ROUTE_SESSION",
+              "sessionId": "s-created"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "afterExecuted": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "config": {
+              "machineId": "m-on",
+              "agent": "AGENT_CLAUDE",
+              "model": "claude-sonnet",
+              "effort": "high"
+            },
+            "machineName": "Workstation",
+            "machineSelectable": true,
+            "agentName": "Claude Code",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
+                "installed": true,
+                "selected": true
+              },
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true
+              }
+            ],
+            "modelLabel": {
+              "literal": "Sonnet 5.5"
+            },
+            "effortLabel": "high",
+            "defaultMode": {
+              "mode": "APPROVAL_MODE_AUTO",
+              "known": true,
+              "label": {
+                "key": "modes.default_named",
+                "args": [
+                  {
+                    "name": "mode",
+                    "textValue": {
+                      "key": "modes.auto"
+                    }
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine_cli",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "Workstation"
+                },
+                {
+                  "name": "project",
+                  "strValue": "app"
+                },
+                {
+                  "name": "cli",
+                  "strValue": "Claude Code"
+                }
+              ]
+            },
+            "notices": [
+              {
+                "kind": "NOTICE_KIND_READING_PREVIOUS",
+                "severity": "NOTICE_SEVERITY_INFO",
+                "text": {
+                  "key": "new_session.reading_previous"
+                }
+              }
+            ],
+            "disabledReason": {
+              "key": "new_session.first_message"
+            },
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default_named",
+                "args": [
+                  {
+                    "name": "model",
+                    "strValue": "Haiku 4.5"
+                  }
+                ]
+              },
+              "models": [
+                {
+                  "slug": "claude-haiku",
+                  "displayName": "Haiku 4.5"
+                },
+                {
+                  "slug": "claude-sonnet",
+                  "displayName": "Sonnet 5.5",
+                  "checked": true,
+                  "supportsAuto": true,
+                  "supports1m": true
+                }
+              ],
+              "effortChoices": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "selectedEffort": "high",
+              "effortTitle": {
+                "key": "models.effort"
+              },
+              "supportsContextWindow": true,
+              "contextNote": {
+                "key": "models.extended_window"
+              },
+              "panelEnabled": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "selected": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    }
+  ]
+}

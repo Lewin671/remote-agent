@@ -1,0 +1,1311 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sendCommand": {
+              "requestId": "cmd-1",
+              "machineId": "m1",
+              "command": {
+                "listModels": {
+                  "agent": "AGENT_CODEX"
+                }
+              }
+            }
+          },
+          {
+            "sendCommand": {
+              "requestId": "cmd-2",
+              "machineId": "m1",
+              "command": {
+                "getSettings": {}
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "homeInitial": {
+          "home": {
+            "scopeSelectable": true,
+            "scopeTitle": {
+              "key": "home.all_projects"
+            },
+            "connection": {
+              "state": "CONN_STATE_CONNECTED",
+              "badgeText": {
+                "key": "connection.connected"
+              },
+              "livePushConnected": true
+            },
+            "headline": {
+              "kind": "HEADLINE_KIND_WAITING",
+              "title": {
+                "key": "home.waiting_count",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "2"
+                  }
+                ]
+              },
+              "highlightCount": 2,
+              "sub": {
+                "key": "home.running_count",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "1"
+                  }
+                ]
+              }
+            },
+            "empty": {
+              "kind": "HOME_EMPTY_KIND_NONE"
+            },
+            "waitingTotal": 2,
+            "liveTotal": 1,
+            "endedTotal": 3,
+            "timelineTotal": 6,
+            "topAttentionSessionId": "s-appr",
+            "topAttentionActionable": true,
+            "topAttentionCard": {
+              "sessionId": "s-appr",
+              "machineId": "m1",
+              "approvalId": "ap-1",
+              "title": {
+                "literal": "Run tests"
+              },
+              "kindText": {
+                "key": "list_state.request_command_plain"
+              },
+              "where": {
+                "join": [
+                  {
+                    "literal": "alpha"
+                  },
+                  {
+                    "literal": "MacBook"
+                  }
+                ],
+                "separatorLiteral": " · "
+              },
+              "time": {
+                "key": "approval.timeout_note",
+                "args": [
+                  {
+                    "name": "remaining",
+                    "textValue": {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "hot": true,
+              "body": "go test ./...",
+              "toolName": "Bash",
+              "isCommand": true
+            },
+            "attention": [
+              {
+                "sessionId": "s-appr",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Run tests"
+                },
+                "kindText": {
+                  "key": "list_state.request_command_plain"
+                },
+                "summary": {
+                  "join": [
+                    {
+                      "key": "list_state.request_command",
+                      "args": [
+                        {
+                          "name": "command",
+                          "strValue": "go test ./..."
+                        }
+                      ]
+                    },
+                    {
+                      "literal": "alpha"
+                    },
+                    {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                }
+              },
+              {
+                "sessionId": "s-q",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Pick auth provider"
+                },
+                "kindText": {
+                  "key": "list_state.agent_asking",
+                  "args": [
+                    {
+                      "name": "agent",
+                      "strValue": "Claude Code"
+                    }
+                  ]
+                },
+                "summary": {
+                  "join": [
+                    {
+                      "key": "list_state.agent_asking",
+                      "args": [
+                        {
+                          "name": "agent",
+                          "strValue": "Claude Code"
+                        }
+                      ]
+                    },
+                    {
+                      "literal": "beta"
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                }
+              }
+            ],
+            "running": [
+              {
+                "sessionId": "s-run",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Index codebase"
+                },
+                "time": {
+                  "literal": "9:20"
+                },
+                "status": "SESSION_DISPLAY_STATUS_RUNNING",
+                "tone": "SESSION_TONE_LIVE",
+                "statusText": {
+                  "key": "list_state.running"
+                },
+                "preview": {
+                  "literal": "Running indexer…"
+                },
+                "secondLine": {
+                  "literal": "Running indexer…"
+                },
+                "agent": "AGENT_CODEX",
+                "multipleAgents": true,
+                "metaLine": {
+                  "literal": "alpha"
+                }
+              }
+            ],
+            "endedGroups": [
+              {
+                "groupKey": "today",
+                "groupKind": "ENDED_GROUP_KIND_TODAY",
+                "label": {
+                  "key": "time.today"
+                },
+                "items": [
+                  {
+                    "sessionId": "s-ended-today",
+                    "machineId": "m1",
+                    "title": {
+                      "literal": "Refactor auth"
+                    },
+                    "right": {
+                      "join": [
+                        {
+                          "literal": "alpha"
+                        },
+                        {
+                          "key": "time.today_clock",
+                          "args": [
+                            {
+                              "name": "value",
+                              "strValue": "7"
+                            },
+                            {
+                              "name": "detail",
+                              "strValue": "10"
+                            }
+                          ]
+                        }
+                      ],
+                      "separatorLiteral": " · "
+                    }
+                  }
+                ]
+              },
+              {
+                "groupKey": "yesterday",
+                "groupKind": "ENDED_GROUP_KIND_YESTERDAY",
+                "label": {
+                  "key": "time.yesterday"
+                },
+                "items": [
+                  {
+                    "sessionId": "s-ended-yest",
+                    "machineId": "m1",
+                    "title": {
+                      "literal": "Clean config"
+                    },
+                    "right": {
+                      "join": [
+                        {
+                          "literal": "beta"
+                        },
+                        {
+                          "key": "time.day_clock",
+                          "args": [
+                            {
+                              "name": "day",
+                              "textValue": {
+                                "key": "time.yesterday"
+                              }
+                            },
+                            {
+                              "name": "clock",
+                              "strValue": "23:59"
+                            }
+                          ]
+                        }
+                      ],
+                      "separatorLiteral": " · "
+                    }
+                  }
+                ]
+              }
+            ],
+            "scopeMenu": [
+              {
+                "name": {
+                  "key": "home.all_projects"
+                },
+                "subtitle": {
+                  "key": "projects.count",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                },
+                "waitingCount": 2,
+                "liveCount": 1,
+                "checked": true,
+                "allProjects": true
+              },
+              {
+                "key": "/Users/me/Code/beta",
+                "name": {
+                  "literal": "beta"
+                },
+                "shortPath": "~/Code/beta",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.pending_count",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "2"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "waitingCount": 1
+              },
+              {
+                "key": "/Users/me/Code/alpha",
+                "name": {
+                  "literal": "alpha"
+                },
+                "shortPath": "~/Code/alpha",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.pending_and_live",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        },
+                        {
+                          "name": "live",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "1"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "waitingCount": 1,
+                "liveCount": 1
+              }
+            ],
+            "sidebarProjects": {
+              "pinned": [
+                {
+                  "key": "/Users/me/Code/beta",
+                  "name": {
+                    "literal": "beta"
+                  },
+                  "shortPath": "~/Code/beta",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.pending_count",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "2"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "waitingCount": 1,
+                  "pinned": true
+                }
+              ],
+              "others": [
+                {
+                  "key": "/Users/me/Code/alpha",
+                  "name": {
+                    "literal": "alpha"
+                  },
+                  "shortPath": "~/Code/alpha",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.pending_and_live",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          },
+                          {
+                            "name": "live",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "1"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "waitingCount": 1,
+                  "liveCount": 1
+                }
+              ],
+              "titled": true,
+              "waitingTotal": 2
+            },
+            "canStart": true
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "saveHomeScope": {
+              "scopeKey": "/Users/me/Code/alpha"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "homeScoped": {
+          "home": {
+            "scopeSelectable": true,
+            "scopeKey": "/Users/me/Code/alpha",
+            "scopeTitle": {
+              "literal": "alpha"
+            },
+            "scopeShortPath": "~/Code/alpha",
+            "connection": {
+              "state": "CONN_STATE_CONNECTED",
+              "badgeText": {
+                "key": "connection.connected"
+              },
+              "livePushConnected": true
+            },
+            "headline": {
+              "kind": "HEADLINE_KIND_WAITING",
+              "title": {
+                "key": "home.waiting_count",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "2"
+                  }
+                ]
+              },
+              "highlightCount": 2,
+              "sub": {
+                "key": "home.running_count",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "1"
+                  }
+                ]
+              }
+            },
+            "empty": {
+              "kind": "HOME_EMPTY_KIND_NONE"
+            },
+            "waitingTotal": 2,
+            "liveTotal": 1,
+            "endedTotal": 2,
+            "timelineTotal": 4,
+            "topAttentionSessionId": "s-appr",
+            "topAttentionActionable": true,
+            "topAttentionCard": {
+              "sessionId": "s-appr",
+              "machineId": "m1",
+              "approvalId": "ap-1",
+              "title": {
+                "literal": "Run tests"
+              },
+              "kindText": {
+                "key": "list_state.request_command_plain"
+              },
+              "where": {
+                "join": [
+                  {
+                    "literal": "alpha"
+                  },
+                  {
+                    "literal": "MacBook"
+                  }
+                ],
+                "separatorLiteral": " · "
+              },
+              "time": {
+                "key": "approval.timeout_note",
+                "args": [
+                  {
+                    "name": "remaining",
+                    "textValue": {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "hot": true,
+              "body": "go test ./...",
+              "toolName": "Bash",
+              "isCommand": true
+            },
+            "attention": [
+              {
+                "sessionId": "s-appr",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Run tests"
+                },
+                "kindText": {
+                  "key": "list_state.request_command_plain"
+                },
+                "summary": {
+                  "join": [
+                    {
+                      "key": "list_state.request_command",
+                      "args": [
+                        {
+                          "name": "command",
+                          "strValue": "go test ./..."
+                        }
+                      ]
+                    },
+                    {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                }
+              },
+              {
+                "sessionId": "s-q",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Pick auth provider"
+                },
+                "kindText": {
+                  "key": "list_state.agent_asking",
+                  "args": [
+                    {
+                      "name": "agent",
+                      "strValue": "Claude Code"
+                    }
+                  ]
+                },
+                "summary": {
+                  "join": [
+                    {
+                      "key": "list_state.agent_asking",
+                      "args": [
+                        {
+                          "name": "agent",
+                          "strValue": "Claude Code"
+                        }
+                      ]
+                    },
+                    {
+                      "literal": "beta"
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "outsideScope": true
+              }
+            ],
+            "running": [
+              {
+                "sessionId": "s-run",
+                "machineId": "m1",
+                "title": {
+                  "literal": "Index codebase"
+                },
+                "time": {
+                  "literal": "9:20"
+                },
+                "status": "SESSION_DISPLAY_STATUS_RUNNING",
+                "tone": "SESSION_TONE_LIVE",
+                "statusText": {
+                  "key": "list_state.running"
+                },
+                "preview": {
+                  "literal": "Running indexer…"
+                },
+                "secondLine": {
+                  "literal": "Running indexer…"
+                },
+                "agent": "AGENT_CODEX"
+              }
+            ],
+            "endedGroups": [
+              {
+                "groupKey": "today",
+                "groupKind": "ENDED_GROUP_KIND_TODAY",
+                "label": {
+                  "key": "time.today"
+                },
+                "items": [
+                  {
+                    "sessionId": "s-ended-today",
+                    "machineId": "m1",
+                    "title": {
+                      "literal": "Refactor auth"
+                    },
+                    "right": {
+                      "key": "time.today_clock",
+                      "args": [
+                        {
+                          "name": "value",
+                          "strValue": "7"
+                        },
+                        {
+                          "name": "detail",
+                          "strValue": "10"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "scopeMenu": [
+              {
+                "name": {
+                  "key": "home.all_projects"
+                },
+                "subtitle": {
+                  "key": "projects.count",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                },
+                "waitingCount": 2,
+                "liveCount": 1,
+                "allProjects": true
+              },
+              {
+                "key": "/Users/me/Code/beta",
+                "name": {
+                  "literal": "beta"
+                },
+                "shortPath": "~/Code/beta",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.pending_count",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "2"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "waitingCount": 1
+              },
+              {
+                "key": "/Users/me/Code/alpha",
+                "name": {
+                  "literal": "alpha"
+                },
+                "shortPath": "~/Code/alpha",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.pending_and_live",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        },
+                        {
+                          "name": "live",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "1"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "waitingCount": 1,
+                "liveCount": 1,
+                "checked": true
+              }
+            ],
+            "sidebarProjects": {
+              "pinned": [
+                {
+                  "key": "/Users/me/Code/beta",
+                  "name": {
+                    "literal": "beta"
+                  },
+                  "shortPath": "~/Code/beta",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.pending_count",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "2"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "waitingCount": 1,
+                  "pinned": true
+                }
+              ],
+              "others": [
+                {
+                  "key": "/Users/me/Code/alpha",
+                  "name": {
+                    "literal": "alpha"
+                  },
+                  "shortPath": "~/Code/alpha",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.pending_and_live",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          },
+                          {
+                            "name": "live",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "1"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "waitingCount": 1,
+                  "liveCount": 1
+                }
+              ],
+              "titled": true,
+              "waitingTotal": 2
+            },
+            "canStart": true
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "homeFiltered": {
+          "home": {
+            "scopeSelectable": true,
+            "scopeKey": "/Users/me/Code/alpha",
+            "scopeTitle": {
+              "literal": "alpha"
+            },
+            "scopeShortPath": "~/Code/alpha",
+            "connection": {
+              "state": "CONN_STATE_CONNECTED",
+              "badgeText": {
+                "key": "connection.connected"
+              },
+              "livePushConnected": true
+            },
+            "headline": {
+              "kind": "HEADLINE_KIND_WAITING",
+              "title": {
+                "key": "home.waiting_count",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "2"
+                  }
+                ]
+              },
+              "highlightCount": 2,
+              "sub": {
+                "key": "home.running_count",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "1"
+                  }
+                ]
+              }
+            },
+            "empty": {
+              "kind": "HOME_EMPTY_KIND_NONE"
+            },
+            "canFilter": true,
+            "filterQuery": "Refactor",
+            "filterSummary": {
+              "key": "home.matches",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "1"
+                },
+                {
+                  "name": "query",
+                  "strValue": "Refactor"
+                }
+              ]
+            },
+            "waitingTotal": 2,
+            "endedTotal": 2,
+            "timelineTotal": 4,
+            "endedGroups": [
+              {
+                "groupKey": "today",
+                "groupKind": "ENDED_GROUP_KIND_TODAY",
+                "label": {
+                  "key": "time.today"
+                },
+                "items": [
+                  {
+                    "sessionId": "s-ended-today",
+                    "machineId": "m1",
+                    "title": {
+                      "literal": "Refactor auth"
+                    },
+                    "right": {
+                      "key": "time.today_clock",
+                      "args": [
+                        {
+                          "name": "value",
+                          "strValue": "7"
+                        },
+                        {
+                          "name": "detail",
+                          "strValue": "10"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ],
+            "endedTail": {
+              "kind": "TAIL_KIND_MORE_ENDED",
+              "text": {
+                "key": "home.matches",
+                "args": [
+                  {
+                    "name": "count",
+                    "intValue": "1"
+                  },
+                  {
+                    "name": "query",
+                    "strValue": "Refactor"
+                  }
+                ]
+              }
+            },
+            "scopeMenu": [
+              {
+                "name": {
+                  "key": "home.all_projects"
+                },
+                "subtitle": {
+                  "key": "projects.count",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "2"
+                    }
+                  ]
+                },
+                "waitingCount": 2,
+                "liveCount": 1,
+                "allProjects": true
+              },
+              {
+                "key": "/Users/me/Code/beta",
+                "name": {
+                  "literal": "beta"
+                },
+                "shortPath": "~/Code/beta",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.pending_count",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "2"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "waitingCount": 1
+              },
+              {
+                "key": "/Users/me/Code/alpha",
+                "name": {
+                  "literal": "alpha"
+                },
+                "shortPath": "~/Code/alpha",
+                "subtitle": {
+                  "join": [
+                    {
+                      "key": "projects.pending_and_live",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "1"
+                        },
+                        {
+                          "name": "live",
+                          "intValue": "1"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.minutes_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "1"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "waitingCount": 1,
+                "liveCount": 1,
+                "checked": true
+              }
+            ],
+            "sidebarProjects": {
+              "pinned": [
+                {
+                  "key": "/Users/me/Code/beta",
+                  "name": {
+                    "literal": "beta"
+                  },
+                  "shortPath": "~/Code/beta",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.pending_count",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "2"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "waitingCount": 1,
+                  "pinned": true
+                }
+              ],
+              "others": [
+                {
+                  "key": "/Users/me/Code/alpha",
+                  "name": {
+                    "literal": "alpha"
+                  },
+                  "shortPath": "~/Code/alpha",
+                  "subtitle": {
+                    "join": [
+                      {
+                        "key": "projects.pending_and_live",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "1"
+                          },
+                          {
+                            "name": "live",
+                            "intValue": "1"
+                          }
+                        ]
+                      },
+                      {
+                        "key": "time.used_time",
+                        "args": [
+                          {
+                            "name": "time",
+                            "textValue": {
+                              "key": "time.minutes_ago",
+                              "args": [
+                                {
+                                  "name": "count",
+                                  "intValue": "1"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorLiteral": " · "
+                  },
+                  "waitingCount": 1,
+                  "liveCount": 1
+                }
+              ],
+              "titled": true,
+              "waitingTotal": 2
+            },
+            "canStart": true
+          }
+        }
+      }
+    }
+  ]
+}

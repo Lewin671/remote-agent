@@ -1,0 +1,382 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/home_view.proto";
+import "remoteagent/core/v1/new_session_view.proto";
+import "remoteagent/core/v1/project_view.proto";
+import "remoteagent/v1/event.proto";
+import "remoteagent/v1/local.proto";
+import "remoteagent/v1/remote.proto";
+
+message HomeScreenRequest {
+  int32 ended_limit = 1;
+}
+
+message ProjectScreenRequest {
+  string project_key = 1;
+  bool manage = 2;
+  int32 ended_limit = 3;
+}
+
+message NewSessionScreenRequest {
+  string project_key = 1;
+}
+
+message Screen {
+  oneof screen {
+    HomeScreenRequest home = 1;
+    ProjectScreenRequest project = 2;
+    NewSessionScreenRequest new_session = 3;
+  }
+}
+
+message ViewModel {
+  oneof view {
+    HomeViewModel home = 1;
+    ProjectViewModel project = 2;
+    NewSessionViewModel new_session = 3;
+  }
+}
+
+message LocalCalendar {
+  int64 now_ms = 1;
+  int64 today_start_ms = 2;
+  int64 yesterday_start_ms = 3;
+  int64 week_start_ms = 4;
+  int32 now_year = 5;
+  int32 utc_offset_minutes = 6;
+}
+
+message ConnectionChanged {
+  ConnState state = 1;
+  string reason = 2;
+  int64 disconnected_at_ms = 3;
+  bool live_push_connected = 4;
+}
+
+message AccountRoleChanged {
+  bool is_manager = 1;
+  string manager_device_name = 2;
+  bool control_expired = 3;
+  bool clock_skewed = 4;
+}
+
+message MachineInput {
+  string machine_id = 1;
+  bool online = 2;
+  int64 last_seen_ms = 3;
+  remoteagent.v1.MachineMeta meta = 4;
+  bool daemon_out_of_date = 5;
+  bool client_out_of_date = 6;
+  optional bool reachable = 7;
+  optional bool unlinked = 8;
+  uint32 protocol_version = 9;
+}
+
+message MachinesUpdated {
+  repeated MachineInput machines = 1;
+  bool listed = 2;
+  uint32 client_protocol_version = 3;
+}
+
+message PendingActionSummary {
+  bool has_pending_approval = 1;
+  string approval_id = 2;
+  string approval_tool_name = 3;
+  string approval_command = 4;
+  string approval_tool_input = 5;
+  bool approval_truncated = 6;
+  int64 approval_deadline_ms = 7;
+  bool has_pending_question = 8;
+  bool has_pending_plan = 9;
+  bool has_popup = 10;
+  string popup_preview = 11;
+}
+
+message SessionInput {
+  string session_id = 1;
+  string machine_id = 2;
+  remoteagent.v1.Session info = 3;
+  int64 updated_ms = 4;
+  PendingActionSummary pending = 14;
+  string schedule_name = 15;
+  bool schedule_unread = 16;
+  int32 created_local_year = 17;
+  int32 created_local_month = 18;
+  int32 created_local_day = 19;
+  string created_local_hhmm = 20;
+  int32 updated_local_year = 21;
+  int32 updated_local_month = 22;
+  int32 updated_local_day = 23;
+  int32 updated_local_weekday = 24;
+  string updated_local_hhmm = 25;
+  int32 ended_local_year = 26;
+  int32 ended_local_month = 27;
+  int64 listed_ended_ms = 28;
+}
+
+message SessionsPageResult {
+  string request_id = 1;
+  repeated SessionInput sessions = 2;
+  string next_cursor = 3;
+  bool has_more = 4;
+  bool is_refresh = 5;
+  string error = 6;
+  int64 next_ended_ms = 7;
+  string next_session_id = 8;
+}
+
+message SessionRemoved {
+  string session_id = 1;
+}
+
+message PrefsUpdated {
+  remoteagent.v1.ProjectPrefs prefs = 1;
+  bool loaded = 2;
+  bool load_failed = 3;
+  bool changed_elsewhere = 4;
+  string home_scope = 5;
+}
+
+message PrefsSyncResult {
+  string op_id = 1;
+  string error = 2;
+  bool changed_elsewhere = 3;
+  bool conflict = 4;
+}
+
+message MachineModelsResult {
+  string machine_id = 1;
+  remoteagent.v1.Agent agent = 2;
+  remoteagent.v1.ListModelsResponse response = 3;
+  string error = 4;
+}
+
+message MachineSettingsResult {
+  string machine_id = 1;
+  remoteagent.v1.DaemonSettings settings = 2;
+  string error = 3;
+}
+
+message DirListingResult {
+  string request_id = 1;
+  string machine_id = 2;
+  string path = 3;
+  string parent_path = 4;
+  repeated DirEntryView dirs = 5;
+  string error = 6;
+}
+
+message CreateSessionOutcome {
+  string request_id = 1;
+  string session_id = 2;
+  string outcome = 3;
+  string reason = 4;
+  bool disk_full = 5;
+  bool expired = 6;
+  bool unknown = 7;
+  string error = 8;
+}
+
+message HomeSetScopeAction {
+  string scope_key = 1;
+}
+
+message HomeSetFilterAction {
+  string query = 1;
+}
+
+message HomeLoadMoreEndedAction {
+  int32 step = 1;
+}
+
+message HomeRetryLoadAction {}
+
+message HomeSelectSessionAction {
+  string session_id = 1;
+}
+
+message ProjectSetSearchAction {
+  string query = 1;
+}
+
+message ProjectKeyAction {
+  string project_key = 1;
+}
+
+message ProjectAddAction {
+  string path = 1;
+}
+
+message DirPickerOpenAction {
+  string machine_id = 1;
+  string path = 2;
+  bool for_new_task = 3;
+}
+
+message DirNavigateAction {
+  string machine_id = 1;
+  string path = 2;
+}
+
+message DirPickerCloseAction {}
+
+message NewSessionOpenAction {
+  string project_key = 1;
+}
+
+message NewSessionSelectProjectAction {
+  string project_key = 1;
+}
+
+message NewSessionSelectMachineAction {
+  string machine_id = 1;
+}
+
+message NewSessionSelectAgentAction {
+  remoteagent.v1.Agent agent = 1;
+}
+
+message NewSessionSelectModelAction {
+  string model = 1;
+  string effort = 2;
+  optional bool standard_context = 3;
+}
+
+message NewSessionSetPromptAction {
+  string prompt = 1;
+  int32 attachment_count = 2;
+  bool attachments_moved = 3;
+}
+
+message NewSessionProjectAction {
+  string project_key = 1;
+}
+
+message NewSessionSubmitAction {
+  string project_key = 1;
+  bool auto_mode_supported = 2;
+}
+
+message Event {
+  oneof event {
+    LocalCalendar clock_updated = 1;
+    ConnectionChanged connection_changed = 2;
+    AccountRoleChanged account_role_changed = 3;
+    MachinesUpdated machines_updated = 4;
+    SessionsPageResult sessions_page_received = 5;
+    SessionInput session_upserted = 6;
+    SessionRemoved session_removed = 7;
+    PrefsUpdated prefs_updated = 8;
+    PrefsSyncResult prefs_sync_result = 9;
+    MachineModelsResult machine_models_received = 10;
+    MachineSettingsResult machine_settings_received = 11;
+    DirListingResult dir_listing_received = 12;
+    CreateSessionOutcome create_session_result = 13;
+    HomeSetScopeAction home_set_scope = 20;
+    HomeSetFilterAction home_set_filter = 21;
+    HomeLoadMoreEndedAction home_load_more_ended = 24;
+    HomeRetryLoadAction home_retry_load = 25;
+    HomeSelectSessionAction home_select_session = 26;
+    ProjectSetSearchAction project_set_search = 30;
+    ProjectKeyAction project_toggle_pin = 31;
+    ProjectKeyAction project_toggle_hide = 32;
+    ProjectAddAction project_add = 33;
+    ProjectKeyAction project_load_more_ended = 34;
+    DirPickerOpenAction project_open_dir_picker = 35;
+    DirNavigateAction project_dir_navigate = 36;
+    DirPickerCloseAction project_close_dir_picker = 37;
+    NewSessionOpenAction new_session_open = 40;
+    NewSessionSelectProjectAction new_session_select_project = 41;
+    NewSessionSelectMachineAction new_session_select_machine = 42;
+    NewSessionSelectAgentAction new_session_select_agent = 43;
+    NewSessionSelectModelAction new_session_select_model = 44;
+    NewSessionSetPromptAction new_session_set_prompt = 45;
+    NewSessionProjectAction new_session_retry_models = 47;
+    NewSessionProjectAction new_session_retry_save_config = 48;
+    NewSessionSubmitAction new_session_submit = 49;
+    NewSessionProjectAction new_session_abandon_start = 50;
+  }
+}
+
+enum ScreenTarget {
+  SCREEN_TARGET_UNSPECIFIED = 0;
+  SCREEN_TARGET_HOME = 1;
+  SCREEN_TARGET_PROJECT = 2;
+  SCREEN_TARGET_NEW_SESSION = 3;
+}
+
+message RenderEffect {
+  repeated ScreenTarget screens = 1;
+}
+
+message SaveHomeScopeEffect {
+  string scope_key = 1;
+}
+
+enum ProjectPrefsOpKind {
+  PROJECT_PREFS_OP_KIND_UNSPECIFIED = 0;
+  PROJECT_PREFS_OP_KIND_PIN = 1;
+  PROJECT_PREFS_OP_KIND_UNPIN = 2;
+  PROJECT_PREFS_OP_KIND_HIDE = 3;
+  PROJECT_PREFS_OP_KIND_UNHIDE = 4;
+  PROJECT_PREFS_OP_KIND_ADD = 5;
+  PROJECT_PREFS_OP_KIND_SET_SETTINGS = 6;
+}
+
+message SaveProjectPrefsEffect {
+  string op_id = 1;
+  ProjectPrefsOpKind kind = 2;
+  string path = 3;
+  remoteagent.v1.ProjectSettings settings = 4;
+  int64 at_ms = 5;
+  remoteagent.v1.ProjectPrefs next_prefs = 6;
+}
+
+message FetchSessionsPageEffect {
+  string request_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message SendCommandEffect {
+  string request_id = 1;
+  string machine_id = 2;
+  remoteagent.v1.Command command = 3;
+}
+
+enum NavigateRoute {
+  NAVIGATE_ROUTE_UNSPECIFIED = 0;
+  NAVIGATE_ROUTE_SESSION = 1;
+  NAVIGATE_ROUTE_PROJECT = 2;
+  NAVIGATE_ROUTE_MACHINE_SETTINGS = 3;
+  NAVIGATE_ROUTE_MACHINE_STATUS = 4;
+}
+
+message NavigateEffect {
+  NavigateRoute route = 1;
+  string project_key = 2;
+  string session_id = 3;
+  string machine_id = 4;
+}
+
+message AbandonRequestEffect {
+  string request_id = 1;
+}
+
+message Effect {
+  oneof effect {
+    RenderEffect render = 1;
+    SaveHomeScopeEffect save_home_scope = 2;
+    SaveProjectPrefsEffect save_project_prefs = 3;
+    FetchSessionsPageEffect fetch_sessions_page = 4;
+    SendCommandEffect send_command = 5;
+    NavigateEffect navigate = 6;
+    AbandonRequestEffect abandon_request = 7;
+  }
+}
+
+message EffectBatch {
+  repeated Effect effects = 1;
+}

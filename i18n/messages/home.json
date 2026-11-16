@@ -1467,5 +1467,100 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "home.earlier_offline",
+    "zh-CN": "连上服务器后读取更早的会话",
+    "en": "Connect to the server to load earlier sessions",
+    "notes": "离线时已结束列表末尾提示。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.earlier_failed_retry",
+    "zh-CN": "没能读取更早的会话：{reason} · 点这里重试",
+    "en": "Could not load earlier sessions: {reason} · Tap to retry",
+    "notes": "更早会话翻页失败末尾提示；reason 为错误原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.list_failed_retry",
+    "zh-CN": "没能读取会话列表：{reason} · 点这里重试",
+    "en": "Could not read the session list: {reason} · Tap to retry",
+    "notes": "首页列表读取失败可重试提示；reason 为错误原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.empty_project_start",
+    "zh-CN": "点右下角的「新任务」在这里开始一个。",
+    "en": "Tap “New task” at the bottom right to start one here.",
+    "notes": "单一项目范围内无会话时的空状态引导。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "home.no_machines_setup",
+    "zh-CN": "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 {command}，或者在管理端上添加。",
+    "en": "This account has no computers yet. Tap “Add device” for a pairing code, then run {command} on your computer, or add one on a managing client.",
+    "notes": "无电脑时首页空状态完整说明；command 为终端命令，保持原文。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "remote-agent account join"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

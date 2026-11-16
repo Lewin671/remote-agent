@@ -227,6 +227,7 @@ def build(root):
     deferred = 'public enum L10nMessage {\n'
     go = '// '+HEADER+'\npackage i18n\n\nimport (\n\t"embed"\n\t"encoding/json"\n\t"fmt"\n\t"regexp"\n\t"strconv"\n\t"strings"\n)\n\n'
     go += template('go-runtime.txt')
+    client_keys = '// ' + HEADER + '\npackage text\n\n'
     catalog = {'sourceLanguage': locales['source'], 'version':'1.0', 'strings':{}}
     strings = {lang:[] for lang in metadata}; dicts = {lang:{} for lang in metadata}
     for key, row in messages.items():
@@ -272,6 +273,8 @@ def build(root):
             deferred += f'        return LocalizedMessage(key: key, arguments: [{deferred_values}])\n    }}\n'
             swiftargs = ', '.join(f'Int64({n})' if row['params'][n]['type']=='integer' else n for n in params)
             swift += f'        return format(key, locale: locale, args: [{swiftargs}])\n    }}\n'
+        if any(p in row['platforms'] for p in ('web', 'android', 'ios')):
+            client_keys += f'const Key{fn[0].upper()+fn[1:]} = "{key}"\n'
         if 'go' in row['platforms']:
             args = ', '.join(['locale string']+[f'{n} {TYPES[row["params"][n]["type"]][3]}' for n in params])
             amap = ', '.join(f'"{n}": {n}' for n in params)
@@ -339,6 +342,7 @@ def build(root):
         if lang == locales['default']: put('android/app/src/main/res/values/i18n.xml','\n'.join(xml)+'\n')
     put('internal/i18n/messages.generated.go', go)
     put('internal/i18n/messages.generated.json', dump({'locales':locales,'messages':{k:r for k,r in messages.items() if 'go' in r['platforms']}}))
+    put('clientcore/text/keys.generated.go', client_keys)
     return out
 
 

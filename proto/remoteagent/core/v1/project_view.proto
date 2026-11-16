@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/home_view.proto";
+import "remoteagent/core/v1/text.proto";
+
+enum ProjectViewKind {
+  PROJECT_VIEW_KIND_UNSPECIFIED = 0;
+  PROJECT_VIEW_KIND_DETAIL = 1;
+  PROJECT_VIEW_KIND_MANAGE = 2;
+}
+
+message HiddenProjectNoticeView {
+  bool active = 1;
+  Text text = 2;
+  bool action_enabled = 3;
+  bool busy = 4;
+  Text error = 5;
+}
+
+message ProjectDetailView {
+  string key = 1;
+  Text name = 2;
+  string short_path = 3;
+  Text subtitle = 4;
+  repeated string machine_ids = 5;
+  repeated string machine_names = 6;
+  bool any_online = 7;
+  int32 active_count = 8;
+  int32 ended_total = 9;
+  repeated SessionRowView active = 10;
+  repeated EndedRowView ended = 11;
+  bool can_load_earlier = 12;
+  TailRowView tail = 13;
+  Text empty_note = 14;
+  bool is_hidden = 15;
+  bool is_pinned = 16;
+  HiddenProjectNoticeView hidden_notice = 17;
+  bool saving_settings = 18;
+  Text settings_error = 19;
+  bool can_start = 20;
+  bool can_pin = 21;
+  bool can_remove = 22;
+  Text save_status = 23;
+  bool has_more_ended = 24;
+}
+
+message DirPickerMachineView {
+  string machine_id = 1;
+  string name = 2;
+  bool online = 3;
+  Text status_text = 4;
+  string home = 5;
+}
+
+message DirCrumbView {
+  Text label = 1;
+  string path = 2;
+}
+
+message DirEntryView {
+  string name = 1;
+  string path = 2;
+}
+
+message DirPickerView {
+  bool open = 1;
+  bool for_new_task = 2;
+  repeated DirPickerMachineView machines = 3;
+  string machine_id = 4;
+  string current_path = 5;
+  repeated DirCrumbView crumbs = 6;
+  string parent_path = 7;
+  repeated DirEntryView dirs = 8;
+  bool loading = 9;
+  Text error = 10;
+  Text confirm_label = 11;
+  bool can_confirm = 12;
+}
+
+message ManageProjectsView {
+  ProjectListingView listing = 1;
+  bool can_edit = 2;
+  Text blocked_reason = 3;
+  bool changed_elsewhere = 4;
+  bool syncing = 5;
+  Text save_error = 6;
+  DirPickerView dir_picker = 7;
+  int32 project_count = 8;
+}
+
+message ProjectViewModel {
+  ProjectViewKind kind = 1;
+  ProjectDetailView detail = 2;
+  ManageProjectsView manage = 3;
+}

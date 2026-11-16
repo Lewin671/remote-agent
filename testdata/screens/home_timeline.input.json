@@ -1,0 +1,170 @@
+{
+  "steps": [
+    {
+      "event": {
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "utcOffsetMinutes": 480
+        }
+      }
+    },
+    {
+      "event": {
+        "connectionChanged": {
+          "state": "CONN_STATE_CONNECTED",
+          "livePushConnected": true
+        }
+      }
+    },
+    {
+      "event": {
+        "machinesUpdated": {
+          "listed": true,
+          "clientProtocolVersion": 14,
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "MacBook.local",
+                "home": "/Users/me",
+                "agents": [
+                  { "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" },
+                  { "agent": "AGENT_CLAUDE", "defaultMode": "APPROVAL_MODE_ASK", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" }
+                ],
+                "projects": [
+                  { "path": "/Users/me/Code/alpha", "ended": 2, "latestCreatedMs": "1791069000000", "latestEndedMs": "1791069000000" },
+                  { "path": "/Users/me/Code/beta", "ended": 1, "latestCreatedMs": "1791043140000", "latestEndedMs": "1791043140000" },
+                  { "path": "/Users/me/Code/hidden", "ended": 1, "latestCreatedMs": "1790500000000", "latestEndedMs": "1790500000000" }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "prefsUpdated": {
+          "loaded": true,
+          "homeScope": "all",
+          "prefs": {
+            "schema": 1,
+            "pinned": [{ "path": "/Users/me/Code/beta" }],
+            "hidden": [{ "path": "/Users/me/Code/hidden" }]
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "sessionsPageReceived": {
+          "isRefresh": true,
+          "hasMore": false,
+          "sessions": [
+            {
+              "sessionId": "s-appr",
+              "machineId": "m1",
+              "updatedMs": "1791078000000",
+              "info": {
+                "id": "s-appr",
+                "cwd": "/Users/me/Code/alpha",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING",
+                "pendingApprovals": 1,
+                "title": "Run tests",
+                "createdAt": "2026-10-04T01:30:00Z"
+              },
+              "pending": {
+                "hasPendingApproval": true,
+                "approvalId": "ap-1",
+                "approvalToolName": "Bash",
+                "approvalCommand": "go test ./...",
+                "approvalDeadlineMs": "1791078180000"
+              }
+            },
+            {
+              "sessionId": "s-q",
+              "machineId": "m1",
+              "updatedMs": "1791077900000",
+              "info": {
+                "id": "s-q",
+                "cwd": "/Users/me/Code/beta",
+                "agent": "AGENT_CLAUDE",
+                "status": "SESSION_STATUS_RUNNING",
+                "pendingQuestions": 1,
+                "title": "Pick auth provider",
+                "createdAt": "2026-10-04T01:25:00Z"
+              }
+            },
+            {
+              "sessionId": "s-run",
+              "machineId": "m1",
+              "updatedMs": "1791077800000",
+              "info": {
+                "id": "s-run",
+                "cwd": "/Users/me/Code/alpha",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING",
+                "preview": "Running indexer…",
+                "title": "Index codebase",
+                "createdAt": "2026-10-04T01:20:00Z"
+              }
+            },
+            {
+              "sessionId": "s-ended-today",
+              "machineId": "m1",
+              "updatedMs": "1791069000000",
+              "info": {
+                "id": "s-ended-today",
+                "cwd": "/Users/me/Code/alpha",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_EXITED",
+                "title": "Refactor auth",
+                "createdAt": "2026-10-03T22:50:00Z",
+                "endedAt": "2026-10-03T23:10:00Z"
+              }
+            },
+            {
+              "sessionId": "s-ended-yest",
+              "machineId": "m1",
+              "updatedMs": "1791043140000",
+              "info": {
+                "id": "s-ended-yest",
+                "cwd": "/Users/me/Code/beta",
+                "agent": "AGENT_CLAUDE",
+                "status": "SESSION_STATUS_EXITED",
+                "title": "Clean config",
+                "createdAt": "2026-10-03T15:50:00Z",
+                "endedAt": "2026-10-03T15:59:00Z"
+              }
+            }
+          ]
+        }
+      },
+      "views": [
+        { "name": "homeInitial", "screen": { "home": {} } }
+      ]
+    },
+    {
+      "event": {
+        "homeSetScope": { "scopeKey": "/Users/me/Code/alpha" }
+      },
+      "views": [
+        { "name": "homeScoped", "screen": { "home": {} } }
+      ]
+    },
+    {
+      "event": {
+        "homeSetFilter": { "query": "Refactor" }
+      },
+      "views": [
+        { "name": "homeFiltered", "screen": { "home": {} } }
+      ]
+    }
+  ]
+}

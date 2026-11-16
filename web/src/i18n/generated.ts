@@ -110,10 +110,15 @@ export interface MessageArgs {
   "common.list_separator": { [name: string]: never };
   "common.loading": { [name: string]: never };
   "common.machine": { [name: string]: never };
+  "common.note_separator": { [name: string]: never };
+  "common.offline": { [name: string]: never };
+  "common.online": { [name: string]: never };
   "common.reload": { [name: string]: never };
   "common.remove": { [name: string]: never };
   "common.retry": { [name: string]: never };
   "common.save": { [name: string]: never };
+  "common.save_failed": { reason: string };
+  "common.saving": { [name: string]: never };
   "common.settings": { [name: string]: never };
   "common.unknown_computer": { [name: string]: never };
   "composer.after_turn": { [name: string]: never };
@@ -211,6 +216,7 @@ export interface MessageArgs {
   "errors.account_creation_draft_preserved_continue_the_original_creation_flow": { [name: string]: never };
   "errors.cannot_connect_to_terminal": { [name: string]: never };
   "errors.cannot_sign_with_the_current_security_state_the_operation": { [name: string]: never };
+  "errors.client_out_of_date": { [name: string]: never };
   "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
@@ -237,6 +243,7 @@ export interface MessageArgs {
   "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
   "errors.network_changed_reconnecting": { [name: string]: never };
+  "errors.not_connected": { [name: string]: never };
   "errors.other_clients_kept_changing_the_project_list_changes_could": { [name: string]: never };
   "errors.pending_requests_on_the_computer_could_not_be_verified": { [name: string]: never };
   "errors.project_preferences_format_is_not_supported": { [name: string]: never };
@@ -309,6 +316,9 @@ export interface MessageArgs {
   "home.computer_runs_cli": { [name: string]: never };
   "home.connection_check": { [name: string]: never };
   "home.connection_label": { state: string };
+  "home.earlier_failed_retry": { reason: string };
+  "home.earlier_offline": { [name: string]: never };
+  "home.empty_project_start": { [name: string]: never };
   "home.filter_title": { [name: string]: never };
   "home.forked": { [name: string]: never };
   "home.idle_count": { count: number };
@@ -317,6 +327,7 @@ export interface MessageArgs {
   "home.ios_choose_task": { [name: string]: never };
   "home.ios_new_results": { [name: string]: never };
   "home.list_failed": { reason: string };
+  "home.list_failed_retry": { reason: string };
   "home.live": { [name: string]: never };
   "home.loading_earlier": { [name: string]: never };
   "home.manage_projects": { [name: string]: never };
@@ -326,6 +337,7 @@ export interface MessageArgs {
   "home.more_waiting": { count: number };
   "home.new_schedule": { [name: string]: never };
   "home.new_task": { [name: string]: never };
+  "home.no_machines_setup": { command: string };
   "home.no_matches": { query: string };
   "home.no_online_computer": { command: string };
   "home.no_sessions": { [name: string]: never };
@@ -407,13 +419,16 @@ export interface MessageArgs {
   "list_state.ended": { [name: string]: never };
   "list_state.idle": { [name: string]: never };
   "list_state.ios_new_session": { [name: string]: never };
+  "list_state.new_session": { [name: string]: never };
   "list_state.no_message": { [name: string]: never };
   "list_state.offline": { [name: string]: never };
   "list_state.plan": { [name: string]: never };
   "list_state.popup": { [name: string]: never };
   "list_state.question": { [name: string]: never };
   "list_state.request_command": { command: string };
+  "list_state.request_command_plain": { [name: string]: never };
   "list_state.request_permission": { tool: string };
+  "list_state.request_permission_plain": { [name: string]: never };
   "list_state.running": { [name: string]: never };
   "list_state.starting": { [name: string]: never };
   "list_state.unlinked": { [name: string]: never };
@@ -502,6 +517,8 @@ export interface MessageArgs {
   "models.extended_window": { [name: string]: never };
   "models.fixed_effort": { effort: string };
   "models.load_failed_default": { agent: string };
+  "models.load_failed_reason": { agent: string; reason: string };
+  "models.reading_machine": { name: string };
   "models.standard_only": { [name: string]: never };
   "models.standard_window": { [name: string]: never };
   "models.summary_effort_label": { effort: string; model: string };
@@ -556,8 +573,10 @@ export interface MessageArgs {
   "new_session.config_fallback": { [name: string]: never };
   "new_session.default_model": { [name: string]: never };
   "new_session.disconnected": { [name: string]: never };
+  "new_session.draft_kept": { [name: string]: never };
   "new_session.each_cli_has_its_own_settings_choose_the_cli": { [name: string]: never };
   "new_session.expired_start": { [name: string]: never };
+  "new_session.expired_start_prompt": { prompt: string };
   "new_session.first_message": { [name: string]: never };
   "new_session.fixed_effort": { effort: string };
   "new_session.follow_cli": { [name: string]: never };
@@ -574,15 +593,19 @@ export interface MessageArgs {
   "new_session.machine_project_defaults": { name: string };
   "new_session.model_list_default": { name: string };
   "new_session.model_no_auto": { name: string };
+  "new_session.offline_draft": { name: string };
   "new_session.offline_last_seen": { time: string };
   "new_session.offline_no_start": { [name: string]: never };
+  "new_session.offline_no_start_named": { name: string };
   "new_session.offline_with_draft": { name: string };
   "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": { [name: string]: never };
   "new_session.only_changes_this_task_existing_conversations_keep_their_settings": { [name: string]: never };
+  "new_session.others_offline": { name: string };
   "new_session.permissions": { [name: string]: never };
   "new_session.project_label": { name: string };
   "new_session.project_session_label": { name: string };
   "new_session.prompt": { [name: string]: never };
+  "new_session.reading_cli": { agent: string };
   "new_session.reading_models": { [name: string]: never };
   "new_session.reading_previous": { [name: string]: never };
   "new_session.reading_settings": { [name: string]: never };
@@ -598,6 +621,7 @@ export interface MessageArgs {
   "new_session.this_model_has_no_auto_mode": { [name: string]: never };
   "new_session.unconfirmed_start": { [name: string]: never };
   "new_session.unexpected_reply": { [name: string]: never };
+  "new_session.unknown_start_retry": { [name: string]: never };
   "new_session.use_machine": { name: string };
   "notifications.scheduled_tasks_have_new_results": { [name: string]: never };
   "notifications.the_browser_did_not_allow_notifications": { [name: string]: never };
@@ -618,7 +642,9 @@ export interface MessageArgs {
   "projects.manage_named": { name: string };
   "projects.new": { [name: string]: never };
   "projects.new_choose_directory": { [name: string]: never };
+  "projects.no_online": { [name: string]: never };
   "projects.no_online_computers": { [name: string]: never };
+  "projects.no_sessions": { [name: string]: never };
   "projects.no_subdirectories": { [name: string]: never };
   "projects.others": { [name: string]: never };
   "projects.parent_directory": { [name: string]: never };
@@ -633,8 +659,11 @@ export interface MessageArgs {
   "projects.remove_title": { name: string };
   "projects.removed": { [name: string]: never };
   "projects.save_failed": { reason: string };
+  "projects.save_failed_reason": { reason: string };
+  "projects.saving_settings": { [name: string]: never };
   "projects.search": { [name: string]: never };
   "projects.search_empty": { query: string };
+  "projects.settings_failed": { reason: string };
   "projects.syncing": { [name: string]: never };
   "projects.unknown": { [name: string]: never };
   "projects.unpin": { [name: string]: never };
@@ -1415,6 +1444,8 @@ export interface MessageArgs {
   "terminal.up": { [name: string]: never };
   "terminal.view_details": { [name: string]: never };
   "time.calendar_date_year": { day: number; month: number; year: number };
+  "time.date_time": { day: number; month: number; time: string };
+  "time.day_clock": { clock: string; day: string };
   "time.duration_hours_minutes": { hours: number; minutes: number };
   "time.duration_minutes_seconds": { minutes: number; seconds: number };
   "time.duration_seconds": { count: number };
@@ -1428,6 +1459,7 @@ export interface MessageArgs {
   "time.today": { [name: string]: never };
   "time.today_clock": { detail: string; value: string };
   "time.tomorrow": { [name: string]: never };
+  "time.used_time": { time: string };
   "time.weekday": { day: string };
   "time.year_month_group": { month: number; year: number };
   "time.yesterday": { [name: string]: never };
@@ -1682,10 +1714,15 @@ export const messages = {
     "common.list_separator": ", ",
     "common.loading": "Loading",
     "common.machine": "Computer",
+    "common.note_separator": "; ",
+    "common.offline": "Offline",
+    "common.online": "Online",
     "common.reload": "Reload",
     "common.remove": "Remove",
     "common.retry": "Retry",
     "common.save": "Save",
+    "common.save_failed": "Could not save: {reason}",
+    "common.saving": "Saving…",
     "common.settings": "Settings",
     "common.unknown_computer": "Unknown computer",
     "composer.after_turn": "Send after this turn",
@@ -1825,6 +1862,7 @@ export const messages = {
     "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.",
     "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
     "errors.cannot_sign_with_the_current_security_state_the_operation": "Cannot sign with the current security state. The operation has not been sent; retry.",
+    "errors.client_out_of_date": "This client version is out of date. Update and retry.",
     "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
@@ -1851,6 +1889,7 @@ export const messages = {
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
     "errors.network_changed_reconnecting": "Network changed. Reconnecting.",
+    "errors.not_connected": "Not connected to the server",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "Other clients kept changing the project list. Changes could not be saved.",
     "errors.pending_requests_on_the_computer_could_not_be_verified": "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.",
     "errors.project_preferences_format_is_not_supported": "Project preferences format is not supported",
@@ -1923,6 +1962,9 @@ export const messages = {
     "home.computer_runs_cli": "Run the CLI on your computer and control sessions from a client.",
     "home.connection_check": "Check connection",
     "home.connection_label": "{state}, check connection",
+    "home.earlier_failed_retry": "Could not load earlier sessions: {reason} · Tap to retry",
+    "home.earlier_offline": "Connect to the server to load earlier sessions",
+    "home.empty_project_start": "Tap “New task” at the bottom right to start one here.",
     "home.filter_title": "Filter by title",
     "home.forked": "Forked",
     "home.idle_count": {
@@ -1949,6 +1991,7 @@ export const messages = {
     "home.ios_choose_task": "Choose a task to see its results",
     "home.ios_new_results": "New results",
     "home.list_failed": "Could not load sessions: {reason}",
+    "home.list_failed_retry": "Could not read the session list: {reason} · Tap to retry",
     "home.live": "In progress",
     "home.loading_earlier": "Loading earlier sessions…",
     "home.manage_projects": "Manage projects",
@@ -1982,6 +2025,7 @@ export const messages = {
     },
     "home.new_schedule": "New schedule",
     "home.new_task": "New task",
+    "home.no_machines_setup": "This account has no computers yet. Tap “Add device” for a pairing code, then run {command} on your computer, or add one on a managing client.",
     "home.no_matches": "No sessions have “{query}” in their title",
     "home.no_online_computer": "No computers are online. Run {command} on your computer",
     "home.no_sessions": "No sessions yet",
@@ -2147,13 +2191,16 @@ export const messages = {
     "list_state.ended": "Ended",
     "list_state.idle": "Idle",
     "list_state.ios_new_session": "New session",
+    "list_state.new_session": "New session",
     "list_state.no_message": "No messages yet",
     "list_state.offline": "Computer offline",
     "list_state.plan": "Plan awaiting approval",
     "list_state.popup": "Terminal popup",
     "list_state.question": "Awaiting your answer",
     "list_state.request_command": "Request to run {command}",
+    "list_state.request_command_plain": "Request to run",
     "list_state.request_permission": "Permission request · {tool}",
+    "list_state.request_permission_plain": "Permission requested",
     "list_state.running": "Running",
     "list_state.starting": "Starting",
     "list_state.unlinked": "Disconnected",
@@ -2284,6 +2331,8 @@ export const messages = {
     "models.extended_window": "1M",
     "models.fixed_effort": "Reasoning effort is fixed at {effort}",
     "models.load_failed_default": "Could not load models. Using {agent}’s own default model",
+    "models.load_failed_reason": "Could not load models. Using {agent}’s own default model: {reason}",
+    "models.reading_machine": "Reading settings from {name}…",
     "models.standard_only": "Standard 200k · This model only supports the standard window",
     "models.standard_window": "Standard 200k",
     "models.summary_effort_label": "Model: {model}, reasoning effort: {effort}",
@@ -2338,8 +2387,10 @@ export const messages = {
     "new_session.config_fallback": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
     "new_session.default_model": "Default model",
     "new_session.disconnected": "Disconnected from server",
+    "new_session.draft_kept": "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.",
     "new_session.each_cli_has_its_own_settings_choose_the_cli": "Each CLI has its own settings. Choose the CLI in the sentence when creating a task.",
     "new_session.expired_start": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
+    "new_session.expired_start_prompt": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check active sessions first.",
     "new_session.first_message": "First message of the new session",
     "new_session.fixed_effort": "Reasoning effort fixed at {effort}",
     "new_session.follow_cli": "Follow CLI settings",
@@ -2356,15 +2407,19 @@ export const messages = {
     "new_session.machine_project_defaults": "Use {name} defaults for new projects",
     "new_session.model_list_default": "Could not read the model list. Using {name}’s default model.",
     "new_session.model_no_auto": "This model has no Auto mode, but {name} uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.",
+    "new_session.offline_draft": "{name} is offline. The task has not started.",
     "new_session.offline_last_seen": "Last online {time}. Cannot start a session now",
     "new_session.offline_no_start": "Cannot start a session now",
+    "new_session.offline_no_start_named": "{name} is offline. Cannot start a session now.",
     "new_session.offline_with_draft": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
     "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "Only affects future sessions. Active sessions stay unchanged; synced across your devices.",
     "new_session.only_changes_this_task_existing_conversations_keep_their_settings": "Only changes this task. Existing conversations keep their settings.",
+    "new_session.others_offline": "The other computers used by {name} are also offline.",
     "new_session.permissions": "Permissions",
     "new_session.project_label": "Project: {name}",
     "new_session.project_session_label": "{name} · New session",
     "new_session.prompt": "What would you like to do?",
+    "new_session.reading_cli": "Reading previous settings for {agent}…",
     "new_session.reading_models": "Loading models…",
     "new_session.reading_previous": "Loading this project’s previous settings…",
     "new_session.reading_settings": "Loading settings…",
@@ -2380,6 +2435,7 @@ export const messages = {
     "new_session.this_model_has_no_auto_mode": "This model has no Auto mode",
     "new_session.unconfirmed_start": "The previous start is still unconfirmed",
     "new_session.unexpected_reply": "Unexpected response",
+    "new_session.unknown_start_retry": "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.",
     "new_session.use_machine": "Use {name}",
     "notifications.scheduled_tasks_have_new_results": "Scheduled tasks have new results",
     "notifications.the_browser_did_not_allow_notifications": "The browser did not allow notifications",
@@ -2412,7 +2468,9 @@ export const messages = {
     "projects.manage_named": "Manage {name}",
     "projects.new": "New project…",
     "projects.new_choose_directory": "New project · Choose a folder",
+    "projects.no_online": "No computers online",
     "projects.no_online_computers": "No computers are online. Run remote-agent daemon on your computer, then try again.",
+    "projects.no_sessions": "This project has no sessions yet.",
     "projects.no_subdirectories": "No subfolders",
     "projects.others": "Other",
     "projects.parent_directory": "Parent folder",
@@ -2439,8 +2497,11 @@ export const messages = {
     "projects.remove_title": "Remove {name}?",
     "projects.removed": "This project was removed from the list",
     "projects.save_failed": "Could not save. The list is unchanged: {reason}",
+    "projects.save_failed_reason": "Could not save: {reason}",
+    "projects.saving_settings": "Saving project settings…",
     "projects.search": "Search projects",
     "projects.search_empty": "No projects with “{query}” in their name or path",
+    "projects.settings_failed": "Could not save project settings: {reason}",
     "projects.syncing": "Syncing projects…",
     "projects.unknown": "Unknown project",
     "projects.unpin": "Unpin",
@@ -3419,6 +3480,8 @@ export const messages = {
     "terminal.up": "Up",
     "terminal.view_details": "View details",
     "time.calendar_date_year": "{year}/{month}/{day}",
+    "time.date_time": "{month}/{day} {time}",
+    "time.day_clock": "{day} {clock}",
     "time.duration_hours_minutes": "{hours} hr {minutes} min",
     "time.duration_minutes_seconds": "{minutes} min {seconds} sec",
     "time.duration_seconds": {
@@ -3450,6 +3513,7 @@ export const messages = {
     "time.today": "Today",
     "time.today_clock": "Today {value}:{detail}",
     "time.tomorrow": "Tomorrow",
+    "time.used_time": "Used {time}",
     "time.weekday": {
       "forms": {
         "fri": "Fri",
@@ -3728,10 +3792,15 @@ export const messages = {
     "common.list_separator": "、",
     "common.loading": "读取中",
     "common.machine": "电脑",
+    "common.note_separator": "；",
+    "common.offline": "不在线",
+    "common.online": "在线",
     "common.reload": "重新加载",
     "common.remove": "移除",
     "common.retry": "重试",
     "common.save": "保存",
+    "common.save_failed": "没能保存：{reason}",
+    "common.saving": "保存中…",
     "common.settings": "设置",
     "common.unknown_computer": "未知电脑",
     "composer.after_turn": "这一轮结束后再发",
@@ -3864,6 +3933,7 @@ export const messages = {
     "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "账户创建草稿已保留，请继续原创建流程和恢复码确认",
     "errors.cannot_connect_to_terminal": "连不上终端",
     "errors.cannot_sign_with_the_current_security_state_the_operation": "无法用当前安全状态签名，操作尚未发出；请重试",
+    "errors.client_out_of_date": "这个客户端版本较旧，请更新后再试",
     "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
@@ -3890,6 +3960,7 @@ export const messages = {
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
     "errors.network_changed_reconnecting": "网络已变化，正在重连",
+    "errors.not_connected": "连不上服务器",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "项目列表一直在被别的客户端修改，没能保存",
     "errors.pending_requests_on_the_computer_could_not_be_verified": "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
     "errors.project_preferences_format_is_not_supported": "项目偏好格式不受支持",
@@ -3962,6 +4033,9 @@ export const messages = {
     "home.computer_runs_cli": "电脑运行 CLI，客户端操作会话。",
     "home.connection_check": "连接检测",
     "home.connection_label": "{state}，连接检测",
+    "home.earlier_failed_retry": "没能读取更早的会话：{reason} · 点这里重试",
+    "home.earlier_offline": "连上服务器后读取更早的会话",
+    "home.empty_project_start": "点右下角的「新任务」在这里开始一个。",
     "home.filter_title": "按标题筛选",
     "home.forked": "分叉",
     "home.idle_count": {
@@ -3985,6 +4059,7 @@ export const messages = {
     "home.ios_choose_task": "选一个任务查看结果",
     "home.ios_new_results": "有新结果",
     "home.list_failed": "没能读取会话列表：{reason}",
+    "home.list_failed_retry": "没能读取会话列表：{reason} · 点这里重试",
     "home.live": "进行中",
     "home.loading_earlier": "正在读取更早的会话…",
     "home.manage_projects": "管理项目",
@@ -4014,6 +4089,7 @@ export const messages = {
     },
     "home.new_schedule": "新定时",
     "home.new_task": "新任务",
+    "home.no_machines_setup": "这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 {command}，或者在管理端上添加。",
     "home.no_matches": "没有标题里有「{query}」的会话",
     "home.no_online_computer": "没有在线的电脑。在电脑上运行 {command}",
     "home.no_sessions": "还没有会话",
@@ -4165,13 +4241,16 @@ export const messages = {
     "list_state.ended": "已结束",
     "list_state.idle": "空闲",
     "list_state.ios_new_session": "新会话",
+    "list_state.new_session": "新会话",
     "list_state.no_message": "还没发消息",
     "list_state.offline": "电脑离线",
     "list_state.plan": "计划待批准",
     "list_state.popup": "终端里有弹窗",
     "list_state.question": "等你回答",
     "list_state.request_command": "请求执行 {command}",
+    "list_state.request_command_plain": "请求执行",
     "list_state.request_permission": "请求权限 · {tool}",
+    "list_state.request_permission_plain": "请求权限",
     "list_state.running": "运行中",
     "list_state.starting": "启动中",
     "list_state.unlinked": "未连接",
@@ -4295,6 +4374,8 @@ export const messages = {
     "models.extended_window": "1M",
     "models.fixed_effort": "推理强度固定为 {effort}",
     "models.load_failed_default": "没能读取模型列表，会用 {agent} 自己的默认模型",
+    "models.load_failed_reason": "没能读取模型列表，会用 {agent} 自己的默认模型：{reason}",
+    "models.reading_machine": "读取 {name} 的设置…",
     "models.standard_only": "标准 200k · 这个模型只有标准窗口",
     "models.standard_window": "标准 200k",
     "models.summary_effort_label": "模型：{model}，推理强度：{effort}",
@@ -4349,8 +4430,10 @@ export const messages = {
     "new_session.config_fallback": "所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值",
     "new_session.default_model": "默认模型",
     "new_session.disconnected": "和服务器断线了",
+    "new_session.draft_kept": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。",
     "new_session.each_cli_has_its_own_settings_choose_the_cli": "每个 CLI 各存一套，新建时用哪个在句子里选。",
     "new_session.expired_start": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
+    "new_session.expired_start_prompt": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
     "new_session.first_message": "新会话的第一句话",
     "new_session.fixed_effort": "推理强度固定为 {effort}",
     "new_session.follow_cli": "跟随 CLI 设置",
@@ -4367,15 +4450,19 @@ export const messages = {
     "new_session.machine_project_defaults": "用 {name} 的新项目默认设置",
     "new_session.model_list_default": "没能读取模型列表，会用 {name} 自己的默认模型",
     "new_session.model_no_auto": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认",
+    "new_session.offline_draft": "{name} 已离线，任务尚未开始",
     "new_session.offline_last_seen": "{time}在线，现在不能新建",
     "new_session.offline_no_start": "现在不能新建",
+    "new_session.offline_no_start_named": "{name} 不在线，现在不能新建",
     "new_session.offline_with_draft": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
     "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
     "new_session.only_changes_this_task_existing_conversations_keep_their_settings": "只修改这个任务；已开出的对话保留原来的设置。",
+    "new_session.others_offline": "{name} 用过的其他电脑也都不在线。",
     "new_session.permissions": "权限",
     "new_session.project_label": "项目：{name}",
     "new_session.project_session_label": "{name} · 新会话",
     "new_session.prompt": "要做什么",
+    "new_session.reading_cli": "正在读取 {agent} 上次的设置…",
     "new_session.reading_models": "正在读取模型列表…",
     "new_session.reading_previous": "正在读取这个项目上次的设置…",
     "new_session.reading_settings": "读取设置…",
@@ -4391,6 +4478,7 @@ export const messages = {
     "new_session.this_model_has_no_auto_mode": "当前模型没有自动模式",
     "new_session.unconfirmed_start": "上次的启动结果还没有确认",
     "new_session.unexpected_reply": "意外的回复",
+    "new_session.unknown_start_retry": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
     "new_session.use_machine": "改用 {name}",
     "notifications.scheduled_tasks_have_new_results": "定时任务有新结果",
     "notifications.the_browser_did_not_allow_notifications": "浏览器没有允许通知",
@@ -4421,7 +4509,9 @@ export const messages = {
     "projects.manage_named": "管理 {name}",
     "projects.new": "新项目…",
     "projects.new_choose_directory": "新项目 · 选目录",
+    "projects.no_online": "没有在线的电脑",
     "projects.no_online_computers": "没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。",
+    "projects.no_sessions": "这个项目还没有会话",
     "projects.no_subdirectories": "没有子目录",
     "projects.others": "其他",
     "projects.parent_directory": "上一级",
@@ -4446,8 +4536,11 @@ export const messages = {
     "projects.remove_title": "移除 {name}？",
     "projects.removed": "这个项目已从列表移除",
     "projects.save_failed": "没能保存，列表保持原样：{reason}",
+    "projects.save_failed_reason": "没能保存：{reason}",
+    "projects.saving_settings": "正在保存项目设置…",
     "projects.search": "搜索项目",
     "projects.search_empty": "没有名字或路径里有「{query}」的项目",
+    "projects.settings_failed": "项目设置没能保存：{reason}",
     "projects.syncing": "正在同步项目列表…",
     "projects.unknown": "未知项目",
     "projects.unpin": "取消常用",
@@ -5393,6 +5486,8 @@ export const messages = {
     "terminal.up": "上",
     "terminal.view_details": "查看详情",
     "time.calendar_date_year": "{year}年{month}月{day}日",
+    "time.date_time": "{month}月{day}日 {time}",
+    "time.day_clock": "{day} {clock}",
     "time.duration_hours_minutes": "{hours} 小时 {minutes} 分",
     "time.duration_minutes_seconds": "{minutes} 分 {seconds} 秒",
     "time.duration_seconds": {
@@ -5421,6 +5516,7 @@ export const messages = {
     "time.today": "今天",
     "time.today_clock": "今天 {value}:{detail}",
     "time.tomorrow": "明天",
+    "time.used_time": "{time} 使用",
     "time.weekday": {
       "forms": {
         "fri": "周五",

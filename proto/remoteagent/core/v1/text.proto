@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+// Text represents a structured localizable message produced by the shared core.
+// Shells render key+args via their generated i18n runtime, literal verbatim when
+// key is empty, or join non-empty segments with separator_key / separator_literal.
+message Text {
+  string key = 1;
+  repeated TextArg args = 2;
+  string literal = 3;
+  repeated Text join = 4;
+  string separator_key = 5;
+  string separator_literal = 6;
+}
+
+// TextArg provides a typed substitution parameter for a Text key.
+message TextArg {
+  string name = 1;
+  oneof value {
+    string str_value = 2;
+    int64 int_value = 3;
+    double float_value = 4;
+    Text text_value = 5;
+  }
+}

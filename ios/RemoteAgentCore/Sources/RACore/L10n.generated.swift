@@ -497,6 +497,18 @@ public enum L10n {
         let key = "common_machine"
         return format(key, locale: locale, args: [])
     }
+    public static func commonNoteSeparator(locale: String = MessageLocale.current) -> String {
+        let key = "common_note_separator"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonOffline(locale: String = MessageLocale.current) -> String {
+        let key = "common_offline"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonOnline(locale: String = MessageLocale.current) -> String {
+        let key = "common_online"
+        return format(key, locale: locale, args: [])
+    }
     public static func commonReload(locale: String = MessageLocale.current) -> String {
         let key = "common_reload"
         return format(key, locale: locale, args: [])
@@ -511,6 +523,14 @@ public enum L10n {
     }
     public static func commonSave(locale: String = MessageLocale.current) -> String {
         let key = "common_save"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonSaveFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "common_save_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func commonSaving(locale: String = MessageLocale.current) -> String {
+        let key = "common_saving"
         return format(key, locale: locale, args: [])
     }
     public static func commonSettings(locale: String = MessageLocale.current) -> String {
@@ -969,6 +989,10 @@ public enum L10n {
         let key = "errors_cannot_sign_with_the_current_security_state_the_operation"
         return format(key, locale: locale, args: [])
     }
+    public static func errorsClientOutOfDate(locale: String = MessageLocale.current) -> String {
+        let key = "errors_client_out_of_date"
+        return format(key, locale: locale, args: [])
+    }
     public static func errorsConnectionDroppedMidway(locale: String = MessageLocale.current) -> String {
         let key = "errors_connection_dropped_midway"
         return format(key, locale: locale, args: [])
@@ -1285,6 +1309,10 @@ public enum L10n {
         let key = "errors_network_changed_reconnecting"
         return format(key, locale: locale, args: [])
     }
+    public static func errorsNotConnected(locale: String = MessageLocale.current) -> String {
+        let key = "errors_not_connected"
+        return format(key, locale: locale, args: [])
+    }
     public static func errorsOtherClientsKeptChangingTheProjectListChangesCould(locale: String = MessageLocale.current) -> String {
         let key = "errors_other_clients_kept_changing_the_project_list_changes_could"
         return format(key, locale: locale, args: [])
@@ -1573,6 +1601,18 @@ public enum L10n {
         let key = "home_connection_label"
         return format(key, locale: locale, args: [state])
     }
+    public static func homeEarlierFailedRetry(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "home_earlier_failed_retry"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func homeEarlierOffline(locale: String = MessageLocale.current) -> String {
+        let key = "home_earlier_offline"
+        return format(key, locale: locale, args: [])
+    }
+    public static func homeEmptyProjectStart(locale: String = MessageLocale.current) -> String {
+        let key = "home_empty_project_start"
+        return format(key, locale: locale, args: [])
+    }
     public static func homeFilterTitle(locale: String = MessageLocale.current) -> String {
         let key = "home_filter_title"
         return format(key, locale: locale, args: [])
@@ -1649,6 +1689,10 @@ public enum L10n {
         let key = "home_list_failed"
         return format(key, locale: locale, args: [reason])
     }
+    public static func homeListFailedRetry(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "home_list_failed_retry"
+        return format(key, locale: locale, args: [reason])
+    }
     public static func homeLive(locale: String = MessageLocale.current) -> String {
         let key = "home_live"
         return format(key, locale: locale, args: [])
@@ -1684,6 +1728,10 @@ public enum L10n {
     public static func homeNewTask(locale: String = MessageLocale.current) -> String {
         let key = "home_new_task"
         return format(key, locale: locale, args: [])
+    }
+    public static func homeNoMachinesSetup(command: String, locale: String = MessageLocale.current) -> String {
+        let key = "home_no_machines_setup"
+        return format(key, locale: locale, args: [command])
     }
     public static func homeNoMatches(query: String, locale: String = MessageLocale.current) -> String {
         let key = "home_no_matches"
@@ -2265,6 +2313,10 @@ public enum L10n {
         let key = "list_state_ios_request_permission"
         return format(key, locale: locale, args: [])
     }
+    public static func listStateNewSession(locale: String = MessageLocale.current) -> String {
+        let key = "list_state_new_session"
+        return format(key, locale: locale, args: [])
+    }
     public static func listStateNoMessage(locale: String = MessageLocale.current) -> String {
         let key = "list_state_no_message"
         return format(key, locale: locale, args: [])
@@ -2289,9 +2341,17 @@ public enum L10n {
         let key = "list_state_request_command"
         return format(key, locale: locale, args: [command])
     }
+    public static func listStateRequestCommandPlain(locale: String = MessageLocale.current) -> String {
+        let key = "list_state_request_command_plain"
+        return format(key, locale: locale, args: [])
+    }
     public static func listStateRequestPermission(tool: String, locale: String = MessageLocale.current) -> String {
         let key = "list_state_request_permission"
         return format(key, locale: locale, args: [tool])
+    }
+    public static func listStateRequestPermissionPlain(locale: String = MessageLocale.current) -> String {
+        let key = "list_state_request_permission_plain"
+        return format(key, locale: locale, args: [])
     }
     public static func listStateRunning(locale: String = MessageLocale.current) -> String {
         let key = "list_state_running"
@@ -2665,6 +2725,14 @@ public enum L10n {
         let key = "models_load_failed_default"
         return format(key, locale: locale, args: [agent])
     }
+    public static func modelsLoadFailedReason(agent: String, reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "models_load_failed_reason"
+        return format(key, locale: locale, args: [agent, reason])
+    }
+    public static func modelsReadingMachine(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "models_reading_machine"
+        return format(key, locale: locale, args: [name])
+    }
     public static func modelsStandardOnly(locale: String = MessageLocale.current) -> String {
         let key = "models_standard_only"
         return format(key, locale: locale, args: [])
@@ -2881,6 +2949,10 @@ public enum L10n {
         let key = "new_session_disconnected"
         return format(key, locale: locale, args: [])
     }
+    public static func newSessionDraftKept(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_draft_kept"
+        return format(key, locale: locale, args: [])
+    }
     public static func newSessionEachCliHasItsOwnSettingsChooseTheCli(locale: String = MessageLocale.current) -> String {
         let key = "new_session_each_cli_has_its_own_settings_choose_the_cli"
         return format(key, locale: locale, args: [])
@@ -2888,6 +2960,10 @@ public enum L10n {
     public static func newSessionExpiredStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_expired_start"
         return format(key, locale: locale, args: [])
+    }
+    public static func newSessionExpiredStartPrompt(prompt: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_expired_start_prompt"
+        return format(key, locale: locale, args: [prompt])
     }
     public static func newSessionFirstMessage(locale: String = MessageLocale.current) -> String {
         let key = "new_session_first_message"
@@ -3029,6 +3105,10 @@ public enum L10n {
         let key = "new_session_model_no_auto"
         return format(key, locale: locale, args: [name])
     }
+    public static func newSessionOfflineDraft(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_offline_draft"
+        return format(key, locale: locale, args: [name])
+    }
     public static func newSessionOfflineLastSeen(time: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_offline_last_seen"
         return format(key, locale: locale, args: [time])
@@ -3036,6 +3116,10 @@ public enum L10n {
     public static func newSessionOfflineNoStart(locale: String = MessageLocale.current) -> String {
         let key = "new_session_offline_no_start"
         return format(key, locale: locale, args: [])
+    }
+    public static func newSessionOfflineNoStartNamed(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_offline_no_start_named"
+        return format(key, locale: locale, args: [name])
     }
     public static func newSessionOfflineWithDraft(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_offline_with_draft"
@@ -3048,6 +3132,10 @@ public enum L10n {
     public static func newSessionOnlyChangesThisTaskExistingConversationsKeepTheirSettings(locale: String = MessageLocale.current) -> String {
         let key = "new_session_only_changes_this_task_existing_conversations_keep_their_settings"
         return format(key, locale: locale, args: [])
+    }
+    public static func newSessionOthersOffline(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_others_offline"
+        return format(key, locale: locale, args: [name])
     }
     public static func newSessionPermissions(locale: String = MessageLocale.current) -> String {
         let key = "new_session_permissions"
@@ -3064,6 +3152,10 @@ public enum L10n {
     public static func newSessionPrompt(locale: String = MessageLocale.current) -> String {
         let key = "new_session_prompt"
         return format(key, locale: locale, args: [])
+    }
+    public static func newSessionReadingCli(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_reading_cli"
+        return format(key, locale: locale, args: [agent])
     }
     public static func newSessionReadingModels(locale: String = MessageLocale.current) -> String {
         let key = "new_session_reading_models"
@@ -3123,6 +3215,10 @@ public enum L10n {
     }
     public static func newSessionUnexpectedReply(locale: String = MessageLocale.current) -> String {
         let key = "new_session_unexpected_reply"
+        return format(key, locale: locale, args: [])
+    }
+    public static func newSessionUnknownStartRetry(locale: String = MessageLocale.current) -> String {
+        let key = "new_session_unknown_start_retry"
         return format(key, locale: locale, args: [])
     }
     public static func newSessionUseMachine(name: String, locale: String = MessageLocale.current) -> String {
@@ -3265,8 +3361,16 @@ public enum L10n {
         let key = "projects_new_choose_directory"
         return format(key, locale: locale, args: [])
     }
+    public static func projectsNoOnline(locale: String = MessageLocale.current) -> String {
+        let key = "projects_no_online"
+        return format(key, locale: locale, args: [])
+    }
     public static func projectsNoOnlineComputers(locale: String = MessageLocale.current) -> String {
         let key = "projects_no_online_computers"
+        return format(key, locale: locale, args: [])
+    }
+    public static func projectsNoSessions(locale: String = MessageLocale.current) -> String {
+        let key = "projects_no_sessions"
         return format(key, locale: locale, args: [])
     }
     public static func projectsNoSubdirectories(locale: String = MessageLocale.current) -> String {
@@ -3325,6 +3429,14 @@ public enum L10n {
         let key = "projects_save_failed"
         return format(key, locale: locale, args: [reason])
     }
+    public static func projectsSaveFailedReason(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "projects_save_failed_reason"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func projectsSavingSettings(locale: String = MessageLocale.current) -> String {
+        let key = "projects_saving_settings"
+        return format(key, locale: locale, args: [])
+    }
     public static func projectsSearch(locale: String = MessageLocale.current) -> String {
         let key = "projects_search"
         return format(key, locale: locale, args: [])
@@ -3332,6 +3444,10 @@ public enum L10n {
     public static func projectsSearchEmpty(query: String, locale: String = MessageLocale.current) -> String {
         let key = "projects_search_empty"
         return format(key, locale: locale, args: [query])
+    }
+    public static func projectsSettingsFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "projects_settings_failed"
+        return format(key, locale: locale, args: [reason])
     }
     public static func projectsSyncing(locale: String = MessageLocale.current) -> String {
         let key = "projects_syncing"
@@ -7765,6 +7881,14 @@ public enum L10n {
         let key = "time_calendar_date_year"
         return format(key, locale: locale, args: [Int64(day), Int64(month), Int64(year)])
     }
+    public static func timeDateTime(day: Int, month: Int, time: String, locale: String = MessageLocale.current) -> String {
+        let key = "time_date_time"
+        return format(key, locale: locale, args: [Int64(day), Int64(month), time])
+    }
+    public static func timeDayClock(clock: String, day: String, locale: String = MessageLocale.current) -> String {
+        let key = "time_day_clock"
+        return format(key, locale: locale, args: [clock, day])
+    }
     public static func timeDurationHoursMinutes(hours: Int, minutes: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_duration_hours_minutes"
         return format(key, locale: locale, args: [Int64(hours), Int64(minutes)])
@@ -7816,6 +7940,10 @@ public enum L10n {
     public static func timeTomorrow(locale: String = MessageLocale.current) -> String {
         let key = "time_tomorrow"
         return format(key, locale: locale, args: [])
+    }
+    public static func timeUsedTime(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "time_used_time"
+        return format(key, locale: locale, args: [time])
     }
     public static func timeWeekday(day: String, locale: String = MessageLocale.current) -> String {
         let key: String
@@ -8529,6 +8657,18 @@ public enum L10nMessage {
         let key = "common_machine"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func commonNoteSeparator() -> LocalizedMessage {
+        let key = "common_note_separator"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonOffline() -> LocalizedMessage {
+        let key = "common_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonOnline() -> LocalizedMessage {
+        let key = "common_online"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func commonReload() -> LocalizedMessage {
         let key = "common_reload"
         return LocalizedMessage(key: key, arguments: [])
@@ -8543,6 +8683,14 @@ public enum L10nMessage {
     }
     public static func commonSave() -> LocalizedMessage {
         let key = "common_save"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonSaveFailed(reason: String) -> LocalizedMessage {
+        let key = "common_save_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func commonSaving() -> LocalizedMessage {
+        let key = "common_saving"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func commonSettings() -> LocalizedMessage {
@@ -9001,6 +9149,10 @@ public enum L10nMessage {
         let key = "errors_cannot_sign_with_the_current_security_state_the_operation"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func errorsClientOutOfDate() -> LocalizedMessage {
+        let key = "errors_client_out_of_date"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func errorsConnectionDroppedMidway() -> LocalizedMessage {
         let key = "errors_connection_dropped_midway"
         return LocalizedMessage(key: key, arguments: [])
@@ -9317,6 +9469,10 @@ public enum L10nMessage {
         let key = "errors_network_changed_reconnecting"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func errorsNotConnected() -> LocalizedMessage {
+        let key = "errors_not_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func errorsOtherClientsKeptChangingTheProjectListChangesCould() -> LocalizedMessage {
         let key = "errors_other_clients_kept_changing_the_project_list_changes_could"
         return LocalizedMessage(key: key, arguments: [])
@@ -9605,6 +9761,18 @@ public enum L10nMessage {
         let key = "home_connection_label"
         return LocalizedMessage(key: key, arguments: [.string(state)])
     }
+    public static func homeEarlierFailedRetry(reason: String) -> LocalizedMessage {
+        let key = "home_earlier_failed_retry"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func homeEarlierOffline() -> LocalizedMessage {
+        let key = "home_earlier_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeEmptyProjectStart() -> LocalizedMessage {
+        let key = "home_empty_project_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func homeFilterTitle() -> LocalizedMessage {
         let key = "home_filter_title"
         return LocalizedMessage(key: key, arguments: [])
@@ -9681,6 +9849,10 @@ public enum L10nMessage {
         let key = "home_list_failed"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
+    public static func homeListFailedRetry(reason: String) -> LocalizedMessage {
+        let key = "home_list_failed_retry"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
     public static func homeLive() -> LocalizedMessage {
         let key = "home_live"
         return LocalizedMessage(key: key, arguments: [])
@@ -9716,6 +9888,10 @@ public enum L10nMessage {
     public static func homeNewTask() -> LocalizedMessage {
         let key = "home_new_task"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeNoMachinesSetup(command: String) -> LocalizedMessage {
+        let key = "home_no_machines_setup"
+        return LocalizedMessage(key: key, arguments: [.string(command)])
     }
     public static func homeNoMatches(query: String) -> LocalizedMessage {
         let key = "home_no_matches"
@@ -10297,6 +10473,10 @@ public enum L10nMessage {
         let key = "list_state_ios_request_permission"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func listStateNewSession() -> LocalizedMessage {
+        let key = "list_state_new_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func listStateNoMessage() -> LocalizedMessage {
         let key = "list_state_no_message"
         return LocalizedMessage(key: key, arguments: [])
@@ -10321,9 +10501,17 @@ public enum L10nMessage {
         let key = "list_state_request_command"
         return LocalizedMessage(key: key, arguments: [.string(command)])
     }
+    public static func listStateRequestCommandPlain() -> LocalizedMessage {
+        let key = "list_state_request_command_plain"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func listStateRequestPermission(tool: String) -> LocalizedMessage {
         let key = "list_state_request_permission"
         return LocalizedMessage(key: key, arguments: [.string(tool)])
+    }
+    public static func listStateRequestPermissionPlain() -> LocalizedMessage {
+        let key = "list_state_request_permission_plain"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func listStateRunning() -> LocalizedMessage {
         let key = "list_state_running"
@@ -10697,6 +10885,14 @@ public enum L10nMessage {
         let key = "models_load_failed_default"
         return LocalizedMessage(key: key, arguments: [.string(agent)])
     }
+    public static func modelsLoadFailedReason(agent: String, reason: String) -> LocalizedMessage {
+        let key = "models_load_failed_reason"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(reason)])
+    }
+    public static func modelsReadingMachine(name: String) -> LocalizedMessage {
+        let key = "models_reading_machine"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
     public static func modelsStandardOnly() -> LocalizedMessage {
         let key = "models_standard_only"
         return LocalizedMessage(key: key, arguments: [])
@@ -10913,6 +11109,10 @@ public enum L10nMessage {
         let key = "new_session_disconnected"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func newSessionDraftKept() -> LocalizedMessage {
+        let key = "new_session_draft_kept"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func newSessionEachCliHasItsOwnSettingsChooseTheCli() -> LocalizedMessage {
         let key = "new_session_each_cli_has_its_own_settings_choose_the_cli"
         return LocalizedMessage(key: key, arguments: [])
@@ -10920,6 +11120,10 @@ public enum L10nMessage {
     public static func newSessionExpiredStart() -> LocalizedMessage {
         let key = "new_session_expired_start"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionExpiredStartPrompt(prompt: String) -> LocalizedMessage {
+        let key = "new_session_expired_start_prompt"
+        return LocalizedMessage(key: key, arguments: [.string(prompt)])
     }
     public static func newSessionFirstMessage() -> LocalizedMessage {
         let key = "new_session_first_message"
@@ -11061,6 +11265,10 @@ public enum L10nMessage {
         let key = "new_session_model_no_auto"
         return LocalizedMessage(key: key, arguments: [.string(name)])
     }
+    public static func newSessionOfflineDraft(name: String) -> LocalizedMessage {
+        let key = "new_session_offline_draft"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
     public static func newSessionOfflineLastSeen(time: String) -> LocalizedMessage {
         let key = "new_session_offline_last_seen"
         return LocalizedMessage(key: key, arguments: [.string(time)])
@@ -11068,6 +11276,10 @@ public enum L10nMessage {
     public static func newSessionOfflineNoStart() -> LocalizedMessage {
         let key = "new_session_offline_no_start"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionOfflineNoStartNamed(name: String) -> LocalizedMessage {
+        let key = "new_session_offline_no_start_named"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
     }
     public static func newSessionOfflineWithDraft(name: String) -> LocalizedMessage {
         let key = "new_session_offline_with_draft"
@@ -11080,6 +11292,10 @@ public enum L10nMessage {
     public static func newSessionOnlyChangesThisTaskExistingConversationsKeepTheirSettings() -> LocalizedMessage {
         let key = "new_session_only_changes_this_task_existing_conversations_keep_their_settings"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionOthersOffline(name: String) -> LocalizedMessage {
+        let key = "new_session_others_offline"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
     }
     public static func newSessionPermissions() -> LocalizedMessage {
         let key = "new_session_permissions"
@@ -11096,6 +11312,10 @@ public enum L10nMessage {
     public static func newSessionPrompt() -> LocalizedMessage {
         let key = "new_session_prompt"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionReadingCli(agent: String) -> LocalizedMessage {
+        let key = "new_session_reading_cli"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
     }
     public static func newSessionReadingModels() -> LocalizedMessage {
         let key = "new_session_reading_models"
@@ -11155,6 +11375,10 @@ public enum L10nMessage {
     }
     public static func newSessionUnexpectedReply() -> LocalizedMessage {
         let key = "new_session_unexpected_reply"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionUnknownStartRetry() -> LocalizedMessage {
+        let key = "new_session_unknown_start_retry"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func newSessionUseMachine(name: String) -> LocalizedMessage {
@@ -11297,8 +11521,16 @@ public enum L10nMessage {
         let key = "projects_new_choose_directory"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func projectsNoOnline() -> LocalizedMessage {
+        let key = "projects_no_online"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func projectsNoOnlineComputers() -> LocalizedMessage {
         let key = "projects_no_online_computers"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsNoSessions() -> LocalizedMessage {
+        let key = "projects_no_sessions"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func projectsNoSubdirectories() -> LocalizedMessage {
@@ -11357,6 +11589,14 @@ public enum L10nMessage {
         let key = "projects_save_failed"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
+    public static func projectsSaveFailedReason(reason: String) -> LocalizedMessage {
+        let key = "projects_save_failed_reason"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func projectsSavingSettings() -> LocalizedMessage {
+        let key = "projects_saving_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func projectsSearch() -> LocalizedMessage {
         let key = "projects_search"
         return LocalizedMessage(key: key, arguments: [])
@@ -11364,6 +11604,10 @@ public enum L10nMessage {
     public static func projectsSearchEmpty(query: String) -> LocalizedMessage {
         let key = "projects_search_empty"
         return LocalizedMessage(key: key, arguments: [.string(query)])
+    }
+    public static func projectsSettingsFailed(reason: String) -> LocalizedMessage {
+        let key = "projects_settings_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
     }
     public static func projectsSyncing() -> LocalizedMessage {
         let key = "projects_syncing"
@@ -15797,6 +16041,14 @@ public enum L10nMessage {
         let key = "time_calendar_date_year"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .integer(Int64(year))])
     }
+    public static func timeDateTime(day: Int, month: Int, time: String) -> LocalizedMessage {
+        let key = "time_date_time"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .string(time)])
+    }
+    public static func timeDayClock(clock: String, day: String) -> LocalizedMessage {
+        let key = "time_day_clock"
+        return LocalizedMessage(key: key, arguments: [.string(clock), .string(day)])
+    }
     public static func timeDurationHoursMinutes(hours: Int, minutes: Int) -> LocalizedMessage {
         let key = "time_duration_hours_minutes"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(hours)), .integer(Int64(minutes))])
@@ -15848,6 +16100,10 @@ public enum L10nMessage {
     public static func timeTomorrow() -> LocalizedMessage {
         let key = "time_tomorrow"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func timeUsedTime(time: String) -> LocalizedMessage {
+        let key = "time_used_time"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
     }
     public static func timeWeekday(day: String) -> LocalizedMessage {
         let key: String

@@ -1,0 +1,458 @@
+{
+  "listsVersion": 1,
+  "projects": [
+    {
+      "name": "live_before_ended_summaries_and_added",
+      "request": {
+        "snapshot": {
+          "machines": [
+            {
+              "id": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "MacBook.local",
+                "projects": [
+                  { "path": "/Code/a", "ended": 5, "latestCreatedMs": "1000", "latestEndedMs": "1500" },
+                  { "path": "/Code/old", "ended": 12, "latestCreatedMs": "500", "latestEndedMs": "900" }
+                ]
+              }
+            },
+            {
+              "id": "m2",
+              "online": false,
+              "meta": {
+                "hostname": "VPS",
+                "projects": [
+                  { "path": "/Code/a", "ended": 3, "latestCreatedMs": "3000", "latestEndedMs": "3500" }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "id": "s-live-b",
+              "machineId": "m1",
+              "updatedMs": "2000",
+              "info": { "cwd": "/Code/b", "status": 2, "createdAt": "1970-01-01T00:00:02Z" }
+            },
+            {
+              "id": "s-ended-a",
+              "machineId": "m1",
+              "updatedMs": "1800",
+              "info": { "cwd": "/Code/a", "status": 5, "createdAt": "1970-01-01T00:00:01Z", "endedAt": "1970-01-01T00:00:01.800Z" }
+            },
+            {
+              "id": "s-quiet-task",
+              "machineId": "m1",
+              "updatedMs": "9999",
+              "info": { "cwd": "/Code/task", "status": 2, "taskOwned": true }
+            },
+            {
+              "id": "s-wait-task",
+              "machineId": "m1",
+              "updatedMs": "9000",
+              "info": { "cwd": "/Code/taskwait", "status": 2, "taskOwned": true, "pendingApprovals": 1, "createdAt": "1970-01-01T00:00:09Z" }
+            }
+          ],
+          "prefs": {
+            "schema": 1,
+            "pinned": [
+              { "path": "/Code/old" },
+              { "path": "/Code/a" }
+            ],
+            "hidden": [
+              { "path": "/Code/a" }
+            ],
+            "settings": [
+              { "path": "/Code/added", "machineId": "m1", "updatedMs": "2500" },
+              { "path": "/Code/stale", "machineId": "m-removed", "updatedMs": "9999" }
+            ]
+          }
+        },
+        "rememberedScope": { "all": false, "key": "/Code/a" },
+        "search": ""
+      },
+      "expected": {
+        "allKeys": ["/Code/taskwait", "/Code/b", "/Code/a", "/Code/added", "/Code/old"],
+        "pinnedKeys": ["/Code/old"],
+        "othersKeys": ["/Code/taskwait", "/Code/b", "/Code/added"],
+        "hiddenKeys": ["/Code/a"],
+        "listedKeys": ["/Code/old", "/Code/taskwait", "/Code/b", "/Code/added"],
+        "endedCounts": {
+          "/Code/a": 8,
+          "/Code/old": 12,
+          "/Code/b": 0,
+          "/Code/added": 0
+        },
+        "aMachineIds": ["m1", "m2"],
+        "aMachineNames": ["MacBook", "VPS"],
+        "resolvedScopeAll": true,
+        "waitingTotal": 1
+      }
+    },
+    {
+      "name": "single_listed_project_defaults_scope_and_hmac",
+      "request": {
+        "snapshot": {
+          "machines": [{ "id": "m1", "online": true }],
+          "sessions": [
+            { "id": "s1", "machineId": "m1", "info": { "cwd": "/Users/me/Code/foo", "status": 2 } },
+            { "id": "s2", "machineId": "m1", "info": { "cwd": "/Users/me/Code/bar", "status": 5 } }
+          ],
+          "prefs": {
+            "schema": 1,
+            "hidden": [{ "path": "/Users/me/Code/bar" }]
+          }
+        },
+        "rememberedScope": { "all": true },
+        "scopeHmacKey": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="
+      },
+      "expected": {
+        "allKeys": ["/Users/me/Code/foo", "/Users/me/Code/bar"],
+        "listedKeys": ["/Users/me/Code/foo"],
+        "defaultScopeKey": "/Users/me/Code/foo",
+        "resolvedScopeAll": false,
+        "resolvedScopeKey": "/Users/me/Code/foo",
+        "resolvedScopeToken": "project:2fd401141d61073e23b5629a6531aced7158270437e4afc3e384e75d6ebe320e"
+      }
+    }
+  ],
+  "homeList": [
+    {
+      "name": "sections_and_calendar_groups_shanghai",
+      "request": {
+        "snapshot": {
+          "loaded": true,
+          "synced": true,
+          "conn": 2,
+          "link": 1,
+          "sessionsListed": true,
+          "machines": [{ "id": "m", "online": true }],
+          "sessions": [
+            { "id": "wait-q", "machineId": "m", "updatedMs": "1791078060000", "info": { "cwd": "/p/foo", "title": "wait-q", "status": 2, "pendingQuestions": 1, "createdAt": "2026-10-04T01:00:00Z" } },
+            { "id": "wait-a", "machineId": "m", "updatedMs": "1791078060000", "info": { "cwd": "/p/foo", "title": "wait-a", "status": 2, "pendingApprovals": 1, "createdAt": "2026-10-04T01:05:00Z" } },
+            { "id": "wait-p", "machineId": "m", "updatedMs": "1791078060000", "info": { "cwd": "/p/foo", "title": "wait-p", "status": 2, "planOpen": true, "createdAt": "2026-10-04T00:50:00Z" } },
+            { "id": "run-1", "machineId": "m", "updatedMs": "1791078000000", "info": { "cwd": "/p/foo", "title": "run-1", "status": 3, "createdAt": "2026-10-04T01:40:00Z" } },
+            { "id": "e-today", "machineId": "m", "updatedMs": "1791069000000", "info": { "cwd": "/p/foo", "title": "e-today", "status": 5, "createdAt": "2026-10-03T23:00:00Z", "endedAt": "2026-10-03T23:10:00Z" } },
+            { "id": "e-yest", "machineId": "m", "updatedMs": "1791043140000", "info": { "cwd": "/p/foo", "title": "e-yest", "status": 5, "createdAt": "2026-10-03T15:00:00Z", "endedAt": "2026-10-03T15:59:00Z" } },
+            { "id": "e-week", "machineId": "m", "updatedMs": "1790524800000", "info": { "cwd": "/p/foo", "title": "e-week", "status": 5, "createdAt": "2026-09-27T15:00:00Z", "endedAt": "2026-09-27T16:00:00Z" } },
+            { "id": "e-month", "machineId": "m", "updatedMs": "1790524740000", "info": { "cwd": "/p/foo", "title": "e-month", "status": 5, "createdAt": "2026-09-27T15:00:00Z", "endedAt": "2026-09-27T15:59:00Z" } },
+            { "id": "e-year", "machineId": "m", "updatedMs": "1767153600000", "info": { "cwd": "/p/foo", "title": "e-year", "status": 5, "createdAt": "2025-12-31T04:00:00Z", "endedAt": "2025-12-31T04:00:00Z" } }
+          ]
+        },
+        "scope": { "all": true },
+        "calendar": { "nowMs": "1791078060000", "utcOffsetMinutes": 480 }
+      },
+      "expected": {
+        "rowIds": [
+          "s:wait-a",
+          "s:wait-q",
+          "s:wait-p",
+          "h:running",
+          "s:run-1",
+          "h:today",
+          "s:e-today",
+          "h:yesterday",
+          "s:e-yest",
+          "h:week",
+          "s:e-week",
+          "h:month:2026-9",
+          "s:e-month",
+          "h:month:2025-12",
+          "s:e-year"
+        ],
+        "headlineKind": 5,
+        "headlineWaitingCount": 3,
+        "headlineRunningCount": 1,
+        "weekWeekdayIndex": 0
+      }
+    },
+    {
+      "name": "offline_machine_keeps_attention_order_and_drops_card",
+      "request": {
+        "snapshot": {
+          "loaded": true,
+          "synced": true,
+          "conn": 2,
+          "link": 1,
+          "sessionsListed": true,
+          "machines": [{ "id": "m", "online": false }],
+          "sessions": [
+            { "id": "popup", "machineId": "m", "info": { "cwd": "/p/b", "title": "popup", "status": 4 } },
+            { "id": "plan", "machineId": "m", "info": { "cwd": "/p/b", "title": "plan", "status": 2, "planOpen": true } },
+            { "id": "question", "machineId": "m", "info": { "cwd": "/p/b", "title": "question", "status": 2, "pendingQuestions": 1 } },
+            { "id": "approval", "machineId": "m", "info": { "cwd": "/p/b", "title": "approval", "status": 2, "pendingApprovals": 1 } },
+            { "id": "run", "machineId": "m", "info": { "cwd": "/p/a", "title": "run", "status": 2 } }
+          ]
+        },
+        "scope": { "all": false, "key": "/p/a" },
+        "calendar": { "nowMs": "1791078060000", "utcOffsetMinutes": 480 }
+      },
+      "expected": {
+        "rowIds": ["s:approval", "s:question", "s:plan", "more:attention", "h:running", "s:run"],
+        "attentionCardCount": 0,
+        "approvalRawStatus": 3,
+        "approvalOutsideScope": true,
+        "headlineKind": 5,
+        "headlineWaitingCount": 4,
+        "headlineRunningCount": 0,
+        "headlineIdleCount": 0
+      }
+    }
+  ],
+  "newConfig": [
+    {
+      "name": "live_session_wins_and_unsettled_past_fetched",
+      "request": {
+        "snapshot": {
+          "sessionsListed": true,
+          "sessionsNext": { "endedMs": "5000", "sessionId": "s-ended" },
+          "machines": [
+            {
+              "id": "m1",
+              "online": true,
+              "meta": {
+                "projects": [{ "path": "/p", "ended": 3 }],
+                "agents": [
+                  { "agent": 1 },
+                  { "agent": 2, "defaultMode": 2, "defaultModeSource": 1 }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "id": "s-live-codex",
+              "machineId": "m1",
+              "info": { "cwd": "/p", "agent": 1, "model": "gpt-6-sol", "effort": "high", "status": 2, "createdAt": "1970-01-01T00:00:08Z" }
+            },
+            {
+              "id": "s-past-claude",
+              "machineId": "m1",
+              "listedEndedMs": "4000",
+              "info": { "cwd": "/p", "agent": 2, "model": "claude-sonnet-5-5", "effort": "medium", "status": 5, "createdAt": "1970-01-01T00:00:04Z", "endedAt": "1970-01-01T00:00:04Z" }
+            }
+          ]
+        },
+        "projectKey": "/p",
+        "pickAgent": 2
+      },
+      "expected": {
+        "found": true,
+        "machineId": "m1",
+        "agent": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "settled": false,
+        "wantedAgent": 2,
+        "defaultMode": 2,
+        "defaultModeKnown": true
+      }
+    },
+    {
+      "name": "missing_agent_falls_back_to_machine_first",
+      "request": {
+        "snapshot": {
+          "sessionsListed": true,
+          "machines": [
+            { "id": "m1", "online": true, "meta": { "agents": [{ "agent": 1 }] } },
+            { "id": "m2", "online": true, "meta": { "agents": [{ "agent": 2 }] } }
+          ],
+          "prefs": {
+            "schema": 1,
+            "settings": [
+              {
+                "path": "/p",
+                "machineId": "m1",
+                "agent": 2,
+                "agents": [{ "agent": 2, "model": "opus", "mode": 3 }]
+              }
+            ]
+          }
+        },
+        "projectKey": "/p"
+      },
+      "expected": {
+        "found": true,
+        "machineId": "m1",
+        "agent": 1,
+        "model": "",
+        "mode": 0,
+        "settled": true,
+        "wantedAgent": 2,
+        "missingAgent": 2
+      }
+    }
+  ],
+  "modelsModes": [
+    {
+      "name": "alias_1m_and_auto_unavailable",
+      "request": {
+        "config": {
+          "machineId": "m1",
+          "cwd": "/p",
+          "agent": 2,
+          "model": "claude-Sonnet-5-5[1m]",
+          "mode": 0
+        },
+        "hasModels": true,
+        "models": {
+          "defaultModel": "claude-haiku-4-5",
+          "models": [
+            { "slug": "sonnet", "displayName": "Sonnet 5.5", "efforts": ["low", "medium", "high"], "defaultEffort": "medium", "contextWindow": "1000000", "autoUnavailable": false },
+            { "slug": "claude-haiku-4-5", "displayName": "Haiku 4.5", "contextWindow": "200000", "autoUnavailable": true }
+          ]
+        },
+        "defaultMode": { "mode": 2, "known": true },
+        "sessionAgent": 2,
+        "sessionModel": "claude-haiku-4-5",
+        "sessionModeLocked": false,
+        "sessionFullAccessUnavailable": true
+      },
+      "expected": {
+        "pickedSlug": "sonnet",
+        "modelLabel": "Sonnet 5.5",
+        "autoIssue": 0,
+        "selectedEffort": "medium",
+        "contextFixed": false,
+        "sessionFullUnavailable": 2,
+        "sessionAutoUnavailable": 4
+      }
+    },
+    {
+      "name": "gpt_slug_fallback_and_200k_fixed",
+      "request": {
+        "config": {
+          "machineId": "m1",
+          "cwd": "/p",
+          "agent": 1,
+          "model": "gpt-6.1-sol",
+          "mode": 3
+        },
+        "hasModels": true,
+        "models": {
+          "models": [
+            { "slug": "other", "displayName": "Other", "contextWindow": "200000", "autoUnavailable": true }
+          ]
+        },
+        "defaultMode": { "mode": 1, "known": false }
+      },
+      "expected": {
+        "pickedSlug": "",
+        "modelLabel": "GPT-6.1-Sol",
+        "allAutoUnavailable": true,
+        "settingsModeRed": true
+      }
+    }
+  ],
+  "prefsOps": [
+    {
+      "name": "pin_unhides_and_hide_unpins",
+      "base": {
+        "schema": 1,
+        "pinned": [{ "path": "/a", "sinceMs": "1" }],
+        "hidden": [{ "path": "/b", "sinceMs": "1" }]
+      },
+      "steps": [
+        { "opId": "op1", "nowMs": "100", "op": { "pin": { "path": "/b" } } },
+        { "opId": "op2", "nowMs": "200", "op": { "hide": { "path": "/a" } } },
+        { "opId": "op3", "nowMs": "300", "op": { "setSettings": { "path": "/b", "machineId": "m2", "moved": true, "agent": 2 } } }
+      ],
+      "expected": {
+        "pinned": ["/b"],
+        "hidden": ["/a"],
+        "recentOps": ["op1", "op2", "op3"],
+        "settingsMachineId": "m2",
+        "settingsAgent": 2,
+        "settingsAgentCount": 3
+      }
+    }
+  ],
+  "pagination": [
+    {
+      "name": "after_place_and_reconcile",
+      "request": {
+        "snapshot": {
+          "sessionsListed": true,
+          "sessionsNext": { "endedMs": "100", "sessionId": "m" }
+        },
+        "heldEnded": [
+          { "id": "a", "machineId": "m1", "listedEndedMs": "200" },
+          { "id": "n", "machineId": "m1", "listedEndedMs": "100" }
+        ],
+        "want": 2,
+        "total": 2,
+        "reconcileSessions": [
+          { "id": "in-page", "machineId": "m1", "listedEndedMs": "200" },
+          { "id": "pushed", "machineId": "m1", "listedEndedMs": "200" },
+          { "id": "later-page", "machineId": "m1", "listedEndedMs": "99" },
+          { "id": "dropped-machine", "machineId": "m-gone", "listedEndedMs": "99" },
+          { "id": "missing-on-page", "machineId": "m1", "listedEndedMs": "150" }
+        ],
+        "pageSessionIds": ["in-page"],
+        "pushedSessionIds": ["pushed"],
+        "knownMachineIds": ["m1"],
+        "pageNext": { "endedMs": "100", "sessionId": "m" }
+      },
+      "expected": {
+        "needsEndedPage": true,
+        "pastFetchedIds": ["n"],
+        "removeSessionIds": ["dropped-machine"],
+        "unlistSessionIds": ["missing-on-page"]
+      }
+    }
+  ],
+  "pathsDisplay": {
+    "shortenPaths": [
+      { "text": "/private/tmp/ra/proj/a.txt", "cwd": "/tmp/ra/proj", "home": "/Users/me", "expected": "a.txt" },
+      { "text": "Read /Users/me/Code/foo[archive]/a", "cwd": "/Users/me/Code/foo", "home": "/Users/me", "expected": "Read ~/Code/foo[archive]/a" },
+      { "text": "cat \"/Users/me/Code/foo/a b.go\"", "cwd": "/Users/me/Code/foo", "home": "/Users/me", "expected": "cat \"a b.go\"" },
+      { "text": "tail /home/me/app:12", "cwd": "/srv/app", "home": "", "expected": "tail ~/app:12" }
+    ],
+    "shortenPath": [
+      { "path": "/Users/me/Code/foo/sub dir/b.go", "cwd": "/Users/me/Code/foo", "home": "/Users/me", "expected": "sub dir/b.go" },
+      { "path": "/Users/me/Code/foo bar/a.go", "cwd": "/Users/me/Code/foo", "home": "/Users/me", "expected": "~/Code/foo bar/a.go" }
+    ],
+    "approvalDisplay": [
+      { "input": "echo \u001b[31mhi\u001b[0m\u202e\n\t", "expected": "echo \\u001b[31mhi\\u001b[0m\\u202e\n\t" }
+    ],
+    "approvalAlways": [
+      { "input": "Yes, and don't ask again for commands that start with `go test`", "kind": 1, "arg": "go test" },
+      { "input": "Yes, and always allow access to /w from this project", "kind": 2, "arg": "/w" },
+      { "input": "always allow access to /w from this project today", "kind": 0, "arg": "" },
+      { "input": "Yes, and switch to accept edits", "kind": 3, "arg": "" }
+    ]
+  },
+  "outcome": [
+    {
+      "name": "verify_executed",
+      "result": {
+        "outcome": "executed",
+        "reason": "ok",
+        "resultAvailable": true,
+        "stopSession": {}
+      },
+      "keyByte": 1,
+      "payloadByte": 2,
+      "outerOutcome": "executed",
+      "outerReason": "ok",
+      "prior": false,
+      "expected": 3
+    },
+    {
+      "name": "verify_result_available_without_kind_is_valid_but_kind_without_result_available_is_unknown",
+      "result": {
+        "outcome": "executed",
+        "reason": "ok",
+        "resultAvailable": false,
+        "stopSession": {}
+      },
+      "keyByte": 1,
+      "payloadByte": 2,
+      "outerOutcome": "executed",
+      "outerReason": "ok",
+      "prior": false,
+      "expected": 4
+    }
+  ]
+}

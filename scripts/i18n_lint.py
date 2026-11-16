@@ -19,7 +19,7 @@ SINK = re.compile(r'(?:Text|Button|Btn|PillButton|TextLink|TextAction|LinkButton
 
 
 def sources(root):
-    roots = ['web/src','web/public','web/index.html','android/app/src/main','android/core/src/main','android/terminal/src/main','ios/RemoteAgent','ios/RemoteAgentCore/Sources','cmd','internal','scripts/install.sh','scripts/migrate-security-v4','install.sh']
+    roots = ['web/src','web/public','web/index.html','android/app/src/main','android/core/src/main','android/terminal/src/main','ios/RemoteAgent','ios/RemoteAgentCore/Sources','cmd','internal','clientcore','scripts/install.sh','scripts/migrate-security-v4','install.sh']
     for entry in roots:
         path = root/entry
         files = path.rglob('*') if path.is_dir() else [path]
@@ -47,7 +47,7 @@ def findings(root):
             literal=match[0][1:-1]
             if not literal.strip(): continue
             prefix=text[max(0,match.start()-160):match.start()]
-            if re.search(r'\bt\(\s*$', prefix): continue  # key, checked by references()
+            if re.search(r'(?:\bt|\btext\.(?:Str|Int|Num|ArgText))\(\s*$', prefix): continue  # key or param name, checked by references()
             if CJK.search(literal) or (SINK.search(prefix) and re.search('[A-Za-z]{2,}',literal)):
                 digest=hashlib.sha256(literal.encode()).hexdigest()[:20]
                 result[name+'#'+digest]+=1
@@ -81,7 +81,7 @@ def references(root):
     for name,path in sources(root):
         if name in generated:continue
         text=strip_comments(path.read_text())
-        platform='web' if name.startswith('web/') else 'android' if name.startswith('android/') else 'ios' if name.startswith('ios/') else 'go'
+        platform='web' if name.startswith('web/') else 'android' if name.startswith('android/') else 'ios' if name.startswith('ios/') else 'clientcore' if name.startswith('clientcore/') else 'go'
         refs=[]
         if platform=='web':refs += re.findall(r'\bt\(\s*["\']([^"\']+)["\']',text)
         if platform in {'android','ios'}:
@@ -92,6 +92,15 @@ def references(root):
             for fn in re.findall(r'\bi18n\.([A-Z]\w+)\s*\(',text):
                 candidate=fn[0].lower()+fn[1:]
                 if candidate in names: refs.append(names[candidate])
+        if platform=='clientcore':
+            for fn in re.findall(r'\btext\.Key([A-Z]\w+)\b',text):
+                candidate=fn[0].lower()+fn[1:]
+                if candidate not in names: raise ValueError(f'{name}: undefined message constant Key{fn}')
+                key=names[candidate]
+                missing=[p for p in ('web','android','ios') if p not in messages[key]['platforms']]
+                if missing: raise ValueError(f'{name}: {key} not available on {"/".join(missing)}')
+                usage[key].add('clientcore')
+            continue
         for key in refs:
             if key not in messages: raise ValueError(f'{name}: undefined key {key}')
             if platform not in messages[key]['platforms']:raise ValueError(f'{name}: {key} not available on {platform}')

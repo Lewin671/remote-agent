@@ -694,5 +694,90 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "common.online",
+    "zh-CN": "在线",
+    "en": "Online",
+    "notes": "电脑在线状态短标签。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.offline",
+    "zh-CN": "不在线",
+    "en": "Offline",
+    "notes": "电脑离线状态短标签。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.saving",
+    "zh-CN": "保存中…",
+    "en": "Saving…",
+    "notes": "保存进行中提示。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.save_failed",
+    "zh-CN": "没能保存：{reason}",
+    "en": "Could not save: {reason}",
+    "notes": "保存失败提示；reason 为原始错误文本，不翻译。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.note_separator",
+    "zh-CN": "；",
+    "en": "; ",
+    "notes": "多条辅助说明串联分隔符。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

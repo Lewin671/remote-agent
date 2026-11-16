@@ -226,4 +226,31 @@ class CompilerTest(unittest.TestCase):
         path.write_text(path.read_text()+'\nconst b="你好";')
         with self.assertRaisesRegex(ValueError,'new hardcoded'):i18n_lint.lint(self.root)
 
+    def test_clientcore_keys_and_lint(self):
+        i18n.generate(self.root)
+        keys_go = self.root / 'clientcore/text/keys.generated.go'
+        self.assertTrue(keys_go.exists())
+        self.assertIn('const KeyCommonBack = "common.back"', keys_go.read_text())
+        messages = i18n.load(self.root)[1]
+        (self.root / 'web/src/pilot.tsx').write_text('\n'.join(f't("{k}")' for k, row in messages.items() if 'web' in row['platforms']))
+        for platform, (name, receiver) in {'ios': ('ios/RemoteAgent/Pilot.swift', 'L10n'), 'android': ('android/core/src/main/Pilot.kt', 'UiMessages'), 'go': ('internal/pilot/pilot.go', 'i18n')}.items():
+            refs = [f'{receiver}.{(i18n.method(k)[0].upper() + i18n.method(k)[1:]) if platform == "go" else i18n.method(k)}()' for k, row in messages.items() if 'web' not in row['platforms'] and row['platforms'][0] == platform]
+            fixture = self.root / name
+            fixture.parent.mkdir(parents=True, exist_ok=True)
+            fixture.write_text('\n'.join(refs))
+        pilot = self.root / 'clientcore/screens/pilot.go'
+        pilot.parent.mkdir(parents=True, exist_ok=True)
+        pilot.write_text('package screens\nvar _ = text.KeyHomeAllProjects\n')
+        i18n_lint.lint(self.root, True)
+        i18n_lint.lint(self.root)
+        pilot.write_text('package screens\nvar _ = text.KeyDoesNotExist\n')
+        with self.assertRaisesRegex(ValueError, 'undefined message constant'):
+            i18n_lint.references(self.root)
+        pilot.write_text('package screens\nvar _ = text.KeyHomeAndroidChangeScope\n')
+        with self.assertRaisesRegex(ValueError, 'not available on'):
+            i18n_lint.references(self.root)
+        pilot.write_text('package screens\nvar _ = text.KeyCommonBack\nvar bad = "新硬编码"\n')
+        with self.assertRaisesRegex(ValueError, 'new hardcoded'):
+            i18n_lint.lint(self.root)
+
 if __name__=='__main__':unittest.main()

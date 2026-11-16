@@ -118,10 +118,15 @@
     <string name="common_list_separator" formatted="false">"、"</string>
     <string name="common_loading" formatted="false">"读取中"</string>
     <string name="common_machine" formatted="false">"电脑"</string>
+    <string name="common_note_separator" formatted="false">"；"</string>
+    <string name="common_offline" formatted="false">"不在线"</string>
+    <string name="common_online" formatted="false">"在线"</string>
     <string name="common_reload" formatted="false">"重新加载"</string>
     <string name="common_remove" formatted="false">"移除"</string>
     <string name="common_retry" formatted="false">"重试"</string>
     <string name="common_save" formatted="false">"保存"</string>
+    <string name="common_save_failed">"没能保存：%1$s"</string>
+    <string name="common_saving" formatted="false">"保存中…"</string>
     <string name="common_settings" formatted="false">"设置"</string>
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
     <string name="composer_after_turn" formatted="false">"这一轮结束后再发"</string>
@@ -310,6 +315,7 @@
     <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s；上一次的结果仍不确定，能力恢复后可重试同一请求"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
     <string name="errors_cannot_sign_with_the_current_security_state_the_operation" formatted="false">"无法用当前安全状态签名，操作尚未发出；请重试"</string>
+    <string name="errors_client_out_of_date" formatted="false">"这个客户端版本较旧，请更新后再试"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
@@ -335,6 +341,7 @@
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"成员链冲突，安全操作已停止；请核对设备后明确重新加入"</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>
     <string name="errors_network_changed_reconnecting" formatted="false">"网络已变化，正在重连"</string>
+    <string name="errors_not_connected" formatted="false">"连不上服务器"</string>
     <string name="errors_other_clients_kept_changing_the_project_list_changes_could" formatted="false">"项目列表一直在被别的客户端修改，没能保存"</string>
     <string name="errors_pending_requests_on_the_computer_could_not_be_verified" formatted="false">"无法核实电脑上的待处理请求，请重试或在电脑终端处理"</string>
     <string name="errors_project_preferences_format_is_not_supported" formatted="false">"项目偏好格式不受支持"</string>
@@ -423,6 +430,9 @@
     <string name="home_computer_runs_cli" formatted="false">"电脑运行 CLI，客户端操作会话。"</string>
     <string name="home_connection_check" formatted="false">"连接检测"</string>
     <string name="home_connection_label">"%1$s，连接检测"</string>
+    <string name="home_earlier_failed_retry">"没能读取更早的会话：%1$s · 点这里重试"</string>
+    <string name="home_earlier_offline" formatted="false">"连上服务器后读取更早的会话"</string>
+    <string name="home_empty_project_start" formatted="false">"点右下角的「新任务」在这里开始一个。"</string>
     <string name="home_filter_title" formatted="false">"按标题筛选"</string>
     <string name="home_forked" formatted="false">"分叉"</string>
     <plurals name="home_idle_count">
@@ -433,6 +443,7 @@
     </plurals>
     <string name="home_ios_open_session" formatted="false">"打开会话"</string>
     <string name="home_list_failed">"没能读取会话列表：%1$s"</string>
+    <string name="home_list_failed_retry">"没能读取会话列表：%1$s · 点这里重试"</string>
     <string name="home_live" formatted="false">"进行中"</string>
     <string name="home_loading_earlier" formatted="false">"正在读取更早的会话…"</string>
     <string name="home_manage_projects" formatted="false">"管理项目"</string>
@@ -450,6 +461,7 @@
     </plurals>
     <string name="home_new_schedule" formatted="false">"新定时"</string>
     <string name="home_new_task" formatted="false">"新任务"</string>
+    <string name="home_no_machines_setup">"这个账户还没有电脑。点「添加设备」生成配对码，再在电脑上用它运行 %1$s，或者在管理端上添加。"</string>
     <string name="home_no_matches">"没有标题里有「%1$s」的会话"</string>
     <string name="home_no_online_computer">"没有在线的电脑。在电脑上运行 %1$s"</string>
     <string name="home_no_sessions" formatted="false">"还没有会话"</string>
@@ -613,13 +625,16 @@
     <string name="list_state_approval" formatted="false">"等待审批"</string>
     <string name="list_state_ended" formatted="false">"已结束"</string>
     <string name="list_state_idle" formatted="false">"空闲"</string>
+    <string name="list_state_new_session" formatted="false">"新会话"</string>
     <string name="list_state_no_message" formatted="false">"还没发消息"</string>
     <string name="list_state_offline" formatted="false">"电脑离线"</string>
     <string name="list_state_plan" formatted="false">"计划待批准"</string>
     <string name="list_state_popup" formatted="false">"终端里有弹窗"</string>
     <string name="list_state_question" formatted="false">"等你回答"</string>
     <string name="list_state_request_command">"请求执行 %1$s"</string>
+    <string name="list_state_request_command_plain" formatted="false">"请求执行"</string>
     <string name="list_state_request_permission">"请求权限 · %1$s"</string>
+    <string name="list_state_request_permission_plain" formatted="false">"请求权限"</string>
     <string name="list_state_running" formatted="false">"运行中"</string>
     <string name="list_state_starting" formatted="false">"启动中"</string>
     <string name="list_state_unlinked" formatted="false">"未连接"</string>
@@ -723,6 +738,8 @@
     <string name="models_extended_window" formatted="false">"1M"</string>
     <string name="models_fixed_effort">"推理强度固定为 %1$s"</string>
     <string name="models_load_failed_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
+    <string name="models_load_failed_reason">"没能读取模型列表，会用 %1$s 自己的默认模型：%2$s"</string>
+    <string name="models_reading_machine">"读取 %1$s 的设置…"</string>
     <string name="models_standard_only" formatted="false">"标准 200k · 这个模型只有标准窗口"</string>
     <string name="models_standard_window" formatted="false">"标准 200k"</string>
     <string name="models_summary_effort_label">"模型：%2$s，推理强度：%1$s"</string>
@@ -794,8 +811,10 @@
     <string name="new_session_config_fallback" formatted="false">"所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值"</string>
     <string name="new_session_default_model" formatted="false">"默认模型"</string>
     <string name="new_session_disconnected" formatted="false">"和服务器断线了"</string>
+    <string name="new_session_draft_kept" formatted="false">"草稿已保留，请选择在线电脑；不自动换电脑或 CLI。"</string>
     <string name="new_session_each_cli_has_its_own_settings_choose_the_cli" formatted="false">"每个 CLI 各存一套，新建时用哪个在句子里选。"</string>
     <string name="new_session_expired_start" formatted="false">"不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求"</string>
+    <string name="new_session_expired_start_prompt">"不确定「%1$s」有没有启动，它已过期，不会再重发。请先看看进行中的会话"</string>
     <string name="new_session_first_message" formatted="false">"新会话的第一句话"</string>
     <string name="new_session_fixed_effort">"推理强度固定为 %1$s"</string>
     <string name="new_session_follow_cli" formatted="false">"跟随 CLI 设置"</string>
@@ -812,15 +831,19 @@
     <string name="new_session_machine_project_defaults">"用 %1$s 的新项目默认设置"</string>
     <string name="new_session_model_list_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
     <string name="new_session_model_no_auto">"这个模型没有自动模式，而 %1$s 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认"</string>
+    <string name="new_session_offline_draft">"%1$s 已离线，任务尚未开始"</string>
     <string name="new_session_offline_last_seen">"%1$s在线，现在不能新建"</string>
     <string name="new_session_offline_no_start" formatted="false">"现在不能新建"</string>
+    <string name="new_session_offline_no_start_named">"%1$s 不在线，现在不能新建"</string>
     <string name="new_session_offline_with_draft">"%1$s 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。"</string>
     <string name="new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" formatted="false">"只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
     <string name="new_session_only_changes_this_task_existing_conversations_keep_their_settings" formatted="false">"只修改这个任务；已开出的对话保留原来的设置。"</string>
+    <string name="new_session_others_offline">"%1$s 用过的其他电脑也都不在线。"</string>
     <string name="new_session_permissions" formatted="false">"权限"</string>
     <string name="new_session_project_label">"项目：%1$s"</string>
     <string name="new_session_project_session_label">"%1$s · 新会话"</string>
     <string name="new_session_prompt" formatted="false">"要做什么"</string>
+    <string name="new_session_reading_cli">"正在读取 %1$s 上次的设置…"</string>
     <string name="new_session_reading_models" formatted="false">"正在读取模型列表…"</string>
     <string name="new_session_reading_previous" formatted="false">"正在读取这个项目上次的设置…"</string>
     <string name="new_session_reading_settings" formatted="false">"读取设置…"</string>
@@ -836,6 +859,7 @@
     <string name="new_session_this_model_has_no_auto_mode" formatted="false">"当前模型没有自动模式"</string>
     <string name="new_session_unconfirmed_start" formatted="false">"上次的启动结果还没有确认"</string>
     <string name="new_session_unexpected_reply" formatted="false">"意外的回复"</string>
+    <string name="new_session_unknown_start_retry" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_use_machine">"改用 %1$s"</string>
     <string name="notifications_android_a_conversation_turn_finished" formatted="false">"一轮对话结束了"</string>
     <string name="notifications_android_a_session_needs_your_attention" formatted="false">"有会话在等你处理"</string>
@@ -902,7 +926,9 @@
     <string name="projects_manage_named">"管理 %1$s"</string>
     <string name="projects_new" formatted="false">"新项目…"</string>
     <string name="projects_new_choose_directory" formatted="false">"新项目 · 选目录"</string>
+    <string name="projects_no_online" formatted="false">"没有在线的电脑"</string>
     <string name="projects_no_online_computers" formatted="false">"没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。"</string>
+    <string name="projects_no_sessions" formatted="false">"这个项目还没有会话"</string>
     <string name="projects_no_subdirectories" formatted="false">"没有子目录"</string>
     <string name="projects_others" formatted="false">"其他"</string>
     <string name="projects_parent_directory" formatted="false">"上一级"</string>
@@ -921,8 +947,11 @@
     <string name="projects_remove_title">"移除 %1$s？"</string>
     <string name="projects_removed" formatted="false">"这个项目已从列表移除"</string>
     <string name="projects_save_failed">"没能保存，列表保持原样：%1$s"</string>
+    <string name="projects_save_failed_reason">"没能保存：%1$s"</string>
+    <string name="projects_saving_settings" formatted="false">"正在保存项目设置…"</string>
     <string name="projects_search" formatted="false">"搜索项目"</string>
     <string name="projects_search_empty">"没有名字或路径里有「%1$s」的项目"</string>
+    <string name="projects_settings_failed">"项目设置没能保存：%1$s"</string>
     <string name="projects_syncing" formatted="false">"正在同步项目列表…"</string>
     <string name="projects_unknown" formatted="false">"未知项目"</string>
     <string name="projects_unpin" formatted="false">"取消常用"</string>
@@ -2152,6 +2181,8 @@
     <string name="time_android_used_clock">"%1$s 使用"</string>
     <string name="time_android_used_relative">"%1$s 使用"</string>
     <string name="time_calendar_date_year">"%3$d年%2$d月%1$d日"</string>
+    <string name="time_date_time">"%2$d月%1$d日 %3$s"</string>
+    <string name="time_day_clock">"%2$s %1$s"</string>
     <string name="time_duration_hours_minutes">"%1$d 小时 %2$d 分"</string>
     <string name="time_duration_minutes_seconds">"%1$d 分 %2$d 秒"</string>
     <plurals name="time_duration_seconds">
@@ -2170,6 +2201,7 @@
     <string name="time_today" formatted="false">"今天"</string>
     <string name="time_today_clock">"今天 %2$s:%1$s"</string>
     <string name="time_tomorrow" formatted="false">"明天"</string>
+    <string name="time_used_time">"%1$s 使用"</string>
     <string name="time_weekday_fri">"周五"</string>
     <string name="time_weekday_mon">"周一"</string>
     <string name="time_weekday_other">"周日"</string>

@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+
+enum ConnState {
+  CONN_STATE_UNSPECIFIED = 0;
+  CONN_STATE_CONNECTED = 1;
+  CONN_STATE_RECONNECTING = 2;
+  CONN_STATE_CONNECTING = 3;
+  CONN_STATE_OFFLINE = 4;
+  CONN_STATE_NO_NETWORK = 5;
+}
+
+message ConnectionStatusView {
+  ConnState state = 1;
+  Text badge_text = 2;
+  Text detail_text = 3;
+  bool live_push_connected = 4;
+  string reason = 5;
+  int64 disconnected_at_ms = 6;
+}
+
+enum SessionTone {
+  SESSION_TONE_UNSPECIFIED = 0;
+  SESSION_TONE_NEUTRAL = 1;
+  SESSION_TONE_LIVE = 2;
+  SESSION_TONE_WARN = 3;
+  SESSION_TONE_BAD = 4;
+}
+
+enum SessionDisplayStatus {
+  SESSION_DISPLAY_STATUS_UNSPECIFIED = 0;
+  SESSION_DISPLAY_STATUS_STARTING = 1;
+  SESSION_DISPLAY_STATUS_RUNNING = 2;
+  SESSION_DISPLAY_STATUS_IDLE = 3;
+  SESSION_DISPLAY_STATUS_APPROVAL = 4;
+  SESSION_DISPLAY_STATUS_QUESTION = 5;
+  SESSION_DISPLAY_STATUS_PLAN = 6;
+  SESSION_DISPLAY_STATUS_POPUP = 7;
+  SESSION_DISPLAY_STATUS_OFFLINE = 8;
+  SESSION_DISPLAY_STATUS_ENDED = 9;
+  SESSION_DISPLAY_STATUS_UNLINKED = 10;
+}
+
+enum HeadlineKind {
+  HEADLINE_KIND_UNSPECIFIED = 0;
+  HEADLINE_KIND_WAITING = 1;
+  HEADLINE_KIND_RUNNING = 2;
+  HEADLINE_KIND_EMPTY = 3;
+  HEADLINE_KIND_FILTER = 4;
+  HEADLINE_KIND_ERROR = 5;
+}
+
+message HomeHeadlineView {
+  HeadlineKind kind = 1;
+  Text title = 2;
+  int32 highlight_count = 3;
+  Text sub = 4;
+  bool sub_error = 5;
+  bool sub_path = 6;
+  bool details_action = 7;
+  bool unlinked = 8;
+}
+
+enum HomeEmptyKind {
+  HOME_EMPTY_KIND_UNSPECIFIED = 0;
+  HOME_EMPTY_KIND_NONE = 1;
+  HOME_EMPTY_KIND_NO_MACHINES = 2;
+  HOME_EMPTY_KIND_NO_MACHINES_MEMBER = 3;
+  HOME_EMPTY_KIND_NO_ONLINE = 4;
+  HOME_EMPTY_KIND_READY_TO_START = 5;
+  HOME_EMPTY_KIND_SCOPED_PROJECT = 6;
+  HOME_EMPTY_KIND_NO_NETWORK = 7;
+  HOME_EMPTY_KIND_LIST_FAILED = 8;
+}
+
+message HomeEmptyView {
+  HomeEmptyKind kind = 1;
+  Text message = 2;
+  string command = 3;
+  string ready_machine_id = 4;
+  string ready_machine_name = 5;
+  bool can_add_device = 6;
+  bool can_start_first = 7;
+  bool can_retry = 8;
+}
+
+enum EndedGroupKind {
+  ENDED_GROUP_KIND_UNSPECIFIED = 0;
+  ENDED_GROUP_KIND_TODAY = 1;
+  ENDED_GROUP_KIND_YESTERDAY = 2;
+  ENDED_GROUP_KIND_LAST_WEEK = 3;
+  ENDED_GROUP_KIND_MONTH = 4;
+  ENDED_GROUP_KIND_YEAR_MONTH = 5;
+}
+
+enum TailKind {
+  TAIL_KIND_UNSPECIFIED = 0;
+  TAIL_KIND_LOADING = 1;
+  TAIL_KIND_OFFLINE = 2;
+  TAIL_KIND_FAILED = 3;
+  TAIL_KIND_MORE_ENDED = 4;
+  TAIL_KIND_MORE_ON_SERVER = 5;
+}
+
+enum AlwaysAllowKind {
+  ALWAYS_ALLOW_KIND_UNSPECIFIED = 0;
+  ALWAYS_ALLOW_KIND_COMMAND_PREFIX = 1;
+  ALWAYS_ALLOW_KIND_DIRECTORY = 2;
+  ALWAYS_ALLOW_KIND_TOOL_CATEGORY = 3;
+}
+
+message AttentionCardView {
+  string session_id = 1;
+  string machine_id = 2;
+  string approval_id = 3;
+  Text title = 4;
+  Text kind_text = 5;
+  Text where = 6;
+  Text time = 7;
+  bool hot = 8;
+  string body = 9;
+  string tool_name = 10;
+  bool is_command = 11;
+  bool truncated = 12;
+  AlwaysAllowKind always_kind = 13;
+  string always_arg = 14;
+  Text always_label = 15;
+}
+
+message AttentionRowView {
+  string session_id = 1;
+  string machine_id = 2;
+  Text title = 3;
+  Text kind_text = 4;
+  Text summary = 5;
+  bool outside_scope = 6;
+}
+
+message SessionRowView {
+  string session_id = 1;
+  string machine_id = 2;
+  Text title = 3;
+  Text time = 4;
+  SessionDisplayStatus status = 5;
+  SessionTone tone = 6;
+  Text status_text = 7;
+  Text preview = 8;
+  Text second_line = 9;
+  remoteagent.v1.Agent agent = 10;
+  bool multiple_agents = 11;
+  Text meta_line = 12;
+  bool selected = 13;
+  bool pending_action = 14;
+}
+
+message EndedRowView {
+  string session_id = 1;
+  string machine_id = 2;
+  Text title = 3;
+  Text right = 4;
+  bool selected = 5;
+}
+
+message EndedGroupView {
+  string group_key = 1;
+  EndedGroupKind group_kind = 2;
+  Text label = 3;
+  repeated EndedRowView items = 4;
+}
+
+message TailRowView {
+  TailKind kind = 1;
+  Text text = 2;
+  bool retry = 3;
+}
+
+message ScopeRowView {
+  string key = 1;
+  Text name = 2;
+  string short_path = 3;
+  Text subtitle = 4;
+  int32 waiting_count = 5;
+  int32 live_count = 6;
+  bool all_offline = 7;
+  bool checked = 8;
+  bool all_projects = 9;
+}
+
+message ProjectRowView {
+  string key = 1;
+  Text name = 2;
+  string short_path = 3;
+  Text subtitle = 4;
+  int32 waiting_count = 5;
+  int32 live_count = 6;
+  bool all_offline = 7;
+  bool pinned = 8;
+  bool hidden = 9;
+  bool syncing = 10;
+  Text save_error = 11;
+}
+
+message ProjectListingView {
+  repeated ProjectRowView pinned = 1;
+  repeated ProjectRowView others = 2;
+  bool titled = 3;
+  bool can_search = 4;
+  bool searching = 5;
+  string search_query = 6;
+  Text empty_match = 7;
+  int32 waiting_total = 8;
+  bool loading = 9;
+  bool syncing = 10;
+  bool load_failed = 11;
+}
+
+message HomeViewModel {
+  bool scope_selectable = 2;
+  string scope_key = 3;
+  Text scope_title = 4;
+  string scope_short_path = 5;
+  ConnectionStatusView connection = 6;
+  HomeHeadlineView headline = 7;
+  HomeEmptyView empty = 8;
+  bool can_filter = 9;
+  string filter_query = 10;
+  Text filter_summary = 11;
+  bool no_matches = 12;
+  int32 waiting_total = 13;
+  int32 live_total = 14;
+  int32 ended_total = 15;
+  int32 timeline_total = 16;
+  string top_attention_session_id = 17;
+  bool top_attention_actionable = 18;
+  AttentionCardView top_attention_card = 19;
+  repeated AttentionRowView attention = 20;
+  repeated SessionRowView running = 21;
+  repeated EndedGroupView ended_groups = 22;
+  TailRowView ended_tail = 23;
+  repeated ScopeRowView scope_menu = 24;
+  ProjectListingView sidebar_projects = 25;
+  bool can_start = 26;
+  string selected_session_id = 27;
+  bool has_more_ended = 28;
+}

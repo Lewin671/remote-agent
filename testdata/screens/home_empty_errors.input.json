@@ -1,0 +1,61 @@
+{
+  "steps": [
+    {
+      "event": {
+        "connectionChanged": { "state": "CONN_STATE_CONNECTED", "livePushConnected": true }
+      }
+    },
+    {
+      "event": {
+        "accountRoleChanged": { "isManager": true }
+      }
+    },
+    {
+      "event": {
+        "machinesUpdated": { "listed": true, "machines": [] }
+      }
+    },
+    {
+      "event": {
+        "sessionsPageReceived": { "isRefresh": true, "hasMore": false }
+      },
+      "views": [
+        { "name": "emptyManager", "screen": { "home": {} } }
+      ]
+    },
+    {
+      "event": {
+        "accountRoleChanged": { "isManager": false, "managerDeviceName": "Primary iPhone" }
+      },
+      "views": [
+        { "name": "emptyMember", "screen": { "home": {} } }
+      ]
+    },
+    {
+      "event": {
+        "machinesUpdated": {
+          "listed": true,
+          "machines": [
+            { "machineId": "m-off", "online": false, "meta": { "hostname": "Desktop.local" } }
+          ]
+        }
+      },
+      "views": [
+        { "name": "emptyAllOffline", "screen": { "home": {} } }
+      ]
+    },
+    {
+      "event": {
+        "sessionsPageReceived": { "error": "timeout waiting for relay" }
+      },
+      "views": [
+        { "name": "listFailed", "screen": { "home": {} } }
+      ]
+    },
+    {
+      "event": {
+        "homeRetryLoad": {}
+      }
+    }
+  ]
+}

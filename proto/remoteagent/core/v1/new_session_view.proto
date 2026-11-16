@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+
+message DefaultModeInfo {
+  remoteagent.v1.ApprovalMode mode = 1;
+  bool known = 2;
+  bool varies = 3;
+  Text label = 4;
+}
+
+message NewSessionConfig {
+  string machine_id = 1;
+  remoteagent.v1.Agent agent = 2;
+  string model = 3;
+  string effort = 4;
+  bool standard_context = 5;
+}
+
+enum AutoIssueKind {
+  AUTO_ISSUE_KIND_UNSPECIFIED = 0;
+  AUTO_ISSUE_KIND_NONE = 1;
+  AUTO_ISSUE_KIND_MODEL = 2;
+  AUTO_ISSUE_KIND_ACCOUNT = 3;
+}
+
+enum NoticeKind {
+  NOTICE_KIND_UNSPECIFIED = 0;
+  NOTICE_KIND_ATTACHMENTS_MOVED = 1;
+  NOTICE_KIND_READING_PREVIOUS = 2;
+  NOTICE_KIND_OFFLINE_DRAFT_CHOICES = 3;
+  NOTICE_KIND_MACHINE_OFFLINE = 4;
+  NOTICE_KIND_PROTOCOL_MISMATCH = 5;
+  NOTICE_KIND_MISSING_AGENT = 6;
+  NOTICE_KIND_CONFIG_FALLBACK = 7;
+  NOTICE_KIND_AUTO_UNAVAILABLE = 8;
+  NOTICE_KIND_CONFIG_SAVE_ERROR = 9;
+  NOTICE_KIND_STARTING = 10;
+  NOTICE_KIND_FAILED = 11;
+  NOTICE_KIND_DISK_FULL = 12;
+  NOTICE_KIND_UNKNOWN_START = 13;
+  NOTICE_KIND_PROJECT_REMOVED = 14;
+  NOTICE_KIND_NO_ONLINE_MACHINES = 15;
+}
+
+enum NoticeSeverity {
+  NOTICE_SEVERITY_UNSPECIFIED = 0;
+  NOTICE_SEVERITY_INFO = 1;
+  NOTICE_SEVERITY_WARN = 2;
+  NOTICE_SEVERITY_ERROR = 3;
+}
+
+enum NoticeActionKind {
+  NOTICE_ACTION_KIND_UNSPECIFIED = 0;
+  NOTICE_ACTION_KIND_RETRY_START = 1;
+  NOTICE_ACTION_KIND_ABANDON_START = 2;
+  NOTICE_ACTION_KIND_CHANGE_MACHINE = 3;
+  NOTICE_ACTION_KIND_CHANGE_MODEL = 4;
+  NOTICE_ACTION_KIND_OPEN_MACHINE_SETTINGS = 5;
+  NOTICE_ACTION_KIND_RETRY_SAVE_CONFIG = 6;
+  NOTICE_ACTION_KIND_READD_PROJECT = 7;
+  NOTICE_ACTION_KIND_OPEN_DISK_USAGE = 8;
+  NOTICE_ACTION_KIND_RETRY_READ_SETTINGS = 9;
+}
+
+message OfflineMachineChoiceView {
+  string machine_id = 1;
+  Text title = 2;
+  Text note = 3;
+  NewSessionConfig config = 4;
+}
+
+message NewSessionNoticeView {
+  NoticeKind kind = 1;
+  NoticeSeverity severity = 2;
+  Text text = 3;
+  NoticeActionKind action = 4;
+  string target_machine_id = 5;
+  bool has_draft_choices = 6;
+  Text draft_title = 7;
+  Text draft_subtitle = 8;
+  repeated OfflineMachineChoiceView draft_choices = 9;
+  Text draft_none_text = 10;
+}
+
+message AgentOptionView {
+  remoteagent.v1.Agent agent = 1;
+  string display_name = 2;
+  bool installed = 3;
+  bool selected = 4;
+}
+
+message ModelOptionView {
+  string slug = 1;
+  string display_name = 2;
+  Text fixed_effort_note = 3;
+  bool checked = 4;
+  bool supports_auto = 5;
+  bool supports_1m = 6;
+}
+
+message MachineChoiceView {
+  string machine_id = 1;
+  string name = 2;
+  bool online = 3;
+  bool selected = 4;
+  Text note = 5;
+}
+
+message NewSessionModelPanelView {
+  bool models_loading = 1;
+  Text models_error = 2;
+  Text default_model_label = 3;
+  bool default_model_checked = 4;
+  repeated ModelOptionView models = 5;
+  repeated string effort_choices = 6;
+  string selected_effort = 7;
+  Text effort_title = 8;
+  bool supports_context_window = 9;
+  bool context_fixed = 10;
+  bool standard_context = 11;
+  Text context_note = 12;
+  bool panel_enabled = 13;
+  repeated MachineChoiceView machine_choices = 14;
+  bool can_select_auto_mode = 15;
+}
+
+message NewSessionViewModel {
+  bool project_selectable = 1;
+  string project_key = 2;
+  Text project_name = 3;
+  string short_path = 4;
+  bool has_projects = 5;
+  string prompt = 6;
+  bool drafting = 7;
+  bool busy = 8;
+  bool settled = 9;
+  bool frozen = 10;
+  NewSessionConfig config = 11;
+  string machine_name = 12;
+  bool machine_selectable = 13;
+  string agent_name = 14;
+  repeated AgentOptionView available_agents = 15;
+  Text model_label = 16;
+  string effort_label = 17;
+  DefaultModeInfo default_mode = 18;
+  Text location_text = 19;
+  repeated NewSessionNoticeView notices = 20;
+  bool can_start = 21;
+  Text disabled_reason = 22;
+  NewSessionModelPanelView model_panel = 23;
+  bool project_removed = 24;
+  AutoIssueKind auto_issue = 25;
+}

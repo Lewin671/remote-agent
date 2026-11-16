@@ -1631,5 +1631,142 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "new_session.reading_cli",
+    "zh-CN": "正在读取 {agent} 上次的设置…",
+    "en": "Reading previous settings for {agent}…",
+    "notes": "读取选定 CLI 上次项目设置时的提示；agent 为 CLI 名。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.offline_draft",
+    "zh-CN": "{name} 已离线，任务尚未开始",
+    "en": "{name} is offline. The task has not started.",
+    "notes": "原选定电脑离线但草稿保留时的标题。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.draft_kept",
+    "zh-CN": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。",
+    "en": "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.",
+    "notes": "离线草稿多电脑选择卡片的说明副标题。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.others_offline",
+    "zh-CN": "{name} 用过的其他电脑也都不在线。",
+    "en": "The other computers used by {name} are also offline.",
+    "notes": "该项目曾用过的其他电脑全部离线时显示在选项下方的提示。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "app"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.offline_no_start_named",
+    "zh-CN": "{name} 不在线，现在不能新建",
+    "en": "{name} is offline. Cannot start a session now.",
+    "notes": "目标电脑离线时阻止发送的横幅或禁用原因。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.expired_start_prompt",
+    "zh-CN": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
+    "en": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check active sessions first.",
+    "notes": "待确认的启动请求过期后提示，附带当时首句预览。",
+    "params": {
+      "prompt": {
+        "type": "string",
+        "example": "修一下测试"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.unknown_start_retry",
+    "zh-CN": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
+    "en": "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.",
+    "notes": "带首句已填入时的可幂等重试提示。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

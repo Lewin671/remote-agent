@@ -249,7 +249,7 @@ func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
 	g.P("func (m *", name, ") Clone() *", name, " {")
 	g.P("\tif m == nil { return nil }")
 	g.P("\tcp := *m")
-	cloneSlices := g.QualifiedGoIdent(slicesPkg.Ident("Clone"))
+	cloneSlices := func() string { return g.QualifiedGoIdent(slicesPkg.Ident("Clone")) }
 	emittedOneofs := make(map[string]bool)
 	for _, f := range msg.Fields {
 		if isRealOneof(f) {
@@ -266,7 +266,7 @@ func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
 				case protoreflect.MessageKind:
 					g.P("\t\t\tcp.", f.Oneof.GoName, " = &", wrap, "{", of.GoName, ": v.", of.GoName, ".Clone()}")
 				case protoreflect.BytesKind:
-					g.P("\t\t\tcp.", f.Oneof.GoName, " = &", wrap, "{", of.GoName, ": ", cloneSlices, "(v.", of.GoName, ")}")
+					g.P("\t\t\tcp.", f.Oneof.GoName, " = &", wrap, "{", of.GoName, ": ", cloneSlices(), "(v.", of.GoName, ")}")
 				default:
 					g.P("\t\t\tw := *v; cp.", f.Oneof.GoName, " = &w")
 				}
@@ -284,7 +284,7 @@ func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
 			if valField.Desc.Kind() == protoreflect.MessageKind {
 				g.P("\t\t\tcp.", f.GoName, "[k] = v.Clone()")
 			} else if valField.Desc.Kind() == protoreflect.BytesKind {
-				g.P("\t\t\tcp.", f.GoName, "[k] = ", cloneSlices, "(v)")
+				g.P("\t\t\tcp.", f.GoName, "[k] = ", cloneSlices(), "(v)")
 			} else {
 				g.P("\t\t\tcp.", f.GoName, "[k] = v")
 			}
@@ -300,17 +300,17 @@ func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
 			case protoreflect.BytesKind:
 				g.P("\tif m.", f.GoName, " != nil {")
 				g.P("\t\tcp.", f.GoName, " = make(", fieldGoType(g, f), ", len(m.", f.GoName, "))")
-				g.P("\t\tfor i, v := range m.", f.GoName, " { cp.", f.GoName, "[i] = ", cloneSlices, "(v) }")
+				g.P("\t\tfor i, v := range m.", f.GoName, " { cp.", f.GoName, "[i] = ", cloneSlices(), "(v) }")
 				g.P("\t}")
 			default:
-				g.P("\tcp.", f.GoName, " = ", cloneSlices, "(m.", f.GoName, ")")
+				g.P("\tcp.", f.GoName, " = ", cloneSlices(), "(m.", f.GoName, ")")
 			}
 		case isOptionalPtr(f):
 			g.P("\tif m.", f.GoName, " != nil { v := *m.", f.GoName, "; cp.", f.GoName, " = &v }")
 		case f.Desc.Kind() == protoreflect.MessageKind:
 			g.P("\tcp.", f.GoName, " = m.", f.GoName, ".Clone()")
 		case f.Desc.Kind() == protoreflect.BytesKind:
-			g.P("\tcp.", f.GoName, " = ", cloneSlices, "(m.", f.GoName, ")")
+			g.P("\tcp.", f.GoName, " = ", cloneSlices(), "(m.", f.GoName, ")")
 		}
 	}
 	g.P("\treturn &cp")

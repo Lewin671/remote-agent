@@ -417,5 +417,51 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "models.reading_machine",
+    "zh-CN": "读取 {name} 的设置…",
+    "en": "Reading settings from {name}…",
+    "notes": "正在从目标电脑读取可用模型与默认设置。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "models.load_failed_reason",
+    "zh-CN": "没能读取模型列表，会用 {agent} 自己的默认模型：{reason}",
+    "en": "Could not load models. Using {agent}’s own default model: {reason}",
+    "notes": "读取模型列表失败但仍可回退默认模型时提示。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      },
+      "reason": {
+        "type": "string",
+        "example": "timeout"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

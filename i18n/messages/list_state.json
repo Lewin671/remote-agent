@@ -342,5 +342,53 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "list_state.new_session",
+    "zh-CN": "新会话",
+    "en": "New session",
+    "notes": "会话还没有具体标题或第一句消息时的默认显示标题。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.request_command_plain",
+    "zh-CN": "请求执行",
+    "en": "Request to run",
+    "notes": "审批卡无具体命令预览时的标题。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "list_state.request_permission_plain",
+    "zh-CN": "请求权限",
+    "en": "Permission requested",
+    "notes": "权限审批无具体工具名时的标题。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

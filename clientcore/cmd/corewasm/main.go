@@ -13,6 +13,7 @@ var (
 	mu          sync.Mutex
 	nextHandle  int64 = 1
 	projections       = make(map[int64]*corebind.Projection)
+	cores             = make(map[int64]*corebind.Core)
 )
 
 func bytesFromJS(v js.Value) []byte {
@@ -49,8 +50,68 @@ func lookup(handle int64) *corebind.Projection {
 	return projections[handle]
 }
 
+func lookupCore(handle int64) *corebind.Core {
+	mu.Lock()
+	defer mu.Unlock()
+	return cores[handle]
+}
+
 func main() {
 	api := js.Global().Get("Object").New()
+
+	api.Set("new", js.FuncOf(func(_ js.Value, _ []js.Value) any {
+		mu.Lock()
+		id := nextHandle
+		nextHandle++
+		cores[id] = corebind.New()
+		mu.Unlock()
+		return float64(id)
+	}))
+
+	api.Set("dispatch", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		if len(args) < 1 {
+			return map[string]any{"error": "missing handle"}
+		}
+		c := lookupCore(int64(args[0].Float()))
+		if c == nil {
+			return map[string]any{"error": "unknown handle"}
+		}
+		var raw []byte
+		if len(args) > 1 {
+			raw = bytesFromJS(args[1])
+		}
+		return resultBytes(c.Dispatch(raw))
+	}))
+
+	api.Set("view", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		if len(args) < 1 {
+			return map[string]any{"error": "missing handle"}
+		}
+		c := lookupCore(int64(args[0].Float()))
+		if c == nil {
+			return map[string]any{"error": "unknown handle"}
+		}
+		var raw []byte
+		if len(args) > 1 {
+			raw = bytesFromJS(args[1])
+		}
+		return resultBytes(c.View(raw))
+	}))
+
+	api.Set("close", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		if len(args) < 1 {
+			return nil
+		}
+		id := int64(args[0].Float())
+		mu.Lock()
+		c := cores[id]
+		delete(cores, id)
+		mu.Unlock()
+		if c != nil {
+			c.Close()
+		}
+		return nil
+	}))
 
 	api.Set("newProjection", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		var agent int32

@@ -1,0 +1,83 @@
+{
+  "steps": [
+    {
+      "event": {
+        "clockUpdated": { "nowMs": "1791078060000", "todayStartMs": "1791043200000", "yesterdayStartMs": "1790956800000", "weekStartMs": "1790524800000", "nowYear": 2026, "utcOffsetMinutes": 480 }
+      }
+    },
+    {
+      "event": { "connectionChanged": { "state": "CONN_STATE_CONNECTED", "livePushConnected": true } }
+    },
+    {
+      "event": {
+        "machinesUpdated": {
+          "listed": true,
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "MacBook.local",
+                "home": "/Users/me",
+                "projects": [
+                  { "path": "/Users/me/Code/app", "ended": 4, "latestCreatedMs": "1791070000000" }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "prefsUpdated": { "loaded": true, "prefs": { "schema": 1 } }
+      }
+    },
+    {
+      "event": {
+        "sessionsPageReceived": {
+          "isRefresh": true,
+          "sessions": [
+            { "sessionId": "s1", "machineId": "m1", "updatedMs": "1791070000000", "info": { "id": "s1", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 1", "endedAt": "2026-10-04T00:00:00Z" } },
+            { "sessionId": "s2", "machineId": "m1", "updatedMs": "1791069000000", "info": { "id": "s2", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 2", "endedAt": "2026-10-03T23:50:00Z" } },
+            { "sessionId": "s3", "machineId": "m1", "updatedMs": "1791068000000", "info": { "id": "s3", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 3", "endedAt": "2026-10-03T23:40:00Z" } },
+            { "sessionId": "s4", "machineId": "m1", "updatedMs": "1791067000000", "info": { "id": "s4", "cwd": "/Users/me/Code/app", "status": "SESSION_STATUS_EXITED", "title": "Fix 4", "endedAt": "2026-10-03T23:30:00Z" } }
+          ]
+        }
+      },
+      "views": [
+        { "name": "detailInitial", "screen": { "project": { "projectKey": "/Users/me/Code/app", "endedLimit": 2 } } },
+        { "name": "manageInitial", "screen": { "project": { "manage": true } } }
+      ]
+    },
+    {
+      "event": { "projectTogglePin": { "projectKey": "/Users/me/Code/app" } },
+      "views": [
+        { "name": "managePinning", "screen": { "project": { "manage": true } } }
+      ]
+    },
+    {
+      "event": { "projectOpenDirPicker": { "machineId": "m1", "forNewTask": true } }
+    },
+    {
+      "event": {
+        "dirListingReceived": {
+          "requestId": "dir-4",
+          "machineId": "m1",
+          "path": "/Users/me",
+          "parentPath": "/Users",
+          "dirs": [{ "name": "Code", "path": "/Users/me/Code" }]
+        }
+      },
+      "views": [
+        { "name": "manageDirPicker", "screen": { "project": { "manage": true } } }
+      ]
+    },
+    {
+      "event": { "projectAdd": { "path": "/Users/me/Code/fresh" } },
+      "views": [
+        { "name": "detailAfterAdd", "screen": { "project": { "projectKey": "/Users/me/Code/app", "endedLimit": 10 } } }
+      ]
+    }
+  ]
+}

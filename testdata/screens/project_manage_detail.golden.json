@@ -1,0 +1,665 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sendCommand": {
+              "requestId": "cmd-1",
+              "machineId": "m1",
+              "command": {
+                "listModels": {
+                  "agent": "AGENT_CODEX"
+                }
+              }
+            }
+          },
+          {
+            "sendCommand": {
+              "requestId": "cmd-2",
+              "machineId": "m1",
+              "command": {
+                "getSettings": {}
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "detailInitial": {
+          "project": {
+            "kind": "PROJECT_VIEW_KIND_DETAIL",
+            "detail": {
+              "key": "/Users/me/Code/app",
+              "name": {
+                "literal": "app"
+              },
+              "shortPath": "~/Code/app",
+              "subtitle": {
+                "join": [
+                  {
+                    "literal": "~/Code/app"
+                  },
+                  {
+                    "literal": "MacBook"
+                  }
+                ],
+                "separatorLiteral": " · "
+              },
+              "machineIds": [
+                "m1"
+              ],
+              "machineNames": [
+                "MacBook"
+              ],
+              "anyOnline": true,
+              "endedTotal": 4,
+              "ended": [
+                {
+                  "sessionId": "s1",
+                  "machineId": "m1",
+                  "title": {
+                    "literal": "Fix 1"
+                  },
+                  "right": {
+                    "key": "time.today_clock",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "8"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "00"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "sessionId": "s2",
+                  "machineId": "m1",
+                  "title": {
+                    "literal": "Fix 2"
+                  },
+                  "right": {
+                    "key": "time.today_clock",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "7"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "50"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "tail": {
+                "kind": "TAIL_KIND_MORE_ENDED",
+                "text": {
+                  "key": "home.total",
+                  "args": [
+                    {
+                      "name": "count",
+                      "intValue": "4"
+                    }
+                  ]
+                }
+              },
+              "hiddenNotice": {
+                "text": {
+                  "key": "projects.removed"
+                },
+                "actionEnabled": true
+              },
+              "canStart": true,
+              "canPin": true,
+              "canRemove": true,
+              "hasMoreEnded": true
+            }
+          }
+        },
+        "manageInitial": {
+          "project": {
+            "kind": "PROJECT_VIEW_KIND_MANAGE",
+            "manage": {
+              "listing": {
+                "others": [
+                  {
+                    "key": "/Users/me/Code/app",
+                    "name": {
+                      "literal": "app"
+                    },
+                    "shortPath": "~/Code/app",
+                    "subtitle": {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.hours_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "2"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "canEdit": true,
+              "dirPicker": {
+                "machines": [
+                  {
+                    "machineId": "m1",
+                    "name": "MacBook",
+                    "online": true,
+                    "statusText": {
+                      "key": "common.online"
+                    },
+                    "home": "/Users/me"
+                  }
+                ],
+                "crumbs": [
+                  {
+                    "label": {
+                      "literal": "/"
+                    },
+                    "path": "/"
+                  }
+                ]
+              },
+              "projectCount": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "saveProjectPrefs": {
+              "opId": "op-3",
+              "kind": "PROJECT_PREFS_OP_KIND_PIN",
+              "path": "/Users/me/Code/app",
+              "atMs": "1791078060000",
+              "nextPrefs": {
+                "schema": 1,
+                "pinned": [
+                  {
+                    "path": "/Users/me/Code/app",
+                    "sinceMs": "1791078060000"
+                  }
+                ],
+                "recentOps": [
+                  "op-3"
+                ]
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "managePinning": {
+          "project": {
+            "kind": "PROJECT_VIEW_KIND_MANAGE",
+            "manage": {
+              "listing": {
+                "pinned": [
+                  {
+                    "key": "/Users/me/Code/app",
+                    "name": {
+                      "literal": "app"
+                    },
+                    "shortPath": "~/Code/app",
+                    "subtitle": {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.hours_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "2"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "pinned": true,
+                    "syncing": true
+                  }
+                ]
+              },
+              "canEdit": true,
+              "dirPicker": {
+                "machines": [
+                  {
+                    "machineId": "m1",
+                    "name": "MacBook",
+                    "online": true,
+                    "statusText": {
+                      "key": "common.online"
+                    },
+                    "home": "/Users/me"
+                  }
+                ],
+                "crumbs": [
+                  {
+                    "label": {
+                      "literal": "/"
+                    },
+                    "path": "/"
+                  }
+                ]
+              },
+              "projectCount": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sendCommand": {
+              "requestId": "dir-4",
+              "machineId": "m1",
+              "command": {
+                "listDirectories": {
+                  "path": "/Users/me"
+                }
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_PROJECT"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_PROJECT"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "manageDirPicker": {
+          "project": {
+            "kind": "PROJECT_VIEW_KIND_MANAGE",
+            "manage": {
+              "listing": {
+                "pinned": [
+                  {
+                    "key": "/Users/me/Code/app",
+                    "name": {
+                      "literal": "app"
+                    },
+                    "shortPath": "~/Code/app",
+                    "subtitle": {
+                      "key": "time.used_time",
+                      "args": [
+                        {
+                          "name": "time",
+                          "textValue": {
+                            "key": "time.hours_ago",
+                            "args": [
+                              {
+                                "name": "count",
+                                "intValue": "2"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "pinned": true,
+                    "syncing": true
+                  }
+                ]
+              },
+              "canEdit": true,
+              "dirPicker": {
+                "open": true,
+                "forNewTask": true,
+                "machines": [
+                  {
+                    "machineId": "m1",
+                    "name": "MacBook",
+                    "online": true,
+                    "statusText": {
+                      "key": "common.online"
+                    },
+                    "home": "/Users/me"
+                  }
+                ],
+                "machineId": "m1",
+                "currentPath": "/Users/me",
+                "crumbs": [
+                  {
+                    "label": {
+                      "literal": "~"
+                    },
+                    "path": "~"
+                  }
+                ],
+                "parentPath": "/Users",
+                "dirs": [
+                  {
+                    "name": "Code",
+                    "path": "/Users/me/Code"
+                  }
+                ],
+                "confirmLabel": {
+                  "key": "projects.use_directory",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "me"
+                    }
+                  ]
+                },
+                "canConfirm": true
+              },
+              "projectCount": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "saveProjectPrefs": {
+              "opId": "op-5",
+              "kind": "PROJECT_PREFS_OP_KIND_SET_SETTINGS",
+              "path": "/Users/me/Code/fresh",
+              "settings": {
+                "path": "/Users/me/Code/fresh",
+                "machineId": "m1",
+                "updatedMs": "1791078060000",
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX"
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE"
+                  },
+                  {
+                    "agent": "AGENT_ANTIGRAVITY"
+                  }
+                ]
+              },
+              "atMs": "1791078060000",
+              "nextPrefs": {
+                "schema": 1,
+                "pinned": [
+                  {
+                    "path": "/Users/me/Code/app",
+                    "sinceMs": "1791078060000"
+                  }
+                ],
+                "recentOps": [
+                  "op-3",
+                  "op-5"
+                ],
+                "settings": [
+                  {
+                    "path": "/Users/me/Code/fresh",
+                    "machineId": "m1",
+                    "updatedMs": "1791078060000",
+                    "agents": [
+                      {
+                        "agent": "AGENT_CODEX"
+                      },
+                      {
+                        "agent": "AGENT_CLAUDE"
+                      },
+                      {
+                        "agent": "AGENT_ANTIGRAVITY"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "detailAfterAdd": {
+          "project": {
+            "kind": "PROJECT_VIEW_KIND_DETAIL",
+            "detail": {
+              "key": "/Users/me/Code/app",
+              "name": {
+                "literal": "app"
+              },
+              "shortPath": "~/Code/app",
+              "subtitle": {
+                "join": [
+                  {
+                    "literal": "~/Code/app"
+                  },
+                  {
+                    "literal": "MacBook"
+                  }
+                ],
+                "separatorLiteral": " · "
+              },
+              "machineIds": [
+                "m1"
+              ],
+              "machineNames": [
+                "MacBook"
+              ],
+              "anyOnline": true,
+              "endedTotal": 4,
+              "ended": [
+                {
+                  "sessionId": "s1",
+                  "machineId": "m1",
+                  "title": {
+                    "literal": "Fix 1"
+                  },
+                  "right": {
+                    "key": "time.today_clock",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "8"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "00"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "sessionId": "s2",
+                  "machineId": "m1",
+                  "title": {
+                    "literal": "Fix 2"
+                  },
+                  "right": {
+                    "key": "time.today_clock",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "7"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "50"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "sessionId": "s3",
+                  "machineId": "m1",
+                  "title": {
+                    "literal": "Fix 3"
+                  },
+                  "right": {
+                    "key": "time.today_clock",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "7"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "40"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "sessionId": "s4",
+                  "machineId": "m1",
+                  "title": {
+                    "literal": "Fix 4"
+                  },
+                  "right": {
+                    "key": "time.today_clock",
+                    "args": [
+                      {
+                        "name": "value",
+                        "strValue": "7"
+                      },
+                      {
+                        "name": "detail",
+                        "strValue": "30"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "isPinned": true,
+              "hiddenNotice": {
+                "text": {
+                  "key": "projects.removed"
+                },
+                "busy": true
+              },
+              "canStart": true,
+              "saveStatus": {
+                "key": "common.saving"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

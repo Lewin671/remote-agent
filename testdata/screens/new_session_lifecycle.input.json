@@ -1,0 +1,115 @@
+{
+  "steps": [
+    {
+      "event": {
+        "clockUpdated": { "nowMs": "1791078060000", "todayStartMs": "1791043200000", "yesterdayStartMs": "1790956800000", "weekStartMs": "1790524800000", "nowYear": 2026, "utcOffsetMinutes": 480 }
+      }
+    },
+    { "event": { "connectionChanged": { "state": "CONN_STATE_CONNECTED", "livePushConnected": true } } },
+    {
+      "event": {
+        "machinesUpdated": {
+          "listed": true,
+          "clientProtocolVersion": 14,
+          "machines": [
+            {
+              "machineId": "m-off",
+              "online": false,
+              "protocolVersion": 14,
+              "meta": {
+                "hostname": "OldMac.local",
+                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" }],
+                "projects": [{ "path": "/Users/me/Code/app", "ended": 1, "latestCreatedMs": "1791000000000" }]
+              }
+            },
+            {
+              "machineId": "m-on",
+              "online": true,
+              "protocolVersion": 14,
+              "meta": {
+                "hostname": "Workstation.local",
+                "agents": [
+                  { "agent": "AGENT_CLAUDE", "defaultMode": "APPROVAL_MODE_AUTO", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" },
+                  { "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK", "defaultModeSource": "DEFAULT_MODE_SOURCE_CLI_CONFIG" }
+                ],
+                "projects": [{ "path": "/Users/me/Code/app", "ended": 1, "latestCreatedMs": "1790900000000" }]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "prefsUpdated": {
+          "loaded": true,
+          "prefs": {
+            "schema": 1,
+            "settings": [{ "path": "/Users/me/Code/app", "machineId": "m-off", "agent": "AGENT_CODEX" }]
+          }
+        }
+      }
+    },
+    {
+      "event": { "newSessionOpen": { "projectKey": "/Users/me/Code/app" } },
+      "views": [
+        { "name": "offlineInit", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+      ]
+    },
+    {
+      "event": { "newSessionSetPrompt": { "prompt": "Fix broken build" } },
+      "views": [
+        { "name": "offlineWithDraftChoices", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+      ]
+    },
+    {
+      "event": { "newSessionSelectMachine": { "machineId": "m-on" } }
+    },
+    {
+      "event": { "newSessionSelectAgent": { "agent": "AGENT_CLAUDE" } }
+    },
+    {
+      "event": {
+        "machineModelsReceived": {
+          "machineId": "m-on",
+          "agent": "AGENT_CLAUDE",
+          "response": {
+            "defaultModel": "claude-haiku",
+            "models": [
+              { "slug": "claude-haiku", "displayName": "Haiku 4.5", "autoUnavailable": true, "contextWindow": "200000" },
+              { "slug": "claude-sonnet", "displayName": "Sonnet 5.5", "efforts": ["low", "medium", "high"], "defaultEffort": "medium", "contextWindow": "1000000" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "event": { "newSessionSelectModel": { "model": "claude-sonnet", "effort": "high" } },
+      "views": [
+        { "name": "readyToSubmit", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+      ]
+    },
+    {
+      "event": { "newSessionSubmit": { "projectKey": "/Users/me/Code/app" } }
+    },
+    {
+      "event": {
+        "createSessionResult": { "requestId": "create-4", "unknown": true, "error": "ack lost" }
+      },
+      "views": [
+        { "name": "unknownRetry", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+      ]
+    },
+    {
+      "event": { "newSessionSubmit": { "projectKey": "/Users/me/Code/app" } }
+    },
+    {
+      "event": {
+        "createSessionResult": { "requestId": "create-4", "outcome": "executed", "sessionId": "s-created" }
+      },
+      "views": [
+        { "name": "afterExecuted", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+      ]
+    }
+  ]
+}

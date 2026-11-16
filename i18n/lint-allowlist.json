@@ -2538,5 +2538,60 @@
     "path": "cmd/protoc-gen-go-lite/main.go",
     "literal": "unsupported raw scalar kind: %v",
     "reason": "Build-time code generator panic diagnostic, never shipped to end users."
+  },
+  {
+    "path": "clientcore/projection/helpers.go",
+    "literal": "\\n…（remote-agent：内容过大，请在终端查看/回答）",
+    "reason": "Relay wire marker suffix checked when classifying skeleton events; never emitted as UI copy."
+  },
+  {
+    "path": "clientcore/domain/lists/text_helpers.go",
+    "literal": "\\n…（remote-agent：内容过长，已截断）",
+    "reason": "Relay wire marker suffix checked by ApprovalTruncated; UI displays approval.truncated instead."
+  },
+  {
+    "path": "clientcore/domain/lists/text_helpers.go",
+    "literal": "(推荐)",
+    "reason": "CLI-native option recommendation marker parsed by OptionLabel; never displayed as product copy."
+  },
+  {
+    "path": "clientcore/cmd/corewasm/main.go",
+    "literal": "data",
+    "reason": "WASM JS bridge response object property key."
+  },
+  {
+    "path": "clientcore/cmd/corewasm/main.go",
+    "literal": "newProjection",
+    "reason": "WASM JS bridge exported global API method name."
+  },
+  {
+    "path": "clientcore/app/core.go",
+    "literal": "app: nil screen request",
+    "reason": "Developer sentinel error returned over internal Core.View contract; never displayed as product copy."
+  },
+  {
+    "path": "clientcore/app/core.go",
+    "literal": "app: core closed",
+    "reason": "Developer sentinel error returned over internal Core.View contract; never displayed as product copy."
+  },
+  {
+    "path": "clientcore/app/core.go",
+    "literal": "app: unsupported screen",
+    "reason": "Developer sentinel error returned over internal Core.View contract; never displayed as product copy."
+  },
+  {
+    "path": "clientcore/corebind/core.go",
+    "literal": "corebind: nil Core handle",
+    "reason": "Developer sentinel error returned for nil Core handle over FFI/WASM contract; never displayed as product copy."
+  },
+  {
+    "path": "clientcore/cmd/corewasm/main.go",
+    "literal": "new",
+    "reason": "WASM JS bridge exported global API method name or internal RPC diagnostic error; never displayed as product copy."
+  },
+  {
+    "path": "clientcore/cmd/corewasm/main.go",
+    "literal": "dispatch",
+    "reason": "WASM JS bridge exported global API method name or internal RPC diagnostic error; never displayed as product copy."
   }
 ]
