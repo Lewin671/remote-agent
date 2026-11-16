@@ -350,7 +350,7 @@ final class DirectEngine: @unchecked Sendable {
             guard peers[id] === p else { return }
             if use != nil && p.session.live && p.session.established {
                 if p.redialAt == nil { p.redialAt = clock.now() + delay(id, p) }
-                trace?("direct: use \(use!) closed, redial in \((p.redialAt ?? 0) &- clock.now()) ms")
+                trace?("direct: use \(use!) closed, redial in \(Int64(bitPattern: (p.redialAt ?? 0) &- clock.now())) ms")
                 routingLocked(id).fail()
             }
             if !p.paths.values.contains(where: { $0.usable }) {

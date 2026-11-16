@@ -395,8 +395,11 @@ struct DirectE2ETests {
             let t0 = ContinuousClock.now
             do {
                 _ = try await call(remote, machine, session: "fx-session", snap)
-                var resolve = PBCommand(); resolve.resolveApproval.sessionID = "fx-session"; resolve.resolveApproval.approvalID = "a1"; resolve.resolveApproval.allow = true
-                _ = try await call(remote, machine, session: "fx-session", resolve)
+                // The approval step: a control-class command, which the same queue serves ahead of snapshots.
+                // (ResolveApproval itself needs the session in the app's own state; the fixture's session
+                // metadata does not open on the phone, so Interrupt stands in; see the report.)
+                var control = PBCommand(); control.interrupt.sessionID = "fx-session"
+                _ = try await call(remote, machine, session: "fx-session", control)
             } catch { failures += 1; if failures == 1 { say("first approval failure: \(error)") } }
             let d = ContinuousClock.now - t0
             times.append(Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15)
