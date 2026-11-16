@@ -419,7 +419,7 @@ class Remote(
     private val securityStorage: DeviceSecurity.Storage? = null,
     tokenStorage: LoginTokenStore? = null,
     private val scheduleSeen: ScheduleSeen = ScheduleSeen(),
-    private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    dispatcher: kotlinx.coroutines.CoroutineDispatcher? = null,
     private val socketFactory: WebSocket.Factory? = null,
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
     private val onSessionRemoved: suspend (String) -> Unit = {},
@@ -428,13 +428,16 @@ class Remote(
     private val directPrefs: DirectPreferenceStore = InMemoryDirectPreferenceStore(),
     private val stunUrls: List<String>? = null,
 ) {
+    private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
+    private val cpuDispatcher: kotlinx.coroutines.CoroutineDispatcher = if (dispatcher == null) Dispatchers.Default else this.dispatcher
+    private val directDispatcher: kotlinx.coroutines.CoroutineDispatcher = if (dispatcher == null) Dispatchers.IO.limitedParallelism(1) else this.dispatcher
     private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     @Volatile private var relayObservation = RemoteState()
     private val directReadSamples = HashSet<String>()
     private val directTransfers = LinkedHashMap<String, UploadKind>()
-    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val scope = CoroutineScope(SupervisorJob() + this.dispatcher)
     internal val direct: DirectEngine = DirectEngine(
         account = account,
         rtcFactory = rtcFactory,
@@ -444,7 +447,7 @@ class Remote(
         clock = clock,
         monotonic = monotonic,
         stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
-        dispatcher = dispatcher,
+        dispatcher = directDispatcher,
     )
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
@@ -701,7 +704,7 @@ class Remote(
                     } catch (e: Exception) {
                         if (e is CancellationException) throw e
                     }
-                    val remaining = 15_000L - (monotonic() - startedAt)
+                    val remaining = 12_000L - (monotonic() - startedAt)
                     if (remaining > 0L) delay(remaining)
                 }
             }
@@ -3556,18 +3559,22 @@ class Remote(
                         throw CommandException("failed_precondition", UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText())
                     if (!Authority.leaseValid(security.record(), clock()))
                         throw CommandException("failed_precondition", localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) })
-                    security.seal(
-                        DeviceSecurity.Purpose.COMMAND,
-                        p.machineId,
-                        p.sessionId,
-                        p.requestId,
-                        deadline = p.deadlineMs.toULong(),
-                        plain = checkNotNull(p.commandBytes()),
-                    )
+                    kotlinx.coroutines.withContext(cpuDispatcher) {
+                        security.seal(
+                            DeviceSecurity.Purpose.COMMAND,
+                            p.machineId,
+                            p.sessionId,
+                            p.requestId,
+                            deadline = p.deadlineMs.toULong(),
+                            plain = checkNotNull(p.commandBytes()),
+                        )
+                    }
                 } else {
-                    val (h, plain) = security.openOwnCommand(p.envelope)
-                    if (h.machine != p.machineId || h.session != p.sessionId || h.request != p.requestId || h.deadline != p.deadlineMs.toULong()) throw DeviceSecurity.Failure()
-                    security.seal(DeviceSecurity.Purpose.COMMAND, h.machine, h.session, h.request, deadline = h.deadline, plain = plain)
+                    kotlinx.coroutines.withContext(cpuDispatcher) {
+                        val (h, plain) = security.openOwnCommand(p.envelope)
+                        if (h.machine != p.machineId || h.session != p.sessionId || h.request != p.requestId || h.deadline != p.deadlineMs.toULong()) throw DeviceSecurity.Failure()
+                        security.seal(DeviceSecurity.Purpose.COMMAND, h.machine, h.session, h.request, deadline = h.deadline, plain = plain)
+                    }
                 }
             p.authorizedEnvelope = env
             env
@@ -3664,7 +3671,7 @@ class Remote(
                     }
                     delivery.prepare(prior = false)
                     val authorized = authorize(probeCmd, retryOfUnknown = false)
-                    val binding = security.commandIdentity(authorized)
+                    val binding = kotlinx.coroutines.withContext(cpuDispatcher) { security.commandIdentity(authorized) }
                     val startedMs = monotonic()
                     val startedNs = System.nanoTime()
                     val res = delivery.send(machineId, authorized)
@@ -3750,7 +3757,7 @@ class Remote(
                     val authorized = authorize(p,retryOfUnknown=call.hasPrior)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
-                    val binding = security.commandIdentity(authorized)
+                    val binding = kotlinx.coroutines.withContext(cpuDispatcher) { security.commandIdentity(authorized) }
                     if (clock() >= recoveryDeadline) throw forwardLifetimeExpired()
                     val res = recovery.follow { delivery.send(p.machineId, authorized) }
                     val (_, msg) =
@@ -4374,12 +4381,14 @@ class Remote(
         val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
         val (header, m) =
             try {
-                security.openMessage(
-                    env,
-                    history,
-                    seed,
-                    parse,
-                )
+                kotlinx.coroutines.withContext(cpuDispatcher) {
+                    security.openMessage(
+                        env,
+                        history,
+                        seed,
+                        parse,
+                    )
+                }
             } catch (e: RecoveryHistoryUnavailable) {
                 Envelopes.expect(
                     projection(e.header),

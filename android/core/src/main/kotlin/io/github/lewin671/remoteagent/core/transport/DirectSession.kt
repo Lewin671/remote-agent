@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -101,6 +102,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
     @Volatile private var sawTraversal = false
 
     private val tickJob: Job
+    private val mailbox = Channel<suspend () -> Unit>(Channel.UNLIMITED)
 
     init {
         val now = options.clock()
@@ -117,6 +119,13 @@ internal class DirectSession(val options: DirectSessionOptions) {
         pcs = arrayOf(makePc(1), makePc(2))
         boot = Sender(options.deadline)
         retainUntil = options.deadline + 300_000L
+
+        scope.launch {
+            for (work in mailbox) {
+                if (endedFlag.get()) break
+                runCatching { work() }
+            }
+        }
 
         tickJob = scope.launch {
             while (isActive && !endedFlag.get()) {
@@ -144,9 +153,9 @@ internal class DirectSession(val options: DirectSessionOptions) {
     val peer: Wire.Identity get() = pcs[0].gate.peer
     val active: Boolean get() = !endedFlag.get() && !retiredFlag.get() && options.valid()
 
-    private fun queue(work: suspend () -> Unit): Job = scope.launch {
+    private fun queue(work: suspend () -> Unit) {
         if (!endedFlag.get()) {
-            runCatching { work() }
+            mailbox.trySend(work)
         }
     }
 
@@ -736,6 +745,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
             if (ch != null) toClose.add(ch)
         }
         actorJob.cancel()
+        mailbox.close()
         for (ch in toClose) runCatching { ch.close() }
         if (!retiredFlag.get()) options.closeReason?.invoke(reason)
         options.closed(null)

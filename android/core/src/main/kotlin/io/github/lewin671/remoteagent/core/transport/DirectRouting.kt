@@ -144,8 +144,10 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
         hint as RouteHint.Bulk
         val file = file(hint.file, t)
         advanceBulk(hint, file, t)
-        filePath = path
-        if (bytes <= 0) return@synchronized
+        if (bytes <= 0) {
+            filePath = file.preferred
+            return@synchronized
+        }
         val measured = if (path == RouteName.DIRECT) file.measuredDirect else file.measuredRelay
         val recent = if (path == RouteName.DIRECT) file.recentDirect else file.recentRelay
         measured.bytes += bytes
@@ -175,6 +177,7 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
                 file.measuring = RouteName.RELAY
             }
         }
+        filePath = file.preferred
     }
 
     private fun p95(samples: Collection<Sample>): Double {

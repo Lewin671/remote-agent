@@ -113,6 +113,7 @@ internal class DirectChannelOptions(
     val clock: () -> Long = System::currentTimeMillis,
     val monotonic: () -> Long = ::monotonicMillis,
     val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    val receiveDispatcher: CoroutineDispatcher = Dispatchers.Default,
 )
 
 /** Framed DataChannel adapter. SDK objects, SDP and candidates stay below Link. */
@@ -132,6 +133,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     private val stateLock = Any()
     private val writeMutex = Mutex()
     private val wake = Channel<Unit>(Channel.CONFLATED)
+    private val incoming = Channel<ByteArray>(Channel.UNLIMITED)
 
     @Volatile private var confirmed = false
     @Volatile private var stunReady = false
@@ -203,11 +205,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                         close()
                         return
                     }
-                    try {
-                        receive(data)
-                    } catch (_: Exception) {
-                        close()
-                    }
+                    incoming.trySend(data)
                 }
             }
             val probeListener = object : RtcDataChannelListener {
@@ -242,10 +240,22 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             throw PathChanged()
         }
 
+        scope.launch(options.receiveDispatcher) {
+            for (msg in incoming) {
+                if (!valid()) break
+                try {
+                    receive(msg)
+                } catch (_: Exception) {
+                    close()
+                    break
+                }
+            }
+        }
+
         tickJob = scope.launch {
             while (isActive && !ended) {
                 delay(100)
-                if (!valid()) {
+                if (!valid() || (confirmed && (data.state() == RtcChannelState.CLOSED || probe.state() == RtcChannelState.CLOSED))) {
                     close()
                     return@launch
                 }
@@ -386,7 +396,10 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 throw PathChanged()
             }
             if (index == 0) handoff()
-            if (!data.send(frame, true)) throw PathChanged()
+            if (!data.send(frame, true)) {
+                close()
+                throw PathChanged()
+            }
         }
     }
 
@@ -499,6 +512,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         for (raw in toFreeWaiting) options.budget.free(options.peer, 1, raw.size, 1)
         probes.clear()
         wake.close()
+        incoming.close()
         tickJob.cancel()
         lifetimeJob.cancel()
         cleanup(

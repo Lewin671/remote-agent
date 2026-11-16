@@ -414,10 +414,12 @@ internal class DirectEngine(
                                 routingLocked(id).fail()
                                 if (peers[id] === p) peers.remove(id)
                                 retryAfter[id] = clock() + 5000L
+                                p.live = false
                             }
                         }
                     }
                     for (req in toFail) req.response.completeExceptionally(PathChanged())
+                    if (!p.live) scope.launch { p.session.retire() }
                     if (shouldNotify) notifyChanged()
                 },
                 frame = { raw, use -> frame(p, raw, use) },

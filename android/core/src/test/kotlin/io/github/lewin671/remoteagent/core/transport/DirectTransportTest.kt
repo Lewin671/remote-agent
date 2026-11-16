@@ -644,12 +644,16 @@ class DirectTransportTest {
         routing.observe(bulk, RouteName.RELAY, 4 shl 20, 400.0)
         assertEquals(RouteName.DIRECT, routing.choose(bulk, ready = true))
         routing.observe(bulk, RouteName.DIRECT, 4 shl 20, 100.0)
+        assertEquals(RouteName.RELAY, routing.filePath)
         assertEquals(RouteName.RELAY, routing.choose(bulk, ready = true))
         routing.observe(bulk, RouteName.RELAY, 4 shl 20, 400.0)
         assertEquals(RouteName.DIRECT, routing.choose(bulk, ready = true))
         routing.observe(bulk, RouteName.DIRECT, 4 shl 20, 100.0)
         assertEquals(RouteName.DIRECT, routing.filePath)
         assertEquals(RouteName.DIRECT, routing.choose(bulk, ready = true))
+        // 1-in-8 Relay sample after upgrade must not flicker filePath back to RELAY.
+        routing.observe(bulk, RouteName.RELAY, 768 shl 10, 150.0)
+        assertEquals(RouteName.DIRECT, routing.filePath)
     }
 
     @Test
@@ -985,5 +989,64 @@ class DirectTransportTest {
         } finally {
             server.close()
         }
+    }
+
+    @Test
+    fun directChannelTickDetectsSilentClosedChannelAfterConfirm() = runBlocking {
+        val budget = DirectBudget()
+        val silentClose = java.util.concurrent.atomic.AtomicBoolean(false)
+        val closedCalled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val pc = object : RtcPeerConnection {
+            override fun createDataChannel(
+                label: String,
+                id: Int,
+                ordered: Boolean,
+                maxRetransmits: Int?,
+                listener: RtcDataChannelListener,
+            ): RtcDataChannel = object : RtcDataChannel {
+                override fun state() = if (silentClose.get() && id == 0) RtcChannelState.CLOSED else RtcChannelState.OPEN
+                override fun bufferedAmount() = 0L
+                override fun send(data: ByteArray, binary: Boolean) = !silentClose.get()
+                override fun close() {}
+            }
+            override suspend fun createOffer(iceRestart: Boolean) = "v=0"
+            override suspend fun createAnswer() = "v=0"
+            override suspend fun setLocalDescription(offer: Boolean, sdp: String) {}
+            override suspend fun setRemoteDescription(offer: Boolean, sdp: String) {}
+            override suspend fun addIceCandidate(candidate: String, sdpMid: String, sdpMLineIndex: Int, usernameFragment: String) {}
+            override fun maxMessageSize(): Int? = 65536
+            override fun close() {}
+        }
+        val factory = object : RtcFactory {
+            override fun create(stunUrls: List<String>, listener: RtcPeerListener) = pc
+        }
+        val dc = DirectChannel(
+            DirectChannelOptions(
+                peer = "m1",
+                connection = ByteArray(16) { 2 },
+                use = 1,
+                generation = 1L,
+                deadline = System.currentTimeMillis() + 5_000L,
+                budget = budget,
+                valid = { true },
+                stun = emptyList(),
+                factory = factory,
+                candidate = {},
+                state = {},
+                frame = {},
+                closed = { closedCalled.set(true) },
+            )
+        )
+        dc.confirm()
+        assertTrue(dc.ready)
+        // Simulate silent WebRTC DataChannel close without onStateChange callback.
+        silentClose.set(true)
+        val deadline = System.currentTimeMillis() + 1_500L
+        while (!closedCalled.get() && System.currentTimeMillis() < deadline) {
+            delay(25)
+        }
+        assertTrue("tickJob must detect CLOSED DataChannel after confirm", closedCalled.get())
+        assertTrue(dc.aborted)
+        dc.close()
     }
 }
