@@ -1,6 +1,6 @@
 export const contentSecurityPolicy = (themeHash: string): string[] => [
   "default-src 'self'",
-  `script-src 'self' 'sha256-${themeHash}'`,
+  `script-src 'self' 'sha256-${themeHash}' 'wasm-unsafe-eval'`,
   "style-src 'self' 'unsafe-inline'",
   // Session images are shown from decrypted bytes as blob: URLs.
   "img-src 'self' blob: data:",

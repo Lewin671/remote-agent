@@ -3133,5 +3133,24 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "errors.core_load_failed",
+    "zh-CN": "核心模块加载失败：{reason}",
+    "en": "Failed to load core module: {reason}",
+    "notes": "网页端启动加载 Go WASM 核心失败时展示给用户的错误提示，下方附带重试按钮。变量 reason 为加载失败原因。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Network error"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

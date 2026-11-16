@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
-import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, OriginKind, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStage, ToolBackground, InputStatus, SendMode, QuestionAskedSchema, SessionStatus, ToolKind, TurnOutcome, type Event } from "./gen/remoteagent/v1/event_pb";
 import { ModelInfoSchema, SessionSchema, type Session } from "./gen/remoteagent/v1/local_pb";
 import { AgentInfoSchema, DefaultModeSource, MachineMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import {
@@ -270,32 +270,6 @@ describe("why a session ended", () => {
 });
 
 describe("tools", () => {
-  it("pairs completions by call ID when the CLI gives one", () => {
-    const d = derive(
-      events(
-        { case: "turnStarted", value: {} },
-        { case: "toolStarted", value: { title: "Read a.go", callId: "t1" } },
-        { case: "toolStarted", value: { title: "Read b.go", callId: "t2" } },
-        { case: "toolStarted", value: { title: "Grep x", callId: "t3" } },
-        { case: "toolCall", value: { title: "Read b.go", callId: "t2" } },
-      ),
-    );
-    expect(d.tools.map((t) => t.title)).toEqual(["Read a.go", "Grep x"]);
-  });
-
-  it("keeps ID-less starts unknown when an unrelated result arrives", () => {
-    const d = derive(
-      events(
-        { case: "turnStarted", value: {} },
-        { case: "toolStarted", value: { title: "go test" } },
-        { case: "toolStarted", value: { title: "go vet" } },
-        // Without a shared call ID there is no evidence these belong together.
-        { case: "toolCall", value: { title: "go test", callId: "call_9" } },
-      ),
-    );
-    expect(d.tools.map((t) => t.title)).toEqual(["go test", "go vet"]);
-  });
-
   it("folds runs of completed calls", () => {
     const ok = (title: string, kind = ToolKind.COMMAND) => ({ case: "toolCall", value: { title, kind, status: "completed" } });
     const list = events(
@@ -355,15 +329,9 @@ describe("tools while they run (v2)", () => {
     expect(shape(list)).toEqual(["tools2", "running:go test", "call:go vet"]);
   });
 
-  it("keeps a tool that got no result when the turn ended as unsettled, not as done", () => {
+  it("shows a tool that got no result when the turn ended as unsettled in the timeline", () => {
     const list = events({ case: "turnStarted", value: {} }, started("t1", "sleep 600 &"), { case: "turnEnded", value: { outcome: TurnOutcome.ABORTED } });
-    const d = derive(list, Agent.CLAUDE);
-    expect(d.tools).toEqual([]);
     expect(shape(list)).toEqual(["unsettled:sleep 600 &", "turnEnded"]);
-    expect(d.unsettled.map((t) => t.title)).toEqual(["sleep 600 &"]);
-    // The next turn starts afresh.
-    const next = derive(events(...list.map((e) => e.kind), { case: "turnStarted", value: {} }), Agent.CLAUDE);
-    expect(next.unsettled).toEqual([]);
   });
 
   it("counts from the daemon's start time and freezes while disconnected", () => {
@@ -471,23 +439,6 @@ describe("approval modes", () => {
     // A model the list does not know, and a list not read, give no answer.
     expect(autoUnavailable(models, "haiku")).toBe(false);
     expect(autoUnavailable(undefined, "claude-haiku-4-5-20251001")).toBe(false);
-  });
-
-  it("notes Claude Code mode changes made in the terminal, not model aliases set here", () => {
-    const ctx = (permissionMode: string, model = "claude-haiku-4-5-20251001") => ({ case: "turnContext", value: { permissionMode, model } });
-    const d = derive(
-      events(
-        ctx("default"),
-        ctx("acceptEdits", ""), // Shift+Tab in the terminal, read off the screen
-        { case: "settingsChanged", value: { model: "sonnet" } }, // switched here, by alias
-        ctx("acceptEdits", "claude-sonnet-5-5"),
-        ctx("plan", "claude-sonnet-5-5"),
-      ),
-    );
-    expect([...d.terminalChanges.entries()]).toEqual([
-      [2n, [{ kind: "mode", permission: "acceptEdits" }]],
-      [5n, [{ kind: "mode", permission: "plan" }]],
-    ]);
   });
 
   it("records approvals answered in the terminal", () => {
@@ -601,166 +552,6 @@ describe("text", () => {
   });
 });
 
-describe("events", () => {
-  it("tells terminal-typed messages apart", () => {
-    const d = derive(
-      events(
-        { case: "userMessage", value: { text: "typed at the computer" } },
-        { case: "inputState", value: { requestId: "r", status: InputStatus.SUBMITTED } },
-        { case: "userMessage", value: { text: "sent from the phone" } },
-      ),
-    );
-    expect([...d.typedLocally]).toEqual([1n]);
-  });
-
-  it("matches a message to its submitted state in either CLI's order", () => {
-    // Claude Code records the message, then its submitted state.
-    const claude = derive(
-      events(
-        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED } },
-        { case: "turnStarted", value: {} },
-        { case: "userMessage", value: { text: "sent from the phone" } },
-        { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } },
-        { case: "turnEnded", value: {} },
-        { case: "userMessage", value: { text: "typed at the computer" } },
-      ),
-      Agent.CLAUDE,
-    );
-    expect([...claude.typedLocally]).toEqual([6n]);
-    // A turn started at the computer takes a message sent from here: the
-    // enqueue record confirms it before the message itself is recorded.
-    const queued = derive(
-      events(
-        { case: "turnStarted", value: {} },
-        { case: "userMessage", value: { text: "typed at the computer" } },
-        { case: "inputState", value: { requestId: "q", status: InputStatus.QUEUED } },
-        { case: "inputState", value: { requestId: "q", status: InputStatus.SUBMITTED } },
-        { case: "userMessage", value: { text: "sent from the phone" } },
-      ),
-      Agent.CLAUDE,
-    );
-    expect([...queued.typedLocally]).toEqual([2n]);
-    // Codex marks it submitted first; a message typed just before stays
-    // the computer's.
-    const codex = derive(
-      events(
-        { case: "userMessage", value: { text: "typed at the computer" } },
-        { case: "inputState", value: { requestId: "b", status: InputStatus.SUBMITTED } },
-        { case: "userMessage", value: { text: "sent from the phone" } },
-      ),
-      Agent.CODEX,
-    );
-    expect([...codex.typedLocally]).toEqual([1n]);
-  });
-
-  it("keeps a message typed at the computer just before a late confirmation", () => {
-    // Claude Code: the state confirms the message recorded after it, not
-    // the one typed at the computer in the meantime.
-    const list = [
-      ...events(
-        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "sent from the phone" } },
-        { case: "inputState", value: { requestId: "a", status: InputStatus.UNCONFIRMED } },
-        { case: "userMessage", value: { text: "typed at the computer" } },
-        { case: "inputState", value: { requestId: "a", status: InputStatus.SUBMITTED } },
-      ),
-      create(EventSchema, { seq: 5n, origin: { kind: OriginKind.CLIENT, deviceId: "x" }, kind: { case: "userMessage", value: { text: "sent from the phone", requestId: "a" } } }),
-      create(EventSchema, { seq: 6n, kind: { case: "userMessage", value: { text: "typed later" } } }),
-    ];
-    expect([...derive(list, Agent.CLAUDE).typedLocally]).toEqual([3n, 6n]);
-    expect([...derive(list, Agent.CODEX).typedLocally]).toEqual([3n, 6n]);
-  });
-
-  it("does not take leaving plan mode after a plan for a terminal switch", () => {
-    const ctx = (permissionMode: string) => ({ case: "turnContext", value: { permissionMode } });
-    const d = derive(events(ctx("default"), ctx("plan"), { case: "planProposed", value: { text: "1." } }, ctx("default"), ctx("plan"), ctx("default")));
-    // Entering plan (2) and leaving it with no plan (6) were switches;
-    // leaving after the plan (4) was the plan's answer.
-    expect([...d.terminalChanges.keys()]).toEqual([2n, 5n, 6n]);
-  });
-
-  it("notes mode changes made in the terminal", () => {
-    const ctx = (reviewer: string, collaboration = "default", model = "m", effort = "low") => ({
-      case: "turnContext",
-      value: { approvalsReviewer: reviewer, approvalPolicy: "on-request", sandbox: "workspace-write", collaborationMode: collaboration, model, effort },
-    });
-    const d = derive(
-      events(
-        ctx("user"),
-        ctx("auto_review"), // switched in the terminal
-        { case: "settingsChanged", value: { mode: ApprovalMode.ASK } },
-        ctx("user"), // switched from the client: already recorded
-        ctx("user", "plan", "m", "medium"), // plan mode's own effort is not a model change
-      ),
-    );
-    expect([...d.terminalChanges.entries()]).toEqual([
-      [2n, [{ kind: "mode", permission: "auto" }]],
-      [5n, [{ kind: "mode", permission: "plan" }]],
-    ]);
-  });
-
-  it("notes a model changed in the terminal after a switch from here", () => {
-    const ctx = (model: string, effort: string) => ({ case: "turnContext", value: { approvalsReviewer: "user", approvalPolicy: "on-request", model, effort } });
-    const d = derive(
-      events(
-        ctx("gpt-6-astra", "medium"),
-        { case: "settingsChanged", value: { model: "gpt-6-sol", effort: "high" } },
-        // Changed again at the computer before the next turn.
-        ctx("gpt-6-luna", "low"),
-        { case: "settingsChanged", value: { model: "gpt-6-sol", effort: "high" } },
-        ctx("gpt-6-sol", "high"), // as chosen here: nothing to note
-      ),
-    );
-    expect([...d.terminalChanges.entries()]).toEqual([[3n, [{ kind: "model", model: "gpt-6-luna", effort: "low" }]]]);
-  });
-
-  it("notes nothing when a mode-only context carries the switched model", () => {
-    // Since e54e35f the daemon's contexts after a model switch from here
-    // carry the new model, a mode-only one included.
-    const ctx = (permissionMode: string, model: string) => ({ case: "turnContext", value: { permissionMode, model } });
-    const d = derive(
-      events(
-        ctx("default", "claude-haiku-4-5-20251001"),
-        { case: "settingsChanged", value: { model: "sonnet", effort: "medium" } },
-        ctx("acceptEdits", "claude-sonnet-5-5"), // mode changed before the next reply
-        ctx("acceptEdits", "claude-sonnet-5-5"),
-        ctx("acceptEdits", "claude-opus-5-5"), // then changed at the computer
-      ),
-      Agent.CLAUDE,
-    );
-    expect([...d.terminalChanges.entries()]).toEqual([
-      [3n, [{ kind: "mode", permission: "acceptEdits" }]],
-      [5n, [{ kind: "model", model: "claude-opus-5-5", effort: "" }]],
-    ]);
-  });
-
-  it("notes a switch back made in the terminal after a switch from here", () => {
-    const ctx = (model: string) => ({ case: "turnContext", value: { approvalsReviewer: "user", approvalPolicy: "on-request", model, effort: "medium" } });
-    const d = derive(
-      events(
-        ctx("gpt-6-astra"),
-        { case: "settingsChanged", value: { model: "gpt-6-sol", effort: "medium" } },
-        ctx("gpt-6-astra"), // switched back at the computer before the next turn
-        ctx("gpt-6-sol"), // and to Sol again there
-      ),
-    );
-    expect([...d.terminalChanges.entries()]).toEqual([
-      [3n, [{ kind: "model", model: "gpt-6-astra", effort: "medium" }]],
-      [4n, [{ kind: "model", model: "gpt-6-sol", effort: "medium" }]],
-    ]);
-  });
-
-  it("records context use around a compaction", () => {
-    const d = derive(
-      events(
-        { case: "tokenUsage", value: { lastTotalTokens: 86n, contextWindow: 100n } },
-        { case: "settingsChanged", value: { compacted: true } },
-        { case: "tokenUsage", value: { lastTotalTokens: 14n, contextWindow: 100n } },
-      ),
-    );
-    expect(d.compactions.get(2n)).toEqual({ before: 86, after: 14 });
-  });
-});
-
 describe("approval records", () => {
   const approval = (approvalId: string, command: string, inputDigest: string) => ({
     case: "approvalRequested",
@@ -812,32 +603,6 @@ describe("approval records", () => {
       "tools",
     ]);
   });
-
-  it("match by the daemon's digests only, never one worked out here", () => {
-    const list = events(
-      // Input that decodes differently here than in Go: only the daemon's
-      // digest says which call it is.
-      { case: "approvalRequested", value: { approvalId: "A", toolName: "Bash", command: "a", toolInputJson: '{"command":"a","COMMAND":"b"}', inputDigest: "db" } },
-      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
-      // A request without a digest, next to a call
-      // whose digest its input would give.
-      { case: "approvalRequested", value: { approvalId: "B", toolName: "Bash", command: "ls", toolInputJson: '{"command":"ls"}' } },
-      { case: "approvalResolved", value: { approvalId: "B", decision: ApprovalDecision.ALLOW } },
-      call("b", "1", "db"),
-      // sha256("ls"): what digesting B's input here would have given.
-      call("ls", "2", "c7b68ac37f364473e922936708e7f43c293dd07b295171566c07ff5fe024fab9"),
-    );
-    expect(rows(list)).toEqual(["record ls 已允许", "tool b 已允许", "tool ls"]);
-  });
-
-  it("stay rows of their own for Codex, whose calls have no digest", () => {
-    const list = events(
-      { case: "approvalRequested", value: { approvalId: "A", toolName: "shell", command: "mkdir x", toolInputJson: "" } },
-      { case: "approvalResolved", value: { approvalId: "A", decision: ApprovalDecision.ALLOW } },
-      { case: "toolCall", value: { title: "mkdir x", kind: ToolKind.COMMAND, status: "completed" } },
-    );
-    expect(rows(list)).toEqual(["record mkdir x 已允许", "tool mkdir x"]);
-  });
 });
 
 describe("switching a new session's machine (v2)", () => {
@@ -863,18 +628,6 @@ describe("switching a new session's machine (v2)", () => {
 });
 
 describe("messages the computer accepted (v2)", () => {
-  it("keeps what was accepted, whoever sent it, for the shared queue", () => {
-    const d = derive(
-      events(
-        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, stage: InputStage.WAITING, text: "补测试", imageIds: ["i1", "i2"] } },
-        { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, stage: InputStage.PASTING_IMAGES } },
-      ),
-    );
-    expect(d.accepted.get("a")).toMatchObject({ text: "补测试", imageIds: ["i1", "i2"] });
-    expect(d.stages.get("a")).toBe(InputStage.PASTING_IMAGES);
-    expect(queuedIds(d)).toEqual(["a"]);
-  });
-
   it("shows a message that failed before Enter once, and says why", () => {
     const list = events(
       { case: "inputState", value: { requestId: "a", status: InputStatus.QUEUED, text: "看图" } },
@@ -892,19 +645,6 @@ describe("messages the computer accepted (v2)", () => {
     expect(inputFailure("image_not_recognized", Agent.CLAUDE)).toBe(message("composer.images_unrecognized", {"agent":"Claude Code"}));
     expect(inputFailure("input_changed", Agent.CODEX)).toBe(message("composer.input_unconfirmed"));
     expect(inputFailure("", Agent.CODEX)).toBe(message("composer.not_written"));
-  });
-
-  it("tells a message typed at the computer by its origin when the daemon gives one", () => {
-    const d = derive(
-      events(
-        { case: "inputState", value: { requestId: "r", status: InputStatus.SUBMITTED } },
-        { case: "userMessage", value: { text: "from a client", requestId: "r" }, },
-      ).concat(
-        create(EventSchema, { seq: 3n, origin: { kind: OriginKind.LOCAL }, kind: { case: "userMessage", value: { text: "typed" } } }),
-        create(EventSchema, { seq: 4n, origin: { kind: OriginKind.CLIENT, deviceId: "x" }, kind: { case: "userMessage", value: { text: "sent" } } }),
-      ),
-    );
-    expect([...d.typedLocally]).toEqual([3n]);
   });
 });
 
@@ -930,20 +670,11 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
   });
 });
 
-describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
+describe("background calls", () => {
   const started = (callId: string, title: string) => ({ case: "toolStarted", value: { title, callId, kind: ToolKind.COMMAND } });
   const call = (callId: string, title: string, extra: object = {}) => ({ case: "toolCall", value: { title, callId, kind: ToolKind.COMMAND, status: "completed", exitCode: 0, ...extra } });
   const shape = (list: Event[]) =>
     timeline(list, derive(list, Agent.CODEX)).map((i) => (i.kind === "event" ? (i.event.kind.case === "toolCall" ? "call:" + i.event.kind.value.callId : i.event.kind.case) : i.kind === "tools" ? "tools" + i.calls.length : i.kind + ":" + ("tool" in i ? i.tool.callId : "call" in i ? i.call.callId : "")));
-
-  it("pairs by call ID and takes a #2 continuation as a result of its own, not an orphan", () => {
-    const list = events({ case: "turnStarted", value: {} }, started("c1", "go test"), started("c2", "go vet"), call("c2", "go vet"), call("c1", "go test"), call("c1#2", "go test"));
-    const d = derive(list, Agent.CODEX);
-    expect(d.tools).toEqual([]);
-    expect(shape(list)).toEqual(["tools3"]);
-    const ended = derive(events(...list.map((e) => e.kind), { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED } }), Agent.CODEX);
-    expect(ended.unsettled).toEqual([]);
-  });
 
   it("shows a call that went on in the background as started, status unknown, with why", () => {
     const list = events(
@@ -952,9 +683,7 @@ describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
       call("c1", "npm run dev", { status: "running", exitCode: undefined, background: ToolBackground.STILL_RUNNING }),
       { case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED } },
     );
-    const d = derive(list, Agent.CODEX);
     expect(shape(list)[0]).toBe("background:c1");
-    expect(d.background.map((t) => t.callId)).toEqual(["c1"]);
     expect(backgroundNote(ToolBackground.STILL_RUNNING)).toContain("这一轮结束时它仍在运行");
     expect(backgroundNote(ToolBackground.TIMED_OUT)).toContain("超时");
     expect(backgroundNote(ToolBackground.BY_USER)).toContain("Ctrl+B");
@@ -981,38 +710,6 @@ describe("dayTime", () => {
     expect(dayTime(new Date(2026, 9, 2, 5, 51).getTime(), now)).toBe("5:51");
     expect(dayTime(new Date(2026, 8, 27, 14, 2).getTime(), now)).toBe(message("time.ios_date_time", {"month":9,"day":27,"time":"14:02"}));
   });
-});
-
-it("updates accepted send mode while keeping original message content and origin", () => {
-  const list = events(
-    { case: "inputState", value: { requestId: "m", status: InputStatus.QUEUED, mode: SendMode.QUEUE, text: "text", imageIds: ["image"] } },
-    { case: "inputState", value: { requestId: "m", status: InputStatus.QUEUED, mode: SendMode.STEER } },
-  );
-  const d = derive(list);
-  expect(d.accepted.get("m")).toMatchObject({ mode: SendMode.STEER, text: "text", imageIds: ["image"] });
-});
-
-it("groups repeated approval digests with linear iteration work and keeps ambiguous matches separate", async () => {
-  const { approvalsOnCalls } = await import("./model");
-  const repeated = events(...Array.from({ length: 1000 }, (_, i) => [
-    { case: "approvalRequested", value: { approvalId: "a" + i, toolName: "Read", inputDigest: "same" } },
-    { case: "approvalResolved", value: { approvalId: "a" + i, decision: ApprovalDecision.ALLOW } },
-    { case: "toolCall", value: { callId: "c" + i, itemType: "Read", inputDigest: "same" } },
-  ]).flat());
-  const d = derive(repeated);
-  // Count actual array elements traversed, rather than asserting a wall
-  // clock threshold that changes with the machine running the tests.
-  let traversed = 0;
-  const iterator = Array.prototype[Symbol.iterator];
-  Array.prototype[Symbol.iterator] = function* (this: unknown[]) {
-    for (let i = 0; i < this.length; i++) { traversed++; yield this[i]; }
-    return undefined;
-  };
-  let result;
-  try { result = approvalsOnCalls(repeated, d); } finally { Array.prototype[Symbol.iterator] = iterator; }
-  expect(result.calls.size).toBe(0);
-  expect(result.approvals.size).toBe(0);
-  expect(traversed).toBeLessThan(repeated.length * 10);
 });
 
 

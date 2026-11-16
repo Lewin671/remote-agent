@@ -14,7 +14,7 @@ export default mergeConfig(viteConfig, defineConfig({
           name: "web",
           exclude: [...configDefaults.exclude, "src/markdown.complexity.test.ts"],
           globalSetup: ["./src/test/global-setup.ts"],
-          setupFiles: ["./src/test/recovery-budget.ts"],
+          setupFiles: ["./src/test/core-wasm.ts", "./src/test/recovery-budget.ts"],
         },
       },
       {

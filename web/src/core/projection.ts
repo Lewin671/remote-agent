@@ -89,6 +89,13 @@ export class RemoteAgentCore {
     this.api = api;
   }
 
+  static fromGlobal(): RemoteAgentCore {
+    if (!globalThis.__remoteAgentCore) {
+      throw new Error("RemoteAgentCore is not loaded yet");
+    }
+    return new RemoteAgentCore(globalThis.__remoteAgentCore);
+  }
+
   /**
    * Instantiates core.wasm after wasm_exec.js has registered globalThis.Go.
    * Pass either a fetch Response/Promise<Response> or raw WebAssembly bytes.
@@ -106,10 +113,16 @@ export class RemoteAgentCore {
     if ("instance" in source) {
       instantiated = source;
     } else if (source instanceof Promise) {
-      if (typeof WebAssembly.instantiateStreaming === "function") {
-        instantiated = await WebAssembly.instantiateStreaming(source, go.importObject);
+      const streaming = typeof WebAssembly.instantiateStreaming === "function";
+      const response = await source;
+      const isWasm = response.headers.get("content-type")?.includes("application/wasm");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      if (streaming && isWasm) {
+        instantiated = await WebAssembly.instantiateStreaming(response, go.importObject);
       } else {
-        const bytes = await (await source).arrayBuffer();
+        const bytes = await response.arrayBuffer();
         instantiated = await WebAssembly.instantiate(bytes, go.importObject);
       }
     } else {

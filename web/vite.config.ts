@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { contentSecurityPolicy } from "./src/content-security-policy.ts";
 import react from "@vitejs/plugin-react";
 import { serviceWorker } from "./service-worker.ts";
@@ -37,12 +38,14 @@ function csp(): Plugin {
           const item = bundle[name];
           if (item?.type !== "chunk") return;
           for (const dependency of item.imports) visit(dependency);
-          for (const css of (item as typeof item & { viteMetadata?: { importedCss: Set<string> } }).viteMetadata?.importedCss ?? []) required.add(css);
+          const meta = (item as typeof item & { viteMetadata?: { importedCss?: Set<string>; importedAssets?: Set<string> } }).viteMetadata;
+          for (const css of meta?.importedCss ?? []) required.add(css);
+          for (const asset of meta?.importedAssets ?? []) required.add(asset);
         };
         for (const [name, item] of Object.entries(bundle)) {
           if (item.type === "chunk" && item.facadeModuleId?.endsWith("/src/app-entry.tsx")) visit(name);
         }
-        const parts = Object.keys(bundle).filter((name) => /^assets\/.*\.(js|css)$/.test(name) && !required.has(name) && !html.includes("/" + name)).sort();
+        const parts = Object.keys(bundle).filter((name) => /^assets\/.*\.(js|css|wasm)$/.test(name) && !required.has(name) && !html.includes("/" + name)).sort();
         const keep = (required.size ? `\n    <meta name="app-files" content="${[...required].sort().map((name) => "/" + name).join(" ")}">` : "") +
           (parts.length ? `\n    <meta name="on-demand-files" content="${parts.map((name) => "/" + name).join(" ")}">` : "");
         return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy.join("; ")}">${keep}`);
@@ -116,10 +119,23 @@ export default defineConfig({
       output: {
         // Libraries change far less often than the app: in a chunk of their
         // own they keep their name, and browsers their copy, across releases.
-        manualChunks: (id) => (/node_modules\/(react|react-dom|scheduler|@bufbuild|@connectrpc)\//.test(id) ? "vendor" : undefined),
+        manualChunks: (id) => {
+          if (id.endsWith("/build/core/web/wasm_exec.js")) return "wasm_exec";
+          return /node_modules\/(react|react-dom|scheduler|@bufbuild|@connectrpc)\//.test(id) ? "vendor" : undefined;
+        },
       },
     },
   },
-  server: { port: 5173, strictPort: true, proxy },
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy,
+    fs: {
+      allow: [
+        fileURLToPath(new URL(".", import.meta.url)),
+        fileURLToPath(new URL("../build/core/web", import.meta.url)),
+      ],
+    },
+  },
   preview: { port: 4173, strictPort: true, proxy },
 });

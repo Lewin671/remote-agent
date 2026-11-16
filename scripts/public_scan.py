@@ -117,7 +117,7 @@ TARGETS = ("darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64")
 # not-found page, the notices, and scripts and styles named with the hash of
 # their content.
 WEB_BUILT = {"sw.js", "index.html", "_headers", "404.html", "licenses/THIRD_PARTY_NOTICES.txt"}
-WEB_ASSET = re.compile(r"assets/[\w.-]+-[\w-]{8}\.(js|css)")
+WEB_ASSET = re.compile(r"assets/[\w.-]+-[\w-]{8}\.(js|css|wasm)")
 
 
 def web_files(public=None):
