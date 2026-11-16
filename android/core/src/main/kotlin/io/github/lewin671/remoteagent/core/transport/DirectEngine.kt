@@ -374,8 +374,11 @@ internal class DirectEngine(
                 factory = factory,
                 valid = { synchronized(stateLock) { validLocked(p) } },
                 authorize = {
-                    authorize()
-                    val ok = synchronized(stateLock) { validLocked(p) }
+                    // The 20 s freshness window, renewed by the 12 s sync loop, already
+                    // bounds how stale the head can be; a signal step inside it needs no
+                    // relay round trip of its own (the web checks the stored record only).
+                    // Outside the window, sync first, as before.
+                    val ok = authorizeUnlessFresh({ synchronized(stateLock) { validLocked(p) } }, authorize)
                     if (!ok) throw PathChanged()
                 },
                 send = { out -> send(p, out) },
@@ -902,4 +905,15 @@ internal class DirectEngine(
             listOf("stun:$formatted:3478")
         }.getOrDefault(emptyList())
     }
+}
+
+/**
+ * One signal step's authorization: inside the freshness window nothing more is
+ * needed; outside it, sync first. Returns whether the path is valid afterwards.
+ * A relay round trip per signal step, as before, spent seconds of the 10 s
+ * round on a phone.
+ */
+internal suspend fun authorizeUnlessFresh(valid: () -> Boolean, sync: suspend () -> Unit): Boolean {
+    if (!valid()) sync()
+    return valid()
 }

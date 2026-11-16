@@ -52,4 +52,11 @@ interface RtcPeerConnection {
 
 fun interface RtcFactory {
     fun create(stunUrls: List<String>, listener: RtcPeerListener): RtcPeerConnection
+
+    /**
+     * Loads and initialises the SDK without making a connection, so the first
+     * connection of a round does not pay for it inside the 10 s round budget.
+     * Called off the session's actor; may be slow.
+     */
+    fun prewarm() {}
 }

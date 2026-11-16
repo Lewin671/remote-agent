@@ -610,6 +610,103 @@ class DirectTransportTest {
     }
 
     @Test
+    fun aSignalStepInsideTheFreshnessWindowDoesNotSyncAgain() = runBlocking {
+        var syncs = 0
+        var fresh = true
+        assertTrue(authorizeUnlessFresh({ fresh }, { syncs++ }))
+        assertEquals("a fresh window needs no relay round trip", 0, syncs)
+        fresh = false
+        assertFalse(authorizeUnlessFresh({ fresh }, { syncs++ }))
+        assertEquals("a stale window syncs once and still refuses", 1, syncs)
+        assertTrue(authorizeUnlessFresh({ fresh }, { syncs++; fresh = true }))
+        assertEquals(2, syncs)
+    }
+
+    private fun awaitLine(part: String, ms: Long = 2_000L): String? {
+        val until = System.currentTimeMillis() + ms
+        while (System.currentTimeMillis() < until) {
+            DirectDiag.lines().lastOrNull { it.contains(part) }?.let { return it }
+            Thread.sleep(20)
+        }
+        return null
+    }
+
+    private fun diagChannel(valid: () -> Boolean, deadline: Long, pcOut: (FakeRtcConnection) -> Unit = {}): DirectChannel {
+        val factory = RtcFactory { _, listener -> FakeRtcConnection(1, "t", listener, HashMap()).also(pcOut) }
+        return DirectChannel(
+            DirectChannelOptions(
+                peer = "secret-peer", connection = ByteArray(16) { 1 }, use = 2, generation = 7L, deadline = deadline,
+                budget = DirectBudget(), valid = valid, stun = emptyList(), factory = factory,
+                candidate = {}, state = {}, frame = {}, closed = {},
+            ),
+        )
+    }
+
+    @Test
+    fun anAttemptSaysWhyItEnded() {
+        DirectDiag.clear()
+        // The gate refuses: not_allowed, with the stage times and no identifiers.
+        val allowed = java.util.concurrent.atomic.AtomicBoolean(true)
+        val a = diagChannel({ allowed.get() }, System.currentTimeMillis() + 5_000L)
+        allowed.set(false)
+        val line = awaitLine("end=not_allowed")
+        assertNotNull("gate loss must be named: ${DirectDiag.lines()}", line)
+        assertTrue(line!!.contains("use=2 gen=7") && line.contains("connected=-") && line.contains("confirm=-"))
+        assertFalse("no peer id in the line", line.contains("secret-peer"))
+        a.close()
+
+        // The SDK reports failure: pc_failed, and the first reason is kept.
+        DirectDiag.clear()
+        var pc: FakeRtcConnection? = null
+        val b = diagChannel({ true }, System.currentTimeMillis() + 5_000L) { pc = it }
+        pc!!.markConnected()
+        pc!!.emitStaleState(RtcPeerState.FAILED)
+        val failed = awaitLine("end=pc_failed")
+        assertNotNull(DirectDiag.lines().toString(), failed)
+        assertTrue("DTLS time is kept", !failed!!.contains("connected=-"))
+        b.close()
+        assertEquals("one line per attempt", 1, DirectDiag.lines().count { it.startsWith("attempt") })
+
+        // Unconfirmed at the round's deadline: round_deadline.
+        DirectDiag.clear()
+        val c = diagChannel({ true }, System.currentTimeMillis() + 250L)
+        assertNotNull(DirectDiag.lines().toString(), awaitLine("end=round_deadline"))
+        c.close()
+    }
+
+    @Test
+    fun theSdkIsWarmedBesideTheHandshakeNotInsideIt() {
+        val warmed = java.util.concurrent.CountDownLatch(1)
+        val warmThread = java.util.concurrent.atomic.AtomicReference<String>()
+        val factory = object : RtcFactory {
+            override fun create(stunUrls: List<String>, listener: RtcPeerListener): RtcPeerConnection = throw IllegalStateException("no connection in this test")
+            override fun prewarm() { warmThread.set(Thread.currentThread().name); warmed.countDown() }
+        }
+        val codec = Wire(Wire.utf8("acc-1"), Wire.utf8("domain"), sha256(Wire.utf8("head")), 1L)
+        val selfSeed = sha256(Wire.utf8("self"))
+        val selfBox = sha256(Wire.utf8("self-box"))
+        val self = Wire.Identity(
+            Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 },
+            SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, selfSeed, selfBox,
+        )
+        val peer = Wire.Identity(
+            Wire.utf8("m1"), 2L, ByteArray(16) { 3 }, ByteArray(32) { 4 },
+            Ed25519PrivateKeyParameters(sha256(Wire.utf8("peer")), 0).generatePublicKey().encoded,
+            X25519PrivateKeyParameters(sha256(Wire.utf8("peer-box")), 0).generatePublicKey().encoded, null, null,
+        )
+        val session = DirectSession(
+            DirectSessionOptions(
+                self = self, peer = peer, codec = codec, connection = ByteArray(16) { 9 }, deadline = System.currentTimeMillis() + 5_000L,
+                budget = DirectBudget(), stun = emptyList(), factory = factory,
+                valid = { true }, authorize = {}, send = { true }, chosen = {}, beforeOffer = {}, ready = { _, _ -> }, closed = {}, frame = { _, _ -> }, capability = {},
+            ),
+        )
+        assertTrue("prewarm was not called", warmed.await(2, java.util.concurrent.TimeUnit.SECONDS))
+        assertFalse("prewarm must not run on the test thread", warmThread.get() == Thread.currentThread().name)
+        session.close()
+    }
+
+    @Test
     fun directRoutingReadAndBulkUpgradeFallbackHysteresis() {
         var now = 10_000L
         val routing = DirectRouting(now = { now })

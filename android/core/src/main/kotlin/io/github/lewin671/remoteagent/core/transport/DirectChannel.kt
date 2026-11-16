@@ -135,6 +135,28 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private val incoming = Channel<ByteArray>(Channel.UNLIMITED)
 
+    private val bornAt = options.clock()
+    @Volatile private var connectedAt = 0L
+    @Volatile private var channelAt = 0L
+    @Volatile private var confirmedAt = 0L
+    @Volatile private var endReason: String? = null
+    @Volatile private var firstProbeAt = 0L
+    @Volatile private var firstEchoAt = 0L
+    @Volatile private var echoes = 0
+
+    /** Records why the channel ends (the first reason wins) and closes it. */
+    private fun closeWhy(reason: String) {
+        if (endReason == null) endReason = reason
+        close()
+    }
+
+    /** The gate that made [valid] false. */
+    private fun gateReason(): String = when {
+        ended -> "ended"
+        !options.valid() -> "not_allowed"
+        else -> "round_deadline"
+    }
+
     @Volatile private var confirmed = false
     @Volatile private var stunReady = false
     @Volatile private var ended = false
@@ -177,22 +199,25 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
                     override fun onConnectionStateChange(state: RtcPeerState) {
                         if (ended) return
+                        if (state == RtcPeerState.CONNECTED && connectedAt == 0L) connectedAt = options.clock()
                         options.state(state)
                         if (state == RtcPeerState.FAILED || state == RtcPeerState.CLOSED || state == RtcPeerState.DISCONNECTED) {
-                            close()
+                            closeWhy("pc_" + state.name.lowercase())
                         }
                     }
 
                     override fun onUnexpectedDataChannel() {
-                        close()
+                        closeWhy("unexpected_data_channel")
                     }
                 },
             )
             val dataListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
                     val s = data.state()
-                    if (s == RtcChannelState.OPEN) wake.trySend(Unit)
-                    else if (s == RtcChannelState.CLOSED) close()
+                    if (s == RtcChannelState.OPEN) {
+                        if (channelAt == 0L) channelAt = options.clock()
+                        wake.trySend(Unit)
+                    } else if (s == RtcChannelState.CLOSED) closeWhy("dc0_closed")
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {
@@ -202,7 +227,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 override fun onMessage(data: ByteArray) {
                     if (!valid()) return
                     if (data.size > FRAME_BYTES) {
-                        close()
+                        closeWhy("frame_too_large")
                         return
                     }
                     incoming.trySend(data)
@@ -210,7 +235,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             val probeListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
-                    if (probe.state() == RtcChannelState.CLOSED) close()
+                    if (probe.state() == RtcChannelState.CLOSED) closeWhy("dc1_closed")
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {}
@@ -222,6 +247,8 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                         reply[0] = 1
                         probe.send(reply, true)
                     } else if (data[0] == 1.toByte()) {
+                        if (firstEchoAt == 0L) firstEchoAt = options.clock()
+                        echoes++
                         val id = Wire.hex(data.copyOfRange(1, 17))
                         val startNs = probes.remove(id)
                         if (startNs != null) {
@@ -246,7 +273,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 try {
                     receive(msg)
                 } catch (_: Exception) {
-                    close()
+                    closeWhy("receive_error")
                     break
                 }
             }
@@ -256,7 +283,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             while (isActive && !ended) {
                 delay(100)
                 if (!valid() || (confirmed && (data.state() == RtcChannelState.CLOSED || probe.state() == RtcChannelState.CLOSED))) {
-                    close()
+                    closeWhy(if (!valid()) gateReason() else "channel_closed")
                     return@launch
                 }
                 val now = options.monotonic()
@@ -280,7 +307,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     }
                 }
                 if (tooManyMissed) {
-                    close()
+                    closeWhy("probes_missed")
                     return@launch
                 }
                 if (ready && probe.state() == RtcChannelState.OPEN && now - lastProbeAt >= 1000L) {
@@ -288,6 +315,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     val raw = ByteArray(17)
                     random.nextBytes(raw)
                     raw[0] = 0
+                    if (firstProbeAt == 0L) firstProbeAt = options.clock()
                     probes[Wire.hex(raw.copyOfRange(1, 17))] = System.nanoTime()
                     probe.send(raw, true)
                 }
@@ -338,6 +366,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     fun confirm() {
         val queued = synchronized(stateLock) {
             if (!valid()) return
+            if (confirmedAt == 0L) confirmedAt = options.clock()
             confirmed = true
             waiting.toList().also { waiting.clear() }
         }
@@ -397,7 +426,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             if (index == 0) handoff()
             if (!data.send(frame, true)) {
-                close()
+                closeWhy("send_failed")
                 throw PathChanged()
             }
         }
@@ -464,7 +493,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         }
 
         if (mismatch) {
-            close()
+            closeWhy("fragment_mismatch")
             return
         }
         val full = completed ?: return
@@ -503,11 +532,18 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         synchronized(stateLock) {
             if (ended) return
             ended = true
+            if (endReason == null) endReason = "closed_by_owner"
             toFreeParts = partial.values.toList()
             partial.clear()
             toFreeWaiting = waiting.toList()
             waiting.clear()
         }
+        val endedAt = options.clock()
+        DirectDiag.note(
+            "attempt use=${options.use} gen=${options.generation} end=$endReason at=${endedAt - bornAt}" +
+                " connected=${DirectDiag.ms(bornAt, connectedAt)} channel=${DirectDiag.ms(bornAt, channelAt)} confirm=${DirectDiag.ms(bornAt, confirmedAt)}" +
+                " probe=${DirectDiag.ms(bornAt, firstProbeAt)} echo=${DirectDiag.ms(bornAt, firstEchoAt)} echoes=$echoes",
+        )
         for (part in toFreeParts) options.budget.free(options.peer, 1, part.bytes, part.parts.size)
         for (raw in toFreeWaiting) options.budget.free(options.peer, 1, raw.size, 1)
         probes.clear()

@@ -64,6 +64,10 @@ internal class AndroidRtcFactory(context: Context) : RtcFactory {
         }
     }
 
+    override fun prewarm() {
+        factory()
+    }
+
     override fun create(stunUrls: List<String>, listener: RtcPeerListener): RtcPeerConnection {
         val iceServers = stunUrls.map { PeerConnection.IceServer.builder(it).createIceServer() }
         val config = PeerConnection.RTCConfiguration(iceServers).apply {

@@ -18,6 +18,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairingUiState
+import io.github.lewin671.remoteagent.core.transport.DirectDiag
 import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.transport.RouteName
 import io.github.lewin671.remoteagent.core.transport.RtcDataChannel
@@ -75,6 +76,8 @@ private class E2ERtcWrapper(private val delegate: RtcFactory) : RtcFactory {
             runCatching { pc.close() }
         }
     }
+
+    override fun prewarm() = delegate.prewarm()
 
     override fun create(stunUrls: List<String>, listener: RtcPeerListener): RtcPeerConnection {
         val channels = Collections.synchronizedList(ArrayList<RtcDataChannel>())
@@ -272,6 +275,7 @@ class DirectTransportE2ETest {
                 remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.MEASURING, DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)
 
             suspend fun waitDirectReady(timeoutMs: Long = 30_000) {
+                DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
                 android.util.Log.i("DirectE2E", "waitDirectReady start")
                 val deadline = System.currentTimeMillis() + timeoutMs
                 while (System.currentTimeMillis() < deadline) {

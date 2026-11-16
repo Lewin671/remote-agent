@@ -103,6 +103,9 @@ internal class DirectSession(val options: DirectSessionOptions) {
     @Volatile private var unsupportedSeen = false
     @Volatile private var sawTraversal = false
 
+    private val bornAt = options.clock()
+    private val signalTrace = ArrayList<String>()
+    private var roundReason: String? = null
     private val tickJob: Job
     private val mailbox = Channel<suspend () -> Unit>(Channel.UNLIMITED)
 
@@ -122,6 +125,12 @@ internal class DirectSession(val options: DirectSessionOptions) {
         boot = Sender(options.deadline)
         retainUntil = options.deadline + 300_000L
 
+        // The SDK is slow to start on a phone; do it beside the handshake, not in it.
+        scope.launch(Dispatchers.Default) {
+            val t = options.clock()
+            runCatching { options.factory.prewarm() }
+            trace("warm", options.clock() - t, 0L, true)
+        }
         scope.launch {
             for (work in mailbox) {
                 if (endedFlag.get()) break
@@ -140,7 +149,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
                 }
                 boot.advanceClock(t)
                 if (!options.valid() || (retiredFlag.get() && t >= retainUntil)) {
-                    close()
+                    closeWhy(if (!options.valid()) "not_allowed" else "retired_replay_window_over")
                     return@launch
                 }
                 if (tickQueued.compareAndSet(false, true)) {
@@ -157,13 +166,29 @@ internal class DirectSession(val options: DirectSessionOptions) {
 
     private fun queue(work: suspend () -> Unit) {
         if (!endedFlag.get()) {
-            mailbox.trySend(work)
+            val queuedAt = options.clock()
+            mailbox.trySend {
+                val startedAt = options.clock()
+                work()
+                val ended = options.clock()
+                // A job that waited or ran long holds up every message behind it.
+                if (startedAt - queuedAt >= 1000L || ended - startedAt >= 300L) {
+                    trace("job", ended - startedAt, startedAt - queuedAt, true)
+                }
+            }
         }
+    }
+
+    private suspend fun authorizeTimed() {
+        val t = options.clock()
+        options.authorize()
+        val dt = options.clock() - t
+        if (dt >= 100L) trace("auth", dt, 0L, true)
     }
 
     fun start() {
         queue {
-            options.authorize()
+            authorizeTimed()
             if (!active) return@queue
             val now = options.clock()
             val ctx = Wire.probeContext(options.self, options.peer, options.connection, 1L, now)
@@ -185,11 +210,13 @@ internal class DirectSession(val options: DirectSessionOptions) {
         val count = incomingCount.incrementAndGet()
         val total = incomingBytesCount.addAndGet(raw.size)
         if (count > 8 || total > (1 shl 20)) {
+            trace("drop", 0L, 0L, false)
             incomingCount.decrementAndGet()
             incomingBytesCount.addAndGet(-raw.size)
             return false
         }
         val frozen = raw.copyOf()
+        trace("in", 0L, 0L, true)
         queue {
             try {
                 receiveNow(frozen)
@@ -202,7 +229,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
     }
 
     private suspend fun receiveNow(raw: ByteArray) {
-        options.authorize()
+        authorizeTimed()
         if (endedFlag.get() || !options.valid()) return
         val peer = pcs[0].gate.peer
         val o = options.codec.open(raw, peer, options.self, options.clock())
@@ -210,6 +237,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
         val now = options.clock()
         if (endedFlag.get() || !options.valid() || now >= c.deadline) return
         if (!c.connection.contentEquals(options.connection)) return
+        trace("rx", o.type, c.use, true)
         peerResponded = true
         Schema.known(c.cls, o.type, o.payload)
         val key = Wire.cacheKey(c)
@@ -523,7 +551,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
         if (!active || !p.gate.bootReady || !p.gate.offerer() || p.gate.localSDP || p.gate.closed || options.clock() >= options.deadline) return
         if (p.channel == null) options.beforeOffer()
         if (!makePC(index)) return
-        options.authorize()
+        authorizeTimed()
         if (!active) return
         val ch = p.channel ?: return
         val raw = ch.description(offer = true)
@@ -542,7 +570,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
                 p.actions.removeFirst()
                 continue
             }
-            options.authorize()
+            authorizeTimed()
             if (!active) return
             if (action.type in setOf(3L, 4L, 5L, 6L)) {
                 if (action.type == 3L) options.beforeOffer()
@@ -606,7 +634,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
         controls.entries.removeIf { now > it.value.until }
         receipts.entries.removeIf { now > it.value.until }
         if (now >= options.deadline && !established && !retiredFlag.get()) {
-            close()
+            closeWhy("round_deadline")
             return
         }
         for (raw in boot.tick(now)) transmit(raw)
@@ -679,7 +707,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
     private fun transmit(raw: ByteArray): Boolean {
         val o = options.codec.openSent(raw, options.self, pcs[0].gate.peer, options.clock())
         val c = o.ctx
-        return options.send(
+        val sent = options.send(
             DirectedOutput(
                 raw = raw,
                 deadline = c.deadline,
@@ -694,6 +722,8 @@ internal class DirectSession(val options: DirectSessionOptions) {
                 },
             ),
         )
+        trace("tx", o.type, c.use, sent)
+        return sent
     }
 
     fun delivery(id: ByteArray, status: Int, retryMs: Int, current: () -> Boolean) {
@@ -719,6 +749,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
 
     fun retire() {
         if (!retiredFlag.compareAndSet(false, true)) return
+        DirectDiag.note("round retired at=${options.clock() - bornAt} established=$established")
         val toClose = ArrayList<DirectChannel>(2)
         for (p in pcs) {
             p.gate.retire(false)
@@ -730,9 +761,30 @@ internal class DirectSession(val options: DirectSessionOptions) {
         for (ch in toClose) ch.close()
     }
 
+    /** The kind (not the content) of each signal sent or received, with the use and ms since the round began; at most 40. */
+    private fun trace(dir: String, type: Long, use: Long, ok: Boolean) {
+        if (dir == "rx" && type == 4L && use == 0L || dir == "tx" && type == 4L && use == 0L) return // acknowledgements
+        if (dir == "in") return
+        synchronized(signalTrace) {
+            if (signalTrace.size < 64) signalTrace.add("$dir$type.$use${if (ok) "" else "!"}@${options.clock() - bornAt}")
+        }
+    }
+
+    /** Records why the round ends (the first reason wins) and closes it. */
+    private fun closeWhy(reason: String) {
+        if (roundReason == null) roundReason = reason
+        close()
+    }
+
     fun close() {
         if (!endedFlag.compareAndSet(false, true)) return
         tickJob.cancel()
+        val steps = pcs.joinToString(" ") { p ->
+            val g = p.gate
+            "pc${g.use}=" + listOf(g.bootReady to 'b', g.localSDP to 'l', g.remoteSDP to 'r', g.dtls to 'd', p.confirmed to 'c', p.announced to 'a')
+                .joinToString("") { (on, c) -> if (on) c.toString() else "-" }
+        }
+        DirectDiag.note("round end=${roundReason ?: "closed_by_owner"} at=${options.clock() - bornAt} established=$established $steps signals=${synchronized(signalTrace) { signalTrace.joinToString(" ") }}")
         val anyTraversal = sawTraversal || pcs.any { it.channel?.traversalReady == true }
         val reason = when {
             unsupportedSeen -> DirectFailReason.PEER_UNSUPPORTED
