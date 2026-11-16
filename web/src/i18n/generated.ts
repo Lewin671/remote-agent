@@ -1447,15 +1447,15 @@ export interface MessageArgs {
   "tools.exit_code": { code: string };
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
-  "transport.comparing": { [name: string]: never };
   "transport.conn_footer_unsupported": { [name: string]: never };
   "transport.direct": { [name: string]: never };
   "transport.file_speed_both": { direct: string; relay: string };
   "transport.file_speed_direct": { direct: string };
+  "transport.file_speed_pending": { [name: string]: never };
   "transport.file_speed_relay": { relay: string };
   "transport.footer": { [name: string]: never };
-  "transport.footer_speeds": { [name: string]: never };
   "transport.group": { [name: string]: never };
+  "transport.not_clearly_faster": { [name: string]: never };
   "transport.read_latency_both": { direct: string; relay: string };
   "transport.read_latency_direct": { direct: string };
   "transport.read_latency_relay": { relay: string };
@@ -1468,11 +1468,11 @@ export interface MessageArgs {
   "transport.speed_read": { [name: string]: never };
   "transport.status_connecting": { [name: string]: never };
   "transport.status_direct": { [name: string]: never };
-  "transport.status_none": { [name: string]: never };
+  "transport.status_measuring": { [name: string]: never };
   "transport.status_relay": { [name: string]: never };
   "transport.status_unsupported": { [name: string]: never };
   "transport.summary_off": { [name: string]: never };
-  "transport.use_both": { [name: string]: never };
+  "transport.unavailable": { reason: string };
   "transport.use_file": { [name: string]: never };
   "transport.use_read": { [name: string]: never };
 }
@@ -3393,15 +3393,15 @@ export const messages = {
     "tools.exit_code": "Exit code {code}",
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
-    "transport.comparing": "Comparing speeds",
     "transport.conn_footer_unsupported": "This browser doesn't support direct connections.",
     "transport.direct": "Direct connection",
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
     "transport.file_speed_direct": "Direct {direct} MiB/s",
+    "transport.file_speed_pending": "Compared on the next transfer",
     "transport.file_speed_relay": "Relay {relay} MiB/s",
-    "transport.footer": "When a direct connection is possible, files and reading use it; messages and approvals always go through the relay, and it falls back automatically if direct drops.",
-    "transport.footer_speeds": "When a direct connection is possible, files and reading use it; messages and approvals always go through the relay, and it falls back automatically if direct drops. Speeds come from recent transfers.",
+    "transport.footer": "Direct is used only for loading and files; messages and approvals always go through the relay.",
     "transport.group": "Connection",
+    "transport.not_clearly_faster": "Direct isn't clearly faster",
     "transport.read_latency_both": "Direct {direct} · Relay {relay} ms",
     "transport.read_latency_direct": "Direct {direct} ms",
     "transport.read_latency_relay": "Relay {relay} ms",
@@ -3409,18 +3409,18 @@ export const messages = {
     "transport.reason_no_response": "The computer didn't answer; direct may be turned off there",
     "transport.reason_no_traversal": "The two networks can't reach each other directly",
     "transport.reason_peer_unsupported": "The computer's version is too old; update it to use direct",
-    "transport.relay_faster": "The relay is faster",
+    "transport.relay_faster": "Relay is faster",
     "transport.speed_file": "File transfer",
-    "transport.speed_read": "Read latency",
-    "transport.status_connecting": "Trying to connect directly…",
-    "transport.status_direct": "Connected directly",
-    "transport.status_none": "Not direct",
-    "transport.status_relay": "Connected, using the relay for now",
+    "transport.speed_read": "Response time",
+    "transport.status_connecting": "Setting up direct…",
+    "transport.status_direct": "Using direct",
+    "transport.status_measuring": "Direct connected, measuring speed",
+    "transport.status_relay": "Using relay",
     "transport.status_unsupported": "This browser doesn't support direct connections",
     "transport.summary_off": "Direct is off",
-    "transport.use_both": "Files and reading",
-    "transport.use_file": "Files",
-    "transport.use_read": "Reading"
+    "transport.unavailable": "Direct unavailable: {reason}",
+    "transport.use_file": "Used for files",
+    "transport.use_read": "Used for loading"
   },
   "zh-CN": {
     "approval.allow": "允许",
@@ -5255,15 +5255,15 @@ export const messages = {
     "tools.exit_code": "退出码 {code}",
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
-    "transport.comparing": "正在比较速度",
     "transport.conn_footer_unsupported": "这个浏览器不支持直连。",
     "transport.direct": "直连",
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",
     "transport.file_speed_direct": "直连 {direct} MiB/s",
+    "transport.file_speed_pending": "下次传输时比较",
     "transport.file_speed_relay": "中继 {relay} MiB/s",
-    "transport.footer": "能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。",
-    "transport.footer_speeds": "能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。速度取自最近的实际传输。",
+    "transport.footer": "直连只用于加载和文件，发消息和审批始终经中继。",
     "transport.group": "连接",
+    "transport.not_clearly_faster": "直连没有明显更快",
     "transport.read_latency_both": "直连 {direct} · 中继 {relay} ms",
     "transport.read_latency_direct": "直连 {direct} ms",
     "transport.read_latency_relay": "中继 {relay} ms",
@@ -5273,15 +5273,15 @@ export const messages = {
     "transport.reason_peer_unsupported": "电脑上的版本太旧，更新后可用",
     "transport.relay_faster": "中继更快",
     "transport.speed_file": "文件传输",
-    "transport.speed_read": "读取延时",
-    "transport.status_connecting": "正在尝试直连…",
-    "transport.status_direct": "正在直连",
-    "transport.status_none": "未直连",
-    "transport.status_relay": "已连上，暂用中继",
+    "transport.speed_read": "响应时间",
+    "transport.status_connecting": "正在建立直连…",
+    "transport.status_direct": "正在用直连",
+    "transport.status_measuring": "直连已连上，正在测速",
+    "transport.status_relay": "正在用中继",
     "transport.status_unsupported": "这个浏览器不支持直连",
     "transport.summary_off": "直连已关闭",
-    "transport.use_both": "文件和读取",
-    "transport.use_file": "文件",
-    "transport.use_read": "读取"
+    "transport.unavailable": "直连不可用：{reason}",
+    "transport.use_file": "用于文件",
+    "transport.use_read": "用于加载"
   }
 } as const;

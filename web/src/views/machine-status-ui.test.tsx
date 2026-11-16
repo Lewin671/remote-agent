@@ -647,7 +647,7 @@ describe("direct path on the machine status page", () => {
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     expect(host.querySelector(".grp")).toBeNull();
-    for (const key of ["transport.direct", "transport.status_direct", "transport.status_none", "transport.speed_file"] as const)
+    for (const key of ["transport.direct", "transport.status_direct", "transport.status_relay", "transport.speed_file"] as const)
       expect(host.textContent).not.toContain(message(key));
     expect(host.textContent).not.toContain("MiB/s");
   });

@@ -1,13 +1,13 @@
 // The 「连接」 group on a computer's settings page (design-system §6): the one
 // place that says everything about this computer's direct path. A switch, a
-// status row with its state graphic, the speeds that were really measured
-// (nothing is shown for what was not), and one sentence under it.
+// status row (the path in use now, with its state graphic), the response time
+// and file speed that were really measured, and one sentence under it.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as l10n from "../i18n";
 import { Swap, useGrow } from "../motion";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Switch, useRemote } from "../ui";
-import { directTrying, directView, footerText, type DirectView } from "./direct-status";
+import { directTrying, directView, type DirectView } from "./direct-status";
 
 /** How long a direct path just turned on may say "trying" before it reports
  * anything: a round of attempts is bounded at about this long. */
@@ -44,7 +44,7 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
   const status = remote.direct.status(id);
   let view: DirectView = directView(status);
   // Just turned on, nothing reported yet: "trying" is what is happening.
-  if (turnedOn !== undefined && view.kind === "none" && !status.reason) view = directTrying();
+  if (turnedOn !== undefined && status.state === "none" && !status.reason) view = directTrying();
   const supported = view.kind !== "unsupported";
   const on = supported && view.kind !== "off";
   const enter = armed.current;
@@ -75,7 +75,6 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
               <Swap k={view.kind + view.word} tier="base">{view.word}</Swap>
               {view.sub && <SubLine text={view.sub} enter={enter} />}
             </span>
-            {view.value && <span className="v">{view.value}</span>}
           </GroupRow>
         )}
         {on && view.speeds.map((s) => (
@@ -84,7 +83,7 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
           </GroupRow>
         ))}
       </div>
-      <p className="gf">{footerText(view)}</p>
+      <p className="gf">{l10n.t("transport.footer")}</p>
     </>
   );
 }

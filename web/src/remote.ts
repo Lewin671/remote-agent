@@ -1,5 +1,5 @@
 import { DirectEngine } from "./transport/direct-engine";
-import type { RouteHint } from "./transport/direct-routing";
+import type { RouteHint, RouteName } from "./transport/direct-routing";
 import { watchSecurityInstall } from "./device-security-store";
 import { peerFrameBody } from "./transport/peer-frame";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
@@ -1142,7 +1142,6 @@ export class Remote {
   private setupProgress?: () => void;
   readonly direct: DirectEngine;
   private unwatchDirectInstall?: () => void;
-  private directReadSamples = new Set<string>();
   private directTransfers = new Map<string, "image" | "file">();
   private directHint(machineId: string, cmd: CommandKind): RouteHint | undefined {
     if (cmd?.case === "getSharedFileChunk") return { kind: "bulk", file: `${cmd.value.sessionId}/${cmd.value.fileId}` };
@@ -1224,6 +1223,7 @@ export class Remote {
       () => this.roundBudget(),
     );
     this.direct = new DirectEngine(account, async () => { await this.checkNetworkSecurity(); await this.security.verifiedRecord(); }, () => { if (!this.closed) this.changed(); });
+    this.direct.probe = (id, path) => this.probeRead(id, path);
     this.security.onSync = (record, started) => { void this.direct.synced(record, started); };
     this.security.onSyncFailed = () => this.direct.invalidate();
     const pairing = createClient(PairingService, createConnectTransport({
@@ -3599,7 +3599,6 @@ export class Remote {
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
-        if (routeHint?.kind === "read" && !delivery.direct) this.sampleDirectRead(machineId, sid, cmd, prepared.plain);
         if (routeHint) { const bytes = cmd?.case === "putImageChunk" ? cmd.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0; tracking?.observe(delivery.direct, bytes, performance.now() - routeStarted); }
         if (cmd?.case === "beginImageUpload") { if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!); this.directTransfers.set(`${machineId}/${cmd.value.transferId}`, cmd.value.fileName ? "file" : "image"); }
         if (cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload") this.directTransfers.delete(`${machineId}/${cmd.value.transferId}`);
@@ -3677,22 +3676,32 @@ export class Remote {
     }
   }
 
-  private sampleDirectRead(machineId: string, sid: string, cmd: CommandKind, plain: Uint8Array<ArrayBuffer>) {
-    if (this.closed || !readOnlyCommand(cmd) || this.directReadSamples.has(machineId) || this.directReadSamples.size >= 4 || !this.direct.needsReadSamples(machineId)) return;
-    this.directReadSamples.add(machineId);
-    const slot = newSlot(), hint = { kind: "read" } as const, tracking = this.direct.track(machineId, hint);
-    // The probe is its own read authorization. Its completion cannot change
-    // the user's already verified result or extend that request's deadline.
-    void this.deviceLink.call(slot, async call => {
-      const delivery = this.deviceLink.delivery(call, handoff => this.direct.attempt(machineId, hint, handoff, true));
-      if (!delivery.direct) return;
-      await this.checkNetworkSecurity(); await delivery.prepare();
-      const envelope = await this.sealSecureMessage({ kind: PayloadKind.COMMAND, machineId, sessionId: sid, requestId: slot.requestId, deadlineMs: BigInt(slot.deadline), sender: this.account.deviceId }, CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }), undefined, plain);
-      const started = performance.now(), response = await delivery.send(machineId, envelope);
-      const opened = await this.openSecureMessage(response.result, { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: sid, requestId: slot.requestId }, CommandResultSchema);
-      const identity = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), plain), msg = opened.msg;
-      if (!msg.errorCode && verifiedOutcome(msg, identity.key, identity.payload, msg.outcome, msg.reason, false) === "executed") tracking.observe(true, 0, performance.now() - started);
-    }).catch(() => { tracking.failed(); }).finally(() => { this.directReadSamples.delete(machineId); });
+  /** One warm-up sample of the read path (docs/transport.md 「升级与热备」): an
+   * authorized read-only status request of its own, on the path asked for,
+   * timed like a user's read. It is a request of its own, so it never changes
+   * a user's request, result or deadline; its count, rate and alternation are
+   * bounded by the routing that asks. A failed direct sample demotes direct,
+   * a failed relay one is only a missing sample. */
+  private async probeRead(machineId: string, path: RouteName): Promise<void> {
+    if (this.closed) return;
+    const slot = newSlot(), hint = { kind: "read" } as const, tracking = this.direct.track(machineId, hint), direct = path === "direct";
+    const cmd: CommandKind = { case: "getMachineStatus", value: {} };
+    const plain = toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }));
+    try {
+      await this.deviceLink.call(slot, async call => {
+        const started = performance.now();
+        const delivery = this.deviceLink.delivery(call, direct ? handoff => this.direct.attempt(machineId, hint, handoff, true) : undefined);
+        if (delivery.direct !== direct) return;
+        await this.checkNetworkSecurity(); await delivery.prepare();
+        const context = { kind: PayloadKind.COMMAND, machineId, sessionId: "", requestId: slot.requestId, deadlineMs: BigInt(slot.deadline), sender: this.account.deviceId } as const;
+        const envelope = await this.sealSecureMessage(context, CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }), undefined, plain);
+        const response = await delivery.send(machineId, envelope);
+        const opened = await this.openSecureMessage(response.result, { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: "", requestId: slot.requestId }, CommandResultSchema);
+        const identity = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), plain), msg = opened.msg;
+        const bound = equal(msg.requestKeyHash, identity.key) && equal(msg.payloadHash, identity.payload) && response.attemptId === delivery.attemptId && (direct || response.outcome === msg.outcome && response.reason === msg.reason);
+        if (bound && !msg.errorCode && verifiedOutcome(msg, identity.key, identity.payload, direct ? msg.outcome : response.outcome, direct ? msg.reason : response.reason, false) === "executed") tracking.observe(direct, 0, performance.now() - started);
+      });
+    } catch { if (direct) tracking.failed(); }
   }
 
   /** Sends a chat message. A retry passes the first attempt's slot, so

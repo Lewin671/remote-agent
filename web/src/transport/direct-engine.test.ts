@@ -179,3 +179,40 @@ test.describe("status snapshot",()=>{
   } finally {engine.close();vi.useRealTimers();}
  });
 });
+
+test("the engine's warm-up asks the owner for samples within the bound: 10 per path, one in flight per path, 4 a second, 5 seconds, only while the read PC is ready", async () => {
+ vi.useFakeTimers();
+ try {
+  const { engine, peer } = readyEngine(); peer.paths.set(1, { ready: true });
+  const calls: { at: number; path: string }[] = []; let inflight = { relay: 0, direct: 0 }, most = 0;
+  engine.probe = async (_id, path) => {
+   calls.push({ at: performance.now(), path }); inflight[path]++; most = Math.max(most, inflight[path]);
+   await new Promise(r => setTimeout(r, path === "direct" ? 40 : 170)); inflight[path]--;
+  };
+  const start = performance.now();
+  engine.routing("machine").arm();
+  for (let i = 0; i < 50; i++) engine.routing("machine").arm(); // a burst of triggers is one warm-up
+  await vi.advanceTimersByTimeAsync(20_000);
+  const per = (p: string) => calls.filter(c => c.path === p).length;
+  expect([per("direct"), per("relay")]).toEqual([10, 10]);
+  expect(most).toBe(1);
+  expect(Math.max(...calls.map(c => c.at)) - start).toBeLessThanOrEqual(5000);
+  for (const c of calls) expect(calls.filter(d => d.at >= c.at && d.at < c.at + 1000).length).toBeLessThanOrEqual(4);
+  expect(engine.status("machine").warming).toBe(false);
+  // Read PC not ready: nothing is asked.
+  const before = calls.length; peer.paths.set(1, { ready: false });
+  engine.routing("machine").arm(); await vi.advanceTimersByTimeAsync(8000);
+  expect(calls.length).toBe(before);
+ } finally { vi.useRealTimers(); }
+});
+test("status says warming only while connected and measuring, and not for a computer with no read PC", async () => {
+ vi.useFakeTimers(); vi.stubGlobal("RTCPeerConnection", class {});
+ try {
+  const { engine, peer } = readyEngine(); peer.paths.set(1, { ready: true });
+  engine.probe = async () => undefined;
+  expect(engine.status("machine").warming).toBe(false);
+  engine.routing("machine").arm(); expect(engine.status("machine").warming).toBe(true);
+  await vi.advanceTimersByTimeAsync(6000); expect(engine.status("machine").warming).toBe(false);
+  peer.paths.set(1, { ready: false }); engine.routing("machine").arm(); expect(engine.status("machine").warming).toBe(false);
+ } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
+});

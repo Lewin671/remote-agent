@@ -73,23 +73,23 @@ describe("direct path summary lines", () => {
   beforeEach(() => vi.stubGlobal("RTCPeerConnection", class {}));
   afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
-  it("says 未直连 and nothing more when no reason is known", async () => {
+  it("says 正在用中继 and nothing more when no reason is known", async () => {
     open("", quiet);
     await settle();
-    expect(lines()["MacBook"]).toEqual(["未直连"]);
+    expect(lines()["MacBook"]).toEqual(["正在用中继"]);
   });
 
   it("names the cause in the same short sentence as the computer's page, and says nothing for an offline computer", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "failed", "no_traversal"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["未直连 · 两边的网络不能直接连通"]);
+    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连不可用：两边的网络不能直接连通"]);
     expect(lines()["Mac mini"]).toEqual([]);
   });
 
   it("shows an attempt in progress", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connecting"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在尝试直连…"]);
+    expect(lines()["MacBook"]).toEqual(["正在建立直连…"]);
   });
 
   it("says which purposes go direct, and never prints a speed", async () => {
@@ -101,15 +101,15 @@ describe("direct path summary lines", () => {
       route.observe({ kind: "bulk", file: "f" }, "direct", 8 << 20, 500);
     });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在直连 · 文件"]);
+    expect(lines()["MacBook"]).toEqual(["正在用直连 · 用于文件"]);
     expect(host.textContent).not.toContain("MiB/s");
     expect(footer()).not.toMatch(/速度取自|实际传输/);
   });
 
-  it("says 已连上，暂用中继 while both purposes are still on the relay", async () => {
+  it("says 正在用中继 and why while both purposes are on the relay", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["已连上，暂用中继"]);
+    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连没有明显更快"]);
   });
 
   it("draws no second dot: the one on the right of the row is the latency's", async () => {
@@ -153,8 +153,8 @@ describe("direct path summary lines", () => {
   it("updates when the engine reports a change", async () => {
     const r = open("", (x) => { quiet(x); setDirect(x.direct, "mac", "connecting"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在尝试直连…"]);
+    expect(lines()["MacBook"]).toEqual(["正在建立直连…"]);
     act(() => { setDirect(r.direct, "mac", "connected"); (r.direct as unknown as { notify(): void }).notify(); });
-    expect(lines()["MacBook"]).toEqual(["已连上，暂用中继"]);
+    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连没有明显更快"]);
   });
 });

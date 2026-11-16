@@ -981,7 +981,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .dx-mark { position: absolute; left: 18px; top: 14px; width: 14px; height: 22px; display: flex; align-items: center; justify-content: center; }
 .dx-text { flex: 0 1 auto; min-width: 0; max-width: 100%; color: var(--ink2); overflow-wrap: anywhere; }
 .dx-text small { display: block; font-size: 13px; line-height: 1.35; margin-top: 2px; }
-.conn-grp .row.dx > .v { flex: 0 1 auto; margin-left: auto; max-width: 100%; display: block; line-height: inherit; white-space: normal; overflow: visible; overflow-wrap: anywhere; text-align: right; padding: 0; }
 .row.speed { flex-wrap: wrap; justify-content: space-between; row-gap: 2px; padding-top: 10px; padding-bottom: 10px; }
 .row.speed > .v { margin-left: 0; max-width: 100%; display: block; white-space: normal; overflow: visible; font-variant-numeric: tabular-nums; }
 /* A note under a group, from where the rows' text starts. */

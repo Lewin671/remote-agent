@@ -10,7 +10,7 @@ import { newRequestID } from "../crypto";
 import type { FrameStream, PathAttempt } from "./path";
 import { DirectBudget, DirectChannel } from "./direct-channel";
 import { DirectSession, type DirectedOutput } from "./direct-session";
-import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing";
+import { DirectRouting, READ_RULE, type RouteHint, type RouteName } from "./direct-routing";
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
@@ -22,7 +22,9 @@ export type DirectState = "unsupported" | "connected" | "connecting" | "none";
  * answered the handshake: its direct setting may be off, or it may not support it. */
 export type DirectReason = "disabled" | "peer_unsupported" | "no_response" | "no_traversal" | "failed";
 /** Read-only snapshot for display. Speeds are present only when measured. */
-export interface DirectStatus { state: DirectState; reason?: DirectReason; file: RouteName; read: RouteName; fileMiBps: Partial<Record<RouteName, number>>; readMs: Partial<Record<RouteName, number>> }
+export interface DirectStatus { state: DirectState; reason?: DirectReason; file: RouteName; read: RouteName; fileMiBps: Partial<Record<RouteName, number>>; readMs: Partial<Record<RouteName, number>>;
+  /** Connected, and the warm-up that decides the read path is still running (at most five seconds). */
+  warming: boolean }
 
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
@@ -55,6 +57,12 @@ export class DirectEngine {
   private retryAfter = new Map<string, number>();
   private failures = new Map<string, Exclude<DirectReason, "disabled">>();
   private readonly stun: string[];
+  /** Sends one authorized background read on the given path and resolves when
+   * it ends; the owner of the keys (Remote) provides it. Without it no warm-up
+   * sample is taken. */
+  probe?: (id: string, path: RouteName) => Promise<void>;
+  private pumpTimer?: ReturnType<typeof setTimeout>;
+  private warmShown = new Map<string, boolean>();
   constructor(private readonly account: StoredAccount, private readonly authorize: () => Promise<void>, private readonly changed: () => void) {
     const host = new URL(account.server).hostname;
     this.stun = [import.meta.env.VITE_DIRECT_STUN_URL || `stun:${host.includes(":") ? `[${host}]` : host}:3478`];
@@ -141,7 +149,7 @@ export class DirectEngine {
     p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun,
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
-      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.failures.delete(id); this.notify(); },
+      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.failures.delete(id); if (use === 1) this.routing(id).arm(); this.notify(); },
       closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+5000;this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
       frame: (raw, use) => this.frame(p, raw, use), capability: opened => this.capability(p, opened),
     });
@@ -237,16 +245,33 @@ export class DirectEngine {
       if (pending?.peer === peer && pending.use === use && header.machineId === peer.id) pending.resolve(env);
     } catch { /* Remote authenticates every routed result. */ }
   }
-  routing(id: string) { let route = this.routes.get(id); if (!route) { route = new DirectRouting(); this.routes.set(id, route); } return route; }
+  routing(id: string) { let route = this.routes.get(id); if (!route) { route = new DirectRouting(undefined, () => this.kick()); this.routes.set(id, route); } return route; }
+  private kick() { if (!this.pumpTimer) this.pumpTimer = setTimeout(() => this.pump(), 0); }
+  /** Drives the warm-up of every computer: one step every 250 ms while any is
+   * open. The numbers (alternation, in-flight, per-path count, rate) are the
+   * routing's; this only asks it, and only while the read path is ready. */
+  private pump() {
+    this.pumpTimer = undefined; let more = false;
+    for (const [id, route] of this.routes) {
+      const warming = route.warming();
+      if (route.pending()) more = true;
+      if (warming && this.ready(id, { kind: "read" })) {
+        const path = route.nextProbe();
+        if (path) void Promise.resolve().then(() => this.probe?.(id, path)).catch(() => undefined).finally(() => { route.probeDone(path); this.notify(); });
+      }
+      if (this.warmShown.get(id) !== route.warming()) { this.warmShown.set(id, route.warming()); this.notify(); }
+    }
+    if (more) this.pumpTimer = setTimeout(() => this.pump(), READ_RULE.warmup.minGapMs);
+  }
   capabilities(id: string) { const p = this.peers.get(id); return p && this.valid(p) && Date.now() < p.snapshotUntil ? p.capabilities : undefined; }
   ready(id: string, hint: RouteHint) {
     const p = this.peers.get(id); if (!p || !this.valid(p) || !p.session.active || !p.paths.get(hint.kind === "read" ? 1 : 2)?.ready) return false;
     if (hint.kind === "bulk" && hint.upload) { const caps = this.capabilities(id); return !!caps && !!hint.bytes && hint.bytes <= caps.maxChunkBytes && (hint.upload === "file" ? caps.fileUpload : caps.imageUpload); }
     return hint.kind !== "bulk" || Date.now() < p.downloadUntil;
   }
-  needsReadSamples(id: string) { return this.ready(id, {kind:"read"}) && this.routing(id).needsReadSamples(); }
-  attempt(id: string, hint: RouteHint, handoff: () => void, sample = false): PathAttempt | undefined {
-    if (sample ? hint.kind !== "read" || !this.needsReadSamples(id) : this.routing(id).choose(hint, this.ready(id, hint)) !== "direct") return;
+  /** `probe` takes a warm-up sample on the direct path whatever the routing prefers; the routing already bounded it. */
+  attempt(id: string, hint: RouteHint, handoff: () => void, probe = false): PathAttempt | undefined {
+    if (probe ? hint.kind !== "read" || !this.ready(id, hint) : this.routing(id).choose(hint, this.ready(id, hint)) !== "direct") return;
     const peer = this.peers.get(id)!, use = hint.kind === "read" ? 1 : 2, path = peer.paths.get(use)!;
     const attemptId = newRequestID(), tracking = this.track(id, hint);
     const current = () => this.peers.get(id) === peer && peer.paths.get(use) === path && this.ready(id, hint);
@@ -267,13 +292,13 @@ export class DirectEngine {
   /** What the user can be told about this computer's direct path right now. */
   status(id: string): DirectStatus {
     const p = this.peers.get(id), live = !!p && this.valid(p) && p.session.active, measured = this.routes.get(id)?.measured() ?? { fileMiBps: {}, readMs: {} };
-    const base = { file: "relay", read: "relay", ...measured } as const;
+    const base = { file: "relay", read: "relay", warming: false, ...measured } as const;
     if (typeof RTCPeerConnection === "undefined") return { ...base, state: "unsupported" };
     if (!this.enabled(id)) return { ...base, state: "none", reason: "disabled" };
-    if (live && [...p.paths.values()].some(path => path.ready)) return { ...base, state: "connected", file: this.filePath(id), read: this.ready(id, { kind: "read" }) ? this.routing(id).readPath() : "relay" };
+    if (live && [...p.paths.values()].some(path => path.ready)) return { ...base, state: "connected", file: this.filePath(id), read: this.ready(id, { kind: "read" }) ? this.routing(id).readPath() : "relay", warming: this.ready(id, { kind: "read" }) && this.routing(id).warming() };
     if (live) return { ...base, state: "connecting" };
     return { ...base, state: "none", reason: this.failures.get(id) };
   }
   filePath(id: string) { const p=this.peers.get(id);return p && this.valid(p) && p.paths.get(2)?.ready ? this.routing(id).filePath : "relay"; }
-  close() { clearInterval(this.timer); this.timer = undefined; this.leg = undefined; this.invalidate(); }
+  close() { clearInterval(this.timer); this.timer = undefined; clearTimeout(this.pumpTimer); this.pumpTimer = undefined; this.leg = undefined; this.invalidate(); }
 }
