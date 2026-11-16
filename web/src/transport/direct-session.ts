@@ -150,7 +150,7 @@ export class DirectSession {
     if (await p.gate.replyAllowed(raw, now)) await this.ack(o);
     for (const action of actions) {
       if (action.cls === 2 && action.type === 10) { const original = await this.options.codec.open(action.original, p.gate.peer, this.options.self, now); await this.respond(original, 10, action.payload); }
-      else if (action.cls === 1) { if (action.type === 3) this.options.beforeOffer(); if (p.actions.length >= 32) { this.retire(); return; } p.actions.push(action); }
+      else if (action.cls === 1) { if (p.actions.length >= 32) { this.retire(); return; } p.actions.push(action); }
     }
     await this.drain(index); await this.maybeReady(index);
   }
@@ -235,7 +235,9 @@ export class DirectSession {
     } catch { return false; }
   }
   private async maybeOffer(index: number) {
-    const p = this.pcs[index]; if (!this.active || !p.gate.bootReady || !p.gate.offerer() || p.gate.localSDP || !this.makePC(index)) return;
+    const p = this.pcs[index]; if (!this.active || !p.gate.bootReady || !p.gate.offerer() || p.gate.localSDP || p.gate.closed || Date.now() >= this.options.deadline) return;
+    if (!p.channel) this.options.beforeOffer();
+    if (!this.makePC(index)) return;
     await this.options.authorize(); if (!this.active) return;
     const raw = await p.channel!.description(true), info = inspectSDP(raw);
     await p.gate.setLocal(raw, true, p.gate.generation); p.ufrag = info.ufrag; p.mid = info.mid;
@@ -248,6 +250,7 @@ export class DirectSession {
       if (action.generation !== p.gate.generation) { p.actions.shift(); continue; }
       await this.options.authorize(); if (!this.active) return;
       if ([3, 4, 5, 6].includes(action.type)) {
+        if (action.type === 3) this.options.beforeOffer();
         if (!this.makePC(index)) return;
         if (!await p.gate.dispatch(action.original, Date.now())) { p.actions.shift(); continue; }
       }

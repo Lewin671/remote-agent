@@ -528,9 +528,6 @@ func (s *Session) receive(raw []byte, now uint64) {
 				}
 			}
 		} else if a.Class == 1 {
-			if a.Type == 3 && s.cfg.BeforeOffer != nil {
-				s.cfg.BeforeOffer()
-			}
 			if len(p.actions) >= 32 {
 				s.Retire()
 				return
@@ -549,6 +546,9 @@ func (s *Session) drainActions(i int, now uint64) {
 			p.actions = p.actions[1:]
 			continue
 		}
+		if a.Type == 3 && s.cfg.BeforeOffer != nil {
+			s.cfg.BeforeOffer()
+		}
 		if a.Type >= 3 && a.Type <= 6 && !s.makePC(i, now) {
 			return
 		}
@@ -556,9 +556,6 @@ func (s *Session) drainActions(i int, now uint64) {
 		var err error
 		switch a.Type {
 		case 3, 4:
-			if a.Type == 3 && s.cfg.BeforeOffer != nil {
-				s.cfg.BeforeOffer()
-			}
 			if !s.makePC(i, now) || !p.signal.Dispatch(a.Original, now) {
 				return
 			}
@@ -660,7 +657,13 @@ func (s *Session) makePC(i int, now uint64) bool {
 }
 func (s *Session) maybeOffer(i int, now uint64) {
 	p := &s.pcs[i]
-	if !p.signal.BootReady || !p.signal.Offerer() || p.signal.LocalSDP || !s.makePC(i, now) {
+	if !p.signal.BootReady || !p.signal.Offerer() || p.signal.LocalSDP || p.signal.Closed || !s.Active() || now >= s.cfg.Deadline || !s.cfg.Allow() || (s.cfg.Policy != nil && !s.cfg.Policy()) {
+		return
+	}
+	if p.path == nil && s.cfg.BeforeOffer != nil {
+		s.cfg.BeforeOffer()
+	}
+	if !s.makePC(i, now) {
 		return
 	}
 	offer, err := p.path.Description(true, false)

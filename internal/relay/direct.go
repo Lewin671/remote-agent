@@ -297,14 +297,16 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 	if count >= 32 || len(m.sessions) >= 256 {
 		return nil
 	}
-	// Preserve receipt-only retirement in the signal gate. An explicit new peer
-	// process invalidates the old connection rather than installing its nonce.
-	if old := m.active[id]; old != nil {
-		if len(old.peer.Boot) > 0 && len(peer.Boot) > 0 && !bytes.Equal(old.peer.Boot, peer.Boot) {
-			old.processValid.Store(false)
-			old.session.Close()
-		} else if old.session.Established() {
-			old.session.Retire()
+	// An explicit new peer process invalidates old connections for that peer.
+	// Existing healthy sessions for the same process remain active until a
+	// candidate round proves bootstrap and wins handoff.
+	for _, existing := range m.sessions {
+		if existing.binding.Peer.ID == id && len(existing.peer.Boot) > 0 && len(peer.Boot) > 0 && !bytes.Equal(existing.peer.Boot, peer.Boot) {
+			existing.processValid.Store(false)
+			existing.session.Close()
+			if m.active[id] == existing {
+				delete(m.active, id)
+			}
 		}
 	}
 	p := &directPeer{policyVersion: m.policy.version(id), binding: binding, codec: codec, peer: peer, connection: append([]byte(nil), connection...), expires: now + 10000 + deviceauth.MaxClockSkew}
@@ -335,7 +337,7 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 		},
 		Ready: func(use uint64, path *direct.Path) {
 			m.mu.Lock()
-			if m.closed || !p.session.Active() || !allow() || m.sessions[string(connection)] != p {
+			if m.closed || !p.session.Active() || !allow() || m.sessions[string(connection)] != p || m.active[id] != p {
 				m.mu.Unlock()
 				path.Close()
 				return
@@ -351,7 +353,9 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 	}
 	p.session = s
 	m.sessions[string(connection)] = p
-	m.active[id] = p
+	if current := m.active[id]; current == nil || !current.session.Active() {
+		m.active[id] = p
+	}
 	return p
 }
 func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path) {

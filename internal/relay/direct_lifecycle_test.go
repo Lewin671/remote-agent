@@ -7,15 +7,21 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
 	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
@@ -259,3 +265,410 @@ func TestDirectWriteLoopDropsExpiredFrameBeforeDispatch(t *testing.T) {
 	}
 }
 
+type directLifecycleBackend struct{ publishBackend }
+
+type directLifecycleLocal struct {
+	remoteagentv1connect.LocalServiceHandler
+}
+
+func (directLifecycleBackend) Local() remoteagentv1connect.LocalServiceHandler {
+	return directLifecycleLocal{}
+}
+
+func (directLifecycleLocal) GetSettings(context.Context, *connect.Request[pb.GetSettingsRequest]) (*connect.Response[pb.GetSettingsResponse], error) {
+	return connect.NewResponse(&pb.GetSettingsResponse{}), nil
+}
+
+type directMemoryPath struct {
+	onWrite func([]byte)
+}
+
+func (p *directMemoryPath) Read(ctx context.Context) ([]byte, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+func (p *directMemoryPath) Write(_ context.Context, frame []byte) error {
+	if p.onWrite != nil {
+		p.onWrite(frame)
+	}
+	return nil
+}
+func (p *directMemoryPath) Close()  {}
+func (p *directMemoryPath) Finish() {}
+
+func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
+	for _, wantDaemonOfferer := range []bool{false, true} {
+		name := "client-offerer"
+		if wantDaemonOfferer {
+			name = "daemon-offerer"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+
+			r := New(directLifecycleBackend{})
+			SetDirectLoopbackForTest(r)
+
+			var c *conn
+			var keys *testSecurityKeys
+			for {
+				c = &conn{r: r}
+				keys = initializeTestSecurityKeys(t, c)
+				_, head, selfID := c.security.endpoint.Snapshot()
+				if (selfID < head.Core.AuthorityID) == wantDaemonOfferer {
+					break
+				}
+			}
+
+			pin, head, selfID := c.security.endpoint.Snapshot()
+			c.acct.Security = &SecurityConfig{XPrivate: keys.x}
+			hash, err := head.Hash()
+			if err != nil {
+				t.Fatal(err)
+			}
+			now := c.security.now()
+			c.security.directFresh.Store(&directFreshness{
+				head:       hash,
+				until:      now + 60000,
+				leaseUntil: c.security.endpoint.LeaseExpiration(),
+			})
+
+			link := transport.NewLink(ctx)
+			defer link.Close()
+			ep := &endpoint{r: r, acct: c.acct, security: c.security, lifetime: link.Context(), link: link, sessionKey: c.sessionKey}
+			ep.admissionOwner()
+			defer ep.admission.close()
+
+			d := &dispatcher{ctx: ctx, cancel: cancel, link: link, endpoint: ep, security: c.security, acct: c.acct}
+			m, err := newDirectManager(d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer m.close()
+
+			clientID := head.Core.AuthorityID
+			clientBoot := make([]byte, 32)
+			clientInstance := make([]byte, 16)
+			_, _ = rand.Read(clientBoot)
+			_, _ = rand.Read(clientInstance)
+			clientBox, err := ecdh.X25519().NewPrivateKey(keys.phoneX)
+			if err != nil {
+				t.Fatal(err)
+			}
+			clientSelf := peerwire.Identity{
+				ID:       []byte(clientID),
+				Role:     1,
+				Instance: clientInstance,
+				Boot:     clientBoot,
+				Sign:     keys.phone,
+				Box:      clientBox,
+			}
+			daemonMember, _ := head.Core.Member(selfID)
+			daemonBoxPub, err := ecdh.X25519().NewPublicKey(daemonMember.XPublic[:])
+			if err != nil {
+				t.Fatal(err)
+			}
+			daemonPublic := peerwire.Public{
+				ID:   []byte(selfID),
+				Role: 2,
+				Sign: daemonMember.EdPublic[:],
+				Box:  daemonBoxPub,
+			}
+			codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lease, err := deviceauth.BuildLease(head, keys.phone, head.Core.IssuedAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			clientEndpoint, err := deviceauth.InitEndpoint("", pin, keys.states, make([]*deviceauth.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clientEndpoint.Close()
+
+			var mu sync.Mutex
+			clientSessions := map[string]*direct.Session{}
+			challengeSeen := make(chan []byte, 16)
+
+			_, detach := m.attach(&directMemoryPath{onWrite: func(raw []byte) {
+				f := &pb.PeerFrame{}
+				if proto.Unmarshal(raw, f) != nil || f.GetDirectedPeerFrame() == nil {
+					return
+				}
+				df := f.GetDirectedPeerFrame()
+				delivery, err := proto.Marshal(&pb.ServerFrame{
+					Kind: &pb.ServerFrame_PeerFrameDelivery{
+						PeerFrameDelivery: &pb.PeerFrameDelivery{
+							FromDevice: []byte(selfID),
+							ToDevice:   df.ToDevice,
+							FrameClass: df.FrameClass,
+							FrameId:    df.FrameId,
+							Sealed:     df.Sealed,
+						},
+					},
+				})
+				if err != nil {
+					return
+				}
+				// Feed back delivery ack to daemon and forward sealed packet to matching client session.
+				m.delivery(&pb.PeerFrameResult{FrameId: df.FrameId, Status: pb.PeerFrameResult_DELIVERED}, m.pathGeneration.Load())
+				fields, err := peerwire.Parse(delivery, 1)
+				if err != nil {
+					return
+				}
+				packet := fields[11].B
+				if o, err := codec.Open(packet, m.self.Public(), clientSelf, uint64(time.Now().UnixMilli())); err == nil {
+					if o.Context.Class == 1 && o.Type == 2 {
+						select {
+						case challengeSeen <- append([]byte(nil), o.Context.Connection...):
+						default:
+						}
+					}
+					mu.Lock()
+					target := clientSessions[string(o.Context.Connection)]
+					mu.Unlock()
+					if target != nil {
+						target.Receive(packet)
+					}
+				}
+			}})
+			defer detach()
+
+			forwardToDaemon := func(out direct.Outbound) bool {
+				fields, err := peerwire.Parse(out.Raw, 5)
+				if err != nil {
+					return false
+				}
+				delivery, err := proto.Marshal(&pb.PeerFrameDelivery{
+					FromDevice: fields[1].B,
+					ToDevice:   fields[2].B,
+					FrameClass: pb.FrameClass(fields[3].U),
+					FrameId:    fields[4].B,
+					Sealed:     fields[5].B,
+				})
+				if err != nil {
+					return false
+				}
+				m.receive(delivery)
+				return true
+			}
+
+			clientPool := direct.NewPool(4)
+			startClientRound := func(connID []byte) (*direct.Session, [2]*direct.Path) {
+				ready := make(chan struct {
+					use  uint64
+					path *direct.Path
+				}, 2)
+				cs, err := direct.NewSession(ctx, direct.SessionConfig{
+					Self:         clientSelf,
+					Peer:         daemonPublic,
+					Codec:        codec,
+					Connection:   connID,
+					Deadline:     uint64(time.Now().Add(10 * time.Second).UnixMilli()),
+					Pool:         clientPool,
+					Allow:        func() bool { return ctx.Err() == nil },
+					LoopbackOnly: true,
+					Send:         forwardToDaemon,
+					Ready: func(use uint64, p *direct.Path) {
+						ready <- struct {
+							use  uint64
+							path *direct.Path
+						}{use, p}
+					},
+				}, true)
+				if err != nil {
+					t.Fatal(err)
+				}
+				mu.Lock()
+				clientSessions[string(connID)] = cs
+				mu.Unlock()
+				var paths [2]*direct.Path
+				for range 2 {
+					select {
+					case item := <-ready:
+						paths[item.use-1] = item.path
+					case <-ctx.Done():
+						t.Fatalf("client round timed out waiting for Pion paths")
+					}
+				}
+				return cs, paths
+			}
+
+			executeGetSettings := func(path *direct.Path) error {
+				cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
+				plain, _ := proto.Marshal(cmd)
+				var nonce [16]byte
+				_, _ = rand.Read(nonce[:])
+				reqNow := uint64(time.Now().UnixMilli())
+				h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Deadline: reqNow + 5000}
+				sealed, err := clientEndpoint.Prepare(h, nil, plain)
+				if err != nil {
+					return err
+				}
+				env, err := sealed.Envelope()
+				if err != nil {
+					return err
+				}
+				packet, _ := proto.Marshal(env)
+				callCtx, callCancel := context.WithTimeout(ctx, 3*time.Second)
+				defer callCancel()
+				if err := path.Write(callCtx, packet); err != nil {
+					return err
+				}
+				respRaw, err := path.Read(callCtx)
+				if err != nil {
+					return err
+				}
+				respEnv := &pb.Envelope{}
+				if err := proto.Unmarshal(respRaw, respEnv); err != nil {
+					return err
+				}
+				wire, err := deviceauth.FromEnvelope(respEnv)
+				if err != nil {
+					return err
+				}
+				got, body, err := clientEndpoint.Open(wire, nil, true, uint64(time.Now().UnixMilli()))
+				if err != nil {
+					return err
+				}
+				body, err = deviceauth.Unpack(got, body)
+				if err != nil {
+					return err
+				}
+				result := &pb.CommandResult{}
+				if err := proto.Unmarshal(body, result); err != nil {
+					return err
+				}
+				if result.Outcome != "executed" || result.GetGetSettings() == nil {
+					return errors.New("unexpected command result")
+				}
+				return nil
+			}
+
+			// 1. Establish initial healthy Pion session (connA).
+			connA := make([]byte, 16)
+			_, _ = rand.Read(connA)
+			csA, pathsA := startClientRound(connA)
+			defer func() {
+				csA.Close()
+				csA.Wait()
+			}()
+
+			// Wait until daemon's directPeer also marks both paths ready.
+			var pA *directPeer
+			waitDeadline := time.Now().Add(5 * time.Second)
+			for time.Now().Before(waitDeadline) {
+				m.mu.Lock()
+				cand := m.active[clientID]
+				if cand != nil && cand.session.Established() && cand.paths[0] != nil && cand.paths[1] != nil {
+					pA = cand
+				}
+				m.mu.Unlock()
+				if pA != nil {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			if pA == nil {
+				t.Fatal("initial daemon session did not establish")
+			}
+			if err := executeGetSettings(pathsA[0]); err != nil {
+				t.Fatalf("initial Pion command failed: %v", err)
+			}
+
+			// 2. Deliver a delayed Probe from a retired losing connection (connB, same client Boot).
+			connB := make([]byte, 16)
+			_, _ = rand.Read(connB)
+			probeNow := uint64(time.Now().UnixMilli())
+			pc := peerwire.NewProbeContext(clientSelf, daemonPublic, connB, 1, probeNow)
+			pc.Deadline = probeNow + 800
+			probeRaw, err := codec.Seal(clientSelf, daemonPublic, pc, 1, peerwire.PB(peerwire.B(1, connB), peerwire.B(2, clientInstance), peerwire.B(3, clientBoot)), nil, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !forwardToDaemon(direct.Outbound{Raw: probeRaw, Deadline: pc.Deadline, Critical: true}) {
+				t.Fatal("failed to inject late Probe")
+			}
+
+			// Wait for daemon to open the candidate round and emit Challenge(connB).
+			gotChallenge := false
+			for !gotChallenge {
+				select {
+				case conn := <-challengeSeen:
+					if bytes.Equal(conn, connB) {
+						gotChallenge = true
+					}
+				case <-ctx.Done():
+					t.Fatal("daemon never sent Challenge for late Probe")
+				}
+			}
+
+			// Client retired connB and ignores Challenge(connB). Verify pA stays active & healthy immediately...
+			m.mu.Lock()
+			activeNow := m.active[clientID]
+			pB := m.sessions[string(connB)]
+			m.mu.Unlock()
+			if activeNow != pA || !pA.session.Active() || !pA.session.Established() {
+				t.Fatalf("late Probe retired or replaced healthy established session: active=%v want=%v sessionActive=%v", activeNow == pA, true, pA.session.Active())
+			}
+			if pB == nil {
+				t.Fatal("expected candidate round for late Probe in m.sessions")
+			}
+			if err := executeGetSettings(pathsA[0]); err != nil {
+				t.Fatalf("established Pion path failed right after late Probe: %v", err)
+			}
+
+			// ...and after the uncompleted candidate round times out.
+			select {
+			case <-pB.session.Done():
+			case <-ctx.Done():
+				t.Fatal("candidate round did not time out")
+			}
+			m.mu.Lock()
+			activeAfterTimeout := m.active[clientID]
+			m.mu.Unlock()
+			if activeAfterTimeout != pA || !pA.session.Active() {
+				t.Fatalf("timed-out candidate affected established session: active=%v sessionActive=%v", activeAfterTimeout == pA, pA.session.Active())
+			}
+			if err := executeGetSettings(pathsA[0]); err != nil {
+				t.Fatalf("established Pion path failed after candidate timeout: %v", err)
+			}
+
+			// 3. A genuine replacement round (connC) that proves bootstrap and handoff retires pA and succeeds.
+			csA.Retire()
+			connC := make([]byte, 16)
+			_, _ = rand.Read(connC)
+			csC, pathsC := startClientRound(connC)
+			defer func() {
+				csC.Close()
+				csC.Wait()
+			}()
+			var pC *directPeer
+			waitDeadline = time.Now().Add(5 * time.Second)
+			for time.Now().Before(waitDeadline) {
+				m.mu.Lock()
+				cand := m.active[clientID]
+				if cand != nil && cand != pA && bytes.Equal(cand.connection, connC) && cand.session.Established() && cand.paths[0] != nil && cand.paths[1] != nil {
+					pC = cand
+				}
+				m.mu.Unlock()
+				if pC != nil {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			if pC == nil {
+				t.Fatal("legitimate replacement round did not take over m.active")
+			}
+			if pA.session.Active() {
+				t.Fatal("old session remained active after verified handoff")
+			}
+			if err := executeGetSettings(pathsC[0]); err != nil {
+				t.Fatalf("replacement Pion command failed: %v", err)
+			}
+		})
+	}
+}
