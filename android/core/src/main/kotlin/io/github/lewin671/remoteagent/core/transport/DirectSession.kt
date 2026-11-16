@@ -39,6 +39,7 @@ internal class DirectSessionOptions(
     val beforeOffer: () -> Unit,
     val ready: (Int, DirectChannel) -> Unit,
     val closed: (Int?) -> Unit,
+    val closeReason: ((DirectFailReason) -> Unit)? = null,
     val frame: (ByteArray, Int) -> Unit,
     val capability: (Wire.Opened) -> Unit,
     val probe: ((Int, Double) -> Unit)? = null,
@@ -95,6 +96,9 @@ internal class DirectSession(val options: DirectSessionOptions) {
         private set
     @Volatile var established = false
         private set
+    @Volatile private var peerResponded = false
+    @Volatile private var unsupportedSeen = false
+    @Volatile private var sawTraversal = false
 
     private val tickJob: Job
 
@@ -195,6 +199,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
         val now = options.clock()
         if (endedFlag.get() || !options.valid() || now >= c.deadline) return
         if (!c.connection.contentEquals(options.connection)) return
+        peerResponded = true
         Schema.known(c.cls, o.type, o.payload)
         val key = Wire.cacheKey(c)
         val oldControl = controls[key]
@@ -420,6 +425,8 @@ internal class DirectSession(val options: DirectSessionOptions) {
             p.channel = null
             old?.close()
             p.gate.closed = true
+            unsupportedSeen = true
+            options.closeReason?.invoke(DirectFailReason.PEER_UNSUPPORTED)
             return
         }
     }
@@ -569,6 +576,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
             if (!active || p.channel !== ch || p.gate.generation != generation || ch.aborted) return
             p.confirmed = ok
         }
+        if (ch.traversalReady) sawTraversal = true
         if (ch.traversalReady && p.confirmed && !p.announced && p.gate.ready()) {
             p.announced = true
             established = true
@@ -713,6 +721,14 @@ internal class DirectSession(val options: DirectSessionOptions) {
     fun close() {
         if (!endedFlag.compareAndSet(false, true)) return
         tickJob.cancel()
+        val anyTraversal = sawTraversal || pcs.any { it.channel?.traversalReady == true }
+        val reason = when {
+            unsupportedSeen -> DirectFailReason.PEER_UNSUPPORTED
+            established -> DirectFailReason.FAILED
+            !peerResponded -> DirectFailReason.NO_RESPONSE
+            !anyTraversal -> DirectFailReason.NO_TRAVERSAL
+            else -> DirectFailReason.FAILED
+        }
         val toClose = ArrayList<DirectChannel>(2)
         for (p in pcs) {
             val ch = p.channel
@@ -721,6 +737,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
         }
         actorJob.cancel()
         for (ch in toClose) runCatching { ch.close() }
+        if (!retiredFlag.get()) options.closeReason?.invoke(reason)
         options.closed(null)
     }
 }

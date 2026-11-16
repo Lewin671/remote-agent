@@ -119,7 +119,7 @@ internal fun ConnCheckSheet(
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(name, style = T.s15, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (sub != null) Text(sub, style = T.s12, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (sub != null) Text(sub, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             value()
         }
@@ -150,7 +150,13 @@ internal fun ConnCheckSheet(
             line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
-                line(machineLabel(state, m.id)) { if (m.pathState.reachable) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, copy(UiMessages.commonAndroidOffline()), p.ink2) }
+                val summary = if (m.pathState.reachable && m.pathState.directStatus.supported) {
+                    directSummary(m.pathState.directStatus, copy)
+                } else null
+                line(machineLabel(state, m.id), sub = summary) {
+                    if (m.pathState.reachable) result(machines[m.id], SLOW_MACHINE_MS)
+                    else dotted(p.faint, copy(UiMessages.commonAndroidOffline()), p.ink2)
+                }
             }
         }
         if (state.conn != ConnState.ONLINE) {
@@ -169,7 +175,18 @@ internal fun ConnCheckSheet(
                 else -> copy(UiMessages.connectionLivePushIsNotConnected())
             })
         }
-        Hint(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
+        val directUnsupported = list.any { it.pathState.reachable && !it.pathState.directStatus.supported }
+        val foot = buildString {
+            append(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
+            val viaRelay = copy(UiMessages.transportConnCheckViaRelay())
+            if (isNotEmpty() && !endsWith("。") && !endsWith(" ")) append(" ")
+            append(viaRelay)
+            if (directUnsupported) {
+                if (!endsWith("。") && !endsWith(" ")) append(" ")
+                append(copy(UiMessages.transportUnsupportedDevice()))
+            }
+        }
+        Hint(foot)
         Btns(Modifier.padding(top = 12.dp)) {
             if (state.conn != ConnState.ONLINE) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f))
             PillButton(copy(UiMessages.connectionTestAgain()), { run++ }, Modifier.weight(1f), enabled = !busy)

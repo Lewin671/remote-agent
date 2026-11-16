@@ -119,8 +119,7 @@
     "notes": "电脑设置页「连接」组的状态行（行首是状态图形，状态词在图形旁边，13 号第二行可补充）。状态行只说结果：现在用的是哪条路；连接检测里该电脑名下的摘要也用同一个词，后面接「 · 第二行」。直连正在建立（墨色转圈），省略号是中文原句的一部分。",
     "params": {},
     "platforms": [
-      "web",
-      "android"
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -134,8 +133,7 @@
     "notes": "本设备的浏览器没有 WebRTC 时，电脑设置页「连接」组状态行的整句，同时开关置灰；连接检测页脚也用同一句收尾。",
     "params": {},
     "platforms": [
-      "web",
-      "android"
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -149,8 +147,7 @@
     "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
-      "web",
-      "android"
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -164,8 +161,7 @@
     "notes": "接在「直连不可用：」后面的原因（状态行第二行和连接检测摘要共用），必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
-      "web",
-      "android"
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -530,7 +526,445 @@
     "notes": "连接检测页脚末尾的一句，只在本设备的浏览器不支持直连时出现，取代在每台电脑下重复写。无变量。",
     "params": {},
     "platforms": [
-      "web",
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.connection_group",
+    "zh-CN": "连接",
+    "en": "Connection",
+    "notes": "电脑设置页「连接」分组标题。与其余设置分组标题同级。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_direct",
+    "zh-CN": "正在直连",
+    "en": "Connected directly",
+    "notes": "直连状态词（状态行和连接检测共用），后面或右侧可跟用途。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_connected_relay",
+    "zh-CN": "已连上，暂用中继",
+    "en": "Connected, using relay",
+    "notes": "直连通道已建立但文件和读取均暂走中继时的状态词。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_trying",
+    "zh-CN": "正在尝试直连…",
+    "en": "Trying direct connection…",
+    "notes": "开启直连后正在尝试握手建连时的状态词。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_unconnected",
+    "zh-CN": "未直连",
+    "en": "Not connected directly",
+    "notes": "直连尚未建立或失败后的状态词。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.use_files_and_reads",
+    "zh-CN": "文件和读取",
+    "en": "Files and reads",
+    "notes": "正在直连时的右侧或摘要用途：文件与只读均走直连。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.use_files",
+    "zh-CN": "文件",
+    "en": "Files",
+    "notes": "正在直连时的右侧或摘要用途：仅文件走直连。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.use_reads",
+    "zh-CN": "读取",
+    "en": "Reads",
+    "notes": "正在直连时的右侧或摘要用途：仅读取走直连。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_relay_faster",
+    "zh-CN": "中继更快",
+    "en": "Relay is faster",
+    "notes": "已连上暂用中继时，两边都测过且中继不慢于直连的副行说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_comparing",
+    "zh-CN": "正在比较速度",
+    "en": "Comparing speeds",
+    "notes": "已连上暂用中继时，尚未完成比较时的副行说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_peer_unsupported",
+    "zh-CN": "电脑上的版本太旧，更新后可用",
+    "en": "The computer's version is too old; update it to use direct",
+    "notes": "未直连原因：peer_unsupported。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_no_response",
+    "zh-CN": "电脑没有回应，可能在电脑上关了直连",
+    "en": "The computer didn't answer; direct may be turned off there",
+    "notes": "未直连原因：no_response。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_no_traversal",
+    "zh-CN": "两边的网络不能直接连通",
+    "en": "The two networks can't reach each other directly",
+    "notes": "未直连原因：no_traversal。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_failed",
+    "zh-CN": "没连上，稍后会自动再试",
+    "en": "Couldn't connect; will try again shortly",
+    "notes": "未直连原因：failed。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.summary_off",
+    "zh-CN": "直连已关闭",
+    "en": "Direct connection is off",
+    "notes": "连接检测里当本机关闭该电脑直连开关时显示的一行摘要。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.summary_with_detail",
+    "zh-CN": "{status} · {detail}",
+    "en": "{status} · {detail}",
+    "notes": "连接检测里带状态词和用途或原因的摘要行。status 为状态词，detail 为用途或短原因，不翻译连接符号。",
+    "params": {
+      "status": {
+        "type": "string",
+        "example": "正在直连"
+      },
+      "detail": {
+        "type": "string",
+        "example": "文件和读取"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_file_transfer",
+    "zh-CN": "文件传输",
+    "en": "File transfer",
+    "notes": "连接分组下实测吞吐行标题。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_read_latency",
+    "zh-CN": "读取延时",
+    "en": "Read latency",
+    "notes": "连接分组下实测读取延时行标题。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_pair_mib",
+    "zh-CN": "直连 {direct} · 中继 {relay} MiB/s",
+    "en": "Direct {direct} · Relay {relay} MiB/s",
+    "notes": "两条路都测到时的文件传输速度值，等宽数字显示。",
+    "params": {
+      "direct": {
+        "type": "string",
+        "example": "6.3"
+      },
+      "relay": {
+        "type": "string",
+        "example": "4.1"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_direct_mib",
+    "zh-CN": "直连 {value} MiB/s",
+    "en": "Direct {value} MiB/s",
+    "notes": "只测到直连时的文件传输速度值。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "6.3"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_relay_mib",
+    "zh-CN": "中继 {value} MiB/s",
+    "en": "Relay {value} MiB/s",
+    "notes": "只测到中继时的文件传输速度值。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "4.1"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_pair_ms",
+    "zh-CN": "直连 {direct} · 中继 {relay} ms",
+    "en": "Direct {direct} · Relay {relay} ms",
+    "notes": "两条路都测到时的读取延时值，等宽数字显示。",
+    "params": {
+      "direct": {
+        "type": "string",
+        "example": "12"
+      },
+      "relay": {
+        "type": "string",
+        "example": "180"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_direct_ms",
+    "zh-CN": "直连 {value} ms",
+    "en": "Direct {value} ms",
+    "notes": "只测到直连时的读取延时值。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "12"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_relay_ms",
+    "zh-CN": "中继 {value} ms",
+    "en": "Relay {value} ms",
+    "notes": "只测到中继时的读取延时值。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "180"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.group_note",
+    "zh-CN": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。",
+    "en": "When this device can reach the computer directly, file transfers and reads use direct connection; messages and approvals always go through the server relay. If direct drops, it switches back to relay automatically.",
+    "notes": "电脑设置页「连接」组下的说明（无实测速度时）。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.group_note_speeds",
+    "zh-CN": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。速度取自最近的实际传输。",
+    "en": "When this device can reach the computer directly, file transfers and reads use direct connection; messages and approvals always go through the server relay. If direct drops, it switches back to relay automatically. Speeds are from recent transfers.",
+    "notes": "电脑设置页「连接」组下的说明（有实测速度时）。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.unsupported_device",
+    "zh-CN": "这台设备不支持直连",
+    "en": "This device doesn't support direct connection",
+    "notes": "本机不支持 WebRTC 直连时显示的状态说明或连接检测页脚追加说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.conn_check_via_relay",
+    "zh-CN": "电脑一行的延时经服务器中继测得。",
+    "en": "Latency for computer rows is measured through the server relay.",
+    "notes": "连接检测页脚说明末尾附加的一句。",
+    "params": {},
+    "platforms": [
       "android"
     ],
     "status": {

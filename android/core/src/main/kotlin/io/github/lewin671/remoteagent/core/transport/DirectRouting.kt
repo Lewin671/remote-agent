@@ -47,13 +47,43 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
     private val recentReadsRelay = ArrayDeque<Sample>()
     private val recentReadsDirect = ArrayDeque<Sample>()
     private var readPreferred = RouteName.RELAY
+    private var readRejected = false
     private var readStableAfter = 0L
     private var readBad = 0
     private var readWindow = now() / 5000L
     private var sampleCounter = 0L
     private val files = LinkedHashMap<String, BulkState>()
+    private var bulkRelayMib: Double? = null
+    private var bulkDirectMib: Double? = null
+    private var bulkRejected = false
     @Volatile var filePath: RouteName = RouteName.RELAY
         private set
+
+    data class Metrics(
+        val readDirect: Boolean,
+        val fileDirect: Boolean,
+        val benchmarkDecidedRelay: Boolean,
+        val bulkDirectMibPerSec: Double?,
+        val bulkRelayMibPerSec: Double?,
+        val readDirectMs: Double?,
+        val readRelayMs: Double?,
+    )
+
+    fun metrics(): Metrics = synchronized(lock) {
+        val relayReadMs = if (readsRelay.isEmpty()) null else p95(readsRelay)
+        val directReadMs = if (readsDirect.isEmpty()) null else p95(readsDirect)
+        Metrics(
+            readDirect = readPreferred == RouteName.DIRECT,
+            fileDirect = filePath == RouteName.DIRECT,
+            benchmarkDecidedRelay = (readRejected || bulkRejected) &&
+                readPreferred == RouteName.RELAY &&
+                filePath == RouteName.RELAY,
+            bulkDirectMibPerSec = bulkDirectMib,
+            bulkRelayMibPerSec = bulkRelayMib,
+            readDirectMs = directReadMs,
+            readRelayMs = relayReadMs,
+        )
+    }
 
     fun needsReadSamples(): Boolean = synchronized(lock) {
         readPreferred == RouteName.RELAY && now() >= readStableAfter
@@ -104,6 +134,9 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
                 val directP95 = p95(readsDirect)
                 if (directP95 <= relayP95 + maxOf(5.0, relayP95 * 0.10)) {
                     readPreferred = RouteName.DIRECT
+                    readRejected = false
+                } else {
+                    readRejected = true
                 }
             }
             return@synchronized
@@ -119,16 +152,24 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
         measured.milliseconds += milliseconds
         recent.bytes += bytes
         recent.milliseconds += milliseconds
+        if (path == RouteName.DIRECT) {
+            bulkDirectMib = (recent.bytes.toDouble() / 1048576.0) / (recent.milliseconds / 1000.0)
+        } else {
+            bulkRelayMib = (recent.bytes.toDouble() / 1048576.0) / (recent.milliseconds / 1000.0)
+        }
         if (file.preferred == RouteName.RELAY) {
             if (file.measuring == RouteName.RELAY && file.measuredRelay.bytes >= (4L shl 20)) {
                 file.measuring = RouteName.DIRECT
             }
             if (file.measuredRelay.bytes >= (4L shl 20) && file.measuredDirect.bytes >= (4L shl 20)) {
-                file.comparisons = if (file.measuredDirect.rate() >= file.measuredRelay.rate() * 0.95) file.comparisons + 1 else 0
+                val pass = file.measuredDirect.rate() >= file.measuredRelay.rate() * 0.95
+                file.comparisons = if (pass) file.comparisons + 1 else 0
+                bulkRejected = !pass
                 if (file.comparisons >= 2 && t >= file.stableAfter) {
                     file.preferred = RouteName.DIRECT
                     file.bad = 0
                     file.resetRecent()
+                    bulkRejected = false
                 }
                 file.resetMeasured()
                 file.measuring = RouteName.RELAY
@@ -176,6 +217,7 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
         val until = t + 5000L
         if (hint == null || hint is RouteHint.Read) {
             readPreferred = RouteName.RELAY
+            readRejected = false
             readStableAfter = until
             readsRelay.clear()
             readsDirect.clear()
@@ -199,6 +241,7 @@ internal class DirectRouting(private val now: () -> Long = ::monotonicMillis) {
         }
         if (hint == null || hint is RouteHint.Bulk) {
             filePath = RouteName.RELAY
+            bulkRejected = false
         }
     }
 

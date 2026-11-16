@@ -467,6 +467,7 @@ class Remote(
                     protocolVersion = if (directReady) PROTOCOL_VERSION else base.protocolVersion,
                     capabilities = direct.capabilities(id) ?: base.capabilities,
                     fileDirect = direct.filePath(id) == RouteName.DIRECT,
+                    directStatus = direct.directStatus(id),
                 )
             }
         },

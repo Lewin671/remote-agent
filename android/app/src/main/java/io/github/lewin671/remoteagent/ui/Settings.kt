@@ -545,8 +545,9 @@ fun DeviceScreen(
     var pickMode by remember { mutableStateOf<Agent?>(null) }
     var pickTimeout by remember { mutableStateOf(false) }
     var pickIdleClose by remember { mutableStateOf(false) }
-    var directOn by remember(id, remote) { mutableStateOf(remote.directEnabled(id)) }
-    var pickDirect by remember { mutableStateOf(false) }
+    var directOn by remember(id, remote, m?.pathState?.directStatus?.enabled) {
+        mutableStateOf(m?.pathState?.directStatus?.enabled ?: remote.directEnabled(id))
+    }
     var activeAgent by remember(id) { mutableStateOf<Agent?>(null) }
     fun update(s: DaemonSettings, cleanImages: Boolean = false) =
         save.run(
@@ -574,18 +575,6 @@ fun DeviceScreen(
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
-            if (member) {
-                Group(
-                    rows = listOf {
-                        GRow(
-                            copy(UiMessages.transportDirect()),
-                            copy(if (directOn) UiMessages.transportAutomatic() else UiMessages.transportOff()),
-                            onClick = { pickDirect = true },
-                            chevron = true,
-                        )
-                    },
-                )
-            }
             if (member && m.pathState.capabilities?.machineStatus == true) {
                 val fetch = LocalStatusFetch.current
                 val feed = rememberMachineFeed(id, 10_000, true, m.pathState.reachable) { fetch(remote, id) }
@@ -645,6 +634,26 @@ fun DeviceScreen(
                         }
                     },
             )
+            if (member) {
+                val baseDirect = m.pathState.directStatus
+                val uiDirect = baseDirect.copy(
+                    enabled = directOn,
+                    stage = when {
+                        !directOn -> io.github.lewin671.remoteagent.core.transport.DirectStage.OFF
+                        baseDirect.stage == io.github.lewin671.remoteagent.core.transport.DirectStage.OFF ->
+                            io.github.lewin671.remoteagent.core.transport.DirectStage.TRYING
+                        else -> baseDirect.stage
+                    },
+                )
+                DirectConnectionGroup(
+                    status = uiDirect,
+                    online = m.pathState.reachable,
+                    onToggle = { next ->
+                        remote.setDirectEnabled(id, next)
+                        directOn = next
+                    },
+                )
+            }
             if (meta != null) {
                 val agents = machineVersions(meta)
                 Group(
@@ -953,23 +962,6 @@ fun DeviceScreen(
                 update(cur.toBuilder().setIdleCloseMinutes(IDLE_CLOSE_CHOICES[i]).build())
             },
             onClose = { pickIdleClose = false },
-        )
-    }
-    if (pickDirect) {
-        ChoiceSheet(
-            copy(UiMessages.transportDirect()),
-            listOf(
-                copy(UiMessages.transportAutomatic()) to null,
-                copy(UiMessages.transportOff()) to null,
-            ),
-            if (directOn) 0 else 1,
-            onPick = { i ->
-                val next = i == 0
-                remote.setDirectEnabled(id, next)
-                directOn = next
-                pickDirect = false
-            },
-            onClose = { pickDirect = false },
         )
     }
 }

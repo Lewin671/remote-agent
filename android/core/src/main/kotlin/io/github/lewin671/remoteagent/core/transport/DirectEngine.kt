@@ -121,6 +121,7 @@ internal class DirectEngine(
     private var byteTokens = (4 shl 20).toDouble()
     private var rateAtNs = System.nanoTime()
     private val retryAfter = HashMap<String, Long>()
+    private val failReasons = HashMap<String, DirectFailReason>()
 
     private fun notifyChanged() {
         runCatching { changed() }
@@ -138,6 +139,8 @@ internal class DirectEngine(
         val toClose: List<DirectSession>
         synchronized(stateLock) {
             preferences[id] = enabled
+            retryAfter.remove(id)
+            failReasons.remove(id)
             lifetime++
             routingOwners[id] = Any()
             toClose = sessions.values.filter { it.id == id }.onEach { it.live = false }.map { it.session }
@@ -377,10 +380,19 @@ internal class DirectEngine(
                             false
                         } else {
                             p.paths[use] = path
+                            failReasons.remove(id)
                             true
                         }
                     }
                     if (!accepted) path.close() else notifyChanged()
+                },
+                closeReason = { reason ->
+                    synchronized(stateLock) {
+                        if (preferences[id] != false && peers[id] === p) {
+                            failReasons[id] = reason
+                        }
+                    }
+                    notifyChanged()
                 },
                 closed = { use ->
                     var shouldNotify = false
@@ -760,6 +772,45 @@ internal class DirectEngine(
     fun filePath(id: String): RouteName = synchronized(stateLock) {
         val p = peers[id]
         if (p != null && validLocked(p) && p.paths[2]?.ready == true) routingLocked(id).filePath else RouteName.RELAY
+    }
+
+    fun directStatus(id: String): DirectStatus = synchronized(stateLock) {
+        val enabled = preferences.getOrPut(id) {
+            runCatching { preferenceStore.isEnabled(account.server, account.deviceId, id) }.getOrDefault(true)
+        }
+        val supported = rtcFactory != null
+        val metrics = routingLocked(id).metrics()
+        if (!supported) {
+            return@synchronized DirectStatus(supported = false, enabled = enabled, stage = DirectStage.UNCONNECTED)
+        }
+        if (!enabled) {
+            return@synchronized DirectStatus(supported = true, enabled = false, stage = DirectStage.OFF)
+        }
+        val p = peers[id]
+        val connected = p != null && validLocked(p) && (p.paths[1]?.ready == true || p.paths[2]?.ready == true)
+        val trying = p != null && p.session.active && !connected
+        val failReason = failReasons[id]
+        val readDirect = connected && p?.paths?.get(1)?.ready == true && metrics.readDirect
+        val fileDirect = connected && p?.paths?.get(2)?.ready == true && metrics.fileDirect
+        val stage = when {
+            connected && (readDirect || fileDirect) -> DirectStage.DIRECT_ACTIVE
+            connected -> DirectStage.CONNECTED_RELAY
+            trying || failReason == null -> DirectStage.TRYING
+            else -> DirectStage.UNCONNECTED
+        }
+        DirectStatus(
+            supported = true,
+            enabled = true,
+            stage = stage,
+            readDirect = readDirect,
+            fileDirect = fileDirect,
+            benchmarkDecidedRelay = metrics.benchmarkDecidedRelay,
+            reason = if (stage == DirectStage.UNCONNECTED) failReason else null,
+            bulkDirectMibPerSec = metrics.bulkDirectMibPerSec,
+            bulkRelayMibPerSec = metrics.bulkRelayMibPerSec,
+            readDirectMs = metrics.readDirectMs,
+            readRelayMs = metrics.readRelayMs,
+        )
     }
 
     fun close() {

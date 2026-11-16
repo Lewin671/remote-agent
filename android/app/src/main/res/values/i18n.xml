@@ -2210,10 +2210,33 @@
     <string name="tools_exit_code">"退出码 %1$s"</string>
     <string name="tools_tool" formatted="false">"工具"</string>
     <string name="tools_waiting_sync" formatted="false">"等待同步"</string>
-    <string name="transport_automatic" formatted="false">"自动"</string>
+    <string name="transport_conn_check_via_relay" formatted="false">"电脑一行的延时经服务器中继测得。"</string>
+    <string name="transport_connection_group" formatted="false">"连接"</string>
     <string name="transport_direct" formatted="false">"直连"</string>
-    <string name="transport_file_direct" formatted="false">"文件：直连"</string>
-    <string name="transport_file_relay" formatted="false">"文件：中继"</string>
-    <string name="transport_interaction_relay" formatted="false">"交互：中继"</string>
-    <string name="transport_off" formatted="false">"关闭"</string>
+    <string name="transport_group_note" formatted="false">"能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。"</string>
+    <string name="transport_group_note_speeds" formatted="false">"能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。速度取自最近的实际传输。"</string>
+    <string name="transport_reason_failed" formatted="false">"没连上，稍后会自动再试"</string>
+    <string name="transport_reason_no_response" formatted="false">"电脑没有回应，可能在电脑上关了直连"</string>
+    <string name="transport_reason_no_traversal" formatted="false">"两边的网络不能直接连通"</string>
+    <string name="transport_reason_peer_unsupported" formatted="false">"电脑上的版本太旧，更新后可用"</string>
+    <string name="transport_speed_comparing" formatted="false">"正在比较速度"</string>
+    <string name="transport_speed_direct_mib">"直连 %1$s MiB/s"</string>
+    <string name="transport_speed_direct_ms">"直连 %1$s ms"</string>
+    <string name="transport_speed_file_transfer" formatted="false">"文件传输"</string>
+    <string name="transport_speed_pair_mib">"直连 %1$s · 中继 %2$s MiB/s"</string>
+    <string name="transport_speed_pair_ms">"直连 %1$s · 中继 %2$s ms"</string>
+    <string name="transport_speed_read_latency" formatted="false">"读取延时"</string>
+    <string name="transport_speed_relay_faster" formatted="false">"中继更快"</string>
+    <string name="transport_speed_relay_mib">"中继 %1$s MiB/s"</string>
+    <string name="transport_speed_relay_ms">"中继 %1$s ms"</string>
+    <string name="transport_status_connected_relay" formatted="false">"已连上，暂用中继"</string>
+    <string name="transport_status_direct" formatted="false">"正在直连"</string>
+    <string name="transport_status_trying" formatted="false">"正在尝试直连…"</string>
+    <string name="transport_status_unconnected" formatted="false">"未直连"</string>
+    <string name="transport_summary_off" formatted="false">"直连已关闭"</string>
+    <string name="transport_summary_with_detail">"%2$s · %1$s"</string>
+    <string name="transport_unsupported_device" formatted="false">"这台设备不支持直连"</string>
+    <string name="transport_use_files" formatted="false">"文件"</string>
+    <string name="transport_use_files_and_reads" formatted="false">"文件和读取"</string>
+    <string name="transport_use_reads" formatted="false">"读取"</string>
 </resources>

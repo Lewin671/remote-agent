@@ -6704,23 +6704,102 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "tools.waiting_sync" -> {
             resources.getString(R.string.tools_waiting_sync)
         }
-        "transport.automatic" -> {
-            resources.getString(R.string.transport_automatic)
+        "transport.conn_check_via_relay" -> {
+            resources.getString(R.string.transport_conn_check_via_relay)
+        }
+        "transport.connection_group" -> {
+            resources.getString(R.string.transport_connection_group)
         }
         "transport.direct" -> {
             resources.getString(R.string.transport_direct)
         }
-        "transport.file_direct" -> {
-            resources.getString(R.string.transport_file_direct)
+        "transport.group_note" -> {
+            resources.getString(R.string.transport_group_note)
         }
-        "transport.file_relay" -> {
-            resources.getString(R.string.transport_file_relay)
+        "transport.group_note_speeds" -> {
+            resources.getString(R.string.transport_group_note_speeds)
         }
-        "transport.interaction_relay" -> {
-            resources.getString(R.string.transport_interaction_relay)
+        "transport.reason_failed" -> {
+            resources.getString(R.string.transport_reason_failed)
         }
-        "transport.off" -> {
-            resources.getString(R.string.transport_off)
+        "transport.reason_no_response" -> {
+            resources.getString(R.string.transport_reason_no_response)
+        }
+        "transport.reason_no_traversal" -> {
+            resources.getString(R.string.transport_reason_no_traversal)
+        }
+        "transport.reason_peer_unsupported" -> {
+            resources.getString(R.string.transport_reason_peer_unsupported)
+        }
+        "transport.speed_comparing" -> {
+            resources.getString(R.string.transport_speed_comparing)
+        }
+        "transport.speed_direct_mib" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.transport_speed_direct_mib, value)
+        }
+        "transport.speed_direct_ms" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.transport_speed_direct_ms, value)
+        }
+        "transport.speed_file_transfer" -> {
+            resources.getString(R.string.transport_speed_file_transfer)
+        }
+        "transport.speed_pair_mib" -> {
+            val direct = message.args.getValue("direct") as String
+            val relay = message.args.getValue("relay") as String
+            resources.getString(R.string.transport_speed_pair_mib, direct, relay)
+        }
+        "transport.speed_pair_ms" -> {
+            val direct = message.args.getValue("direct") as String
+            val relay = message.args.getValue("relay") as String
+            resources.getString(R.string.transport_speed_pair_ms, direct, relay)
+        }
+        "transport.speed_read_latency" -> {
+            resources.getString(R.string.transport_speed_read_latency)
+        }
+        "transport.speed_relay_faster" -> {
+            resources.getString(R.string.transport_speed_relay_faster)
+        }
+        "transport.speed_relay_mib" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.transport_speed_relay_mib, value)
+        }
+        "transport.speed_relay_ms" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.transport_speed_relay_ms, value)
+        }
+        "transport.status_connected_relay" -> {
+            resources.getString(R.string.transport_status_connected_relay)
+        }
+        "transport.status_direct" -> {
+            resources.getString(R.string.transport_status_direct)
+        }
+        "transport.status_trying" -> {
+            resources.getString(R.string.transport_status_trying)
+        }
+        "transport.status_unconnected" -> {
+            resources.getString(R.string.transport_status_unconnected)
+        }
+        "transport.summary_off" -> {
+            resources.getString(R.string.transport_summary_off)
+        }
+        "transport.summary_with_detail" -> {
+            val detail = message.args.getValue("detail") as String
+            val status = message.args.getValue("status") as String
+            resources.getString(R.string.transport_summary_with_detail, detail, status)
+        }
+        "transport.unsupported_device" -> {
+            resources.getString(R.string.transport_unsupported_device)
+        }
+        "transport.use_files" -> {
+            resources.getString(R.string.transport_use_files)
+        }
+        "transport.use_files_and_reads" -> {
+            resources.getString(R.string.transport_use_files_and_reads)
+        }
+        "transport.use_reads" -> {
+            resources.getString(R.string.transport_use_reads)
         }
         else -> null
     }

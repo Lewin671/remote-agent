@@ -4,6 +4,39 @@ import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.ForwardResponse
 import io.github.lewin671.remoteagent.proto.MachineCapabilities
 
+/** Connection and route telemetry for per-machine UI presentation. */
+enum class DirectStage {
+    OFF,
+    TRYING,
+    CONNECTED_RELAY,
+    DIRECT_ACTIVE,
+    UNCONNECTED,
+}
+
+enum class DirectFailReason {
+    PEER_UNSUPPORTED,
+    NO_RESPONSE,
+    NO_TRAVERSAL,
+    FAILED,
+}
+
+data class DirectStatus(
+    val supported: Boolean = true,
+    val enabled: Boolean = true,
+    val stage: DirectStage = DirectStage.OFF,
+    val readDirect: Boolean = false,
+    val fileDirect: Boolean = false,
+    val benchmarkDecidedRelay: Boolean = false,
+    val reason: DirectFailReason? = null,
+    val bulkDirectMibPerSec: Double? = null,
+    val bulkRelayMibPerSec: Double? = null,
+    val readDirectMs: Double? = null,
+    val readRelayMs: Double? = null,
+) {
+    val hasSpeeds: Boolean
+        get() = bulkDirectMibPerSec != null || bulkRelayMibPerSec != null || readDirectMs != null || readRelayMs != null
+}
+
 /** Permission and authenticated capabilities are separate from reachability. */
 data class PeerState(
     val reachable: Boolean = false,
@@ -15,6 +48,7 @@ data class PeerState(
     val protocolVersion: Int? = null,
     val capabilities: MachineCapabilities? = null,
     val fileDirect: Boolean = false,
+    val directStatus: DirectStatus = DirectStatus(),
 ) {
     val available: Boolean get() = reachable && ready
     fun canProbe(serverReachable: Boolean): Boolean = serverReachable || !relayRequired
