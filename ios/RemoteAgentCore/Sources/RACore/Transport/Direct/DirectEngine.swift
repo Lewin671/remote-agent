@@ -203,6 +203,7 @@ final class DirectEngine: @unchecked Sendable {
             close.forEach { $0.close() }
             if ok { await discover() }
         } catch {
+            
             if lock.withLock({ revision == syncRevision }) { invalidate() }
         }
     }
@@ -261,18 +262,18 @@ final class DirectEngine: @unchecked Sendable {
             // A failed use starts a new bounded pair round after its cooldown. Closing the old SDK
             // objects stays charged to the shared budget.
             let retire: DirectSession? = lock.withLock {
-                if let prior = peers[member.id], let at = prior.redialAt, clock.now() >= at, prior.session.active {
+                if let prior = peers[member.id], let at = prior.redialAt, clock.now() >= at, prior.session.live {
                     peers.removeValue(forKey: member.id); retryAfter.removeValue(forKey: member.id); return prior.session
                 }
                 return nil
             }
             retire?.retire()
-            let skip = lock.withLock { member.kind != 1 || !enabledLocked(member.id) || peers[member.id]?.session.active == true || clock.now() < (retryAfter[member.id] ?? 0) }
+            let skip = lock.withLock { member.kind != 1 || !enabledLocked(member.id) || peers[member.id]?.session.live == true || clock.now() < (retryAfter[member.id] ?? 0) }
             if skip { continue }
             if lock.withLock({ peers.count >= 4 }) { break }
             let pub = lock.withLock { try? publicIdentityLocked(member.id) }
             guard let pub, still() else { continue }
-            if lock.withLock({ peers[member.id]?.session.active == true }) { continue }
+            if lock.withLock({ peers[member.id]?.session.live == true }) { continue }
             if let p = create(pub, W.random(16), clock.now() + 10_000) { await p.session.start() }
         }
     }
@@ -293,7 +294,7 @@ final class DirectEngine: @unchecked Sendable {
             guard let self, let p else { return }
             var old: [DirectSession] = []
             let chosen = self.lock.withLock { () -> Bool in
-                guard self.validLocked(p), p.session.active, self.sessions[key] === p else { return false }
+                guard self.validLocked(p), p.session.live, self.sessions[key] === p else { return false }
                 p.selected = true; self.selectLocked(p)
                 old = self.sessions.values.filter { $0 !== p && $0.id == id }.map(\.session); return true
             }
@@ -318,7 +319,7 @@ final class DirectEngine: @unchecked Sendable {
         lock.withLock {
             sessions[key] = p
             let prior = peers[id]
-            if prior?.selected != true || prior?.session.active != true { selectLocked(p) }
+            if prior?.selected != true || prior?.session.live != true { selectLocked(p) }
         }
         notify()
         return p
@@ -331,7 +332,7 @@ final class DirectEngine: @unchecked Sendable {
     private func pathReady(_ p: Peer?, _ id: String, _ use: Int, _ path: DirectChannel) {
         guard let p else { path.close(); return }
         let accepted = lock.withLock { () -> Bool in
-            guard validLocked(p), p.session.active, peers[id] === p else { return false }
+            guard validLocked(p), p.session.live, peers[id] === p else { return false }
             p.paths[use] = path
             if p.readyAt == nil { p.readyAt = clock.now() }
             failures.removeValue(forKey: id)
@@ -344,11 +345,11 @@ final class DirectEngine: @unchecked Sendable {
         guard let p else { return }
         lock.withLock {
             guard peers[id] === p else { return }
-            if use != nil && p.session.active && p.session.established {
+            if use != nil && p.session.live && p.session.established {
                 if p.redialAt == nil { p.redialAt = clock.now() + delay(id, p) }
                 routingLocked(id).fail()
             }
-            if !p.paths.values.contains(where: { $0.ready }) {
+            if !p.paths.values.contains(where: { $0.usable }) {
                 failures[id] = p.session.failure.map(Self.reason) ?? .failed
                 routingLocked(id).fail()
                 if peers[id] === p { peers.removeValue(forKey: id) }
@@ -428,8 +429,10 @@ final class DirectEngine: @unchecked Sendable {
         if ok { notify() }
     }
     private func send(_ p: Peer, _ out: DirectedOutput) -> Bool {
+        // The output's own check asks the engine again (valid(p)): never under the lock.
+        guard out.valid() else { return false }
         let (ok, stream): (Bool, (any FrameStream)?) = lock.withLock {
-            guard validLocked(p), out.valid(), let leg else { return (false, nil) }
+            guard validLocked(p), let leg else { return (false, nil) }
             let now = clock.monotonic(), elapsed = max(0, now - rateAt) / 1000; rateAt = now
             frameTokens = min(256, frameTokens + elapsed * 256); byteTokens = min(Double(4 << 20), byteTokens + elapsed * Double(4 << 20))
             if frameTokens < 1 || byteTokens < Double(out.raw.count) { return (false, nil) }
@@ -570,7 +573,7 @@ final class DirectEngine: @unchecked Sendable {
     }
     func ready(_ id: String, _ hint: RouteHint) -> Bool { lock.withLock { readyLocked(id, hint) } }
     private func readyLocked(_ id: String, _ hint: RouteHint) -> Bool {
-        guard let p = peers[id], validLocked(p), p.session.active, p.paths[hint.isRead ? 1 : 2]?.ready == true else { return false }
+        guard let p = peers[id], validLocked(p), p.session.live, p.paths[hint.isRead ? 1 : 2]?.usable == true else { return false }
         if case .bulk(_, let upload, let bytes) = hint, let upload {
             // Direct upload only with a valid snapshot that allows it; otherwise the relay carries it.
             guard let caps = capabilitiesLocked(id), let bytes, bytes <= Int(caps.maxChunkBytes) else { return false }
@@ -647,7 +650,7 @@ final class DirectEngine: @unchecked Sendable {
     func status(_ id: String) -> DirectStatus {
         let supported = factory != nil
         return lock.withLock {
-            let p = peers[id], live = p != nil && validLocked(p!) && p!.session.active
+            let p = peers[id], live = p != nil && validLocked(p!) && p!.session.live
             let measured = routes[id]?.measured() ?? (fileMiBps: [:], readMs: [:])
             func fill(_ s: inout DirectStatus) {
                 for (k, v) in measured.fileMiBps { s.fileMiBps[k == .relay ? DirectPath.relay : DirectPath.direct] = v }
@@ -657,10 +660,10 @@ final class DirectEngine: @unchecked Sendable {
             fill(&s)
             if !supported { s.state = .unsupported; return s }
             if !enabledLocked(id) { s.reason = .disabled; return s }
-            if live, p!.paths.values.contains(where: { $0.ready }) {
+            if live, p!.paths.values.contains(where: { $0.usable }) {
                 let read = readyLocked(id, .read), route = routingLocked(id)
                 s.state = .connected
-                s.fileDirect = p!.paths[2]?.ready == true && route.filePath == .direct
+                s.fileDirect = p!.paths[2]?.usable == true && route.filePath == .direct
                 s.readDirect = read && route.readPath() == .direct
                 s.warming = read && route.measuring(); s.compared = read && route.compared()
                 return s

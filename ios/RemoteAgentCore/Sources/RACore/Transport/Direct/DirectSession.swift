@@ -67,11 +67,13 @@ final class DirectSession: @unchecked Sendable {
     private(set) var retainUntil: UInt64
     private var _established = false
     private var _failure: DirectFailure?
-    private var _peer: W.Public
 
     var established: Bool { lock.withLock { _established } }
     var failure: DirectFailure? { lock.withLock { _failure } }
-    var peer: W.Public { lock.withLock { _peer } }
+    /// The computer as learned so far: its instance and boot nonce are filled in by its Challenge.
+    var peer: W.Public { pcs[0].gate.peerNow }
+    /// Not ended and not retired: flags only, so the engine can ask while holding its own lock.
+    var live: Bool { lock.withLock { !ended && !retired } }
     var active: Bool { lock.withLock { !ended && !retired } && options.valid() }
     private var isEnded: Bool { lock.withLock { ended } }
     private var isRetired: Bool { lock.withLock { retired } }
@@ -80,7 +82,6 @@ final class DirectSession: @unchecked Sendable {
         self.options = options
         let now = options.clock.now()
         guard options.valid(), options.deadline > now, options.deadline <= now + 10_000 else { throw PathChanged() }
-        _peer = options.peer
         boot = PeerSender(options.deadline)
         retainUntil = options.deadline + 300_000
         for use in 1...2 {

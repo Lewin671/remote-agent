@@ -28,6 +28,7 @@ final class PeerSignal {
         if o.type==8{let t=try PeerSchema.restart(o.payload);try PeerWire.check(offerer && o.ctx.use==use && o.ctx.generation==generation && t.count==1 && t[use]==generation)}
     }
     func setAuthorization(_ until:UInt64,_ members:Bool,_ revision:UInt64){lock.lock();defer{lock.unlock()};leaseUntil=until;membersAuthorized=members;authorizationRevision=revision}
+    var peerNow:PeerWire.Public{lock.lock();defer{lock.unlock()};return peer}
     var current:(()->Bool)?
     var authorized:Bool{clock<leaseUntil && membersAuthorized && authorizationRevision==1 && (current?() ?? true)}
     func replyAllowed(_ raw:PeerWire.Bytes,_ now:UInt64)->Bool{lock.lock();defer{lock.unlock()};_ = tick(now);if !authorized{return false};do{let o=try codec.open(raw,peer,selfID,clock);_ = try PeerSchema.known(o.ctx.cls,o.type,o.payload);let c=o.ctx;return c.connection==connection && seen[Self.key(c)]==o.hash && c.senderInstance==peer.instance && c.senderBoot==peer.boot && !(c.cls==2 && [4,10,11,12,13].contains(o.type))}catch{return false}}

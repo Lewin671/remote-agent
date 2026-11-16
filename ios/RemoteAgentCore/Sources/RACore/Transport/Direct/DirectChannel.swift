@@ -92,6 +92,8 @@ final class DirectChannel: @unchecked Sendable {
         return !state.0 && options.valid() && (state.1 || options.clock.now() < options.deadline)
     }
     var ready: Bool { lock.lock(); let c = confirmed; lock.unlock(); return c && valid() && data.state == .open }
+    /// Ready as far as the channel's own flags say: no question to the owner, so the engine may ask under its lock.
+    var usable: Bool { lock.lock(); let c = confirmed && !ended; lock.unlock(); return c && data.state == .open }
     var traversalReady: Bool { lock.lock(); defer { lock.unlock() }; return stunReady }
     var queuedBytes: Int { data.bufferedAmount }
     var isClosed: Bool { isEnded }

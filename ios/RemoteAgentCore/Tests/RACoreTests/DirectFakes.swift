@@ -11,6 +11,8 @@ final class FakeRtcNet: @unchecked Sendable {
     var stunWorks = true { didSet {} }
     var blackhole = false
     var failCreate = false
+    /// Seconds a PeerConnection takes to shut down: closing an SDK object can block.
+    var closeDelay = 0.0
     func register(_ pc: FakePC) { lock.withLock { byUfrag[pc.ufrag] = pc; created.append(pc) } }
     func find(_ ufrag: String) -> FakePC? { lock.withLock { byUfrag[ufrag] } }
     var all: [FakePC] { lock.withLock { created } }
@@ -54,6 +56,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
         ufrag = String((0..<8).map { _ in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".randomElement()! })
         net.register(self)
     }
+    var debug: String { lock.withLock { "\(ufrag) local=\(local) remote=\(remote) connected=\(connected) closed=\(closed) peer=\(_peer?.ufrag ?? "-") ch=\(_channels.mapValues { $0.state })" } }
     var channels: [Int: FakeRtcChannel] { lock.withLock { _channels } }
     var peer: FakePC? { lock.withLock { _peer } }
     var maxMessageSize: Int? { 262_144 }
@@ -101,6 +104,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
         listener.onConnectionStateChange(.failed)
     }
     func close() {
+        if net.closeDelay > 0 { Thread.sleep(forTimeInterval: net.closeDelay) }
         let first = lock.withLock { () -> Bool in if closed { return false }; closed = true; return true }
         guard first else { return }
         for c in channels.values { c.set(.closed) }
