@@ -3,6 +3,18 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CORE_ROOT="$ROOT/clientcore"
+
+# gomobile builds the bound package from a generated module that replaces
+# clientcore with its directory, and Go records that directory in the
+# library's build info even with -trimpath. Shipped libraries are entered
+# through a neutral symlink so no checkout path (a CI runner's or a
+# developer's) ends up in them; the hash keeps checkouts apart.
+cd_published_core() {
+  local link
+  link="/tmp/remote-agent-core-$(printf '%s' "$ROOT" | shasum | cut -c1-8)"
+  ln -sfn "$ROOT" "$link"
+  cd "$link/clientcore"
+}
 OUT_ROOT="${RA_CORE_OUT:-$ROOT/build/core}"
 
 usage() {
@@ -116,7 +128,7 @@ build_android() {
     host_cc="/usr/bin/clang"
   fi
   (
-    cd "$CORE_ROOT"
+    cd_published_core
     env ${host_cc:+CC="$host_cc"} CGO_LDFLAGS="${CGO_LDFLAGS:-} -Wl,-z,max-page-size=16384" \
       "$CORE_TOOL_BIN/gomobile" bind \
       -target=android/arm64,android/amd64 \
@@ -292,7 +304,7 @@ build_ios() {
   mkdir -p "$out"
   rm -rf "$xcf"
   (
-    cd "$CORE_ROOT"
+    cd_published_core
     "$CORE_TOOL_BIN/gomobile" bind \
       -target=ios/arm64,iossimulator/arm64,macos/arm64 \
       -iosversion=17.0 \
