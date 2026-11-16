@@ -3,6 +3,8 @@ import RAProto
 import Testing
 @testable import RACore
 
+final class Flag: @unchecked Sendable { private let l = NSLock(); private var v = false; func set() { l.withLock { v = true } }; var isSet: Bool { l.withLock { v } } }
+
 @Suite struct DirectEngineBehaviorTests {
     func connected(_ rig: EngineRig) async -> Bool { await eventually(8) { rig.engine.status(rig.machineId).state == .connected } }
 
@@ -94,7 +96,8 @@ import Testing
         #expect(await eventually { rig.engine.status(rig.machineId).retryScheduled })
         let before = rig.probes
         rig.engine.attach(FakeLeg { _ in })                                 // the main connection is back
-        #expect(await eventually(5) { rig.engine.status(rig.machineId).state == .connecting }, "a new round starts at once on the new leg, not after the old failure's wait")
+        // The wait the failure set is 1 s at its maximum; a round that starts inside half of it was not waiting.
+        #expect(await eventually(0.5) { rig.engine.status(rig.machineId).state == .connecting }, "a new round starts at once on the new leg, not after the old failure's wait")
         _ = before
         rig.close()
     }
@@ -133,11 +136,11 @@ import Testing
         let id = rig.machineId, engine = rig.engine!
         Task.detached { try? engine.setEnabled(id, false) }
         try await Task.sleep(nanoseconds: 150_000_000)
-        let started = Date()
-        _ = engine.status(id); _ = engine.ready(id, .read); _ = engine.enabled(id)
-        #expect(Date().timeIntervalSince(started) < 0.3, "status and routing answer while the SDK shuts down")
+        let answered = Flag()
+        Task.detached { _ = engine.status(id); _ = engine.ready(id, .read); _ = engine.enabled(id); answered.set() }
+        #expect(await eventually(0.4) { answered.isSet }, "status and routing answer while the SDK shuts down")
         rig.net.closeDelay = 0
-        rig.close()
+        if answered.isSet { rig.close() }
     }
 
     /// A Probe on a new connection proves nothing yet: the established session keeps carrying
@@ -153,6 +156,31 @@ import Testing
         guard let attempt = rig.engine.attempt(id, .read, handoff: {}, probe: true) else { Issue.record("the established path went away"); return }
         let response = try await attempt.send(machineId: id, command: rig.envelope())
         #expect(response.attemptID == attempt.attemptId, "and it still answers")
+        rig.close()
+    }
+
+    /// One use of an established round fails and is rebuilt inside the same session (a new PC
+    /// generation). The old PC's channels close late, while the new ones are already up: that
+    /// late lifecycle event belongs to a retired object and must change nothing, in particular it
+    /// must not schedule a redial of the whole round.
+    @Test func aRetiredPcsLateClosingNeverTouchesItsSuccessor() async throws {
+        let rig = try EngineRig(); await rig.start()
+        #expect(await connected(rig))
+        rig.announce()
+        let first = rig.net.all[0], second = first.peer!
+        rig.net.closeDelay = 0.4                                            // the old PC's SDK takes its time to shut down
+        first.fail(); second.fail()                                         // only one use of the round drops
+        #expect(await eventually(8) { rig.net.all.count >= 6 && rig.engine.status(rig.machineId).state == .connected }, "the use is rebuilt in the same session")
+        try await Task.sleep(nanoseconds: 1_200_000_000)                    // the old PCs finish closing
+        await rig.advance(2_001)                                            // past any wait a late closing could have scheduled
+        try await Task.sleep(nanoseconds: 600_000_000)
+        #expect(rig.probes == 1, "no new round was started for a failure that had already been repaired")
+        let id = rig.machineId
+        #expect(rig.engine.status(id).state == .connected && rig.engine.status(id).reason == nil)
+        rig.net.closeDelay = 0
+        guard let attempt = rig.engine.attempt(id, .read, handoff: {}, probe: true) else { Issue.record("the repaired path is gone"); return }
+        let response = try await attempt.send(machineId: id, command: rig.envelope())
+        #expect(response.attemptID == attempt.attemptId, "and the repaired path carries a request")
         rig.close()
     }
 }
