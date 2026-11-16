@@ -216,3 +216,30 @@ test("status says warming only while connected and measuring, and not for a comp
   peer.paths.set(1, { ready: false }); engine.routing("machine").arm(); expect(engine.status("machine").warming).toBe(false);
  } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
 });
+
+test("opening a screen with numbers triggers at most one bounded warm-up, and only when direct is connected and the window is thin", async () => {
+ vi.useFakeTimers();
+ try {
+  const { engine, peer } = readyEngine(); peer.paths.set(1, { ready: true }); Object.assign(engine, { freshUntil: Date.now() + 1e9 });
+  const calls: { at: number; path: string }[] = [];
+  engine.probe = async (_id, path) => { calls.push({ at: performance.now(), path }); await new Promise(r => setTimeout(r, 30)); };
+  const start = performance.now();
+  for (let i = 0; i < 40; i++) engine.refresh("machine");   // many mounts at once: one warm-up
+  await vi.advanceTimersByTimeAsync(15_000);
+  const per = (p: string) => calls.filter(c => c.path === p).length;
+  expect([per("direct"), per("relay")]).toEqual([10, 10]);
+  expect(Math.max(...calls.map(c => c.at)) - start).toBeLessThanOrEqual(5000);
+  for (const c of calls) expect(calls.filter(d => d.at >= c.at && d.at < c.at + 1000).length).toBeLessThanOrEqual(4);
+  // Direct not connected: nothing.
+  const before = calls.length; peer.paths.set(1, { ready: false });
+  engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before);
+  // A live window that already has 8 samples per path needs no warm-up.
+  peer.paths.set(1, { ready: true }); const route = engine.routing("machine");
+  for (let i = 0; i < 8; i++) { route.observe({ kind: "read" }, "relay", 0, 175); route.observe({ kind: "read" }, "direct", 0, 160); }
+  expect(route.sparse()).toBe(false);
+  engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before);
+  // Once the window has aged out, opening again warms again, bounded the same way.
+  await vi.advanceTimersByTimeAsync(61_000); expect(route.sparse()).toBe(true);
+  engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before + 20); expect(engine.ready("machine", { kind: "read" })).toBe(true);
+ } finally { vi.useRealTimers(); }
+});

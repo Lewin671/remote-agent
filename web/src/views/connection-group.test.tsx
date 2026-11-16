@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { DirectEngine } from "../transport/direct-engine";
 import { localeStore, t as message } from "../i18n";
 import type { DirectStatus } from "../transport/direct-engine";
 import { setDirect } from "../test/direct-state";
@@ -160,6 +161,17 @@ describe("speed rows", () => {
     const row = group().querySelector(".row.speed")!;
     expect(row.children.length).toBe(2);
     expect((row.lastElementChild as HTMLElement).className).toBe("v");
+  });
+});
+
+describe("opening the group", () => {
+  it("asks for fresh numbers once, for this computer", () => {
+    const refresh = vi.spyOn(DirectEngine.prototype, "refresh");
+    const r = open();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledWith("mac");
+    show(r, { state: "connected" }); notify(r);
+    expect(refresh).toHaveBeenCalledTimes(1);   // re-rendering is not opening
   });
 });
 

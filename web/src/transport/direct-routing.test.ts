@@ -175,8 +175,22 @@ test("what the page shows is what the rule compares: the same median over the sa
   // Medians: relay 140, direct 64; direct is under 0.7 x relay, so the rule upgraded on exactly these numbers.
   expect(route.measured().readMs).toEqual({ relay: 140, direct: 64 });
   expect(route.choose(hint, true)).toBe("direct");
-  // Outside the minute they are gone from both the page and the rule.
-  now += 61_000; expect(route.measured().readMs).toEqual({});
+  // Outside the minute the rule has nothing to compare, but the page keeps the last measured numbers.
+  now += 61_000; expect(route.measured().readMs).toEqual({ relay: 140, direct: 64 });
+});
+test("the last measured median is kept after the window empties, replaced by a fresh one, and never steers a decision", () => {
+  let now = 0; const route = new DirectRouting(() => now), hint = { kind: "read" } as const;
+  for (let i = 0; i < 5; i++) { now = i * 300; route.observe(hint, "relay", 0, 175); route.observe(hint, "direct", 0, 160); }
+  expect(route.measured().readMs).toEqual({ relay: 175, direct: 160 });
+  now += 61_000; expect(route.measured().readMs).toEqual({ relay: 175, direct: 160 });   // 60 s later, no new samples
+  expect(route.pending()).toBe(false); expect(route.sparse()).toBe(true);
+  // Fewer than three fresh samples do not replace it; three do.
+  route.observe(hint, "relay", 0, 90); route.observe(hint, "relay", 0, 90); expect(route.measured().readMs.relay).toBe(175);
+  route.observe(hint, "relay", 0, 90); expect(route.measured().readMs.relay).toBe(90);
+  // The snapshot is display only: with an empty window direct is not upgraded on its strength.
+  now += 61_000; expect(route.choose(hint, true)).toBe("relay"); expect(route.readPath()).toBe("relay");
+  // A fallback discards it with the samples.
+  route.fail(); expect(route.measured().readMs).toEqual({});
 });
 test("the fast upgrade needs 8 samples of each path, a 2 second span, a calm tail and a stable queue", () => {
   const feed = (cfg: { n?: number; gap?: number; direct?: (i: number) => number; queued?: (i: number) => number }) => {

@@ -43,6 +43,10 @@ export class DirectRouting {
   private sample = 0;
   private warm: Warmup = { start: Infinity, end: -Infinity, issued: { relay: 0, direct: 0 }, inflight: { relay: false, direct: false }, last: "relay" };
   private lastProbeAt = -Infinity;
+  /** Display only: each path's last window median that had at least three samples,
+   * kept when the window empties so a number does not vanish for want of new samples.
+   * Routing decisions never read it. A fallback or hard failure discards it with the samples. */
+  private lastReadMs: Partial<Record<RouteName, number>> = {};
   private files = new Map<string, Bulk>();
   filePath: RouteName = "relay";
   /** Last file throughput per path (bytes per millisecond) over at least 4 MiB
@@ -56,17 +60,24 @@ export class DirectRouting {
   /** Read-only view of what has actually been measured. A path with no samples
    * is absent, never zero. Throughput is in MiB/s, latency the median in ms
    * of the last minute's samples (at least three), the median the routing
-   * rule compares. */
+   * rule compares; when the window has too few, the path's last such median. */
   measured(): { fileMiBps: Partial<Record<RouteName, number>>; readMs: Partial<Record<RouteName, number>> } {
     const fileMiBps: Partial<Record<RouteName, number>> = {}, readMs: Partial<Record<RouteName, number>> = {};
     for (const path of ["relay", "direct"] as const) {
       const rate = this.fileRate[path]; if (rate !== undefined) fileMiBps[path] = rate * 1000 / (1 << 20);
-      const samples = this.live(path, READ_RULE.fast.windowMs); if (samples.length >= 3) readMs[path] = median(samples);
+      const samples = this.live(path, READ_RULE.fast.windowMs);
+      if (samples.length >= 3) this.lastReadMs[path] = median(samples);
+      const shown = this.lastReadMs[path]; if (shown !== undefined) readMs[path] = shown;
     }
     return { fileMiBps, readMs };
   }
   /** Path that read requests use now; the same gate as choose() for reads. */
   readPath(): RouteName { return this.now() >= this.readStableAfter ? this.readPreferred : "relay"; }
+  private snapshot(path: RouteName, now: number) {
+    const samples = this.live(path, READ_RULE.fast.windowMs, now); if (samples.length >= 3) this.lastReadMs[path] = median(samples);
+  }
+  /** Whether the live window lacks the samples a decision needs on either path. */
+  sparse() { const need = READ_RULE.fast.minSamples; return this.live("relay", READ_RULE.fast.windowMs).length < need || this.live("direct", READ_RULE.fast.windowMs).length < need; }
   /** Starts a warm-up: background samples of both paths, right away when the
    * read path is ready (the engine only asks then), after the stability wait
    * when a fallback just happened. A trigger while one is running is absorbed,
@@ -117,7 +128,7 @@ export class DirectRouting {
       this.advanceReads();
       const sample = { at: now, milliseconds, queued }; this.reads[path].push(sample); this.recentReads[path].push(sample);
       for (const samples of Object.values(this.reads)) while (samples.length > READ_RULE.keep || samples.length && now - samples[0].at > READ_RULE.keepMs) samples.shift();
-      this.decideReads(now);
+      this.snapshot(path, now); this.decideReads(now);
       return;
     }
     const file = this.file(hint.file); this.advanceBulk(hint,file); this.filePath = path;
@@ -169,7 +180,7 @@ export class DirectRouting {
   fail(hint?: RouteHint) {
     const until = this.now()+READ_RULE.stableMs;
     if (!hint || hint.kind === "read") {
-      this.readPreferred="relay";this.readStableAfter=until;this.reads={relay:[],direct:[]};this.recentReads={relay:[],direct:[]};this.readBad=0;
+      this.readPreferred="relay";this.readStableAfter=until;this.reads={relay:[],direct:[]};this.recentReads={relay:[],direct:[]};this.readBad=0;this.lastReadMs={};
       // A fallback re-measures after the stability wait; a window still open is cancelled, its samples would be wasted.
       this.warm.end = -Infinity; this.arm();
     }

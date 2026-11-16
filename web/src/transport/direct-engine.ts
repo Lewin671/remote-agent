@@ -246,6 +246,10 @@ export class DirectEngine {
     } catch { /* Remote authenticates every routed result. */ }
   }
   routing(id: string) { let route = this.routes.get(id); if (!route) { route = new DirectRouting(undefined, () => this.kick()); this.routes.set(id, route); } return route; }
+  /** A screen that shows the numbers (the 连接 group, the connection check) was opened:
+   * when direct is connected and the live window is too thin to decide, one warm-up,
+   * with the same bounds and merged with a running one, so the numbers are fresh. */
+  refresh(id: string) { if (this.ready(id, { kind: "read" }) && this.routing(id).sparse()) this.routing(id).arm(); }
   private kick() { if (!this.pumpTimer) this.pumpTimer = setTimeout(() => this.pump(), 0); }
   /** Drives the warm-up of every computer: one step every 250 ms while any is
    * open. The numbers (alternation, in-flight, per-path count, rate) are the

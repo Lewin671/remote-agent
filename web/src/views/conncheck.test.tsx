@@ -6,6 +6,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { DirectEngine } from "../transport/direct-engine";
 import { setDirect } from "../test/direct-state";
 import { ConnCheck, median } from "./ConnCheck";
 
@@ -148,6 +149,15 @@ describe("direct path summary lines", () => {
       await settle();
       expect(footer()).toBe(`${base()} This browser doesn't support direct connections.`);
     } finally { localeStore.overrideForTesting(undefined); }
+  });
+
+  it("asks for fresh numbers once per reachable computer when the sheet opens", async () => {
+    const refresh = vi.spyOn(DirectEngine.prototype, "refresh");
+    const r = open("", quiet);
+    await settle();
+    const reachable = [...r.machines.keys()].filter((id) => r.peer(id).reachable);
+    expect(reachable.length).toBeGreaterThan(0);
+    expect(refresh.mock.calls.map((c) => c[0]).sort()).toEqual(reachable.sort());
   });
 
   it("updates when the engine reports a change", async () => {
