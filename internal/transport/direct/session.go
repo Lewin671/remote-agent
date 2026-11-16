@@ -3,6 +3,10 @@ package direct
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -68,6 +72,10 @@ type Session struct {
 	retainUntil atomic.Uint64
 	finished    chan struct{}
 	closedPaths []*Path
+	born        time.Time
+	endReason   atomic.Value // first reason the round ended, a fixed word
+	traceMu     sync.Mutex
+	trace       []string // signal messages by kind and use, with ms since the round began (bounded)
 
 	cfg           SessionConfig
 	ctx           context.Context
@@ -101,7 +109,7 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 		return nil, ErrClosed
 	}
 	ctx, cancel := context.WithCancel(parent)
-	s := &Session{finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string][]byte{}, controlSeen: map[string][]byte{}}
+	s := &Session{born: time.Now(), finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string][]byte{}, controlSeen: map[string][]byte{}}
 	s.retainUntil.Store(cfg.Deadline + 300000)
 	for i := range s.pcs {
 		g := peerwire.NewSignal(cfg.Codec, cfg.Self, cfg.Peer, cfg.Connection, uint64(i+1), now)
@@ -138,7 +146,7 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 	go s.run()
 	return s, nil
 }
-func (s *Session) Close()                { s.cancel() }
+func (s *Session) Close()                { s.endFor("closed_by_owner"); s.cancel() }
 func (s *Session) Done() <-chan struct{} { return s.finished }
 func (s *Session) Wait()                 { <-s.finished }
 func (s *Session) Active() bool          { return s.ctx.Err() == nil && !s.retired.Load() }
@@ -178,6 +186,8 @@ func (s *Session) run() {
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	defer func() {
+		s.endFor("ctx_done")
+		s.logEnd()
 		s.cancel()
 		defer close(s.finished)
 		for i := range s.pcs {
@@ -199,7 +209,12 @@ func (s *Session) run() {
 	}()
 	for {
 		now := uint64(time.Now().UnixMilli())
-		if !s.cfg.Allow() || s.retired.Load() && now >= s.retainUntil.Load() {
+		if !s.cfg.Allow() {
+			s.endFor("not_allowed")
+			return
+		}
+		if s.retired.Load() && now >= s.retainUntil.Load() {
+			s.endFor("retired_replay_window_over")
 			return
 		}
 		select {
@@ -219,12 +234,13 @@ func (s *Session) run() {
 					if s.pcs[i].announced {
 						complete = true
 					} else if s.pcs[i].path != nil {
-						s.pcs[i].path.Close()
+						s.pcs[i].path.closeWhy("round_deadline")
 						s.closedPaths = append(s.closedPaths, s.pcs[i].path)
 						s.pcs[i].path = nil
 					}
 				}
 				if !complete {
+					s.endFor("round_deadline")
 					return
 				}
 			}
@@ -257,7 +273,7 @@ func (s *Session) flush(now uint64) {
 			p.signal.Tick(now)
 		}
 		if p.path != nil && !p.announced && p.signal.Closed {
-			p.path.Close()
+			p.path.closeWhy("signal_closed")
 			s.closedPaths = append(s.closedPaths, p.path)
 			p.path = nil
 		}
@@ -345,6 +361,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 	if err != nil || !bytes.Equal(o.Context.Connection, s.cfg.Connection) {
 		return
 	}
+	s.traceAdd("rx", o.Type, o.Context.Use, true)
 	if len(s.pcs[0].signal.Seen)+len(s.pcs[1].signal.Seen)+len(s.controlSeen) >= 2047 {
 		key := peerwire.Key(o.Context)
 		known := bytes.Equal(s.controlSeen[key], o.Hash)
@@ -561,7 +578,7 @@ func (s *Session) drainActions(i int, now uint64) {
 				return
 			}
 			if err = p.path.Remote(a.Payload, a.Type == 3); err != nil {
-				p.path.Close()
+				p.path.closeWhy("remote_description_rejected")
 				return
 			}
 			if a.Type == 3 {
@@ -599,7 +616,7 @@ func (s *Session) drainActions(i int, now uint64) {
 			s.restartPC(i, now)
 		case 9:
 			if p.path != nil {
-				p.path.Close()
+				p.path.closeWhy("signal_close_action")
 			}
 		}
 	}
@@ -619,8 +636,21 @@ func (s *Session) makePC(i int, now uint64) bool {
 	use := uint64(i + 1)
 	expires := s.cfg.Deadline
 	generation := p.signal.Generation
-	live := func() bool {
-		return p.currentGeneration.Load() == generation && (p.business.Load() || uint64(time.Now().UnixMilli()) < expires)
+	// gate names the first condition that refuses the path, "" if none does.
+	gate := func() string {
+		switch {
+		case s.retired.Load():
+			return "session_retired"
+		case p.currentGeneration.Load() != generation:
+			return "generation_retired"
+		case !p.business.Load() && uint64(time.Now().UnixMilli()) >= expires:
+			return "round_deadline"
+		case s.cfg.Policy != nil && !s.cfg.Policy():
+			return "policy"
+		case !s.cfg.Allow():
+			return "lease_or_process"
+		}
+		return ""
 	}
 	var source atomic.Pointer[Path]
 	post := func(e sessionEvent) {
@@ -636,12 +666,12 @@ func (s *Session) makePC(i int, now uint64) bool {
 		default:
 			// Closing the captured path cannot cancel a replacement, even if
 			// the actor changes generation between admission and this branch.
-			path.Close()
+			path.closeWhy("event_queue_full")
 		}
 	}
 	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Port: s.cfg.Port, Allow: func() bool {
-		return !s.retired.Load() && live() && (s.cfg.Policy == nil || s.cfg.Policy()) && s.cfg.Allow() && live() && !s.retired.Load() && (s.cfg.Policy == nil || s.cfg.Policy())
-	}, LoopbackOnly: s.cfg.LoopbackOnly,
+		return gate() == ""
+	}, Why: gate, Ended: func() { s.logSignals(use) }, LoopbackOnly: s.cfg.LoopbackOnly,
 		Candidate: func(c *webrtc.ICECandidateInit) { post(sessionEvent{candidate: c, kind: 1}) },
 		State:     func(state webrtc.PeerConnectionState) { post(sessionEvent{state: state, kind: 2}) },
 	})
@@ -699,7 +729,7 @@ func (s *Session) event(e sessionEvent, now uint64) {
 			p := &s.pcs[i]
 			p.signal.Closed = true
 			if p.path != nil {
-				p.path.Close()
+				p.path.closeWhy("peer_closed_round")
 			}
 		}
 		return
@@ -726,7 +756,7 @@ func (s *Session) event(e sessionEvent, now uint64) {
 		if e.candidate == nil {
 			p.ended = true
 		} else if !p.batch.Add([]byte(e.candidate.Candidate), p.signal.Generation, now, 1) {
-			p.path.Close()
+			p.path.closeWhy("candidate_budget")
 			return
 		}
 	} else if e.state == webrtc.PeerConnectionStateFailed || e.state == webrtc.PeerConnectionStateDisconnected {
@@ -798,7 +828,7 @@ func (s *Session) transmit(raw []byte) bool {
 		return false
 	}
 	deadline := original.Context.Deadline
-	return s.cfg.Send(Outbound{Raw: raw, Deadline: deadline, Critical: original.Context.Class == 2 || original.Type != 5 && original.Type != 6,
+	sent := s.cfg.Send(Outbound{Raw: raw, Deadline: deadline, Critical: original.Context.Class == 2 || original.Type != 5 && original.Type != 6,
 		Valid: func() bool {
 			c := original.Context
 			if c.Class == 1 && (original.Type == 1 || original.Type >= 3 && original.Type <= 8) && s.retired.Load() {
@@ -813,6 +843,8 @@ func (s *Session) transmit(raw []byte) bool {
 			return s.ctx.Err() == nil && s.cfg.Allow() && uint64(time.Now().UnixMilli()) < deadline
 		},
 	})
+	s.traceAdd("tx", original.Type, original.Context.Use, sent)
+	return sent
 }
 
 func (s *Session) senders() []*peerwire.Sender {
@@ -841,7 +873,7 @@ func (s *Session) resetPC(i int) {
 	p.currentPath.Store(nil)
 	p.currentGeneration.Store(p.signal.Generation)
 	if p.path != nil {
-		p.path.Close()
+		p.path.closeWhy("generation_reset")
 		s.closedPaths = append(s.closedPaths, p.path)
 		p.path = nil
 	}
@@ -874,4 +906,65 @@ func (s *Session) restartPC(i int, now uint64) {
 		body := peerwire.PB(peerwire.B(1, peerwire.PB(peerwire.U(1, uint64(i+1)), peerwire.U(2, p.signal.Generation))))
 		p.restartSent = s.sendSignal(i, 8, body, now)
 	}
+}
+
+const maxTrace = 64
+
+// traceAdd keeps the kind (not the content) of each signal message sent or
+// received, with the use and the time since the round began, up to maxTrace.
+func (s *Session) traceAdd(dir string, typ, use uint64, ok bool) {
+	if use == 0 && typ == 4 {
+		return // acknowledgements: too many to be of use here
+	}
+	s.traceMu.Lock()
+	defer s.traceMu.Unlock()
+	if len(s.trace) >= maxTrace {
+		return
+	}
+	mark := ""
+	if !ok {
+		mark = "!"
+	}
+	s.trace = append(s.trace, fmt.Sprintf("%s%d.%d%s@%d", dir, typ, use, mark, time.Since(s.born).Milliseconds()))
+}
+
+// endFor records why the round ended; only the first reason is kept.
+func (s *Session) endFor(reason string) { s.endReason.CompareAndSwap(nil, reason) }
+
+// logEnd writes one line about the round: its reason and which steps each
+// peer connection had reached. Fixed words and flags only.
+func (s *Session) logEnd() {
+	reason, _ := s.endReason.Load().(string)
+	args := []any{"reason", reason, "at_ms", time.Since(s.born).Milliseconds(), "established", s.established.Load()}
+	for i := range s.pcs {
+		p := &s.pcs[i]
+		n := "pc" + string(rune('1'+i))
+		args = append(args, n+"_steps", fmtSteps(p.signal.BootReady, p.signal.LocalSDP, p.signal.RemoteSDP, p.signal.DTLS, p.confirmed, p.announced))
+	}
+	s.traceMu.Lock()
+	args = append(args, "signals", strings.Join(s.trace, " "))
+	s.traceMu.Unlock()
+	slog.Info("direct round ended", args...)
+}
+
+// logSignals writes the signal trace when one path of the round ends, so a
+// round that outlives its paths still tells how far the exchange got.
+func (s *Session) logSignals(use uint64) {
+	s.traceMu.Lock()
+	t := strings.Join(s.trace, " ")
+	s.traceMu.Unlock()
+	slog.Info("direct signals at path end", "use", use, "at_ms", time.Since(s.born).Milliseconds(), "signals", t)
+}
+
+// fmtSteps: boot, local SDP, remote SDP, DTLS, confirm sent, announced; one
+// letter each when reached, a dash when not.
+func fmtSteps(flags ...bool) string {
+	out := make([]byte, len(flags))
+	for i, ok := range flags {
+		out[i] = '-'
+		if ok {
+			out[i] = "blrdca"[i]
+		}
+	}
+	return string(out)
 }

@@ -42,6 +42,10 @@ type Config struct {
 	Port      *PortMux
 	Candidate func(*webrtc.ICECandidateInit)
 	State     func(webrtc.PeerConnectionState)
+	// Why names the gate that currently refuses the path (diagnostics only).
+	Why func() string
+	// Ended is called once, after the path's own end line (diagnostics only).
+	Ended func()
 }
 type partial struct {
 	count, length uint32
@@ -69,6 +73,7 @@ type Path struct {
 	closed       chan struct{}
 	sendMu       chan struct{}
 	writers      sync.WaitGroup
+	diag         pathDiag
 }
 
 func New(ctx context.Context, cfg Config) (*Path, error) {
@@ -84,7 +89,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		return nil, ErrLimit
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	p := &Path{cfg: cfg, ctx: ctx, cancel: cancel, pending: map[string]*partial{}, received: make(chan message, 128), ready: make(chan struct{}, 1), low: make(chan struct{}, 1), sendMu: make(chan struct{}, 1), closed: make(chan struct{}), confirmation: make(chan struct{})}
+	p := &Path{diag: pathDiag{born: time.Now()}, cfg: cfg, ctx: ctx, cancel: cancel, pending: map[string]*partial{}, received: make(chan message, 128), ready: make(chan struct{}, 1), low: make(chan struct{}, 1), sendMu: make(chan struct{}, 1), closed: make(chan struct{}), confirmation: make(chan struct{})}
 	se := webrtc.SettingEngine{}
 	se.LoggerFactory = silentLogger{}
 	se.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeUDP4, webrtc.NetworkTypeUDP6})
@@ -108,7 +113,8 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		return nil, err
 	}
 	p.pc = pc
-	pc.OnDataChannel(func(dc *webrtc.DataChannel) { _ = dc.Close(); p.Close() })
+	pc.OnDataChannel(func(dc *webrtc.DataChannel) { _ = dc.Close(); p.closeWhy("unexpected_data_channel") })
+	pc.OnICEConnectionStateChange(func(s webrtc.ICEConnectionState) { p.diag.ice(s.String()) })
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c != nil && c.Typ == webrtc.ICECandidateTypeSrflx {
 			p.stunReady.Store(true)
@@ -129,8 +135,9 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		if cfg.State != nil {
 			cfg.State(state)
 		}
+		p.diag.conn(state.String())
 		if state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateClosed || state == webrtc.PeerConnectionStateDisconnected {
-			p.Close()
+			p.closeWhy("pc_" + state.String())
 		}
 	})
 	for id := uint16(0); id < 2; id++ {
@@ -141,11 +148,12 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		}
 		dc, err := pc.CreateDataChannel("remote-agent", init)
 		if err != nil {
-			p.Close()
+			p.closeWhy("create_data_channel")
 			return nil, err
 		}
-		dc.OnError(func(error) { p.Close() })
-		dc.OnClose(p.Close)
+		name := "dc" + string(rune('0'+id))
+		dc.OnError(func(error) { p.closeWhy(name + "_error") })
+		dc.OnClose(func() { p.closeWhy(name + "_closed") })
 		if id == 0 {
 			p.data = dc
 			dc.SetBufferedAmountLowThreshold(32 << 10)
@@ -156,6 +164,7 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 				}
 			})
 			dc.OnOpen(func() {
+				p.diag.open()
 				select {
 				case p.ready <- struct{}{}:
 				default:
@@ -167,9 +176,14 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 			dc.OnMessage(func(m webrtc.DataChannelMessage) {
 				// Probe channel accepts only fixed-size opaque echoes, never fragments or
 				// commands. Its response cannot amplify a request.
-				if !p.businessReady() || m.IsString || len(m.Data) != 17 || m.Data[0] != 0 {
+				if m.IsString || len(m.Data) != 17 || m.Data[0] != 0 {
 					return
 				}
+				if !p.businessReady() {
+					p.diag.probe(false)
+					return
+				}
+				p.diag.probe(true)
 				reply := append([]byte(nil), m.Data...)
 				reply[0] = 1
 				_ = dc.Send(reply)
@@ -182,11 +196,11 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		for {
 			select {
 			case <-ctx.Done():
-				p.Close()
+				p.closeWhy("owner_closed")
 				return
 			case now := <-t.C:
 				if !p.valid() {
-					p.Close()
+					p.closeWhy(p.gateReason())
 					return
 				}
 				p.expire(now)
@@ -194,6 +208,25 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 		}
 	}()
 	return p, nil
+}
+
+// closeWhy closes the path and, if it is the first to do so, records why.
+func (p *Path) closeWhy(reason string) {
+	p.diag.why(reason)
+	p.Close()
+}
+
+// gateReason names the gate that made the path invalid.
+func (p *Path) gateReason() string {
+	if p.ctx.Err() != nil {
+		return "owner_closed"
+	}
+	if p.cfg.Why != nil {
+		if r := p.cfg.Why(); r != "" {
+			return r
+		}
+	}
+	return "not_allowed"
 }
 func (p *Path) valid() bool { return p.ctx.Err() == nil && p.cfg.Allow() }
 func (p *Path) businessReady() bool {
@@ -206,6 +239,7 @@ func (p *Path) businessReady() bool {
 // Confirm is called only after both SDP hashes and fingerprints have passed the
 // authenticated peer signal gate and DTLS has verified the remote certificate.
 func (p *Path) Confirm() {
+	p.diag.confirm()
 	p.mu.Lock()
 	p.confirmed = true
 	p.mu.Unlock()
@@ -393,6 +427,7 @@ func (p *Path) receive(m webrtc.DataChannelMessage) {
 	}
 	if old, ok := part.parts[f.Index]; ok {
 		if !bytes.Equal(old, f.Fragment) {
+			p.diag.why("fragment_conflict")
 			p.cancel()
 		}
 		return
@@ -443,6 +478,10 @@ func (p *Path) expire(now time.Time) {
 func (p *Path) Close() {
 	p.once.Do(func() {
 		p.cancel()
+		p.diag.end(p.cfg.Use, p.cfg.Generation)
+		if p.cfg.Ended != nil {
+			p.cfg.Ended()
+		}
 		p.mu.Lock()
 		for key, part := range p.pending {
 			p.drop(key, part)
