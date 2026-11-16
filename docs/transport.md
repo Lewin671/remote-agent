@@ -162,7 +162,10 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 
 控制子队列内部依次优先 ResolveApproval、AnswerQuestion/AnswerPlan/Interrupt、CancelInput/ResumeInput、GetLiveSnapshot；同优先级继续按 peer / 会话公平轮转。GetLiveSnapshot 的所有用途统一归类，不靠 wire 区分，不受其余控制/输入并发最多 1 的限制，只受每 peer 快照并发 1、每会话 1 槽和总交互 2 槽限制；仍是只读、不写接受日志，plan 的核屏步骤也受 5 秒交互期限约束。客户端发送控制命令前必须完成的读取与该控制命令同池，不能在忙时跳过重新核验或预填 observedEventSeq。
 
-审批指标覆盖三端实际发起的 GetLiveSnapshot → ResolveApproval 完整流程，**p99 ≤100 ms**，在普通池与 bulk 池同时占满时测量，也覆盖长 Send（含超期未退出）与快照洪泛，并报告实际获槽 / 完成比例；不能只测直接发送 ResolveApproval。
+审批指标覆盖三端实际发起的 GetLiveSnapshot → ResolveApproval 完整流程：客户端按产品行为在审批前自己读取最新状态（Android 实际是两次读取加一次审批，三个串行命令），不预填 observedEventSeq，不能只测直接发送 ResolveApproval，也不为压低数字省去读取。数字只在写明条件时才有意义，验收记录必须说明用的是哪个口径，并报告实际获槽 / 完成比例：
+
+- **调度口径 p99 ≤100 ms**：纯中继、本机 server 与 daemon（往返可忽略）、普通池与 bulk 池同时占满，也覆盖长 Send（含超期未退出）与快照洪泛。它验的是队列与执行槽，不含设备 CPU 受限的影响；三端的现值见 [1b 验收](acceptance-notes.md#1b-分类调度与完整审批验收2026-11-15)。
+- **端到端口径（直连 bulk 饱和）**：真实客户端、真实 relay 往返，直连 bulk 在同一台设备上加解密、与审批争用 CPU，所以上限随设备和构建而定，不套 100 ms，每端各写条件和上限。**Android p99 ≤350 ms**：iMac 上 4 核 x86_64 模拟器（API 35），非调试且已编译的构建，本机隔离 server 与 daemon，机器静默，harness 的 relay 往返中位数 17 ms（纯 HTTP 3 ms，约 5% 有 45–60 ms 的尾巴），每次 100 个样本；现值 p99 空闲 200–247 ms、饱和 223–299 ms，中位数约 55 ms 与 98 ms，其中等回复只占约 15–20 ms，其余是客户端（[测量记录](acceptance-notes.md#transport-1d-approval-2026-11-16)）。网页和 iOS 还没有同条件的端到端数字，不借用 Android 的；换设备或构建要重测，p99 ≤100 ms 不适用于这一口径。
 
 执行消费者先查同 ID 协调状态，重复进等待表；新请求**先取槽，再在执行闸门内复查并持久受理**。队列满或排队期限内仍无槽，未持久化终态拒绝时回复 unknown/busy，Router 按证据矩阵合并并退避原 ID；不留虚假的 in-progress。认证队列堵塞只拒当前帧，不阻塞读取审批、心跳或结果。
 
