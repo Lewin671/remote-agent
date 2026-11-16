@@ -106,7 +106,7 @@ class PublicScanTests(unittest.TestCase):
         for target in public_scan.TARGETS:
             tar(f'remote-agent-{tag}-{target}', ['remote-agent', 'remote-agent-service', 'THIRD_PARTY_NOTICES.txt'])
             if target.startswith('linux'):
-                tar(f'remote-agent-server-{tag}-{target}', ['remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt'])
+                tar(f'remote-agent-server-{tag}-{target}', ['remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'stun.compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt'])
         tar(f'remote-agent-web-{tag}', sorted(public_scan.web_files()) + ['assets/index-Ab_1cD-9.js', 'assets/index-S8FXQorW.css'])
         for name in (f'remote-agent-{tag}.apk', 'SHA256SUMS', 'latest.properties'):
             (dist / name).write_text('x')
@@ -134,7 +134,7 @@ class PublicScanTests(unittest.TestCase):
         (dist / 'notes.txt').write_text('x')
         (dist / 'remote-agent-v1.2.3-linux-arm64.tar.gz').unlink()
         with tarfile.open(dist / 'remote-agent-server-v1.2.3-linux-amd64.tar.gz', 'w:gz') as t:
-            for f in ('remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt', 'data/x'):
+            for f in ('remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'stun.compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt', 'data/x'):
                 t.addfile(tarfile.TarInfo(f'remote-agent-server-v1.2.3-linux-amd64/{f}'), io.BytesIO(b''))
         with tarfile.open(dist / 'remote-agent-web-v1.2.3.tar.gz', 'w:gz') as t:
             for f in sorted(public_scan.web_files() - {'sw.js'}) + ['report.html', 'assets/index-Ab_1cD-9.js', 'assets/deployment-backup.txt']:
