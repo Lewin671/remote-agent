@@ -312,8 +312,8 @@ export class DirectSession {
     const o = await this.options.codec.openSent(raw, this.options.self, this.pcs[0].gate.peer, Date.now()), c = o.context;
     return this.options.send({ raw, deadline: Number(c.deadline), critical: c.cls === 2n || ![5, 6].includes(o.type), valid: () => !this.ended && this.options.valid() && Date.now() < Number(c.deadline) && !(c.cls === 1n && c.use > 0n && c.use <= 2n && c.generation !== this.pcs[Number(c.use) - 1].generation) && !(this.retired && c.cls === 1n && (o.type === 1 || o.type >= 3 && o.type <= 8)) && !(c.cls === 1n && o.type === 1 && !this.options.budget.ownerAvailable(w.text(this.options.peer.id), w.hex(this.options.connection))) });
   }
-  delivery(id: w.Bytes, status: number, retry: number) {
-    void this.queue(async () => { for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) sender.limited(pending.hash, Date.now(), retry); if (status === 2) sender.offline(); } });
+  delivery(id: w.Bytes, status: number, retry: number, current: () => boolean) {
+    void this.queue(async () => { if (!current()) return; for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) sender.limited(pending.hash, Date.now(), retry); if (status === 2) sender.offline(); } });
   }
   discovered() { this.boot.discovered(); for (const p of this.pcs) p.sender.discovered(); }
   retire() { if (this.retired) return; this.retired = true; for (const p of this.pcs) { p.gate.retire(false); p.channel?.close(); p.channel = undefined; p.actions = []; } }

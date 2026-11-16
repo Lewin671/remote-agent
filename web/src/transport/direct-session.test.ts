@@ -2,7 +2,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import { DirectSession } from "./direct-session";
 import { DirectBudget, type DirectChannel } from "./direct-channel";
 import type { Signal } from "./peer/signal";
-import type { CandidateBatcher } from "./peer/sender";
+import * as w from "./peer/wire";
+import type { CandidateBatcher, Sender } from "./peer/sender";
 import { fixture, fixtureCodec } from "../test/peer/fixture";
 import { fakeRTC } from "../test/peer/fake-rtc";
 
@@ -38,4 +39,19 @@ test.each(["end", "candidate", "connected", "failed"])("queued old PC %s callbac
     expect(owner.pcs[0].gate.dtls).toBe(true);
     sdk.pcs[1].channels[0].close();expect(closed).toHaveBeenCalledWith(1);
   } finally {session.close();}
+});
+
+
+test.each([2,3])("queued receipt %i from a replaced main leg cannot pause the new sender",async status=>{
+ vi.useFakeTimers();const self=await fixture("client",1),peer=await fixture("machine",2);
+ const session=new DirectSession({self,peer,codec:await fixtureCodec(),connection:new Uint8Array(16),deadline:Date.now()+10000,budget:new DirectBudget(),stun:[],valid:()=>true,authorize:async()=>{},send:()=>true,chosen:()=>{},beforeOffer:()=>{},ready:()=>{},closed:()=>{},frame:()=>{},capability:()=>{}});
+ const owner=session as unknown as Owner & {boot:Sender};const id=new Uint8Array(16);
+ try {
+  await owner.boot.enqueue(w.pb(w.b(4,id)),Date.now(),Date.now()+10000,1);
+  const blocked=deferred();void owner.queue(()=>blocked.promise);let generation=1;
+  session.delivery(id,status,1000,()=>generation===1);generation=2;session.discovered();blocked.resolve();await owner.chain;
+  expect(owner.boot.paused).toBe(false);expect([...owner.boot.pending.values()][0].notBefore).toBe(0);
+  session.delivery(id,status,1000,()=>generation===2);await owner.chain;
+  if(status===2)expect(owner.boot.paused).toBe(true);else expect([...owner.boot.pending.values()][0].notBefore).toBeGreaterThan(0);
+ }finally{session.close();}
 });

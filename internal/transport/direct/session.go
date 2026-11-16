@@ -85,9 +85,10 @@ type Session struct {
 	peerScopes    map[uint64]*peerScopeWindow
 }
 type deliveryResult struct {
-	id     []byte
-	status uint32
-	retry  uint64
+	current func() bool
+	id      []byte
+	status  uint32
+	retry   uint64
 }
 
 func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Session, error) {
@@ -166,9 +167,9 @@ func (s *Session) Receive(raw []byte) bool {
 		return false
 	}
 }
-func (s *Session) Delivery(id []byte, status uint32, retry uint64) {
+func (s *Session) Delivery(id []byte, status uint32, retry uint64, current func() bool) {
 	select {
-	case s.delivery <- deliveryResult{append([]byte(nil), id...), status, retry}:
+	case s.delivery <- deliveryResult{current, append([]byte(nil), id...), status, retry}:
 	default:
 	}
 }
@@ -635,7 +636,9 @@ func (s *Session) makePC(i int, now uint64) bool {
 		select {
 		case s.events <- e:
 		default:
-			s.cancel()
+			// Closing the captured path cannot cancel a replacement, even if
+			// the actor changes generation between admission and this branch.
+			path.Close()
 		}
 	}
 	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool {
@@ -748,6 +751,9 @@ func (s *Session) maybeReady(i int, now uint64) {
 	}
 }
 func (s *Session) result(r deliveryResult, now uint64) {
+	if r.current == nil || !r.current() {
+		return
+	}
 	for _, sender := range s.senders() {
 		for _, pending := range sender.Pending {
 			fields, err := peerwire.Parse(pending.Raw, 5)

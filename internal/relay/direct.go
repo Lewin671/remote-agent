@@ -78,7 +78,7 @@ type directManager struct {
 	tokens              [2]directedTokens
 	readWake, writeWake chan struct{}
 	path                transport.Path
-	pathGeneration      uint64
+	pathGeneration      atomic.Uint64
 	announced           uint64
 	stun                []string
 	loopback            bool
@@ -151,14 +151,14 @@ func (m *directManager) close() {
 }
 func (m *directManager) attach(path transport.Path) (uint64, func()) {
 	m.mu.Lock()
-	m.pathGeneration++
-	generation := m.pathGeneration
+	generation := m.pathGeneration.Add(1)
 	m.path = path
 	m.mu.Unlock()
 	notify(m.writeWake)
 	return generation, func() {
 		m.mu.Lock()
-		if m.pathGeneration == generation {
+		if m.pathGeneration.Load() == generation {
+			m.pathGeneration.Add(1)
 			m.path = nil
 		}
 		m.mu.Unlock()
@@ -189,11 +189,11 @@ func (m *directManager) delivery(result *pb.PeerFrameResult, generation uint64) 
 		return
 	}
 	defer m.mu.Unlock()
-	if generation != m.pathGeneration {
+	if generation != m.pathGeneration.Load() {
 		return
 	}
 	for _, p := range m.sessions {
-		p.session.Delivery(result.FrameId, uint32(result.Status), uint64(result.RetryAfterMs))
+		p.session.Delivery(result.FrameId, uint32(result.Status), uint64(result.RetryAfterMs), func() bool { return m.ctx.Err() == nil && m.pathGeneration.Load() == generation })
 	}
 }
 func (m *directManager) scope(id string) (deviceauth.PeerBinding, *peerwire.Codec, peerwire.Public, bool) {
@@ -585,7 +585,7 @@ func (m *directManager) maintenance() {
 				}
 			}
 		}
-		pathGeneration := m.pathGeneration
+		pathGeneration := m.pathGeneration.Load()
 		announce := m.path != nil && m.announced != pathGeneration
 		m.mu.Unlock()
 		if !announce || m.d.security.directFresh.Load() == nil {
@@ -601,7 +601,7 @@ func (m *directManager) maintenance() {
 				continue
 			}
 			m.mu.Lock()
-			if m.closed || m.pathGeneration != pathGeneration || m.path == nil {
+			if m.closed || m.pathGeneration.Load() != pathGeneration || m.path == nil {
 				m.mu.Unlock()
 				break
 			}
@@ -615,7 +615,7 @@ func (m *directManager) maintenance() {
 			m.mu.Unlock()
 		}
 		m.mu.Lock()
-		if m.pathGeneration == pathGeneration {
+		if m.pathGeneration.Load() == pathGeneration {
 			m.announced = pathGeneration
 		}
 		m.mu.Unlock()

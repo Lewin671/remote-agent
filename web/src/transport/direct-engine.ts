@@ -219,7 +219,8 @@ export class DirectEngine {
   }
   result(raw: w.Bytes, leg: FrameStream) {
     if (leg !== this.leg) return;
-    try { const result = fromBinary(PeerFrameResultSchema, raw); for (const p of this.sessions.values()) p.session.delivery(new Uint8Array(result.frameId), result.status, result.retryAfterMs); } catch { /* An unauthenticated receipt cannot authorize a path. */ }
+    const lifetime = this.lifetime;
+    try { const result = fromBinary(PeerFrameResultSchema, raw); for (const p of this.sessions.values()) p.session.delivery(new Uint8Array(result.frameId), result.status, result.retryAfterMs, () => leg === this.leg && lifetime === this.lifetime); } catch { /* An unauthenticated receipt cannot authorize a path. */ }
   }
   private frame(peer: Peer, raw: w.Bytes, use: number) {
     if (!this.valid(peer)) return;

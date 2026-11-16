@@ -3,6 +3,7 @@ package direct
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
 	"github.com/pion/webrtc/v4"
 	"testing"
@@ -46,6 +47,10 @@ func TestSDKCallbacksKeepTheirOriginalPCOwner(t *testing.T) {
 		t.Fatal("old callback entered replacement queue")
 	}
 	<-s.events
+	old.cfg.Candidate(nil)
+	if len(s.events) != 0 {
+		t.Fatal("old SDK callback entered replacement queue")
+	}
 	for _, generation := range []uint64{1, 2} {
 		s.event(sessionEvent{use: 1, generation: generation, path: old, kind: 1}, now)
 		s.event(sessionEvent{use: 1, generation: generation, path: old, kind: 2, state: webrtc.PeerConnectionStateConnected}, now)
@@ -57,5 +62,38 @@ func TestSDKCallbacksKeepTheirOriginalPCOwner(t *testing.T) {
 	s.event(<-s.events, now)
 	if !p.ended {
 		t.Fatal("current candidate callback was lost")
+	}
+}
+
+func TestQueuedDeliveryRechecksMainLegAtDispatch(t *testing.T) {
+	for _, status := range []uint32{2, 3} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			now := uint64(time.Now().UnixMilli())
+			id := make([]byte, 16)
+			raw := peerwire.PB(peerwire.B(4, id))
+			boot := peerwire.NewSender(now + 10000)
+			boot.Enqueue(raw, now, now+10000, 1)
+			s := &Session{boot: boot, delivery: make(chan deliveryResult, 1)}
+			for i := range s.pcs {
+				s.pcs[i].sender = peerwire.NewSender(now + 10000)
+			}
+			generation := 1
+			s.Delivery(id, status, 1000, func() bool { return generation == 1 })
+			generation = 2
+			boot.Discovered()
+			s.result(<-s.delivery, now)
+			for _, pending := range boot.Pending {
+				if boot.Paused || pending.NotBefore != 0 {
+					t.Fatal("old main-leg receipt changed current sender")
+				}
+			}
+			s.Delivery(id, status, 1000, func() bool { return generation == 2 })
+			s.result(<-s.delivery, now)
+			for _, pending := range boot.Pending {
+				if status == 2 && !boot.Paused || status == 3 && pending.NotBefore == 0 {
+					t.Fatal("current main-leg receipt was ignored")
+				}
+			}
+		})
 	}
 }

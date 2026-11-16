@@ -164,7 +164,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 				}
 			}
 			if r := f.GetPeerFrameResult(); r != nil {
-				link.Delivery(r.FrameId, uint32(r.Status), uint64(r.RetryAfterMs))
+				link.Delivery(r.FrameId, uint32(r.Status), uint64(r.RetryAfterMs), func() bool { return ctx.Err() == nil })
 			}
 		}
 	})
