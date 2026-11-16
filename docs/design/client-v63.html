@@ -574,6 +574,7 @@
 <symbol id="lu-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
 <symbol id="lu-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
 <symbol id="lu-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+<symbol id="lu-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
 <symbol id="lu-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor" stroke="none"/></symbol>
 </svg>
 
@@ -590,9 +591,10 @@
   <li><b>同心圆角收敛与全高玻璃</b>：淘汰散落的 13 档和 30/38 大圆角，手机收为 <code>6 / 12 / 18 / 24 / 28</code> 五档（<code>.tc</code> 外 24 / 边距 12 / 内 12 同心），宽屏收为 <code>6 / 8 / 14 / 18</code> 四档（<code>.wbox</code> 与 <code>.wcomp</code> 外 14 / 内按钮与胶囊 8 同心）；全高滚动配合半透明 <code>edge</code> 渐隐（76%→0% / 0%→68%），让内容真正从玻璃下折射滑过。</li>
   <li><b>落后章节与宽屏统一</b>：<a href="#new">手机新建</a>更新为两行无底色顶栏 + 底部 <code>.pbox</code> 输入框 + CLI 弹出菜单 + 模型浮层面板（去掉右上发送、造句和完全放行）；全稿所有<a href="#wide">宽屏窗口</a>统一为四级 <code>s0–s3</code> 表面（去掉红黄绿窗口灯，侧栏 288 + 次级新任务钮 + 不重叠底栏，对话列 760 + 双行 14 圆角输入框，折叠工具行箭头紧跟文字）；修好 <a href="#direct-edge">200% 字号</a>演示卡状态文字挤压。</li>
   <li><b>交互与排版细节</b>：<a href="#home">主页焦点卡</a>支持 ≤3 选项简短单选提问原地作答，拒绝写理由保留 5 行命令；<a href="#input">运行中发送</a>在有草稿时显式露出「插入这一轮 ⌄」轻胶囊；<a href="#account-management">未登录首屏与启动壳</a>改用 <code>AppMark</code> 呼吸感布局，电脑卡额度条减重为 4px + 30% 墨色，推送未开提示统一用中性灰底。</li>
+  <li><b>Token 输出速度（按 agent + 模型被动记录）</b>：在<a href="#models">会话设置</a>和<a href="#machine-status">电脑状态页</a>新增速度摘要入口，进入独立的<a href="#speed">输出速度</a>页（今天 / 7 天 / 30 天 / 自定义，切换输出速度与首字延迟，单色线型+节点形状多线区分 + p10–p90 浅色带 + 对比表，覆盖没有数据、样本太少、电脑离线、正在补算历史四种状态）。</li>
   </ul>
 </div>
-<nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
+<nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#speed">输出速度</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
 
 <!-- ===== account-management ===== -->
 <style>
@@ -2168,7 +2170,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 <section id="models" class="sx-models">
 <h2>模型与上下文</h2>
 <div class="screens">
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>空闲 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">读了 6 个文件，运行了 3 条命令</span></div><div class="ai">问题在 <code>auth/login.go:58</code>，我改成复用连接池并加上 <code>2s</code> 超时。</div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="who"><b>会话设置</b><span>Codex · 修复登录超时</span></div><div class="grp ctx"><div class="mi"><div class="n"><b>11%</b><small>上下文占用 87k / 760k</small><div class="bar"><i style="width:11%"></i></div></div><button class="cb sec sm">压缩</button></div></div><div class="gl">模型</div><div class="grp"><div class="mi"><span class="n">GPT-6-Astra</span><svg class="ic ck" width="20" height="20"><use href="#lu-check"/></svg></div><div class="mi"><span class="n">GPT-6-Sol</span></div><div class="mi"><span class="n">GPT-6-Luna<small>最高 max</small></span></div><div class="mi act"><span class="n">全部模型</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">推理强度</div><div class="seg wide"><span>low</span><span class="on">medium</span><span>high</span><span>xhigh</span><span>max</span><span>ultra</span></div><div class="gf">只在空闲时能切换；运行中置灰，见<a href="#states">状态集</a>。</div></div><div class="homebar"></div></div><p class="cap"><b>会话设置。</b>从会话右上角 ⋯ 菜单的「模型」或「上下文占用」打开：最上面是上下文占用和「压缩」，下面是模型（当前的打蓝勾，更多的在「全部模型」里）和推理强度</p></div>
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>空闲 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">读了 6 个文件，运行了 3 条命令</span></div><div class="ai">问题在 <code>auth/login.go:58</code>，我改成复用连接池并加上 <code>2s</code> 超时。</div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="who"><b>会话设置</b><span>Codex · 修复登录超时</span></div><div class="grp ctx"><div class="mi"><div class="n"><b>11%</b><small>上下文占用 87k / 760k</small><div class="bar"><i style="width:11%"></i></div></div><button class="cb sec sm">压缩</button></div><a class="mi" href="#speed"><span class="n">输出速度<small>首字 0.9 s · 近 10 次中位数</small></span><span class="v" style="font-variant-numeric:tabular-nums">92 tok/s</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">模型</div><div class="grp"><div class="mi"><span class="n">GPT-6-Astra</span><svg class="ic ck" width="20" height="20"><use href="#lu-check"/></svg></div><div class="mi"><span class="n">GPT-6-Sol</span></div><div class="mi"><span class="n">GPT-6-Luna<small>最高 max</small></span></div><div class="mi act"><span class="n">全部模型</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">推理强度</div><div class="seg wide"><span>low</span><span class="on">medium</span><span>high</span><span>xhigh</span><span>max</span><span>ultra</span></div><div class="gf">只在空闲时能切换；运行中置灰，见<a href="#states">状态集</a>。</div></div><div class="homebar"></div></div><p class="cap"><b>会话设置（含输出速度入口）。</b>从会话右上角 ⋯ 菜单的「模型」或「上下文占用」打开：第一组是上下文占用与当前这一对「CLI + 模型」最近几次请求的中位速度（第二行写首字延迟，点开进入<a href="#speed">输出速度</a>页）；下面是模型和推理强度</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>重写支付模块</b><span>空闲 · 自动</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg><i class="dotk o"></i></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>编辑 9 个文件  +412 −288</code></div><div class="ai">支付回调和退款流程都已迁移到新接口，测试全部通过。</div><div class="turn">本轮用时 4 分 12 秒</div><div class="me"><div>继续把对账逻辑也迁过去</div></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>上下文超过 80%。</b>右上角 ⋯ 上出现橙点，⋯ 菜单里「上下文占用」一行写橙色的「已用 86%」，点进会话设置压缩。压缩后对话里留一行「上下文已压缩 · 86% → 14%」，橙点消失</p></div>
   <div><div class="phone" id="machine-detail"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota-agy"><span class="n">Antigravity</span><span class="v">剩 60% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp"><div class="mi"><span class="n">Codex 版本</span><span class="v"><span class="warn">未验证</span> · 示例版本</span></div><div class="mi"><span class="n">Claude Code 版本</span><span class="v">示例版本</span></div><div class="mi"><span class="n">Antigravity 版本</span><span class="v">示例版本</span></div></div><div class="gl">新项目默认设置</div><div class="seg wide"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">Gemini 4 Argon</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">high</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">自动</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件<small>可清理 120.0 MiB</small></span><span class="v">200.0 MiB</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">32.0 MiB</span></div><div class="mi act"><span class="n">清理…</span><span class="v">可释放 152.0 MiB</span></div></div><div class="gf">附件存在这台电脑上。会话用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">blog</span><span class="v"><span class="mono">~/Code/blog</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div><div class="gf">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认「删除这台电脑的记录？」才清除档案。</div></div><div class="homebar"></div></div><p class="cap"><b>设置 › 电脑。</b>账户额度和版本只列这台电脑装了的 CLI，每行只摘要剩得最少的窗口（如「剩 38% · 5 小时」），保持一行。账户额度之后是「连接」组（直连开关、状态行、测到才有的速度行和一句说明，各状态见<a href="#direct">电脑 › 连接</a>）。新项目默认设置和项目设置一样用分段按钮切换已安装的 CLI（模型、推理强度、审批模式），整台电脑共用的「审批超时」单独一组。附件存储只在大小不为零时写「可清理」「正在上传」。最下面的「移除这台电脑…」打开二次确认</p></div>
   <div><div class="phone" id="machine-detail-sparse"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>VPS-dev</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 78% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：两边的网络不能直接连通</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div></div><div class="gl">新项目默认设置 · Codex</div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件</span><span class="v">0 B</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">0 B</span></div><div class="mi dis"><span class="n">清理…</span><span class="v">无可清理内容</span></div></div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">remote-agent</span><span class="v"><span class="mono">~/Code/remote-agent</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div></div><div class="homebar"></div></div><p class="cap"><b>只装了一个 CLI 的电脑。</b>账户额度和版本都只列 Codex，「连接」组示例是正在用中继加原因；新项目默认设置没有分段按钮，分组标题直接写「新项目默认设置 · Codex」。没有可清理的内容时「清理…」置灰</p></div>
@@ -3282,8 +3284,14 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       <div class="ms-u"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-codex"/></svg></span><div class="b"><div class="t"><span>发文件：电脑端搬到最新 main</span><span class="n">62%</span></div><div class="m"><div style="width:44%"></div><small>1.1 GB</small></div></div></div>
       <div class="ms-u"><span class="ms-ic"><svg class="amark" viewBox="10.9 12.2 90 90"><use href="#v2-mark-agy"/></svg></span><div class="b"><div class="t"><span>稻城剪辑</span><span class="n">3%</span></div><div class="m"><div style="width:2%"></div><small>380 MB</small></div></div></div>
     </div>
+    <div class="ms-sec">输出速度<a href="#speed" style="text-decoration:none">查看趋势</a></div>
+    <div class="ms-card ms-lst">
+      <a class="ms-u" href="#speed" style="color:inherit;text-decoration:none;align-items:center"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-codex"/></svg></span><div class="b" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="t"><span>Codex · GPT-6-Astra</span></div><div class="m" style="margin-top:2px"><small>首字 0.9 s · 近 7 天 148 次</small></div></div><span class="n" style="font-size:16px;font-weight:500">92 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px"><use href="#lu-chevron-right"/></svg></div></a>
+      <a class="ms-u" href="#speed" style="color:inherit;text-decoration:none;align-items:center"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-claude"/></svg></span><div class="b" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="t"><span>Claude Code · Opus 5.5</span></div><div class="m" style="margin-top:2px"><small>首字 1.6 s · 近 7 天 86 次</small></div></div><span class="n" style="font-size:16px;font-weight:500">64 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px"><use href="#lu-chevron-right"/></svg></div></a>
+      <a class="ms-u" href="#speed" style="color:inherit;text-decoration:none;align-items:center"><span class="ms-ic"><svg class="amark" viewBox="10.9 12.2 90 90"><use href="#v2-mark-agy"/></svg></span><div class="b" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="t"><span>Antigravity · Claude Opus 5.5</span></div><div class="m" style="margin-top:2px"><small>首字 2.1 s · 近 7 天 31 次</small></div></div><span class="n" style="font-size:16px;font-weight:500">49 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px"><use href="#lu-chevron-right"/></svg></div></a>
+    </div>
     <div class="ms-ft">已开机 3 天 4 小时 · 电池 81%，充电中</div>
-  </div><div class="homebar"></div></div><p class="cap"><b>电脑状态 · 正常。</b>状态详情在原生端用 <code>lift</code> 与轻阴影（网页沿用 <code>gbg</code> 无阴影）。「占用最多」会话行用单色 <code>ink2</code> 的 CLI 官方标，不用品牌色方块</p></div>
+  </div><div class="homebar"></div></div><p class="cap"><b>电脑状态 · 正常（含输出速度入口）。</b>「占用最多」下方新增「输出速度」小节，每对「CLI · 模型」一行（Claude Code 用 Opus 5.5 与 Antigravity 用 Claude Opus 5.5 各自独立成行，不合并），点任意行或右上「查看趋势」进<a href="#speed">输出速度</a>页</p></div>
 
   <div><div class="phone g fit"><div class="sb"><span>9:41</span><i></i></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="ms-pg">
     <div class="ms-lt"><h3>MacBook Pro</h3><div class="ms-live"><span class="ms-dot"></span>实时</div></div>
@@ -3321,6 +3329,385 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       <div class="ms-card ms-hero" style="color:var(--ink3)"><div class="top"><div><div class="ms-kick" style="color:var(--ink3)"><svg class="i"><use href="#v2-cpu"/></svg>CPU</div><div class="ms-xl">23<sup>%</sup></div></div><div class="ms-aside" style="color:var(--ink3)">3.2 负载<br>10 核</div></div><div style="height:16px"></div></div>
     </div></div>
   </div>
+</div>
+</section>
+
+<!-- ===== speed ===== -->
+<style>
+.sx-speed {
+  --sp-round: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  --band-1: rgba(0,0,0,.09);
+  --band-2: rgba(0,0,0,.055);
+  --band-3: rgba(0,0,0,.04);
+  --c2-stroke: rgba(29,29,31,.72);
+}
+:is([data-theme="dark"], [data-theme="dark"] *) .sx-speed {
+  --band-1: rgba(255,255,255,.13);
+  --band-2: rgba(255,255,255,.085);
+  --band-3: rgba(255,255,255,.06);
+  --c2-stroke: rgba(245,245,247,.74);
+}
+.sx-speed .sp-ctrl { display: flex; flex-direction: column; gap: 8px; padding: 4px 16px 0; }
+.sx-speed .sp-ctrl .seg { display: flex; width: 100%; }
+.sx-speed .sp-ctrl .seg span { height: 30px; font-size: 13px; }
+.sx-speed .sp-range { display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding: 0 12px; border-radius: 12px; background: var(--gbg); font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sx-speed .sp-range span:last-child { color: var(--blue); font-weight: 500; display: inline-flex; align-items: center; gap: 2px; }
+.sx-speed .sp-card { margin: 12px 16px 0; background: var(--gbg); border-radius: 18px; padding: 14px 16px 12px; }
+.sx-speed .sp-hd { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+.sx-speed .sp-pair { font-size: 13px; font-weight: 600; color: var(--ink2); display: flex; align-items: center; gap: 5px; }
+.sx-speed .sp-kpi { font-family: var(--sp-round); font-size: 36px; font-weight: 600; line-height: 1.08; letter-spacing: -.02em; margin-top: 3px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.sx-speed .sp-kpi small { font-size: 15px; font-weight: 500; color: var(--ink2); margin-left: 4px; letter-spacing: 0; }
+.sx-speed .sp-sub { text-align: right; font-size: 12px; line-height: 1.45; color: var(--ink2); font-variant-numeric: tabular-nums; padding-bottom: 2px; }
+.sx-speed .sp-plot { position: relative; margin-top: 10px; }
+.sx-speed .sp-svg { display: block; width: 100%; height: 156px; overflow: visible; }
+.sx-speed .sp-grid { stroke: var(--sep); stroke-width: .6; }
+.sx-speed .sp-ytxt { font-size: 10.5px; fill: var(--ink3); font-variant-numeric: tabular-nums; }
+.sx-speed .sp-b1 { fill: var(--band-1); }
+.sx-speed .sp-b2 { fill: var(--band-2); }
+.sx-speed .sp-b3 { fill: var(--band-3); }
+.sx-speed .sp-l1 { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sx-speed .sp-l2 { fill: none; stroke: var(--c2-stroke); stroke-width: 1.75; stroke-dasharray: 6 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.sx-speed .sp-l3 { fill: none; stroke: var(--ink2); stroke-width: 1.75; stroke-dasharray: 2 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.sx-speed .sp-m1 { fill: var(--ink); }
+.sx-speed .sp-m2 { fill: var(--gbg); stroke: var(--c2-stroke); stroke-width: 1.6; }
+.sx-speed .sp-m3 { fill: var(--gbg); stroke: var(--ink2); stroke-width: 1.5; }
+.sx-speed .win .sp-m2, .sx-speed .win .sp-m3 { fill: var(--s2); }
+.sx-speed .sp-xaxis { display: flex; justify-content: space-between; margin-top: 6px; padding-right: 34px; font-size: 11px; color: var(--ink3); font-variant-numeric: tabular-nums; }
+/* 曲线下方细线对比表（不套内层卡） */
+.sx-speed .sp-tbl { margin: 16px 16px 0; width: calc(100% - 32px); border-collapse: collapse; font-size: 13px; }
+.sx-speed .sp-tbl th { font-weight: 400; font-size: 12px; color: var(--ink2); text-align: right; padding: 0 0 7px 8px; border-bottom: .5px solid var(--sep); white-space: nowrap; }
+.sx-speed .sp-tbl th:first-child { text-align: left; padding-left: 0; }
+.sx-speed .sp-tbl td { padding: 10px 0 10px 8px; border-bottom: .5px solid var(--sep); text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.sx-speed .sp-tbl tr:last-child td { border-bottom: 0; }
+.sx-speed .sp-tbl td:first-child { text-align: left; padding-left: 0; white-space: normal; }
+.sx-speed .sp-who { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.sx-speed .sp-sw { width: 24px; height: 12px; flex: none; display: block; overflow: visible; }
+.sx-speed .sp-who .nm { min-width: 0; }
+.sx-speed .sp-who .nm b { display: block; font-size: 14px; font-weight: 600; line-height: 1.25; color: var(--ink); }
+.sx-speed .sp-who .nm small { display: block; font-size: 12px; color: var(--ink2); margin-top: 1px; }
+.sx-speed .sp-tbl td.muted, .sx-speed .sp-tbl tr.off-s td { color: var(--ink2); }
+.sx-speed .sp-tbl tr.off-s .nm b { font-weight: 500; color: var(--ink2); }
+/* 宽屏输出速度 */
+.sx-speed .w-in { max-width: 760px; margin: 0 auto; padding: 20px 24px 36px; }
+.sx-speed .w-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sx-speed .w-top .seg { background: var(--fill); }
+.sx-speed .w-top .seg span { flex: none; padding: 0 12px; height: 28px; font-size: 13px; }
+.sx-speed .w-card { margin-top: 14px; background: var(--s2); border-radius: 14px; padding: 16px 20px 14px; }
+.sx-speed .w-svg { display: block; width: 100%; height: 196px; margin-top: 8px; overflow: visible; }
+.sx-speed .sp-scrub { stroke: var(--ink3); stroke-width: 1; stroke-dasharray: 3 3; }
+.sx-speed .sp-readout { display: inline-flex; align-items: center; gap: 12px; padding: 5px 10px; border-radius: 8px; background: var(--s3); box-shadow: inset 0 0 0 .5px var(--rim), 0 2px 8px rgba(0,0,0,.06); font-size: 12px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.sx-speed .sp-readout b { color: var(--ink); font-weight: 600; }
+.sx-speed .w-tbl { width: 100%; margin: 18px 0 0; }
+/* 四种边界状态 */
+.sx-speed .sp-empty { margin: 12px 16px 0; background: var(--gbg); border-radius: 18px; padding: 28px 20px; text-align: left; }
+.sx-speed .sp-empty b { display: block; font-size: 17px; font-weight: 600; color: var(--ink); }
+.sx-speed .sp-empty p { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink2); }
+.sx-speed .sp-stale .sp-l1, .sx-speed .sp-stale .sp-l2 { stroke: var(--ink3); }
+.sx-speed .sp-stale .sp-m1 { fill: var(--ink3); }
+.sx-speed .sp-stale .sp-m2 { stroke: var(--ink3); }
+.sx-speed .sp-stale .sp-kpi, .sx-speed .sp-stale .sp-tbl td, .sx-speed .sp-stale .sp-who .nm b { color: var(--ink2); }
+.sx-speed .sp-bf-zone { fill: none; stroke: var(--sep); stroke-width: 1; stroke-dasharray: 4 4; }
+</style>
+<section id="speed" class="sx-speed">
+<h2>Token 输出速度（待实现）</h2>
+<div class="note">
+  <h4>按「agent + 模型」被动记录，随时回看任意时间段</h4>
+  <ul>
+    <li><b>统计单位不合并</b>：严格按 <code>(agent, model)</code> 这一对记录。<code>Claude Code · Opus 5.5</code> 与 <code>Antigravity · Claude Opus 5.5</code> 是两条独立曲线和两行数据，不合并也不归一模型名。</li>
+    <li><b>只被动采集</b>：daemon 只从 CLI 自己落盘的本地记录计算输出速度（<code>tok/s</code>）与首字延迟（<code>s</code>），绝不发测速请求，也不为测速启动 CLI。近 7 天保留每次原始样本，更早按小时汇总共存 90 天；上线时可从本机已有日志后台补算。协议与数据来源见 <a href="../architecture.md#22-模型输出速度与首字延迟待实现">architecture §22</a>。</li>
+    <li><b>单色多线区分（不按品牌上色）</b>：遵守规范第 2 节，不用各家品牌色；同屏多条中位数曲线靠<b>线型 + 节点形状 + 表格首列同款图例</b>三重区分（第 1 条 <code>2px</code> 实线 + 实心圆 <code>●</code>，第 2 条长虚线 + 空心圆 <code>○</code>，第 3 条短点线 + 空心菱形 <code>◇</code>），各自配 <code>p10–p90</code> 浅色分位带；较上期变化一律用中性墨色等宽数字，不用红涨绿跌。</li>
+  </ul>
+</div>
+<div class="screens">
+  <!-- 1. 手机 · 7 天 · 输出速度 -->
+  <div><div class="phone" id="speed-mobile-7d"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
+    <div class="scroll" style="padding-bottom:44px">
+      <div class="sp-ctrl">
+        <div class="seg"><span class="on">输出速度</span><span>首字延迟</span></div>
+        <div class="seg"><span>今天</span><span class="on">7 天</span><span>30 天</span><span>自定义</span></div>
+      </div>
+      <div class="sp-card">
+        <div class="sp-hd">
+          <div><div class="sp-pair"><svg class="amk" width="13" height="13"><use href="#mark-codex"/></svg>Codex · GPT-6-Astra</div><div class="sp-kpi">92<small>tok/s</small></div></div>
+          <div class="sp-sub">中位数 · p10–p90 <b>78–108</b><br>11月10日 – 11月16日</div>
+        </div>
+        <div class="sp-plot">
+          <svg class="sp-svg" viewBox="0 0 329 156" aria-label="近 7 天输出速度中位数与 p10 至 p90 区间">
+            <line class="sp-grid" x1="0" y1="18" x2="294" y2="18"/><text class="sp-ytxt" x="329" y="21" text-anchor="end">120</text>
+            <line class="sp-grid" x1="0" y1="82" x2="294" y2="82"/><text class="sp-ytxt" x="329" y="85" text-anchor="end">60</text>
+            <line class="sp-grid" x1="0" y1="146" x2="294" y2="146"/><text class="sp-ytxt" x="329" y="149" text-anchor="end">0</text>
+            <!-- p10-p90 浅色带 -->
+            <path class="sp-b1" d="M4,42 L52,38 L100,45 L148,34 L196,36 L244,31 L290,30 L290,64 L244,62 L196,68 L148,63 L100,72 L52,66 L4,68 Z"/>
+            <path class="sp-b2" d="M4,69 L52,72 L100,68 L148,74 L196,70 L244,67 L290,69 L290,91 L244,89 L196,94 L148,96 L100,90 L52,92 L4,89 Z"/>
+            <path class="sp-b3" d="M4,88 L52,91 L100,94 L148,90 L196,92 L244,89 L290,86 L290,106 L244,108 L196,110 L148,108 L100,112 L52,109 L4,106 Z"/>
+            <!-- 3 条单色中位数曲线 -->
+            <polyline class="sp-l3" points="4,97 52,100 100,103 148,99 196,101 244,98 290,94"/>
+            <polyline class="sp-l2" points="4,79 52,82 100,78 148,85 196,81 244,77 290,78"/>
+            <polyline class="sp-l1" points="4,55 52,51 100,58 148,48 196,51 244,46 290,48"/>
+            <!-- 节点标记：实心圆 ● / 空心圆 ○ / 空心菱形 ◇ -->
+            <polygon class="sp-m3" points="148,95.5 151.5,99 148,102.5 144.5,99"/><polygon class="sp-m3" points="290,90.5 293.5,94 290,97.5 286.5,94"/>
+            <circle class="sp-m2" cx="148" cy="85" r="2.8"/><circle class="sp-m2" cx="290" cy="78" r="2.8"/>
+            <circle class="sp-m1" cx="148" cy="48" r="3"/><circle class="sp-m1" cx="290" cy="48" r="3.2"/>
+          </svg>
+          <div class="sp-xaxis"><span>周二</span><span>周四</span><span>周六</span><span>今天</span></div>
+        </div>
+      </div>
+      <table class="sp-tbl">
+        <thead><tr><th>Agent · 模型</th><th>中位</th><th>次数</th><th>较上期</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l1"/><circle cx="12" cy="6" r="3" class="sp-m1"/></svg><div class="nm"><b>Codex · GPT-6-Astra</b><small>p10–p90 78–108 tok/s</small></div></div></td>
+            <td>92 tok/s</td><td>148</td><td class="muted">+8%</td>
+          </tr>
+          <tr>
+            <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l2"/><circle cx="12" cy="6" r="2.8" class="sp-m2" style="fill:var(--paper)"/></svg><div class="nm"><b>Claude Code · Opus 5.5</b><small>p10–p90 52–76 tok/s</small></div></div></td>
+            <td>64 tok/s</td><td>86</td><td class="muted">−4%</td>
+          </tr>
+          <tr>
+            <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l3"/><polygon points="12,2.5 15.5,6 12,9.5 8.5,6" class="sp-m3" style="fill:var(--paper)"/></svg><div class="nm"><b>Antigravity · Claude Opus 5.5</b><small>p10–p90 40–58 tok/s</small></div></div></td>
+            <td>49 tok/s</td><td>31</td><td class="muted">+2%</td>
+          </tr>
+          <tr class="off-s">
+            <td><div class="sp-who"><span style="width:24px;text-align:center;color:var(--ink3);font-size:12px">—</span><div class="nm"><b>Claude Code · Sonnet 5.5</b><small>点按叠加上图</small></div></div></td>
+            <td>104 tok/s</td><td>19</td><td class="muted">持平</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="gf" style="margin-top:12px;padding:0 18px">只从 CLI 自己落盘的记录被动计算，不主动发测速请求。近 7 天保留每次样本，更早按小时汇总保留 90 天。</div>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>7 天 · 输出速度（tok/s）。</b>三条中位数曲线分别用实线实心圆、虚线空心圆、点线空心菱形加各自 p10–p90 浅色带区分；<code>Claude Code · Opus 5.5</code> 与 <code>Antigravity · Claude Opus 5.5</code> 独立统计。第 4 对起默认收在表格里，点行可切换聚焦或叠加。</p></div>
+
+  <!-- 2. 手机 · 自定义起止 · 首字延迟 -->
+  <div><div class="phone" id="speed-mobile-ttft"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
+    <div class="scroll" style="padding-bottom:44px">
+      <div class="sp-ctrl">
+        <div class="seg"><span>输出速度</span><span class="on">首字延迟</span></div>
+        <div class="seg"><span>今天</span><span>7 天</span><span>30 天</span><span class="on">自定义</span></div>
+        <div class="sp-range"><span>2026年10月25日 – 11月8日（15 天）</span><span>改日期<svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span></div>
+      </div>
+      <div class="sp-card">
+        <div class="sp-hd">
+          <div><div class="sp-pair"><svg class="amk" width="13" height="13"><use href="#mark-claude"/></svg>Claude Code · Opus 5.5</div><div class="sp-kpi">1.6<small>s</small></div></div>
+          <div class="sp-sub">首字中位数 · p10–p90 <b>1.1–2.6 s</b><br>10月25日 – 11月8日</div>
+        </div>
+        <div class="sp-plot">
+          <svg class="sp-svg" viewBox="0 0 329 156" aria-label="自定义时间段首字延迟曲线">
+            <line class="sp-grid" x1="0" y1="18" x2="294" y2="18"/><text class="sp-ytxt" x="329" y="21" text-anchor="end">3.0s</text>
+            <line class="sp-grid" x1="0" y1="82" x2="294" y2="82"/><text class="sp-ytxt" x="329" y="85" text-anchor="end">1.5s</text>
+            <line class="sp-grid" x1="0" y1="146" x2="294" y2="146"/><text class="sp-ytxt" x="329" y="149" text-anchor="end">0s</text>
+            <path class="sp-b1" d="M4,62 L62,58 L120,52 L178,60 L236,56 L290,54 L290,98 L236,96 L178,100 L120,94 L62,96 L4,99 Z"/>
+            <path class="sp-b2" d="M4,96 L62,98 L120,94 L178,99 L236,96 L290,95 L290,120 L236,122 L178,121 L120,118 L62,120 L4,119 Z"/>
+            <polyline class="sp-l2" points="4,108 62,110 120,106 178,111 236,109 290,107"/>
+            <polyline class="sp-l1" points="4,81 62,78 120,73 178,80 236,77 290,76"/>
+            <circle class="sp-m2" cx="178" cy="111" r="2.8"/><circle class="sp-m2" cx="290" cy="107" r="2.8"/>
+            <circle class="sp-m1" cx="178" cy="80" r="3"/><circle class="sp-m1" cx="290" cy="76" r="3.2"/>
+          </svg>
+          <div class="sp-xaxis"><span>10/25</span><span>10/30</span><span>11/04</span><span>11/08</span></div>
+        </div>
+      </div>
+      <table class="sp-tbl">
+        <thead><tr><th>Agent · 模型</th><th>首字中位</th><th>次数</th><th>较上期</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l1"/><circle cx="12" cy="6" r="3" class="sp-m1"/></svg><div class="nm"><b>Claude Code · Opus 5.5</b><small>p10–p90 1.1–2.6 s</small></div></div></td>
+            <td>1.6 s</td><td>194</td><td class="muted">+0.2 s</td>
+          </tr>
+          <tr>
+            <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l2"/><circle cx="12" cy="6" r="2.8" class="sp-m2" style="fill:var(--paper)"/></svg><div class="nm"><b>Codex · GPT-6-Astra</b><small>p10–p90 0.6–1.5 s</small></div></div></td>
+            <td>0.9 s</td><td>268</td><td class="muted">−0.1 s</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>自定义起止 · 切到「首字延迟」。</b>选「自定义」后在分段下方展开起止日期条（跨过 7 天的部分自动按 daemon 的小时汇总桶读取）；切到「首字延迟」后纵轴与表格同步换成秒数，较上期与紧邻的前一个 15 天比较。</p></div>
+</div>
+
+<h3 class="sub" id="speed-wide">宽屏 · 输出速度</h3>
+<div class="win" style="height:640px">
+  <div class="side"><div class="side-top"><span class="scp"><span class="av">全</span><span>全部项目</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div><div class="whl">1 个会话在运行</div><div class="wsub">另有 1 个空闲</div><div class="slist"><div class="slabel">进行中</div><div class="srow"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">foo · Codex · MacBook</div></div></div><div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口说明</div><div class="r3">foo · Claude Code · MacBook</div></div></div></div><div class="conn"><i class="dotk g"></i>已连接</div><div class="sfoot"><div class="seg"><span><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib on"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div></div>
+  <div class="main">
+    <div class="tool"><span class="ib" style="background:var(--fill)"><svg class="ic" width="18" height="18"><use href="#lu-chevron-left"/></svg></span><b>输出速度</b><span class="st">MacBook · 被动记录</span><span class="sp"></span></div>
+    <div class="pg" style="padding-top:4px">
+      <div class="w-in">
+        <div class="w-top">
+          <div class="seg"><span class="on">输出速度</span><span>首字延迟</span></div>
+          <div class="seg"><span>今天</span><span>7 天</span><span class="on">30 天</span><span>自定义</span></div>
+        </div>
+        <div class="w-card">
+          <div class="sp-hd">
+            <div><div class="sp-pair"><svg class="amk" width="13" height="13"><use href="#mark-codex"/></svg>Codex · GPT-6-Astra</div><div class="sp-kpi">92<small>tok/s</small></div></div>
+            <div class="sp-readout"><span>11月11日</span><span>● Codex <b>95</b></span><span>○ Claude Code <b>62</b></span><span>◇ Antigravity <b>48</b> tok/s</span></div>
+          </div>
+          <svg class="w-svg" viewBox="0 0 672 196" aria-label="宽屏 30 天输出速度趋势">
+            <line class="sp-grid" x1="0" y1="20" x2="632" y2="20"/><text class="sp-ytxt" x="672" y="24" text-anchor="end">120</text>
+            <line class="sp-grid" x1="0" y1="95" x2="632" y2="95"/><text class="sp-ytxt" x="672" y="99" text-anchor="end">60</text>
+            <line class="sp-grid" x1="0" y1="170" x2="632" y2="170"/><text class="sp-ytxt" x="672" y="174" text-anchor="end">0</text>
+            <path class="sp-b1" d="M6,50 L96,46 L186,52 L276,42 L366,44 L456,38 L546,41 L626,39 L626,76 L546,74 L456,70 L366,78 L276,75 L186,82 L96,76 L6,80 Z"/>
+            <path class="sp-b2" d="M6,84 L96,88 L186,82 L276,89 L366,86 L456,83 L546,80 L626,82 L626,108 L546,106 L456,110 L366,112 L276,114 L186,106 L96,110 L6,108 Z"/>
+            <path class="sp-b3" d="M6,108 L96,110 L186,114 L276,109 L366,112 L456,108 L546,106 L626,104 L626,128 L546,130 L456,131 L366,134 L276,130 L186,136 L96,132 L6,130 Z"/>
+            <line class="sp-scrub" x1="456" y1="14" x2="456" y2="170"/>
+            <polyline class="sp-l3" points="6,119 96,121 186,125 276,120 366,123 456,119 546,117 626,115"/>
+            <polyline class="sp-l2" points="6,96 96,99 186,94 276,101 366,98 456,96 546,92 626,94"/>
+            <polyline class="sp-l1" points="6,65 96,61 186,67 276,58 366,60 456,52 546,56 626,55"/>
+            <polygon class="sp-m3" points="456,115.5 459.5,119 456,122.5 452.5,119"/><polygon class="sp-m3" points="626,111.5 629.5,115 626,118.5 622.5,115"/>
+            <circle class="sp-m2" cx="456" cy="96" r="3"/><circle class="sp-m2" cx="626" cy="94" r="3"/>
+            <circle class="sp-m1" cx="456" cy="52" r="3.4"/><circle class="sp-m1" cx="626" cy="55" r="3.4"/>
+          </svg>
+          <div class="sp-xaxis" style="padding-right:40px"><span>10月18日</span><span>10月25日</span><span>11月1日</span><span>11月8日</span><span>今天</span></div>
+        </div>
+        <table class="sp-tbl w-tbl">
+          <thead><tr><th>Agent · 模型</th><th>中位速度</th><th>p10–p90</th><th>请求次数</th><th>较上个 30 天</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l1"/><circle cx="12" cy="6" r="3" class="sp-m1"/></svg><svg class="amk" width="14" height="14" style="color:var(--ink2)"><use href="#mark-codex"/></svg><div class="nm"><b>Codex · GPT-6-Astra</b></div></div></td>
+              <td>92 tok/s</td><td class="muted">78 – 108 tok/s</td><td>612</td><td class="muted">+8%</td>
+            </tr>
+            <tr>
+              <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l2"/><circle cx="12" cy="6" r="2.8" class="sp-m2" style="fill:var(--s1)"/></svg><svg class="amk" width="14" height="14" style="color:var(--ink2)"><use href="#mark-claude"/></svg><div class="nm"><b>Claude Code · Opus 5.5</b></div></div></td>
+              <td>64 tok/s</td><td class="muted">52 – 76 tok/s</td><td>384</td><td class="muted">−4%</td>
+            </tr>
+            <tr>
+              <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l3"/><polygon points="12,2.5 15.5,6 12,9.5 8.5,6" class="sp-m3" style="fill:var(--s1)"/></svg><svg class="amk" width="14" height="14" style="color:var(--ink2)"><use href="#mark-agy"/></svg><div class="nm"><b>Antigravity · Claude Opus 5.5</b></div></div></td>
+              <td>49 tok/s</td><td class="muted">40 – 58 tok/s</td><td>128</td><td class="muted">+2%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="wcap"><b>宽屏 · 30 天趋势与悬停读数。</b>主区域居中 760 列：顶行左侧切指标、右侧切时间段；鼠标移上曲线（手机按住左右拖动）出现虚线游标与级 3 读数胶囊，同时报出该时刻各对的中位值；下方表格展开完整的 <code>p10–p90</code> 列。</p>
+
+<h3 class="sub" id="speed-states">输出速度 · 四种边界状态</h3>
+<div class="screens">
+  <!-- 状态 1：没有数据 -->
+  <div><div class="phone" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>VPS-dev · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
+    <div class="scroll" style="padding-bottom:32px">
+      <div class="sp-ctrl">
+        <div class="seg"><span class="on">输出速度</span><span>首字延迟</span></div>
+        <div class="seg"><span class="on">今天</span><span>7 天</span><span>30 天</span><span>自定义</span></div>
+      </div>
+      <div class="sp-empty">
+        <b>今天还没有速度记录</b>
+        <p>在电脑上正常使用 CLI 对话后，这里会自动记下每次模型回复的输出速度与首字延迟。remote-agent 不会主动发请求测速。</p>
+      </div>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>没有数据。</b>不画空坐标轴或 0 tok/s，用干净的圆角 18 状态块说明所选时间段没有记录，并交代只靠真实对话被动采集。</p></div>
+
+  <!-- 状态 2：样本太少 -->
+  <div><div class="phone" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
+    <div class="scroll" style="padding-bottom:32px">
+      <div class="sp-ctrl">
+        <div class="seg"><span class="on">输出速度</span><span>首字延迟</span></div>
+        <div class="seg"><span class="on">今天</span><span>7 天</span><span>30 天</span><span>自定义</span></div>
+      </div>
+      <div class="sp-card">
+        <div class="sp-hd">
+          <div><div class="sp-pair"><svg class="amk" width="13" height="13"><use href="#mark-claude"/></svg>Claude Code · Opus 5.5</div><div class="sp-kpi">63<small>tok/s</small></div></div>
+          <div class="sp-sub">仅 2 次请求<br>满 3 次后画曲线与区间</div>
+        </div>
+        <div class="sp-plot">
+          <svg class="sp-svg" style="height:112px" viewBox="0 0 329 112" aria-label="样本太少仅画散点">
+            <line class="sp-grid" x1="0" y1="16" x2="294" y2="16"/><text class="sp-ytxt" x="329" y="19" text-anchor="end">100</text>
+            <line class="sp-grid" x1="0" y1="58" x2="294" y2="58"/><text class="sp-ytxt" x="329" y="61" text-anchor="end">50</text>
+            <line class="sp-grid" x1="0" y1="100" x2="294" y2="100"/><text class="sp-ytxt" x="329" y="103" text-anchor="end">0</text>
+            <circle class="sp-m1" cx="98" cy="49" r="4"/><circle class="sp-m1" cx="238" cy="45" r="4"/>
+          </svg>
+          <div class="sp-xaxis"><span>00:00</span><span>06:00</span><span>12:00</span><span>现在</span></div>
+        </div>
+      </div>
+      <table class="sp-tbl">
+        <thead><tr><th>Agent · 模型</th><th>中位</th><th>次数</th><th>较上期</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><circle cx="12" cy="6" r="3.2" class="sp-m1"/></svg><div class="nm"><b>Claude Code · Opus 5.5</b><small>样本不足，暂不计 p10–p90</small></div></div></td>
+            <td>63 tok/s</td><td>2</td><td class="muted">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>样本太少（1–2 次）。</b>请求不足 3 次时不硬连折线、也不画失真的 p10–p90 色带，只标出实测散点并写明「满 3 次后画曲线与区间」，较上期写 <code>—</code>。</p></div>
+
+  <!-- 状态 3：电脑离线 -->
+  <div><div class="phone sp-stale" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>iMac · 离线</span></div><span style="width:44px;flex:none"></span></div>
+    <div class="scroll" style="padding-bottom:32px">
+      <div class="banner" style="margin-top:2px"><svg class="ic" width="16" height="16"><use href="#lu-cloud-off"/></svg><span>iMac 不在线，下面是昨天 21:40 的记录</span></div>
+      <div class="sp-ctrl" style="margin-top:6px">
+        <div class="seg"><span class="on">输出速度</span><span>首字延迟</span></div>
+        <div class="seg"><span>今天</span><span class="on">7 天</span><span>30 天</span><span>自定义</span></div>
+      </div>
+      <div class="sp-card">
+        <div class="sp-hd">
+          <div><div class="sp-pair">Codex · GPT-6-Astra</div><div class="sp-kpi">88<small>tok/s</small></div></div>
+          <div class="sp-sub">上次缓存 · 7 天中位</div>
+        </div>
+        <div class="sp-plot">
+          <svg class="sp-svg" style="height:108px" viewBox="0 0 329 108" aria-label="电脑离线展示缓存曲线">
+            <line class="sp-grid" x1="0" y1="16" x2="294" y2="16"/><text class="sp-ytxt" x="329" y="19" text-anchor="end">120</text>
+            <line class="sp-grid" x1="0" y1="96" x2="294" y2="96"/><text class="sp-ytxt" x="329" y="99" text-anchor="end">0</text>
+            <path class="sp-b2" d="M4,36 L96,34 L192,38 L290,35 L290,56 L192,58 L96,54 L4,55 Z"/>
+            <polyline class="sp-l1" points="4,46 96,44 192,48 290,45"/>
+            <polyline class="sp-l2" points="4,64 96,66 192,63 290,65"/>
+            <circle class="sp-m1" cx="290" cy="45" r="3"/><circle class="sp-m2" cx="290" cy="65" r="2.8"/>
+          </svg>
+        </div>
+      </div>
+      <table class="sp-tbl">
+        <thead><tr><th>Agent · 模型</th><th>中位</th><th>次数</th><th>较上期</th></tr></thead>
+        <tbody>
+          <tr><td><div class="sp-who"><div class="nm"><b>Codex · GPT-6-Astra</b></div></div></td><td>88 tok/s</td><td>94</td><td class="muted">+5%</td></tr>
+          <tr><td><div class="sp-who"><div class="nm"><b>Claude Code · Opus 5.5</b></div></div></td><td>61 tok/s</td><td>52</td><td class="muted">−3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>电脑离线（显示上次的数据）。</b>顶部中性灰底提示条写明哪台电脑离线和缓存时刻（不用橙色）；已缓存的曲线与表格降为静态灰调，照常可看。</p></div>
+
+  <!-- 状态 4：正在补算历史 -->
+  <div><div class="phone" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
+    <div class="scroll" style="padding-bottom:32px">
+      <div class="banner" style="margin-top:2px"><i class="spin" style="width:12px;height:12px;border-width:1.5px;margin:0"></i><span>正在从本机记录补算历史 · 已算 12 / 30 天</span></div>
+      <div class="sp-ctrl" style="margin-top:6px">
+        <div class="seg"><span class="on">输出速度</span><span>首字延迟</span></div>
+        <div class="seg"><span>今天</span><span>7 天</span><span class="on">30 天</span><span>自定义</span></div>
+      </div>
+      <div class="sp-card">
+        <div class="sp-hd">
+          <div><div class="sp-pair"><svg class="amk" width="13" height="13"><use href="#mark-codex"/></svg>Codex · GPT-6-Astra</div><div class="sp-kpi">91<small>tok/s</small></div></div>
+          <div class="sp-sub">近 12 天已就绪<br>更早部分补算中</div>
+        </div>
+        <div class="sp-plot">
+          <svg class="sp-svg" style="height:108px" viewBox="0 0 329 108" aria-label="正在补算历史部分曲线">
+            <line class="sp-grid" x1="0" y1="16" x2="294" y2="16"/><text class="sp-ytxt" x="329" y="19" text-anchor="end">120</text>
+            <line class="sp-grid" x1="0" y1="96" x2="294" y2="96"/><text class="sp-ytxt" x="329" y="99" text-anchor="end">0</text>
+            <rect class="sp-bf-zone" x="2" y="22" width="166" height="68" rx="6"/>
+            <text class="sp-ytxt" x="85" y="60" text-anchor="middle">更早记录补算中…</text>
+            <path class="sp-b1" d="M174,36 L214,34 L252,38 L290,34 L290,56 L252,58 L214,53 L174,54 Z"/>
+            <polyline class="sp-l1" points="174,45 214,43 252,48 290,44"/>
+            <circle class="sp-m1" cx="290" cy="44" r="3.2"/>
+          </svg>
+          <div class="sp-xaxis"><span>10月18日</span><span>11月4日</span><span>今天</span></div>
+        </div>
+      </div>
+      <table class="sp-tbl">
+        <thead><tr><th>Agent · 模型</th><th>中位（已算）</th><th>次数</th><th>较上期</th></tr></thead>
+        <tbody>
+          <tr><td><div class="sp-who"><svg class="sp-sw" viewBox="0 0 24 12"><line x1="0" y1="6" x2="24" y2="6" class="sp-l1"/><circle cx="12" cy="6" r="3" class="sp-m1"/></svg><div class="nm"><b>Codex · GPT-6-Astra</b></div></div></td><td>91 tok/s</td><td>246</td><td class="muted">补算中</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>正在补算历史。</b>首次升级后 daemon 在后台扫描本机已有 transcript / rollout 补算 90 天记录：已算出的近期曲线立即可读，更早区段用细虚线框交代正在补算，不整页转圈阻塞。</p></div>
 </div>
 </section>
 </div>

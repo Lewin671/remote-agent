@@ -217,6 +217,10 @@ v61 整理时按当前代码核对，以下实现仍偏离负责人裁定，尚�
 - 2.1.293 忽略项目设置里的 bypass 默认值（[notes §5](claude-code-notes.md#5-权限模式)），daemon 读出的默认模式（[architecture §7](architecture.md#7-审批)）这时仍报「完全放行」。被忽略后是退回用户级的 `defaultMode` 还是直接 manual、托管设置里的算不算，都没测；测清后再改读法
 - Plan 模式里会话的模型会被临时换掉（回复用 sonnet），这时 Shift+Tab 的循环按哪个模型算（Haiku 4.5 的会话在 Plan 模式下有没有 auto）没测
 
+**Antigravity 待实测**
+
+- 本地 brain / 日志里是否记录每次模型请求的起止时间戳、首字到达时刻与 `output_tokens`，供 daemon 被动计算模型输出速度与首字延迟（[architecture §22](architecture.md#22-模型输出速度与首字延迟待实现)）
+
 **Android 待验证**
 
 - 平台 JCA 能否导入导出原始 32 字节的 X25519、Ed25519 密钥（现在一直用 Bouncy Castle）
