@@ -245,9 +245,9 @@ test("opening a screen with numbers triggers at most one bounded warm-up, and on
 });
 
 type Round = { session: DirectSession; paths: Map<number, DirectChannel> };
-async function rounds() {
+async function rounds(random = () => 0.5) {
  vi.useFakeTimers();
- const engine = new DirectEngine({ server: "https://example.com", deviceId: "client", devicePrivate: {} as CryptoKey }, async () => {}, () => {});
+ const engine = new DirectEngine({ server: "https://example.com", deviceId: "client", devicePrivate: {} as CryptoKey }, async () => {}, () => {}, random);
  const self = await fixture("client", 1), member = await fixture("machine", 2), id = w.text(member.id);
  Object.assign(engine, { self, codec: await fixtureCodec(), record: { member: true, states: [{ core: { members: [] } }] }, peers: new Map(), freshUntil: Date.now() + 1e9 });
  const state = engine as unknown as { create(p: w.Public, c: w.Bytes, d: number): Round; peers: Map<string, Round>; retryAfter: Map<string, number>; failureCount: Map<string, number> };
@@ -255,6 +255,57 @@ async function rounds() {
  const round = () => state.create(member, new Uint8Array(16).fill(++n), Date.now() + 10_000);
  return { engine, state, id, round, delayOf: () => state.retryAfter.get(id)! - Date.now() };
 }
+test("a failed round is retried after a full-jitter delay that doubles from 1 s to a 30 s ceiling, not after a fixed 5 s", async () => {
+ const { engine, round, delayOf } = await rounds();
+ try {
+  const seen: number[] = [];
+  for (let i = 0; i < 8; i++) { round().session.close(); seen.push(delayOf()); }
+  expect(seen).toEqual([500, 1000, 2000, 4000, 8000, 15_000, 15_000, 15_000]);
+ } finally { engine.close(); vi.useRealTimers(); }
+});
+test("the delay is uniform below the ceiling: a low draw retries at once, a high one waits nearly the whole ceiling", async () => {
+ for (const [draw, expected] of [[0, 0], [0.999, 999]] as const) {
+  const { engine, round, delayOf } = await rounds(() => draw);
+  try { round().session.close(); expect(delayOf()).toBeCloseTo(expected, 0); } finally { engine.close(); vi.useRealTimers(); }
+ }
+});
+test("a path that stayed up for 30 s starts the sequence again; one that dropped sooner does not", async () => {
+ const { engine, state, id, round, delayOf } = await rounds();
+ try {
+  for (let i = 0; i < 3; i++) round().session.close();
+  expect(state.failureCount.get(id)).toBe(3);
+  for (const [lived, expected] of [[5_000, 4000], [31_000, 500]] as const) {
+   const channel = { ready: true, close: vi.fn() };
+   const p = round(); p.session.options.chosen(); Object.assign(p.session, { established: true }); p.session.options.ready(1, channel as unknown as DirectChannel);
+   await vi.advanceTimersByTimeAsync(lived); channel.ready = false; p.session.close();
+   expect(delayOf()).toBe(expected);
+  }
+ } finally { engine.close(); vi.useRealTimers(); }
+});
+test.each(["the main connection comes back", "the network generation changes", "the direct switch is turned on again"])("a retry waiting out its delay does not wait on when %s", async kind => {
+ const { engine, state, id, round } = await rounds();
+ try {
+  for (let i = 0; i < 6; i++) round().session.close();
+  expect(state.retryAfter.get(id)! - Date.now()).toBeGreaterThan(10_000);
+  if (kind.startsWith("the main")) engine.attach({ ready: true, send: vi.fn(), close: vi.fn() } as never);
+  else if (kind.startsWith("the network")) engine.invalidate();
+  else { engine.setEnabled(id, false); state.retryAfter.set(id, Date.now() + 20_000); engine.setEnabled(id, true); }
+  expect(state.retryAfter.has(id)).toBe(false);
+  if (kind.startsWith("the network") || kind.startsWith("the direct")) expect(state.failureCount.has(id)).toBe(false);
+ } finally { engine.close(); vi.useRealTimers(); localStorage.clear(); }
+});
+test("one end of a round that had a ready path counts once however many of its paths close, and redials after that same delay", async () => {
+ const { engine, state, id, round } = await rounds();
+ try {
+  const p = round() as Round & { redialAt?: number }; p.session.options.chosen();
+  for (const use of [1, 2]) p.paths.set(use, { ready: true } as DirectChannel);
+  p.session.options.ready(1, p.paths.get(1)!); Object.assign(p.session, { established: true });
+  p.paths.set(2, { ready: false } as DirectChannel); p.session.options.closed(2);       // one path closes, the other stays
+  expect(p.redialAt! - Date.now()).toBe(500); expect(state.failureCount.get(id)).toBe(1);
+  p.paths.set(1, { ready: false } as DirectChannel); p.session.options.closed(1);       // then the last
+  expect(state.retryAfter.get(id)! - Date.now()).toBe(500); expect(state.failureCount.get(id)).toBe(1);
+ } finally { engine.close(); vi.useRealTimers(); }
+});
 test("a read PC that comes up after the fallback's warm-up window opened is still measured in a whole window", async () => {
  const { engine, state, id, round } = await rounds(); vi.stubGlobal("RTCPeerConnection", class {});
  try {

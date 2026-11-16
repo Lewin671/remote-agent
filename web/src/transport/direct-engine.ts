@@ -14,7 +14,7 @@ import { DirectRouting, READ_RULE, type RouteHint, type RouteName } from "./dire
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
-type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; redialAt?: number; selected?: boolean; };
+type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; redialAt?: number; selected?: boolean; readyAt?: number; retryDelay?: number; };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
@@ -29,6 +29,10 @@ export interface DirectStatus { state: DirectState; reason?: DirectReason; file:
    * page say how direct compares with the relay; the numbers in readMs may be older than the window and prove nothing. */
   compared: boolean }
 
+/** Delay before the next round with a computer after one failed or ended: full jitter, uniform below
+ * 1 s, 2 s, 4 s ... up to 30 s (docs/transport.md §4), the same as the relay's own reconnect. A path that
+ * stayed up for `stableMs` starts the sequence again. */
+export const DIRECT_RETRY = { initialMs: 1000, maxMs: 30_000, stableMs: 30_000 } as const;
 
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
@@ -59,6 +63,7 @@ export class DirectEngine {
   private byteTokens = 4 << 20;
   private rateAt = performance.now();
   private retryAfter = new Map<string, number>();
+  private failureCount = new Map<string, number>();
   private failures = new Map<string, Exclude<DirectReason, "disabled">>();
   private readonly stun: string[];
   /** Sends one authorized background read on the given path and resolves when
@@ -67,7 +72,7 @@ export class DirectEngine {
   probe?: (id: string, path: RouteName) => Promise<void>;
   private pumpTimer?: ReturnType<typeof setTimeout>;
   private warmShown = new Map<string, boolean>();
-  constructor(private readonly account: StoredAccount, private readonly authorize: () => Promise<void>, private readonly changed: () => void) {
+  constructor(private readonly account: StoredAccount, private readonly authorize: () => Promise<void>, private readonly changed: () => void, private readonly random: () => number = Math.random) {
     const host = new URL(account.server).hostname;
     this.stun = [import.meta.env.VITE_DIRECT_STUN_URL || `stun:${host.includes(":") ? `[${host}]` : host}:3478`];
   }
@@ -82,7 +87,7 @@ export class DirectEngine {
     localStorage.setItem(this.key(id), enabled ? "auto" : "off"); this.preferences.set(id, enabled);
     this.lifetime++; this.routingOwners.set(id, {});
     for (const p of this.sessions.values()) if (p.id === id) { p.live = false; p.session.close(); }
-    this.peers.delete(id); this.failures.delete(id); this.routing(id).fail(); this.notify();
+    this.peers.delete(id); this.failures.delete(id); this.retryAfter.delete(id); this.failureCount.delete(id); this.routing(id).fail(); this.notify();
     if (enabled) void this.discover();
   }
   install(record: SecurityRecord) {
@@ -91,7 +96,8 @@ export class DirectEngine {
   invalidate() {
     this.syncRevision++; this.lifetime++; this.routingOwners.clear(); this.freshUntil = 0;
     for (const p of this.sessions.values()) { p.live = false; p.session.close(); }
-    this.peers.clear(); this.sessions.clear(); this.failures.clear(); for (const r of this.routes.values()) r.fail(); this.notify();
+    // A new network generation, lifetime or head is a new start: no old failure may delay the next round.
+    this.peers.clear(); this.sessions.clear(); this.failures.clear(); this.retryAfter.clear(); this.failureCount.clear(); for (const r of this.routes.values()) r.fail(); this.notify();
   }
   async synced(record: SecurityRecord, started: number) {
     const revision = ++this.syncRevision;
@@ -104,7 +110,7 @@ export class DirectEngine {
       const boxPub = await crypto.subtle.importKey("raw", member.x, "X25519", false, []);
       if (revision !== this.syncRevision) return;
       const hash = w.hex(record.stateHash);
-      if (this.head !== hash) { this.lifetime++; this.routingOwners.clear(); for (const p of this.sessions.values()) { p.live = false; p.session.close(); } this.peers.clear(); this.sessions.clear(); }
+      if (this.head !== hash) { this.lifetime++; this.routingOwners.clear(); for (const p of this.sessions.values()) { p.live = false; p.session.close(); } this.peers.clear(); this.sessions.clear(); this.retryAfter.clear(); this.failureCount.clear(); }
       this.record = record; this.head = hash; this.freshUntil = Math.min(started + 20_000, Number(record.lease!.notAfter));
       this.self = { id: w.utf8(member.id), role: 1n, instance: this.instance, boot: this.boot, sign: this.account.devicePrivate, box: record.xPrivate, signPub, boxPub };
       this.codec = w.codec({ account: record.pin.account, accountDomain: record.pin.domain, head: record.stateHash, epoch: head.core.epoch });
@@ -117,6 +123,8 @@ export class DirectEngine {
       const timer = setInterval(() => { if (this.timer !== timer) return; if (!this.current()) { if (this.peers.size) this.invalidate(); } else void this.discover(); }, 1000);
       this.timer = timer;
     }
+    // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
+    this.retryAfter.clear();
     for (const p of this.sessions.values()) p.session.discovered(); void this.discover();
   }
   detach(leg: FrameStream) { if (this.leg === leg) this.leg = undefined; }
@@ -153,14 +161,21 @@ export class DirectEngine {
     p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun,
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
-      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.failures.delete(id); if (use === 1) this.routing(id).arm(true); this.notify(); },
-      closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+5000;this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
+      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); p.readyAt ??= Date.now(); this.failures.delete(id); if (use === 1) this.routing(id).arm(true); this.notify(); },
+      closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+this.delay(id, p);this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + this.delay(id, p)); } this.notify(); },
       frame: (raw, use) => this.frame(p, raw, use), capability: opened => this.capability(p, opened),
     });
     this.sessions.set(w.hex(connection), p); this.notify();
     const prior = this.peers.get(id);
     if (!prior?.selected || !prior.session.active) this.select(p);
     return p;
+  }
+  /** The delay for this round's end, counted once however many of its paths close. */
+  private delay(id: string, p: Peer) {
+    if (p.retryDelay !== undefined) return p.retryDelay;
+    if (p.readyAt !== undefined && Date.now() - p.readyAt >= DIRECT_RETRY.stableMs) this.failureCount.delete(id);
+    const failures = this.failureCount.get(id) ?? 0; this.failureCount.set(id, failures + 1);
+    return p.retryDelay = this.random() * Math.min(DIRECT_RETRY.maxMs, DIRECT_RETRY.initialMs * 2 ** Math.min(failures, 5));
   }
   private select(peer: Peer) {
     if (this.peers.get(peer.id) === peer) return;
@@ -225,7 +240,7 @@ export class DirectEngine {
         target = this.sessions.get(w.hex(opened.context.connection));
         if (!target) {
           peer.instance = opened.context.senderInstance; peer.boot = opened.context.senderBoot;
-          for (const old of this.sessions.values()) if (old.id === id && old.session.peer.boot.length && !w.equal(old.session.peer.boot, peer.boot)) { old.live = false; old.session.close(); }
+          for (const old of this.sessions.values()) if (old.id === id && old.session.peer.boot.length && !w.equal(old.session.peer.boot, peer.boot)) { old.live = false; old.session.close(); this.retryAfter.delete(id); this.failureCount.delete(id); }
           target = this.create(peer, opened.context.connection, Number(opened.context.deadline));
         }
       } else {
