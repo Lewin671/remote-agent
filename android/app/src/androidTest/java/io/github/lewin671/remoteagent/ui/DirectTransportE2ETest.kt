@@ -256,7 +256,7 @@ class DirectTransportE2ETest {
 
             // Wait until Direct path establishes initially
             fun isDirectConnected(): Boolean =
-                remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)
+                remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.MEASURING, DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)
 
             suspend fun waitDirectReady(timeoutMs: Long = 30_000) {
                 val deadline = System.currentTimeMillis() + timeoutMs
@@ -272,26 +272,36 @@ class DirectTransportE2ETest {
             }
             waitDirectReady()
 
-            // Inject 150ms relay /Forward delay
+            // Inject 150ms relay /Forward delay, then set a fresh direct path up under it: the warm-up
+            // (not user reads) must make the read path upgrade by itself, within seconds of connecting.
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 150).put("resetCount", true))
-
-            // 2. Measure Read upgrade time with 150ms relay delay vs ~10-40ms direct latency
-            val readUpgradeStart = System.currentTimeMillis()
-            val minSamplesDeadline = readUpgradeStart + 40_000
-            val readWorkers = List(2) { worker ->
-                launch {
-                    if (worker == 1) delay(60)
-                    while (isActive && System.currentTimeMillis() < minSamplesDeadline && remote.peer(machineId)?.directStatus?.readDirect != true) {
-                        remote.machineCommand(machineId, Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build())
+            remote.setDirectEnabled(machineId, false)
+            delay(500)
+            val connectStart = System.currentTimeMillis()
+            remote.setDirectEnabled(machineId, true)
+            var connectedMs = -1L
+            var readUpgradeMs = -1L
+            run {
+                val deadline = connectStart + 60_000
+                while (System.currentTimeMillis() < deadline) {
+                    val st = remote.peer(machineId)?.directStatus
+                    if (connectedMs < 0 && st?.stage in setOf(DirectStage.MEASURING, DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)) {
+                        connectedMs = System.currentTimeMillis() - connectStart
                     }
+                    if (st?.readDirect == true) {
+                        readUpgradeMs = System.currentTimeMillis() - connectStart - connectedMs
+                        break
+                    }
+                    delay(20)
                 }
             }
-            readWorkers.forEach { it.join() }
-            val readUpgradeMs = System.currentTimeMillis() - readUpgradeStart
-            assertTrue("Read path should upgrade to Direct; status=${remote.peer(machineId)?.directStatus}", remote.peer(machineId)?.directStatus?.readDirect == true)
+            assertTrue("Read path should upgrade to Direct by warm-up alone; status=${remote.peer(machineId)?.directStatus}", readUpgradeMs >= 0)
+            assertTrue("Read upgrade must happen within 8 s of connecting (took ${readUpgradeMs}ms)", readUpgradeMs <= 8_000)
+            metrics.put("directConnectedMs", connectedMs)
             metrics.put("readUpgradeMs", readUpgradeMs)
             metrics.put("readDirectMs", remote.peer(machineId)?.directStatus?.readDirectMs)
             metrics.put("readRelayMs", remote.peer(machineId)?.directStatus?.readRelayMs)
+            waitDirectReady()
 
             // 3. >16 MiB shared file download (24 MiB = 32 x 768 KiB chunks):
             //    verify 0 accepted-log growth after Direct upgrade, SHA-256 match, relay vs direct throughput, bulk upgrade time.
@@ -354,18 +364,16 @@ class DirectTransportE2ETest {
             val hostLabel = machineLabel(remote.state.value, machineId)
             waitText(hostLabel, 10_000)
             ui.onAllNodesWithText(hostLabel).onFirst().performScrollTo().performClick()
-            waitText("正在直连", 15_000)
+            waitText("正在用直连", 15_000)
             ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("文件和读取").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("文件传输").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("读取延时").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("速度取自最近的实际传输", substring = true).performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("响应时间").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("直连只用于加载和文件", substring = true).performScrollTo().assertIsDisplayed()
             ui.onNodeWithContentDescription("返回").performClick()
 
             // Also verify ConnCheckSheet
             ui.onNodeWithText("连接检测").performScrollTo().performClick()
-            waitText("正在直连 · 文件和读取", 15_000)
-            ui.onNodeWithText("电脑一行的延时经服务器中继测得。", substring = true).performScrollTo().assertIsDisplayed()
+            waitText("正在用直连", 15_000)
             ui.onNodeWithText("完成").performClick()
 
             // 4. Mid-download disconnect -> fallback -> resume (24 MiB file)
@@ -377,6 +385,7 @@ class DirectTransportE2ETest {
             var dropped = false
             var fallbackMs = -1L
             while (off2 < totalBytes24M) {
+                android.util.Log.i("DirectE2E", "dl2 off=${off2 / chunkSize} path=${remote.filePath(machineId)} dropped=$dropped")
                 if (!dropped && remote.filePath(machineId) == RouteName.DIRECT && off2 >= 25L * chunkSize) {
                     dropped = true
                     val tDrop = System.currentTimeMillis()
