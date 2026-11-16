@@ -335,7 +335,7 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 		},
 		Ready: func(use uint64, path *direct.Path) {
 			m.mu.Lock()
-			if m.closed {
+			if m.closed || !p.session.Active() || !allow() || m.sessions[string(connection)] != p {
 				m.mu.Unlock()
 				path.Close()
 				return
@@ -601,6 +601,10 @@ func (m *directManager) maintenance() {
 				continue
 			}
 			m.mu.Lock()
+			if m.closed || m.pathGeneration != pathGeneration || m.path == nil {
+				m.mu.Unlock()
+				break
+			}
 			if m.active[member.ID] == nil && len(m.active) < 8 {
 				connection := make([]byte, 16)
 				_, _ = rand.Read(connection)
@@ -624,7 +628,7 @@ func (m *directManager) maintenance() {
 func (m *directManager) choose(chosen *directPeer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.closed {
+	if m.closed || chosen.session == nil || !chosen.session.Active() || !chosen.processValid.Load() || m.sessions[string(chosen.connection)] != chosen {
 		return
 	}
 	for _, p := range m.sessions {

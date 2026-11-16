@@ -3549,6 +3549,7 @@ export class Remote {
     let forceRelay = false;
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
+      const tracking = routeHint ? this.direct.track(machineId, routeHint) : undefined;
       const delivery = this.deviceLink.delivery(call, routeHint && !forceRelay ? handoff => this.direct.attempt(machineId, routeHint, handoff) : undefined);
       const routeStarted = performance.now();
       const attemptId = delivery.attemptId;
@@ -3599,13 +3600,13 @@ export class Remote {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
         if (routeHint?.kind === "read" && !delivery.direct) this.sampleDirectRead(machineId, sid, cmd, prepared.plain);
-        if (routeHint) { const bytes = cmd?.case === "putImageChunk" ? cmd.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0; this.direct.observe(machineId, routeHint, delivery.direct, bytes, performance.now() - routeStarted); }
+        if (routeHint) { const bytes = cmd?.case === "putImageChunk" ? cmd.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0; tracking?.observe(delivery.direct, bytes, performance.now() - routeStarted); }
         if (cmd?.case === "beginImageUpload") { if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!); this.directTransfers.set(`${machineId}/${cmd.value.transferId}`, cmd.value.fileName ? "file" : "image"); }
         if (cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload") this.directTransfers.delete(`${machineId}/${cmd.value.transferId}`);
         return msg;
       } catch (e) {
         if (delivery.direct && routeHint) {
-          forceRelay = true; this.direct.failed(machineId, routeHint);
+          forceRelay = true; tracking?.failed();
           signal?.throwIfAborted();
           if (cmd?.case === "putImageChunk") {
             // The status read is relay-only and precedes the original chunk
@@ -3679,7 +3680,7 @@ export class Remote {
   private sampleDirectRead(machineId: string, sid: string, cmd: CommandKind, plain: Uint8Array<ArrayBuffer>) {
     if (this.closed || !readOnlyCommand(cmd) || this.directReadSamples.has(machineId) || this.directReadSamples.size >= 4 || !this.direct.needsReadSamples(machineId)) return;
     this.directReadSamples.add(machineId);
-    const slot = newSlot(), hint = { kind: "read" } as const;
+    const slot = newSlot(), hint = { kind: "read" } as const, tracking = this.direct.track(machineId, hint);
     // The probe is its own read authorization. Its completion cannot change
     // the user's already verified result or extend that request's deadline.
     void this.deviceLink.call(slot, async call => {
@@ -3690,8 +3691,8 @@ export class Remote {
       const started = performance.now(), response = await delivery.send(machineId, envelope);
       const opened = await this.openSecureMessage(response.result, { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: sid, requestId: slot.requestId }, CommandResultSchema);
       const identity = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), plain), msg = opened.msg;
-      if (!msg.errorCode && verifiedOutcome(msg, identity.key, identity.payload, msg.outcome, msg.reason, false) === "executed") this.direct.observe(machineId, hint, true, 0, performance.now() - started);
-    }).catch(() => { this.direct.failed(machineId, hint); }).finally(() => { this.directReadSamples.delete(machineId); });
+      if (!msg.errorCode && verifiedOutcome(msg, identity.key, identity.payload, msg.outcome, msg.reason, false) === "executed") tracking.observe(true, 0, performance.now() - started);
+    }).catch(() => { tracking.failed(); }).finally(() => { this.directReadSamples.delete(machineId); });
   }
 
   /** Sends a chat message. A retry passes the first attempt's slot, so
