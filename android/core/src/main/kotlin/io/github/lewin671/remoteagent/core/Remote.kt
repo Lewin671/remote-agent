@@ -10,6 +10,14 @@ import io.github.lewin671.remoteagent.core.transport.RelayPath
 import io.github.lewin671.remoteagent.core.transport.PeerState
 import io.github.lewin671.remoteagent.core.transport.FrameStream
 import io.github.lewin671.remoteagent.core.transport.FrameListener
+import io.github.lewin671.remoteagent.core.transport.DirectEngine
+import io.github.lewin671.remoteagent.core.transport.DirectPreferenceStore
+import io.github.lewin671.remoteagent.core.transport.InMemoryDirectPreferenceStore
+import io.github.lewin671.remoteagent.core.transport.RouteHint
+import io.github.lewin671.remoteagent.core.transport.RouteName
+import io.github.lewin671.remoteagent.core.transport.RtcFactory
+import io.github.lewin671.remoteagent.core.transport.UploadKind
+import io.github.lewin671.remoteagent.core.peer.Wire
 
 import io.github.lewin671.remoteagent.core.transport.Recovery
 import io.github.lewin671.remoteagent.core.transport.LegLiveness
@@ -416,20 +424,57 @@ class Remote(
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
     private val onSessionRemoved: suspend (String) -> Unit = {},
     private val monotonic: () -> Long = { System.nanoTime() / 1_000_000 },
+    private val rtcFactory: RtcFactory? = null,
+    private val directPrefs: DirectPreferenceStore = InMemoryDirectPreferenceStore(),
+    private val stunUrls: List<String>? = null,
 ) {
-    private val peerResponder = io.github.lewin671.remoteagent.core.peer.PeerResponder(account.deviceSeed)
     private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     @Volatile private var relayObservation = RemoteState()
+    private val directReadSamples = HashSet<String>()
+    private val directTransfers = LinkedHashMap<String, UploadKind>()
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    internal val direct: DirectEngine = DirectEngine(
+        account = account,
+        rtcFactory = rtcFactory,
+        preferenceStore = directPrefs,
+        authorize = { security.sync(5_000L); Unit },
+        changed = { scope.launch { publish() } },
+        clock = clock,
+        monotonic = monotonic,
+        stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
+        dispatcher = dispatcher,
+    )
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
         sockets = { socketFactory ?: streamHttp },
         token = { currentToken() },
         renew = { used, prior -> loginTokens.discard(used); relogin(prior) },
-        observe = { id -> relayObservation.let { RelayPath.discovery(it.machines[id], it.conn == ConnState.ONLINE, !it.removed, it.unlinked) } },
+        observe = { id ->
+            relayObservation.let {
+                val directReady = direct.ready(id, RouteHint.Read)
+                val base = RelayPath.discovery(
+                    it.machines[id],
+                    ready = directReady || it.conn == ConnState.ONLINE,
+                    authorized = !it.removed,
+                    unlinked = it.unlinked,
+                )
+                base.copy(
+                    reachable = directReady || it.machines[id]?.online == true,
+                    relayRequired = !directReady,
+                    knownOffline = !directReady && it.machines[id]?.online == false,
+                    protocolVersion = if (directReady) PROTOCOL_VERSION else base.protocolVersion,
+                    capabilities = direct.capabilities(id) ?: base.capabilities,
+                    fileDirect = direct.filePath(id) == RouteName.DIRECT,
+                )
+            }
+        },
     ))
     fun peer(machineId: String?) = state.value.peer(machineId)
+    fun directEnabled(machineId: String): Boolean = direct.enabled(machineId)
+    fun setDirectEnabled(machineId: String, enabled: Boolean) = direct.setEnabled(machineId, enabled)
+    fun filePath(machineId: String): RouteName = direct.filePath(machineId)
     fun monotonicMillis(): Long = monotonic()
     @Volatile internal var parseServerFrame: (ByteArray) -> ServerFrame = ServerFrame::parseFrom
     val security =
@@ -439,6 +484,9 @@ class Remote(
             device,
             expectedAccount = account.accountId.ifEmpty { null },
             clock = clock,
+            onSync = { record, started -> direct.synced(record, started) },
+            onSyncFailed = { direct.invalidate() },
+            onInstall = { record -> direct.install(record) },
         ) { after ->
             api.client
                 .getSecurityStates(
@@ -463,7 +511,6 @@ class Remote(
     private var leaseEnd = 0L
     @Volatile private var serverAhead = false
     private var stateJob: Job? = null
-    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var authorityJob = SupervisorJob(scope.coroutineContext[Job])
 
     private val _state = MutableStateFlow(RemoteState())
@@ -545,6 +592,7 @@ class Remote(
     private var candidate: FrameStream? = null
     private val mainReaders = java.util.IdentityHashMap<FrameStream, () -> Unit>()
     private fun retireMainLeg(socket: FrameStream) {
+        direct.detach(socket)
         cleanup({ mainReaders.remove(socket)?.invoke() }, { socket.cancel() })
     }
     private var networkGeneration = 0L
@@ -639,14 +687,21 @@ class Remote(
                 // The first pull follows the connection; a fresh login is not
                 // needed before it and would be a second login.
                 delay(5_000)
+                var nextLeaseAt = monotonic()
                 while (running) {
+                    val startedAt = monotonic()
                     try {
-                        syncSecurity()
-                        renewLeaseIfNeeded()
+                        syncSecurity(5_000L)
+                        val now = monotonic()
+                        if (now >= nextLeaseAt) {
+                            renewLeaseIfNeeded()
+                            nextLeaseAt = now + 60_000L
+                        }
                     } catch (e: Exception) {
                         if (e is CancellationException) throw e
                     }
-                    delay(60_000)
+                    val remaining = 15_000L - (monotonic() - startedAt)
+                    if (remaining > 0L) delay(remaining)
                 }
             }
             if (startedOnce) { networkGeneration++; retireCandidate() }
@@ -672,6 +727,9 @@ class Remote(
         stateJob = null
         loginTokens.networkChanged()
         security.networkChanged()
+        direct.invalidate()
+        directReadSamples.clear()
+        directTransfers.clear()
         retireDirectory()
         generation++
         lifecycleGeneration++
@@ -722,6 +780,7 @@ class Remote(
     /** Ends this Remote for good. */
     fun close() {
         cleanup(
+            { direct.close() },
             { deviceLink.closeStreams() },
             { security.close() },
             { cache?.close() },
@@ -1038,19 +1097,16 @@ class Remote(
                     }
 
                     override fun onFrame(stream: FrameStream, bytes: ByteArray) {
-                        val peerBody = io.github.lewin671.remoteagent.core.peer.PeerResponder.body(bytes)
-                        if (peerBody != null) {
-                            if (peerJobs.incrementAndGet() > 8) { peerJobs.decrementAndGet(); return }
-                            scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                        val deliveryBody = peerFrameBody(bytes, 11)
+                        val resultBody = if (deliveryBody == null) peerFrameBody(bytes, 12) else null
+                        if (deliveryBody != null || resultBody != null) {
+                            if (peerJobs.incrementAndGet() > 64) { peerJobs.decrementAndGet(); return }
+                            scope.launch(dispatcher) {
                                 try {
                                     if (!running || gen != generation || networkGen != networkGeneration) return@launch
-                                    val record = security.record()
-                                    val delivery = io.github.lewin671.remoteagent.proto.PeerFrameDelivery.parseFrom(peerBody)
-                                    val member = record.head.core.member(delivery.fromDevice.toStringUtf8()) ?: return@launch
-                                    if (!record.member || member.kind != 1u) return@launch
-                                    val reply = peerResponder.receive(peerBody, record.pin.account, record.pin.domain, DeviceSecurity.stateHash(record.head), record.head.core.epoch.toLong(), account.deviceId, record.peerBoxKey(), member.id, member.ed, member.x, maxOf(clock().coerceAtLeast(1).toULong(), record.floor).toLong(), record.leaseExpiration())
-                                    val current = security.record()
-                                    if (reply != null && running && gen == generation && networkGen == networkGeneration && current.member && maxOf(clock().coerceAtLeast(1).toULong(), current.floor) < current.leaseExpiration().coerceAtLeast(0).toULong() && DeviceSecurity.stateHash(current.head).contentEquals(DeviceSecurity.stateHash(record.head))) stream.send(reply)
+                                    if (ws !== stream) return@launch
+                                    if (deliveryBody != null) direct.receive(deliveryBody, stream)
+                                    else if (resultBody != null) direct.result(resultBody, stream)
                                 } catch (_: Exception) { /* Optional peer traffic cannot close the main stream. */ }
                                 finally { peerJobs.decrementAndGet() }
                             }
@@ -1122,6 +1178,7 @@ class Remote(
                             everReady = true
                             recovery.ready()
                             old?.let { retireMainLeg(it) }
+                            direct.attach(socket)
                         }
                         if (f.kindCase == ServerFrame.KindCase.READY) {
                             serverAhead =
@@ -1145,7 +1202,7 @@ class Remote(
                 finally {
                     mainReaders.remove(socket)
                     if (ws === socket || candidate === socket) {
-                        if (ws === socket) ws = null
+                        if (ws === socket) { direct.detach(socket); ws = null }
                         if (candidate === socket) { candidate = null; opening?.cancel(); opening = null }
                         try { if (refused.get()) loginTokens.discard(token) }
                         finally { fail(broken.get() ?: MessageException(UiMessages.errorsDisconnectedFromServer().messageText())) }
@@ -1928,10 +1985,10 @@ class Remote(
     suspend fun refreshDevices() = withContext(dispatcher) { loadDevices() }
 
     /** Pulls the signed state chain now; unknown states are also fetched while opening. */
-    suspend fun syncSecurity() {
+    suspend fun syncSecurity(budgetMs: Long = Long.MAX_VALUE) {
         val changed =
             try {
-                syncSecurityOnce()
+                syncSecurityOnce(budgetMs)
             } catch (e: DeviceSecurity.Failure) {
                 if (e.code != "clock") throw e
                 publish()
@@ -1940,10 +1997,10 @@ class Remote(
         if (changed || recoveryObjectsPending) withContext(dispatcher) { loadDevices() }
     }
 
-    private suspend fun syncSecurityOnce(): Boolean {
+    private suspend fun syncSecurityOnce(budgetMs: Long = Long.MAX_VALUE): Boolean {
         val changed =
             withContext(dispatcher) {
-                val r = security.sync()
+                val r = security.sync(budgetMs)
                 resumeSecurityOperation()
                 try {
                     recoveryObjectsPending = true
@@ -3555,6 +3612,91 @@ class Remote(
         } ?: throw forwardLifetimeExpired()
     }
 
+    private fun peerFrameBody(raw: ByteArray, fieldNumber: Int): ByteArray? {
+        val expectedTag = ((fieldNumber shl 3) or 2).toByte()
+        if (raw.size < 2 || raw.size > 65540 || raw[0] != expectedTag) return null
+        return try {
+            val r = Wire.Reader(raw)
+            r.at = 1
+            val n = r.uint()
+            if (n > 65536 || n != (raw.size - r.at).toLong()) null else raw.copyOfRange(r.at, raw.size)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun directHint(p: PreparedCommand): RouteHint? {
+        val cmd = p.command ?: return null
+        return when (cmd.kindCase) {
+            Command.KindCase.GET_SHARED_FILE_CHUNK ->
+                RouteHint.Bulk(file = "${p.sessionId}/${cmd.getSharedFileChunk.fileId}")
+            Command.KindCase.PUT_IMAGE_CHUNK -> {
+                val id = cmd.putImageChunk.transferId
+                val upload = directTransfers["${p.machineId}/$id"] ?: return null
+                RouteHint.Bulk(file = id, upload = upload, bytes = cmd.putImageChunk.data.size())
+            }
+            Command.KindCase.GET_IMAGE_UPLOAD_STATUS -> null
+            else -> if (cmd.isReadOnlyCommand()) RouteHint.Read else null
+        }
+    }
+
+    private fun sampleDirectRead(machineId: String, sessionId: String, cmd: Command) {
+        if (!running || removed || !cmd.isReadOnlyCommand() || directReadSamples.contains(machineId) || directReadSamples.size >= 4 || !direct.needsReadSamples(machineId)) return
+        directReadSamples.add(machineId)
+        val probeCmd = prepare(machineId, sessionId, cmd)
+        val hint = RouteHint.Read
+        val tracking = direct.track(machineId, hint)
+        // The probe is its own read authorization. Its completion cannot change
+        // the user's already verified result or extend that request's deadline.
+        scope.launch {
+            try {
+                deviceLink.call(probeCmd, prior = false, dispatcher = dispatcher) { call ->
+                    val delivery = deviceLink.delivery(call) { handoff ->
+                        direct.attempt(machineId, hint, handoff, sample = true)
+                    }
+                    if (!delivery.direct) return@call
+                    if (verifiedNetworkGeneration != networkGeneration) {
+                        val gen = networkGeneration
+                        security.sync()
+                        if (gen != networkGeneration) throw DeviceSecurity.Failure("stale")
+                        verifiedNetworkGeneration = gen
+                    }
+                    delivery.prepare(prior = false)
+                    val authorized = authorize(probeCmd, retryOfUnknown = false)
+                    val binding = security.commandIdentity(authorized)
+                    val startedMs = monotonic()
+                    val startedNs = System.nanoTime()
+                    val res = delivery.send(machineId, authorized)
+                    val (_, msg) = openSecureMessage(
+                        res.result,
+                        Place(
+                            PayloadKind.PAYLOAD_KIND_COMMAND_RESULT,
+                            machineId = machineId,
+                            sessionId = sessionId,
+                            requestId = probeCmd.requestId,
+                        ),
+                        CommandResult::parseFrom,
+                    )
+                    val elapsedMs = maxOf((monotonic() - startedMs).toDouble(), (System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
+                    val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) &&
+                        msg.payloadHash.toByteArray().contentEquals(binding.second) &&
+                        res.attemptId == delivery.attemptId &&
+                        (msg.outcome == "conflict" || msg.conflictKind.isEmpty())
+                    val category = verifiedOutcome(msg, binding.first, binding.second, msg.outcome, msg.reason)
+                    if (verified && category == Outcome.EXECUTED && msg.errorCode.isEmpty()) {
+                        tracking.observe(true, 0, elapsedMs)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                tracking.failed()
+            } finally {
+                directReadSamples.remove(machineId)
+            }
+        }
+    }
+
     private suspend fun forwardWithinLifetime(p: PreparedCommand, call: DispatchState.Call, recoveryDeadline: Long): CommandResult {
         val prior = call.uncertain
         if (verifiedNetworkGeneration != networkGeneration) {
@@ -3577,6 +3719,8 @@ class Remote(
             throw CommandException(CommandException.EXPIRED, UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText())
         var attempt = 0
         var recoveryUntil: Long? = null
+        val routeHint = directHint(p)
+        var forceRelay = false
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
@@ -3590,7 +3734,13 @@ class Remote(
         try {
             while (true) {
                 if (clock() >= recoveryDeadline) throw forwardLifetimeExpired()
-                val delivery = deviceLink.delivery(call)
+                val tracking = routeHint?.let { direct.track(p.machineId, it) }
+                val delivery = deviceLink.delivery(
+                    call,
+                    if (routeHint != null && !forceRelay) { handoff -> direct.attempt(p.machineId, routeHint, handoff) } else null,
+                )
+                val routeStartedMs = monotonic()
+                val routeStartedNs = System.nanoTime()
                 val attemptId = delivery.attemptId
                 try {
                     checkFileCapability(p, call.uncertain)
@@ -3619,8 +3769,10 @@ class Remote(
                             // the command ran; retrying the same request asks again.
                             throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
                         }
-                    val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) && msg.payloadHash.toByteArray().contentEquals(binding.second) && res.attemptId==attemptId && res.outcome==msg.outcome && res.reason==msg.reason && (msg.outcome=="conflict" || msg.conflictKind.isEmpty())
-                    val category = verifiedOutcome(msg,binding.first,binding.second,res.outcome,res.reason)
+                    val verifiedOutcome = if (delivery.direct) msg.outcome else res.outcome
+                    val verifiedReason = if (delivery.direct) msg.reason else res.reason
+                    val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) && msg.payloadHash.toByteArray().contentEquals(binding.second) && res.attemptId==attemptId && (delivery.direct || (res.outcome==msg.outcome && res.reason==msg.reason)) && (msg.outcome=="conflict" || msg.conflictKind.isEmpty())
+                    val category = verifiedOutcome(msg,binding.first,binding.second,verifiedOutcome,verifiedReason)
                     if (!verified || category==Outcome.UNKNOWN) throw CommandException(CommandException.UNKNOWN,UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),fromDaemon=true,outcome=Outcome.UNKNOWN)
 
                     if ((category==Outcome.EXECUTED && !msg.resultAvailable) || (category==Outcome.CONFLICT && msg.conflictKind=="identity")) {
@@ -3634,8 +3786,47 @@ class Remote(
                         cache?.putBlob("schedule:${p.machineId}", scheduleSnapshot(p.requestId, res.result))
                         if (!currentScheduleMember(p.machineId)) cache?.removeBlob("schedule:${p.machineId}")
                     }
+                    val cmd = p.command
+                    if (routeHint is RouteHint.Read && !delivery.direct && cmd != null) {
+                        sampleDirectRead(p.machineId, p.sessionId, cmd)
+                    }
+                    if (routeHint != null) {
+                        val bytes = when {
+                            cmd?.hasPutImageChunk() == true -> cmd.putImageChunk.data.size()
+                            msg.hasGetSharedFileChunk() -> msg.getSharedFileChunk.data.size()
+                            else -> 0
+                        }
+                        val elapsedMs = maxOf((monotonic() - routeStartedMs).toDouble(), (System.nanoTime() - routeStartedNs) / 1_000_000.0, 0.01)
+                        tracking?.observe(delivery.direct, bytes, elapsedMs)
+                    }
+                    if (cmd?.hasBeginImageUpload() == true) {
+                        if (directTransfers.size >= 128) directTransfers.keys.firstOrNull()?.let { directTransfers.remove(it) }
+                        val req = cmd.beginImageUpload
+                        directTransfers["${p.machineId}/${req.transferId}"] = if (req.fileName.isNotEmpty()) UploadKind.FILE else UploadKind.IMAGE
+                    }
+                    if (cmd?.hasCompleteImageUpload() == true) directTransfers.remove("${p.machineId}/${cmd.completeImageUpload.transferId}")
+                    if (cmd?.hasAbortImageUpload() == true) directTransfers.remove("${p.machineId}/${cmd.abortImageUpload.transferId}")
                     return msg
                 } catch (changed: PathChanged) {
+                    if (delivery.direct && routeHint != null) {
+                        forceRelay = true
+                        tracking?.failed()
+                        val put = p.command?.takeIf { it.hasPutImageChunk() }?.putImageChunk
+                        if (put != null) {
+                            // The status read is relay-only and precedes the original chunk
+                            // retry. It does not manufacture a result for that authorization.
+                            machineCommand(
+                                p.machineId,
+                                Command.newBuilder()
+                                    .setGetImageUploadStatus(
+                                        io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
+                                            .setTransferId(put.transferId)
+                                            .build(),
+                                    )
+                                    .build(),
+                            )
+                        }
+                    }
                     continue
                 } catch (ce: ConnectException) {
                     val notForwarded = delivery.refusal(ce)

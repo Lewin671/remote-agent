@@ -25,9 +25,13 @@ internal class Link(path: Path) {
         } finally { call.close() }
     }
 
-    fun delivery(call: DispatchState.Call): PathAttempt {
+    fun delivery(
+        call: DispatchState.Call,
+        direct: ((() -> Unit) -> PathAttempt?)? = null,
+    ): PathAttempt {
         val evidence = call.delivery()
-        val attempt = router.path.attempt { evidence.dispatch() }
+        val handoff: () -> Unit = { evidence.dispatch() }
+        val attempt = direct?.invoke(handoff) ?: router.path.attempt(handoff)
         return object : PathAttempt by attempt {
             override fun refusal(error: ConnectException): PathRefusal? {
                 val proof = attempt.refusal(error)

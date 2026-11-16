@@ -2,10 +2,12 @@ package io.github.lewin671.remoteagent.core
 
 import com.google.protobuf.MessageLite
 import io.github.lewin671.remoteagent.proto.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import io.github.lewin671.remoteagent.core.transport.ownedNetworkOperation
 
 /** An authenticated event separated from its missing key by a verified recovery. */
 class RecoveryHistoryUnavailable(val header: DeviceSecurity.Header) : MessageException(UiMessages.errorsAndroidRecordsFromBeforeRecoveryAreUnreadable().messageText())
@@ -21,6 +23,9 @@ class DeviceSecurityClient(
     private val ed: SigningKey,
     private val expectedAccount: String? = null,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val onSync: suspend (DeviceSecurity.Record, Long) -> Unit = { _, _ -> },
+    private val onSyncFailed: () -> Unit = {},
+    private val onInstall: (DeviceSecurity.Record) -> Unit = {},
     private val fetchStates: suspend (afterEpoch: ULong) -> GetSecurityStatesResponse,
 ) {
     private val syncMutex = Mutex()
@@ -130,7 +135,25 @@ class DeviceSecurityClient(
         store.touchSecurity(DeviceSecurity.stateHash(r.head), now(r))
     }
 
-    suspend fun sync(): DeviceSecurity.Record = syncRound.run {
+    suspend fun sync(budgetMs: Long = Long.MAX_VALUE): DeviceSecurity.Record {
+        try {
+            val (record, started) = if (budgetMs < Long.MAX_VALUE) {
+                ownedNetworkOperation(budgetMs) { syncRoundWithStart() }
+            } else {
+                syncRoundWithStart()
+            }
+            onSync(record, started)
+            return record
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            onSyncFailed()
+            throw e
+        }
+    }
+
+    private suspend fun syncRoundWithStart(): Pair<DeviceSecurity.Record, Long> = syncRound.run {
+        val started = clock()
         repeat(DeviceSecurity.MAX_STATES) {
             // Ordinary phones receive no control envelopes. Persist their local
             // observed time even for an unchanged head or a failed state pull.
@@ -146,7 +169,7 @@ class DeviceSecurityClient(
                     throw DeviceSecurity.Failure("stale")
                 val cert =
                     res.lease.toByteArray().takeIf { it.isNotEmpty() }?.let { HeadLease.parse(it) }
-                return@run if (cert != null)
+                val finalRecord = if (cert != null)
                     store.installSecurity(
                         DeviceSecurity.stateHash(r.head),
                         emptyList(),
@@ -154,6 +177,7 @@ class DeviceSecurityClient(
                         cert,
                     )
                 else r
+                return@run finalRecord to started
             }
             if (res.statesCount > 8) throw DeviceSecurity.Failure("untrusted")
             val states = res.statesList.map { DeviceSecurity.parseState(it.state.toByteArray()) }
@@ -190,7 +214,8 @@ class DeviceSecurityClient(
             }
         }
         val r = read()
-        store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs, lease)
+        val updated = store.installSecurity(DeviceSecurity.stateHash(r.head), states, proofs, lease)
+        onInstall(updated)
     }
 
     /** Seals locally with a random nonce; no storage write or authorization round trip. */

@@ -14,6 +14,7 @@ data class PeerState(
     val knownOffline: Boolean = false,
     val protocolVersion: Int? = null,
     val capabilities: MachineCapabilities? = null,
+    val fileDirect: Boolean = false,
 ) {
     val available: Boolean get() = reachable && ready
     fun canProbe(serverReachable: Boolean): Boolean = serverReachable || !relayRequired
@@ -36,6 +37,7 @@ internal open class FrameListener {
 internal data class PathRefusal(val reason: String)
 internal interface PathAttempt {
     val attemptId: String
+    val direct: Boolean get() = false
     suspend fun prepare(prior: Boolean)
     suspend fun send(machineId: String, command: Envelope): ForwardResponse
     fun refusal(error: com.connectrpc.ConnectException): PathRefusal?
