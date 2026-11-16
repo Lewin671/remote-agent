@@ -161,7 +161,9 @@ if [ -z "$stun_url" ] && [ -r "$HOME/.config/remote-agent/direct-stun" ]; then
 	stun_url=$(tr -d '\r\n' <"$HOME/.config/remote-agent/direct-stun")
 fi
 
-if web_has "$commit"; then
+# The check above only sees the commit, so a build input that changed outside
+# it (the STUN list, for one) needs RA_WEB_REDEPLOY=1 to rebuild the same tag.
+if [ "${RA_WEB_REDEPLOY:-}" != 1 ] && web_has "$commit"; then
 	echo "skipped: already $tag"
 else
 	if [ "$web_only" = true ]; then
