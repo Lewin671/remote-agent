@@ -207,8 +207,6 @@ function signalRows(r: RoundData): DiagRow[] {
   const parts = [r.signals.unsupported && l10n.t("transport.diag_sig_refused"), r.signals.limited && l10n.t("transport.diag_sig_limited", { count: r.signals.limited }), r.signals.offline && l10n.t("transport.diag_sig_offline", { count: r.signals.offline })].filter(Boolean) as string[];
   return parts.length ? [{ label: l10n.t("transport.diag_signal"), value: parts.join(SEP) }] : [];
 }
-/** Which STUN servers the round asked: on the sheet only when it was the last resort, in the copied report always. */
-const stunRow = (r: RoundData): DiagRow => ({ label: l10n.t("transport.diag_stun"), value: r.publicStun ? l10n.t("transport.diag_stun_public") : l10n.t("transport.diag_stun_own") });
 
 /** 结果: where the lead path stopped, what the computer said, and each recorded round. */
 function resultGroup(rounds: RoundData[], chosen: RoundData | undefined, now: number): DiagGroup {
@@ -217,7 +215,6 @@ function resultGroup(rounds: RoundData[], chosen: RoundData | undefined, now: nu
     const { stage } = leadPc(chosen);
     if (stage !== "ready") rows.push({ label: l10n.t("transport.diag_stage"), value: stageWord(stage) });
     rows.push(...signalRows(chosen));
-    if (chosen.publicStun) rows.push(stunRow(chosen));
   }
   for (const r of rounds) {
     const took = (r.endedAt ?? r.established ?? Math.max(0, now - r.startedAt)) as number;
@@ -245,7 +242,7 @@ export function diagView(input: DiagInput): DiagView {
   const block = (g: DiagGroup, indent: string) => { lines.push(indent + g.title); for (const r of g.rows) lines.push(`${indent}  ${r.label}: ${r.value}`); };
   for (const r of rounds) {
     lines.push("", l10n.t("transport.diag_report_round", { n: r.n, age: ageWord(Math.max(0, now - r.startedAt)) }) + SEP + l10n.t("transport.diag_round", { result: resultWord(r), seconds: seconds((r.endedAt ?? r.established ?? Math.max(0, now - r.startedAt))) }));
-    const extra = [...signalRows(r), stunRow(r)];
+    const extra = signalRows(r);
     for (const row of extra) lines.push(`  ${row.label}: ${row.value}`);
     for (const pc of r.pcs) {
       const best = bestAttempt(pc);

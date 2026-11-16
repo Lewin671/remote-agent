@@ -250,7 +250,7 @@ async function rounds(random = () => 0.5) {
  const engine = new DirectEngine({ server: "https://example.com", deviceId: "client", devicePrivate: {} as CryptoKey }, async () => {}, () => {}, random);
  const self = await fixture("client", 1), member = await fixture("machine", 2), id = w.text(member.id);
  Object.assign(engine, { self, codec: await fixtureCodec(), record: { member: true, states: [{ core: { members: [] } }] }, peers: new Map(), freshUntil: Date.now() + 1e9 });
- const state = engine as unknown as { create(p: w.Public, c: w.Bytes, d: number): Round; diag: import("./direct-diag").DirectDiag; publicStun: Set<string>; peers: Map<string, Round>; retryAfter: Map<string, number>; failureCount: Map<string, number> };
+ const state = engine as unknown as { create(p: w.Public, c: w.Bytes, d: number): Round; peers: Map<string, Round>; retryAfter: Map<string, number>; failureCount: Map<string, number> };
  let n = 0;
  const round = () => state.create(member, new Uint8Array(16).fill(++n), Date.now() + 10_000);
  return { engine, state, id, round, delayOf: () => state.retryAfter.get(id)! - Date.now() };
@@ -360,23 +360,4 @@ test("a round refused for lack of slots is reported as such and does not add rou
  expect(engine.diagnostics("machine").rounds).toEqual([]);expect(engine.diagnostics("machine").blockedAt).toBeTypeOf("number");
  owner.diag.begin("machine");expect(engine.diagnostics("machine").blockedAt).toBeUndefined();
  expect(engine.diagnostics("machine").rounds).toHaveLength(1);
-});
-test.each([
- ["a desktop browser whose own addresses are hidden, facing a computer with global IPv6", ["candidate:1 1 udp 1 abc.local 5000 typ host", "candidate:2 1 udp 1 203.0.113.9 5000 typ srflx"], true],
- ["a phone browser that shows its own IPv6", ["candidate:1 1 udp 1 2001:db8::9 5000 typ host", "candidate:2 1 udp 1 203.0.113.9 5000 typ srflx"], false],
-] as const)("the public STUN is a last resort: %s", async (_name, locals, expected) => {
- const { engine, state, id, round } = await rounds();
- try {
-  const first = round(); expect(first.session.options.stun).toEqual(["stun:example.com:3478"]);
-  const a = first.session.options.diag!.pc(1).begin();
-  for (const line of locals) a.local(line);
-  a.remote("candidate:3 1 udp 1 2001:db8::1 6000 typ host"); a.remote("candidate:4 1 udp 1 192.0.2.7 6000 typ srflx");
-  first.session.close();
-  expect(state.retryAfter.get(id)! <= Date.now()).toBe(expected);
-  const next = round();
-  expect(next.session.options.stun.length).toBe(expected ? 3 : 1);
-  expect(state.diag.rounds(id)[0].publicStun).toBe(expected);
-  engine.invalidate();                                            // a new network starts with the own server only
-  expect(state.publicStun.has(id)).toBe(false);
- } finally { engine.close(); vi.useRealTimers(); }
 });

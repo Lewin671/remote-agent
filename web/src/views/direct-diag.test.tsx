@@ -149,7 +149,6 @@ describe("复制诊断信息", () => {
     expect(text).toMatch(/加载 · 停在: 连通检查/);
     expect(text).toMatch(/文件 · 停在: 连通检查/);
     expect(text).toContain("IPv6 → IPv6: 失败 1 · 发出 14 · 收到 0");
-    expect(text).toContain("地址查询: 自建服务器");
     expect(text).not.toMatch(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|2001|db8|abcd|5000|\.local/);
     expect(action("已复制")).toBeDefined();
   });

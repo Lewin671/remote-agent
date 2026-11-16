@@ -137,7 +137,7 @@ Router 合并全部路径/尝试：有仍可能返回可信结果的路径就继
 
 RelayPath 适配既有 HTTPS `Forward`、主 WS 和独立终端 WS。第 0b 期完成所有权重构，第 0c 期在协议 15 上实现中继活性与原 ID 调用恢复。账户、历史、通知和图片显示副本不改语义；新增信令定向转发见第 5 节。
 
-DirectPath 四端统一用 WebRTC DataChannel，daemon 用 Pion，自建 STUN，不部署 TURN。网页每轮只问自建 STUN；公共双栈 STUN 只作最后手段（默认 Cloudflare，按域名和 IPv6 地址 `2606:4700:49::` 各列一次，因为不少代理的 DNS 会丢掉 AAAA 记录；构建时 `VITE_DIRECT_STUN_EXTRA` 可用逗号分隔替换，或设为 `none`）。只有某台电脑的一轮没连上、本机一个 IPv6 地址都没露出（地址被 mDNS 隐藏、自建 STUN 只有 IPv4）、而电脑给了全球 IPv6 地址时，之后对这台电脑的轮次才加上它并立刻重试，直到网络或连接寿命变化。原因：拿不到自己的公网 IPv6，电脑就不会朝浏览器的 IPv6 发包，电脑前面默认的有状态 IPv6 防火墙因此丢掉浏览器发来的检查，只剩单向；2026-11-16 实测两台联通 IPv6 之间因此连不上（电脑端 IPv6 端口收发均为 0 字节），而手机浏览器公开了本机 IPv6，能连上，也就不会去问公共 STUN。诊断信息写明每轮用了哪组 STUN。只许 IPv6 连国内的网络连不上 Cloudflare 的 IPv6，根本办法是给自建 STUN 配 IPv6。daemon 与原生客户端公开本机地址，不需要它。UDP 被挡、NAT 不可穿透、STUN 不可用就走 HTTPS/WSS；浏览器保留默认 mDNS/候选隐私，不为取地址申请音视频权限。
+DirectPath 四端统一用 WebRTC DataChannel，daemon 用 Pion，自建 STUN，不部署 TURN 或依赖第三方 STUN/TURN。daemon 的本机地址候选固定用一个 UDP 端口（默认 41478，环境变量 `REMOTE_AGENT_DIRECT_PORT` 可改，`0` 改回随机端口），每个本机地址一个套接字，网络变化后按新地址重绑；公网映射候选仍用随机端口。这样电脑前面的防火墙可以只放行这一个端口的入站 UDP：浏览器把本机地址藏在 mDNS 名字后面，自建 STUN 目前只有 IPv4，电脑拿不到浏览器的 IPv6，不会先朝它发包；默认的有状态 IPv6 防火墙因此丢掉浏览器发来的检查，只剩单向（2026-11-16 实测两台联通 IPv6 之间因此连不上，手机浏览器因公开本机 IPv6 能连上）。放行这个端口后浏览器的检查直接到达电脑。UDP 被挡、NAT 不可穿透、STUN 不可用就走 HTTPS/WSS；浏览器保留默认 mDNS/候选隐私，不为取地址申请音视频权限。
 
 选择 WebRTC 因为浏览器可用且四端有共同实现路径。[实测](transport-notes.md#2-吞吐与排队)中 QUIC 的吞吐与资源更好，但原型假定 UDP 可达，未验证手机集成或打洞。本期不引入 QUIC；上层不能看到 PeerConnection/SDP。
 
@@ -345,7 +345,7 @@ daemon 提供持久的 `direct_enabled` 本机设置和 Client 经已认证 `Dir
 
 ## 6. STUN 与诊断
 
-自建 STUN 仅发现映射，独立 UDP 入口（目前只有 IPv4：官方中继所在的轻量服务器不支持 IPv6），HTTPS 代理不能自动承载；不做 TURN、端口预测或扫描。小响应、源地址内存短期限流与全局预算防反射放大，关闭持久 IP access log。生产容量等未决见计划。
+自建 STUN 仅发现映射，独立 IPv4/IPv6 UDP 入口，HTTPS 代理不能自动承载；不做 TURN、端口预测或扫描。小响应、源地址内存短期限流与全局预算防反射放大，关闭持久 IP access log。生产容量等未决见计划。
 
 日志不记 IP、端口候选串、SDP、ICE 凭据、指纹全文、原始 ICE 错误对象、内容或密钥，关闭或接管 Pion/libwebrtc 默认调试输出。仅本机有界滚动聚合候选类型/地址族、字节数、RTT p50/p95、吞吐、队列峰值、建连/恢复耗时、退路原因、unknown、replay/快照和 ICE CPU；不上传。信任域暴露见 scope。
 
