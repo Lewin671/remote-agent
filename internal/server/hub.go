@@ -301,6 +301,7 @@ func (h *hub) add(p *peer) {
 }
 
 func (h *hub) remove(p *peer) {
+	var disconnected []*call
 	h.closeDirected(p)
 	h.closeQueue(p)
 	h.mu.Lock()
@@ -313,7 +314,7 @@ func (h *hub) remove(p *peer) {
 		for id, c := range h.calls {
 			if c.peer == p {
 				delete(h.calls, id)
-				c.reply <- nil
+				disconnected = append(disconnected, c)
 			}
 		}
 	} else {
@@ -326,6 +327,9 @@ func (h *hub) remove(p *peer) {
 		}
 	}
 	h.mu.Unlock()
+	for _, c := range disconnected {
+		c.reply <- nil
+	} // One terminal result per buffered call; no hub lock held.
 	if p.dev.kind != pb.DeviceKind_DEVICE_KIND_MACHINE {
 		_ = h.s.store.tenant(p.dev.account).touchDevice(h.s.ctx, p.dev.id)
 	}

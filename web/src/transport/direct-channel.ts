@@ -3,6 +3,7 @@ import { FragmentSchema } from "../gen/remoteagent/v1/transport_pb";
 import * as w from "./peer/wire";
 import { normalize } from "./peer/schema";
 import { validateSDP } from "./peer/sdp";
+import { cleanup } from "../cleanup";
 import { PathChanged, abortable } from "./recovery";
 
 const FRAME_BYTES = 16 << 10;
@@ -182,7 +183,9 @@ export class DirectChannel {
     const completed = new Uint8Array(part.length); let offset = 0;
     for (let index = 0; index < part.count; index++) { completed.set(part.parts.get(index)!, offset); offset += part.parts.get(index)!.byteLength; }
     const hash = part.hash; this.drop(key, part);
-    const valid = w.equal(hash, await w.hash(completed));
+    let valid: boolean;
+    try { valid = w.equal(hash, await w.hash(completed)); }
+    catch (error) { this.options.budget.free(this.options.peer, 1, completed.byteLength, 1); throw error; }
     if (!valid || !this.valid()) { this.options.budget.free(this.options.peer, 1, completed.byteLength, 1); return; }
     if (this.confirmed) this.deliver(completed); else this.waiting.push(completed);
   }
@@ -192,7 +195,7 @@ export class DirectChannel {
     if (this.ended) return; this.ended = true; this.lifetime.abort(new PathChanged()); clearInterval(this.tick);
     for (const [key, part] of this.partial) this.drop(key, part);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
-    this.probes.clear(); this.pc.close(); this.options.closed(); this.releaseReservation();
+    this.probes.clear(); cleanup(() => this.pc.close(), () => this.options.closed(), () => this.releaseReservation());
   }
   private releaseReservation() {
     if (this.ended && !this.writers && !this.reservationReleased) { this.reservationReleased = true; this.options.budget.release(this.options.peer, this.options.use); }
