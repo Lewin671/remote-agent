@@ -152,6 +152,11 @@ func withTimeout<T: Sendable>(
 
 public actor Remote {
     private let peerResponder = PeerResponder()
+    /// Direct paths (docs/transport.md §2): nil when the app brought no WebRTC SDK, then only the relay carries traffic.
+    nonisolated let direct: DirectEngine?
+    /// Bumped whenever something a screen shows about a direct path changed.
+    public nonisolated let directChanges = Feed<Int>(0)
+    var directTransfers: [String: UploadKind] = [:]
     private let peerBudget = StreamByteBudget(limit: 8 * 65536)
     private func peerFrame(_ bytes: Data, socket: any FrameStream, generation: Int, network: UInt64) async {
         defer { peerBudget.release(65536) }
@@ -275,6 +280,7 @@ public actor Remote {
     }
     var mainLegs: [ObjectIdentifier: MainLeg] = [:]
     func retireMainLeg(_ socket: any FrameStream) {
+        direct?.detach(socket)
         if let leg=mainLegs.removeValue(forKey:ObjectIdentifier(socket)) {
             leg.queue.finish();leg.receive.cancel();leg.process.cancel()
         }
@@ -440,9 +446,17 @@ public actor Remote {
         streamOpenMs: Int64 = 15_000,
         linkGraceMs: Int64 = 10_000,
         securityStorage: (any DeviceSecurity.Storage)? = nil,
-        monotonic: (@Sendable () -> Int64)? = nil
+        monotonic: (@Sendable () -> Int64)? = nil,
+        rtc: (any RtcFactory)? = nil,
+        directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences()
     ) throws {
         self.account = account
+        let holder = WeakRemote()
+        if let rtc {
+            direct = DirectEngine(
+                server: account.server, deviceId: account.deviceId, deviceSeed: account.deviceSeed, factory: rtc, preferences: directPreferences,
+                authorize: { try await holder.remote?.directAuthorize() }, changed: { holder.remote?.directChanged() })
+        } else { direct = nil }
         self.securityStorage = securityStorage
         self.http = http
         self.cache = cache
@@ -471,6 +485,7 @@ public actor Remote {
                 await self.perform(op)
             }
         }
+        holder.remote = self
     }
 
     deinit {
@@ -540,7 +555,7 @@ public actor Remote {
         case .start:
             if running || removed { return }
             running = true
-            if startedOnce { networkGeneration += 1; retireCandidate() }
+            if startedOnce { networkGeneration += 1; retireCandidate(); direct?.networkChanged() }
             startedOnce = true
             startLiveness()
             beginConnect()
@@ -549,6 +564,7 @@ public actor Remote {
         case .close:
             halt()
             deviceLink.closeStreams()
+            direct?.close()
             closed = true
             for job in liveJobs.values { job.cancel() }
             liveJobs.removeAll()
@@ -570,6 +586,7 @@ public actor Remote {
             waited = false
             if running && !removed {
                 networkGeneration += 1
+                direct?.networkChanged()
                 retireCandidate()
                 beginConnect()
             } else {
@@ -582,7 +599,7 @@ public actor Remote {
             let changed = !networkSignature.isEmpty
             networkSignature = signature; network = available
             if changed {
-                networkGeneration += 1; retireCandidate()
+                networkGeneration += 1; retireCandidate(); direct?.networkChanged()
                 if running && !removed { beginConnect() } else { publish() }
             } else { publish() }
         case .reconnectNow:
@@ -610,6 +627,7 @@ public actor Remote {
 
     private func halt() {
         running = false
+        direct?.invalidate()
         retireLogin()
         retireDirectory()
         liveness?.cancel();liveness=nil
@@ -937,7 +955,7 @@ public actor Remote {
         let now=livenessTime()
         guard running else {return now}
         let woke=now.0<last.0 || now.0-last.0>3000 || now.1-last.1>3000
-        if woke {networkGeneration+=1;retireCandidate()}
+        if woke {networkGeneration+=1;retireCandidate();direct?.networkChanged()}
         if woke || (ws != nil && (activity?.suspect(now.0) ?? false)) {
             if conn == .online {conn = .connecting;publish()}
             beginConnect()
@@ -992,9 +1010,18 @@ public actor Remote {
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
         let budget = StreamByteBudget(limit: frameQueueBytes)
         let parse = frameParser.withLock { $0 }
-        let peerBudget = self.peerBudget
+        let peerBudget = self.peerBudget, direct = self.direct
         let receive = Task.detached { [weak self] in
             while let bytes = try? await socket.receive() {
+                if let direct, let body = PeerResponder.body(bytes) {
+                    // The engine bounds and drops by itself; the frame is a copy the main loop never sees.
+                    direct.receive(Array(body), from: socket)
+                    continue
+                }
+                if let direct, let body = PeerResponder.resultBody(bytes) {
+                    direct.result(Array(body), from: socket)
+                    continue
+                }
                 if let body = PeerResponder.body(bytes) {
                     if peerBudget.reserve(65536) {
                         Task { if let self { await self.peerFrame(body, socket:socket, generation:gen, network:networkGen) } else { peerBudget.release(65536) } }
@@ -1047,6 +1074,7 @@ public actor Remote {
                     opening?.task.cancel();opening=nil;candidate=nil
                     guard gen == generation && networkGen == networkGeneration else {socket.cancel();beginConnect();break}
                     let old=ws;ws=socket;self.activity=activity;everReady=true
+                    direct?.attach(socket)
                     recovery.ready();if let old {retireMainLeg(old)}
                 }
                 if conn == .connecting && networkGen == networkGeneration, case .heartbeat? = f.kind {conn = .online;publish()}

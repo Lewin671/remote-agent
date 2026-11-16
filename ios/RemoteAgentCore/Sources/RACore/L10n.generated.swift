@@ -7931,6 +7931,110 @@ public enum L10n {
         let key = "tools_waiting_sync"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDirect(locale: String = MessageLocale.current) -> String {
+        let key = "transport_direct"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportFileSpeedBoth(direct: String, relay: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_file_speed_both"
+        return format(key, locale: locale, args: [direct, relay])
+    }
+    public static func transportFileSpeedDirect(direct: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_file_speed_direct"
+        return format(key, locale: locale, args: [direct])
+    }
+    public static func transportFileSpeedPending(locale: String = MessageLocale.current) -> String {
+        let key = "transport_file_speed_pending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportFileSpeedRelay(relay: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_file_speed_relay"
+        return format(key, locale: locale, args: [relay])
+    }
+    public static func transportFooter(locale: String = MessageLocale.current) -> String {
+        let key = "transport_footer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportGroup(locale: String = MessageLocale.current) -> String {
+        let key = "transport_group"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportNotClearlyFaster(locale: String = MessageLocale.current) -> String {
+        let key = "transport_not_clearly_faster"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReadLatencyBoth(direct: String, relay: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_read_latency_both"
+        return format(key, locale: locale, args: [direct, relay])
+    }
+    public static func transportReadLatencyDirect(direct: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_read_latency_direct"
+        return format(key, locale: locale, args: [direct])
+    }
+    public static func transportReadLatencyRelay(relay: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_read_latency_relay"
+        return format(key, locale: locale, args: [relay])
+    }
+    public static func transportReasonFailed(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonNoResponse(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_no_response"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonNoTraversal(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_no_traversal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReasonPeerUnsupported(locale: String = MessageLocale.current) -> String {
+        let key = "transport_reason_peer_unsupported"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportRelayFaster(locale: String = MessageLocale.current) -> String {
+        let key = "transport_relay_faster"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportSpeedFile(locale: String = MessageLocale.current) -> String {
+        let key = "transport_speed_file"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportSpeedRead(locale: String = MessageLocale.current) -> String {
+        let key = "transport_speed_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportStatusConnecting(locale: String = MessageLocale.current) -> String {
+        let key = "transport_status_connecting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportStatusDirect(locale: String = MessageLocale.current) -> String {
+        let key = "transport_status_direct"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportStatusMeasuring(locale: String = MessageLocale.current) -> String {
+        let key = "transport_status_measuring"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportStatusRelay(locale: String = MessageLocale.current) -> String {
+        let key = "transport_status_relay"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportSummaryOff(locale: String = MessageLocale.current) -> String {
+        let key = "transport_summary_off"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportUnavailable(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "transport_unavailable"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func transportUseFile(locale: String = MessageLocale.current) -> String {
+        let key = "transport_use_file"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportUseRead(locale: String = MessageLocale.current) -> String {
+        let key = "transport_use_read"
+        return format(key, locale: locale, args: [])
+    }
 }
 public enum L10nMessage {
     public static func approvalAllow() -> LocalizedMessage {
@@ -15849,6 +15953,110 @@ public enum L10nMessage {
     }
     public static func toolsWaitingSync() -> LocalizedMessage {
         let key = "tools_waiting_sync"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportDirect() -> LocalizedMessage {
+        let key = "transport_direct"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportFileSpeedBoth(direct: String, relay: String) -> LocalizedMessage {
+        let key = "transport_file_speed_both"
+        return LocalizedMessage(key: key, arguments: [.string(direct), .string(relay)])
+    }
+    public static func transportFileSpeedDirect(direct: String) -> LocalizedMessage {
+        let key = "transport_file_speed_direct"
+        return LocalizedMessage(key: key, arguments: [.string(direct)])
+    }
+    public static func transportFileSpeedPending() -> LocalizedMessage {
+        let key = "transport_file_speed_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportFileSpeedRelay(relay: String) -> LocalizedMessage {
+        let key = "transport_file_speed_relay"
+        return LocalizedMessage(key: key, arguments: [.string(relay)])
+    }
+    public static func transportFooter() -> LocalizedMessage {
+        let key = "transport_footer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportGroup() -> LocalizedMessage {
+        let key = "transport_group"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportNotClearlyFaster() -> LocalizedMessage {
+        let key = "transport_not_clearly_faster"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReadLatencyBoth(direct: String, relay: String) -> LocalizedMessage {
+        let key = "transport_read_latency_both"
+        return LocalizedMessage(key: key, arguments: [.string(direct), .string(relay)])
+    }
+    public static func transportReadLatencyDirect(direct: String) -> LocalizedMessage {
+        let key = "transport_read_latency_direct"
+        return LocalizedMessage(key: key, arguments: [.string(direct)])
+    }
+    public static func transportReadLatencyRelay(relay: String) -> LocalizedMessage {
+        let key = "transport_read_latency_relay"
+        return LocalizedMessage(key: key, arguments: [.string(relay)])
+    }
+    public static func transportReasonFailed() -> LocalizedMessage {
+        let key = "transport_reason_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonNoResponse() -> LocalizedMessage {
+        let key = "transport_reason_no_response"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonNoTraversal() -> LocalizedMessage {
+        let key = "transport_reason_no_traversal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReasonPeerUnsupported() -> LocalizedMessage {
+        let key = "transport_reason_peer_unsupported"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportRelayFaster() -> LocalizedMessage {
+        let key = "transport_relay_faster"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportSpeedFile() -> LocalizedMessage {
+        let key = "transport_speed_file"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportSpeedRead() -> LocalizedMessage {
+        let key = "transport_speed_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportStatusConnecting() -> LocalizedMessage {
+        let key = "transport_status_connecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportStatusDirect() -> LocalizedMessage {
+        let key = "transport_status_direct"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportStatusMeasuring() -> LocalizedMessage {
+        let key = "transport_status_measuring"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportStatusRelay() -> LocalizedMessage {
+        let key = "transport_status_relay"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportSummaryOff() -> LocalizedMessage {
+        let key = "transport_summary_off"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportUnavailable(reason: String) -> LocalizedMessage {
+        let key = "transport_unavailable"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func transportUseFile() -> LocalizedMessage {
+        let key = "transport_use_file"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportUseRead() -> LocalizedMessage {
+        let key = "transport_use_read"
         return LocalizedMessage(key: key, arguments: [])
     }
 }
