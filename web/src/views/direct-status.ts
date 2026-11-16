@@ -102,7 +102,7 @@ export function footerText(view: DirectView): string {
  * not on every computer's line) that this browser cannot do it. */
 export function connFooter(engine: DirectEngine, ids: string[]): string {
   const unsupported = ids.some((id) => directView(engine.status(id)).kind === "unsupported");
-  const sentences = [l10n.t("connection.latency_is_one_round_trip_the_server_row_measures"), l10n.t("transport.conn_footer_machines"), ...(unsupported ? [l10n.t("transport.conn_footer_unsupported")] : [])];
+  const sentences = [l10n.t("connection.latency_is_one_round_trip_the_server_row_measures"), ...(unsupported ? [l10n.t("transport.conn_footer_unsupported")] : [])];
   // Chinese sentences end in a full stop and need no space between them.
   return sentences.join(l10n.localeStore.snapshot().startsWith("zh") ? "" : " ");
 }

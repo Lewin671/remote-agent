@@ -65,9 +65,9 @@ describe("the group's frame", () => {
     const r = open();
     show(r, { state: "none" });
     expect(footer()).toBe(message("transport.footer"));
-    expect(footer()).toBe("能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。");
+    expect(footer()).toBe("能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。");
     show(r, { state: "connected", file: "direct", fileMiBps: { direct: 6.3 } });
-    expect(footer()).toBe("能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。速度取自最近的实际传输。");
+    expect(footer()).toBe("能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。速度取自最近的实际传输。");
   });
 });
 
@@ -240,7 +240,7 @@ describe("in English", () => {
     show(r, { state: "connected", file: "direct", read: "direct", fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { direct: 12, relay: 180 } });
     expect(statusRow()!.querySelector(".v")!.textContent).toBe("Files and reading");
     expect(speedRows()).toEqual([["File transfer", "Direct 6.3 · Relay 4.1 MiB/s"], ["Read latency", "Direct 12 · Relay 180 ms"]]);
-    expect(footer()).toContain("Speeds come from recent actual transfers.");
+    expect(footer()).toContain("Speeds come from recent transfers.");
   });
 });
 

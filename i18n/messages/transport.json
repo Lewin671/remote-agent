@@ -473,8 +473,8 @@
   },
   {
     "key": "transport.footer",
-    "zh-CN": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。",
-    "en": "When this computer can be reached directly, files and reading go direct; messages and approvals always go through the server relay. If the direct connection drops, it switches back to the relay automatically.",
+    "zh-CN": "能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。",
+    "en": "When a direct connection is possible, files and reading use it; messages and approvals always go through the relay, and it falls back automatically if direct drops.",
     "notes": "电脑设置页「连接」组下面的说明，13 号，可多行。没有速度行时用这一句。无变量。",
     "params": {},
     "platforms": [
@@ -487,8 +487,8 @@
   },
   {
     "key": "transport.footer_speeds",
-    "zh-CN": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。速度取自最近的实际传输。",
-    "en": "When this computer can be reached directly, files and reading go direct; messages and approvals always go through the server relay. If the direct connection drops, it switches back to the relay automatically. Speeds come from recent actual transfers.",
+    "zh-CN": "能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。速度取自最近的实际传输。",
+    "en": "When a direct connection is possible, files and reading use it; messages and approvals always go through the relay, and it falls back automatically if direct drops. Speeds come from recent transfers.",
     "notes": "电脑设置页「连接」组下面的说明，13 号，可多行。有速度行时用这一句，比没有速度行时多末尾一句。无变量。",
     "params": {},
     "platforms": [
@@ -504,20 +504,6 @@
     "zh-CN": "直连已关闭",
     "en": "Direct is off",
     "notes": "连接检测里电脑名下的一行摘要：用户在本设备上关了这台电脑的直连开关。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.conn_footer_machines",
-    "zh-CN": "电脑一行的延时经服务器中继测得。",
-    "en": "Computer rows are measured through the relay server.",
-    "notes": "连接检测页脚里接在原有延时说明后面的一句。无变量。",
     "params": {},
     "platforms": [
       "web"

@@ -1448,7 +1448,6 @@ export interface MessageArgs {
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
   "transport.comparing": { [name: string]: never };
-  "transport.conn_footer_machines": { [name: string]: never };
   "transport.conn_footer_unsupported": { [name: string]: never };
   "transport.direct": { [name: string]: never };
   "transport.file_speed_both": { direct: string; relay: string };
@@ -3395,14 +3394,13 @@ export const messages = {
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
     "transport.comparing": "Comparing speeds",
-    "transport.conn_footer_machines": "Computer rows are measured through the relay server.",
     "transport.conn_footer_unsupported": "This browser doesn't support direct connections.",
     "transport.direct": "Direct connection",
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
     "transport.file_speed_direct": "Direct {direct} MiB/s",
     "transport.file_speed_relay": "Relay {relay} MiB/s",
-    "transport.footer": "When this computer can be reached directly, files and reading go direct; messages and approvals always go through the server relay. If the direct connection drops, it switches back to the relay automatically.",
-    "transport.footer_speeds": "When this computer can be reached directly, files and reading go direct; messages and approvals always go through the server relay. If the direct connection drops, it switches back to the relay automatically. Speeds come from recent actual transfers.",
+    "transport.footer": "When a direct connection is possible, files and reading use it; messages and approvals always go through the relay, and it falls back automatically if direct drops.",
+    "transport.footer_speeds": "When a direct connection is possible, files and reading use it; messages and approvals always go through the relay, and it falls back automatically if direct drops. Speeds come from recent transfers.",
     "transport.group": "Connection",
     "transport.read_latency_both": "Direct {direct} · Relay {relay} ms",
     "transport.read_latency_direct": "Direct {direct} ms",
@@ -5258,14 +5256,13 @@ export const messages = {
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
     "transport.comparing": "正在比较速度",
-    "transport.conn_footer_machines": "电脑一行的延时经服务器中继测得。",
     "transport.conn_footer_unsupported": "这个浏览器不支持直连。",
     "transport.direct": "直连",
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",
     "transport.file_speed_direct": "直连 {direct} MiB/s",
     "transport.file_speed_relay": "中继 {relay} MiB/s",
-    "transport.footer": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。",
-    "transport.footer_speeds": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。速度取自最近的实际传输。",
+    "transport.footer": "能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。",
+    "transport.footer_speeds": "能直连时，文件和读取改走直连；发消息和审批始终经服务器中继，直连断开会自动换回。速度取自最近的实际传输。",
     "transport.group": "连接",
     "transport.read_latency_both": "直连 {direct} · 中继 {relay} ms",
     "transport.read_latency_direct": "直连 {direct} ms",

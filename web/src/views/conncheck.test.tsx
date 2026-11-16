@@ -130,14 +130,14 @@ describe("direct path summary lines", () => {
   it("adds the relay sentence to the footer, and the browser sentence once, not on every computer", async () => {
     open("", quiet);
     await settle();
-    expect(footer()).toBe(base() + "电脑一行的延时经服务器中继测得。");
+    expect(footer()).toBe(base() + "");
     act(() => root?.unmount()); host.remove();
     vi.stubGlobal("RTCPeerConnection", undefined);
     open("", quiet);
     await settle();
     expect(lines()["MacBook"]).toEqual([]);
     expect(lines()["VPS-dev"]).toEqual([]);
-    expect(footer()).toBe(base() + "电脑一行的延时经服务器中继测得。这个浏览器不支持直连。");
+    expect(footer()).toBe(base() + "这个浏览器不支持直连。");
   });
 
   it("separates the footer's sentences with spaces in English", async () => {
@@ -146,7 +146,7 @@ describe("direct path summary lines", () => {
       vi.stubGlobal("RTCPeerConnection", undefined);
       open("", quiet);
       await settle();
-      expect(footer()).toBe(`${base()} Computer rows are measured through the relay server. This browser doesn't support direct connections.`);
+      expect(footer()).toBe(`${base()} This browser doesn't support direct connections.`);
     } finally { localeStore.overrideForTesting(undefined); }
   });
 
