@@ -532,6 +532,7 @@ private class DirectBridgeDaemon(
             Command.KindCase.COMPLETE_IMAGE_UPLOAD -> b.setCompleteImageUpload(CompleteImageUploadResponse.newBuilder().setStatus(
                 ImageUploadStatus.newBuilder().setTransferId(cmd.completeImageUpload.transferId).setState(ImageUploadState.IMAGE_UPLOAD_STATE_COMPLETE).build()
             ))
+            Command.KindCase.GET_MACHINE_STATUS -> b.setMachineStatus(io.github.lewin671.remoteagent.proto.MachineStatus.getDefaultInstance())
             else -> b.setErrorCode("unimplemented")
         }
         return b.build()
@@ -544,6 +545,14 @@ private class DirectBridgeDaemon(
 }
 
 class DirectTransportTest {
+    private suspend fun awaitCondition(what: String, timeoutMs: Long, condition: () -> Boolean) {
+        val until = System.nanoTime() + timeoutMs * 1_000_000
+        while (!condition()) {
+            if (System.nanoTime() > until) throw AssertionError("timed out after ${timeoutMs}ms: $what")
+            delay(25)
+        }
+    }
+
     private fun sha256(bytes: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(bytes)
 
     @Test
@@ -852,6 +861,68 @@ class DirectTransportTest {
                 val statusIdx = newRelay.indexOfFirst { it.hasGetImageUploadStatus() }
                 val putIdx = newRelay.indexOfFirst { it.hasPutImageChunk() }
                 assertTrue("getImageUploadStatus must precede fallback PutImageChunk: $newRelay", statusIdx in 0 until putIdx)
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    /** A long-lived app whose direct path drops must get a new one within the
+     * designed backoff (5 s, then the next 1 s discovery tick), warm it up again,
+     * and never stay on the relay for good. Real clock: the backoff is real time. */
+    @Test
+    fun directIsReestablishedAfterAPathDropAndWarmsUpAgain() = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 1 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                withTimeout(10_000) { while (!remote.direct.ready(id, RouteHint.Read) || !remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))) delay(20) }
+                // The warm-up probes start by themselves, both paths, without any user request.
+                awaitCondition("warm-up probes on both paths without a user request", 10_000) {
+                    daemon.directCommands.any { it.hasGetMachineStatus() } && daemon.relayCommands.any { it.hasGetMachineStatus() }
+                }
+                val before = bridge.phonePcs.size
+                val probesBefore = daemon.directCommands.count { it.hasGetMachineStatus() }
+
+                // The path drops (the network under it changed); the main socket stays up.
+                bridge.phonePcs.toList().forEach { it.dropAllChannels() }
+                awaitCondition("the dropped path stops being ready", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
+                assertEquals(RouteName.RELAY, remote.direct.routing(id).readPath())
+                val droppedAt = System.nanoTime()
+
+                // Designed backoff: 5 s wait plus at most one 1 s discovery tick plus the handshake.
+                awaitCondition("direct is re-established after the path drop", 15_000) {
+                    remote.direct.ready(id, RouteHint.Read) && remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))
+                }
+                val backMs = (System.nanoTime() - droppedAt) / 1_000_000
+                assertTrue("re-established after ${backMs}ms, expected within the 5 s backoff plus a tick", backMs in 4_000..9_000)
+                assertTrue("a new peer connection was made", bridge.phonePcs.size > before)
+                // It measures again after the stability wait, on both paths.
+                awaitCondition("the new path is warmed up again", 20_000) {
+                    daemon.directCommands.count { it.hasGetMachineStatus() } > probesBefore
+                }
+                assertTrue(remote.directEnabled(id))
             } finally {
                 remote.close()
                 daemon.close()
