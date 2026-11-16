@@ -152,8 +152,9 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 			return nil, err
 		}
 		name := "dc" + string(rune('0'+id))
-		dc.OnError(func(error) { p.closeWhy(name + "_error") })
-		dc.OnClose(func() { p.closeWhy(name + "_closed") })
+		onErr, onClose := name+"_failed", name+"_closed"
+		dc.OnError(func(error) { p.closeWhy(onErr) })
+		dc.OnClose(func() { p.closeWhy(onClose) })
 		if id == 0 {
 			p.data = dc
 			dc.SetBufferedAmountLowThreshold(32 << 10)
