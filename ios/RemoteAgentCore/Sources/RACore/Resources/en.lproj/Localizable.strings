@@ -1642,6 +1642,7 @@
 "settings_ios_default_model_for_new_sessions" = "%1$@ · Default model for new sessions";
 "settings_ios_default_s_own_configuration" = "Default (%1$@’s own configuration)";
 "settings_ios_delete_entire_account" = "Delete entire account…";
+"settings_ios_event_projection_core" = "Session event projection";
 "settings_ios_exit_and_delete_local_keys_from_settings" = "Exit and delete local keys from settings";
 "settings_ios_fonts_use_the_system_s_sf_pro_pingfang_and" = "Fonts use the system’s SF Pro, PingFang, and SF Mono. No fonts are bundled in the app.";
 "settings_ios_for_unverified_versions_run_remote_agent_doctor_on_the" = "For unverified versions, run remote-agent doctor on the computer";
@@ -1667,6 +1668,7 @@
 "settings_ios_saving" = "Saving…";
 "settings_ios_server_communication" = "Server communication";
 "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running" = "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.";
+"settings_ios_shared_core_message_encoding" = "Shared core message encoding";
 "settings_ios_support_and_feedback" = "Support and feedback";
 "settings_ios_system" = "System";
 "settings_ios_the_android_app_and_home_screen_web_app_can" = "The Android app and home screen web app can enable alerts in their own settings";

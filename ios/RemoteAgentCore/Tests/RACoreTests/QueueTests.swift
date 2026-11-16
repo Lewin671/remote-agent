@@ -6,23 +6,18 @@ import Testing
 
 /// Android's core QueueTest.
 @Suite struct QueueTests {
-    @Test func theQueueKeepsTheDaemonsOrder() {
-        let d = derive([
-            Mk.ev(1, Mk.inputState("b", .queued)),
-            Mk.ev(2, Mk.inputState("a", .queued)),
-            Mk.ev(3, Mk.inputState("c", .queued)),
-            Mk.ev(4, Mk.inputState("a", .canceled)),
-        ])
-        #expect(queued(d) == ["b", "c"])
-    }
-
     @Test func sampleDataStandsInForTheComputersQueue() {
         let list = [
             Mk.ev(1, Mk.inputState("a", .queued)), Mk.ev(2, Mk.inputState("b", .queued)), Mk.ev(3, Mk.inputState("b", .submitted)),
         ]
-        let d = currentActions(derive(list), live: Remote.liveForTest(list, planOpen: false))
+        var p = EventProjection()
+        let d = p.update(list, live: Remote.liveForTest(list, planOpen: false))
         #expect(queued(d) == ["a"])
-        #expect(d.inputs["b"] == .submitted)
+        #expect(d.inputStatus("b") == .submitted)
+    }
+
+    @Test func failureTextNamesAgentWhenImageUnrecognized() {
+        #expect(failureText(reason: "image_not_recognized", agent: .claude) == "Claude Code 没认出图片")
     }
 
     @Test func theDaemonsReasonComesFirst() {
@@ -137,32 +132,5 @@ import Testing
         func c(_ id: String) -> DeviceView { DeviceView(id: id, kind: .client, createdMs: 7, lastSeenMs: 0) }
         #expect(sortClients([c("b"), c("c"), c("a")], me: "x").map(\.id) == ["a", "b", "c"])
         #expect(sortClients([c("c"), c("a"), c("b")], me: "x").map(\.id) == ["a", "b", "c"])
-    }
-}
-
-/// Android's AcceptedTest (in QueueTest.kt).
-@Suite struct AcceptedTests {
-    private let local = PBOrigin.with { $0.kind = .local }
-    private let client = PBOrigin.with { $0.kind = .client; $0.deviceID = "d1" }
-
-    @Test func everyClientSeesWhatWasAcceptedAndHowFarItGot() throws {
-        let d = derive([
-            Mk.ev(1, Mk.inputState("r", .queued) { $0.text = "看看这两张"; $0.imageIds = ["i1", "i2"]; $0.stage = .waiting }, origin: client),
-            Mk.ev(2, Mk.inputState("r", .queued) { $0.stage = .pastingImages }),
-            Mk.ev(3, Mk.inputState("r", .failed, reason: "image_not_recognized")),
-        ])
-        let a = try #require(d.accepted["r"])
-        #expect(a.text == "看看这两张")
-        #expect(a.imageIds == ["i1", "i2"])
-        #expect(a.origin?.deviceID == "d1")
-        #expect(a.stage == .pastingImages)
-        #expect(d.failures["r"] == "image_not_recognized")
-        #expect(queued(d) == [])
-        #expect(failureText(reason: "image_not_recognized", agent: .claude) == "Claude Code 没认出图片")
-    }
-
-    @Test func theOriginSaysWhatWasTypedInTheTerminal() {
-        let d = derive([Mk.ev(1, Mk.user("typed"), origin: local), Mk.ev(2, Mk.user("sent"), origin: client)], agent: .claude)
-        #expect(d.typedLocally == [1])
     }
 }

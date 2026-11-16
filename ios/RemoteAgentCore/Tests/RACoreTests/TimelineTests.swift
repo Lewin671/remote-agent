@@ -406,4 +406,18 @@ import Testing
         #expect(scopeName(.all) == L10n.homeAllProjects())
         #expect(scopeName(.of(key: "/Users/me/Code/foo")) == "foo")
     }
+
+    @Test func orderedMapPreservesInsertionOrderUntilRemoved() {
+        var m = OrderedMap<String, Int>()
+        m["b"] = 1
+        m["a"] = 2
+        m["b"] = 3
+        #expect(m.keys == ["b", "a"])
+        #expect(m.values == [3, 2])
+        m.removeValue(forKey: "b")
+        m["b"] = 4
+        #expect(m.keys == ["a", "b"])
+        m["a"] = nil
+        #expect(m.keys == ["b"] && m.count == 1 && !m.contains("a"))
+    }
 }

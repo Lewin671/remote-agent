@@ -663,7 +663,7 @@ enum SessionSamples {
     static func resolve(_ remote: Remote, _ sid: String) {
         Task {
             var list = Array(remote.events(sid).value.events)
-            guard let id = derive(list).approvals.keys.first else { return }
+            guard let id = derive(list).approvals.first?.approvalID else { return }
             list.append(.with {
                 $0.seq = UInt64(list.count + 1)
                 $0.time = ts(nowMs())

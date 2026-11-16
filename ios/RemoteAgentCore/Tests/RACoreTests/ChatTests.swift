@@ -6,34 +6,39 @@ import Testing
 
 /// Android's app ChatTest.
 @Suite struct ChatTests {
-    private func rows(_ events: [PBEvent], _ d: Derived, textOf: (String) -> String? = { _ in nil }) -> [ChatItem] {
+    private func rows(_ events: [PBEvent], _ d: PBProjectionState, textOf: (String) -> String? = { _ in nil }) -> [ChatItem] {
         buildChat(events, d: d, machine: "MacBook", textOf: textOf)
     }
 
+    private func input(_ id: String, _ status: PBInputStatus, reason: String? = nil) -> PBInputProjection {
+        PBInputProjection.with {
+            $0.requestID = id
+            $0.status = status
+            if let reason { $0.failureReason = reason }
+        }
+    }
+
     @Test func retainsAcknowledgedStartUntilHistoryArrivesAndShowsFailuresHonestly() throws {
-        var d = Derived()
+        var d = PBProjectionState()
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: [], agent: .claude)?.text == "first")
-        d.inputs["later-local"] = .failed
-        d.inputs["start"] = .queued
+        d.inputs = [input("later-local", .failed), input("start", .queued)]
         // Waiting: the pending bubble shows it, not a second copy here.
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude) == nil)
-        d.inputs["start"] = .submitted
+        d.inputs[1].status = .submitted
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == L10n.sessionDelivered())
         let recorded = [PBEvent.with { $0.userMessage = .with { $0.text = "first" } }]
         #expect(pendingStartPrompt("first", events: recorded, d: d, localIds: ["later-local"], agent: .claude) == nil)
-        d.inputs["start"] = .canceled
+        d.inputs[1].status = .canceled
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude) == nil)
-        d.inputs["start"] = .failed
-        d.failures["start"] = "image_not_recognized"
+        d.inputs[1] = input("start", .failed, reason: "image_not_recognized")
         let failed = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
         #expect(failed.failed && !failed.warning)
         #expect(failed.caption == "没发出去：Claude Code 没认出图片")
-        d.inputs["start"] = .unconfirmed
+        d.inputs[1] = input("start", .unconfirmed)
         let unsure = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
         #expect(unsure.warning && !unsure.failed)
         #expect(unsure.caption == L10n.composerUnconfirmed())
-        d.inputs["start"] = .needsTerminal
-        d.failures["start"] = "write_failed"
+        d.inputs[1] = input("start", .needsTerminal, reason: "write_failed")
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == "可能没发出去：写入终端失败")
         #expect(pendingStartPrompt(nil, events: [], d: d, localIds: [], agent: .claude) == nil)
     }
@@ -242,7 +247,7 @@ import Testing
             Mk.ev(6, Mk.inputState("other", .canceled, reason: "exited")), Mk.ev(7, Mk.exited),
         ]
         let d = derive(events)
-        #expect(d.unsent.keys == ["mine", "other"])
+        #expect(d.unsent.map(\.requestID) == ["mine", "other"])
         let items = buildChat(events, d: d, machine: "M", textOf: { $0 == "mine" ? "补一个测试" : nil })
         let unsent = items.compactMap { item -> ChatItem.Unsent? in if case .unsent(let u) = item { return u } else { return nil } }
         #expect(unsent == [.init(key: "umine", requestId: "mine", text: "补一个测试"), .init(key: "uother", requestId: "other", text: nil)])
@@ -388,7 +393,7 @@ import Testing
         events = events.appending([Mk.ev(4, .sessionState(.with { $0.status = .exited }), sec: ended)])
         let asked = Counter()
         var p = ChatProjection()
-        func update(_ list: PagedList<PBEvent>, _ d: Derived, now: Int64 = now, zone: TimeZone = zone) -> [ChatItem] {
+        func update(_ list: PagedList<PBEvent>, _ d: PBProjectionState, now: Int64 = now, zone: TimeZone = zone) -> [ChatItem] {
             p.update(list, d: d, machine: "M", now: now, zone: zone, who: { _ in asked.increment(); return nil })
         }
         let d = derive(events)
@@ -404,7 +409,7 @@ import Testing
         // The state changed (the live snapshot says a turn runs): built again, as a full build.
         var running = d
         running.running = true
-        running.tools = [RunningTool(title: "go test", callId: "c", since: 0, kind: .unspecified, itemType: "", seq: 2, input: "", inputDigest: "")]
+        running.tools = [PBRunningTool.with { $0.title = "go test"; $0.callID = "c"; $0.seq = 2 }]
         #expect(update(events, running) == buildChat(events, d: running, machine: "M", now: now, zone: zone))
         #expect(p.builds == 2)
         #expect(update(events, running) != first && p.builds == 2)

@@ -6925,6 +6925,10 @@ public enum L10n {
         let key = "settings_ios_delete_entire_account"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsIosEventProjectionCore(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_event_projection_core"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsIosExitAndDeleteLocalKeysFromSettings(locale: String = MessageLocale.current) -> String {
         let key = "settings_ios_exit_and_delete_local_keys_from_settings"
         return format(key, locale: locale, args: [])
@@ -7023,6 +7027,10 @@ public enum L10n {
     }
     public static func settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning(locale: String = MessageLocale.current) -> String {
         let key = "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosSharedCoreMessageEncoding(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_shared_core_message_encoding"
         return format(key, locale: locale, args: [])
     }
     public static func settingsIosSupportAndFeedback(locale: String = MessageLocale.current) -> String {
@@ -14949,6 +14957,10 @@ public enum L10nMessage {
         let key = "settings_ios_delete_entire_account"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func settingsIosEventProjectionCore() -> LocalizedMessage {
+        let key = "settings_ios_event_projection_core"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func settingsIosExitAndDeleteLocalKeysFromSettings() -> LocalizedMessage {
         let key = "settings_ios_exit_and_delete_local_keys_from_settings"
         return LocalizedMessage(key: key, arguments: [])
@@ -15047,6 +15059,10 @@ public enum L10nMessage {
     }
     public static func settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning() -> LocalizedMessage {
         let key = "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosSharedCoreMessageEncoding() -> LocalizedMessage {
+        let key = "settings_ios_shared_core_message_encoding"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func settingsIosSupportAndFeedback() -> LocalizedMessage {

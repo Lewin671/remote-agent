@@ -43,84 +43,6 @@ func observedCommand(_ command: PBCommand, snapshot: PBLiveSnapshot?) throws -> 
     return result
 }
 
-/// What a plan the live snapshot says is pending reads as: the plan event it
-/// names (`planEventSeq`), the clean Markdown the CLI proposed, when `events`
-/// (the readable, verified history, each event bound to its place in the
-/// session) hold it. Only without it does the terminal's text stand in, box
-/// lines and all. Whether a plan is pending, and what an answer is bound to
-/// (the event's seq and the screen's hash), stay the snapshot's alone.
-public func livePlanText(_ live: PBLiveSnapshot, events: some RandomAccessCollection<PBEvent>) -> String {
-    let seq = live.planEventSeq
-    guard seq > 0 else { return live.planScreen }
-    // A whole history holds event n at n - 1; otherwise look for it.
-    var event: PBEvent?
-    if seq <= UInt64(events.count) {
-        let e = events[events.index(events.startIndex, offsetBy: Int(seq) - 1)]
-        if e.seq == seq { event = e }
-    }
-    if event == nil { event = events.last { $0.seq == seq } }
-    guard case .planProposed(let plan)? = event?.kind,
-        !plan.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isSkeleton(plan.text)
-    else { return live.planScreen }
-    return plan.text
-}
-
-/// Event histories are for reading. Only an owner response to a fresh request
-/// supplies current decisions; missing freshness is visible to the caller. A
-/// pending plan's text is read from the history event the response names
-/// (`livePlanText`).
-public func currentActions(_ history: Derived, live: PBLiveSnapshot?) -> Derived {
-    currentActions(history, live: live, events: [PBEvent]())
-}
-
-public func currentActions(
-    _ history: Derived, live: PBLiveSnapshot?, events: some RandomAccessCollection<PBEvent>
-) -> Derived {
-    var result = history
-    result.approvals = OrderedMap()
-    result.questions = OrderedMap()
-    result.plan = nil
-    guard let live else { return result }
-    // A snapshot at N supplies state through N; verified events after N win.
-    let snapshotSeq = live.session.lastSeq
-    func newerInput(_ id: String) -> Bool { (history.inputSeqs[id] ?? 0) > snapshotSeq }
-    let observed = derive(live.actions)
-    for id in history.inputs.keys {
-        if let status = history.inputs[id], status == .queued || status == .heldByCli,
-            observed.inputs[id] == nil, !newerInput(id)
-        {
-            result.inputs[id] = .unconfirmed
-            result.inputDetails[id] = nil
-        }
-    }
-    for id in observed.inputs.keys where !newerInput(id) { result.inputs[id] = observed.inputs[id] }
-    for (id, detail) in observed.inputDetails.entries where !newerInput(id) {
-        result.inputDetails[id] = retainingInputMetadata(detail, from: history.inputDetails[id])
-        if var accepted = result.accepted[id], detail.stage != .unspecified {
-            accepted.stage = detail.stage
-            result.accepted[id] = accepted
-        }
-    }
-    // The live snapshot can contain truncated text and need not repeat the
-    // original sender. Keep the accepted history; only missing entries recover.
-    for (id, accepted) in observed.accepted where result.accepted[id] == nil && !newerInput(id) { result.accepted[id] = accepted }
-    if history.runningSeq <= snapshotSeq { result.running = live.running }
-    for event in live.actions {
-        switch event.kind {
-        case .approvalRequested(let request)?: result.approvals[request.approvalID] = request
-        case .questionAsked(let request)?:
-            if !request.async { result.questions[request.questionID] = request }
-        default: break
-        }
-    }
-    if live.planEventSeq > 0 && live.planScreenHash.count == 32 {
-        var plan = PBPlanProposed()
-        plan.text = livePlanText(live, events: events)
-        result.plan = plan
-    }
-    return result
-}
-
 extension Remote {
     func fetchLiveSnapshot(_ sid: String) async throws -> PBLiveSnapshot {
         guard let session = sessions[sid] else { throw CommandError("not_found", L10nMessage.errorsIosUnknownSession()) }
@@ -189,7 +111,7 @@ extension Remote {
     }
 }
 
-public func currentState(_ snapshot: SessionEvents, agent: PBAgent = defaultAgent) -> Derived {
-    let events = snapshot.stateEvents
-    return currentActions(derive(events, agent: agent), live: snapshot.live, events: events)
+public func currentState(_ snapshot: SessionEvents, agent: PBAgent = defaultAgent) -> PBProjectionState {
+    var projection = EventProjection()
+    return projection.update(snapshot.stateEvents, agent: agent, live: snapshot.live)
 }

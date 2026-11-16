@@ -42,7 +42,7 @@ def commands(platform, tier):
         args = ["swift", "test", "--package-path", "ios/RemoteAgentCore", "--jobs", "4", "--filter", SWIFT_QUICK]
         if os.environ.get("IOS_SWIFT_BUILD_PATH"):
             args += ["--scratch-path", os.environ["IOS_SWIFT_BUILD_PATH"]]
-        return [(ROOT, args)]
+        return [(ROOT, ["scripts/core/build.sh", "ios"]), (ROOT, args)]
     return [(ROOT, ["ios/scripts/check.sh"])]
 
 

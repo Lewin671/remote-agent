@@ -26,7 +26,7 @@ struct ApprovalScreen: View {
         let state = model.state
         let s = state.sessions[session]
         let d = chat.derived
-        let a = d.approvals[approval]
+        let a = d.pendingApproval(approval)
         Ticking { now in
             Page {
                 VStack(spacing: 0) {
@@ -54,7 +54,7 @@ struct ApprovalScreen: View {
                         .scrollDismissesKeyboard(.interactively)
                         .onAppear { if SessionDebug.shows("reason") { denying = true } }
                     } else if let outcome = d.resolved[approval] {
-                        handled(outcome, by: d.resolvedBy[approval], machine: s.map { machineLabel(state, id: $0.machineId) } ?? "")
+                        handled(outcome, by: outcome.hasOrigin ? outcome.origin : nil, machine: s.map { machineLabel(state, id: $0.machineId) } ?? "")
                     } else {
                         PageNote(s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory())
                     }
@@ -69,7 +69,7 @@ struct ApprovalScreen: View {
     }
 
     /// The approval was answered, here or elsewhere: how, and by whom when the events say.
-    @ViewBuilder private func handled(_ outcome: ApprovalOutcome, by origin: PBOrigin?, machine: String) -> some View {
+    @ViewBuilder private func handled(_ outcome: PBResolvedApproval, by origin: PBOrigin?, machine: String) -> some View {
         let who = originLabel(origin, state: model.state, me: context.me, machine: machine)
         let how = [decisionText(outcome.decision), who ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         let kept = context.sessionStore.reason(approval)

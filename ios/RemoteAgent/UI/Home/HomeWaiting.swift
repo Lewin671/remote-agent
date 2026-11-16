@@ -15,13 +15,13 @@ import SwiftUI
 @MainActor
 @Observable
 final class WaitingEvents {
-    private(set) var derived = Derived()
+    private(set) var derived = PBProjectionState()
     @ObservationIgnored private var projection = EventProjection()
 
     func follow(_ remote: Remote, _ sid: String, agent: PBAgent) async {
         for await snapshot in remote.events(sid).updates() {
             let events = snapshot.stateEvents
-            derived = currentActions(projection.update(events, agent: agent), live: snapshot.live, events: events)
+            derived = projection.update(events, agent: agent, live: snapshot.live)
             // The feed keeps the latest for a reader that is behind; a frame passes between two.
             if (try? await Task.sleep(nanoseconds: 16_000_000)) == nil { return }
         }
@@ -42,8 +42,8 @@ struct HomePendingRow: View {
     var body: some View {
         let d = events.derived
         let t = pendingRowText(
-            state, session, scope: scope, approval: d.approvals.values.first,
-            question: d.questions.values.first?.questions.first?.text)
+            state, session, scope: scope, approval: d.approvals.first?.request,
+            question: d.questions.first?.request.questions.first?.text)
         Button {
             nav.open(.session(id: session.id))
         } label: {
@@ -67,7 +67,7 @@ struct HomeApprovalCard: View {
 
     var body: some View {
         Group {
-            if let a = events.derived.approvals.values.first {
+            if let a = events.derived.approvals.first?.request {
                 // Keyed by approval: the next one does not inherit this one's opened command or reason.
                 ApprovalCardBody(state: state, session: session, approval: a).id(a.approvalID)
                     .padding(.horizontal, DS.Space.card)

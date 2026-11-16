@@ -372,12 +372,12 @@ actor FakeDaemon {
             let actions = events.filter { event in
                 switch event.kind {
                 case .approvalRequested(let request)?:
-                    return derived.approvals[request.approvalID] != nil
+                    return derived.pendingApproval(request.approvalID) != nil
                 case .questionAsked(let request)?:
-                    return derived.questions[request.questionID] != nil
+                    return derived.pendingQuestion(request.questionID) != nil
                 case .inputState(let state)?:
-                    return derived.inputs[state.requestID] == .queued
-                        || derived.inputs[state.requestID] == .heldByCli
+                    let status = derived.inputStatus(state.requestID)
+                    return status == .queued || status == .heldByCli
                 default: return false
                 }
             }

@@ -357,7 +357,7 @@ extension ServerTests.NewestHistoryTests {
         var snapshot = SessionEvents(events: [tail], stateEvents: [], historyPartial: true)
         #expect(currentState(snapshot).inputs.isEmpty)
         snapshot.stateEvents = PagedList([tail])
-        #expect(currentState(snapshot).inputs["request"] == .submitted)
+        #expect(currentState(snapshot).inputStatus("request") == .submitted)
     }
 }
 

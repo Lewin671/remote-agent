@@ -190,8 +190,8 @@ private actor FileReceiver: UploadChannel {
 
     @Test func queueProjectionKeepsFileMetadata() {
         let file = PBSentFile.with { $0.name = "data.csv"; $0.fileID = "file"; $0.sizeBytes = 42 }
-        var derived = Derived()
-        derived.inputDetails["r"] = .with { $0.requestID = "r"; $0.status = .queued; $0.files = [file] }
+        var derived = PBProjectionState()
+        derived.pendingInputs = [.with { $0.requestID = "r"; $0.files = [file] }]
         #expect(pendingInputs(derived).first?.files == [file])
     }
 }

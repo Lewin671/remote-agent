@@ -33,7 +33,8 @@ public struct ScheduledFold: Sendable {
     private var previous = PagedList<PBEvent>()
     private var zone: TimeZone?
     private var cal = Calendar(identifier: .gregorian)
-    private var reducer = EventReducer(agent: defaultAgent)
+    private var projection = EventProjection()
+    private var state = PBProjectionState()
     /// Runs a notification or an end other than a silent completion names, in what was read.
     private var unsafeRuns = Set<String>()
     /// Runs of rounds that joined a streak: one becoming unsafe changes what came before.
@@ -56,6 +57,7 @@ public struct ScheduledFold: Sendable {
             if runs.isDisjoint(with: foldedRuns) {
                 if let r = round, runs.contains(r.run) { round?.safe = false }
                 unsafeRuns.formUnion(runs)
+                state = projection.update(events, agent: defaultAgent)
                 for e in events[previous.count...] { step(e) }
             } else {
                 append = false
@@ -69,6 +71,7 @@ public struct ScheduledFold: Sendable {
             self.zone = zone
             cal.timeZone = zone
             unsafeRuns = Self.unsafeRuns(events)
+            state = projection.update(events, agent: defaultAgent)
             for e in events { step(e) }
         }
         previous = events
@@ -98,10 +101,16 @@ public struct ScheduledFold: Sendable {
         streak.removeAll()
     }
 
+    private func rToolsCompleted(_ round: Round?, before endSeq: UInt64) -> Bool {
+        guard let round else { return false }
+        return round.tools.allSatisfy { toolSeq in
+            guard let callSeq = state.completedAt[toolSeq] else { return false }
+            return callSeq < endSeq
+        }
+    }
+
     private mutating func step(_ e: PBEvent) {
         stepped += 1
-        // What the event itself completes or changes counts from here on.
-        reducer.append(CollectionOfOne(e))
         if case .userMessage = e.kind {
             if round != nil { finish() }
             if !e.origin.scheduledRunID.isEmpty && eventTime(e) > 0 {
@@ -116,13 +125,13 @@ public struct ScheduledFold: Sendable {
                 round?.safe = false
             case .toolCall(let t): if !toolOk(t) || wentToBackground(t) { round?.safe = false }
             case .toolStarted: round?.tools.append(e.seq)
-            case .turnContext: if reducer.changedInTerminal(e.seq) { round?.safe = false }
+            case .turnContext: if state.terminalChanges[e.seq] != nil { round?.safe = false }
             case .inputState(let input):
                 if input.paused || [.failed, .needsTerminal, .unconfirmed, .canceled, .heldByCli].contains(input.status) { round?.safe = false }
             case .sessionState(let state): if state.status == .exited || state.status == .blocked { round?.safe = false }
             case .turnEnded(let end):
-                // A start completes once, so one not completed by now never completes before this end.
-                if let r = round, r.safe, r.tools.allSatisfy({ reducer.completed($0) }), end.outcome == .completed, !end.scheduledNotified, end.scheduledRunID == r.run {
+                // A start completes once; any completion seq before this turn end happened in this round.
+                if let r = round, r.safe, rToolsCompleted(r, before: e.seq), end.outcome == .completed, !end.scheduledNotified, end.scheduledRunID == r.run {
                     streak.append(.init(firstSeq: r.start, lastSeq: e.seq, times: [r.time]))
                     foldedRuns.insert(r.run)
                 } else { finish() }

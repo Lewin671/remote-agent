@@ -51,9 +51,13 @@ import Testing
         let zh = MessageLocale.$overrideForTesting.withValue("zh-CN") { derive(events, agent: .claude) }
         let en = MessageLocale.$overrideForTesting.withValue("en") { derive(events, agent: .claude) }
         #expect(zh == en)
-        #expect(en.terminalChanges == [2: [.mode(.known(.plan))]])
+        let expected = PBTerminalChangeList.with {
+            $0.changes = [.with { $0.mode = .with { $0.mode = .plan } }]
+        }
+        #expect(en.terminalChanges == [2: expected])
         MessageLocale.$overrideForTesting.withValue("en") {
-            #expect(en.terminalChanges[2]?.first?.text == "switched approval mode to Plan")
+            let change = en.terminalChanges[2]?.changes.first
+            #expect(change.map(terminalChangeText) == "switched approval mode to Plan")
         }
     }
 

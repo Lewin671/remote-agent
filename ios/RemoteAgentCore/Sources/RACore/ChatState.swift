@@ -1,49 +1,10 @@
 // What a session's events say is pending and running: approvals, questions,
 // the plan, the message queue, and the tools of the turn (architecture §13,
-// 工具执行反馈). From Android's core/Model.kt; the web has the same in
-// web/src/model.ts.
+// 工具执行反馈). Event reduction runs in the shared Go core (`Corebind`),
+// exposed to Swift as `PBProjectionState` without leaking gomobile types.
+import Corebind
 import Foundation
 import RAProto
-
-/// Phase-only updates carry no replacement attachment metadata.
-func retainingInputMetadata(_ state: PBInputState, from previous: PBInputState?) -> PBInputState {
-    guard let previous else { return state }
-    var result = state
-    if state.mode == .unspecified { result.mode = previous.mode }
-    if state.text.isEmpty { result.text = previous.text }
-    if state.imageIds.isEmpty { result.imageIds = previous.imageIds }
-    if state.files.isEmpty { result.files = previous.files }
-    return result
-}
-
-// --- events ---
-
-public struct RunningTool: Equatable, Sendable {
-    public var title: String
-    public var callId: String
-    /// Event time of the start, from the daemon; 0 when unknown.
-    public var since: Int64
-    public var kind: PBToolKind
-    public var itemType: String
-    /// Seq of the ToolStarted event; its row in the chat keeps this place.
-    public var seq: UInt64
-    public var input: String
-    public var inputDigest: String
-
-    public init(
-        title: String, callId: String, since: Int64, kind: PBToolKind = .unspecified, itemType: String = "",
-        seq: UInt64 = 0, input: String = "", inputDigest: String = ""
-    ) {
-        self.title = title
-        self.callId = callId
-        self.since = since
-        self.kind = kind
-        self.itemType = itemType
-        self.seq = seq
-        self.input = input
-        self.inputDigest = inputDigest
-    }
-}
 
 /// The call went on in the background: this event is its start, not its
 /// end. The daemon says so (ToolCall.background).
@@ -67,406 +28,223 @@ public func backgroundNote(_ b: PBToolBackground) -> String {
 
 /// A background call's title: 后台命令 for a shell call, else the tool's name with （后台）.
 public func backgroundTitle(kind: PBToolKind, itemType: String, agent: PBAgent) -> String {
-    kind == .command || kind == .unspecified ? L10n.toolsIosBackgroundCommand() : L10n.toolsIosBackgroundTitle(title: toolLabel(kind: kind, itemType: itemType, agent: agent))
-}
-
-/// A tool whose end is not known (architecture §13, 工具执行反馈): its call
-/// went to the background, or the turn ended before its result came. It is
-/// not shown as a success; the terminal is where to check.
-public struct BackgroundTool: Equatable, Sendable {
-    public var tool: RunningTool
-    /// The call returned (it went to the background) rather than never coming back.
-    public var returned: Bool
-
-    public init(tool: RunningTool, returned: Bool) {
-        self.tool = tool
-        self.returned = returned
-    }
-}
-
-/// A message as the daemon accepted it, and how far it has got.
-public struct Accepted: Equatable, Sendable {
-    public var text: String
-    public var imageIds: [String]
-    public var origin: PBOrigin?
-    public var stage: PBInputStage
-    public var time: Int64
-
-    public init(text: String, imageIds: [String], origin: PBOrigin?, stage: PBInputStage, time: Int64 = 0) {
-        self.text = text
-        self.imageIds = imageIds
-        self.origin = origin
-        self.stage = stage
-        self.time = time
-    }
-}
-
-/// How an approval was decided, and the message that came with the decision.
-public struct ApprovalOutcome: Equatable, Sendable {
-    public var decision: PBApprovalDecision
-    public var message: String
-
-    public init(decision: PBApprovalDecision, message: String) {
-        self.decision = decision
-        self.message = message
-    }
-}
-
-/// Context occupancy before compaction and at the first usage afterwards.
-public struct Compaction: Equatable, Sendable {
-    public var before: Int?
-    public var after: Int?
-}
-
-/// What a session's events add up to. A value: one handed out never changes
-/// when more events are reduced.
-public struct Derived: Equatable, Sendable {
-    /// Pending approvals, in the order they were asked.
-    public var approvals = OrderedMap<String, PBApprovalRequested>()
-    public var resolved = [String: ApprovalOutcome]()
-    /// Who decided an approval, when the daemon says (v2).
-    public var resolvedBy = [String: PBOrigin]()
-    public var questions = OrderedMap<String, PBQuestionAsked>()
-    public var answered = [String: [String]]()
-    /// Latest state per request ID of messages sent with Send.
-    public var inputs = OrderedMap<String, PBInputStatus>()
-    /// Last input-state event per request ID, for ordering live snapshots.
-    public var inputSeqs = [String: UInt64]()
-    /// Full latest input state: mode and pause are needed for pending bubbles.
-    public var inputDetails = OrderedMap<String, PBInputState>()
-    /// What the daemon accepted, per request ID: text, images and sender, shared by every client.
-    public var accepted = [String: Accepted]()
-    /// Why a message ended FAILED or NEEDS_TERMINAL, per request ID.
-    public var failures = [String: String]()
-    /// Messages that never went out because the session ended: request ID to
-    /// the seq of the event that says so. The daemon records them as CANCELED
-    /// with reason "exited". An exit alone does not invent input outcomes.
-    public var unsent = OrderedMap<String, UInt64>()
-    public var running = false
-    public var runningSeq: UInt64 = 0
-    public var scheduledClosed = false
-    /// The daemon closed the session after it sat idle too long (DaemonSettings.idle_close_minutes).
-    public var idleClosed = false
-    public var compactions = [UInt64: Compaction]()
-    public var usage: PBTokenUsage?
-    public var plan: PBPlanProposed?
-    /// Tools started and not yet completed in this turn, oldest first.
-    public var tools = [RunningTool]()
-    /// Tools of the last turn whose end is not known, until another turn starts.
-    public var background = [BackgroundTool]()
-    /// Start seq to the seq of the call that completed it.
-    public var completedAt = [UInt64: UInt64]()
-    /// Seqs of starts the turn ended without a result for.
-    public var unfinished = Set<UInt64>()
-    /// Of those, the ones whose turn completed normally: no result came, nothing more is known.
-    public var noResult = Set<UInt64>()
-    /// User messages typed in the terminal rather than sent from a client.
-    public var typedLocally = Set<UInt64>()
-    /// Mode or model changes made in the terminal, by the seq of the turn context that shows them.
-    public var terminalChanges = [UInt64: [TerminalChange]]()
-
-    public init() {}
+    kind == .command || kind == .unspecified
+        ? L10n.toolsIosBackgroundCommand()
+        : L10n.toolsIosBackgroundTitle(title: toolLabel(kind: kind, itemType: itemType, agent: agent))
 }
 
 /// Pending approvals and questions, input states and the running turn.
-public func derive(_ events: some Sequence<PBEvent>, agent: PBAgent = defaultAgent) -> Derived {
-    var r = EventReducer(agent: agent)
-    r.append(events)
-    return r.snapshot()
+public func derive(_ events: some Sequence<PBEvent>, agent: PBAgent = defaultAgent) -> PBProjectionState {
+    let list = Array(events)
+    if list.isEmpty { return PBProjectionState() }
+    let batch = PBEventBatch.with { $0.events = list }
+    var err: NSError?
+    guard let batchData = try? batch.serializedData(),
+          let outData = CorebindReduce(Int32(effectiveAgent(agent).rawValue), batchData, &err),
+          err == nil,
+          let state = try? PBProjectionState(serializedBytes: outData)
+    else {
+        return PBProjectionState()
+    }
+    return state
 }
 
-/// Stable CLI mode identity, independent of the label shown to the user.
-public enum ContextApprovalMode: Equatable, Sendable {
-    case known(Mode)
-    case other(String)
+/// Convenience lookups over the reduced `PBProjectionState` for UI and rendering callers.
+extension PBProjectionState {
+    public func pendingApproval(_ id: String) -> PBApprovalRequested? {
+        approvals.first { $0.approvalID == id }?.request
+    }
 
-    public var text: String {
-        switch self {
-        case .known(let mode): return mode.text
-        case .other(let raw): return permissionModeName(raw)
-        }
+    public func pendingQuestion(_ id: String) -> PBQuestionAsked? {
+        questions.first { $0.questionID == id }?.request
+    }
+
+    public func input(_ id: String) -> PBInputProjection? {
+        inputs.first { $0.requestID == id }
+    }
+
+    public func inputStatus(_ id: String) -> PBInputStatus? {
+        input(id)?.status
+    }
+
+    public func failureReason(_ id: String) -> String? {
+        guard let i = input(id), i.hasFailureReason else { return nil }
+        return i.failureReason
     }
 }
 
-/// Terminal changes retain their data until a chat row is rendered.
-public enum TerminalChange: Equatable, Sendable {
-    case mode(ContextApprovalMode)
-    case model(String, effort: String)
-
-    public var text: String {
-        switch self {
-        case .mode(let mode): return L10n.sessionTerminalModeChange(value: mode.text)
-        case .model(let model, let effort): return L10n.sessionTerminalModelChange(value: model) + (effort.isEmpty ? "" : " · \(effort)")
-        }
+/// Formats one terminal change from `PBProjectionState.terminalChanges`.
+public func terminalChangeText(_ change: PBTerminalChange) -> String {
+    switch change.kind {
+    case .mode(let m):
+        let label = modeOf(m.mode)?.text ?? permissionModeName(m.rawMode)
+        return L10n.sessionTerminalModeChange(value: label)
+    case .model(let m):
+        return L10n.sessionTerminalModelChange(value: m.model) + (m.effort.isEmpty ? "" : " · \(m.effort)")
+    case nil:
+        return ""
     }
 }
 
-struct EventReducer: Sendable {
-    private var d = Derived()
-    // The mode as the chat names it, a CLI's own name for one outside the four; empty until a context says.
-    private var mode: ContextApprovalMode?
-    private var model = ""
-    // The model and effort last switched to from here, until a context shows a model.
-    private var expected: (model: String, effort: String)?
-    // Messages sent from clients are recorded as submitted before the CLI
-    // records them; the rest were typed in the terminal.
-    private var submitted = 0
-    // A user message with no submitted state before it, which may still come
-    // right after: Claude Code records the message first.
-    private var unclaimed: UInt64?
-    private var queuedAt = [String: UInt64]()
-    private var compacting: UInt64?
-    // A plan was proposed since entering plan mode: leaving it is the plan's
-    // answer, however given, not a mode switch made in the terminal.
-    private var planned = false
-    private let reconcilesUnclaimedInput: Bool
-    // Starts a turn ended without a result, by call ID, for a result that comes later.
-    private var unfinishedById = [String: RunningTool]()
-
-    init(agent: PBAgent) {
-        reconcilesUnclaimedInput = agentInfo(agent).reconcilesUnclaimedInput
-    }
-
-    mutating func append(_ events: some Sequence<PBEvent>) {
-        for e in events { reduce(e) }
-    }
-
-    private mutating func endTools(_ seq: UInt64) {
-        d.runningSeq = seq
-        d.running = false
-        d.approvals.removeAll()
-        d.questions.removeAll()
-        for t in d.tools {
-            d.unfinished.insert(t.seq)
-            d.noResult.insert(t.seq)
-            if !t.callId.isEmpty { unfinishedById[t.callId] = t }
-        }
-        d.tools.removeAll()
-        d.background.removeAll()
-    }
-
-    private mutating func reduce(_ e: PBEvent) {
-        switch e.kind {
-        case .approvalRequested(let a): d.approvals[a.approvalID] = a
-        case .approvalResolved(let r):
-            d.approvals.removeValue(forKey: r.approvalID)
-            d.resolved[r.approvalID] = ApprovalOutcome(decision: r.decision, message: r.message)
-            if let o = e.originOrNil { d.resolvedBy[r.approvalID] = o }
-        case .questionAsked(let q): if !q.async { d.questions[q.questionID] = q }
-        case .questionAnswered(let a):
-            d.questions.removeValue(forKey: a.questionID)
-            d.answered[a.questionID] = a.answers.flatMap(\.answers)
-        case .turnStarted:
-            d.running = true
-            d.runningSeq = e.seq
-            d.background.removeAll()
-        case .turnEnded(let t):
-            d.running = false
-            d.runningSeq = e.seq
-            d.questions.removeAll()
-            // Still running when an interrupted turn ended: whether it
-            // ever ends is not known (an interrupt does not stop
-            // background commands). A turn that completed without a
-            // tool's result only says no result came.
-            let aborted = t.outcome == .aborted
-            for tool in d.tools {
-                if aborted { d.background.append(BackgroundTool(tool: tool, returned: false)) } else { d.noResult.insert(tool.seq) }
-                d.unfinished.insert(tool.seq)
-                if !tool.callId.isEmpty { unfinishedById[tool.callId] = tool }
-            }
-            d.tools.removeAll()
-        case .inputState(let st):
-            let late = d.inputs[st.requestID] == .unconfirmed
-            d.inputs[st.requestID] = st.status
-            d.inputSeqs[st.requestID] = e.seq
-            d.inputDetails[st.requestID] = retainingInputMetadata(st, from: d.inputDetails[st.requestID])
-            if let prev = d.accepted[st.requestID] {
-                if st.stage != .unspecified {
-                    var next = prev
-                    next.stage = st.stage
-                    d.accepted[st.requestID] = next
-                }
-            } else if (st.status == .queued || st.status == .heldByCli) && (!st.text.isEmpty || !st.imageIds.isEmpty || !st.files.isEmpty) {
-                d.accepted[st.requestID] = Accepted(text: st.text, imageIds: st.imageIds, origin: e.originOrNil, stage: st.stage, time: eventTime(e))
-            }
-            if st.status == .failed || st.status == .needsTerminal { d.failures[st.requestID] = st.reason }
-            if st.status == .canceled && st.reason == "exited" { d.unsent[st.requestID] = e.seq }
-            if (st.status == .queued || st.status == .heldByCli) && queuedAt[st.requestID] == nil { queuedAt[st.requestID] = e.seq }
-            if st.status == .submitted {
-                // Codex marks a message submitted before recording it;
-                // Claude Code records the message first and the state
-                // follows, claiming only a message after its enqueue. A
-                // message confirmed after it was reported unconfirmed is
-                // the one recorded right after this state.
-                if !late, reconcilesUnclaimedInput, let u = unclaimed, e.seq >= u, e.seq - u <= 3,
-                    queuedAt[st.requestID].map({ u > $0 }) ?? true {
-                    d.typedLocally.remove(u)
-                    unclaimed = nil
-                } else {
-                    submitted += 1
-                }
-            }
-        case .userMessage(let m):
-            if e.hasOrigin && e.origin.kind != .unspecified {
-                // The daemon says who sent it: no guessing.
-                if e.origin.kind == .local { d.typedLocally.insert(e.seq) }
-                if submitted > 0 && !m.requestID.isEmpty { submitted -= 1 }
-            } else if submitted > 0 {
-                submitted -= 1
-            } else if m.text != "Implement the plan." {
-                // Codex sends that one itself when a plan is approved.
-                d.typedLocally.insert(e.seq)
-                unclaimed = e.seq
-            }
-        case .toolStarted(let t):
-            d.tools.append(
-                RunningTool(
-                    title: t.title, callId: t.callID, since: eventTime(e), kind: t.kind, itemType: t.itemType, seq: e.seq,
-                    input: t.input, inputDigest: t.inputDigest))
-        case .toolCall(let c):
-            // Starts and calls pair by call ID (for Codex, later
-            // entries of one call carry "<id>#2" and have no start).
-            let id = c.callID
-            var matched = false
-            if !id.isEmpty, let j = d.tools.firstIndex(where: { $0.callId == id }) {
-                matched = true
-                let t = d.tools.remove(at: j)
-                d.completedAt[t.seq] = e.seq
-                if wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
-            } else if !id.isEmpty, let t = unfinishedById[id], d.completedAt[t.seq] == nil {
-                matched = true
-                // A call reported after its turn ended (a Codex exec still
-                // running): it belongs to that start, not to a new row.
-                d.completedAt[t.seq] = e.seq
-                d.unfinished.remove(t.seq)
-                d.noResult.remove(t.seq)
-                d.background.removeAll { $0.tool.seq == t.seq }
-                if wentToBackground(c) { d.background.append(BackgroundTool(tool: t, returned: true)) }
-            }
-            if !matched && wentToBackground(c) {
-                // Without a separate ToolStarted the result is the first
-                // known start; it must not consume another tool's start.
-                let t = RunningTool(title: c.title, callId: id, since: eventTime(e), kind: c.kind,
-                    itemType: c.itemType, seq: e.seq, input: c.input, inputDigest: c.inputDigest)
-                d.background.append(BackgroundTool(tool: t, returned: true))
-            }
-        case .tokenUsage(let u):
-            d.usage = u
-            if let seq = compacting { d.compactions[seq]?.after = usagePercent(u) }
-            compacting = nil
-        case .planProposed(let p):
-            d.plan = p
-            planned = true
-        case .settingsChanged(let c):
-            if c.compacted {
-                d.compactions[e.seq] = Compaction(before: usagePercent(d.usage))
-                compacting = e.seq
-            }
-            // The next context should show this model; the client names it
-            // by slug or alias, the context by the CLI's own ID.
-            if !c.model.isEmpty { expected = (c.model, c.effort) }
-            if let m = modeOf(c.mode) { mode = .known(m) }
-        case .turnContext(let c):
-            // Claude Code's mode by its own name, so that one outside the four is a change like any other.
-            let m = c.permissionMode.isEmpty
-                ? contextMode(
-                    reviewer: c.approvalsReviewer, policy: c.approvalPolicy, sandbox: c.sandbox, collaboration: c.collaborationMode).map(ContextApprovalMode.known)
-                : Optional(permissionMode(c.permissionMode).map(ContextApprovalMode.known) ?? .other(c.permissionMode))
-            let planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
-            let mm = "\(c.model) \(c.effort)"
-            var changes = [TerminalChange]()
-            if mode != nil, let m, m != mode, !(mode == .known(.plan) && planned) { changes.append(.mode(m)) }
-            if m != nil && m != mode { planned = false }
-            // Plan mode runs at its own effort; only a model change counts
-            // there. A context without a model is Claude Code's mode, read
-            // off the screen; it says nothing about the model. After a
-            // switch from here the next context is compared with what was
-            // chosen; a different model means the terminal changed it since.
-            let changed: Bool
-            if let expected {
-                changed = !(modelIs(c.model, expected.model) && (expected.effort.isEmpty || c.effort.isEmpty || c.effort == expected.effort))
-            } else {
-                changed = mm != model
-            }
-            if (!model.isEmpty || expected != nil) && !c.model.isEmpty && changed && !planning {
-                changes.append(.model(c.model, effort: c.effort))
-            }
-            if !c.model.isEmpty && !planning { expected = nil }
-            if !changes.isEmpty { d.terminalChanges[e.seq] = changes }
-            if let m { mode = m }
-            if !planning && !c.model.isEmpty { model = mm }
-        case .sessionState(let s):
-            d.scheduledClosed = s.status == .exited && s.scheduledClosed
-            d.idleClosed = s.status == .exited && s.idleClosed
-            if s.status == .exited { endTools(e.seq) }
-        case .sessionForked:
-            // What came before is a copy of the source's history: nothing
-            // of it is pending or running in this session.
-            endTools(e.seq)
-            submitted = 0
-            unclaimed = nil
-            unfinishedById.removeAll()
-        default: break
-        }
-    }
-
-    func snapshot() -> Derived { d }
-
-    /// Whether the tool started at `start` has its call, as far as the events go.
-    func completed(_ start: UInt64) -> Bool { d.completedAt[start] != nil }
-
-    /// Whether the turn context at `seq` shows a change made in the terminal.
-    func changedInTerminal(_ seq: UInt64) -> Bool { d.terminalChanges[seq] != nil }
-}
-
-/// Derives a session's state as its events grow: the reducer's state is
-/// kept while what is given only adds to what was given before, so an
-/// update costs what the new events cost. Anything else (another CLI, a
-/// shorter or changed history) starts over. What it returns is a value and
-/// stays as it was returned.
+/// Derives a session's state as its events grow via the shared Go core:
+/// when `events` only adds to what was given before under the same CLI,
+/// only the new tail crosses the FFI boundary. Anything else starts over.
 public struct EventProjection: Sendable {
-    private var previous = [PBEvent]()
-    private var agent: PBAgent?
-    private var reducer = EventReducer(agent: defaultAgent)
-    private var result = Derived()
+    private final class Storage: @unchecked Sendable {
+        private let lock = NSLock()
+        private let core: CorebindProjection
+        private var previousPaged: PagedList<PBEvent>?
+        private var previousArray = [PBEvent]()
+        private var agent: PBAgent?
+        private var result = PBProjectionState()
+
+        init() {
+            guard let core = CorebindNewProjection(Int32(effectiveAgent(defaultAgent).rawValue)) else {
+                fatalError()
+            }
+            self.core = core
+        }
+
+        func copy() -> Storage {
+            lock.lock()
+            let prev = previousPaged.map(Array.init) ?? previousArray
+            let ag = agent
+            lock.unlock()
+            let clone = Storage()
+            if let ag {
+                _ = clone.update(prev, agent: ag)
+            }
+            return clone
+        }
+
+        func update(_ events: some RandomAccessCollection<PBEvent>, agent: PBAgent) -> PBProjectionState {
+            lock.lock()
+            defer { lock.unlock() }
+            let effective = effectiveAgent(agent)
+            if let paged = events as? PagedList<PBEvent> {
+                if self.agent == effective, let prev = previousPaged, paged.extends(prev) {
+                    if paged.count == prev.count { return result }
+                    let tail = Array(paged[prev.count...])
+                    if applyAppend(tail) {
+                        previousPaged = paged
+                        previousArray.removeAll(keepingCapacity: false)
+                        self.agent = effective
+                    }
+                    return result
+                }
+                let all = Array(paged)
+                core.reset(Int32(effective.rawValue))
+                if applyAppend(all) {
+                    previousPaged = paged
+                    previousArray.removeAll(keepingCapacity: false)
+                    self.agent = effective
+                }
+                return result
+            }
+
+            if previousArray.isEmpty, let prev = previousPaged {
+                previousArray = Array(prev)
+            }
+            let append = self.agent == effective && events.count >= previousArray.count
+                && zip(events, previousArray).allSatisfy { $0 == $1 }
+            if append && events.count == previousArray.count {
+                previousPaged = nil
+                return result
+            }
+            if append {
+                let tail = Array(events.dropFirst(previousArray.count))
+                if applyAppend(tail) {
+                    previousPaged = nil
+                    previousArray.append(contentsOf: tail)
+                    self.agent = effective
+                }
+            } else {
+                let all = Array(events)
+                core.reset(Int32(effective.rawValue))
+                if applyAppend(all) {
+                    previousPaged = nil
+                    previousArray = all
+                    self.agent = effective
+                }
+            }
+            return result
+        }
+
+        func currentActions(live: PBLiveSnapshot?) -> PBProjectionState {
+            lock.lock()
+            defer { lock.unlock() }
+            let liveBytes = (try? live?.serializedData()) ?? Data()
+            return decodeProjectionResult { try core.currentActions(liveBytes) } ?? result
+        }
+
+        private func applyAppend(_ events: [PBEvent]) -> Bool {
+            let batchData: Data
+            if events.isEmpty {
+                batchData = Data()
+            } else {
+                let batch = PBEventBatch.with { $0.events = events }
+                guard let encoded = try? batch.serializedData() else { return false }
+                batchData = encoded
+            }
+            guard let state = decodeProjectionResult({ try core.append(batchData) }) else {
+                return false
+            }
+            result = state
+            return true
+        }
+
+        private func decodeProjectionResult(_ call: () throws -> Data) -> PBProjectionState? {
+            do {
+                let out = try call()
+                return try? PBProjectionState(serializedBytes: out)
+            } catch {
+                // gomobile converts a 0-byte []byte return to nil NSData* with nil error,
+                // which Swift's ObjC bridge throws as Foundation._GenericObjCError.nilError.
+                // Real Go errors use domain "go".
+                if (error as NSError).domain != "go" {
+                    return PBProjectionState()
+                }
+                return nil
+            }
+        }
+    }
+
+    private var storage = Storage()
 
     public init() {}
 
-    public mutating func update(_ events: some RandomAccessCollection<PBEvent>, agent: PBAgent = defaultAgent) -> Derived {
-        // An event is a handle on shared storage, so comparing one with the
-        // copy held from last time is a pointer comparison.
-        let append = self.agent == agent && events.count >= previous.count && zip(events, previous).allSatisfy { $0 == $1 }
-        if append && events.count == previous.count { return result }
-        if append {
-            let tail = events.dropFirst(previous.count)
-            reducer.append(tail)
-            previous.append(contentsOf: tail)
-        } else {
-            reducer = EventReducer(agent: agent)
-            reducer.append(events)
-            previous = Array(events)
+    public mutating func update(_ events: some RandomAccessCollection<PBEvent>, agent: PBAgent = defaultAgent) -> PBProjectionState {
+        if !isKnownUniquelyReferenced(&storage) {
+            storage = storage.copy()
         }
-        result = reducer.snapshot()
-        self.agent = agent
-        return result
+        return storage.update(events, agent: agent)
     }
-}
 
-/// Match Claude Code by daemon digest, or Codex by the command it reported for the call.
-public func awaitingApproval(_ t: RunningTool, _ d: Derived) -> Bool {
-    d.approvals.values.contains { a in
-        if !t.inputDigest.isEmpty { return !a.inputDigest.isEmpty && a.inputDigest == t.inputDigest }
-        return a.inputDigest.isEmpty && !a.command.isEmpty && (a.command == t.input || a.command == t.title)
+    public mutating func update(
+        _ events: some RandomAccessCollection<PBEvent>, agent: PBAgent = defaultAgent, live: PBLiveSnapshot?
+    ) -> PBProjectionState {
+        if !isKnownUniquelyReferenced(&storage) {
+            storage = storage.copy()
+        }
+        _ = storage.update(events, agent: agent)
+        return storage.currentActions(live: live)
+    }
+
+    public mutating func currentActions(live: PBLiveSnapshot?) -> PBProjectionState {
+        if !isKnownUniquelyReferenced(&storage) {
+            storage = storage.copy()
+        }
+        return storage.currentActions(live: live)
     }
 }
 
 /// How long a tool has run, in ms, or nil when its start time is unknown.
 /// While disconnected (`frozenAt` > 0) the reading stops where the
 /// connection dropped, so it does not suggest the tool is still running.
-public func toolElapsed(_ t: RunningTool, now: Int64, frozenAt: Int64 = 0) -> Int64? {
-    if t.since <= 0 { return nil }
+public func toolElapsed(_ t: PBRunningTool, now: Int64, frozenAt: Int64 = 0) -> Int64? {
+    if t.sinceMs <= 0 { return nil }
     let end = frozenAt > 0 ? min(frozenAt, now) : now
-    return max(0, end - t.since)
+    return max(0, end - t.sinceMs)
 }
 
 /// 2:12, 1:02:03: a running timer.
@@ -524,8 +302,8 @@ public func failureText(reason: String, agent: PBAgent) -> String {
 }
 
 /// Messages the daemon accepted and has not written yet, in the order it accepted them.
-public func queued(_ d: Derived) -> [String] {
-    d.inputs.entries.filter { $0.value == .queued || $0.value == .heldByCli }.map(\.key)
+public func queued(_ d: PBProjectionState) -> [String] {
+    d.inputs.filter { $0.status == .queued || $0.status == .heldByCli }.map(\.requestID)
 }
 
 public struct PendingInput: Equatable, Sendable, Identifiable {
@@ -551,13 +329,22 @@ public struct PendingInput: Equatable, Sendable, Identifiable {
 }
 
 /// Only inputs the model has not received; event order is acceptance order.
-public func pendingInputs(_ d: Derived) -> [PendingInput] {
-    d.inputDetails.values.compactMap { st in
-        guard st.status == .queued || st.status == .heldByCli else { return nil }
-        let accepted = d.accepted[st.requestID]
-        return PendingInput(
-            id: st.requestID, text: accepted?.text ?? st.text, mode: st.mode != .unspecified ? st.mode : .steer,
-            paused: st.paused, held: st.status == .heldByCli, origin: accepted?.origin, files: st.files, time: accepted?.time ?? 0)
+public func pendingInputs(_ d: PBProjectionState) -> [PendingInput] {
+    var times = [String: Int64]()
+    for input in d.inputs where input.hasAccepted && input.accepted.timeMs > 0 {
+        times[input.requestID] = input.accepted.timeMs
+    }
+    return d.pendingInputs.map { p in
+        PendingInput(
+            id: p.requestID,
+            text: p.text,
+            mode: p.mode != .unspecified ? p.mode : .steer,
+            paused: p.paused,
+            held: p.held,
+            origin: p.hasOrigin ? p.origin : nil,
+            files: p.files,
+            time: times[p.requestID] ?? 0
+        )
     }
 }
 
@@ -613,11 +400,6 @@ public func cancelOutcome(status: PBInputStatus?, canceledHere: Bool) -> CancelO
     case .submitted, .unconfirmed: return .written
     default: return .unknown
     }
-}
-
-private func usagePercent(_ u: PBTokenUsage?) -> Int? {
-    guard let u, u.contextWindow > 0 else { return nil }
-    return min(100, Int((u.lastTotalTokens * 100) / u.contextWindow))
 }
 
 public func inputTimingLabel(agent: PBAgent, mode: PBSendMode, held: Bool, starting: String?) -> String {

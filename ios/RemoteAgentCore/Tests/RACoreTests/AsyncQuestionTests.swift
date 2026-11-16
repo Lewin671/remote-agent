@@ -29,7 +29,7 @@ import Testing
         for n in 1...events.count {
             let prefix = Array(events.prefix(n))
             let d = derive(prefix)
-            #expect(d.questions["async"] == nil)
+            #expect(d.pendingQuestion("async") == nil)
             let rows = buildChat(prefix, d: d, machine: "M")
             let shown = rows.compactMap { item -> ChatItem.AsyncQuestion? in
                 if case .asyncQuestion(let q) = item { return q } else { return nil }
@@ -38,6 +38,6 @@ import Testing
             #expect(projection.update(prefix, d: d, machine: "M") == rows)
             #expect(rows.map(\.key) == prefix.filter { $0.seq != 5 }.map { "e\($0.seq)" })
         }
-        #expect(derive(events).questions.keys == ["sync"])
+        #expect(derive(events).questions.map(\.questionID) == ["sync"])
     }
 }

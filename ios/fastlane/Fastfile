@@ -12,6 +12,7 @@ platform :ios do
   lane :verify do |options|
     FileUtils.mkdir_p(ENV.fetch('IOS_OUTPUT_DIR'))
     root = Publishing.source
+    sh(File.join(root, 'scripts/core/build.sh'), 'ios')
     # Swift Testing otherwise runs socket/deadline tests alongside unrelated fixture builds.
     sh('swift', 'test', '--no-parallel', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
     # A publishing run archives with its distribution signature in the next lane.
@@ -43,6 +44,7 @@ platform :ios do
       File.binwrite(profile, Base64.strict_decode64(signing.fetch('profile')))
       installed_profile = install_provisioning_profile(path: profile)
       profile_info = FastlaneCore::ProvisioningProfile.parse(profile)
+      sh(File.join(Publishing.source, 'scripts/core/build.sh'), 'ios')
       Publishing.with_app_signing(signing.fetch('team_id'), profile_info.fetch('Name')) do
         build_app(project: File.join(Publishing.source, 'ios/RemoteAgent.xcodeproj'), scheme: 'RemoteAgent',
                   configuration: 'Release', clean: true, export_method: 'app-store',

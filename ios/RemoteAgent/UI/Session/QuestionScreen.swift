@@ -22,7 +22,7 @@ struct QuestionScreen: View {
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
-                if let s, let q = d.questions[question] {
+                if let s, let q = d.pendingQuestion(question) {
                     let toTerminal = {
                         nav.back()
                         nav.open(.session(id: session, terminal: true))

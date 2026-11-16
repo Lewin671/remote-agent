@@ -315,9 +315,15 @@ final class SessionStore {
 
     /// Lets go of messages submitted or canceled by the user: the session's events have their outcome.
     /// One the session ended on stays, for the chat's 放回输入框 (`letsGo`).
-    func settle(_ sid: String, inputs: OrderedMap<String, PBInputState>) {
+    func settle(_ sid: String, inputs: [PBInputProjection]) {
         guard let list = outbox[sid] else { return }
-        let waiting = list.filter { !letsGo(inputs[$0.requestId]) }
+        let byID = Dictionary(inputs.map { ($0.requestID, $0) }, uniquingKeysWith: { _, b in b })
+        let waiting = list.filter { o in
+            guard let item = byID[o.requestId] else { return true }
+            var st = item.hasDetail ? item.detail : PBInputState()
+            if st.status == .unspecified { st.status = item.status }
+            return !letsGo(st)
+        }
         if waiting.count != list.count { outbox[sid] = waiting }
     }
 
@@ -349,9 +355,10 @@ final class SessionStore {
     }
 
     /// Forgets the cancels of messages that have left the queue.
-    func settleCancels(inputs: OrderedMap<String, PBInputStatus>) {
+    func settleCancels(inputs: [PBInputProjection]) {
+        let statuses = Dictionary(inputs.map { ($0.requestID, $0.status) }, uniquingKeysWith: { _, b in b })
         for id in cancels.keys {
-            if let status = inputs[id], status != .queued, status != .heldByCli { cancels[id] = nil }
+            if let status = statuses[id], status != .queued, status != .heldByCli { cancels[id] = nil }
         }
     }
 
