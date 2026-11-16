@@ -18,6 +18,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairingUiState
+import io.github.lewin671.remoteagent.core.CommandPhases
 import io.github.lewin671.remoteagent.core.transport.DirectDiag
 import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.transport.RouteName
@@ -276,6 +277,7 @@ class DirectTransportE2ETest {
 
             suspend fun waitDirectReady(timeoutMs: Long = 30_000) {
                 DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
+                CommandPhases.sink = { android.util.Log.i("CmdPhases", it) }
                 android.util.Log.i("DirectE2E", "waitDirectReady start")
                 val deadline = System.currentTimeMillis() + timeoutMs
                 while (System.currentTimeMillis() < deadline) {

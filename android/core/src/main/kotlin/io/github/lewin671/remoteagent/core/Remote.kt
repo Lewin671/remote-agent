@@ -349,6 +349,8 @@ class PreparedCommand(
     serializedCommand: ByteArray? = null,
     prior: Boolean,
 ) {
+    /** Diagnostics only: where authorize spent its time, in ns (waiting for the worker, the observation read, the lease check, the seal). */
+    @Volatile internal var authPhases = LongArray(4)
     private val payload = serializedCommand?.copyOf() ?: command?.toByteArray()
     internal val command: Command? = payload?.let(Command::parseFrom)
     fun commandBytes(): ByteArray? = payload?.copyOf()
@@ -3531,8 +3533,10 @@ class Remote(
      * with the same request ID, which the daemon runs at most once; when the outcome stays unknown
      * the error says so.
      */
-    suspend fun authorize(p: PreparedCommand, retryOfUnknown: Boolean = false): Envelope =
-        withContext(dispatcher) { authorizeOnWorker(p,retryOfUnknown) }
+    suspend fun authorize(p: PreparedCommand, retryOfUnknown: Boolean = false): Envelope {
+        val asked = System.nanoTime()
+        return withContext(dispatcher) { p.authPhases[0] = System.nanoTime() - asked; authorizeOnWorker(p,retryOfUnknown) }
+    }
 
     private suspend fun authorizeOnWorker(p: PreparedCommand,retryOfUnknown:Boolean): Envelope {
         try {
@@ -3558,14 +3562,19 @@ class Remote(
                     // A retry keeps the exact original observation. The executor's
                     // durable request log settles it before considering a new action.
                     if (previous == null && !retryOfUnknown && isObservedAction(p.command)) {
+                        val fetchStart = System.nanoTime()
                         val fresh = fetchLiveSnapshot(p.sessionId)
+                        p.authPhases[1] = System.nanoTime() - fetchStart
                         if (observeAction(p.command, fresh) != p.command)
                             throw CommandException("failed_precondition", UiMessages.errorsAndroidTheCurrentRequestChangedReviewItAgain().messageText())
                     }
                     if (serverAhead || security.clockSkew)
                         throw CommandException("failed_precondition", UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText())
                     // Checking the lease signature is public-key work: not on the single worker thread every command shares.
+                    val leaseStart = System.nanoTime()
                     val leaseValid = kotlinx.coroutines.withContext(cpuLane(p)) { Authority.leaseValid(security.record(), clock()) }
+                    p.authPhases[2] = System.nanoTime() - leaseStart
+                    val sealStart = System.nanoTime()
                     if (!leaseValid)
                         throw CommandException("failed_precondition", localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) })
                     kotlinx.coroutines.withContext(cpuLane(p)) {
@@ -3577,7 +3586,7 @@ class Remote(
                             deadline = p.deadlineMs.toULong(),
                             plain = checkNotNull(p.commandBytes()),
                         )
-                    }
+                    }.also { p.authPhases[3] = System.nanoTime() - sealStart }
                 } else {
                     kotlinx.coroutines.withContext(cpuLane(p)) {
                         val (h, plain) = security.openOwnCommand(p.envelope)
@@ -3765,14 +3774,18 @@ class Remote(
                 val attemptId = delivery.attemptId
                 try {
                     checkFileCapability(p, call.uncertain)
+                    val phase0 = System.nanoTime()
                     delivery.prepare(call.uncertain)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     val authorized = authorize(p,retryOfUnknown=call.hasPrior)
+                    val phase1 = System.nanoTime()
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
                     val binding = kotlinx.coroutines.withContext(cpuLane(p)) { security.commandIdentity(authorized) }
                     if (clock() >= recoveryDeadline) throw forwardLifetimeExpired()
+                    val phase2 = System.nanoTime()
                     val res = recovery.follow { delivery.send(p.machineId, authorized) }
+                    val phase3 = System.nanoTime()
                     val (_, msg) =
                         try {
                             openSecureMessage(
@@ -3791,6 +3804,7 @@ class Remote(
                             // the command ran; retrying the same request asks again.
                             throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
                         }
+                    CommandPhases.note(p.command?.kindCase?.name ?: "-", if (delivery.direct) "direct" else "relay", phase0, phase1, phase2, phase3, System.nanoTime(), p.authPhases)
                     val verifiedOutcome = if (delivery.direct) msg.outcome else res.outcome
                     val verifiedReason = if (delivery.direct) msg.reason else res.reason
                     val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) && msg.payloadHash.toByteArray().contentEquals(binding.second) && res.attemptId==attemptId && (delivery.direct || (res.outcome==msg.outcome && res.reason==msg.reason)) && (msg.outcome=="conflict" || msg.conflictKind.isEmpty())
@@ -4484,3 +4498,19 @@ internal fun io.github.lewin671.remoteagent.proto.Command.isReadOnlyCommand(): B
     hasGetMachineStatus() || hasGetSettings() || hasListModels() || hasListDirectories() || hasGetLiveSnapshot() || hasGetImageUploadStatus() || hasGetSharedFileChunk() ||
 
         hasSchedule() && schedule.operation in setOf("list", "get")
+
+/**
+ * Where the time of one command goes, in milliseconds: authorize (with the
+ * observation read and the seal), binding check, the send and its reply, and
+ * opening the reply. Off unless a host sets [sink]; kinds and times only.
+ */
+object CommandPhases {
+    @Volatile var sink: ((String) -> Unit)? = null
+
+    internal fun note(kind: String, path: String, t0: Long, t1: Long, t2: Long, t3: Long, t4: Long, auth: LongArray) {
+        val out = sink ?: return
+        fun ms(a: Long, b: Long) = "%.1f".format((b - a) / 1_000_000.0)
+        fun m(v: Long) = "%.1f".format(v / 1_000_000.0)
+        out("cmd kind=$kind path=$path authorize=${ms(t0, t1)}(queue=${m(auth[0])} observe=${m(auth[1])} lease=${m(auth[2])} seal=${m(auth[3])}) bind=${ms(t1, t2)} send=${ms(t2, t3)} open=${ms(t3, t4)}")
+    }
+}
