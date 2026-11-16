@@ -305,7 +305,7 @@ func TestClaudeApprovalMatchesWholeInput(t *testing.T) {
 	// Two identical requests: the same question; one completion settles
 	// one of them.
 	for i := 0; i < 2; i++ {
-		go h.s.hook(context.Background(), claudePermission("Bash", `{"command":"make test"}`))
+		h.goHook(claudePermission("Bash", `{"command":"make test"}`))
 	}
 	eventually(t, "three cards", func() bool { return h.s.info().PendingApprovals == 3 })
 	h.s.retractFor(&pb.ToolCall{ItemType: "Bash", Input: "make test", InputDigest: agent.InputDigest("Bash", []byte(`{"command":"make test"}`))})
@@ -565,11 +565,7 @@ func (h *harness) bashCall(id, cmd string, done bool) {
 func (h *harness) askBash(cmd string) bool {
 	h.t.Helper()
 	before := h.s.info().PendingApprovals
-	out := make(chan []byte, 1)
-	go func() {
-		b, _ := h.s.hook(context.Background(), claudePermission("Bash", `{"command":"`+cmd+`"}`))
-		out <- b
-	}()
+	out := h.goHook(claudePermission("Bash", `{"command":"`+cmd+`"}`))
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		select {
@@ -607,7 +603,7 @@ func TestClaudeRanBeforeAfterRestart(t *testing.T) {
 	if !h.askBash("make test") {
 		t.Fatal("the new call's request was let through on the old call's completion")
 	}
-	h.s.retractApprovals()
+	h.retract()
 	// Nor with a completion from before the restart and the new call not
 	// read yet.
 	m = h.s.meta
@@ -616,7 +612,7 @@ func TestClaudeRanBeforeAfterRestart(t *testing.T) {
 	if !h.askBash("make test") {
 		t.Fatal("let through with nothing known of the new call")
 	}
-	h.s.retractApprovals()
+	h.retract()
 }
 
 // Two identical calls in parallel, one done: its request cannot be told
@@ -633,7 +629,7 @@ func TestClaudeRanBeforeParallel(t *testing.T) {
 	if !h.askBash("make test") {
 		t.Fatal("let through while an identical call still runs")
 	}
-	h.s.retractApprovals()
+	h.retract()
 }
 
 // The approval event carries the same digest as the call it is for.
@@ -645,7 +641,7 @@ func TestClaudeApprovalCarriesInputDigest(t *testing.T) {
 	h.writeRollout(`{"type":"user","promptId":"p1","origin":{"kind":"human"},"message":{"role":"user","content":"go"}}`,
 		`{"type":"assistant","message":{"id":"m1","model":"claude-haiku-4-5-20251001","stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"Write","input":`+input+`}]}}`)
 	h.s.bindRollout("cc-1", path)
-	go h.s.hook(context.Background(), claudePermission("Write", input))
+	h.goHook(claudePermission("Write", input))
 	eventually(t, "the card", func() bool { return h.s.info().PendingApprovals == 1 })
 	h.writeRollout(`{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}`)
 	h.s.readRollout()

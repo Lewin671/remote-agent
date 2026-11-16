@@ -130,6 +130,44 @@ type harness struct {
 	s    *session
 	term *fakeTerm
 	dir  string
+	// hooks counts hook calls started by goHook that have not returned: a
+	// settled approval's hook still records its result after the test has
+	// seen the card go, and that write must land before the event log is
+	// closed or the test's directories are removed.
+	hooks sync.WaitGroup
+}
+
+// goHook runs s's hook for p in the background, tracked by h.hooks, and
+// returns what it printed.
+func (h *harness) goHook(p *agent.Hook) <-chan []byte {
+	s := h.s
+	out := make(chan []byte, 1)
+	h.hooks.Go(func() {
+		b, _ := s.hook(context.Background(), p)
+		out <- b
+	})
+	return out
+}
+
+// retract settles every waiting approval and waits for the hooks that were
+// started by goHook to finish recording it. Call it before closing the
+// session's log: a hook still writing then fails with "event log is closed"
+// and leaves a storage diagnostic behind.
+func (h *harness) retract() {
+	h.t.Helper()
+	h.s.retractApprovals()
+	h.waitHooks()
+}
+
+func (h *harness) waitHooks() {
+	h.t.Helper()
+	done := make(chan struct{})
+	go func() { h.hooks.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		h.t.Error("a background hook call did not return")
+	}
 }
 
 func testEchoCodexConfig() map[pb.Agent]AgentConfig {
@@ -179,6 +217,7 @@ func newHarness(t *testing.T, cfg Config) *harness {
 		}
 		h.d.mu.Unlock()
 		sessions = append(sessions, h.s)
+		h.waitHooks()
 		stopped := map[*session]bool{}
 		for _, s := range sessions {
 			if s == nil || stopped[s] {
