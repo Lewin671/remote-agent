@@ -105,7 +105,7 @@ CryptoKit 的 Ed25519 签名带随机盐，同一条消息两次签名不同，�
 
 ## Agent 发来的文件
 
-文件卡的状态、菜单、断点和本机副本规则统一见 [session-files](session-files.md#文件卡与下载状态)，画面见 [client-v61](design/client-v61.html#shared-files)。iOS 自己的实现：
+文件卡的状态、菜单、断点和本机副本规则统一见 [session-files](session-files.md#文件卡与下载状态)，画面见 [client-v62](design/client-v62.html#shared-files)。iOS 自己的实现：
 
 - **下载与副本**：`RACore/SharedFileStore` 是 actor，按会话和文件标识管理下载；缓存区的 `.part` 与 `.meta` 记录偏移，目录保护为首次解锁后可访问。暂停、取消、删除先收回下载令牌，迟到块不再写入。设置的附件存储用「收到的文件」列出占用；ImageIO、AVFoundation 只读本机副本生成缩略图和时长。
 - **打开与导出**：用 Quick Look，不能预览的类型显示它的通用页；存到相册只申请写权限，存到「文件」和分享使用系统面板。App 进入后台也收回自动打开资格。
@@ -134,7 +134,7 @@ SwiftTerm 固定在 1.11.2：1.12 起带 Metal 着色器，构建需要 Xcode �
 
 ## 电脑状态与磁盘保护
 
-共同交互、单位、曲线和磁盘保护见 [architecture §21](architecture.md#21-电脑状态与磁盘保护)，画面见 [client-v61 · 电脑状态](design/client-v61.html#machine-status)。iOS 的做法：
+共同交互、单位、曲线和磁盘保护见 [architecture §21](architecture.md#21-电脑状态与磁盘保护)，画面见 [client-v62 · 电脑状态](design/client-v62.html#machine-status)。iOS 的做法：
 
 - RACore 的 `MachineStatusController` 由每页一个 `MachineStatusFeed` 驱动，结合页面、前后台和机器能力决定是否请求。`RACore/MachineStatusModel.swift` 提供显示纯值，测试在 `MachineStatusModelTests`。
 - 状态页路由 `Route.machineStatus`，页底 `liftPage`、卡片 `lift`。自定义 `SwapLayout` 让卡片底连续移动变形，内容前 100 毫秒淡出、后 120 毫秒淡入；逐位数字用 `numericText`，曲线用 `TimelineView` 和 `Canvas`。曲线的 `DragGesture` 接住起手在曲线上的触摸，页面不同时滚动；辅助功能字号通过同一布局改为纵排。
