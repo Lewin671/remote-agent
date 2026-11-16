@@ -37,6 +37,19 @@ export const DIRECT_RETRY = { initialMs: 1000, maxMs: 30_000, stableMs: 30_000 }
 
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
+/** The relay's own STUN (IPv4 only today), plus one dual-stack public STUN so a
+ * browser, whose host addresses are hidden behind mDNS names, still learns its
+ * public IPv6 address. Without it the computer never sends towards the
+ * browser's IPv6, and a default stateful IPv6 firewall in front of the computer
+ * drops the browser's checks. The extra server sees only that this address
+ * asked for its mapping; set VITE_DIRECT_STUN_EXTRA=none to leave it out. */
+export const DEFAULT_EXTRA_STUN = "stun:stun.cloudflare.com:3478";
+export function stunServers(host: string, own?: string, extra?: string): string[] {
+  const first = own || `stun:${host.includes(":") ? `[${host}]` : host}:3478`;
+  const second = extra === undefined || extra === "" ? DEFAULT_EXTRA_STUN : extra === "none" ? "" : extra;
+  return second && second !== first ? [first, second] : [first];
+}
+
 export class DirectEngine {
   private readonly instance = crypto.getRandomValues(new Uint8Array(16));
   private readonly boot = crypto.getRandomValues(new Uint8Array(32));
@@ -77,7 +90,7 @@ export class DirectEngine {
   private warmShown = new Map<string, boolean>();
   constructor(private readonly account: StoredAccount, private readonly authorize: () => Promise<void>, private readonly changed: () => void, private readonly random: () => number = Math.random) {
     const host = new URL(account.server).hostname;
-    this.stun = [import.meta.env.VITE_DIRECT_STUN_URL || `stun:${host.includes(":") ? `[${host}]` : host}:3478`];
+    this.stun = stunServers(host, import.meta.env.VITE_DIRECT_STUN_URL, import.meta.env.VITE_DIRECT_STUN_EXTRA);
   }
   private notify() { try { this.changed(); } catch { /* Observers do not own transport cleanup. */ } }
   private key(id: string) { return `remote-agent-direct:${this.account.server}:${this.account.deviceId}:${id}`; }
