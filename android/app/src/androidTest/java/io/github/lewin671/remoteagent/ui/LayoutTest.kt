@@ -293,8 +293,7 @@ class LayoutTest {
             .setPlanScreenHash(com.google.protobuf.ByteString.copyFrom(ByteArray(32)))
             .setPlanScreen("⎿ /plan to preview\n──────\nReady to code?\nHere is Claude's plan:\n──────\n" + markdown)
             .build()
-        val plan = io.github.lewin671.remoteagent.core.currentActions(
-            io.github.lewin671.remoteagent.core.derive(events), live, events).plan!!.text
+        val plan = io.github.lewin671.remoteagent.core.currentActions(events, live).plan!!.text
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {

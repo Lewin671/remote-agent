@@ -1,102 +1,20 @@
 package io.github.lewin671.remoteagent.core
 
-import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.proto.Agent
-import io.github.lewin671.remoteagent.proto.ApprovalRequested
-import io.github.lewin671.remoteagent.proto.Event
-import io.github.lewin671.remoteagent.proto.ToolBackground
-import io.github.lewin671.remoteagent.proto.ToolCall
 import io.github.lewin671.remoteagent.proto.ToolKind
-import io.github.lewin671.remoteagent.proto.ToolStarted
-import io.github.lewin671.remoteagent.proto.TurnEnded
-import io.github.lewin671.remoteagent.proto.TurnOutcome
-import io.github.lewin671.remoteagent.proto.TurnStarted
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ToolsTest {
-    private fun ev(seq: Long, b: Event.Builder, sec: Long = 0) = b.setSeq(seq).apply { if (sec > 0) time = Timestamp.newBuilder().setSeconds(sec).build() }.build()
-    private fun start(seq: Long, title: String, id: String = "", input: String = "", digest: String = "", sec: Long = 100) =
-        ev(seq, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle(title).setCallId(id).setInput(input).setInputDigest(digest).setKind(ToolKind.TOOL_KIND_COMMAND).setItemType("Bash")), sec)
-    private fun call(seq: Long, title: String, id: String = "", input: String = "") =
-        ev(seq, Event.newBuilder().setToolCall(ToolCall.newBuilder().setTitle(title).setCallId(id).setInput(input).setStatus("completed")))
-    private val turn = ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance()))
-
     @Test
-    fun parallelCallsPairByIdAndKeepTheirStart() {
-        val d = derive(listOf(turn, start(2, "go test", "a"), start(3, "go build", "b"), call(4, "go build", "b")), Agent.AGENT_CLAUDE)
-        assertMessageEquals(listOf("go test"), d.tools.map { it.title })
-        assertMessageEquals(2L, d.tools[0].seq)
-        assertMessageEquals(4L, d.completedAt[3])
-        assertMessageEquals(100_000L, d.tools[0].since)
-    }
-
-    @Test
-    fun aTurnEndingBeforeAResultLeavesItUnconfirmedNotDone() {
-        val d = derive(
-            listOf(turn, start(2, "go test ./..."), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_ABORTED)))),
-        )
-        assertTrue(d.tools.isEmpty())
-        assertMessageEquals(listOf("go test ./..."), d.background.map { it.tool.title })
-        assertFalse(d.background[0].returned)
-        assertMessageEquals(setOf(2L), d.unfinished)
-        // The next turn moves on; the row stays unconfirmed in the history.
-        val d2 = derive(
-            listOf(
-                turn, start(2, "go test ./..."), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.getDefaultInstance())),
-                ev(4, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance())),
-            ),
-        )
-        assertTrue(d2.background.isEmpty())
-        assertMessageEquals(setOf(2L), d2.unfinished)
-    }
-
-    @Test
-    fun aCompletedTurnWithoutAResultClaimsNoBackground() {
-        // Codex 0.159 records starts like "exec" and "wait" it never completes.
-        val d = derive(listOf(turn, start(2, "exec"), ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_COMPLETED)))))
-        assertTrue(d.background.isEmpty())
-        assertMessageEquals(setOf(2L), d.noResult)
-        assertMessageEquals(setOf(2L), d.unfinished)
-    }
-
-    @Test
-    fun aBackgroundRunIsNotASuccess() {
-        val input = """{"command":"npm run dev","run_in_background":true}"""
-        val d = derive(listOf(turn, start(2, "npm run dev", "x", input), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("x").setInput(input).setBackground(ToolBackground.TOOL_BACKGROUND_REQUESTED)))), Agent.AGENT_CLAUDE)
-        assertTrue(d.tools.isEmpty())
-        assertMessageEquals(1, d.background.size)
-        assertTrue(d.background[0].returned)
-        // Claude Code backgrounds a long command by itself: the daemon says so on the result.
-        val auto = derive(
-            listOf(turn, start(2, "sleep 45", "y", "sleep 45"), ev(3, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("y").setInput("sleep 45").setBackground(io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_TIMED_OUT).setOutput("Command running in background with ID: b2wvqs0hj. Output is being written to: /tmp/x")))),
-            Agent.AGENT_CLAUDE,
-        )
-        assertMessageEquals(1, auto.background.size)
-    }
-
-    @Test
-    fun waitingForApprovalIsNotRunning() {
-        val d = derive(
-            listOf(
-                turn, start(2, "rm -rf build", "x", digest = "d1"),
-                ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a").setInputDigest("d1"))),
-            ),
-            Agent.AGENT_CLAUDE,
-        )
-        assertTrue(awaitingApproval(d.tools[0], d))
-        val other = derive(listOf(turn, start(2, "ls", "y", digest = "d2")), Agent.AGENT_CLAUDE)
-        assertFalse(awaitingApproval(other.tools[0], other))
-        val codex = derive(listOf(turn, start(2, "exec", "x", input = "go test ./..."),
-            ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a").setCommand("go test ./...")))), Agent.AGENT_CODEX)
-        assertTrue(awaitingApproval(codex.tools[0], codex))
-        assertFalse(awaitingApproval(RunningTool("different", "y", 100_000, input = "ls"), codex))
-        val byTitle = derive(listOf(turn, start(2, "rm -rf build", "x"),
-            ev(3, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a").setCommand("rm -rf build")))), Agent.AGENT_CODEX)
-        assertTrue(awaitingApproval(byTitle.tools[0], byTitle))
+    fun waitingForApprovalReadsSharedCoreFlag() {
+        val waiting = RunningTool("rm -rf build", "x", 100_000, seq = 2, awaitingApproval = true)
+        val idle = RunningTool("ls", "y", 100_000, seq = 3, awaitingApproval = false)
+        val d = Derived(tools = mutableListOf(waiting, idle))
+        assertTrue(awaitingApproval(waiting, d))
+        assertFalse(awaitingApproval(idle, d))
     }
 
     @Test
@@ -113,44 +31,5 @@ class ToolsTest {
     fun labelsNameClaudeToolsAndCodexKinds() {
         assertMessageEquals("Bash", toolLabel(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE))
         assertMessageEquals(messageTextForTest(UiMessages.toolsCommand()), toolLabel(ToolKind.TOOL_KIND_COMMAND, "CommandExecution", Agent.AGENT_CODEX))
-    }
-}
-
-class ToolIdsTest {
-    private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
-    private fun start(seq: Long, id: String, title: String) = ev(seq, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId(id).setTitle(title).setKind(ToolKind.TOOL_KIND_COMMAND)))
-    private fun call(seq: Long, id: String, bg: io.github.lewin671.remoteagent.proto.ToolBackground = io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_UNSPECIFIED, status: String = "completed") =
-        ev(seq, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId(id).setKind(ToolKind.TOOL_KIND_COMMAND).setStatus(status).setBackground(bg)))
-    private val turn = ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance()))
-
-    @Test
-    fun aSecondEntryOfACodexCallDoesNotEndAnotherStart() {
-        // Codex 0.159 via a v2 daemon: call c1 has two entries; c2 still runs.
-        val d = derive(listOf(turn, start(2, "c1", "sleep 1; ls"), start(3, "c2", "go test"), call(4, "c1"), call(5, "c1#2")), Agent.AGENT_CODEX)
-        assertMessageEquals(listOf("c2"), d.tools.map { it.callId })
-        assertMessageEquals(4L, d.completedAt[2])
-    }
-
-    @Test
-    fun theDaemonSaysACallWentToTheBackground() {
-        val d = derive(listOf(turn, start(2, "c1", "npm run dev"), call(3, "c1", io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_REQUESTED)), Agent.AGENT_CLAUDE)
-        assertMessageEquals(1, d.background.size)
-        assertTrue(d.background[0].returned)
-    }
-
-    @Test
-    fun aStillRunningExecAfterTheTurnIsItsStartNotANewTool() {
-        val d = derive(
-            listOf(
-                turn, start(2, "c1", "sleep 100"),
-                ev(3, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_COMPLETED))),
-                call(4, "c1", io.github.lewin671.remoteagent.proto.ToolBackground.TOOL_BACKGROUND_STILL_RUNNING, status = "running"),
-            ),
-            Agent.AGENT_CODEX,
-        )
-        assertMessageEquals(4L, d.completedAt[2])
-        assertFalse(2L in d.unfinished)
-        assertFalse(2L in d.noResult)
-        assertMessageEquals(1, d.background.size)
     }
 }

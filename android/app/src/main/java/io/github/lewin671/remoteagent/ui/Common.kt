@@ -342,8 +342,9 @@ fun rememberDerived(
     agent: io.github.lewin671.remoteagent.proto.Agent,
 ): io.github.lewin671.remoteagent.core.Derived {
     val readable = events.stateEvents
-    val history = rememberDerived(readable, agent)
-    return remember(history, events.live, readable.size) {
-        io.github.lewin671.remoteagent.core.currentActions(history, events.live, readable)
+    val projection = remember { io.github.lewin671.remoteagent.core.EventProjection() }
+    return remember(readable, agent, events.live) {
+        projection.update(readable, agent)
+        projection.currentActions(events.live)
     }
 }

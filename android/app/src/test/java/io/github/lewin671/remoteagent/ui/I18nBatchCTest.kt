@@ -123,7 +123,14 @@ class I18nBatchCTest(private val locale: String) {
         ui.onNodeWithText(text(UiMessages.settingsAutomaticallyEndIdleSessions())).performScrollTo().performClick(); shot("idle-close")
     }
     @Test fun quota() { show { QuotaScreen("m") }; shot("quota") }
-    @Test fun licenses() { show { LicensesPage {} }; shot("licenses") }
+    @Test fun licenses() {
+        show { LicensesPage {} }; shot("licenses")
+        ui.onNodeWithText(text(UiMessages.settingsAndroidCoreLibrariesBsd3Clause())).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("The Go Programming Language").performScrollTo().performClick()
+        ui.onNodeWithText("Copyright 2009 The Go Authors.", substring = true).performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Protocol Buffers for Go (google.golang.org/protobuf)").performScrollTo().performClick()
+        ui.onNodeWithText("Copyright (c) 2018 The Go Authors.", substring = true).performScrollTo().assertIsDisplayed()
+    }
     @Test fun storage() { show { PhoneImageStoragePage {} }; shot("phone-storage") }
     @Test fun devices() { show { DevicesScreen() }; shot("devices") }
     @Test fun client() { show { ClientScreen(client.id) }; shot("client") }

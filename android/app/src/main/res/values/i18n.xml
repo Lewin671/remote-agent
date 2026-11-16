@@ -1855,6 +1855,8 @@
     <string name="settings_android_clear_viewing_cache" formatted="false">"清理查看缓存"</string>
     <string name="settings_android_code_paths_commands_and_terminal" formatted="false">"代码、路径、命令和终端"</string>
     <string name="settings_android_compare_these_4_patterns_on_the_new_device_and_confirm" formatted="false">"请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。"</string>
+    <string name="settings_android_core_libraries_bsd_3_clause" formatted="false">"核心库 · BSD-3-Clause"</string>
+    <string name="settings_android_core_protobuf_encoding" formatted="false">"共享核心的 Protobuf 编解码"</string>
     <string name="settings_android_could_not_check_for_updates_value1">"没能检查更新：%1$s"</string>
     <string name="settings_android_could_not_download_value1">"没能下载：%1$s"</string>
     <string name="settings_android_could_not_read_release_information_value1">"读取发布信息失败（%1$s）"</string>
@@ -1870,6 +1872,7 @@
     <string name="settings_android_downloading_value1_value2">"正在下载 %1$s / %2$s"</string>
     <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"字体 · SIL Open Font License 1.1"</string>
     <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"未验证的版本请在电脑上运行 remote-agent doctor"</string>
+    <string name="settings_android_go_runtime_and_standard_library" formatted="false">"共享核心的 Go 运行时与标准库"</string>
     <string name="settings_android_icons_isc_license" formatted="false">"图标 · ISC License"</string>
     <string name="settings_android_image_drafts_and_file_source_information_are_cleared_after_7" formatted="false">"图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。"</string>
     <string name="settings_android_install" formatted="false">"安装"</string>

@@ -154,6 +154,12 @@ jobs:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
           ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
         run: python3 scripts/android-ci.py
+      - name: Ensure Android NDK 29.0.14206865
+        run: |
+          if [ ! -d "$ANDROID_HOME/ndk/29.0.14206865" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" > /dev/null
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
       - name: Android tests and release lint
         working-directory: android
         # Reuse compilation/lint outputs; each Test task's --rerun option
@@ -178,6 +184,16 @@ jobs:
           ref: ${{ inputs.tag }}
       - id: source
         run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ hashFiles('go.mod', 'go.sum') }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -203,6 +219,12 @@ jobs:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
           ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
         run: python3 scripts/android-ci.py
+      - name: Ensure Android NDK 29.0.14206865
+        run: |
+          if [ ! -d "$ANDROID_HOME/ndk/29.0.14206865" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" > /dev/null
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
       - name: Signed APK
         working-directory: android
         # android-checks runs the lint that assembleRelease would repeat here.

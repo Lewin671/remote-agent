@@ -201,6 +201,34 @@
     }
   },
   {
+    "key": "settings.android_core_libraries_bsd_3_clause",
+    "zh-CN": "核心库 · BSD-3-Clause",
+    "en": "Core libraries · BSD-3-Clause",
+    "notes": "Android 开源许可页分组标题，指随 libgojni.so 编入 App 的 Go 共享核心库使用的 BSD-3-Clause 许可证。无变量。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_core_protobuf_encoding",
+    "zh-CN": "共享核心的 Protobuf 编解码",
+    "en": "Protobuf encoding for the shared core",
+    "notes": "Android 开源许可页条目副标题，说明 google.golang.org/protobuf 的用途。无变量。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "settings.android_could_not_check_for_updates_value1",
     "zh-CN": "没能检查更新：{value1}",
     "en": "Could not check for updates: {value1}",
@@ -450,6 +478,20 @@
     "zh-CN": "未验证的版本请在电脑上运行 remote-agent doctor",
     "en": "For an unverified version, run remote-agent doctor on the computer",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_go_runtime_and_standard_library",
+    "zh-CN": "共享核心的 Go 运行时与标准库",
+    "en": "Go runtime and standard library for the shared core",
+    "notes": "Android 开源许可页条目副标题，说明 The Go Programming Language 的用途。无变量。",
     "params": {},
     "platforms": [
       "android"

@@ -5594,6 +5594,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.android_compare_these_4_patterns_on_the_new_device_and_confirm" -> {
             resources.getString(R.string.settings_android_compare_these_4_patterns_on_the_new_device_and_confirm)
         }
+        "settings.android_core_libraries_bsd_3_clause" -> {
+            resources.getString(R.string.settings_android_core_libraries_bsd_3_clause)
+        }
+        "settings.android_core_protobuf_encoding" -> {
+            resources.getString(R.string.settings_android_core_protobuf_encoding)
+        }
         "settings.android_could_not_check_for_updates_value1" -> {
             val value1 = message.args.getValue("value1") as String
             resources.getString(R.string.settings_android_could_not_check_for_updates_value1, value1)
@@ -5648,6 +5654,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         }
         "settings.android_for_an_unverified_version_run_remote_agent_doctor_on_the" -> {
             resources.getString(R.string.settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the)
+        }
+        "settings.android_go_runtime_and_standard_library" -> {
+            resources.getString(R.string.settings_android_go_runtime_and_standard_library)
         }
         "settings.android_icons_isc_license" -> {
             resources.getString(R.string.settings_android_icons_isc_license)
@@ -5961,6 +5970,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.devices" -> {
             resources.getString(R.string.settings_devices)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "settings.enable" -> {
             resources.getString(R.string.settings_enable)
         }
@@ -5970,12 +5985,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.enabled" -> {
             resources.getString(R.string.settings_enabled)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "settings.exit_and_delete_local_keys" -> {
             resources.getString(R.string.settings_exit_and_delete_local_keys)
         }
@@ -6453,6 +6462,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.fit_short" -> {
             resources.getString(R.string.terminal_fit_short)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "terminal.fitted_size" -> {
             val cols = message.args.getValue("cols") as Int
             val rows = message.args.getValue("rows") as Int
@@ -6464,12 +6479,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.fresh_live" -> {
             resources.getString(R.string.terminal_fresh_live)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "terminal.history" -> {
             resources.getString(R.string.terminal_history)
         }

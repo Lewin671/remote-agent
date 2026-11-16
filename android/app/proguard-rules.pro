@@ -25,3 +25,6 @@
 -keep class org.webrtc.SdpObserver { *; }
 -keep class org.webrtc.AddIceObserver { *; }
 -dontwarn org.webrtc.**
+# Gomobile / gobind JNI runtime and corebind bindings.
+-keep class go.** { *; }
+-keep class io.github.lewin671.remoteagent.corebind.** { *; }

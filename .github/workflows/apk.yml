@@ -43,6 +43,12 @@ jobs:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
           ANDROID_GOOGLE_SERVICES: ${{ secrets.ANDROID_GOOGLE_SERVICES }}
         run: python3 scripts/android-ci.py
+      - name: Ensure Android NDK 29.0.14206865
+        run: |
+          if [ ! -d "$ANDROID_HOME/ndk/29.0.14206865" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.14206865" > /dev/null
+          fi
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
       - name: Test and build development APK (push disabled)
         working-directory: android
         run: ./gradlew --no-daemon --no-configuration-cache :core:test :app:testDebugUnitTest :app:assembleDebug -PdevBuild=true -PrequireSigning=true -PbuildCommit="$(git rev-parse HEAD)"

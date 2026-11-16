@@ -1624,6 +1624,21 @@ private fun bundledIcons(copy: io.github.lewin671.remoteagent.core.MessageResolv
         Triple("Lucide", copy(UiMessages.settingsAndroidInterfaceIcons()), io.github.lewin671.remoteagent.R.raw.isc_lucide),
     )
 
+/** Core native libraries bundled in libgojni.so, each with its BSD-3-Clause text from res/raw. */
+private fun bundledCoreLibraries(copy: io.github.lewin671.remoteagent.core.MessageResolver) =
+    listOf(
+        Triple(
+            "The Go Programming Language",
+            copy(UiMessages.settingsAndroidGoRuntimeAndStandardLibrary()),
+            io.github.lewin671.remoteagent.R.raw.bsd3_go,
+        ),
+        Triple(
+            "Protocol Buffers for Go (google.golang.org/protobuf)",
+            copy(UiMessages.settingsAndroidCoreProtobufEncoding()),
+            io.github.lewin671.remoteagent.R.raw.bsd3_protobuf_go,
+        ),
+    )
+
 @Composable
 fun LicensesPage(onBack: () -> Unit) {
     val copy = uiText()
@@ -1638,6 +1653,7 @@ fun LicensesPage(onBack: () -> Unit) {
                     listOf(
                         copy(UiMessages.settingsAndroidFontsSilOpenFontLicense11()) to bundledFonts(copy),
                         copy(UiMessages.settingsAndroidIconsIscLicense()) to bundledIcons(copy),
+                        copy(UiMessages.settingsAndroidCoreLibrariesBsd3Clause()) to bundledCoreLibraries(copy),
                     )) {
                     GLabel(label)
                     Group(

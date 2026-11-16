@@ -1,51 +1,53 @@
 package io.github.lewin671.remoteagent.core
-import io.github.lewin671.remoteagent.proto.*
-import org.junit.Assert.*
+
+import io.github.lewin671.remoteagent.corebind.Corebind
+import io.github.lewin671.remoteagent.proto.Agent
+import io.github.lewin671.remoteagent.proto.ApprovalRequested
+import io.github.lewin671.remoteagent.proto.Event
+import io.github.lewin671.remoteagent.proto.EventBatch
+import io.github.lewin671.remoteagent.proto.InputState
+import io.github.lewin671.remoteagent.proto.InputStatus
+import io.github.lewin671.remoteagent.proto.LiveSnapshot
+import io.github.lewin671.remoteagent.proto.ProjectionState
+import io.github.lewin671.remoteagent.proto.Session
+import io.github.lewin671.remoteagent.proto.ToolStarted
+import io.github.lewin671.remoteagent.proto.TurnStarted
+import io.github.lewin671.remoteagent.proto.UserMessage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
+
+/** Smoke test verifying the shared Go core JNI binding, ProjectionState decoding, and incremental projection. */
 class EventProjectionTest {
-    private fun normalized(v: Any?): Any? = when (v) {
-        is RunningTool -> listOf(v.title, v.callId, v.since, v.kind, v.itemType, v.seq, v.input, v.inputDigest)
-        is BackgroundTool -> listOf(normalized(v.tool), v.returned)
-        is Map<*, *> -> v.mapValues { normalized(it.value) }
-        is Set<*> -> v.toSet()
-        is List<*> -> v.map { normalized(it) }
-        else -> v
-    }
-    private fun fields(d: Derived) = Derived::class.java.declaredMethods.filter { it.name.startsWith("get") && it.parameterCount == 0 }.sortedBy { it.name }.map { normalized(it.invoke(d)) }
     private fun ev(seq: Int, b: Event.Builder) = b.setSeq(seq.toLong()).setSessionId("s").build()
-    @Test fun incrementalResultsMatchReplayAcrossLateResultsAndCliChanges() {
-        val history = listOf(
+
+    @Test fun corebindSmokeDecodesProjectionStateAndOverlaysLiveActions() {
+        val events = listOf(
             ev(1, Event.newBuilder().setTurnStarted(TurnStarted.getDefaultInstance())),
-            ev(2, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("i").setStatus(InputStatus.INPUT_STATUS_QUEUED).setText("hello"))),
-            ev(3, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("hello"))),
-            ev(4, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("i").setStatus(InputStatus.INPUT_STATUS_SUBMITTED))),
-            ev(5, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId("c").setTitle("sleep"))),
-            ev(6, Event.newBuilder().setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_ABORTED))),
-            ev(7, Event.newBuilder().setToolCall(ToolCall.newBuilder().setCallId("c").setStatus("completed"))),
-            ev(8, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a"))),
-            ev(9, Event.newBuilder().setApprovalResolved(ApprovalResolved.newBuilder().setApprovalId("a").setDecision(ApprovalDecision.APPROVAL_DECISION_ALLOW))),
-            ev(10, Event.newBuilder().setSessionState(SessionState.newBuilder().setStatus(SessionStatus.SESSION_STATUS_EXITED))),
+            ev(2, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("r1").setStatus(InputStatus.INPUT_STATUS_QUEUED).setText("hi"))),
+            ev(3, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setCallId("c1").setTitle("go test").setInputDigest("d1"))),
+            ev(4, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("local"))),
         )
-        val p = EventProjection()
-        for (agent in listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)) {
-            for (n in 0..history.size) {
-                val prefix = history.take(n)
-                val result = p.update(prefix, agent)
-                assertEquals(fields(derive(prefix, agent)), fields(result))
-                assertSame(result, p.update(prefix, agent))
-            }
-        }
-        assertEquals(fields(derive(history.take(3))), fields(p.update(history.take(3))))
-        val replaced = history.toMutableList().apply { this[2] = this[2].toBuilder().setUserMessage(UserMessage.newBuilder().setText("changed")).build() }
-        assertEquals(fields(derive(replaced)), fields(p.update(replaced)))
-    }
-    @Test fun publishedCollectionsStayUnchangedAfterMoreEvents() {
-        val p = EventProjection()
-        val first = ev(1, Event.newBuilder().setUserMessage(UserMessage.newBuilder().setText("local")))
-        val old = p.update(listOf(first), Agent.AGENT_CLAUDE)
-        val oldFields = fields(old)
-        val next = p.update(listOf(first, ev(2, Event.newBuilder().setInputState(InputState.newBuilder().setRequestId("i").setStatus(InputStatus.INPUT_STATUS_SUBMITTED)))), Agent.AGENT_CLAUDE)
-        assertTrue(old.typedLocally.contains(1L)); assertFalse(next.typedLocally.contains(1L))
-        assertEquals(oldFields, fields(old))
+        val batchBytes = EventBatch.newBuilder().addAllEvents(events).build().toByteArray()
+        val raw = Corebind.reduce(Agent.AGENT_CLAUDE.number, batchBytes)
+        val ps = ProjectionState.parseFrom(raw)
+        assertTrue(ps.running)
+        assertEquals(listOf("r1"), ps.pendingInputsList.map { it.requestId })
+        assertEquals(listOf(4L), ps.typedLocallySeqsList)
+
+        val projection = EventProjection()
+        val first = projection.update(events.take(2), Agent.AGENT_CLAUDE)
+        assertSame(first, projection.update(events.take(2), Agent.AGENT_CLAUDE))
+        val second = projection.update(events, Agent.AGENT_CLAUDE)
+        assertEquals(derive(events, Agent.AGENT_CLAUDE).tools.map { it.seq }, second.tools.map { it.seq })
+
+        val approval = ev(5, Event.newBuilder().setApprovalRequested(ApprovalRequested.newBuilder().setApprovalId("a1").setInputDigest("d1")))
+        val live = LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId("s").setLastSeq(4)).setRunning(true).addActions(approval).build()
+        val overlaid = projection.currentActions(live)
+        assertEquals(listOf("a1"), overlaid.approvals.keys.toList())
+        assertTrue(awaitingApproval(overlaid.tools.single(), overlaid))
+        assertFalse(projection.currentActions(null).approvals.containsKey("a1"))
     }
 }

@@ -12,22 +12,6 @@ import io.github.lewin671.remoteagent.proto.SessionStatus
 import org.junit.Test
 
 class QueueTest {
-    private fun input(seq: Long, id: String, st: InputStatus, reason: String = "") =
-        Event.newBuilder().setSeq(seq).setInputState(InputState.newBuilder().setRequestId(id).setStatus(st).setReason(reason)).build()
-
-    @Test
-    fun theQueueKeepsTheDaemonsOrder() {
-        val d = derive(
-            listOf(
-                input(1, "b", InputStatus.INPUT_STATUS_QUEUED),
-                input(2, "a", InputStatus.INPUT_STATUS_QUEUED),
-                input(3, "c", InputStatus.INPUT_STATUS_QUEUED),
-                input(4, "a", InputStatus.INPUT_STATUS_CANCELED),
-            ),
-        )
-        assertEquals(listOf("b", "c"), queued(d))
-    }
-
     @Test
     fun theDaemonsReasonComesFirst() {
         val s = SessionView("s", "m", Session.newBuilder().setInputWait("draft").setAgent(Agent.AGENT_CODEX).build())
@@ -42,6 +26,11 @@ class QueueTest {
         assertEquals(CancelOutcome.CANCELED, cancelOutcome(InputStatus.INPUT_STATUS_CANCELED, canceledHere = true))
         assertEquals(CancelOutcome.CANCELED_ELSEWHERE, cancelOutcome(InputStatus.INPUT_STATUS_CANCELED, canceledHere = false))
         assertEquals(CancelOutcome.WRITTEN, cancelOutcome(InputStatus.INPUT_STATUS_SUBMITTED, canceledHere = true))
+    }
+
+    @Test
+    fun failureTextNamesTheAgentForUnrecognizedImages() {
+        assertEquals("Claude Code 没认出图片", failureText("image_not_recognized", Agent.AGENT_CLAUDE, copy = ::messageTextForTest))
     }
 }
 
@@ -93,43 +82,5 @@ class OriginTest {
             sortClients(listOf(c("old", 1, 0), c("me", 2, 5), c("new", 3, 0), c("recent", 1, 9), c("stale", 1, 4)), "me").map { it.id })
         assertEquals("MacBook 终端", originLabel(o(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL), state, "me", "MacBook", copy = ::messageTextForTest))
         assertEquals(null, originLabel(null, state, "me", "MacBook", copy = ::messageTextForTest))
-    }
-}
-
-class AcceptedTest {
-    private val local = io.github.lewin671.remoteagent.proto.Origin.newBuilder().setKind(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL).build()
-    private val client = io.github.lewin671.remoteagent.proto.Origin.newBuilder().setKind(io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT).setDeviceId("d1").build()
-
-    @Test
-    fun everyClientSeesWhatWasAcceptedAndHowFarItGot() {
-        val d = derive(
-            listOf(
-                Event.newBuilder().setSeq(1).setOrigin(client).setInputState(InputState.newBuilder().setRequestId("r").setStatus(InputStatus.INPUT_STATUS_QUEUED)
-                    .setText("看看这两张").addImageIds("i1").addImageIds("i2").setStage(io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_WAITING)).build(),
-                Event.newBuilder().setSeq(2).setInputState(InputState.newBuilder().setRequestId("r").setStatus(InputStatus.INPUT_STATUS_QUEUED)
-                    .setStage(io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_PASTING_IMAGES)).build(),
-                Event.newBuilder().setSeq(3).setInputState(InputState.newBuilder().setRequestId("r").setStatus(InputStatus.INPUT_STATUS_FAILED).setReason("image_not_recognized")).build(),
-            ),
-        )
-        val a = d.accepted.getValue("r")
-        assertEquals("看看这两张", a.text)
-        assertEquals(listOf("i1", "i2"), a.imageIds)
-        assertEquals("d1", a.origin!!.deviceId)
-        assertEquals(io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_PASTING_IMAGES, a.stage)
-        assertEquals("image_not_recognized", d.failures["r"])
-        assertEquals(emptyList<String>(), queued(d))
-        assertEquals("Claude Code 没认出图片", failureText("image_not_recognized", Agent.AGENT_CLAUDE, copy = ::messageTextForTest))
-    }
-
-    @Test
-    fun theOriginSaysWhatWasTypedInTheTerminal() {
-        val d = derive(
-            listOf(
-                Event.newBuilder().setSeq(1).setOrigin(local).setUserMessage(io.github.lewin671.remoteagent.proto.UserMessage.newBuilder().setText("typed")).build(),
-                Event.newBuilder().setSeq(2).setOrigin(client).setUserMessage(io.github.lewin671.remoteagent.proto.UserMessage.newBuilder().setText("sent")).build(),
-            ),
-            Agent.AGENT_CLAUDE,
-        )
-        assertEquals(setOf(1L), d.typedLocally)
     }
 }

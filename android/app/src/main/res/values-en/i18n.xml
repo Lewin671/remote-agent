@@ -1940,6 +1940,8 @@
     <string name="settings_android_clear_viewing_cache" formatted="false">"Clear viewing cache"</string>
     <string name="settings_android_code_paths_commands_and_terminal" formatted="false">"Code, paths, commands, and terminal"</string>
     <string name="settings_android_compare_these_4_patterns_on_the_new_device_and_confirm" formatted="false">"Compare these 4 patterns on the new device and confirm there. It can join after confirmation. You can leave this page while waiting."</string>
+    <string name="settings_android_core_libraries_bsd_3_clause" formatted="false">"Core libraries · BSD-3-Clause"</string>
+    <string name="settings_android_core_protobuf_encoding" formatted="false">"Protobuf encoding for the shared core"</string>
     <string name="settings_android_could_not_check_for_updates_value1">"Could not check for updates: %1$s"</string>
     <string name="settings_android_could_not_download_value1">"Could not download: %1$s"</string>
     <string name="settings_android_could_not_read_release_information_value1">"Could not read release information (%1$s)"</string>
@@ -1955,6 +1957,7 @@
     <string name="settings_android_downloading_value1_value2">"Downloading %1$s / %2$s"</string>
     <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"Fonts · SIL Open Font License 1.1"</string>
     <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"For an unverified version, run remote-agent doctor on the computer"</string>
+    <string name="settings_android_go_runtime_and_standard_library" formatted="false">"Go runtime and standard library for the shared core"</string>
     <string name="settings_android_icons_isc_license" formatted="false">"Icons · ISC License"</string>
     <string name="settings_android_image_drafts_and_file_source_information_are_cleared_after_7" formatted="false">"Image drafts and file source information are cleared after 7 idle days. Unconfirmed messages stay until confirmed or removed. File contents are not copied to the phone. Existing content is kept when storage is full."</string>
     <string name="settings_android_install" formatted="false">"Install"</string>

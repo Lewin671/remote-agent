@@ -120,11 +120,17 @@ kotlin {
 }
 
 // The Markdown and terminal history cases the clients read by live outside this build.
+val corebindHostDir = rootProject.file("../build/core/android-host")
+val corebindHostLib = corebindHostDir.resolve(if (System.getProperty("os.name").lowercase().contains("mac")) "libgojni.dylib" else "libgojni.so")
 tasks.withType<Test>().configureEach {
     timeout.set(Duration.ofMinutes(5))
     // Robolectric classes remain ordered within each JVM. Independent forks
     // isolate Android statics while overlapping class startup and UI fixtures.
     maxParallelForks = minOf(2, Runtime.getRuntime().availableProcessors())
+    dependsOn(":core:buildCorebindHost")
+    inputs.file(corebindHostLib).withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("java.library.path", corebindHostDir.absolutePath)
+    systemProperty("org.robolectric.packagesToNotAcquire", "go.,io.github.lewin671.remoteagent.corebind.")
     inputs.file(rootProject.file("../i18n/locale-vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.dir(file("schemas")).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("cacheSchemas", file("schemas").absolutePath)
@@ -143,6 +149,9 @@ ksp {
 dependencies {
     implementation(project(":core"))
     implementation(project(":terminal"))
+    implementation(files(rootProject.file("../build/core/android/corebind.aar")) {
+        builtBy(":core:buildCorebindAar")
+    })
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -208,5 +217,5 @@ val verifyWebrtcChecksum by tasks.registering {
     }
 }
 tasks.matching { it.name == "preBuild" }.configureEach {
-    dependsOn(verifyWebrtcChecksum)
+    dependsOn(verifyWebrtcChecksum, ":core:buildCorebindAar")
 }

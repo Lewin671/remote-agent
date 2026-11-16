@@ -2,14 +2,19 @@
 // projects, statuses, and what a session's events say is pending.
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.corebind.Corebind
+import io.github.lewin671.remoteagent.corebind.Projection
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalDecision
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.Event
+import io.github.lewin671.remoteagent.proto.EventBatch
 import io.github.lewin671.remoteagent.proto.InputState
 import io.github.lewin671.remoteagent.proto.InputStatus
+import io.github.lewin671.remoteagent.proto.LiveSnapshot
 import io.github.lewin671.remoteagent.proto.PlanProposed
+import io.github.lewin671.remoteagent.proto.ProjectionState
 import io.github.lewin671.remoteagent.proto.QuestionAsked
 import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.SessionStatus
@@ -702,6 +707,7 @@ class RunningTool(
     val seq: Long = 0,
     val input: String = "",
     val inputDigest: String = "",
+    val awaitingApproval: Boolean = false,
 )
 
 /**
@@ -755,23 +761,6 @@ data class Accepted(
     val files: List<io.github.lewin671.remoteagent.proto.SentFile> = emptyList(),
 )
 
-/** Sparse status updates retain payload and mode; known accepted text/origin outrank held previews. */
-private fun retainInputDetails(st: InputState, before: InputState?): InputState = st.toBuilder().apply {
-    if (before != null) {
-        if (st.mode == SendMode.SEND_MODE_UNSPECIFIED) mode = before.mode
-        if (st.text.isEmpty()) text = before.text
-        if (st.filesCount == 0) addAllFiles(before.filesList)
-        if (st.imageIdsCount == 0) addAllImageIds(before.imageIdsList)
-    }
-}.build()
-
-private fun retainAccepted(prior: Accepted, observed: Accepted): Accepted = prior.copy(
-    origin = prior.origin ?: observed.origin,
-    stage = observed.stage.takeIf { it != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED } ?: prior.stage,
-    files = prior.files.ifEmpty { observed.files },
-    imageIds = prior.imageIds.ifEmpty { observed.imageIds },
-)
-
 data class Compaction(val before: Int?, val after: Int? = null)
 
 class Derived(
@@ -823,6 +812,10 @@ class Derived(
      * Mode or model changes made in the terminal, by the seq of the turn context that shows them.
      */
     val terminalChanges: HashMap<Long, List<TerminalChange>> = HashMap(),
+    /** Inputs the model has not received yet, in acceptance order. */
+    val pendingInputs: List<PendingInput> = emptyList(),
+    /** Unambiguous daemon digest associations from ToolCall seq to ApprovalRequested ID. */
+    val approvalCallIds: Map<Long, String> = emptyMap(),
 )
 
 sealed interface TerminalChange {
@@ -830,382 +823,202 @@ sealed interface TerminalChange {
     data class ModelChanged(val model: String, val effort: String) : TerminalChange
 }
 
-/** Pending approvals and questions, input states and the running turn. */
-fun derive(events: List<Event>, agent: Agent = DEFAULT_AGENT): Derived =
-    EventReducer(agent).apply { append(events) }.snapshot()
+private fun toRunningTool(t: io.github.lewin671.remoteagent.proto.RunningTool) = RunningTool(
+    title = t.title,
+    callId = t.callId,
+    since = t.sinceMs,
+    kind = t.kind,
+    itemType = t.itemType,
+    seq = t.seq,
+    input = t.input,
+    inputDigest = t.inputDigest,
+    awaitingApproval = t.awaitingApproval,
+)
 
-internal class EventReducer(agent: Agent) {
-    private val d = Derived()
-    // The mode as the chat names it, a CLI's own name for one outside the four; empty until a
-    // context says.
-    private var mode = ""
-    private var model = ""
-    // The model and effort last switched to from here, until a context shows a model.
-    private var expected: Pair<String, String>? = null
-    // Messages sent from clients are recorded as submitted before the CLI
-    // records them; the rest were typed in the terminal.
-    private var submitted = 0
-    // A user message with no submitted state before it, which may still come
-    // right after: Claude Code records the message first.
-    private var unclaimed: Long? = null
-    private val queuedAt = HashMap<String, Long>()
-    private var compacting: Long? = null
-    // A plan was proposed since entering plan mode: leaving it is the plan's
-    // answer, however given, not a mode switch made in the terminal.
-    private var planned = false
-    private val reconcilesUnclaimedInput = agentInfo(agent).reconcilesUnclaimedInput
-    // Starts a turn ended without a result, by call ID, for a result that comes later.
-    private val unfinishedById = HashMap<String, RunningTool>()
+/** Converts a shared-core ProjectionState protobuf into the Kotlin :core view model. */
+fun fromProjectionState(ps: ProjectionState): Derived {
+    val approvals = LinkedHashMap<String, ApprovalRequested>(ps.approvalsCount)
+    for (a in ps.approvalsList) approvals[a.approvalId] = a.request
 
-    fun append(events: List<Event>) {
-        for (e in events) {
-            when (e.kindCase) {
-                Event.KindCase.APPROVAL_REQUESTED ->
-                    d.approvals[e.approvalRequested.approvalId] = e.approvalRequested
-                Event.KindCase.APPROVAL_RESOLVED -> {
-                    d.approvals.remove(e.approvalResolved.approvalId)
-                    d.resolved[e.approvalResolved.approvalId] =
-                        e.approvalResolved.decision to e.approvalResolved.message
-                    e.originOrNull()?.let { d.resolvedBy[e.approvalResolved.approvalId] = it }
+    val resolved = HashMap<String, Pair<ApprovalDecision, String>>(ps.resolvedCount)
+    val resolvedBy = HashMap<String, io.github.lewin671.remoteagent.proto.Origin>()
+    for ((id, r) in ps.resolvedMap) {
+        resolved[id] = r.decision to r.message
+        if (r.hasOrigin()) resolvedBy[id] = r.origin
+    }
+
+    val questions = LinkedHashMap<String, QuestionAsked>(ps.questionsCount)
+    for (q in ps.questionsList) questions[q.questionId] = q.request
+
+    val answered = HashMap<String, List<String>>(ps.answeredCount)
+    for ((id, a) in ps.answeredMap) answered[id] = a.answersList
+
+    val inputs = LinkedHashMap<String, InputStatus>(ps.inputsCount)
+    val inputSeqs = HashMap<String, Long>(ps.inputsCount)
+    val inputDetails = LinkedHashMap<String, InputState>(ps.inputsCount)
+    val accepted = HashMap<String, Accepted>(ps.inputsCount)
+    val failures = HashMap<String, String>()
+    for (ip in ps.inputsList) {
+        inputs[ip.requestId] = ip.status
+        inputSeqs[ip.requestId] = ip.lastSeq
+        if (ip.hasDetail()) inputDetails[ip.requestId] = ip.detail
+        if (ip.hasAccepted()) {
+            val a = ip.accepted
+            accepted[ip.requestId] = Accepted(
+                a.text,
+                a.imageIdsList,
+                if (a.hasOrigin()) a.origin else null,
+                a.stage,
+                a.filesList,
+            )
+        }
+        if (ip.hasFailureReason()) failures[ip.requestId] = ip.failureReason
+    }
+
+    val pendingInputs = ps.pendingInputsList.map { p ->
+        PendingInput(
+            p.requestId,
+            p.text,
+            p.mode,
+            p.paused,
+            p.held,
+            if (p.hasOrigin()) p.origin else null,
+            p.filesList,
+        )
+    }
+
+    val unsent = LinkedHashMap<String, Long>(ps.unsentCount)
+    for (u in ps.unsentList) unsent[u.requestId] = u.seq
+
+    val compactions = HashMap<Long, Compaction>(ps.compactionsCount)
+    for ((seq, c) in ps.compactionsMap) {
+        compactions[seq] = Compaction(
+            if (c.hasBeforePercent()) c.beforePercent else null,
+            if (c.hasAfterPercent()) c.afterPercent else null,
+        )
+    }
+
+    val tools = ps.toolsList.mapTo(ArrayList(ps.toolsCount)) { toRunningTool(it) }
+    val background = ps.backgroundList.mapTo(ArrayList(ps.backgroundCount)) { b ->
+        BackgroundTool(toRunningTool(b.tool), b.returned)
+    }
+
+    val terminalChanges = HashMap<Long, List<TerminalChange>>(ps.terminalChangesCount)
+    for ((seq, list) in ps.terminalChangesMap) {
+        terminalChanges[seq] = list.changesList.mapNotNull { ch ->
+            when (ch.kindCase) {
+                io.github.lewin671.remoteagent.proto.TerminalChange.KindCase.MODE -> {
+                    val m = ch.mode
+                    val raw = if (m.rawMode == "acceptEdits") "accept edits" else m.rawMode
+                    val mode = modeOf(m.mode)
+                    TerminalChange.ModeChanged(mode, raw.ifEmpty { mode?.name.orEmpty() })
                 }
-                Event.KindCase.QUESTION_ASKED ->
-                    if (!e.questionAsked.async)
-                        d.questions[e.questionAsked.questionId] = e.questionAsked
-                Event.KindCase.QUESTION_ANSWERED -> {
-                    d.questions.remove(e.questionAnswered.questionId)
-                    d.answered[e.questionAnswered.questionId] =
-                        e.questionAnswered.answersList.flatMap { it.answersList }
-                }
-                Event.KindCase.TURN_STARTED -> {
-                    d.running = true
-                    d.runningSeq = e.seq
-                    d.background.clear()
-                }
-                Event.KindCase.TURN_ENDED -> {
-                    d.running = false
-                    d.runningSeq = e.seq
-                    d.questions.clear()
-                    // Still running when an interrupted turn ended: whether it
-                    // ever ends is not known (an interrupt does not stop
-                    // background commands). A turn that completed without a
-                    // tool's result only says no result came.
-                    val aborted =
-                        e.turnEnded.outcome ==
-                            io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED
-                    for (t in d.tools) {
-                        if (aborted) d.background += BackgroundTool(t, returned = false)
-                        else d.noResult += t.seq
-                        d.unfinished += t.seq
-                        if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
-                    }
-                    d.tools.clear()
-                }
-                Event.KindCase.INPUT_STATE -> {
-                    val st = e.inputState
-                    val late = d.inputs[st.requestId] == InputStatus.INPUT_STATUS_UNCONFIRMED
-                    d.inputs[st.requestId] = st.status
-                    d.inputSeqs[st.requestId] = e.seq
-                    val before = d.inputDetails[st.requestId]
-                    d.inputDetails[st.requestId] = retainInputDetails(st, before)
-                    val prev = d.accepted[st.requestId]
-                    val carriesInput = st.text.isNotEmpty() || st.imageIdsCount > 0 || st.filesCount > 0
-                    if ((st.status == InputStatus.INPUT_STATUS_QUEUED || st.status == InputStatus.INPUT_STATUS_HELD_BY_CLI) && carriesInput) {
-                        val observed = Accepted(st.text, st.imageIdsList, e.originOrNull(), st.stage, st.filesList)
-                        d.accepted[st.requestId] = if (prev == null) observed else retainAccepted(prev, observed)
-                    } else if (prev != null && st.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED) {
-                        d.accepted[st.requestId] = prev.copy(stage = st.stage)
-                    }
-                    if (
-                        st.status == InputStatus.INPUT_STATUS_FAILED ||
-                            st.status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL
-                    )
-                        d.failures[st.requestId] = st.reason
-                    if (
-                        e.inputState.status == InputStatus.INPUT_STATUS_CANCELED &&
-                            e.inputState.reason == "exited"
-                    )
-                        d.unsent[e.inputState.requestId] = e.seq
-                    if (st.status == InputStatus.INPUT_STATUS_QUEUED)
-                        queuedAt.putIfAbsent(st.requestId, e.seq)
-                    if (e.inputState.status == InputStatus.INPUT_STATUS_SUBMITTED) {
-                        // Codex marks a message submitted before recording it;
-                        // Claude Code records the message first and the state
-                        // follows, claiming only a message after its enqueue. A
-                        // message confirmed after it was reported unconfirmed
-                        // is the one recorded right after this state.
-                        val u = unclaimed
-                        val since = queuedAt[st.requestId]
-                        if (
-                            !late &&
-                                reconcilesUnclaimedInput &&
-                                u != null &&
-                                e.seq - u <= 3 &&
-                                (since == null || u > since)
-                        ) {
-                            d.typedLocally.remove(u)
-                            unclaimed = null
-                        } else {
-                            submitted++
-                        }
-                    }
-                }
-                Event.KindCase.USER_MESSAGE ->
-                    if (
-                        e.hasOrigin() &&
-                            e.origin.kind !=
-                                io.github.lewin671.remoteagent.proto.OriginKind
-                                    .ORIGIN_KIND_UNSPECIFIED
-                    ) {
-                        // The daemon says who sent it: no guessing.
-                        if (
-                            e.origin.kind ==
-                                io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL
-                        )
-                            d.typedLocally += e.seq
-                        if (submitted > 0 && e.userMessage.requestId.isNotEmpty()) submitted--
-                    } else {
-                        if (submitted > 0) submitted--
-                        // Codex sends this itself when a plan is approved.
-                        else if (e.userMessage.text != "Implement the plan.") {
-                            d.typedLocally += e.seq
-                            unclaimed = e.seq
-                        }
-                    }
-                Event.KindCase.TOOL_STARTED ->
-                    e.toolStarted.let {
-                        d.tools +=
-                            RunningTool(
-                                it.title,
-                                it.callId,
-                                eventTime(e),
-                                it.kind,
-                                it.itemType,
-                                e.seq,
-                                it.input,
-                                it.inputDigest,
-                            )
-                    }
-                Event.KindCase.TOOL_CALL -> {
-                    // Starts and calls pair by call ID (for Codex, later
-                    // entries of one call carry "<id>#2" and have no start).
-                    val id = e.toolCall.callId
-                    var matched = false
-                    val j = if (id.isNotEmpty()) d.tools.indexOfFirst { it.callId == id } else -1
-                    if (j >= 0) {
-                        matched = true
-                        val t = d.tools.removeAt(j)
-                        d.completedAt[t.seq] = e.seq
-                        if (wentToBackground(e.toolCall))
-                            d.background += BackgroundTool(t, returned = true)
-                    } else if (id.isNotEmpty()) {
-                        // A call reported after its turn ended (a Codex exec still
-                        // running): it belongs to that start, not to a new row.
-                        val t = unfinishedById[id]
-                        if (t != null && t.seq !in d.completedAt) {
-                            matched = true
-                            d.completedAt[t.seq] = e.seq
-                            d.unfinished -= t.seq
-                            d.noResult -= t.seq
-                            d.background.removeAll { it.tool.seq == t.seq }
-                            if (wentToBackground(e.toolCall))
-                                d.background += BackgroundTool(t, returned = true)
-                        }
-                    }
-                    if (!matched && wentToBackground(e.toolCall)) {
-                        val c = e.toolCall
-                        // A background result is itself a known start, even
-                        // without ToolStarted (e.g. an extra exec command).
-                        val t =
-                            RunningTool(
-                                c.title,
-                                id,
-                                eventTime(e),
-                                c.kind,
-                                c.itemType,
-                                e.seq,
-                                c.input,
-                                c.inputDigest,
-                            )
-                        d.background += BackgroundTool(t, returned = true)
-                    }
-                }
-                Event.KindCase.TOKEN_USAGE -> {
-                    d.usage = e.tokenUsage
-                    compacting?.let { seq ->
-                        d.compactions[seq]?.let {
-                            d.compactions[seq] = it.copy(after = usagePercent(e.tokenUsage))
-                        }
-                    }
-                    compacting = null
-                }
-                Event.KindCase.PLAN_PROPOSED -> {
-                    d.plan = e.planProposed
-                    planned = true
-                }
-                Event.KindCase.SETTINGS_CHANGED -> {
-                    val c = e.settingsChanged
-                    if (c.compacted) {
-                        d.compactions[e.seq] = Compaction(usagePercent(d.usage))
-                        compacting = e.seq
-                    }
-                    // The next context should show this model; the client names it
-                    // by slug or alias, the context by the CLI's own ID.
-                    if (c.model.isNotEmpty()) expected = c.model to c.effort
-                    modeOf(c.mode)?.let { mode = it.name }
-                }
-                Event.KindCase.TURN_CONTEXT -> {
-                    val c = e.turnContext
-                    // Claude Code's mode by its own name, so that one outside the four is a change
-                    // like any other.
-                    val m =
-                        if (c.permissionMode.isNotEmpty()) permissionMode(c.permissionMode)?.name ?: c.permissionMode
-                        else
-                            contextMode(
-                                    c.approvalsReviewer,
-                                    c.approvalPolicy,
-                                    c.sandbox,
-                                    c.collaborationMode,
-                                )
-                                ?.name
-                                .orEmpty()
-                    val planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
-                    val mm = "${c.model} ${c.effort}"
-                    val changes = mutableListOf<TerminalChange>()
-                    if (
-                        mode.isNotEmpty() &&
-                            m.isNotEmpty() &&
-                            m != mode &&
-                            !(mode == Mode.PLAN.name && planned)
-                    )
-                        changes += TerminalChange.ModeChanged(Mode.entries.find { it.name == m }, if (m == "acceptEdits") "accept edits" else m)
-                    if (m.isNotEmpty() && m != mode) planned = false
-                    // Plan mode runs at its own effort; only a model change counts
-                    // there. A context without a model is Claude Code's mode, read
-                    // off the screen; it says nothing about the model. After a
-                    // switch from here the next context is compared with what was
-                    // chosen; a different model means the terminal changed it since.
-                    val want = expected
-                    val changed =
-                        if (want != null) {
-                            !(modelIs(c.model, want.first) &&
-                                (want.second.isEmpty() ||
-                                    c.effort.isEmpty() ||
-                                    c.effort == want.second))
-                        } else {
-                            mm != model
-                        }
-                    if (
-                        (model.isNotEmpty() || want != null) &&
-                            c.model.isNotEmpty() &&
-                            changed &&
-                            !planning
-                    ) {
-                        changes +=
-                            TerminalChange.ModelChanged(c.model, c.effort)
-                    }
-                    if (c.model.isNotEmpty() && !planning) expected = null
-                    if (changes.isNotEmpty()) d.terminalChanges[e.seq] = changes.toList()
-                    if (m.isNotEmpty()) mode = m
-                    if (!planning && c.model.isNotEmpty()) model = mm
-                }
-                Event.KindCase.SESSION_STATE -> {
-                    d.scheduledClosed = e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED && e.sessionState.scheduledClosed
-                    d.idleClosed = e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED && e.sessionState.idleClosed
-                    if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
-                        d.running = false
-                        d.runningSeq = e.seq
-                        d.approvals.clear()
-                        d.questions.clear()
-                        for (t in d.tools) {
-                            d.unfinished += t.seq
-                            d.noResult += t.seq
-                            if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
-                        }
-                        d.tools.clear()
-                        d.background.clear()
-                    }
-                }
-                // What came before is a copy of the source's history: nothing
-                // of it is pending or running in this session.
-                Event.KindCase.SESSION_FORKED -> {
-                    d.running = false
-                    d.runningSeq = e.seq
-                    d.approvals.clear()
-                    d.questions.clear()
-                    for (t in d.tools) {
-                        d.unfinished += t.seq
-                        d.noResult += t.seq
-                        if (t.callId.isNotEmpty()) unfinishedById[t.callId] = t
-                    }
-                    d.tools.clear()
-                    d.background.clear()
-                    submitted = 0
-                    unclaimed = null
-                    unfinishedById.clear()
-                }
-                else -> {}
+                io.github.lewin671.remoteagent.proto.TerminalChange.KindCase.MODEL ->
+                    TerminalChange.ModelChanged(ch.model.model, ch.model.effort)
+                else -> null
             }
         }
     }
 
-    fun snapshot(): Derived =
-        Derived(
-            approvals = LinkedHashMap(d.approvals),
-            resolved = HashMap(d.resolved),
-            resolvedBy = HashMap(d.resolvedBy),
-            questions = LinkedHashMap(d.questions),
-            answered = HashMap(d.answered),
-            inputs = LinkedHashMap(d.inputs),
-            inputSeqs = HashMap(d.inputSeqs),
-            inputDetails = LinkedHashMap(d.inputDetails),
-            accepted = HashMap(d.accepted),
-            failures = HashMap(d.failures),
-            unsent = LinkedHashMap(d.unsent),
-            tools = ArrayList(d.tools),
-            background = ArrayList(d.background),
-            completedAt = HashMap(d.completedAt),
-            unfinished = HashSet(d.unfinished),
-            noResult = HashSet(d.noResult),
-            typedLocally = HashSet(d.typedLocally),
-            terminalChanges = HashMap(d.terminalChanges),
-            running = d.running,
-            runningSeq = d.runningSeq,
-            scheduledClosed = d.scheduledClosed,
-            idleClosed = d.idleClosed,
-            usage = d.usage,
-            plan = d.plan,
-            compactions = HashMap(d.compactions),
-        )
+    return Derived(
+        approvals = approvals,
+        resolved = resolved,
+        resolvedBy = resolvedBy,
+        questions = questions,
+        answered = answered,
+        inputs = inputs,
+        inputSeqs = inputSeqs,
+        inputDetails = inputDetails,
+        accepted = accepted,
+        failures = failures,
+        unsent = unsent,
+        running = ps.running,
+        runningSeq = ps.runningSeq,
+        scheduledClosed = ps.scheduledClosed,
+        idleClosed = ps.idleClosed,
+        usage = if (ps.hasUsage()) ps.usage else null,
+        compactions = compactions,
+        plan = if (ps.hasPlan()) ps.plan else null,
+        tools = tools,
+        background = background,
+        completedAt = HashMap(ps.completedAtMap),
+        unfinished = HashSet(ps.unfinishedSeqsList),
+        noResult = HashSet(ps.noResultSeqsList),
+        typedLocally = HashSet(ps.typedLocallySeqsList),
+        terminalChanges = terminalChanges,
+        pendingInputs = pendingInputs,
+        approvalCallIds = HashMap(ps.approvalCallIdsMap),
+    )
 }
 
-/** Reuses reducer state only for an unchanged prefix; published results never mutate. */
+private fun decodeProjectionState(bytes: ByteArray?): Derived =
+    if (bytes == null || bytes.isEmpty()) Derived()
+    else fromProjectionState(ProjectionState.parseFrom(bytes))
+
+private fun encodeEventBatch(events: List<Event>): ByteArray =
+    if (events.isEmpty()) ByteArray(0)
+    else EventBatch.newBuilder().addAllEvents(events).build().toByteArray()
+
+/** Pending approvals and questions, input states and the running turn. */
+fun derive(events: List<Event>, agent: Agent = DEFAULT_AGENT): Derived {
+    val resolvedAgent = if (agent == Agent.AGENT_UNSPECIFIED) DEFAULT_AGENT else agent
+    return decodeProjectionState(Corebind.reduce(resolvedAgent.number, encodeEventBatch(events)))
+}
+
+/** Reuses reducer state in the shared Go core for an unchanged prefix; published results never mutate. */
 class EventProjection {
     private var previous: List<Event> = emptyList()
     private var agent: Agent? = null
-    private var reducer = EventReducer(DEFAULT_AGENT)
+    private var core: Projection? = null
     private var result = Derived()
+    private var liveResult: Derived? = null
+    private var lastLive: LiveSnapshot? = null
+    private var liveValid = false
 
     fun update(events: List<Event>, agent: Agent = DEFAULT_AGENT): Derived {
-        if (this.agent == agent && events === previous) return result
-        val append = this.agent == agent && unchangedPrefix(events, previous)
-        if (!append) reducer = EventReducer(agent)
-        reducer.append(if (append) events.subList(previous.size, events.size) else events)
-        result = reducer.snapshot()
+        val resolvedAgent = if (agent == Agent.AGENT_UNSPECIFIED) DEFAULT_AGENT else agent
+        if (this.agent == resolvedAgent && events === previous) return result
+        val handle = core ?: Corebind.newProjection(resolvedAgent.number).also { core = it }
+        val append = this.agent == resolvedAgent && unchangedPrefix(events, previous)
+        if (append) {
+            if (events.size == previous.size) {
+                previous = events
+                return result
+            }
+            val delta = events.subList(previous.size, events.size)
+            result = decodeProjectionState(handle.append(encodeEventBatch(delta)))
+        } else {
+            if (this.agent != null) handle.reset(resolvedAgent.number)
+            result = if (events.isEmpty()) {
+                decodeProjectionState(handle.snapshot())
+            } else {
+                decodeProjectionState(handle.append(encodeEventBatch(events)))
+            }
+        }
         previous = events
-        this.agent = agent
+        this.agent = resolvedAgent
+        liveValid = false
         return result
+    }
+
+    /**
+     * Overlays a fresh authenticated owner [live] snapshot onto the reducer's current historical
+     * state, clearing pending actions when [live] is null.
+     */
+    fun currentActions(live: LiveSnapshot?): Derived {
+        if (liveValid && live === lastLive) return liveResult!!
+        val handle = core ?: Corebind.newProjection((agent ?: DEFAULT_AGENT).number).also { core = it }
+        return decodeProjectionState(handle.currentActions(live?.toByteArray() ?: ByteArray(0))).also {
+            lastLive = live
+            liveResult = it
+            liveValid = true
+        }
     }
 }
 
-/** Match Claude Code by daemon digest, or Codex by the command it reported for the call. */
+/** Whether a running tool is waiting on a pending approval request, as computed by the shared core. */
 fun awaitingApproval(t: RunningTool, d: Derived): Boolean =
-    d.approvals.values.any { a ->
-        if (t.inputDigest.isNotEmpty()) a.inputDigest.isNotEmpty() && a.inputDigest == t.inputDigest
-        else
-            a.inputDigest.isEmpty() &&
-                a.command.isNotEmpty() &&
-                (a.command == t.input || a.command == t.title)
-    }
+    d.tools.firstOrNull { it.seq == t.seq }?.awaitingApproval ?: t.awaitingApproval
 
 /**
  * How long a tool has run, in ms, or null when its start time is unknown. While disconnected
@@ -1342,13 +1155,7 @@ fun failureText(reason: String, agent: Agent, copy: MessageResolver): UiMessage 
     }
 
 /** Messages the daemon accepted and has not written yet, in the order it accepted them. */
-fun queued(d: Derived): List<String> =
-    d.inputs
-        .filterValues {
-            it == InputStatus.INPUT_STATUS_QUEUED || it == InputStatus.INPUT_STATUS_HELD_BY_CLI
-        }
-        .keys
-        .toList()
+fun queued(d: Derived): List<String> = d.pendingInputs.map { it.id }
 
 data class PendingInput(
     val id: String,
@@ -1361,24 +1168,7 @@ data class PendingInput(
 )
 
 /** Only inputs the model has not received; event order is acceptance order. */
-fun pendingInputs(d: Derived): List<PendingInput> =
-    d.inputDetails.values.mapNotNull { st ->
-        if (
-            st.status != InputStatus.INPUT_STATUS_QUEUED &&
-                st.status != InputStatus.INPUT_STATUS_HELD_BY_CLI
-        )
-            return@mapNotNull null
-        val accepted = d.accepted[st.requestId]
-        PendingInput(
-            st.requestId,
-            accepted?.text ?: st.text,
-            st.mode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER,
-            st.paused,
-            st.status == InputStatus.INPUT_STATUS_HELD_BY_CLI,
-            accepted?.origin,
-            accepted?.files?.takeIf { it.isNotEmpty() } ?: st.filesList,
-        )
-    }
+fun pendingInputs(d: Derived): List<PendingInput> = d.pendingInputs
 
 /** CLI's native second approval option, translated only when its form is known. */
 fun approvalAlwaysText(message: String): MessageText {
@@ -1617,147 +1407,26 @@ fun contextText(tokens: Long, copy: MessageResolver): String? =
 /** The standard context window, which a Claude Code session can be held to. */
 const val STANDARD_WINDOW = 200_000L
 
-/** Context occupancy is unknown without a window; whole percentages match the web. */
-private fun usagePercent(u: TokenUsage?): Int? =
-    if (u == null || u.contextWindow <= 0) null
-    else minOf(100, (u.lastTotalTokens * 100 / u.contextWindow).toInt())
-
-/** Unambiguous daemon digest associations over the complete observed history. */
-fun approvalCallIDs(events: List<Event>, d: Derived): Map<Long, String> {
-    val reqs = HashMap<Pair<String, String>, MutableList<Pair<String, Long>>>()
-    val calls = HashMap<Pair<String, String>, MutableList<Long>>()
-    for (e in events) when (e.kindCase) {
-        Event.KindCase.APPROVAL_REQUESTED -> {
-            val a = e.approvalRequested
-            if (a.inputDigest.isNotEmpty())
-                reqs.getOrPut(a.toolName to a.inputDigest) { mutableListOf() } +=
-                    a.approvalId to e.seq
-        }
-        Event.KindCase.TOOL_CALL -> {
-            val t = e.toolCall
-            if (t.inputDigest.isNotEmpty())
-                calls.getOrPut(t.itemType to t.inputDigest) { mutableListOf() } += e.seq
-        }
-        else -> {}
-    }
-    return buildMap {
-        for ((key, rs) in reqs) {
-            val cs = calls[key].orEmpty()
-            if (rs.size == 1 && cs.size == 1 && cs[0] > rs[0].second && rs[0].first in d.resolved)
-                put(cs[0], rs[0].first)
-        }
-    }
-}
-
-/**
- * What a plan the live snapshot says is pending reads as: the plan event it names (planEventSeq),
- * the clean Markdown the CLI proposed, when [events] (the readable, verified history, each event
- * bound to its place in the session) hold it. Only without it does the terminal's text stand in,
- * box lines and all. Whether a plan is pending, and what an answer is bound to (the event's seq
- * and the screen's hash), stay the snapshot's alone.
- */
-fun livePlanText(live: io.github.lewin671.remoteagent.proto.LiveSnapshot, events: List<Event>): String {
-    val seq = live.planEventSeq
-    // A whole history holds event n at n - 1; otherwise look for it.
-    val e =
-        events.getOrNull((seq - 1).toInt())?.takeIf { it.seq == seq }
-            ?: events.lastOrNull { it.seq == seq }
-    val text = if (e != null && e.hasPlanProposed()) e.planProposed.text else ""
-    return if (seq > 0 && text.isNotBlank() && !isSkeleton(text)) text else live.planScreen
-}
+/** Unambiguous daemon digest associations over the complete observed history, computed by the shared core. */
+fun approvalCallIDs(events: List<Event>, d: Derived): Map<Long, String> = d.approvalCallIds
 
 /**
  * Current pending actions come only from an authenticated owner reply, never from replayable
  * historical events. Other history remains read-only data; a pending plan's text is read from the
- * history event the reply names ([livePlanText]).
+ * history event the reply names.
  */
 fun currentActions(
-    d: Derived,
-    live: io.github.lewin671.remoteagent.proto.LiveSnapshot?,
-    events: List<Event> = emptyList(),
-): Derived {
-    val approvals = LinkedHashMap<String, ApprovalRequested>()
-    val questions = LinkedHashMap<String, QuestionAsked>()
-    live?.actionsList?.forEach { e ->
-        if (e.hasApprovalRequested())
-            approvals[e.approvalRequested.approvalId] = e.approvalRequested
-        if (e.hasQuestionAsked() && !e.questionAsked.async)
-            questions[e.questionAsked.questionId] = e.questionAsked
-    }
-    val plan =
-        if (
-            live != null &&
-                live.session.planOpen &&
-                live.planEventSeq != 0L &&
-                live.planScreenHash.size() == 32
-        )
-            PlanProposed.newBuilder().setText(livePlanText(live, events)).build()
-        else null
-    val inputs = LinkedHashMap(d.inputs)
-    val details = LinkedHashMap(d.inputDetails)
-    val accepted = HashMap(d.accepted)
-    if (live != null) {
-        // A snapshot at N supplies state through N; verified events after N win.
-        val snapshotSeq = live.session.lastSeq
-        fun newerInput(id: String) = (d.inputSeqs[id] ?: 0L) > snapshotSeq
-        val observed = derive(live.actionsList)
-        for ((id, status) in inputs.toMap()) if (
-            status in
-                setOf(InputStatus.INPUT_STATUS_QUEUED, InputStatus.INPUT_STATUS_HELD_BY_CLI) &&
-                id !in observed.inputs && !newerInput(id)
-        ) {
-            inputs[id] = InputStatus.INPUT_STATUS_UNCONFIRMED
-            details.remove(id)
-        }
-        for ((id, status) in observed.inputs) if (!newerInput(id)) inputs[id] = status
-        for ((id, input) in observed.inputDetails) if (!newerInput(id)) {
-            details[id] = retainInputDetails(input, details[id])
-            if (input.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED)
-                accepted[id]?.let { accepted[id] = it.copy(stage = input.stage) }
-        }
-        for ((id, input) in observed.accepted) {
-            if (newerInput(id)) continue
-            val prior = accepted[id]
-            // Live text is a bounded preview. History owns the accepted payload and sender.
-            accepted[id] = prior?.copy(
-                stage = input.stage.takeIf { it != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED } ?: prior.stage,
-            ) ?: input
-        }
-    }
-    return Derived(
-        approvals = approvals,
-        resolved = d.resolved,
-        resolvedBy = d.resolvedBy,
-        questions = questions,
-        answered = d.answered,
-        inputs = inputs,
-        inputSeqs = d.inputSeqs,
-        inputDetails = details,
-        accepted = accepted,
-        failures = d.failures,
-        unsent = d.unsent,
-        running = if (live != null && d.runningSeq <= live.session.lastSeq) live.running else d.running,
-        runningSeq = d.runningSeq,
-        scheduledClosed = d.scheduledClosed,
-        idleClosed = d.idleClosed,
-        usage = d.usage,
-        compactions = d.compactions,
-        plan = plan,
-        tools = d.tools,
-        background = d.background,
-        completedAt = d.completedAt,
-        unfinished = d.unfinished,
-        noResult = d.noResult,
-        typedLocally = d.typedLocally,
-        terminalChanges = d.terminalChanges,
-    )
+    events: List<Event>,
+    live: LiveSnapshot?,
+    agent: Agent = DEFAULT_AGENT,
+): Derived = EventProjection().run {
+    update(events, agent)
+    currentActions(live)
 }
 
 /** Verified history supplies state; fresh snapshots supply current actions. */
 fun currentState(snapshot: SessionEvents, agent: Agent = DEFAULT_AGENT): Derived =
-    snapshot.stateEvents.let {
-        currentActions(derive(it, agent), snapshot.live, it)
-    }
+    currentActions(snapshot.stateEvents, snapshot.live, agent)
 
 fun inputTimingLabel(agent: Agent, mode: SendMode, held: Boolean, starting: String?): UiMessage = when {
     !agentInfo(agent).steersDuringTurn -> starting?.let { UiMessages.queueAgentReady(it) } ?: UiMessages.queueAfterTurn()
