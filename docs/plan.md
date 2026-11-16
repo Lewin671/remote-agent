@@ -34,6 +34,14 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 电脑状态核心和三端视图已整合，接下来补 [下列界面差异](#电脑状态界面) 的裁定及联合实测：直接界面操作验证离线/恢复、清理和多机器通知，不把核心单测当成真机验收。
 
 
+**当前主要工作：客户端逻辑迁进共享 Go 核心。** 架构和分层见 [architecture · 客户端共享核心](architecture.md#客户端共享核心)。会话事件归约已迁完（v0.81.3）；第一次迁列表规则时壳保留了旧领域类型、只换了实现，产品代码几乎没减少，因此按新架构从骨架重做，那批分支（`wt/go-core-p3-*`）只作参考，其中 `clientcore/lists`、`clientcore/outcome` 的规则代码沿用。按架构文档的迁移顺序逐步做，每步的验收标准：
+
+- 三端界面直接渲染核心的视图模型，删除对应的旧领域类型和规则；壳里没有请求组装和结果回转的转换层；产品代码净减少，并在验收记录里写明三端各自的增减
+- 规则测试只在 Go；三端检查总耗时不比上一版明显变长（不超过 10%）；wasm 和原生库体积在预算内
+- 隔离环境用真实 CLI 走完该步涉及的界面，三端各一遍；发版并上线
+
+下面的事项在迁移间隙照常推进。
+
 按顺序做；第一项是当前的主要工作。
 
 1. **三端按 [client-v58](design/client-v62.html) 实现新界面**。网页已完成（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)）；iOS 已完成（[验收](acceptance-notes.md#ios-按-client-v58-重写界面层2026-11-11)）；Android 已完成（[验收](acceptance-notes.md#android-按-client-v58-重画2026-11-11)）。剩下的是三端真机验收和各验收记录里标为未验证的流程。规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
@@ -47,6 +55,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 9. **历史快照**。网页、Android 和 iOS 第一次打开长会话都已先取最新一段显示，更早的在后台补；再次打开从本地密文缓存恢复（原生端按页从最新一页起），同时只向 server 取之后的事件。剩下的是状态推导仍要从序号 1 开始的完整前缀：补齐之前只按已连上的前缀推导，所以第一次打开仍要在后台下完整段历史（瓶颈是下载量，见 [architecture §10](architecture.md#10-报文同步和指令) 的「后台和内存」）。下一步是快照，让推导不依赖完整历史；它改变两端约定，先评审协议。三端共同规则和共享向量见 [共同规则](architecture.md#客户端状态推导的共同规则)
 10. **v8 以后的界面改动补验收**。两端逐屏对照 client-v38（网页的 v8 改动也没有逐屏对照过），并连真实 CLI 走一遍设置类页面
 11. **清理被登录 shell 取代的机制**。客户端开的会话现在由登录 shell 现算环境（[architecture §6](architecture.md#6-接入-codex)），`agent.env`、`daemon.sh install` 写进服务的 `PATH`、以及用户自己的 `~/.local/shims` 包装脚本都只是为了在没有这步之前把环境补上。先在真实使用里观察一段时间：从手机新开的会话能直接用到新装的命令和升级过的 CLI，不需要重装服务或改 `agent.env`；确认后删掉 daemon 读 `agent.env` 和 install 写 `PATH` 的逻辑，并同步 README 和 architecture §6
+12. **直连传输测试的偶发失败**。Go `TestLateProbePreservesEstablishedRealPionSession`、Android `DirectTransportTest`、iOS `DirectEngineBehaviorTests` 在负载高时偶发超时，2026-11-16 的发布里三端各重跑过一次；与改动无关的失败会挡住发布。验收标准：找到依赖真实时间的等待并改为按事件或可控时钟推进，三套测试在并行负载下连跑 20 次不失败
 
 ### 直连实施与验收
 

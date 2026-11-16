@@ -179,7 +179,7 @@ RelayPath 的指令由客户端 HTTPS `Forward` 经 server 转给 daemon 主 Web
 | 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
 | 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
 | 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 和 iOS 另做原生 App（[android-client.md](android-client.md)、[ios-client.md](ios-client.md)） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
-| 客户端共享核心 | 三端共用的客户端纯逻辑放进独立 Go module `clientcore/`：Android、iOS 经 gomobile 调用，网页用 Go 编译的 WASM；见下文「客户端共享核心」 | 同一套规则原来在 TS、Kotlin、Swift 各写一份，改一次写三遍、靠向量对齐；daemon 和 server 已是 Go |
+| 客户端共享核心 | 三端的客户端逻辑只在独立 Go module `clientcore/` 写一份，按 Elm/Crux 的方式持有状态、产出视图模型和副作用；Android、iOS 经 gomobile、网页经 WASM 调用，各端只画界面和执行 I/O；见下文「客户端共享核心」 | 同一套规则原来在 TS、Kotlin、Swift 各写一份，改一次写三遍、靠向量对齐；daemon 和 server 已是 Go |
 | 通信 | 服务通信使用 ConnectRPC 和主 WebSocket；设备间通信使用 Link，详见 [transport.md](transport.md) | 见第 3 节 |
 | HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
 | server 存储 | SQLite | 单用户，部署简单 |
@@ -195,11 +195,77 @@ RelayPath 的指令由客户端 HTTPS `Forward` 经 server 转给 daemon 主 Web
 
 ### 客户端共享核心
 
-- **范围**：只放不做 I/O 的逻辑（目前是会话事件归约 `clientcore/projection`）。网络、存储、钥匙串、推送、界面和文案留在各端；核心不起 goroutine、不读时钟、不打日志
-- **接口**：`clientcore/corebind` 是 gomobile 和 WASM 共用的粗粒度 API，跨边界只传 protobuf 字节；输出类型在 `proto/remoteagent/core/v1/`，是客户端内部的视图模型，不是 wire 协议，改它不升协议版本
-- **体积**：核心不用 protobuf-go 的反射运行时，改用 `cmd/protoc-gen-go-lite` 生成的只依赖 `protowire` 的类型（`clientcore/gen/`），网页的 wasm brotli 后约 630 KB（其中 Go 运行时约 440 KB），Android 每个 ABI 的 `.so` 和 iOS 每个切片约 2–3 MB；用标准 protobuf-go 时 wasm 是 1.5 MB
-- **独立 module**：gomobile 的依赖只进 `clientcore/go.mod`，不影响 daemon 和 server；测试可以引用主 module 做 wire 兼容和向量检查
-- **测试**：规则只在 Go 测一遍（共享向量 + wire 兼容）；各端只留绑定冒烟测试和界面层测试。Android 的 JVM 和 Robolectric 测试加载 `scripts/core/build.sh android-host` 编出的宿主 JNI 库，iOS 的 SwiftPM 测试用 xcframework 的 macOS 切片，网页的 vitest 在 Node 里加载 wasm
+三端（网页、Android、iOS）的客户端逻辑只在 Go 的 `clientcore/` 里写一份；各端是「壳」，只负责画界面和执行 I/O。目标形态借鉴 Elm 架构和 Crux：核心持有状态、处理事件、产出视图模型和要执行的副作用，壳不做任何业务判断。
+
+#### 分层
+
+```
+┌──────────────── 壳（每端一份）────────────────┐
+│ 界面    React / Compose / SwiftUI：只渲染 ViewModel，把用户操作发成 Event │
+│ 文案    把 ViewModel 里的 Text{key,args} 翻成本地语言（i18n 生成的包装器） │
+│ 执行器  执行 Effect：网络、存储、密钥、计时器、推送、文件和图片、剪贴板     │
+│ 原生件  终端模拟器、Markdown 渲染、相机扫码、系统通知等平台组件             │
+└──────────── Dispatch(Event) / View(Screen)，只传 protobuf 字节 ────────────┘
+┌──────────────── 核心 clientcore（Go，一份）────────────────┐
+│ app       根状态机：Model、Event 分发、Effect 汇总、通知哪些界面变了 │
+│ screens   每个界面一个视图模型构建器：home、project、session、new、  │
+│           schedules、settings、machine…，输出界面直接渲染的 ViewModel │
+│ sync      同步引擎（sans-IO）：连接状态机、缓冲与补缺口、分页、指令生命周期 │
+│ security  加密信封、成员链、配对、恢复、安全操作状态机                 │
+│ domain    纯规则：projection、lists、outcome、agents、schedule、quota…  │
+│ wire      lite protobuf 生成代码（无反射）                              │
+└────────────────────────────────────────────────────────────┘
+```
+
+依赖只能向下：`app → screens → sync / security → domain → wire`。`domain` 不知道界面，`screens` 不做 I/O，所有层都不读时钟、不取随机数、不起 goroutine、不打日志；时间、随机数和 I/O 结果都以 Event 的形式进来。
+
+#### 边界：两个调用，一套消息
+
+- `Dispatch(Event) → Effects`：壳把用户操作、网络收到的报文、存储读取结果、计时器到期、生命周期变化都包成 `Event` 交给核心；核心更新状态，返回一批 `Effect`：要发的请求和报文、要读写的存储、要设的计时器、要签名或协商的密钥操作、要发的通知，以及 `Render{screens}`（哪些界面的视图模型变了）
+- `View(Screen) → ViewModel`：壳按需取某个界面的视图模型（聊天这类长列表带可见窗口），直接交给界面渲染。界面里出现的每个值都由核心算好：排序、分组、状态、是否可点、路径缩写、标题截断、要显示哪条文案和参数
+- 消息定义在 `proto/remoteagent/core/v1/`（`app.proto` 的 `Event`、`Effect`、`Screen`，各界面一个 `*_view.proto`）。这是客户端内部契约，不是 wire 协议，改它不升协议版本；但三端和核心同版本发布
+- 绑定只有这两个函数加 `New`/`Close`，用 gomobile 和 WASM 各包一次。新增功能只改 proto 和 Go，不加绑定函数，壳里不写逐个接口的包装
+
+#### 文案
+
+核心决定「说什么」，壳决定「怎么说」。视图模型里的文字用 `Text{key, args}` 表示，key 取自 `i18n/messages/*.json`，`scripts/i18n.py` 同时给 Go 生成 key 常量；数量用参数交给各端的复数规则。壳只调用生成的包装器把它翻成字符串，不拼句子、不判断该显示哪句。
+
+#### 状态归属与线程
+
+- 核心持有全部客户端状态的权威副本（机器、会话、事件、偏好、草稿、安全状态）。壳不保留会被核心推导的状态，只保留纯界面状态（滚动位置、展开/收起、输入框正在输入的文字）
+- 核心单线程：网页在主线程调用；Android 在一个串行 dispatcher 上调用；iOS 在一个 actor 上调用。执行器可以并发，结果统一回到这个线程发 Event
+- 界面订阅方式各端照旧：网页 `useSyncExternalStore`，Android `StateFlow`，iOS `@Observable`；收到 `Render` 后只重取对应界面的视图模型
+
+#### 密钥
+
+Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用；网页的设备私钥是不可导出的 WebCrypto 密钥。核心统一用 Effect 请求「对这些字节签名」「和这个公钥做 X25519」，由壳执行后以 Event 回填。这样三端走同一条路径，核心不假定能拿到私钥。
+
+#### 体积与性能预算
+
+- 体积：网页 wasm brotli 全部迁完后不超过 1.2 MB（Go 运行时约 440 KB，加密库约 230 KB）；Android 每个 ABI、iOS 每个切片不超过 6 MB
+- 性能：一次 `Dispatch` 典型小于 1 ms，`View(home)` 在 1000 个会话时小于 5 ms，聊天按窗口取；一次界面刷新跨边界不超过一两次，禁止在行渲染、比较器里调用核心
+- 构建：核心不用 protobuf-go 反射，用 `cmd/protoc-gen-go-lite` 生成只依赖 `protowire` 的类型；不 import 会带进 sqlite、webrtc、net/http 的主 module 包，确需复用的先拆出纯逻辑子包；gomobile 经中性路径构建，产物里不留检出路径（见 `scripts/core/build.sh`）
+- 独立 module：gomobile 的依赖只进 `clientcore/go.mod`，不影响 daemon 和 server；测试可以引用主 module 做 wire 兼容和向量检查
+
+#### 测试
+
+- `domain`：共享向量（`testdata/projection/`、`testdata/lists/` 等），只在 Go 跑
+- `screens` 和 `app`：一套 Go 金样测试——一串 Event 进去，核对 Effect 和 ViewModel（JSON 金样）。同一批金样导出给壳当界面测试的输入
+- 壳：界面测试从金样 ViewModel 渲染，只验布局和交互，不验规则；执行器各自测与平台 API 的对接；每端一个绑定冒烟测试
+- 端到端：真实 server、daemon 和 CLI 的链路，按 AGENTS.md 执行
+- 迁移的验收看产品代码净减少，不只看删了多少：壳里不应出现「把旧类型组装成请求、再把结果转回旧类型」的转换层
+
+#### 迁移顺序
+
+按依赖从下往上，每一步都让壳直接用核心的视图模型、删掉旧的领域类型和转换层，进度在 [plan.md](plan.md)：
+
+1. 骨架：`app` 的 `Dispatch`/`View` 与 `Text`；壳把现有 Remote 收到的数据（机器、会话页、事件、偏好）作为 Event 喂进核心。先迁 home、project、new-session 三个界面的视图模型，删掉三端的列表规则和对应领域类型
+2. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
+3. schedules、machine status、quota、settings
+4. `sync`：连接、缓冲、分页、指令生命周期进核心，壳的 Remote 退成网络和存储执行器
+5. `security`：信封、成员链、配对、恢复，密钥操作走 Effect
+6. 直连传输的路由和会话状态机、附件和共享文件的状态机
+7. Markdown 和终端 SGR 的解析（渲染留在壳）
 
 ## 6. 接入 Codex
 
