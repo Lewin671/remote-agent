@@ -66,6 +66,17 @@ final class EngineRig: @unchecked Sendable {
         var left = ms
         while left > 0 { let step = min(left, 500); time.advance(step); left -= step; if left % 10_000 < 500 { await resync() }; await engine.timerStep(); try? await Task.sleep(nanoseconds: 40_000_000) }
     }
+    /// Waits for a condition while giving the engine its upkeep, so a loaded machine delays the
+    /// wait instead of failing it: the clock is fake, but the engine's work is scheduled for real.
+    func settle(_ seconds: Double = 10, _ condition: @Sendable () -> Bool) async -> Bool {
+        let end = Date().addingTimeInterval(seconds)
+        while Date() < end {
+            if condition() { return true }
+            await engine.timerStep()
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return condition()
+    }
     /// Moves the clock in steps the sync can follow, giving the engine its upkeep each time.
     func advance(_ ms: UInt64) async {
         var left = ms

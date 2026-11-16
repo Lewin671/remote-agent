@@ -75,15 +75,15 @@ final class Flag: @unchecked Sendable { private let l = NSLock(); private var v 
         while !expected.isEmpty {
             let delay = expected.removeFirst()
             let now = round
-            #expect(await eventually(5) { rig.probes == now }, "round \(now) starts")
+            #expect(await rig.settle { rig.probes == now }, "round \(now) starts")
             await rig.advance(10_001)                                       // the round's 10 s end
-            #expect(await eventually(5) { rig.engine.status(rig.machineId).reason == .noResponse }, "the round failed without the computer's answer")
+            #expect(await rig.settle { rig.engine.status(rig.machineId).reason == .noResponse }, "the round failed without the computer's answer")
             // Real time passes while the test steps, so the edges are checked with a margin each side.
             let failedAt = rig.time.now
             await rig.advance(delay - 450 - min(delay - 450, rig.time.now - failedAt))
             #expect(rig.probes == now, "still waiting shortly before \(delay) ms")
             await rig.advance(900)
-            #expect(await eventually(5) { rig.probes == now + 1 }, "retries once \(delay) ms have passed")
+            #expect(await rig.settle { rig.probes == now + 1 }, "retries once \(delay) ms have passed")
             round += 1
         }
         rig.close()
