@@ -2,11 +2,17 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -234,5 +240,160 @@ func TestReplacedMainSocketCannotOriginateDirectedTraffic(t *testing.T) {
 	h.directed(current, directedRequest(machine, 2, pb.FrameClass_SIGNAL), time.Now())
 	if machine.direct.count[0] != 1 {
 		t.Fatal("current source stopped working")
+	}
+}
+
+type delayedWriteConn struct {
+	net.Conn
+	delayActive *atomic.Bool
+	delay       time.Duration
+	writes      *atomic.Int32
+}
+
+func (c *delayedWriteConn) Write(p []byte) (int, error) {
+	if c.delayActive.CompareAndSwap(true, false) {
+		c.writes.Add(1)
+		time.Sleep(c.delay)
+	}
+	return c.Conn.Write(p)
+}
+
+type delayedAcceptListener struct {
+	net.Listener
+	armNext     atomic.Bool
+	delayActive atomic.Bool
+	delay       time.Duration
+	writes      atomic.Int32
+}
+
+func (l *delayedAcceptListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	if l.armNext.CompareAndSwap(true, false) {
+		return &delayedWriteConn{Conn: conn, delayActive: &l.delayActive, delay: l.delay, writes: &l.writes}, nil
+	}
+	return conn, nil
+}
+
+func TestDirectedRemainingResidenceDoesNotCloseSlowHealthyMainWebSocket(t *testing.T) {
+	ts := newTestServer(t)
+	mpriv, mid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cpriv, cid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mtok, ctok := ts.login(t, mpriv, mid), ts.login(t, cpriv, cid)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dl := &delayedAcceptListener{Listener: ln, delay: 60 * time.Millisecond}
+	srv := &http.Server{Handler: ts.srv.Handler()}
+	go func() { _ = srv.Serve(dl) }()
+	t.Cleanup(func() { _ = srv.Close() })
+
+	// Connect machine stream through the delayed listener so a healthy socket
+	// write taking 60 ms completes even when the directed frame has ~15 ms left.
+	dl.armNext.Store(true)
+	mws, _, err := websocket.Dial(context.Background(), "ws://"+ln.Addr().String()+"/v1/stream", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mws.SetReadLimit(8 << 20)
+	t.Cleanup(func() { mws.CloseNow() })
+	hello, _ := proto.Marshal(&pb.PeerFrame{Kind: &pb.PeerFrame_Hello{Hello: &pb.StreamHello{Token: mtok}}})
+	if err := mws.Write(context.Background(), websocket.MessageBinary, hello); err != nil {
+		t.Fatal(err)
+	}
+	ms := &testStream{ws: mws}
+	if f := ms.read(t); f.GetReady() == nil {
+		t.Fatalf("first frame %v", f)
+	}
+	cs := ts.stream(t, ctok)
+
+	ts.srv.hub.mu.Lock()
+	clientPeer := ts.srv.hub.directClients[cid]
+	machinePeer := ts.srv.hub.machines[mid]
+	ts.srv.hub.mu.Unlock()
+	if clientPeer == nil || machinePeer == nil {
+		t.Fatal("missing connected peers")
+	}
+
+	dl.delayActive.Store(true)
+	req := &pb.DirectedPeerFrame{
+		ToDevice:   []byte(mid),
+		FrameClass: pb.FrameClass_SIGNAL,
+		FrameId:    []byte("1234567890123456"),
+		Sealed:     []byte("opaque packet"),
+	}
+	ts.srv.hub.directed(clientPeer, req, time.Now().Add(-directedResidence+15*time.Millisecond))
+
+	delivery := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameDelivery() != nil }).GetPeerFrameDelivery()
+	if !bytes.Equal(delivery.FrameId, req.FrameId) {
+		t.Fatalf("unexpected delivery %v", delivery)
+	}
+	if dl.writes.Load() != 1 {
+		t.Fatalf("expected delayed socket write to execute, got %d", dl.writes.Load())
+	}
+	result := cs.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameResult() != nil }).GetPeerFrameResult()
+	if result.Status != pb.PeerFrameResult_DELIVERED {
+		t.Fatalf("expected DELIVERED, got %v", result.Status)
+	}
+	if !ts.srv.hub.send(machinePeer, &pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}}) {
+		t.Fatal("main stream closed after delayed directed write")
+	}
+	if hb := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetHeartbeat() != nil }); hb.GetHeartbeat() == nil {
+		t.Fatal("missing subsequent heartbeat on main stream")
+	}
+}
+
+func TestDirectedExpiredBeforeDispatchDropsAsLimitedWithoutClosingMainWS(t *testing.T) {
+	ts, mid, cid, _, _, ms := newV2Env(t)
+	cpriv, cid2, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = cid
+	cs := ts.stream(t, ts.login(t, cpriv, cid2))
+
+	ts.srv.hub.mu.Lock()
+	clientPeer := ts.srv.hub.directClients[cid2]
+	machinePeer := ts.srv.hub.machines[mid]
+	ts.srv.hub.mu.Unlock()
+	if clientPeer == nil || machinePeer == nil {
+		t.Fatal("missing peers")
+	}
+	// Enqueue an already-expired frame directly to exercise writeDirected's pre-dispatch check.
+	q := directedFrame{
+		data:   []byte("expired-frame"),
+		source: clientPeer,
+		id:     []byte("abcdef0123456789"),
+		until:  time.Now().Add(-time.Millisecond),
+		class:  0,
+	}
+	ts.srv.hub.direct.mu.Lock()
+	ok := ts.srv.hub.enqueueDirected(machinePeer, q)
+	ts.srv.hub.direct.mu.Unlock()
+	if !ok {
+		t.Fatal("failed to enqueue test frame")
+	}
+	result := cs.next(t, func(f *pb.ServerFrame) bool { return f.GetPeerFrameResult() != nil }).GetPeerFrameResult()
+	if result.Status != pb.PeerFrameResult_LIMITED || !bytes.Equal(result.FrameId, q.id) {
+		t.Fatalf("expected LIMITED for expired directed frame, got %v", result)
+	}
+	if !ts.srv.hub.send(machinePeer, &pb.ServerFrame{Kind: &pb.ServerFrame_Heartbeat{Heartbeat: &pb.Heartbeat{}}}) {
+		t.Fatal("main stream closed after expired directed frame")
+	}
+	if hb := ms.next(t, func(f *pb.ServerFrame) bool { return f.GetHeartbeat() != nil }); hb.GetHeartbeat() == nil {
+		t.Fatal("missing heartbeat on main stream")
+	}
+	if strings.Contains(t.Name(), "skip") {
+		t.Fatal("unreachable")
 	}
 }

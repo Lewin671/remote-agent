@@ -13,10 +13,11 @@ import (
 // Directed traffic never borrows the push queue's capacity or its slow-reader
 // disconnect policy. Reservations include the frame currently being written.
 const (
-	directedSignalBytes = 24 << 20
-	directedTotalBytes  = 32 << 20
-	directedResidence   = time.Second
-	directedRateKeys    = 4096
+	directedSignalBytes  = 24 << 20
+	directedTotalBytes   = 32 << 20
+	directedResidence    = time.Second
+	directedWriteTimeout = 30 * time.Second
+	directedRateKeys     = 4096
 )
 
 type directedFrame struct {
@@ -266,7 +267,7 @@ func (h *hub) writeDirected(ctx context.Context, conn *websocket.Conn, p *peer, 
 		}
 		return nil
 	}
-	wctx, cancel := context.WithDeadline(ctx, q.until)
+	wctx, cancel := context.WithTimeout(ctx, directedWriteTimeout)
 	err := conn.Write(wctx, websocket.MessageBinary, q.data)
 	cancel()
 	if q.source != nil {

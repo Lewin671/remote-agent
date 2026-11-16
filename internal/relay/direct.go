@@ -426,7 +426,11 @@ func (m *directManager) send(peer string, out direct.Outbound) bool {
 	} else if !out.Critical {
 		queue = 2
 	}
-	until := minTime(time.Now().Add(time.Second), time.UnixMilli(int64(out.Deadline)))
+	now := time.Now()
+	until := minTime(now.Add(time.Second), time.UnixMilli(int64(out.Deadline)))
+	if !now.Before(until) {
+		return false
+	}
 	q := &peerOutput{peer, class, data, out, until}
 	if !m.outgoing[queue].Push(peer, peer, len(data), q) {
 		return false
@@ -493,7 +497,9 @@ func (m *directManager) writeLoop() {
 			}
 		}
 		path := m.path
-		allowed := found && (!time.Now().Before(q.until) || m.reserveRate(q.class, len(q.data), time.Now()))
+		now := time.Now()
+		expired := found && !now.Before(q.until)
+		allowed := found && (expired || m.reserveRate(q.class, len(q.data), now))
 		if found && !allowed {
 			m.outgoing[queue].Push(q.peer, q.peer, len(q.data), q)
 		}
@@ -519,8 +525,10 @@ func (m *directManager) writeLoop() {
 			}
 			continue
 		}
-		if path != nil && time.Now().Before(q.until) && q.out.Valid != nil && q.out.Valid() {
-			ctx, cancel := context.WithDeadline(m.ctx, q.until)
+		if !expired && path != nil && time.Now().Before(q.until) && q.out.Valid != nil && q.out.Valid() {
+			// Optional signaling uses the shared main WebSocket's normal write
+			// timeout; residence expiry only decides whether to drop before write.
+			ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 			_ = path.Write(ctx, q.data)
 			cancel()
 		}
