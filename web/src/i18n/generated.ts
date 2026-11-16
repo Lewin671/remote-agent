@@ -214,6 +214,7 @@ export interface MessageArgs {
   "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
+  "errors.core_load_failed": { reason: string };
   "errors.current_membership_could_not_be_verified": { [name: string]: never };
   "errors.device_directory_state_changed": { [name: string]: never };
   "errors.device_information_could_not_be_verified": { [name: string]: never };
@@ -1827,6 +1828,7 @@ export const messages = {
     "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
+    "errors.core_load_failed": "Failed to load core module: {reason}",
     "errors.current_membership_could_not_be_verified": "Current membership could not be verified",
     "errors.device_directory_state_changed": "Device directory state changed",
     "errors.device_information_could_not_be_verified": "Device information could not be verified",
@@ -3865,6 +3867,7 @@ export const messages = {
     "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
+    "errors.core_load_failed": "核心模块加载失败：{reason}",
     "errors.current_membership_could_not_be_verified": "无法核实当前成员",
     "errors.device_directory_state_changed": "设备目录状态已变化",
     "errors.device_information_could_not_be_verified": "无法核实设备信息",

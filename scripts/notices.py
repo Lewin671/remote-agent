@@ -9,6 +9,7 @@ ask that their text goes along. Only what is linked or bundled is listed,
 by name and version: no path of the machine that built it.
 """
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -29,10 +30,10 @@ def section(name, text):
     return f"{'=' * 78}\n{name}\n{'=' * 78}\n\n{text}\n\n"
 
 
-def go(package):
+def go(package, cwd=ROOT, env=None):
     listed = subprocess.check_output(
         ["go", "list", "-deps", "-f", "{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}\t{{.Dir}}{{end}}{{end}}", package],
-        cwd=ROOT, text=True)
+        cwd=cwd, env=env, text=True)
     modules = sorted(set(line for line in listed.splitlines() if line))
     goroot = subprocess.check_output(["go", "env", "GOROOT"], text=True).strip()
     out = section("Go and its standard library", texts(goroot))
@@ -51,6 +52,7 @@ def web():
             # Some packages are published without the file; what they declare stands in for it.
             text = texts(directory) or f"Published without a license file. Declared license: {p['license']}. Source: {p.get('homepage') or 'https://www.npmjs.com/package/' + name}"
             out += section(f"{name}@{version} ({p['license']})", text)
+    out += go("./cmd/corewasm", cwd=ROOT / "clientcore", env={**os.environ, "GOOS": "js", "GOARCH": "wasm"})
     return out
 
 

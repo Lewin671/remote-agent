@@ -57,6 +57,12 @@ build_web() {
     echo "wasm_exec.js not found under GOROOT=$goroot" >&2
     exit 1
   fi
+  if [[ -z "${RA_CORE_FORCE:-}" && -f "$out/core.wasm" && -f "$out/wasm_exec.js" ]] && \
+     cmp -s "$wasm_exec" "$out/wasm_exec.js" && \
+     [[ ! "$ROOT/scripts/core/build.sh" -nt "$out/core.wasm" ]] && \
+     [[ -z "$(find "$CORE_ROOT" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$out/core.wasm" | head -n 1)" ]]; then
+    return 0
+  fi
   (
     cd "$CORE_ROOT"
     GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" -o "$out/core.wasm" ./cmd/corewasm

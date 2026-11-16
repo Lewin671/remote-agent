@@ -107,7 +107,7 @@ class PublicScanTests(unittest.TestCase):
             tar(f'remote-agent-{tag}-{target}', ['remote-agent', 'remote-agent-service', 'THIRD_PARTY_NOTICES.txt'])
             if target.startswith('linux'):
                 tar(f'remote-agent-server-{tag}-{target}', ['remote-agent-server', 'Dockerfile', '.dockerignore', 'compose.yaml', 'stun.compose.yaml', 'Caddyfile', 'env.example', 'THIRD_PARTY_NOTICES.txt'])
-        tar(f'remote-agent-web-{tag}', sorted(public_scan.web_files()) + ['assets/index-Ab_1cD-9.js', 'assets/index-S8FXQorW.css'])
+        tar(f'remote-agent-web-{tag}', sorted(public_scan.web_files()) + ['assets/index-Ab_1cD-9.js', 'assets/index-S8FXQorW.css', 'assets/core-Ab_1cD-9.wasm'])
         for name in (f'remote-agent-{tag}.apk', 'SHA256SUMS', 'latest.properties'):
             (dist / name).write_text('x')
         return dist

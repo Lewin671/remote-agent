@@ -9,12 +9,21 @@ import { agentInfo, agentName, DEFAULT_AGENT, isKnownAgent } from "./agents";
 // doing, and how the chat timeline groups events. Everything here is pure,
 // so the rules in docs/design/client-v1.html can be tested directly.
 
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { timestampMs } from "@bufbuild/protobuf/wkt";
+import { getCore } from "./core/runtime";
+import {
+  EventBatchSchema,
+  ProjectionStateSchema,
+  type ProjectionState,
+} from "./gen/remoteagent/core/v1/projection_pb";
 import type {
   ApprovalRequested,
   Event,
+  Origin,
   PlanProposed,
   QuestionAsked,
+  SentFile,
   TokenUsage,
   ToolCall,
 } from "./gen/remoteagent/v1/event_pb";
@@ -24,7 +33,6 @@ import {
   ApprovalMode,
   InputStage,
   InputStatus,
-  OriginKind,
   SendMode,
   SessionStatus,
   ToolBackground,
@@ -647,23 +655,6 @@ export function permissionModeName(pm: string): string {
   );
 }
 
-/** The approval mode named from turn-context fields: Claude Code's
- * permission mode, or Codex's approval fields. */
-export function contextMode(
-  reviewer: string,
-  policy: string,
-  sandbox: string,
-  collaboration: string,
-  permission = "",
-): string {
-  if (permission) return permission;
-  if (!reviewer && !policy && !collaboration) return "";
-  if (collaboration === "plan") return "plan";
-  if (sandbox === "danger-full-access" && policy === "never") return "bypassPermissions";
-  if (reviewer === "auto_review") return "auto";
-  return "default";
-}
-
 const modeNames: Record<number, () => string> = {
   [ApprovalMode.ASK]: () => i18n.t("modes.ask"),
   [ApprovalMode.AUTO]: () => i18n.t("modes.auto"),
@@ -960,7 +951,7 @@ export interface Derived {
   questions: Map<string, QuestionAsked>; // pending
   answered: Map<string, string[]>;
   // Who answered an approval or a question, as the daemon says.
-  by: Map<string, NonNullable<Event["origin"]>>;
+  by: Map<string, Origin>;
   inputs: Map<string, InputStatus>; // latest state per request ID, in first-seen order
   inputSeqs: Map<string, bigint>; // last inputState event per request ID
   // What the computer accepted for each message, as its first QUEUED state
@@ -971,8 +962,8 @@ export interface Derived {
     {
       text: string;
       imageIds: string[];
-      files?: import("./gen/remoteagent/v1/event_pb").SentFile[];
-      origin?: Event["origin"];
+      files?: SentFile[];
+      origin?: Origin;
       mode: SendMode;
     }
   >;
@@ -989,13 +980,6 @@ export interface Derived {
   usage?: TokenUsage;
   plan?: PlanProposed; // the latest plan
   tools: RunningTool[]; // started and not completed, oldest first
-  // Tools the last turn ended without a result for: moved to the
-  // background, or simply unheard of. Their state is not known; cleared
-  // when the next turn starts.
-  unsettled: RunningTool[];
-  // Calls that went on in the background this turn: started, not known to
-  // have ended. Cleared when the next turn starts.
-  background: ToolCall[];
   // How each ToolStarted ended: its ToolCall's seq, or "unsettled".
   toolEnds: Map<bigint, bigint | "unsettled">;
   // Whether the turn an unsettled tool belonged to was interrupted.
@@ -1007,307 +991,169 @@ export interface Derived {
   terminalChanges: Map<bigint, TerminalChange[]>;
   // Context use before and after each compaction, by the event's seq.
   compactions: Map<bigint, { before?: number; after?: number }>;
+  // Unambiguous approval IDs associated with completed ToolCall event seqs.
+  approvalCallIds: Map<bigint, string>;
 }
 
-function usagePercent(u?: TokenUsage): number | undefined {
-  if (!u || u.contextWindow <= 0n) return undefined;
-  return Math.min(100, Number((u.lastTotalTokens * 100n) / u.contextWindow));
+type AcceptedEntry = {
+  text: string;
+  imageIds: string[];
+  files?: SentFile[];
+  origin?: Origin;
+  mode: SendMode;
+};
+
+const deriveInputs = new WeakMap<Derived, { events: Event[]; agent: Agent }>();
+
+/** Serializes an ordered slice of events as a core EventBatch. */
+export function encodeEventBatch(events: readonly Event[]): Uint8Array {
+  if (events.length === 0) return new Uint8Array(0);
+  return toBinary(EventBatchSchema, create(EventBatchSchema, { events: [...events] }));
 }
 
-/** Folds a session's events into what is pending and what happened. */
-export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
-  const d: Derived = {
-    approvals: new Map(),
-    resolved: new Map(),
-    questions: new Map(),
-    answered: new Map(),
-    by: new Map(),
-    inputs: new Map(),
-    inputSeqs: new Map(),
-    accepted: new Map(),
-    paused: new Set(),
-    stages: new Map(),
-    inputReasons: new Map(),
-    unsent: new Set(),
-    running: false,
-    runningSeq: 0n,
-    scheduledClosed: false,
-    idleClosed: false,
-    tools: [],
-    unsettled: [],
-    background: [],
-    toolEnds: new Map(),
-    abortedTools: new Set(),
-    typedLocally: new Set(),
-    terminalChanges: new Map(),
-    compactions: new Map(),
-  };
-  let mode = "";
-  let model = "";
-  let compacting: bigint | undefined;
-  // Messages sent from clients are recorded as submitted before the CLI
-  // records them; the rest were typed in the terminal.
-  let submitted = 0;
-  // A user message with no submitted state before it, which may still
-  // come right after: Claude Code records the message first.
-  let unclaimed: bigint | undefined;
-  // The model and effort last switched to from here, until a context shows
-  // a model.
-  let expected: { model: string; effort: string } | undefined;
-  const queuedAt = new Map<string, bigint>();
-  const unfinishedById = new Map<string, RunningTool>();
-  // A plan was proposed since entering plan mode: leaving it is the plan's
-  // answer, however given, not a mode switch made in the terminal.
-  let planned = false;
-  for (const e of events) {
-    const k = e.kind;
-    switch (k.case) {
-      case "approvalRequested":
-        d.approvals.set(k.value.approvalId, k.value);
-        break;
-      case "approvalResolved":
-        d.approvals.delete(k.value.approvalId);
-        d.resolved.set(k.value.approvalId, {
-          decision: k.value.decision,
-          message: k.value.message,
-        });
-        if (e.origin) d.by.set(k.value.approvalId, e.origin);
-        break;
-      case "questionAsked":
-        if (!k.value.async) d.questions.set(k.value.questionId, k.value);
-        break;
-      case "questionAnswered":
-        d.questions.delete(k.value.questionId);
-        if (e.origin) d.by.set(k.value.questionId, e.origin);
-        d.answered.set(
-          k.value.questionId,
-          k.value.answers.flatMap((a) => a.answers),
-        );
-        break;
-      case "turnStarted":
-        d.running = true;
-        d.runningSeq = e.seq;
-        d.unsettled = [];
-        d.background = [];
-        break;
-      case "turnEnded":
-        d.running = false;
-        d.runningSeq = e.seq;
-        d.questions.clear();
-        settle(d, k.value.outcome === TurnOutcome.ABORTED, unfinishedById);
-        break;
-      case "inputState": {
-        const late =
-          d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
-        d.inputs.set(k.value.requestId, k.value.status);
-        d.inputSeqs.set(k.value.requestId, e.seq);
-        if (
-          (k.value.status === InputStatus.QUEUED ||
-            k.value.status === InputStatus.HELD_BY_CLI) &&
-          !d.accepted.has(k.value.requestId) &&
-          (k.value.text || k.value.imageIds.length || k.value.files.length)
-        )
-          d.accepted.set(k.value.requestId, {
-            text: k.value.text,
-            imageIds: [...k.value.imageIds],
-            ...(k.value.files.length ? { files: [...k.value.files] } : {}),
-            origin: e.origin,
-            mode: k.value.mode,
-          });
-        const accepted = d.accepted.get(k.value.requestId);
-        if (accepted && k.value.mode) accepted.mode = k.value.mode;
-        if (k.value.paused) d.paused.add(k.value.requestId);
-        else d.paused.delete(k.value.requestId);
-        if (k.value.stage) d.stages.set(k.value.requestId, k.value.stage);
-        if (
-          k.value.status === InputStatus.FAILED ||
-          k.value.status === InputStatus.NEEDS_TERMINAL
-        )
-          d.inputReasons.set(k.value.requestId, k.value.reason);
-        if (endedUnsent(k.value)) d.unsent.add(k.value.requestId);
-        else if (k.value.status !== InputStatus.QUEUED)
-          d.unsent.delete(k.value.requestId);
-        if (
-          k.value.status === InputStatus.QUEUED &&
-          !queuedAt.has(k.value.requestId)
-        )
-          queuedAt.set(k.value.requestId, e.seq);
-        if (k.value.status === InputStatus.SUBMITTED) {
-          // Codex marks a message submitted before recording it. Claude
-          // Code usually records the message first and the state follows;
-          // but a message queued into a running turn is confirmed by its
-          // enqueue record, before the message. So the state claims only
-          // a message recorded after its request was queued: one recorded
-          // before that was typed at the computer.
-          // A message confirmed after it was reported unconfirmed is the
-          // one recorded right after this state, never one before it.
-          const since = queuedAt.get(k.value.requestId);
-          if (
-            !late &&
-            agentInfo(agent).reconcilesUnclaimedInput &&
-            unclaimed !== undefined &&
-            e.seq - unclaimed <= 3n &&
-            (since === undefined || unclaimed > since)
-          ) {
-            d.typedLocally.delete(unclaimed);
-            unclaimed = undefined;
-          } else submitted++;
-        }
-        break;
-      }
-      case "userMessage":
-        // The daemon says who sent it; the counting below is for a message
-        // it could not tell the sender of.
-        if (e.origin?.kind) {
-          if (e.origin.kind === OriginKind.LOCAL) d.typedLocally.add(e.seq);
-          if (submitted > 0 && k.value.requestId) submitted--;
-          break;
-        }
-        if (submitted > 0) submitted--;
-        // Codex sends this itself when a plan is approved.
-        else if (k.value.text !== "Implement the plan.") {
-          d.typedLocally.add(e.seq);
-          unclaimed = e.seq;
-        }
-        break;
-      case "toolStarted":
-        d.tools.push({
-          title: k.value.title,
-          since: eventTime(e),
-          callId: k.value.callId,
-          kind: k.value.kind,
-          itemType: k.value.itemType,
-          input: k.value.input,
-          inputDigest: k.value.inputDigest,
-          seq: e.seq,
-        });
-        break;
-      case "toolCall": {
-        // Both CLIs pair starts and results by exact call ID. An ID-less
-        // result or an extra #2 command cannot complete another start.
-        const id = k.value.callId;
-        const i = id ? d.tools.findIndex((t) => t.callId === id) : -1;
-        if (i >= 0) {
-          d.toolEnds.set(d.tools[i].seq, e.seq);
-          d.tools.splice(i, 1);
-        } else if (id) {
-          const t = unfinishedById.get(id);
-          if (t && d.toolEnds.get(t.seq) === "unsettled") {
-            d.toolEnds.set(t.seq, e.seq);
-            d.abortedTools.delete(t.seq);
-            d.unsettled = d.unsettled.filter((u) => u.seq !== t.seq);
-          }
-        }
-        if (isBackground(k.value)) d.background.push(k.value);
-        break;
-      }
-      case "tokenUsage":
-        d.usage = k.value;
-        if (compacting !== undefined) {
-          const c = d.compactions.get(compacting);
-          if (c) c.after = usagePercent(k.value);
-          compacting = undefined;
-        }
-        break;
-      case "planProposed":
-        d.plan = k.value;
-        planned = true;
-        break;
-      case "settingsChanged":
-        // Changed through remote-agent; recorded as such already.
-        // The next context should show this model; the client names it by
-        // slug or alias, the context by the CLI's own ID.
-        if (k.value.model)
-          expected = { model: k.value.model, effort: k.value.effort };
-        if (k.value.mode) mode = modePermissions[k.value.mode] ?? "";
-        if (k.value.compacted) {
-          d.compactions.set(e.seq, { before: usagePercent(d.usage) });
-          compacting = e.seq;
-        }
-        break;
-      case "turnContext": {
-        const c = k.value;
-        const m = contextMode(
-          c.approvalsReviewer,
-          c.approvalPolicy,
-          c.sandbox,
-          c.collaborationMode,
-          c.permissionMode,
-        );
-        const planning =
-          c.collaborationMode === "plan" || c.permissionMode === "plan";
-        const mm = `${c.model} ${c.effort}`;
-        const changes: TerminalChange[] = [];
-        if (mode && m && m !== mode && !(mode === "plan" && planned))
-          changes.push({ kind: "mode", permission: m });
-        if (m && m !== mode) planned = false;
-        // Plan mode runs at its own effort; only a model change counts there.
-        // A context without a model is Claude Code's mode, read off the
-        // screen; it says nothing about the model.
-        // After a switch from here, the next context is compared with what
-        // was chosen; a different model means the terminal changed it since.
-        const changed = expected
-          ? !(
-              modelIs(c.model, expected.model) &&
-              (!expected.effort || !c.effort || c.effort === expected.effort)
-            )
-          : mm !== model;
-        if ((model || expected) && c.model && changed && !planning)
-          changes.push(
-            { kind: "model", model: c.model, effort: c.effort },
-          );
-        if (c.model && !planning) expected = undefined;
-        if (changes.length) d.terminalChanges.set(e.seq, changes);
-        if (m) mode = m;
-        if (!planning && c.model) model = mm;
-        break;
-      }
-      case "sessionState":
-        d.scheduledClosed = k.value.status === SessionStatus.EXITED && k.value.scheduledClosed;
-        d.idleClosed = k.value.status === SessionStatus.EXITED && k.value.idleClosed;
-        if (k.value.status === SessionStatus.EXITED) {
-          d.running = false;
-          d.runningSeq = e.seq;
-          d.approvals.clear();
-          d.questions.clear();
-          settle(d, false, unfinishedById);
-          d.unsettled = [];
-          d.background = [];
-        }
-        break;
-      case "sessionForked":
-        // What came before is the source's history: nothing of it runs or
-        // waits in this session.
-        d.running = false;
-        d.runningSeq = e.seq;
-        d.approvals.clear();
-        d.questions.clear();
-        settle(d, false);
-        d.unsettled = [];
-        d.background = [];
-        submitted = 0;
-        unclaimed = undefined;
-        unfinishedById.clear();
-        break;
+/** Looks up the raw event slice and agent passed to derive(), for stateless currentDerived calls. */
+export function deriveSource(d: Derived): { events: Event[]; agent: Agent } | undefined {
+  return deriveInputs.get(d);
+}
+
+/** Converts a Go ProjectionState protobuf message into the web view model. */
+export function fromProjectionState(state: ProjectionState): Derived {
+  const approvals = new Map<string, ApprovalRequested>();
+  for (const p of state.approvals) {
+    if (p.request) approvals.set(p.approvalId, p.request);
+  }
+  const resolved = new Map<string, { decision: ApprovalDecision; message: string }>();
+  const by = new Map<string, Origin>();
+  for (const [id, r] of Object.entries(state.resolved)) {
+    resolved.set(id, { decision: r.decision, message: r.message });
+    if (r.origin) by.set(id, r.origin);
+  }
+  const questions = new Map<string, QuestionAsked>();
+  for (const q of state.questions) {
+    if (q.request) questions.set(q.questionId, q.request);
+  }
+  const answered = new Map<string, string[]>();
+  for (const [id, a] of Object.entries(state.answered)) {
+    answered.set(id, a.answers);
+    if (a.origin) by.set(id, a.origin);
+  }
+  const inputs = new Map<string, InputStatus>();
+  const inputSeqs = new Map<string, bigint>();
+  const accepted = new Map<string, AcceptedEntry>();
+  const paused = new Set<string>();
+  const stages = new Map<string, InputStage>();
+  const inputReasons = new Map<string, string>();
+  for (const inp of state.inputs) {
+    inputs.set(inp.requestId, inp.status);
+    inputSeqs.set(inp.requestId, inp.lastSeq);
+    if (inp.accepted) {
+      accepted.set(inp.requestId, {
+        text: inp.accepted.text,
+        imageIds: inp.accepted.imageIds,
+        ...(inp.accepted.files.length ? { files: inp.accepted.files } : {}),
+        ...(inp.accepted.origin ? { origin: inp.accepted.origin } : {}),
+        mode: inp.detail?.mode ?? SendMode.UNSPECIFIED,
+      });
+    }
+    if (inp.detail) {
+      if (inp.detail.paused) paused.add(inp.requestId);
+      const stage = inp.accepted?.stage || inp.detail.stage;
+      if (stage) stages.set(inp.requestId, stage);
+    }
+    if (inp.failureReason !== undefined) {
+      inputReasons.set(inp.requestId, inp.failureReason);
     }
   }
-  return d;
+  const unsent = new Set<string>(state.unsent.map((u) => u.requestId));
+  const tools: RunningTool[] = state.tools.map((t) => ({
+    title: t.title,
+    since: Number(t.sinceMs),
+    callId: t.callId,
+    kind: t.kind,
+    itemType: t.itemType,
+    input: t.input,
+    inputDigest: t.inputDigest,
+    seq: t.seq,
+  }));
+  const toolEnds = new Map<bigint, bigint | "unsettled">();
+  for (const [seqStr, endSeq] of Object.entries(state.completedAt)) {
+    toolEnds.set(BigInt(seqStr), endSeq);
+  }
+  for (const seq of state.unfinishedSeqs) {
+    toolEnds.set(seq, "unsettled");
+  }
+  const noResult = new Set(state.noResultSeqs);
+  const abortedTools = new Set<bigint>();
+  for (const seq of state.unfinishedSeqs) {
+    if (!noResult.has(seq)) abortedTools.add(seq);
+  }
+  const typedLocally = new Set(state.typedLocallySeqs);
+  const terminalChanges = new Map<bigint, TerminalChange[]>();
+  for (const [seqStr, list] of Object.entries(state.terminalChanges)) {
+    const mapped: TerminalChange[] = [];
+    for (const ch of list.changes) {
+      if (ch.kind.case === "mode") {
+        const m = ch.kind.value;
+        mapped.push({
+          kind: "mode",
+          permission: m.mode ? (modePermissions[m.mode] ?? "") : m.rawMode,
+        });
+      } else if (ch.kind.case === "model") {
+        mapped.push({
+          kind: "model",
+          model: ch.kind.value.model,
+          effort: ch.kind.value.effort,
+        });
+      }
+    }
+    if (mapped.length) terminalChanges.set(BigInt(seqStr), mapped);
+  }
+  const compactions = new Map<bigint, { before?: number; after?: number }>();
+  for (const [seqStr, c] of Object.entries(state.compactions)) {
+    compactions.set(BigInt(seqStr), {
+      ...(c.beforePercent !== undefined ? { before: c.beforePercent } : {}),
+      ...(c.afterPercent !== undefined ? { after: c.afterPercent } : {}),
+    });
+  }
+  const approvalCallIds = new Map<bigint, string>();
+  for (const [seqStr, approvalId] of Object.entries(state.approvalCallIds)) {
+    approvalCallIds.set(BigInt(seqStr), approvalId);
+  }
+  return {
+    approvals,
+    resolved,
+    questions,
+    answered,
+    by,
+    inputs,
+    inputSeqs,
+    accepted,
+    paused,
+    stages,
+    inputReasons,
+    unsent,
+    running: state.running,
+    runningSeq: state.runningSeq,
+    scheduledClosed: state.scheduledClosed,
+    idleClosed: state.idleClosed,
+    usage: state.usage,
+    plan: state.plan,
+    tools,
+    toolEnds,
+    abortedTools,
+    typedLocally,
+    terminalChanges,
+    compactions,
+    approvalCallIds,
+  };
 }
 
-/** Ends the turn for the tools still running: no result came for them,
- * so their state is unknown from here (architecture §13, 工具执行反馈). */
-function settle(
-  d: Derived,
-  aborted: boolean,
-  unfinishedById?: Map<string, RunningTool>,
-) {
-  for (const t of d.tools) {
-    d.toolEnds.set(t.seq, "unsettled");
-    if (t.callId) unfinishedById?.set(t.callId, t);
-    if (aborted) d.abortedTools.add(t.seq);
-  }
-  d.unsettled = d.tools;
-  d.tools = [];
+/** Folds a session's events into what is pending and what happened via the Go WASM core. */
+export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
+  const bytes = getCore().reduce(agent, encodeEventBatch(events));
+  const d = fromProjectionState(fromBinary(ProjectionStateSchema, bytes));
+  deriveInputs.set(d, { events, agent });
+  return d;
 }
 
 /** How long a tool has run, from the daemon's start time. While this
@@ -1637,7 +1483,7 @@ export function toolOk(t: ToolCall): boolean {
 export function timeline(events: Event[], d: Derived, opts?: { sharedFiles?: boolean }): Item[] {
   const allowShared = opts?.sharedFiles ?? false;
   const out: Item[] = [];
-  const merged = approvalsOnCalls(events, d);
+  const mergedApprovals = new Set(d.approvalCallIds.values());
   let run: { first: Event; calls: ToolCall[] } | undefined;
   const flush = () => {
     if (!run) return;
@@ -1661,10 +1507,10 @@ export function timeline(events: Event[], d: Derived, opts?: { sharedFiles?: boo
     }
   }
   const running = new Map(d.tools.map((t) => [t.seq, t]));
-  const loose = new Map(d.unsettled.map((t) => [t.seq, t]));
   const place = (e: Event) => {
     const k = e.kind;
-    const decision = merged.calls.get(e.seq);
+    const approvalId = d.approvalCallIds.get(e.seq);
+    const decision = approvalId !== undefined ? d.resolved.get(approvalId)?.decision : undefined;
     if (decision !== undefined) {
       // Shown on its own, so the decision is not folded away.
       flush();
@@ -1673,7 +1519,7 @@ export function timeline(events: Event[], d: Derived, opts?: { sharedFiles?: boo
         key: String(e.seq),
         event: e,
         decision,
-        approvalId: merged.ids.get(e.seq),
+        approvalId,
       });
       return;
     }
@@ -1715,7 +1561,7 @@ export function timeline(events: Event[], d: Derived, opts?: { sharedFiles?: boo
         if (k.value.callId && bySeq.has(end)) place(bySeq.get(end)!);
         continue;
       }
-      const t = running.get(e.seq) ?? loose.get(e.seq);
+      const t = running.get(e.seq);
       if (!t && end !== "unsettled") continue;
       flush();
       const tool = t ?? {
@@ -1747,67 +1593,12 @@ export function timeline(events: Event[], d: Derived, opts?: { sharedFiles?: boo
     }
     if (
       k.case === "approvalRequested" &&
-      merged.approvals.has(k.value.approvalId)
+      mergedApprovals.has(k.value.approvalId)
     )
       continue;
     place(e);
   }
   flush();
-  return out;
-}
-
-/** Resolved approvals to show on their tool calls: only where the call is
- * surely the one approved, its tool and input digest (the daemon's, on
- * both events, compared as strings) matching exactly one
- * approval requested before it which has a decision, and no second request
- * (even pending) or call. Parallel calls, repeated identical calls and events without
- * a digest (Codex) keep the approval as a row of its own. */
-export function approvalsOnCalls(
-  events: Event[],
-  d: Derived,
-): {
-  calls: Map<bigint, ApprovalDecision>;
-  approvals: Set<string>;
-  ids: Map<bigint, string>;
-} {
-  const approvals = new Map<string, { id: string; seq: bigint }[]>();
-  const calls = new Map<string, bigint[]>();
-  for (const e of events) {
-    const k = e.kind;
-    if (k.case === "approvalRequested") {
-      // The daemon gives the request the digest it gives the call; without
-      // one (Codex) there is nothing to match.
-      const digest = k.value.inputDigest;
-      if (!digest) continue;
-      const key = k.value.toolName + "\0" + digest;
-      let group = approvals.get(key);
-      if (!group) approvals.set(key, (group = []));
-      group.push({ id: k.value.approvalId, seq: e.seq });
-    } else if (k.case === "toolCall" && k.value.inputDigest) {
-      const key = k.value.itemType + "\0" + k.value.inputDigest;
-      let group = calls.get(key);
-      if (!group) calls.set(key, (group = []));
-      group.push(e.seq);
-    }
-  }
-  const out = {
-    calls: new Map<bigint, ApprovalDecision>(),
-    approvals: new Set<string>(),
-    ids: new Map<bigint, string>(),
-  };
-  for (const [key, as] of approvals) {
-    const cs = calls.get(key) ?? [];
-    if (
-      as.length !== 1 ||
-      cs.length !== 1 ||
-      cs[0] < as[0].seq ||
-      !d.resolved.has(as[0].id)
-    )
-      continue;
-    out.calls.set(cs[0], d.resolved.get(as[0].id)!.decision);
-    out.approvals.add(as[0].id);
-    out.ids.set(cs[0], as[0].id);
-  }
   return out;
 }
 

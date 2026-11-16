@@ -22,13 +22,16 @@ import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHan
 import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
+import { getCore } from "./core/runtime";
+import type { WasmProjection } from "./core/projection";
+import { ProjectionStateSchema } from "./gen/remoteagent/core/v1/projection_pb";
 import { PlanProposedSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   LiveSnapshotSchema,
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
 import type { SecurityRecord } from "./device-security-store";
-import { derive, agentOf, type Derived } from "./model";
+import { agentOf, deriveSource, encodeEventBatch, fromProjectionState, type Derived } from "./model";
 import { DEFAULT_AGENT } from "./agents";
 import { isSkeleton } from "./skeleton";
 import { SharedFileManager, type SharedFileChunkResult } from "./shared-files";
@@ -477,7 +480,13 @@ export function livePlanText(
 const NO_MACHINES: ReadonlyMap<string, MachineView> = new Map();
 
 export class Remote {
-  private historicalDerivations = new WeakMap<Event[], { count: number; agent: Agent; value: Derived }>();
+  private sessionProjections = new Map<string, {
+    handle: WasmProjection;
+    events: Event[];
+    count: number;
+    agent: Agent;
+    value: Derived;
+  }>();
   private currentDerivations = new WeakMap<Derived, {
     sid: string; live?: LiveSnapshot; checkpoint?: LiveSnapshot; agent: Agent;
     events?: Event[]; count: number; value: Derived;
@@ -1034,6 +1043,14 @@ export class Remote {
   private historyUsers = new Map<string, number>();
   private historyTrim?: ReturnType<typeof setTimeout>;
 
+  private freeProjection(sid: string) {
+    const entry = this.sessionProjections?.get(sid);
+    if (entry) {
+      this.sessionProjections.delete(sid);
+      entry.handle.free();
+    }
+  }
+
   /** A mounted consumer pins its complete history, including pending sends. */
   retainHistory(sid: string): () => void {
     this.historyUsers.set(sid, (this.historyUsers.get(sid) ?? 0) + 1);
@@ -1044,7 +1061,10 @@ export class Remote {
       released = true;
       const n = (this.historyUsers.get(sid) ?? 1) - 1;
       if (n) this.historyUsers.set(sid, n);
-      else this.historyUsers.delete(sid);
+      else {
+        this.historyUsers.delete(sid);
+        this.freeProjection(sid);
+      }
       const b = this.buffers.get(sid);
       if (b) b.usedAt = Date.now();
       this.trimHistory();
@@ -1086,6 +1106,7 @@ export class Remote {
         now - (b.usedAt ?? now) >= 60_000
       ) {
         this.buffers.delete(sid);
+        this.freeProjection(sid);
         count--;
         bytes -= b.bytes ?? 0;
       }
@@ -1847,6 +1868,8 @@ export class Remote {
     this.stopPairingDelivery();
     clearTimeout(this.historyTrim);
     this.historyTrim = undefined;
+    for (const entry of this.sessionProjections.values()) entry.handle.free();
+    this.sessionProjections.clear();
     this.generation++;
     this.lifecycleGeneration++;
     this.connecting = false;
@@ -3222,10 +3245,24 @@ export class Remote {
   }
   historicalDerived(sid: string): Derived {
     const events = this.events(sid), agent = agentOf(this.sessions.get(sid));
-    const cached = this.historicalDerivations.get(events);
-    if (cached && cached.count === events.length && cached.agent === agent) return cached.value;
-    const value = derive(events, agent);
-    this.historicalDerivations.set(events, { count: events.length, agent, value });
+    const entry = this.sessionProjections.get(sid);
+    if (entry && entry.events === events && entry.count === events.length && entry.agent === agent) return entry.value;
+    let handle: WasmProjection;
+    let bytes: Uint8Array;
+    if (entry && entry.events === events && entry.count < events.length && entry.agent === agent) {
+      handle = entry.handle;
+      bytes = handle.append(encodeEventBatch(events.slice(entry.count)));
+    } else {
+      if (entry) {
+        handle = entry.handle;
+        handle.reset(agent);
+      } else {
+        handle = getCore().newProjection(agent);
+      }
+      bytes = events.length > 0 ? handle.append(encodeEventBatch(events)) : handle.snapshot();
+    }
+    const value = fromProjectionState(fromBinary(ProjectionStateSchema, bytes));
+    this.sessionProjections.set(sid, { handle, events, count: events.length, agent, value });
     return value;
   }
 
@@ -3243,84 +3280,42 @@ export class Remote {
     if (cached && cached.sid === sid && cached.live === live &&
         cached.checkpoint === checkpoint && cached.agent === agent &&
         cached.events === events && cached.count === count) return cached.value;
-    const out = {
-      ...d,
-      approvals: new Map(),
-      questions: new Map(),
-      plan: undefined,
-    } as Derived;
-    this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, count, value: out });
+
+    const liveBytes = live ? toBinary(LiveSnapshotSchema, live) : undefined;
+    let stateBytes: Uint8Array;
+    const entry = this.sessionProjections?.get(sid);
+    if (entry && entry.value === d && entry.agent === agent) {
+      stateBytes = entry.handle.currentActions(liveBytes);
+    } else {
+      const source = deriveSource(d);
+      const temp = getCore().newProjection(source?.agent ?? agent);
+      try {
+        if (source?.events.length) temp.append(encodeEventBatch(source.events));
+        stateBytes = temp.currentActions(liveBytes);
+      } finally {
+        temp.free();
+      }
+    }
+    const out = fromProjectionState(fromBinary(ProjectionStateSchema, stateBytes));
     if (!live) {
-      if (checkpoint && d.runningSeq <= (checkpoint.session?.lastSeq ?? 0n))
+      if (checkpoint && out.runningSeq <= (checkpoint.session?.lastSeq ?? 0n))
         out.running = checkpoint.running;
-      return out;
-    }
-    const observed = derive(live.actions, agentOf(this.sessions.get(sid)));
-    // A snapshot at N supplies state through N; verified events after N win.
-    const snapshotSeq = live.session?.lastSeq ?? 0n;
-    const newerInput = (id: string) => (d.inputSeqs.get(id) ?? 0n) > snapshotSeq;
-    if (d.runningSeq <= snapshotSeq) out.running = live.running;
-    out.inputs = new Map(d.inputs);
-    out.paused = new Set(d.paused);
-    out.stages = new Map(d.stages);
-    out.inputReasons = new Map(d.inputReasons);
-    out.accepted = new Map(d.accepted);
-    for (const [id, status] of out.inputs)
-      if (
-        [InputStatus.QUEUED, InputStatus.HELD_BY_CLI].includes(status) &&
-        !observed.inputs.has(id) && !newerInput(id)
-      ) {
-        out.inputs.set(id, InputStatus.UNCONFIRMED);
-        out.paused.delete(id);
-        out.stages.delete(id);
-      }
-    for (const [id, status] of observed.inputs) {
-      if (newerInput(id)) continue;
-      out.inputs.set(id, status);
-      if (observed.paused.has(id)) out.paused.add(id);
-      else out.paused.delete(id);
-    }
-    for (const [id, stage] of observed.stages)
-      if (!newerInput(id)) out.stages.set(id, stage);
-    for (const [id, reason] of observed.inputReasons)
-      if (!newerInput(id)) out.inputReasons.set(id, reason);
-    for (const [id, accepted] of observed.accepted) {
-      if (newerInput(id)) continue;
-      const prior = out.accepted.get(id);
-      // Snapshots fill gaps in history, but their text may be truncated.
-      // Keep known accepted content/origin; only its live delivery mode changes.
-      out.accepted.set(id,
-        prior
-          ? { ...prior, mode: accepted.mode || prior.mode }
-          : accepted);
-    }
-    for (const event of live.actions) {
-      if (event.kind.case === "inputState") {
-        const state = event.kind.value;
-        const accepted = out.accepted.get(state.requestId);
-        if (accepted && state.mode && !newerInput(state.requestId))
-          out.accepted.set(state.requestId, { ...accepted, mode: state.mode });
-      }
-      if (event.kind.case === "approvalRequested")
-        out.approvals.set(event.kind.value.approvalId, event.kind.value);
-      if (event.kind.case === "questionAsked" && !event.kind.value.async)
-        out.questions.set(event.kind.value.questionId, event.kind.value);
-    }
-    if (
+    } else if (
       live.planEventSeq > 0n &&
       live.planScreenHash.length === 32 &&
-      live.session?.planOpen
+      live.session?.planOpen &&
+      events
     ) {
-      const b = this.buffers.get(sid);
-      out.plan = create(PlanProposedSchema, {
-        text: livePlanText(
-          live,
-          b?.events ?? [],
-          (seq) =>
-            !b?.unavailableSeqs?.has(seq),
-        ),
-      });
+      const resolved = livePlanText(
+        live,
+        events,
+        (seq) => !buffer?.unavailableSeqs?.has(seq),
+      );
+      if (resolved !== live.planScreen || !out.plan?.text) {
+        out.plan = create(PlanProposedSchema, { text: resolved });
+      }
     }
+    this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, count, value: out });
     return out;
   }
   liveSnapshotError(sid: string): string | undefined {

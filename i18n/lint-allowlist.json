@@ -2505,6 +2505,21 @@
     "reason": "Developer contract exception; never rendered as a product message."
   },
   {
+    "path": "web/src/core/projection.ts",
+    "literal": "RemoteAgentCore is not loaded yet",
+    "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
+    "path": "web/src/core/projection.ts",
+    "literal": "HTTP ${response.status}",
+    "reason": "Technical HTTP status code passed into localized error banner via {reason}."
+  },
+  {
+    "path": "web/src/core/runtime.ts",
+    "literal": "RemoteAgentCore is not loaded yet",
+    "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
     "path": "cmd/protoc-gen-go-lite/main.go",
     "literal": "unsupported field kind: %v",
     "reason": "Build-time code generator panic diagnostic, never shipped to end users."

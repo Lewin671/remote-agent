@@ -3,12 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "core": "../scripts/core/build.sh web",
+    "dev": "pnpm core && vite",
+    "build": "pnpm core && tsc -b && vite build",
     "preview": "vite preview",
     "gen": "buf generate --template buf.gen.yaml",
-    "test": "vitest run",
-    "typecheck": "tsc -b",
+    "test": "pnpm core && vitest run",
+    "typecheck": "pnpm core && tsc -b",
     "deploy": "VITE_DEFAULT_SERVER=${VITE_DEFAULT_SERVER:-https://ra.remote-agent.top} pnpm build && wrangler pages deploy dist --project-name remote-agent --branch main"
   },
   "dependencies": {

@@ -1,4 +1,5 @@
 import * as l10n from "./i18n";
+import { ensureCore } from "./core/runtime";
 import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
@@ -56,6 +57,7 @@ export function App() {
   const [denied, setDenied] = useState(false);
   const loadGeneration = useRef(0);
   const [setupError, setSetupError] = useState("");
+  const [coreError, setCoreError] = useState("");
   const current = useRef(remote);
   current.current = remote;
   const load = async () => {
@@ -63,8 +65,15 @@ export function App() {
     const active = () => generation === loadGeneration.current;
     setRetained(undefined);
     setDenied(false);
+    let coreFailed = false;
+    const corePromise = ensureCore().catch((error) => {
+      coreFailed = true;
+      throw error;
+    });
+    corePromise.catch(() => undefined);
     try {
       setSetupError("");
+      setCoreError("");
       if (!demo) {
         const startup = await authorityStartup();
         if (startup.kind === "create" || startup.kind === "recovery") { setRemote(null); return; }
@@ -99,7 +108,8 @@ export function App() {
       }
       // Read the sealed snapshot while the workspace downloads. Rendering the
       // resolved component avoids a second, minimum-duration Suspense fallback.
-      const [loaded, workspace] = await Promise.all([
+      const [, loaded, workspace] = await Promise.all([
+        corePromise,
         loadRemote(),
         account || demo ? loadWorkspace().catch(() => undefined) : undefined,
       ]);
@@ -109,9 +119,15 @@ export function App() {
       setRemote(loaded ?? null);
     } catch (error) {
       if (!active()) return;
-      setSetupError(
-        l10n.t("errors.setup_request_preserved", { reason: errorText(error) }),
-      );
+      if (coreFailed) {
+        setCoreError(
+          l10n.t("errors.core_load_failed", { reason: errorText(error) }),
+        );
+      } else {
+        setSetupError(
+          l10n.t("errors.setup_request_preserved", { reason: errorText(error) }),
+        );
+      }
       setRemote(null);
     }
   };
@@ -191,12 +207,12 @@ export function App() {
   // Keep the HTML shell in place while reading the saved identity.
   if (remote === undefined)
     return loading;
-  if (setupError)
+  if (coreError || setupError)
     return (
       <div className="center">
-        <p>{setupError}</p>
+        <p>{coreError || setupError}</p>
         <button onClick={() => void load()}>{l10n.t("common.retry")}</button>
-        <SetupReset onDone={() => void load()} />
+        {!coreError && <SetupReset onDone={() => void load()} />}
       </div>
     );
   if (remote === null && denied && retained)
