@@ -107,10 +107,19 @@ describe("direct path summary lines", () => {
     expect(footer()).not.toMatch(/速度取自|实际传输/);
   });
 
-  it("says 正在用中继 and why while both purposes are on the relay", async () => {
-    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
+  // A finished comparison: 8 live samples on both paths, direct not clearly ahead.
+  const compared = (r: DemoRemote) => { const route = r.direct.routing("mac"); for (let i = 0; i < 8; i++) { route.observe({ kind: "read" }, "relay", 0, 175); route.observe({ kind: "read" }, "direct", 0, 160); } };
+
+  it("says 正在用中继 and why while both purposes are on the relay, once the comparison is done", async () => {
+    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); compared(r); });
     await settle();
     expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连没有明显更快"]);
+  });
+
+  it("does not say direct is not clearly faster when nothing was compared: the check warms up, so it says it is measuring", async () => {
+    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
+    await settle();
+    expect(lines()["MacBook"]).toEqual(["直连已连上，正在测速"]);
   });
 
   it("draws no second dot: the one on the right of the row is the latency's", async () => {
@@ -164,7 +173,7 @@ describe("direct path summary lines", () => {
     const r = open("", (x) => { quiet(x); setDirect(x.direct, "mac", "connecting"); });
     await settle();
     expect(lines()["MacBook"]).toEqual(["正在建立直连…"]);
-    act(() => { setDirect(r.direct, "mac", "connected"); (r.direct as unknown as { notify(): void }).notify(); });
+    act(() => { setDirect(r.direct, "mac", "connected"); compared(r); (r.direct as unknown as { notify(): void }).notify(); });
     expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连没有明显更快"]);
   });
 });
