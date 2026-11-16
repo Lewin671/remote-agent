@@ -6,6 +6,7 @@ import * as w from "./peer/wire";
 import type { CandidateBatcher, Sender } from "./peer/sender";
 import { fixture, fixtureCodec } from "../test/peer/fixture";
 import { fakeRTC } from "../test/peer/fake-rtc";
+import { RoundDiag, verdictOf } from "./direct-diag";
 
 type Owner = { pcs: { gate: Signal; channel?: DirectChannel; batch: CandidateBatcher; ended: boolean }[]; makePC(i:number): boolean; resetPC(i:number): void; tick(): Promise<void>; queue(work:()=>Promise<void>):Promise<void>; chain: Promise<void> };
 function deferred() { let resolve!:()=>void;const promise=new Promise<void>(r=>resolve=r);return {promise,resolve}; }
@@ -71,4 +72,33 @@ test.each([
   vi.setSystemTime(Date.now()+10001);await owner.tick();
   expect(closed).toHaveBeenCalled();expect(session.failure ?? "").toBe(expected);
  } finally {session.close();}
+});
+
+test.each([
+ ["never answered the handshake","no_response","no_reply",false],
+ ["answered but no description was exchanged (and STUN gave nothing)","no_traversal","no_sdp",true],
+])("the diagnostics record of a round that ends at its deadline when the computer %s",async(_name,end,verdict,boot)=>{
+ vi.useFakeTimers();
+ const sdk=fakeRTC(),diag=new RoundDiag(1),self=await fixture("client",1),peer=await fixture("machine",2);
+ const session=new DirectSession({self,peer,codec:await fixtureCodec(),connection:new Uint8Array(16),deadline:Date.now()+10000,budget:new DirectBudget(),stun:[],valid:()=>true,authorize:async()=>{},send:()=>true,chosen:()=>{},beforeOffer:()=>{},ready:()=>{},closed:()=>{},frame:()=>{},capability:()=>{},factory:sdk.factory,diag});
+ const owner=session as unknown as Owner;
+ try {
+  if(boot){owner.pcs[0].gate.bootReady=true;expect(owner.makePC(0)).toBe(true);}
+  await owner.tick();
+  vi.setSystemTime(Date.now()+10001);await owner.tick();
+  expect(diag.data.end).toBe(end);expect(verdictOf(diag.data)).toBe(verdict);
+  expect(diag.data.pcs[0].marks.boot!==undefined).toBe(boot);
+ } finally {session.close();}
+});
+
+test("closing a round that never timed out records that it was cancelled, and a delivery refusal is counted",async()=>{
+ vi.useFakeTimers();
+ const diag=new RoundDiag(1),self=await fixture("client",1),peer=await fixture("machine",2);
+ const session=new DirectSession({self,peer,codec:await fixtureCodec(),connection:new Uint8Array(16),deadline:Date.now()+10000,budget:new DirectBudget(),stun:[],valid:()=>true,authorize:async()=>{},send:()=>true,chosen:()=>{},beforeOffer:()=>{},ready:()=>{},closed:()=>{},frame:()=>{},capability:()=>{},diag});
+ const owner=session as unknown as Owner & {boot:Sender};const id=new Uint8Array(16);
+ await owner.boot.enqueue(w.pb(w.b(4,id)),Date.now(),Date.now()+10000,1);
+ session.delivery(id,3,1000,()=>true);session.delivery(id,2,0,()=>true);await owner.chain;
+ expect(diag.data.signals).toEqual({unsupported:false,limited:1,offline:1});
+ session.close();expect(diag.data.end).toBe("cancelled");
+ session.close();expect(diag.data.end).toBe("cancelled");
 });

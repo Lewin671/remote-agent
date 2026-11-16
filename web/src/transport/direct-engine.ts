@@ -10,6 +10,7 @@ import { newRequestID } from "../crypto";
 import type { FrameStream, PathAttempt } from "./path";
 import { DirectBudget, DirectChannel } from "./direct-channel";
 import { DirectSession, type DirectedOutput } from "./direct-session";
+import { DirectDiag, type RoundData } from "./direct-diag";
 import { DirectRouting, READ_RULE, type RouteHint, type RouteName } from "./direct-routing";
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
@@ -66,6 +67,8 @@ export class DirectEngine {
   private failureCount = new Map<string, number>();
   private failures = new Map<string, Exclude<DirectReason, "disabled">>();
   private readonly stun: string[];
+  private readonly diag = new DirectDiag();
+  private manualAt = 0;
   /** Sends one authorized background read on the given path and resolves when
    * it ends; the owner of the keys (Remote) provides it. Without it no warm-up
    * sample is taken. */
@@ -148,17 +151,18 @@ export class DirectEngine {
         prior.session.retire();this.peers.delete(member.id);this.retryAfter.delete(member.id);
       }
       if (member.kind !== 1 || !this.enabled(member.id) || this.peers.get(member.id)?.session.active || Date.now() < (this.retryAfter.get(member.id) ?? 0)) continue;
-      if (this.peers.size >= 4) break;
+      if (this.peers.size >= 4) { this.diag.blocked(member.id); break; }
       try { const peer = await this.public(member.id); if (!current()) return; if (this.peers.get(member.id)?.session.active) continue; const p = this.create(peer, crypto.getRandomValues(new Uint8Array(16)), Date.now() + 10_000); if (p) await p.session.start(); } catch { /* Direct discovery is optional. */ }
     }
   }
   private create(peer: w.Public, connection: w.Bytes, deadline: number): Peer | undefined {
     const id = w.text(peer.id), now = Date.now();
     for (const [key, p] of this.sessions) if (now > p.session.retainUntil) { p.live = false; p.session.close(); this.sessions.delete(key); }
-    if (!this.current() || !this.enabled(id) || this.sessions.size >= 128 || [...this.sessions.values()].filter(p => p.id === id).length >= 32 || !this.peers.has(id) && this.peers.size >= 4) return;
+    if (!this.current() || !this.enabled(id)) return;
+    if (this.sessions.size >= 128 || [...this.sessions.values()].filter(p => p.id === id).length >= 32 || !this.peers.has(id) && this.peers.size >= 4) { this.diag.blocked(id); return; }
     const p = { id, head: this.head, paths: new Map<number, DirectChannel>(), live: true, snapshotUntil: 0, downloadUntil: 0, snapshotSeq: 0n, downloadSeq: 0n } as Peer;
     const choose = () => { if (!this.valid(p) || !p.session.active || this.sessions.get(w.hex(connection)) !== p) return; p.selected = true; this.select(p); for (const old of this.sessions.values()) if (old !== p && old.id === id) old.session.retire(); };
-    p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun,
+    p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun, diag: this.diag.begin(id),
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
       ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); p.readyAt ??= Date.now(); this.failures.delete(id); if (use === 1) this.routing(id).arm(true); this.notify(); },
@@ -326,5 +330,19 @@ export class DirectEngine {
     return { ...base, state: "none", reason: this.failures.get(id) };
   }
   filePath(id: string) { const p=this.peers.get(id);return p && this.valid(p) && p.paths.get(2)?.ready ? this.routing(id).filePath : "relay"; }
-  close() { clearInterval(this.timer); this.timer = undefined; clearTimeout(this.pumpTimer); this.pumpTimer = undefined; this.leg = undefined; this.invalidate(); }
+  /** What the diagnostics sheet shows: the last rounds with this computer, newest first. */
+  diagnostics(id: string): { rounds: RoundData[]; blockedAt?: number } {
+    return { rounds: this.diag.rounds(id), blockedAt: this.diag.blockedAt(id) };
+  }
+  /** The sheet is open: read the stats of the connections being tried, so it shows how far they are. */
+  refreshDiagnostics(id: string) { for (const p of this.sessions.values()) if (p.id === id && p.session.active) p.session.sampleNow(); }
+  /** 「重新尝试」: one round at once, if none is running and the computer's own switch is on. It goes through the same
+   * discovery as any round (the four-computer budget, the main connection, one round per computer) and leaves the
+   * failure count alone, so it cannot start rounds faster than that; at most one request every two seconds. */
+  retryNow(id: string): boolean {
+    const now = Date.now();
+    if (!this.enabled(id) || !this.current() || this.peers.get(id)?.session.active || now - this.manualAt < 2000) return false;
+    this.manualAt = now; this.retryAfter.delete(id); void this.discover(); return true;
+  }
+  close() { this.diag.clear(); clearInterval(this.timer); this.timer = undefined; clearTimeout(this.pumpTimer); this.pumpTimer = undefined; this.leg = undefined; this.invalidate(); }
 }

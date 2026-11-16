@@ -336,3 +336,28 @@ test("connected but not yet compared is measuring while a warm-up is waiting or 
   expect(engine.status(id)).toMatchObject({ state: "connected", read: "relay", warming: false, compared: false });
  } finally { engine.close(); vi.useRealTimers(); vi.unstubAllGlobals(); }
 });
+
+test("「重新尝试」 starts one discovery at once, only when no round runs and the switch is on, and not twice within two seconds",()=>{
+ vi.useFakeTimers();
+ try {
+  const {engine,peer}=readyEngine(),owner=engine as unknown as {discover():Promise<void>;retryAfter:Map<string,number>;peers:Map<string,unknown>};
+  const discover=vi.spyOn(owner,"discover").mockResolvedValue();
+  expect(engine.retryNow("machine")).toBe(false);          // a round is running
+  owner.peers.delete("machine");owner.retryAfter.set("machine",Date.now()+30_000);
+  expect(engine.retryNow("machine")).toBe(true);
+  expect(discover).toHaveBeenCalledTimes(1);expect(owner.retryAfter.has("machine")).toBe(false);
+  expect(engine.retryNow("machine")).toBe(false);          // too soon
+  vi.advanceTimersByTime(2001);expect(engine.retryNow("machine")).toBe(true);
+  vi.advanceTimersByTime(2001);engine.setEnabled("machine",false);expect(engine.retryNow("machine")).toBe(false);
+  vi.advanceTimersByTime(2001);engine.setEnabled("machine",true);Object.assign(engine,{freshUntil:Date.now()-1});expect(engine.retryNow("machine")).toBe(false);
+  void peer;
+ } finally { vi.useRealTimers(); localStorage.clear(); }
+});
+
+test("a round refused for lack of slots is reported as such and does not add rounds",()=>{
+ const {engine}=readyEngine(),owner=engine as unknown as {diag:{begin(id:string):unknown;blocked(id:string):void}};
+ for(let i=0;i<5;i++)owner.diag.blocked("machine");
+ expect(engine.diagnostics("machine").rounds).toEqual([]);expect(engine.diagnostics("machine").blockedAt).toBeTypeOf("number");
+ owner.diag.begin("machine");expect(engine.diagnostics("machine").blockedAt).toBeUndefined();
+ expect(engine.diagnostics("machine").rounds).toHaveLength(1);
+});

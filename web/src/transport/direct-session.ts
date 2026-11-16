@@ -4,6 +4,7 @@ import { Signal, candidateBody, endBody, inspectSDP, readCandidates, sdpBody, ty
 import { CandidateBatcher, Sender } from "./peer/sender";
 import { knownPayload, restart } from "./peer/schema";
 import { PathChanged } from "./recovery";
+import type { PcDiag, RoundDiag } from "./direct-diag";
 
 export interface DirectedOutput { raw: w.Bytes; deadline: number; critical: boolean; valid: () => boolean }
 export interface DirectSessionOptions {
@@ -16,8 +17,10 @@ export interface DirectSessionOptions {
   capability: (opened: w.Opened) => void;
   probe?: (use: number, milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
+  /** Display-only record of this round (direct-diag.ts); never read by control flow. */
+  diag?: RoundDiag;
 }
-type PC = { generation: bigint; restartSent: boolean; gate: Signal; sender: Sender; seq: bigint; channel?: DirectChannel; batch: CandidateBatcher; ufrag: w.Bytes; mid: w.Bytes; ended: boolean; confirmed: boolean; announced: boolean; actions: Action[] };
+type PC = { generation: bigint; restartSent: boolean; gate: Signal; sender: Sender; seq: bigint; channel?: DirectChannel; batch: CandidateBatcher; ufrag: w.Bytes; mid: w.Bytes; ended: boolean; confirmed: boolean; announced: boolean; actions: Action[]; diag?: PcDiag };
 
 /** Serial owner for one connection and both uses. Deferred work keeps original bytes. */
 export class DirectSession {
@@ -28,6 +31,7 @@ export class DirectSession {
   private tickQueued = false;
   private ended = false;
   private retired = false;
+  private timedOut = false;
   private incoming = 0;
   private incomingBytes = 0;
   private controlSeq = 0n;
@@ -47,7 +51,7 @@ export class DirectSession {
     const pc = (use: number): PC => {
       const gate = new Signal(options.codec, options.self, options.peer, options.connection, use, now);
       gate.roundDeadline = options.deadline; gate.current = options.valid; gate.leaseUntil = Number.MAX_SAFE_INTEGER;
-      return { generation: 1n, restartSent: false, gate, sender: new Sender(options.deadline), seq: 0n, batch: new CandidateBatcher(1n, options.deadline, 1), ufrag: new Uint8Array(), mid: new Uint8Array(), ended: false, confirmed: false, announced: false, actions: [] };
+      return { generation: 1n, restartSent: false, gate, sender: new Sender(options.deadline), seq: 0n, batch: new CandidateBatcher(1n, options.deadline, 1), ufrag: new Uint8Array(), mid: new Uint8Array(), ended: false, confirmed: false, announced: false, actions: [], diag: options.diag?.pc(use) };
     };
     this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.retainUntil = options.deadline + 300_000;
     this.timer = setInterval(() => {
@@ -149,7 +153,9 @@ export class DirectSession {
     if (c.cls === 1n && c.use === 0n) { await this.receivePeerScope(o, now); return; }
     if (c.use < 1n || c.use > 2n) return;
     const index = Number(c.use) - 1, p = this.pcs[index];
-    const actions = await p.gate.receive(raw, now);
+    let actions: Action[];
+    try { actions = await p.gate.receive(raw, now); }
+    catch (error) { p.diag?.rejectSignal(o.type, error); throw error; }
     if (await p.gate.replyAllowed(raw, now)) await this.ack(o);
     for (const action of actions) {
       if (action.cls === 2 && action.type === 10) { const original = await this.options.codec.open(action.original, p.gate.peer, this.options.self, now); await this.respond(original, 10, action.payload); }
@@ -203,7 +209,7 @@ export class DirectSession {
       const pending = p.sender.pending.get(w.hex(hash)); if (!pending) continue;
       const original = await this.options.codec.openSent(pending.raw, this.options.self, p.gate.peer, now);
       if (original.context.cls !== w.getUint(fields, 1) || BigInt(original.type) !== w.getUint(fields, 2) || original.context.seq !== w.getUint(fields, 3)) return;
-      p.sender.ack(hash); p.channel?.close(); p.channel = undefined; p.gate.closed = true; this.failure ??= "peer_unsupported"; this.peerScope.set(String(index), now); return;
+      p.sender.ack(hash); p.channel?.close(); p.channel = undefined; p.gate.closed = true; this.failure ??= "peer_unsupported"; this.options.diag?.note("unsupported"); this.peerScope.set(String(index), now); return;
     }
   }
   private async signal(index: number, type: number, body: w.Bytes) {
@@ -218,9 +224,10 @@ export class DirectSession {
     if (!this.active || p.gate.closed || Date.now() >= this.options.deadline) return false;
     const generation = p.gate.generation;
     let channel: DirectChannel | undefined;
+    const attempt = p.diag?.begin();
     const current = () => channel !== undefined && p.channel === channel && p.generation === generation && p.gate.generation === generation;
     try {
-      channel = new DirectChannel({ peer: w.text(this.options.peer.id), connection: this.options.connection, use: index + 1, generation, deadline: this.options.deadline, budget: this.options.budget, stun: this.options.stun, valid: () => this.active && p.gate.generation === generation && (!channel || current()), factory: this.options.factory,
+      channel = new DirectChannel({ peer: w.text(this.options.peer.id), connection: this.options.connection, use: index + 1, generation, deadline: this.options.deadline, budget: this.options.budget, stun: this.options.stun, valid: () => this.active && p.gate.generation === generation && (!channel || current()), factory: this.options.factory, diag: attempt,
         candidate: candidate => { void this.queue(async () => {
           if (!this.active || !current()) return;
           if (candidate === null) p.ended = true;
@@ -235,7 +242,7 @@ export class DirectSession {
         closed: () => { if (current()) this.options.closed(index + 1); },
         probe: elapsed => { if (this.active && current()) this.options.probe?.(index + 1, elapsed); },
       }); p.channel = channel; this.options.chosen(); return true;
-    } catch { return false; }
+    } catch { p.diag?.block(); return false; }
   }
   private async maybeOffer(index: number) {
     const p = this.pcs[index]; if (!this.active || !p.gate.bootReady || !p.gate.offerer() || p.gate.localSDP || p.gate.closed || Date.now() >= this.options.deadline) return;
@@ -280,16 +287,18 @@ export class DirectSession {
       if (!this.active || p.channel !== channel || p.gate.generation !== generation || channel.signal.aborted) return;
       p.confirmed = confirmed;
     }
-    if (channel.traversalReady && p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; channel.confirm(); this.options.ready(index + 1, channel); }
+    if (channel.traversalReady && p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; p.diag?.observe({ ready: true }); this.options.diag?.establish(); channel.confirm(); this.options.ready(index + 1, channel); }
   }
   private async tick() {
     const now = Date.now();
+    for (const p of this.pcs) p.diag?.observe({ boot: p.gate.bootReady, sdpLocal: p.gate.localSDP, sdpRemote: p.gate.remoteSDP, peerConfirm: p.gate.confirmed });
     if ([...this.peerWindows.values()].some(w => w.gap && now >= w.gap)) { this.retire(); return; }
     for (const [key, item] of this.controls) if (now > item.until) this.controls.delete(key);
     for (const [key, item] of this.receipts) if (now > item.until) this.receipts.delete(key);
     if (now >= this.options.deadline && !this.established && !this.retired) {
       // Without the computer's proof there was no handshake at all; with it but
       // no server-reflexive address from STUN, the network blocked discovery.
+      this.timedOut = true;
       this.failure ??= this.pcs.every(p => !p.gate.bootReady) ? "no_response" : this.pcs.some(p => p.channel && !p.channel.traversalReady) ? "no_traversal" : undefined;
       this.close(); return;
     }
@@ -324,9 +333,16 @@ export class DirectSession {
     return this.options.send({ raw, deadline: Number(c.deadline), critical: c.cls === 2n || ![5, 6].includes(o.type), valid: () => !this.ended && this.options.valid() && Date.now() < Number(c.deadline) && !(c.cls === 1n && c.use > 0n && c.use <= 2n && c.generation !== this.pcs[Number(c.use) - 1].generation) && !(this.retired && c.cls === 1n && (o.type === 1 || o.type >= 3 && o.type <= 8)) && !(c.cls === 1n && o.type === 1 && !this.options.budget.ownerAvailable(w.text(this.options.peer.id), w.hex(this.options.connection))) });
   }
   delivery(id: w.Bytes, status: number, retry: number, current: () => boolean) {
-    void this.queue(async () => { if (!current()) return; for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) sender.limited(pending.hash, Date.now(), retry); if (status === 2) sender.offline(); } });
+    void this.queue(async () => { if (!current()) return; for (const sender of [this.boot, ...this.pcs.map(p => p.sender)]) for (const pending of sender.pending.values()) { if (!w.equal(w.getBytes(w.parse(pending.raw, 5), 4), id)) continue; if (status === 3) { sender.limited(pending.hash, Date.now(), retry); this.options.diag?.note("limited"); } if (status === 2) { sender.offline(); this.options.diag?.note("offline"); } } });
   }
   discovered() { this.boot.discovered(); for (const p of this.pcs) p.sender.discovered(); }
+  /** The diagnostics sheet is open: read the live connections' stats now. */
+  sampleNow() { for (const p of this.pcs) p.channel?.sample(); }
   retire() { if (this.retired) return; this.retired = true; for (const p of this.pcs) { p.gate.retire(false); p.channel?.close(); p.channel = undefined; p.actions = []; } }
-  close() { if (this.ended) return; this.ended = true; clearInterval(this.timer); for (const p of this.pcs) p.channel?.close(); this.options.closed(); }
+  close() {
+    if (this.ended) return; this.ended = true; clearInterval(this.timer);
+    // Read before the connections close; a PC that was up when this ended is "lost", else the cause as far as this side knows.
+    this.options.diag?.finish(this.established ? "lost" : this.failure ?? (this.timedOut ? "timeout" : this.retired ? "retired" : "cancelled"));
+    for (const p of this.pcs) p.channel?.close(); this.options.closed();
+  }
 }

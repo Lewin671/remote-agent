@@ -5,6 +5,7 @@ import { normalize } from "./peer/schema";
 import { validateSDP } from "./peer/sdp";
 import { cleanup } from "../cleanup";
 import { PathChanged, abortable } from "./recovery";
+import type { AttemptDiag } from "./direct-diag";
 
 const FRAME_BYTES = 16 << 10;
 const PAYLOAD_BYTES = FRAME_BYTES - 128;
@@ -46,6 +47,8 @@ export interface ChannelOptions {
   frame: (raw: w.Bytes) => void; closed: () => void;
   probe?: (milliseconds: number) => void;
   factory?: (config: RTCConfiguration) => RTCPeerConnection;
+  /** Display-only record of this peer connection (direct-diag.ts); never read by control flow. */
+  diag?: AttemptDiag;
 }
 /** Browser-native adapter. SDK objects, SDP and candidates stay below Link. */
 export class DirectChannel {
@@ -62,6 +65,7 @@ export class DirectChannel {
   private probes = new Map<string, number>();
   private tick: ReturnType<typeof setInterval>;
   private lastProbe = 0;
+  private sampledLate = false;
   private missedProbes = 0;
   private writers = 0;
   private reservationReleased = false;
@@ -78,17 +82,25 @@ export class DirectChannel {
     this.data.binaryType = this.probe.binaryType = "arraybuffer";
     this.data.bufferedAmountLowThreshold = 32 << 10;
     const wake = () => { for (const listener of [...this.listeners]) listener(); };
-    this.data.onbufferedamountlow = this.data.onopen = wake;
-    this.data.onclose = this.probe.onclose = () => this.close();
+    const diag = options.diag;
+    this.data.onbufferedamountlow = wake;
+    this.data.onopen = () => { diag?.state("dc", "open"); wake(); };
+    this.data.onclose = () => { diag?.state("dc", "closed"); this.close(); };
+    this.probe.onclose = () => this.close();
     this.data.onerror = this.probe.onerror = () => this.close();
     this.pc.ondatachannel = event => { event.channel.close(); this.close(); };
-    this.pc.onicecandidate = event => { if (event.candidate?.type === "srflx") this.stunReady = true; if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null); };
+    this.pc.onicecandidate = event => { if (event.candidate) diag?.local(event.candidate.candidate); if (event.candidate?.type === "srflx") this.stunReady = true; if (this.valid()) options.candidate(event.candidate?.toJSON() ?? null); };
     this.pc.onconnectionstatechange = () => {
+      diag?.state("conn", this.pc.connectionState);
+      if (["connected", "failed", "disconnected"].includes(this.pc.connectionState)) diag?.sample(this.pc);
       if (this.ended) return;
       options.state(this.pc.connectionState);
       if (["failed", "closed", "disconnected"].includes(this.pc.connectionState)) this.close();
     };
-    this.pc.onicecandidateerror = () => { /* Never log SDK error objects or addresses. */ };
+    this.pc.onicegatheringstatechange = () => diag?.state("gather", this.pc.iceGatheringState);
+    this.pc.oniceconnectionstatechange = () => { diag?.state("ice", this.pc.iceConnectionState); if (["connected", "completed", "failed"].includes(this.pc.iceConnectionState)) diag?.sample(this.pc); };
+    // Never log SDK error objects or addresses: the diagnostics keep the numeric code and the interface's family only.
+    this.pc.onicecandidateerror = event => { const e = event as Partial<RTCPeerConnectionIceErrorEvent>; diag?.stunError(e.errorCode, e.address); };
     this.data.onmessage = event => {
       if (!this.valid()) return;
       if (!(event.data instanceof ArrayBuffer) || event.data.byteLength > FRAME_BYTES) { this.close(); return; }
@@ -108,6 +120,8 @@ export class DirectChannel {
     this.tick = setInterval(() => {
       if (!this.valid()) { this.close(); return; }
       const now = performance.now();
+      // One look at the checks shortly before the round ends, for a round that is not up.
+      if (!this.sampledLate && !this.confirmed && Date.now() >= this.options.deadline - 1500) { this.sampledLate = true; diag?.sample(this.pc); }
       for (const [key, part] of this.partial) if (now >= part.until) this.drop(key, part);
       for (const [id, start] of this.probes) if (now - start >= 1000) { this.probes.delete(id); if (++this.missedProbes >= 3) { this.close(); return; } }
       if (this.ready && this.probe.readyState === "open" && now - this.lastProbe >= 1000) {
@@ -120,6 +134,8 @@ export class DirectChannel {
   private valid() { return !this.ended && this.options.valid() && (this.confirmed || Date.now() < this.options.deadline); }
   get ready() { return this.confirmed && this.valid() && this.data.readyState === "open"; }
   get traversalReady() { return this.stunReady; }
+  /** The diagnostics sheet is open: read the stats now. */
+  sample() { this.options.diag?.sample(this.pc); }
   get queuedBytes() { return this.data.bufferedAmount; }
   get signal() { return this.lifetime.signal; }
   async description(offer: boolean, restart = false): Promise<w.Bytes> {
@@ -137,7 +153,9 @@ export class DirectChannel {
     if (!this.valid()) throw new PathChanged();
   }
   async addCandidate(candidate?: RTCIceCandidateInit) {
-    if (!this.valid()) throw new PathChanged(); await this.pc.addIceCandidate(candidate);
+    if (!this.valid()) throw new PathChanged();
+    if (candidate) this.options.diag?.remote(candidate.candidate);
+    try { await this.pc.addIceCandidate(candidate); } catch (error) { this.options.diag?.reject("browser", error); throw error; }
     if (!this.valid()) throw new PathChanged();
   }
   confirm() { if (!this.valid()) return; this.confirmed = true; for (const raw of this.waiting.splice(0)) this.deliver(raw); }
@@ -193,6 +211,7 @@ export class DirectChannel {
   private drop(key: string, part: PartialMessage) { this.partial.delete(key); this.options.budget.free(this.options.peer, 1, part.bytes, part.parts.size); }
   close() {
     if (this.ended) return; this.ended = true; this.lifetime.abort(new PathChanged()); clearInterval(this.tick);
+    this.options.diag?.sample(this.pc);
     for (const [key, part] of this.partial) this.drop(key, part);
     for (const raw of this.waiting.splice(0)) this.options.budget.free(this.options.peer, 1, raw.byteLength, 1);
     this.probes.clear(); cleanup(() => this.pc.close(), () => this.options.closed(), () => this.releaseReservation());
