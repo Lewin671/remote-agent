@@ -53,7 +53,7 @@ from pathlib import Path
 with open(os.environ["RA_MODE_PROBE"], "a") as output:
     output.write(json.dumps({"tool": Path(sys.argv[0]).name, "args": sys.argv[1:]}) + "\\n")
 '''
-            for tool in ("python3", "swift", "buf", "git", "xcrun", "xcodebuild"):
+            for tool in ("python3", "swift", "buf", "git", "xcrun", "xcodebuild", "core-build"):
                 path = root / tool
                 path.write_text(recorder)
                 path.chmod(0o700)
@@ -61,7 +61,8 @@ with open(os.environ["RA_MODE_PROBE"], "a") as output:
                        REMOTE_AGENT_HOME=str(root / "agent"), REMOTE_AGENT_TMUX_SOCKET="isolated-mode-test",
                        RA_DEV_DIR=str(root / "dev"), RA_MODE_PROBE=str(probe),
                        IOS_DESTINATION="platform=iOS Simulator,id=isolated-device",
-                       IOS_SWIFT_BUILD_PATH=str(root / "swift-cache"), IOS_DERIVED_DATA_PATH=str(root / "derived"))
+                       IOS_SWIFT_BUILD_PATH=str(root / "swift-cache"), IOS_DERIVED_DATA_PATH=str(root / "derived"),
+                       RA_CORE_BUILD=str(root / "core-build"))
             for mode in (None, "full", "core", "app", "ui"):
                 with self.subTest(mode=mode):
                     probe.unlink(missing_ok=True)
@@ -73,6 +74,7 @@ with open(os.environ["RA_MODE_PROBE"], "a") as output:
                     tools = [call["tool"] for call in calls]
                     self.assertIn("python3", tools)
                     self.assertIn("xcrun", tools)
+                    self.assertIn({"tool": "core-build", "args": ["ios"]}, calls)
                     if mode in (None, "full", "core"):
                         swift = next(call for call in calls if call["tool"] == "swift")
                         self.assertIn(str(root / "swift-cache"), swift["args"])
