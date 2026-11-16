@@ -507,14 +507,15 @@ class DirectTransportE2ETest {
             waitDirectReady(30_000)
 
             android.util.Log.i("DirectE2E", "step // 6c)")
-            // 6c) STUN unreachable
+            // 6c) STUN unreachable (does not block)
             remote.setDirectEnabled(machineId, false)
             ctrlPost(ctrlBase, "/stun-control", JSONObject().put("enabled", false))
             delay(300)
             remote.setDirectEnabled(machineId, true)
-            delay(12_000)
-            assertFalse("STUN unreachable must stay on relay", isDirectConnected())
-            assertEquals(RouteName.RELAY, remote.filePath(machineId))
+            // A connected and confirmed path is used without a reflexive candidate (as the daemon does since
+            // v0.80): an unreachable STUN no longer keeps a working pair on the relay.
+            waitDirectReady(25_000)
+            assertTrue("STUN unreachable must not block a path that connects", isDirectConnected())
             assertEquals(chunkSize, retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }.data.size())
             ctrlPost(ctrlBase, "/stun-control", JSONObject().put("enabled", true))
             remote.setDirectEnabled(machineId, false)
