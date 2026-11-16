@@ -592,9 +592,10 @@
   <li><b>落后章节与宽屏统一</b>：<a href="#new">手机新建</a>更新为两行无底色顶栏 + 底部 <code>.pbox</code> 输入框 + CLI 弹出菜单 + 模型浮层面板（去掉右上发送、造句和完全放行）；全稿所有<a href="#wide">宽屏窗口</a>统一为四级 <code>s0–s3</code> 表面（去掉红黄绿窗口灯，侧栏 288 + 次级新任务钮 + 不重叠底栏，对话列 760 + 双行 14 圆角输入框，折叠工具行箭头紧跟文字）；修好 <a href="#direct-edge">200% 字号</a>演示卡状态文字挤压。</li>
   <li><b>交互与排版细节</b>：<a href="#home">主页焦点卡</a>支持 ≤3 选项简短单选提问原地作答，拒绝写理由保留 5 行命令；<a href="#input">运行中发送</a>在有草稿时显式露出「插入这一轮 ⌄」轻胶囊；<a href="#account-management">未登录首屏与启动壳</a>改用 <code>AppMark</code> 呼吸感布局，电脑卡额度条减重为 4px + 30% 墨色，推送未开提示统一用中性灰底。</li>
   <li><b>Token 输出速度（按 agent + 模型被动记录）</b>：在<a href="#models">会话设置</a>和<a href="#machine-status">电脑状态页</a>新增速度摘要入口，进入独立的<a href="#speed">输出速度</a>页（今天 / 7 天 / 30 天 / 自定义，切换输出速度与首字延迟，单色线型+节点形状多线区分 + p10–p90 浅色带 + 对比表，覆盖没有数据、样本太少、电脑离线、正在补算历史四种状态）。</li>
+  <li><b>按电脑选择启用哪些 CLI</b>：装了多个 CLI 的电脑在<a href="#machine-detail">设置 › 电脑</a>用「启用的 CLI」分组合并展示版本与开关（详态见<a href="#cli-switches">启用 CLI</a>）；停用的 CLI 立即从新任务、新定时、默认设置分段、额度和输出速度里隐藏，已有会话与历史照常可用，只留最后一个启用时锁定在开启态并写明「至少保留一个启用」，只启用一个时按只装一个处理。</li>
   </ul>
 </div>
-<nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#speed">输出速度</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
+<nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#speed">输出速度</a><a href="#cli-switches">启用 CLI</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
 
 <!-- ===== account-management ===== -->
 <style>
@@ -2166,13 +2167,17 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-models a.mi { color: inherit; text-decoration: none; }
 .sx-models .mi .warn { color: var(--orange-ink); }
 .sx-models .mi.act .v { color: var(--ink2); }
+.cli-sw-grp .mi { gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+.cli-sw-grp .amk { color: var(--ink2); flex: none; }
+.cli-sw-grp .mi .sw { margin-left: auto; }
+.cli-sw-grp .mi .warn { color: var(--orange-ink); }
 </style>
 <section id="models" class="sx-models">
 <h2>模型与上下文</h2>
 <div class="screens">
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>空闲 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">读了 6 个文件，运行了 3 条命令</span></div><div class="ai">问题在 <code>auth/login.go:58</code>，我改成复用连接池并加上 <code>2s</code> 超时。</div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="who"><b>会话设置</b><span>Codex · 修复登录超时</span></div><div class="grp ctx"><div class="mi"><div class="n"><b>11%</b><small>上下文占用 87k / 760k</small><div class="bar"><i style="width:11%"></i></div></div><button class="cb sec sm">压缩</button></div><a class="mi" href="#speed"><span class="n">输出速度<small>首字 0.9 s · 近 10 次中位数</small></span><span class="v" style="font-variant-numeric:tabular-nums">92 tok/s</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">模型</div><div class="grp"><div class="mi"><span class="n">GPT-6-Astra</span><svg class="ic ck" width="20" height="20"><use href="#lu-check"/></svg></div><div class="mi"><span class="n">GPT-6-Sol</span></div><div class="mi"><span class="n">GPT-6-Luna<small>最高 max</small></span></div><div class="mi act"><span class="n">全部模型</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">推理强度</div><div class="seg wide"><span>low</span><span class="on">medium</span><span>high</span><span>xhigh</span><span>max</span><span>ultra</span></div><div class="gf">只在空闲时能切换；运行中置灰，见<a href="#states">状态集</a>。</div></div><div class="homebar"></div></div><p class="cap"><b>会话设置（含输出速度入口）。</b>从会话右上角 ⋯ 菜单的「模型」或「上下文占用」打开：第一组是上下文占用与当前这一对「CLI + 模型」最近几次请求的中位速度（第二行写首字延迟，点开进入<a href="#speed">输出速度</a>页）；下面是模型和推理强度</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>重写支付模块</b><span>空闲 · 自动</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg><i class="dotk o"></i></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>编辑 9 个文件  +412 −288</code></div><div class="ai">支付回调和退款流程都已迁移到新接口，测试全部通过。</div><div class="turn">本轮用时 4 分 12 秒</div><div class="me"><div>继续把对账逻辑也迁过去</div></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>上下文超过 80%。</b>右上角 ⋯ 上出现橙点，⋯ 菜单里「上下文占用」一行写橙色的「已用 86%」，点进会话设置压缩。压缩后对话里留一行「上下文已压缩 · 86% → 14%」，橙点消失</p></div>
-  <div><div class="phone" id="machine-detail"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota-agy"><span class="n">Antigravity</span><span class="v">剩 60% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp"><div class="mi"><span class="n">Codex 版本</span><span class="v"><span class="warn">未验证</span> · 示例版本</span></div><div class="mi"><span class="n">Claude Code 版本</span><span class="v">示例版本</span></div><div class="mi"><span class="n">Antigravity 版本</span><span class="v">示例版本</span></div></div><div class="gl">新项目默认设置</div><div class="seg wide"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">Gemini 4 Argon</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">high</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">自动</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件<small>可清理 120.0 MiB</small></span><span class="v">200.0 MiB</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">32.0 MiB</span></div><div class="mi act"><span class="n">清理…</span><span class="v">可释放 152.0 MiB</span></div></div><div class="gf">附件存在这台电脑上。会话用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">blog</span><span class="v"><span class="mono">~/Code/blog</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div><div class="gf">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认「删除这台电脑的记录？」才清除档案。</div></div><div class="homebar"></div></div><p class="cap"><b>设置 › 电脑。</b>账户额度和版本只列这台电脑装了的 CLI，每行只摘要剩得最少的窗口（如「剩 38% · 5 小时」），保持一行。账户额度之后是「连接」组（直连开关、状态行、测到才有的速度行和一句说明，各状态见<a href="#direct">电脑 › 连接</a>）。新项目默认设置和项目设置一样用分段按钮切换已安装的 CLI（模型、推理强度、审批模式），整台电脑共用的「审批超时」单独一组。附件存储只在大小不为零时写「可清理」「正在上传」。最下面的「移除这台电脑…」打开二次确认</p></div>
+  <div><div class="phone" id="machine-detail"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota-agy"><span class="n">Antigravity</span><span class="v">剩 60% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="gl">启用的 CLI</div><div class="grp cli-sw-grp"><div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small><span class="warn">未验证</span> · 0.163.0</small></span><span class="sw"></span></div><div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw"></span></div><div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw"></span></div></div><div class="gf">停用的 CLI 不出现在新任务、新定时、额度和输出速度里；已有会话和历史照常可用。</div><div class="gl">新项目默认设置</div><div class="seg wide"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">Gemini 4 Argon</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">high</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">自动</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件<small>可清理 120.0 MiB</small></span><span class="v">200.0 MiB</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">32.0 MiB</span></div><div class="mi act"><span class="n">清理…</span><span class="v">可释放 152.0 MiB</span></div></div><div class="gf">附件存在这台电脑上。会话用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">blog</span><span class="v"><span class="mono">~/Code/blog</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div><div class="gf">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认「删除这台电脑的记录？」才清除档案。</div></div><div class="homebar"></div></div><p class="cap"><b>设置 › 电脑。</b>账户额度只列这台电脑已装且已启用的 CLI，每行只摘要剩得最少的窗口（如「剩 38% · 5 小时」），保持一行。账户额度之后是「连接」组（各状态见<a href="#direct">电脑 › 连接</a>），接着在装了 2 个及以上 CLI 的电脑上用「启用的 CLI」分组合并展示版本与按电脑独立的启用开关（交互详态见<a href="#cli-switches">启用 CLI</a>）。新项目默认设置用分段切换已启用的 CLI，整台电脑共用的「审批超时」单独一组。最下面的「移除这台电脑…」打开二次确认</p></div>
   <div><div class="phone" id="machine-detail-sparse"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>VPS-dev</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 78% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：两边的网络不能直接连通</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div></div><div class="gl">新项目默认设置 · Codex</div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件</span><span class="v">0 B</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">0 B</span></div><div class="mi dis"><span class="n">清理…</span><span class="v">无可清理内容</span></div></div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">remote-agent</span><span class="v"><span class="mono">~/Code/remote-agent</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div></div><div class="homebar"></div></div><p class="cap"><b>只装了一个 CLI 的电脑。</b>账户额度和版本都只列 Codex，「连接」组示例是正在用中继加原因；新项目默认设置没有分段按钮，分组标题直接写「新项目默认设置 · Codex」。没有可清理的内容时「清理…」置灰</p></div>
 </div>
 </section>
@@ -3709,6 +3714,157 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <div class="homebar"></div></div>
     <p class="cap"><b>正在补算历史。</b>首次升级后 daemon 在后台扫描本机已有 transcript / rollout 补算 90 天记录：已算出的近期曲线立即可读，更早区段用细虚线框交代正在补算，不整页转圈阻塞。</p></div>
 </div>
+</section>
+
+<!-- ===== cli-switches ===== -->
+<style>
+.sx-cli-switches .ph44 { width: 44px; flex: none; }
+.sx-cli-switches .seg.wide { display: flex; margin: 0 16px 12px; }
+.sx-cli-switches .seg.wide span { padding: 0 6px; }
+.sx-cli-switches a.mi { color: inherit; text-decoration: none; }
+.sx-cli-switches .banner .ta { min-height: 0; flex: none; font-weight: 600; }
+.sx-cli-switches .win .pg { flex: 1; overflow-y: auto; padding: 32px 24px 44px; scrollbar-width: none; }
+.sx-cli-switches .win .pane .hl { padding: 0 16px 6px; font-size: 26px; letter-spacing: -.02em; }
+.sx-cli-switches .win .pane .sub { padding: 0 16px 14px; font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
+.sx-cli-switches .win .pane .gl { padding-left: 28px; }
+.sx-cli-switches .win .gf { padding: 0 28px 12px; }
+.sx-cli-switches .win .sw { width: 40px; height: 24px; border-radius: 12px; }
+.sx-cli-switches .win .sw::after { width: 20px; height: 20px; }
+.sx-cli-switches .win .seg.wide { margin: 0 16px 10px; }
+</style>
+<section id="cli-switches" class="sx-cli-switches">
+<h2>按电脑选择启用哪些 CLI</h2>
+<p class="hint">一台电脑本机装了好几个 CLI，不代表要在 remote-agent 里全部启用。装了 2 个及以上 CLI 的电脑在「设置 › 电脑」里用「启用的 CLI」分组合并展示版本与按电脑独立的开关（只装 1 个时不画永远关不掉的开关）。停用后，该 CLI 立即从这台电脑的新任务、新定时任务、新项目默认设置分段、账户额度和输出速度里隐藏，并由本机 daemon 拒绝新建该 CLI 的会话；停用前已有的进行中会话和历史记录照常显示、照常可操作。至少保留一个启用：关到只剩 1 个时，最后一个开关保持绿色开启位并降为 40% 不透明度，第二行直接写明「至少保留一个启用」；只启用一个时，所有界面一律按只装一个处理。</p>
+<div class="screens">
+  <div><div class="phone" id="cli-switch-one-off"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div>
+    <div class="scroll" style="padding-bottom:40px">
+      <div class="gl">账户额度</div>
+      <div class="grp">
+        <a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+        <a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+      </div>
+      <div class="gl">启用的 CLI</div>
+      <div class="grp cli-sw-grp">
+        <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small>0.163.0</small></span><span class="sw"></span></div>
+        <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw"></span></div>
+        <div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw off"></span></div>
+      </div>
+      <div class="gf">停用的 CLI 不出现在新任务、新定时、额度和输出速度里；已有会话和历史照常可用。</div>
+      <div class="gl">新项目默认设置</div>
+      <div class="seg wide"><span class="on">Codex</span><span>Claude Code</span></div>
+      <div class="grp">
+        <div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        <div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        <div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+      </div>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>1　停用一个 CLI（关掉 Antigravity）。</b>开关切到关闭后立即同步给本机 daemon：上面的「账户额度」、电脑状态页的「输出速度」以及下面的「新项目默认设置」分段都只剩 Codex 和 Claude Code 两项，不再展示 Antigravity。</p></div>
+
+  <div><div class="phone" id="cli-switch-last-locked"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
+    <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div>
+    <div class="scroll" style="padding-bottom:40px">
+      <div class="gl">账户额度</div>
+      <div class="grp">
+        <a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+      </div>
+      <div class="gl">启用的 CLI</div>
+      <div class="grp cli-sw-grp">
+        <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small>0.163.0 · 至少保留一个启用</small></span><span class="sw dis"></span></div>
+        <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw off"></span></div>
+        <div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw off"></span></div>
+      </div>
+      <div class="gf">停用的 CLI 不出现在新任务、新定时、额度和输出速度里；已有会话和历史照常可用。</div>
+      <div class="gl">新项目默认设置 · Codex</div>
+      <div class="grp">
+        <div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        <div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        <div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+      </div>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>2　只留最后一个启用（开关锁定与解释）。</b>再把 Claude Code 关掉后，仅剩的 Codex 开关保持绿色开启位并降为 40% 不透明度（不可再关），版本号后直接写明「至少保留一个启用」；一打开下面任意一个，锁定与后缀立即解除。下方默认设置同时退化为无分段的「新项目默认设置 · Codex」，与只装一个 CLI 的机器一致。</p></div>
+
+  <div><div class="phone" id="cli-switch-new-task"><div class="sb"><span>9:41</span><i></i></div><div class="dim" style="background:var(--frame);opacity:.94"></div>
+    <div class="sheet full">
+      <div class="nt-hd"><div class="gbtn" style="background:var(--fill)"><svg class="ic" width="20" height="20"><use href="#lu-x"/></svg></div><div class="nt-where"><span class="nt-p"><span class="av">b</span><span>billing</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="nt-m"><span>MacBook</span><svg class="ic" width="12" height="12"><use href="#lu-chevron-down"/></svg></span></div><span class="ph44"></span></div>
+      <div class="banner" style="margin-top:8px"><span>MacBook 已停用 Antigravity，这次用 Codex</span><span class="ta">去启用</span></div>
+      <div class="nt-body" style="justify-content:flex-end">
+        <div class="pbox">
+          <div class="ptx">补齐退款回调幂等校验<i></i></div>
+          <div class="pbar"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="pchip"><span>Codex · GPT-6-Astra · medium</span><svg class="ic" width="12" height="12"><use href="#lu-chevron-down"/></svg></span><span class="snd"><svg class="ic" width="18" height="18"><use href="#lu-arrow-up"/></svg></span></div>
+        </div>
+      </div>
+      <div class="kb">键盘</div>
+    </div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>3　新任务：单启用按单安装处理 + 回退说明。</b>MacBook 只启用了 Codex，输入框底栏隐藏单独的 CLI 选择钮，模型胶囊前拼上「Codex ·」；若项目上次记住的 Antigravity 已被停用，顶部用中性提示条写明这次改用 Codex 并给「去启用」捷径，不偷偷改掉项目设置。</p></div>
+
+  <div><div class="phone" id="cli-switch-existing"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
+    <div class="tbar"><div class="gcap glass"><span class="av">全</span><span>全部项目</span><svg class="ic" width="15" height="15"><use href="#lu-chevron-down"/></svg></div><span class="sp"></span><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-settings"/></svg></div></div>
+    <div class="scroll">
+      <div class="hl">没有等你的事</div>
+      <div class="hl-sub">1 个会话在运行，2 个空闲</div>
+      <div class="sec">进行中</div>
+      <div class="row"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2 one">运行中 · <code>go test ./auth/...</code></div><div class="r3">foo · Codex · MacBook</div></div></div>
+      <div class="row"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>梳理登录流程</b><time>9:18</time></div><div class="r2">空闲 · 已整理认证中间件，要补单测吗？</div><div class="r3">billing · Antigravity · MacBook</div></div></div>
+      <div class="row"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明</div><div class="r3">foo · Claude Code · VPS-dev</div></div></div>
+      <div class="sec d">今天</div>
+      <div class="row done"><span class="gut"></span><div class="rb"><div class="r1"><b>整理部署脚本</b><time>billing · 7:40</time></div></div></div>
+      <div class="row done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>foo · 7:10</time></div></div></div>
+    </div>
+    <div class="bbar"><div class="tabs glass"><div class="on"><svg class="ic" width="23" height="23"><use href="#lu-message-circle"/></svg>会话</div><div><svg class="ic" width="23" height="23"><use href="#lu-clock"/></svg>定时</div></div><div class="fab"><svg class="ic" width="20" height="20"><use href="#lu-square-pen"/></svg>新任务</div></div>
+    <div class="homebar"></div></div>
+    <p class="cap"><b>4　已有会话与历史不受影响。</b>即使 MacBook 已停用 Antigravity，停用前创建的「梳理登录流程」（进行中）和「整理部署脚本」（历史）仍照常显示、收发消息、审批与恢复；只有新建会话与新开对话的定时任务由 daemon 拒绝执行。</p></div>
+</div>
+
+<!-- 宽屏 1360：设置 › 电脑（按电脑启用哪些 CLI） -->
+<div class="win" id="cli-switch-wide" style="height:640px;margin-top:28px">
+  <div class="side">
+    <div class="side-top"><span class="scp"><span class="av">全</span><span>全部项目</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div>
+    <div class="whl">没有等你的事</div>
+    <div class="wsub">1 个会话在运行，2 个空闲</div>
+    <div class="slist">
+      <div class="slabel">进行中</div>
+      <div class="srow"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2 one">运行中 · <code>go test ./auth/...</code></div><div class="r3">foo · Codex · MacBook</div></div></div>
+      <div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>梳理登录流程</b><time>9:18</time></div><div class="r2">空闲 · 已整理认证中间件</div><div class="r3">billing · Antigravity · MacBook</div></div></div>
+      <div class="slabel">今天</div>
+      <div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>整理部署脚本</b><time>billing · 7:40</time></div></div></div>
+    </div>
+    <div class="conn"><i class="dotk g"></i>已连接</div>
+    <div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib" style="background:var(--fill2);color:var(--ink)"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div>
+  </div>
+  <div class="main">
+    <div class="tool"><span class="ib"><svg class="ic" width="18" height="18"><use href="#lu-chevron-left"/></svg></span><span style="font-size:13px;color:var(--ink2)">设置</span><span style="color:var(--ink3)">/</span><b>MacBook</b><span class="sp"></span></div>
+    <div class="pg">
+      <div class="pane">
+        <div class="hl">MacBook</div>
+        <div class="sub"><i class="dotk g" style="margin:0"></i><span>在线 · daemon 0.62.0 · macOS</span></div>
+        <div class="gl">账户额度</div>
+        <div class="grp">
+          <div class="mi"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        </div>
+        <div class="gl">启用的 CLI</div>
+        <div class="grp cli-sw-grp">
+          <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small>0.163.0</small></span><span class="sw"></span></div>
+          <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw"></span></div>
+          <div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw off"></span></div>
+        </div>
+        <div class="gf">停用的 CLI 不出现在新任务、新定时、额度和输出速度里；已有会话和历史照常可用。</div>
+        <div class="gl">新项目默认设置</div>
+        <div class="seg wide"><span class="on">Codex</span><span>Claude Code</span></div>
+        <div class="grp">
+          <div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+          <div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="wcap"><b>宽屏 1360 · 设置 › 电脑（启用的 CLI）。</b>主工作区 640px 居中设置栏采用四级 <code>s0–s3</code> 桌面表面与 40×24 桌面开关；关掉 Antigravity 后，右侧账户额度与默认设置分段同步收敛为两项，左侧栏里已有的 Antigravity 会话（「梳理登录流程」）继续保留可操作。</p>
 </section>
 </div>
 <script>
