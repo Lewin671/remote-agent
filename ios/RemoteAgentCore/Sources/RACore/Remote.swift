@@ -448,13 +448,14 @@ public actor Remote {
         securityStorage: (any DeviceSecurity.Storage)? = nil,
         monotonic: (@Sendable () -> Int64)? = nil,
         rtc: (any RtcFactory)? = nil,
-        directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences()
+        directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences(),
+        directStun: [String]? = nil
     ) throws {
         self.account = account
         let holder = WeakRemote()
         if let rtc {
             direct = DirectEngine(
-                server: account.server, deviceId: account.deviceId, deviceSeed: account.deviceSeed, factory: rtc, preferences: directPreferences,
+                server: account.server, deviceId: account.deviceId, deviceSeed: account.deviceSeed, factory: rtc, preferences: directPreferences, stun: directStun,
                 authorize: { try await holder.remote?.directAuthorize() }, changed: { holder.remote?.directChanged() })
         } else { direct = nil }
         self.securityStorage = securityStorage
@@ -486,6 +487,9 @@ public actor Remote {
             }
         }
         holder.remote = self
+        // The warm-up asks for its samples through the Remote, which authorizes and signs them like any read.
+        direct?.probe = { [holder] id, path in await holder.remote?.probeRead(id, path) }
+        direct?.trace = log
     }
 
     deinit {

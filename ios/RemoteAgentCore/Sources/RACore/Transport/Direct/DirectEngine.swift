@@ -113,6 +113,8 @@ final class DirectEngine: @unchecked Sendable {
     private var discovering = false
     /// Sends one authorized background read on the given path and returns when it ends; the owner
     /// of the keys (Remote) provides it. Without it no warm-up sample is taken.
+    /// What the engine decided, in words (never keys, content or addresses); the Remote hands its own log.
+    var trace: (@Sendable (String) -> Void)?
     var probe: (@Sendable (String, RouteName) async -> Void)? { get { lock.withLock { _probe } } set { lock.withLock { _probe = newValue } } }
     private var _probe: (@Sendable (String, RouteName) async -> Void)?
 
@@ -274,7 +276,8 @@ final class DirectEngine: @unchecked Sendable {
             let pub = lock.withLock { try? publicIdentityLocked(member.id) }
             guard let pub, still() else { continue }
             if lock.withLock({ peers[member.id]?.session.live == true }) { continue }
-            if let p = create(pub, W.random(16), clock.now() + 10_000) { await p.session.start() }
+            trace?("direct: starting a round")
+            if let p = create(pub, W.random(16), clock.now() + 10_000) { await p.session.start() } else { trace?("direct: a round could not be made") }
         }
     }
 
@@ -347,6 +350,7 @@ final class DirectEngine: @unchecked Sendable {
             guard peers[id] === p else { return }
             if use != nil && p.session.live && p.session.established {
                 if p.redialAt == nil { p.redialAt = clock.now() + delay(id, p) }
+                trace?("direct: use \(use!) closed, redial in \((p.redialAt ?? 0) &- clock.now()) ms")
                 routingLocked(id).fail()
             }
             if !p.paths.values.contains(where: { $0.usable }) {
@@ -354,6 +358,7 @@ final class DirectEngine: @unchecked Sendable {
                 routingLocked(id).fail()
                 if peers[id] === p { peers.removeValue(forKey: id) }
                 retryAfter[id] = clock.now() + delay(id, p)
+                trace?("direct: no usable path left, next round in \(retryAfter[id]! &- clock.now()) ms (reason \(String(describing: failures[id])))")
             }
         }
         failPending(for: p, use: use)

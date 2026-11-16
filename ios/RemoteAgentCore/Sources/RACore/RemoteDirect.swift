@@ -64,6 +64,7 @@ extension Remote {
     /// direct sample demotes direct, a failed relay one is only a missing sample.
     func probeRead(_ machineId: String, _ path: RouteName) async {
         guard let direct, !closed else { return }
+        log("read sample requested on the \(path == .direct ? "direct" : "relay") path")
         let hint = RouteHint.read, tracking = direct.track(machineId, hint), isDirect = path == .direct
         do {
             var cmd = PBCommand(); cmd.getMachineStatus = PBGetMachineStatusRequest()
@@ -73,14 +74,17 @@ extension Remote {
                 try await self.probeOnce(p, machineId, isDirect, call, link, direct, hint, tracking)
             }
             try await link.call(p, prior: false, work: work)
-        } catch { if isDirect { tracking.failed() } }
+        } catch {
+            log("read sample on the \(isDirect ? "direct" : "relay") path failed: \(errorText(error))")
+            if isDirect { tracking.failed() }
+        }
     }
 
     private func probeOnce(_ p: PreparedCommand, _ machineId: String, _ isDirect: Bool, _ call: DispatchState.Call, _ link: Link, _ direct: DirectEngine, _ hint: RouteHint, _ tracking: DirectEngine.Tracking) async throws {
         let started = ContinuousClock.now
         let build = isDirect ? directBuilder(direct, machineId, hint, probe: true) : nil
         let delivery = link.delivery(call, direct: build)
-        guard delivery.isDirect == isDirect else { return }
+        guard delivery.isDirect == isDirect else { log("read sample: the \(isDirect ? "direct" : "relay") path was not offered"); return }
         try await delivery.prepare(prior: false)
         let envelope = try await authorizePrepared(p, verifyObservation: false)
         let binding = try await securitySession().commandIdentity(envelope)
@@ -88,8 +92,9 @@ extension Remote {
         let (_, msg) = try await openSecureMessage(envelope: res.result, want: Place(.commandResult, machineId: machineId, sessionId: "", requestId: p.requestId), as: PBCommandResult.self)
         let outerOutcome = isDirect ? msg.outcome : res.outcome, outerReason = isDirect ? msg.reason : res.reason
         let bound = msg.requestKeyHash == binding.key && msg.payloadHash == binding.payload && res.attemptID == delivery.attemptId && outerOutcome == msg.outcome && outerReason == msg.reason
-        guard bound, msg.errorCode.isEmpty else { return }
+        guard bound, msg.errorCode.isEmpty else { log("read sample not usable: bound=\(bound) code=\(msg.errorCode)"); return }
         let category = verifiedOutcome(msg, key: binding.key, payload: binding.payload, outerOutcome: outerOutcome, outerReason: outerReason)
+        log("read sample on the \(isDirect ? "direct" : "relay") path: \(category) in \((ContinuousClock.now - started).milliseconds) ms")
         if category == .executed { tracking.observe(isDirect, 0, Double((ContinuousClock.now - started).milliseconds)) }
     }
 }
