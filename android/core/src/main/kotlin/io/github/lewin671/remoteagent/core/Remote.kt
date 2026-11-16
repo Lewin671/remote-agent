@@ -440,7 +440,7 @@ class Remote(
         rtcFactory = rtcFactory,
         preferenceStore = directPrefs,
         authorize = { security.sync(5_000L); Unit },
-        changed = { scope.launch { publish() } },
+        changed = { scope.launch { if (running) publish() } },
         clock = clock,
         monotonic = monotonic,
         stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),

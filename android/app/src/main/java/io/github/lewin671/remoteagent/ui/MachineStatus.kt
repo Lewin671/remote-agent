@@ -600,6 +600,14 @@ private fun TileSkeleton(icon: ImageVector, label: String, modifier: Modifier) {
     }
 }
 
+@Composable
+private fun TransportPathsRow(fileDirect: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver, p: Palette) {
+    Row(Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(copy(UiMessages.transportInteractionRelay()), style = T.s13, color = p.ink2)
+        Text(copy(if (fileDirect) UiMessages.transportFileDirect() else UiMessages.transportFileRelay()), style = T.s13, color = p.ink2)
+    }
+}
+
 /**
  * The page (ui-spec A3): the pieces are all values, so a screenshot can draw any moment of it. [main] is the metric of the
  * big chart; [liveText] is the line under the title.
@@ -621,6 +629,7 @@ fun MachineStatusContent(
     onCleanup: () -> Unit,
     onRetry: () -> Unit,
     swap: SwapAnimation = remember { SwapAnimation() },
+    fileDirect: Boolean = false,
 ) {
     val p = pal
     val locale = LocalMessageLocale.current
@@ -684,6 +693,7 @@ fun MachineStatusContent(
                 StatusView.LOADING -> Column(Modifier.weight(1f).verticalScrollFaded(p.statusPage).padding(start = 16.dp, end = 16.dp, bottom = 30.dp)) {
                     // Nothing read yet: the page's frame, dashes for the figures, no curve and no ranking.
                     StatusHeader(name, copy(UiMessages.machineStatusLoading()), false, p, idle = true)
+                    TransportPathsRow(fileDirect, copy, p)
                     val other = if (main == StatusMetric.CPU) StatusMetric.MEMORY else StatusMetric.CPU
                     HeroSkeleton(main, copy, Modifier.padding(top = 18.dp))
                     StatusAdaptiveRow(Modifier.padding(top = 12.dp)) { tile ->
@@ -693,6 +703,7 @@ fun MachineStatusContent(
                 }
                 StatusView.UNAVAILABLE -> Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
                     StatusHeader(name, null, false, p)
+                    TransportPathsRow(fileDirect, copy, p)
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(copy(UiMessages.machineStatusUnavailable()), style = T.s17, color = p.ink2, textAlign = TextAlign.Center)
@@ -703,6 +714,7 @@ fun MachineStatusContent(
                 else -> Column(Modifier.weight(1f).verticalScrollFaded(p.statusPage).padding(start = 16.dp, end = 16.dp, bottom = 30.dp)) {
                     s!!
                     StatusHeader(name, liveText, stale, p)
+                    TransportPathsRow(fileDirect, copy, p)
                     val other = if (main == StatusMetric.CPU) StatusMetric.MEMORY else StatusMetric.CPU
                     val hero = @Composable { metric: StatusMetric -> HeroCard(metric, s, text, stale, points, endMs, scrub, { scrub = it }, ::step, Modifier) }
                     val tileOf = @Composable { metric: StatusMetric ->
@@ -756,5 +768,6 @@ fun MachineStatusScreen(id: String) {
         agentOf = { sid -> state.sessions[sid]?.agent() },
         onBack = nav.back, onSession = nav.session, onOpenStorage = { nav.deviceStorage(id) }, onCleanup = { nav.cleanup(id) },
         onRetry = feed.retry,
+        fileDirect = m?.pathState?.fileDirect == true,
     )
 }

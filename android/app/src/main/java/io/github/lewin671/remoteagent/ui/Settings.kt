@@ -545,6 +545,8 @@ fun DeviceScreen(
     var pickMode by remember { mutableStateOf<Agent?>(null) }
     var pickTimeout by remember { mutableStateOf(false) }
     var pickIdleClose by remember { mutableStateOf(false) }
+    var directOn by remember(id, remote) { mutableStateOf(remote.directEnabled(id)) }
+    var pickDirect by remember { mutableStateOf(false) }
     var activeAgent by remember(id) { mutableStateOf<Agent?>(null) }
     fun update(s: DaemonSettings, cleanImages: Boolean = false) =
         save.run(
@@ -572,7 +574,18 @@ fun DeviceScreen(
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
-            // 电脑状态 (ui-spec A2): the card at the top of the page, only for a computer that has it.
+            if (member) {
+                Group(
+                    rows = listOf {
+                        GRow(
+                            copy(UiMessages.transportDirect()),
+                            copy(if (directOn) UiMessages.transportAutomatic() else UiMessages.transportOff()),
+                            onClick = { pickDirect = true },
+                            chevron = true,
+                        )
+                    },
+                )
+            }
             if (member && m.pathState.capabilities?.machineStatus == true) {
                 val fetch = LocalStatusFetch.current
                 val feed = rememberMachineFeed(id, 10_000, true, m.pathState.reachable) { fetch(remote, id) }
@@ -940,6 +953,23 @@ fun DeviceScreen(
                 update(cur.toBuilder().setIdleCloseMinutes(IDLE_CLOSE_CHOICES[i]).build())
             },
             onClose = { pickIdleClose = false },
+        )
+    }
+    if (pickDirect) {
+        ChoiceSheet(
+            copy(UiMessages.transportDirect()),
+            listOf(
+                copy(UiMessages.transportAutomatic()) to null,
+                copy(UiMessages.transportOff()) to null,
+            ),
+            if (directOn) 0 else 1,
+            onPick = { i ->
+                val next = i == 0
+                remote.setDirectEnabled(id, next)
+                directOn = next
+                pickDirect = false
+            },
+            onClose = { pickDirect = false },
         )
     }
 }

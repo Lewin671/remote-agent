@@ -74,6 +74,10 @@ class RaApp : Application() {
 
     val vault: Vault by lazy { Vault(this) }
     val prefs: Prefs by lazy { Prefs(this) }
+    internal val directPrefs by lazy { io.github.lewin671.remoteagent.transport.SharedPrefsDirectPreferenceStore(this) }
+    internal val rtcFactory: io.github.lewin671.remoteagent.core.transport.RtcFactory by lazy { io.github.lewin671.remoteagent.transport.AndroidRtcFactory(this) }
+    @Volatile internal var testRtcFactory: io.github.lewin671.remoteagent.core.transport.RtcFactory? = null
+    @Volatile internal var testStunUrls: List<String>? = null
     val db: CacheDb by lazy { CacheDb.open(this) }
     val eventAccess by lazy { io.github.lewin671.remoteagent.data.EventAccess(this) }
     val http: OkHttpClient by lazy { Api.defaultHttp() }
@@ -394,6 +398,9 @@ class RaApp : Application() {
                         if (foreground) vault.loadLoginToken(account) else null
                 },
                 log = { Log.i(TAG, it) },
+                rtcFactory = testRtcFactory ?: rtcFactory,
+                directPrefs = directPrefs,
+                stunUrls = testStunUrls,
             )
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
         attachNetwork(r)
@@ -515,6 +522,7 @@ class RaApp : Application() {
                                 runCatching { contentResolver.releasePersistableUriPermission(permission.uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
                             } },
                             { prefs.clear() },
+                            { directPrefs.clear() },
                         )
                     }
                     erasePending = false

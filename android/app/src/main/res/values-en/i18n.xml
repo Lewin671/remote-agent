@@ -2304,4 +2304,10 @@
     <string name="tools_exit_code">"Exit code %1$s"</string>
     <string name="tools_tool" formatted="false">"Tool"</string>
     <string name="tools_waiting_sync" formatted="false">"Waiting to sync"</string>
+    <string name="transport_automatic" formatted="false">"Automatic"</string>
+    <string name="transport_direct" formatted="false">"Direct connection"</string>
+    <string name="transport_file_direct" formatted="false">"Files: Direct"</string>
+    <string name="transport_file_relay" formatted="false">"Files: Relay"</string>
+    <string name="transport_interaction_relay" formatted="false">"Interaction: Relay"</string>
+    <string name="transport_off" formatted="false">"Off"</string>
 </resources>

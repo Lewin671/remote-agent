@@ -6704,6 +6704,24 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "tools.waiting_sync" -> {
             resources.getString(R.string.tools_waiting_sync)
         }
+        "transport.automatic" -> {
+            resources.getString(R.string.transport_automatic)
+        }
+        "transport.direct" -> {
+            resources.getString(R.string.transport_direct)
+        }
+        "transport.file_direct" -> {
+            resources.getString(R.string.transport_file_direct)
+        }
+        "transport.file_relay" -> {
+            resources.getString(R.string.transport_file_relay)
+        }
+        "transport.interaction_relay" -> {
+            resources.getString(R.string.transport_interaction_relay)
+        }
+        "transport.off" -> {
+            resources.getString(R.string.transport_off)
+        }
         else -> null
     }
 }

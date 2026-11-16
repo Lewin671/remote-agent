@@ -2018,6 +2018,12 @@ object UiMessages {
     fun toolsExitCode(code: String): UiMessage = UiMessage("tools.exit_code", mapOf("code" to code))
     fun toolsTool(): UiMessage = UiMessage("tools.tool", emptyMap())
     fun toolsWaitingSync(): UiMessage = UiMessage("tools.waiting_sync", emptyMap())
+    fun transportAutomatic(): UiMessage = UiMessage("transport.automatic", emptyMap())
+    fun transportDirect(): UiMessage = UiMessage("transport.direct", emptyMap())
+    fun transportFileDirect(): UiMessage = UiMessage("transport.file_direct", emptyMap())
+    fun transportFileRelay(): UiMessage = UiMessage("transport.file_relay", emptyMap())
+    fun transportInteractionRelay(): UiMessage = UiMessage("transport.interaction_relay", emptyMap())
+    fun transportOff(): UiMessage = UiMessage("transport.off", emptyMap())
 }
 
 object MessageLocale {

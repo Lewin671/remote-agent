@@ -1,5 +1,5 @@
+import java.security.MessageDigest
 import java.time.Duration
-
 import java.util.Properties
 
 plugins {
@@ -171,6 +171,7 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.webrtc)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
@@ -182,4 +183,30 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test)
     androidTestImplementation(libs.android.test.runner)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+val verifyWebrtcChecksum by tasks.registering {
+    val artifacts = configurations.named("releaseRuntimeClasspath").map {
+        it.incoming.artifactView {
+            componentFilter { id ->
+                id is org.gradle.api.artifacts.component.ModuleComponentIdentifier &&
+                    id.group == "io.github.webrtc-sdk" &&
+                    id.module == "android"
+            }
+        }.files
+    }
+    inputs.files(artifacts)
+    doLast {
+        val files = artifacts.get().files
+        check(files.size == 1) { "Expected single io.github.webrtc-sdk:android AAR, got: $files" }
+        val aar = files.single()
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(aar.readBytes())
+            .joinToString("") { b: Byte -> "%02x".format(b) }
+        val expected = "1872dda4e3bf7d6ea6f7c6e11861332081c57081a1e62fc82fab72415c69c84c"
+        check(digest == expected) { "WebRTC AAR SHA-256 mismatch: $digest != $expected" }
+    }
+}
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(verifyWebrtcChecksum)
 }

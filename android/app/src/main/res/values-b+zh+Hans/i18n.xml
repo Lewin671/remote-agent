@@ -2210,4 +2210,10 @@
     <string name="tools_exit_code">"退出码 %1$s"</string>
     <string name="tools_tool" formatted="false">"工具"</string>
     <string name="tools_waiting_sync" formatted="false">"等待同步"</string>
+    <string name="transport_automatic" formatted="false">"自动"</string>
+    <string name="transport_direct" formatted="false">"直连"</string>
+    <string name="transport_file_direct" formatted="false">"文件：直连"</string>
+    <string name="transport_file_relay" formatted="false">"文件：中继"</string>
+    <string name="transport_interaction_relay" formatted="false">"交互：中继"</string>
+    <string name="transport_off" formatted="false">"关闭"</string>
 </resources>
