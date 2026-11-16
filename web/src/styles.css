@@ -973,6 +973,17 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sw.off { background: var(--fill2); }
 .sw.off::after { right: auto; left: 2px; }
 .sw:disabled { opacity: .4; }
+/* The 「连接」 group (design-system §6): a status row (state graphic, state
+   word in ink2, the purposes that go direct on the right, a reason under the
+   word) and a speed row for each measurement. Long text wraps; the value of a
+   speed row moves under its name when it does not fit, at the same size. */
+.row.dx { position: relative; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; row-gap: 2px; padding: 14px 16px 14px 44px; }
+.dx-mark { position: absolute; left: 18px; top: 14px; width: 14px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.dx-text { flex: 0 1 auto; min-width: 0; max-width: 100%; color: var(--ink2); overflow-wrap: anywhere; }
+.dx-text small { display: block; font-size: 13px; line-height: 1.35; margin-top: 2px; }
+.row.dx > .v { flex: 0 1 auto; margin-left: 0; max-width: 100%; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.row.speed { flex-wrap: wrap; justify-content: space-between; row-gap: 2px; padding-top: 10px; padding-bottom: 10px; }
+.row.speed > .v { margin-left: 0; max-width: 100%; display: block; white-space: normal; overflow: visible; font-variant-numeric: tabular-nums; }
 /* A note under a group, from where the rows' text starts. */
 .gf { font-size: 13px; line-height: 1.45; color: var(--ink2); padding: 0 28px; margin: -4px 0 16px; overflow-wrap: anywhere; }
 /* A thin bar of what is left: ink on fill2, orange at 20% and below,
@@ -1674,6 +1685,9 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .row.col, .desk .row.help { padding: 12px 16px; }
 .desk .row .v { font-size: 15px; }
 .desk .row.client { padding-top: 8px; padding-bottom: 8px; }
+.desk .row.dx { padding: 12px 16px 12px 42px; }
+.desk .dx-mark { left: 16px; top: 12px; height: 20px; }
+.desk .row.speed { padding-top: 9px; padding-bottom: 9px; }
 .desk .qrow { padding: 12px 16px; }
 .desk .qrow + .qrow::before { left: 16px; }
 .desk .qrow > b { font-size: 15px; }

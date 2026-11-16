@@ -101,91 +101,7 @@
     "key": "transport.direct",
     "zh-CN": "直连",
     "en": "Direct connection",
-    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.automatic",
-    "zh-CN": "自动",
-    "en": "Automatic",
-    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.off",
-    "zh-CN": "关闭",
-    "en": "Off",
-    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.interaction_relay",
-    "zh-CN": "交互：中继",
-    "en": "Interaction: Relay",
-    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.file_relay",
-    "zh-CN": "文件：中继",
-    "en": "Files: Relay",
-    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.file_direct",
-    "zh-CN": "文件：直连",
-    "en": "Files: Direct",
-    "notes": "每台电脑在本设备上的直连设置或按用途显示的实际路径。交互和终端本期仍经中继。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.status_connected",
-    "zh-CN": "直连已建立",
-    "en": "Direct connection established",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "notes": "电脑设置页「连接」组里的开关行名称，也是开关的读屏名称。开 = 自动尝试直连，关 = 不尝试；只影响本设备。行宽有限，保持一两个词。",
     "params": {},
     "platforms": [
       "web"
@@ -197,9 +113,9 @@
   },
   {
     "key": "transport.status_connecting",
-    "zh-CN": "正在尝试直连",
-    "en": "Trying a direct connection",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "正在尝试直连…",
+    "en": "Trying to connect directly…",
+    "notes": "电脑设置页「连接」组的状态行（行首是状态图形，状态词在图形旁边，13 号第二行可写原因）。也出现在连接检测里该电脑名下的摘要行；省略号是中文原句的一部分。",
     "params": {},
     "platforms": [
       "web"
@@ -211,9 +127,9 @@
   },
   {
     "key": "transport.status_none",
-    "zh-CN": "未建立直连",
-    "en": "No direct connection",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "未直连",
+    "en": "Not direct",
+    "notes": "电脑设置页「连接」组的状态行（行首是状态图形，状态词在图形旁边，13 号第二行可写原因）。表示这台电脑目前没有走直连，原因（若知道）写在第二行；连接检测里写成「未直连 · 原因」。",
     "params": {},
     "platforms": [
       "web"
@@ -225,23 +141,9 @@
   },
   {
     "key": "transport.status_unsupported",
-    "zh-CN": "本设备不支持直连",
-    "en": "This device does not support direct connections",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.reason_disabled",
-    "zh-CN": "已在设置中关闭",
-    "en": "Turned off in settings",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "这个浏览器不支持直连",
+    "en": "This browser doesn't support direct connections",
+    "notes": "本设备的浏览器没有 WebRTC 时，电脑设置页「连接」组状态行的整句，同时开关置灰；连接检测页脚也用同一句收尾。",
     "params": {},
     "platforms": [
       "web"
@@ -253,9 +155,9 @@
   },
   {
     "key": "transport.reason_peer_unsupported",
-    "zh-CN": "对方版本不支持",
-    "en": "The computer's version does not support it",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "电脑上的版本太旧，更新后可用",
+    "en": "The computer's version is too old; update it to use direct",
+    "notes": "状态行第二行（未直连的原因）和连接检测里「未直连 · 原因」共用同一句，必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web"
@@ -267,9 +169,9 @@
   },
   {
     "key": "transport.reason_no_response",
-    "zh-CN": "电脑端没有响应，可能已关闭直连",
-    "en": "The computer did not respond; it may have direct connections off",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "电脑没有回应，可能在电脑上关了直连",
+    "en": "The computer didn't answer; direct may be turned off there",
+    "notes": "状态行第二行（未直连的原因）和连接检测里「未直连 · 原因」共用同一句，必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web"
@@ -281,9 +183,9 @@
   },
   {
     "key": "transport.reason_no_traversal",
-    "zh-CN": "无法穿透网络（STUN/UDP 不通）",
-    "en": "Cannot get through the network (STUN/UDP blocked)",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "两边的网络不能直接连通",
+    "en": "The two networks can't reach each other directly",
+    "notes": "状态行第二行（未直连的原因）和连接检测里「未直连 · 原因」共用同一句，必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web"
@@ -295,37 +197,9 @@
   },
   {
     "key": "transport.reason_failed",
-    "zh-CN": "尝试失败，稍后重试",
-    "en": "Attempt failed; will retry shortly",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.read_direct",
-    "zh-CN": "只读：直连",
-    "en": "Read-only: Direct",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
-    "params": {},
-    "platforms": [
-      "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.read_relay",
-    "zh-CN": "只读：中继",
-    "en": "Read-only: Relay",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "没连上，稍后会自动再试",
+    "en": "Couldn't connect; will try again shortly",
+    "notes": "状态行第二行（未直连的原因）和连接检测里「未直连 · 原因」共用同一句，必须是能单独读懂的短句，可换行。",
     "params": {},
     "platforms": [
       "web"
@@ -337,17 +211,17 @@
   },
   {
     "key": "transport.file_speed_both",
-    "zh-CN": "文件速度：直连 {direct} MiB/s，中继 {relay} MiB/s",
-    "en": "File speed: direct {direct} MiB/s, relay {relay} MiB/s",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "直连 {direct} · 中继 {relay} MiB/s",
+    "en": "Direct {direct} · Relay {relay} MiB/s",
+    "notes": "电脑设置页「连接」组的速度行右侧的值，只在确实测到时显示：文件传输单位 MiB/s，读取延时单位 ms；数字等宽。两条路都测到时写「直连 · 中继」，窄屏放不下时换到标题下面一行。",
     "params": {
       "direct": {
         "type": "string",
-        "example": "Example"
+        "example": "6.3"
       },
       "relay": {
         "type": "string",
-        "example": "Example"
+        "example": "4.1"
       }
     },
     "platforms": [
@@ -360,13 +234,13 @@
   },
   {
     "key": "transport.file_speed_direct",
-    "zh-CN": "文件速度：直连 {direct} MiB/s",
-    "en": "File speed: direct {direct} MiB/s",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "直连 {direct} MiB/s",
+    "en": "Direct {direct} MiB/s",
+    "notes": "电脑设置页「连接」组的速度行右侧的值，只在确实测到时显示：文件传输单位 MiB/s，读取延时单位 ms；数字等宽。两条路都测到时写「直连 · 中继」，窄屏放不下时换到标题下面一行。",
     "params": {
       "direct": {
         "type": "string",
-        "example": "Example"
+        "example": "6.3"
       }
     },
     "platforms": [
@@ -379,13 +253,13 @@
   },
   {
     "key": "transport.file_speed_relay",
-    "zh-CN": "文件速度：中继 {relay} MiB/s",
-    "en": "File speed: relay {relay} MiB/s",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "中继 {relay} MiB/s",
+    "en": "Relay {relay} MiB/s",
+    "notes": "电脑设置页「连接」组的速度行右侧的值，只在确实测到时显示：文件传输单位 MiB/s，读取延时单位 ms；数字等宽。两条路都测到时写「直连 · 中继」，窄屏放不下时换到标题下面一行。",
     "params": {
       "relay": {
         "type": "string",
-        "example": "Example"
+        "example": "4.1"
       }
     },
     "platforms": [
@@ -398,17 +272,17 @@
   },
   {
     "key": "transport.read_latency_both",
-    "zh-CN": "只读延时：直连 {direct} ms，中继 {relay} ms",
-    "en": "Read latency: direct {direct} ms, relay {relay} ms",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "直连 {direct} · 中继 {relay} ms",
+    "en": "Direct {direct} · Relay {relay} ms",
+    "notes": "电脑设置页「连接」组的速度行右侧的值，只在确实测到时显示：文件传输单位 MiB/s，读取延时单位 ms；数字等宽。两条路都测到时写「直连 · 中继」，窄屏放不下时换到标题下面一行。",
     "params": {
       "direct": {
         "type": "string",
-        "example": "Example"
+        "example": "12"
       },
       "relay": {
         "type": "string",
-        "example": "Example"
+        "example": "180"
       }
     },
     "platforms": [
@@ -421,13 +295,13 @@
   },
   {
     "key": "transport.read_latency_direct",
-    "zh-CN": "只读延时：直连 {direct} ms",
-    "en": "Read latency: direct {direct} ms",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "直连 {direct} ms",
+    "en": "Direct {direct} ms",
+    "notes": "电脑设置页「连接」组的速度行右侧的值，只在确实测到时显示：文件传输单位 MiB/s，读取延时单位 ms；数字等宽。两条路都测到时写「直连 · 中继」，窄屏放不下时换到标题下面一行。",
     "params": {
       "direct": {
         "type": "string",
-        "example": "Example"
+        "example": "12"
       }
     },
     "platforms": [
@@ -440,13 +314,13 @@
   },
   {
     "key": "transport.read_latency_relay",
-    "zh-CN": "只读延时：中继 {relay} ms",
-    "en": "Read latency: relay {relay} ms",
-    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "zh-CN": "中继 {relay} ms",
+    "en": "Relay {relay} ms",
+    "notes": "电脑设置页「连接」组的速度行右侧的值，只在确实测到时显示：文件传输单位 MiB/s，读取延时单位 ms；数字等宽。两条路都测到时写「直连 · 中继」，窄屏放不下时换到标题下面一行。",
     "params": {
       "relay": {
         "type": "string",
-        "example": "Example"
+        "example": "180"
       }
     },
     "platforms": [
@@ -458,10 +332,206 @@
     }
   },
   {
-    "key": "transport.speed_footnote",
-    "zh-CN": "直连速度来自实际使用：文件取最近一次不少于 4 MiB 的传输，只读取最近一分钟的中位延时。没有实测就不显示。",
-    "en": "Direct speeds come from real use: files use the latest transfer of at least 4 MiB, read-only uses the median of the last minute. Nothing is shown until measured.",
-    "notes": "连接检测页脚注，说明直连状态行里速度数字的来源。无变量。",
+    "key": "transport.group",
+    "zh-CN": "连接",
+    "en": "Connection",
+    "notes": "电脑设置页里直连设置那一组的分组标题，样式同其他分组标题。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_direct",
+    "zh-CN": "正在直连",
+    "en": "Connected directly",
+    "notes": "电脑设置页「连接」组的状态行（行首是状态图形，状态词在图形旁边，13 号第二行可写原因）。至少一种用途（文件或读取）正在走直连时显示；连接检测里写成「正在直连 · 文件和读取」。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_relay",
+    "zh-CN": "已连上，暂用中继",
+    "en": "Connected, using the relay for now",
+    "notes": "电脑设置页「连接」组的状态行（行首是状态图形，状态词在图形旁边，13 号第二行可写原因）。直连已建立，但文件和读取目前都还走中继；第二行说明原因，连接检测里只写这一句。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.use_both",
+    "zh-CN": "文件和读取",
+    "en": "Files and reading",
+    "notes": "状态行「正在直连」右侧的值，也是连接检测摘要里「正在直连 · 内容」的内容：文件传输和读取都走直连。读取指不写入的读操作，如浏览目录。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.use_file",
+    "zh-CN": "文件",
+    "en": "Files",
+    "notes": "状态行「正在直连」右侧的值，也是连接检测摘要里的内容：只有文件传输走直连。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.use_read",
+    "zh-CN": "读取",
+    "en": "Reading",
+    "notes": "状态行「正在直连」右侧的值，也是连接检测摘要里的内容：只有读取走直连。读取指不写入的读操作，如浏览目录。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.relay_faster",
+    "zh-CN": "中继更快",
+    "en": "The relay is faster",
+    "notes": "状态行「已连上，暂用中继」下面的第二行：两条路都测过，且中继不慢于直连，所以继续走中继。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.comparing",
+    "zh-CN": "正在比较速度",
+    "en": "Comparing speeds",
+    "notes": "状态行「已连上，暂用中继」下面的第二行：还没有足够的实测来决定走哪条路，会在实际传输中比较。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_file",
+    "zh-CN": "文件传输",
+    "en": "File transfer",
+    "notes": "电脑设置页「连接」组速度行的左侧名称：文件传输的速度，右侧是 MiB/s 的值。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_read",
+    "zh-CN": "读取延时",
+    "en": "Read latency",
+    "notes": "电脑设置页「连接」组速度行的左侧名称：读取一次所需的时间，右侧是 ms 的值。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.footer",
+    "zh-CN": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。",
+    "en": "When this computer can be reached directly, files and reading go direct; messages and approvals always go through the server relay. If the direct connection drops, it switches back to the relay automatically.",
+    "notes": "电脑设置页「连接」组下面的说明，13 号，可多行。没有速度行时用这一句。无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.footer_speeds",
+    "zh-CN": "能直接连上这台电脑时，文件和读取改走直连；发消息和审批始终经服务器中继。直连断开会自动换回中继。速度取自最近的实际传输。",
+    "en": "When this computer can be reached directly, files and reading go direct; messages and approvals always go through the server relay. If the direct connection drops, it switches back to the relay automatically. Speeds come from recent actual transfers.",
+    "notes": "电脑设置页「连接」组下面的说明，13 号，可多行。有速度行时用这一句，比没有速度行时多末尾一句。无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.summary_off",
+    "zh-CN": "直连已关闭",
+    "en": "Direct is off",
+    "notes": "连接检测里电脑名下的一行摘要：用户在本设备上关了这台电脑的直连开关。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.conn_footer_machines",
+    "zh-CN": "电脑一行的延时经服务器中继测得。",
+    "en": "Computer rows are measured through the relay server.",
+    "notes": "连接检测页脚里接在原有延时说明后面的一句。无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.conn_footer_unsupported",
+    "zh-CN": "这个浏览器不支持直连。",
+    "en": "This browser doesn't support direct connections.",
+    "notes": "连接检测页脚末尾的一句，只在本设备的浏览器不支持直连时出现，取代在每台电脑下重复写。无变量。",
     "params": {},
     "platforms": [
       "web"

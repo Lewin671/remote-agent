@@ -1,4 +1,4 @@
-import { t as message } from "../i18n";
+import { localeStore, t as message } from "../i18n";
 // @vitest-environment happy-dom
 // 连接检测: each stretch's round trip, measured when the sheet opens.
 
@@ -64,34 +64,35 @@ describe("connection check", () => {
   });
 });
 
-describe("direct path lines", () => {
+describe("direct path summary lines", () => {
   const lines = () => Object.fromEntries([...host.querySelectorAll(".conn-check .mi")].map((e) => [e.firstElementChild!.firstChild!.textContent, [...e.querySelectorAll(".mt small")].map((s) => s.textContent)]));
   const settle = () => vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(".conn-again button")!.disabled).toBe(false));
   const quiet = (r: DemoRemote) => { r.pingServer = async () => 40; r.pingMachine = async () => 180; };
+  const footer = () => host.querySelector(".gf")!.textContent!;
+  const base = () => message("connection.latency_is_one_round_trip_the_server_row_measures");
   beforeEach(() => vi.stubGlobal("RTCPeerConnection", class {}));
   afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
-  it("says plainly that a computer has no direct connection yet, with no numbers", async () => {
+  it("says 未直连 and nothing more when no reason is known", async () => {
     open("", quiet);
     await settle();
-    expect(lines()["MacBook"]).toEqual([message("transport.status_none")]);
-    expect(host.querySelector(".gf")!.textContent).not.toContain(message("transport.speed_footnote"));
+    expect(lines()["MacBook"]).toEqual(["未直连"]);
   });
 
-  it("names the cause when a round failed, and says nothing for an offline computer", async () => {
+  it("names the cause in the same short sentence as the computer's page, and says nothing for an offline computer", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "failed", "no_traversal"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual([`${message("transport.status_none")} · ${message("transport.reason_no_traversal")}`]);
+    expect(lines()["MacBook"]).toEqual(["未直连 · 两边的网络不能直接连通"]);
     expect(lines()["Mac mini"]).toEqual([]);
   });
 
   it("shows an attempt in progress", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connecting"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual([message("transport.status_connecting")]);
+    expect(lines()["MacBook"]).toEqual(["正在尝试直连…"]);
   });
 
-  it("shows which purposes use the path and only the speeds that were measured", async () => {
+  it("says which purposes go direct, and never prints a speed", async () => {
     open("", (r) => {
       quiet(r); setDirect(r.direct, "mac", "connected");
       const route = r.direct.routing("mac");
@@ -100,36 +101,60 @@ describe("direct path lines", () => {
       route.observe({ kind: "bulk", file: "f" }, "direct", 8 << 20, 500);
     });
     await settle();
-    const head = [message("transport.status_connected"), message("transport.file_direct"), message("transport.read_relay")].join(" · ");
-    expect(lines()["MacBook"]).toEqual([head, "文件速度：直连 16.0 MiB/s，中继 4.0 MiB/s"]);
-    expect(host.querySelector(".gf")!.textContent).toContain(message("transport.speed_footnote"));
+    expect(lines()["MacBook"]).toEqual(["正在直连 · 文件"]);
+    expect(host.textContent).not.toContain("MiB/s");
+    expect(footer()).not.toMatch(/速度取自|实际传输/);
   });
 
-  it("shows a measured relay-only speed without inventing a direct one", async () => {
-    open("", (r) => {
-      quiet(r); setDirect(r.direct, "mac", "connected");
-      r.direct.routing("mac").observe({ kind: "bulk", file: "f" }, "relay", 4 << 20, 2000);
-    });
+  it("says 已连上，暂用中继 while both purposes are still on the relay", async () => {
+    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
     await settle();
-    expect(lines()["MacBook"]![1]).toBe("文件速度：中继 2.0 MiB/s");
+    expect(lines()["MacBook"]).toEqual(["已连上，暂用中继"]);
   });
 
-  it("says so when this device cannot do it, and when the user turned it off", async () => {
+  it("draws no second dot: the one on the right of the row is the latency's", async () => {
+    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
+    await settle();
+    const row = [...host.querySelectorAll(".conn-check .mi")].find((e) => e.textContent!.startsWith("MacBook"))!;
+    expect(row.querySelectorAll(".mark").length).toBe(1);
+    expect(row.querySelector(".mt .mark")).toBeNull();
+    expect(row.querySelector(".mv .mark")).not.toBeNull();
+  });
+
+  it("says 直连已关闭 when this device turned it off", async () => {
     open("", (r) => { quiet(r); r.direct.setEnabled("mac", false); });
     await settle();
-    expect(lines()["MacBook"]).toEqual([`${message("transport.status_none")} · ${message("transport.reason_disabled")}`]);
+    expect(lines()["MacBook"]).toEqual(["直连已关闭"]);
+  });
+
+  it("adds the relay sentence to the footer, and the browser sentence once, not on every computer", async () => {
+    open("", quiet);
+    await settle();
+    expect(footer()).toBe(base() + "电脑一行的延时经服务器中继测得。");
     act(() => root?.unmount()); host.remove();
     vi.stubGlobal("RTCPeerConnection", undefined);
     open("", quiet);
     await settle();
-    expect(lines()["MacBook"]).toEqual([message("transport.status_unsupported")]);
+    expect(lines()["MacBook"]).toEqual([]);
+    expect(lines()["VPS-dev"]).toEqual([]);
+    expect(footer()).toBe(base() + "电脑一行的延时经服务器中继测得。这个浏览器不支持直连。");
+  });
+
+  it("separates the footer's sentences with spaces in English", async () => {
+    localeStore.overrideForTesting("en");
+    try {
+      vi.stubGlobal("RTCPeerConnection", undefined);
+      open("", quiet);
+      await settle();
+      expect(footer()).toBe(`${base()} Computer rows are measured through the relay server. This browser doesn't support direct connections.`);
+    } finally { localeStore.overrideForTesting(undefined); }
   });
 
   it("updates when the engine reports a change", async () => {
     const r = open("", (x) => { quiet(x); setDirect(x.direct, "mac", "connecting"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual([message("transport.status_connecting")]);
+    expect(lines()["MacBook"]).toEqual(["正在尝试直连…"]);
     act(() => { setDirect(r.direct, "mac", "connected"); (r.direct as unknown as { notify(): void }).notify(); });
-    expect(lines()["MacBook"]![0]).toContain(message("transport.status_connected"));
+    expect(lines()["MacBook"]).toEqual(["已连上，暂用中继"]);
   });
 });

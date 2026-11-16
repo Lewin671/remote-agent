@@ -61,7 +61,7 @@ import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { Check, ChevronLeft, ChevronRight, Globe, Info, Laptop, LoaderCircle, Moon, Smartphone, Tablet } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
-import { directLines } from "./direct-status";
+import { ConnectionGroup } from "./ConnectionGroup";
 
 export function Settings({
   remote,
@@ -76,7 +76,7 @@ export function Settings({
   useRemote(remote);
   useNow(30_000); // for the machines' quota lines
   const [leaving, setLeaving] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const [checking, setChecking] = useState(() => remote.demoFlag("conncheck"));
   const conn = connWord(remote);
   const machines = [...remote.machines.values()].sort((a, b) =>
     machineName(a).localeCompare(machineName(b)),
@@ -866,7 +866,6 @@ export function MachinePage({
     next: DaemonSettings;
   }>();
   const [attempt, setAttempt] = useState(0);
-  const [directError, setDirectError] = useState("");
   const agents = machineAgents(m);
   const [defaultAgent, setDefaultAgent] = useState<Agent>(agents[0]);
   const activeAgent = agents.includes(defaultAgent) ? defaultAgent : agents[0];
@@ -1074,17 +1073,7 @@ export function MachinePage({
       <div className="body">
         <MachineRings remote={remote} id={id} go={go} />
         <QuotaSummary remote={remote} m={m} go={go} />
-        {directError && <Banner kind="err">{directError}</Banner>}
-        <div className="grp">
-          <label className="row">
-            {l10n.t("transport.direct")}
-            <select className="v" aria-label={l10n.t("transport.direct")} value={remote.direct.enabled(id) ? "auto" : "off"} onChange={event => { try { remote.direct.setEnabled(id, event.target.value === "auto"); } catch (error) { setDirectError(errorText(error)); } }}>
-              <option value="auto">{l10n.t("transport.automatic")}</option>
-              <option value="off">{l10n.t("transport.off")}</option>
-            </select>
-          </label>
-          <div className="row help" aria-live="polite">{directLines(remote.direct.status(id)).lines.map((line) => <div key={line}>{line}</div>)}</div>
-        </div>
+        <ConnectionGroup remote={remote} id={id} online={remote.peer(m.id).reachable} />
         {versions.length > 0 && (
           <div className="grp">
             {versions.map((v) => (

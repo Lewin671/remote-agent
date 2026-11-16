@@ -18,7 +18,6 @@ import {
 } from "../machine-status-view";
 import type { Remote } from "../remote";
 import { NavBar, useRemote } from "../ui";
-import { directLines } from "./direct-status";
 import { NewProjectSheet } from "./NewSession";
 import { addProject } from "./Projects";
 import { Roll, flipBox, useFlipList, useMachineStatus, usePageVisible, useReducedMotion } from "./machine-status-hooks";
@@ -425,7 +424,6 @@ export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; 
   useRemote(remote);
   const m = remote.machines.get(id);
   const status = useMachineStatus(remote, id, 2000);
-  const direct = directLines(remote.direct.status(id));
   const reduced = useReducedMotion();
   const visible = usePageVisible();
   // The main chart is remembered for this visit only.
@@ -498,11 +496,6 @@ export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; 
       <div className="body ms-body" role="region" aria-label={t("machine_status.title")}>
         <h1 className="ms-title">{machineName(m)}</h1>
         <div className="ms-live"><span className={"ms-dot" + (stale ? " off" : "")} />{words}</div>
-        <div className="grp" aria-live="polite">
-          <div className="row">{t("transport.interaction_relay")}</div>
-          <div className="row">{direct.head}</div>
-          {direct.speeds.map((line) => <div className="row" key={line}>{line}</div>)}
-        </div>
         <div className="ms-cards">
           <Hero s={last} main={main} points={points} stale={stale} glide={!reduced && visible} onLook={setLooked} looked={looked} heroRef={(el) => { heroEl.current = el; }} />
           <div className="ms-grid">

@@ -9,7 +9,7 @@ import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
-import { directLines, speedsShown } from "./direct-status";
+import { connFooter, directView } from "./direct-status";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
 
@@ -129,20 +129,20 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           <Result p={server} slow={SLOW_SERVER_MS} />
         </div>
         {list.map((m) => {
-          const direct = remote.peer(m.id).reachable ? directLines(remote.direct.status(m.id)) : undefined;
+          // One line, the same words as the computer's page; none for a computer that is not online, nor where the browser cannot do it (the footer says so).
+          const summary = remote.peer(m.id).reachable ? directView(remote.direct.status(m.id)).summary : undefined;
           return (
           <div key={m.id} className="mi">
             <span className="mt">
               {machineName(m)}
-              {direct && <small className="direct-line">{direct.head}</small>}
-              {direct?.speeds.map((line) => <small key={line} className="direct-line">{line}</small>)}
+              {summary && <small className="direct-line">{summary}</small>}
             </span>
             {remote.peer(m.id).reachable ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
           </div>
           );
         })}
       </div>
-      <p className="gf">{l10n.t("connection.latency_is_one_round_trip_the_server_row_measures")}{speedsShown(remote.direct, list.filter((m) => remote.peer(m.id).reachable).map((m) => m.id)) && " " + l10n.t("transport.speed_footnote")}</p>
+      <p className="gf">{connFooter(remote.direct, list.map((m) => m.id))}</p>
       <div className="btns conn-again">
         {down && <button className="btn pri" onClick={() => remote.reconnectNow(true)}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>

@@ -189,11 +189,13 @@ export function useExit(ref: RefObject<HTMLElement | null>, o: ExitOptions = {})
 
 /** A block that opens to its height as it mounts and closes up as it
  * unmounts: the dock, the tray of pictures. What is around it moves with
- * it, frame by frame. With `rise`, it also comes up from below. */
-export function useGrow(ref: RefObject<HTMLElement | null>, { rise = false }: { rise?: boolean } = {}) {
+ * it, frame by frame. With `rise`, it also comes up from below. With `enter`
+ * false it only closes: a row that is there when its page opens does not
+ * open again, but still closes when it goes. */
+export function useGrow(ref: RefObject<HTMLElement | null>, { rise = false, enter = true }: { rise?: boolean; enter?: boolean } = {}) {
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || !canAnimate()) return;
+    if (!el || !canAnimate() || !enter) return;
     const ms = sizeMs();
     // What it measures is its own size, not a motion still on it.
     sizing(el)?.cancel();
@@ -203,6 +205,7 @@ export function useGrow(ref: RefObject<HTMLElement | null>, { rise = false }: { 
     const to = { ...open, opacity: 1, translate: "0 0" };
     if (ms === 0) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("fast"), easing: easeOut() });
     else play(el, [from, to], ms, easeOut());
+    // `enter` is read as the element mounts: changing it later is not a new entrance.
   }, [ref, rise]);
   useExit(ref, { collapse: true });
 }
@@ -278,8 +281,9 @@ export function useHeightFlip(ref: RefObject<HTMLElement | null>, { fade = true 
 /** Content that changes in place: the old one stays under the new for the
  * length of a fade, so a word or a glyph becomes the next without a cut.
  * `hold` keeps the old opaque while the new fades in over it (two buttons
- * of one color, which must not dip in between). */
-export function Swap({ k, children, className = "", hold = false }: { k: string; children: ReactNode; className?: string; hold?: boolean }) {
+ * of one color, which must not dip in between). `tier` is how long the
+ * fade takes (fast by default; base for a word that says a state). */
+export function Swap({ k, children, className = "", hold = false, tier = "fast" }: { k: string; children: ReactNode; className?: string; hold?: boolean; tier?: Tier }) {
   const box = useRef<HTMLDivElement>(null);
   const shown = useRef<string>(undefined);
   const leaving = useRef<HTMLElement>(undefined);
@@ -299,8 +303,8 @@ export function Swap({ k, children, className = "", hold = false }: { k: string;
     if (!el || !cur || !canAnimate() || !changed || !old) return;
     old.classList.add("mo-swap-out");
     el.append(old);
-    const ms = enterMs("fast");
-    if (!hold) old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: exitMs("fast"), easing: easeIn(), fill: "forwards" });
+    const ms = enterMs(tier);
+    if (!hold) old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: exitMs(tier), easing: easeIn(), fill: "forwards" });
     cur.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: easeOut() });
     void Promise.allSettled([...cur.getAnimations()].map((a) => a.finished)).then(() => old.remove());
     setTimeout(() => old.remove(), 1000);

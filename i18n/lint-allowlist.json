@@ -2458,5 +2458,10 @@
     "path": "web/src/views/Settings.tsx",
     "literal": "(); const [attempt, setAttempt] = useState(0); const [directError, setDirectError] = useState(\"\"); const agents = machineAgents(m); const [defaultAgent, setDefaultAgent] = useState",
     "reason": "TypeScript generic syntax and local React state declarations falsely matched as JSX text; not rendered."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "err",
+    "reason": "Banner kind enum value, never displayed; the banner text comes from the error's own message."
   }
 ]

@@ -635,41 +635,20 @@ describe("in English", () => {
   });
 });
 
-describe("direct path on the computer pages", () => {
-  const directRows = (selector: string) => [...host.querySelectorAll(selector)].map((e) => e.textContent);
+describe("direct path on the machine status page", () => {
   beforeEach(() => vi.stubGlobal("RTCPeerConnection", class {}));
   afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
-  it("shows the live state under the 直连 setting, with measured speeds only", async () => {
-    const r = demo();
-    mount(<MachinePage remote={r} id="mac" go={none} onBack={none} />);
-    const note = () => host.querySelector(".row.help[aria-live]")!;
-    expect(note().textContent).toBe(`${message("transport.status_none")}`);
-    act(() => { setDirect(r.direct, "mac", "failed", "no_traversal"); (r.direct as unknown as { notify(): void }).notify(); });
-    expect(note().textContent).toBe(`${message("transport.status_none")} · ${message("transport.reason_no_traversal")}`);
-    act(() => {
-      setDirect(r.direct, "mac", "connected");
-      r.direct.routing("mac").filePath = "direct";
-      r.direct.routing("mac").observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 500);
-      (r.direct as unknown as { notify(): void }).notify();
-    });
-    expect([...note().children].map((e) => e.textContent)).toEqual([
-      [message("transport.status_connected"), message("transport.file_direct"), message("transport.read_relay")].join(" · "),
-      "文件速度：直连 8.0 MiB/s",
-    ]);
-    // The select stays: the setting itself is unchanged.
-    expect(host.querySelector("select")!.value).toBe("auto");
-  });
-
-  it("says the setting is off in the same words on the settings and status pages", async () => {
+  it("only tells the numbers: nothing about transport, however the direct path is", async () => {
     const r = demo("ms-full");
-    r.direct.setEnabled("mac", false);
-    const want = `${message("transport.status_none")} · ${message("transport.reason_disabled")}`;
-    mount(<MachinePage remote={r} id="mac" go={none} onBack={none} />);
-    expect(host.querySelector(".row.help[aria-live]")!.textContent).toBe(want);
-    act(() => root?.unmount()); host.remove();
+    setDirect(r.direct, "mac", "connected");
+    r.direct.routing("mac").filePath = "direct";
+    r.direct.routing("mac").observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 500);
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
-    expect(directRows(".grp[aria-live] .row")).toEqual([message("transport.interaction_relay"), want]);
+    expect(host.querySelector(".grp")).toBeNull();
+    for (const key of ["transport.direct", "transport.status_direct", "transport.status_none", "transport.speed_file"] as const)
+      expect(host.textContent).not.toContain(message(key));
+    expect(host.textContent).not.toContain("MiB/s");
   });
 });
