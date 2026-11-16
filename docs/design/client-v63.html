@@ -57,6 +57,12 @@
   .screens { display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; }
   .cap { width: 393px; font-size: 13px; line-height: 1.55; color: var(--ink2); margin: 14px 0 0; padding: 0 12px; }
   .cap b { color: var(--ink); }
+  @media (max-width: 460px) {
+    .wrap { padding: 24px 0 80px; }
+    .head, .review-nav, h2, h3.sub, p.hint, .wcap { padding-left: 16px; padding-right: 16px; }
+    .note, .why { margin-left: 12px; margin-right: 12px; }
+    .sx-direct .stg { justify-content: center; }
+  }
   .ic { flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .amk { flex: none; fill: currentColor; stroke: none; }
 
@@ -79,6 +85,8 @@
   .scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 110px 0 124px; scrollbar-width: none; }
   .scroll::-webkit-scrollbar { display: none; }
   .sb { position: absolute; top: 0; left: 0; right: 0; height: 50px; padding: 16px 32px 0; display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 600; z-index: 9; }
+  .phone:has(> .sheet.full) > .sb { color: #f5f5f7; }
+  .phone:has(> .sheet.full) > .sb i { border-color: rgba(245,245,247,.55); }
   .sb i { width: 26px; height: 12px; border-radius: 4px; border: 1px solid var(--ink3); position: relative; }
   .sb i::after { content: ""; position: absolute; inset: 1.5px; right: 5px; background: currentColor; border-radius: 2px; }
   /* 上下边缘渐隐：全高滚动，终点绝不到 100% 不透明 paper，让文字滑入玻璃底下时仍有折射 */
@@ -2193,6 +2201,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-direct .st .gl { padding: 4px 12px 8px; }
 .sx-direct .st .gf { padding: 8px 12px 0; margin: 0; }
 /* 「连接」组：状态行和速度行（design-system §6） */
+.sx-direct a.mi { color: inherit; text-decoration: none; }
 .sx-direct .mi .sw { margin-left: auto; }
 .sx-direct .mi .sw.dis { opacity: .4; }
 .sx-direct .mi.dx { position: relative; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; row-gap: 2px; padding: 14px 16px 14px 44px; }
@@ -3203,6 +3212,11 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-machine-status .ms-u .m div { height: 5px; border-radius: 2.5px; background: var(--ink3); min-width: 5px; }
 .sx-machine-status .ms-u.top .m div { background: var(--ink); }
 .sx-machine-status .ms-u .m small { font-size: 12.5px; color: var(--ink2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sx-machine-status .ms-u.sp-row { color: inherit; text-decoration: none; align-items: center; }
+.sx-machine-status .ms-u.sp-row .b { display: flex; align-items: center; gap: 8px; }
+.sx-machine-status .ms-u.sp-row .sp-txt { flex: 1; min-width: 0; }
+.sx-machine-status .ms-u.sp-row .sp-nm { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sx-machine-status .ms-u.sp-row .sp-val { flex: none; white-space: nowrap; font-family: var(--ms-round); font-size: 15px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
 .sx-machine-status .ms-rows .r { display: flex; align-items: center; min-height: 48px; padding: 0 16px; font-size: 17px; position: relative; }
 .sx-machine-status .ms-rows .r + .r::before { content: ""; position: absolute; left: 16px; right: 0; top: 0; height: .5px; background: var(--sep); }
 .sx-machine-status .ms-rows .v { margin-left: auto; color: var(--ink2); font-family: var(--ms-round); }
@@ -3291,9 +3305,9 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     </div>
     <div class="ms-sec">输出速度<a href="#speed" style="text-decoration:none">查看趋势</a></div>
     <div class="ms-card ms-lst">
-      <a class="ms-u" href="#speed" style="color:inherit;text-decoration:none;align-items:center"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-codex"/></svg></span><div class="b" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="t"><span>Codex · GPT-6-Astra</span></div><div class="m" style="margin-top:2px"><small>首字 0.9 s · 近 7 天 148 次</small></div></div><span class="n" style="font-size:16px;font-weight:500">92 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px"><use href="#lu-chevron-right"/></svg></div></a>
-      <a class="ms-u" href="#speed" style="color:inherit;text-decoration:none;align-items:center"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-claude"/></svg></span><div class="b" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="t"><span>Claude Code · Opus 5.5</span></div><div class="m" style="margin-top:2px"><small>首字 1.6 s · 近 7 天 86 次</small></div></div><span class="n" style="font-size:16px;font-weight:500">64 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px"><use href="#lu-chevron-right"/></svg></div></a>
-      <a class="ms-u" href="#speed" style="color:inherit;text-decoration:none;align-items:center"><span class="ms-ic"><svg class="amark" viewBox="10.9 12.2 90 90"><use href="#v2-mark-agy"/></svg></span><div class="b" style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="t"><span>Antigravity · Claude Opus 5.5</span></div><div class="m" style="margin-top:2px"><small>首字 2.1 s · 近 7 天 31 次</small></div></div><span class="n" style="font-size:16px;font-weight:500">49 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px"><use href="#lu-chevron-right"/></svg></div></a>
+      <a class="ms-u sp-row" href="#speed"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-codex"/></svg></span><div class="b"><div class="sp-txt"><div class="sp-nm">Codex · GPT-6-Astra</div><div class="m" style="margin-top:2px"><small>首字 0.9 s · 近 7 天 148 次</small></div></div><span class="sp-val">92 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px;flex:none"><use href="#lu-chevron-right"/></svg></div></a>
+      <a class="ms-u sp-row" href="#speed"><span class="ms-ic"><svg class="amark" viewBox="0 0 24 24"><use href="#v2-mark-claude"/></svg></span><div class="b"><div class="sp-txt"><div class="sp-nm">Claude Code · Opus 5.5</div><div class="m" style="margin-top:2px"><small>首字 1.6 s · 近 7 天 86 次</small></div></div><span class="sp-val">64 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px;flex:none"><use href="#lu-chevron-right"/></svg></div></a>
+      <a class="ms-u sp-row" href="#speed"><span class="ms-ic"><svg class="amark" viewBox="10.9 12.2 90 90"><use href="#v2-mark-agy"/></svg></span><div class="b"><div class="sp-txt"><div class="sp-nm">Antigravity · Claude Opus 5.5</div><div class="m" style="margin-top:2px"><small>首字 2.1 s · 近 7 天 31 次</small></div></div><span class="sp-val">49 tok/s</span><svg class="i" style="color:var(--ink3);font-size:15px;flex:none"><use href="#lu-chevron-right"/></svg></div></a>
     </div>
     <div class="ms-ft">已开机 3 天 4 小时 · 电池 81%，充电中</div>
   </div><div class="homebar"></div></div><p class="cap"><b>电脑状态 · 正常（含输出速度入口）。</b>「占用最多」下方新增「输出速度」小节，每对「CLI · 模型」一行（Claude Code 用 Opus 5.5 与 Antigravity 用 Claude Opus 5.5 各自独立成行，不合并），点任意行或右上「查看趋势」进<a href="#speed">输出速度</a>页</p></div>
@@ -3425,7 +3439,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 </div>
 <div class="screens">
   <!-- 1. 手机 · 7 天 · 输出速度 -->
-  <div><div class="phone" id="speed-mobile-7d"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
+  <div><div class="phone" id="speed-mobile-7d" style="height:868px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div>
     <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
     <div class="scroll" style="padding-bottom:44px">
       <div class="sp-ctrl">
@@ -3590,7 +3604,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 <h3 class="sub" id="speed-states">输出速度 · 四种边界状态</h3>
 <div class="screens">
   <!-- 状态 1：没有数据 -->
-  <div><div class="phone" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+  <div><div class="phone" style="height:600px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
     <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>VPS-dev · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
     <div class="scroll" style="padding-bottom:32px">
       <div class="sp-ctrl">
@@ -3606,7 +3620,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <p class="cap"><b>没有数据。</b>不画空坐标轴或 0 tok/s，用干净的圆角 18 状态块说明所选时间段没有记录，并交代只靠真实对话被动采集。</p></div>
 
   <!-- 状态 2：样本太少 -->
-  <div><div class="phone" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+  <div><div class="phone" style="height:620px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
     <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
     <div class="scroll" style="padding-bottom:32px">
       <div class="sp-ctrl">
@@ -3642,7 +3656,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <p class="cap"><b>样本太少（1–2 次）。</b>请求不足 3 次时不硬连折线、也不画失真的 p10–p90 色带，只标出实测散点并写明「满 3 次后画曲线与区间」，较上期写 <code>—</code>。</p></div>
 
   <!-- 状态 3：电脑离线 -->
-  <div><div class="phone sp-stale" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+  <div><div class="phone sp-stale" style="height:636px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
     <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>iMac · 离线</span></div><span style="width:44px;flex:none"></span></div>
     <div class="scroll" style="padding-bottom:32px">
       <div class="banner" style="margin-top:2px"><svg class="ic" width="16" height="16"><use href="#lu-cloud-off"/></svg><span>iMac 不在线，下面是昨天 21:40 的记录</span></div>
@@ -3678,7 +3692,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <p class="cap"><b>电脑离线（显示上次的数据）。</b>顶部中性灰底提示条写明哪台电脑离线和缓存时刻（不用橙色）；已缓存的曲线与表格降为静态灰调，照常可看。</p></div>
 
   <!-- 状态 4：正在补算历史 -->
-  <div><div class="phone" style="height:560px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
+  <div><div class="phone" style="height:636px"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div>
     <div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>输出速度</b><span>MacBook · 被动记录</span></div><span style="width:44px;flex:none"></span></div>
     <div class="scroll" style="padding-bottom:32px">
       <div class="banner" style="margin-top:2px"><i class="spin" style="width:12px;height:12px;border-width:1.5px;margin:0"></i><span>正在从本机记录补算历史 · 已算 12 / 30 天</span></div>
@@ -3723,7 +3737,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-cli-switches .seg.wide span { padding: 0 6px; }
 .sx-cli-switches a.mi { color: inherit; text-decoration: none; }
 .sx-cli-switches .banner .ta { min-height: 0; flex: none; font-weight: 600; }
-.sx-cli-switches .win .pg { flex: 1; overflow-y: auto; padding: 32px 24px 44px; scrollbar-width: none; }
+.sx-cli-switches .win .pg { flex: 1; overflow-y: auto; padding: 20px 24px 36px; scrollbar-width: none; }
 .sx-cli-switches .win .pane .hl { padding: 0 16px 6px; font-size: 26px; letter-spacing: -.02em; }
 .sx-cli-switches .win .pane .sub { padding: 0 16px 14px; font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
 .sx-cli-switches .win .pane .gl { padding-left: 28px; }
@@ -3820,7 +3834,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 </div>
 
 <!-- 宽屏 1360：设置 › 电脑（按电脑启用哪些 CLI） -->
-<div class="win" id="cli-switch-wide" style="height:640px;margin-top:28px">
+<div class="win" id="cli-switch-wide" style="height:740px;margin-top:28px">
   <div class="side">
     <div class="side-top"><span class="scp"><span class="av">全</span><span>全部项目</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div>
     <div class="whl">没有等你的事</div>
