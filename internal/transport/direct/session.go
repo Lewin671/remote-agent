@@ -35,6 +35,7 @@ type SessionConfig struct {
 	End          func()
 	STUN         []string
 	LoopbackOnly bool
+	Port         *PortMux
 }
 type sessionEvent struct {
 	use         uint64
@@ -638,7 +639,7 @@ func (s *Session) makePC(i int, now uint64) bool {
 			path.Close()
 		}
 	}
-	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool {
+	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Port: s.cfg.Port, Allow: func() bool {
 		return !s.retired.Load() && live() && (s.cfg.Policy == nil || s.cfg.Policy()) && s.cfg.Allow() && live() && !s.retired.Load() && (s.cfg.Policy == nil || s.cfg.Policy())
 	}, LoopbackOnly: s.cfg.LoopbackOnly,
 		Candidate: func(c *webrtc.ICECandidateInit) { post(sessionEvent{candidate: c, kind: 1}) },

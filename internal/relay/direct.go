@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -82,6 +83,7 @@ type directManager struct {
 	announced           uint64
 	stun                []string
 	loopback            bool
+	port                *direct.PortMux
 	capabilities        atomic.Pointer[pb.MachineCapabilities]
 }
 
@@ -119,6 +121,11 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	if d.endpoint.r.directSTUN != nil {
 		m.stun = append([]string{}, d.endpoint.r.directSTUN...)
 	}
+	// One fixed UDP port for host candidates (REMOTE_AGENT_DIRECT_PORT, 0 for
+	// ephemeral ports), so a firewall can let in exactly that port.
+	if port := directPort(os.Getenv("REMOTE_AGENT_DIRECT_PORT")); port > 0 && !m.loopback {
+		m.port = direct.NewPortMux(port, false)
+	}
 	m.incoming = transport.FairQueue[*peerInput]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
 	for i := range m.outgoing {
 		m.outgoing[i] = transport.FairQueue[*peerOutput]{Entries: 4096, Bytes: 32 << 20, PeerEntries: 512, PeerBytes: 4 << 20}
@@ -130,6 +137,19 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	m.workers.Go(m.maintenance)
 	m.workers.Go(m.capabilityLoop)
 	return m, nil
+}
+
+// directPort reads REMOTE_AGENT_DIRECT_PORT: empty is the default port, 0 or
+// anything not a port turns the fixed port off.
+func directPort(value string) int {
+	if value == "" {
+		return direct.DefaultPort
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil || n < 0 || n > 65535 {
+		return 0
+	}
+	return n
 }
 func (m *directManager) close() {
 	m.closeOnce.Do(func() {
@@ -147,6 +167,7 @@ func (m *directManager) close() {
 			s.Wait()
 		}
 		m.workers.Wait()
+		m.port.Close()
 	})
 }
 func (m *directManager) attach(path transport.Path) (uint64, func()) {
@@ -316,7 +337,7 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 	}
 	_, head, _ := m.d.security.endpoint.Snapshot()
 	authority := head.Core.AuthorityID
-	s, err := direct.NewSession(m.ctx, direct.SessionConfig{Self: m.self, Peer: peer, Codec: codec, Connection: connection, Deadline: deadline, Pool: m.pool, Allow: allow, Policy: func() bool { return m.policy.matches(id, p.policyVersion) }, STUN: m.stun, LoopbackOnly: m.loopback,
+	s, err := direct.NewSession(m.ctx, direct.SessionConfig{Self: m.self, Peer: peer, Codec: codec, Connection: connection, Deadline: deadline, Pool: m.pool, Allow: allow, Policy: func() bool { return m.policy.matches(id, p.policyVersion) }, STUN: m.stun, LoopbackOnly: m.loopback, Port: m.port,
 		Send:   func(out direct.Outbound) bool { return m.send(id, out) },
 		Chosen: func() { m.choose(p) }, BeforeOffer: func() { m.choose(p) },
 		Control: func(o peerwire.Opened, now uint64) (uint64, []byte) {

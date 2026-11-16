@@ -38,8 +38,10 @@ type Config struct {
 	// It must read the process owner's current membership, lease and policy gate.
 	Allow        func() bool
 	LoopbackOnly bool // isolated integration tests only; never enabled by discovery
-	Candidate    func(*webrtc.ICECandidateInit)
-	State        func(webrtc.PeerConnectionState)
+	// Port, when set, gives the host candidates one fixed UDP port.
+	Port      *PortMux
+	Candidate func(*webrtc.ICECandidateInit)
+	State     func(webrtc.PeerConnectionState)
 }
 type partial struct {
 	count, length uint32
@@ -91,6 +93,9 @@ func New(ctx context.Context, cfg Config) (*Path, error) {
 	if cfg.LoopbackOnly {
 		se.SetIncludeLoopbackCandidate(true)
 		se.SetIPFilter(func(ip net.IP) bool { return ip.IsLoopback() })
+	}
+	if mux := cfg.Port.current(); mux != nil {
+		se.SetICEUDPMux(mux)
 	}
 	servers := []webrtc.ICEServer{}
 	if len(cfg.STUN) > 0 {
