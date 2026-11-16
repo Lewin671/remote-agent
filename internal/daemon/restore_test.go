@@ -28,18 +28,9 @@ type restoreHarness struct {
 
 func newRestoreHarness(t *testing.T) *restoreHarness {
 	t.Helper()
-	bin := t.TempDir()
-	alive := filepath.Join(bin, "sessions")
-	script := "#!/bin/sh\nshift 2\ncase \"$1\" in\n" +
-		"list-sessions) cat '" + alive + "' 2>/dev/null; exit 0 ;;\n" +
-		"has-session) grep -q \"^${3#=}\t\" '" + alive + "' 2>/dev/null ;;\n" +
-		"capture-pane) printf '\\033[1m›\\033[0m \\033[2mAsk Codex to do anything\\033[0m\\n  GPT-6-Sol medium · /w\\n' ;;\n" +
-		"esac\n"
-	if err := os.WriteFile(filepath.Join(bin, "tmux"), []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
+	alive := filepath.Join(t.TempDir(), "sessions")
 	ctx, cancel := context.WithCancel(context.Background())
-	d := New(t.TempDir(), Config{Tmux: &tmux.Client{Bin: filepath.Join(bin, "tmux"), Socket: "ra-test"},
+	d := New(t.TempDir(), Config{Tmux: &tmux.Client{Socket: "ra-test", Exec: restoreTmux(alive)},
 		Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {HistoryPath: filepath.Join(t.TempDir(), "history.jsonl")}}, PollInterval: time.Millisecond, ScreenInterval: time.Hour})
 	d.ctx = ctx
 	t.Cleanup(func() {
@@ -62,9 +53,35 @@ func newRestoreHarness(t *testing.T) *restoreHarness {
 	return &restoreHarness{t: t, d: d, alive: alive}
 }
 
-// Recovery assertions use the known fixture list directly. A shell stub's
-// process startup is subject to the real tmux command deadline and says
-// nothing about checkpoint recovery. tmux's own tests cover ListSessions.
+// restoreTmux answers tmux commands in process: sessions lists "name\tid\tpid"
+// lines, has-session checks the names in it, and capture-pane shows a Codex
+// input box. A subprocess stand-in would be subject to the real tmux command
+// deadline, which a machine too busy to start processes quickly exceeds, and
+// that says nothing about the recovery being tested.
+func restoreTmux(sessions string) func(context.Context, []string) (string, error) {
+	return func(_ context.Context, args []string) (string, error) {
+		switch args[0] {
+		case "list-sessions":
+			out, _ := os.ReadFile(sessions)
+			return string(out), nil
+		case "has-session":
+			out, _ := os.ReadFile(sessions)
+			name := strings.TrimPrefix(args[2], "=")
+			for _, line := range strings.Split(string(out), "\n") {
+				if strings.HasPrefix(line, name+"\t") {
+					return "", nil
+				}
+			}
+			return "", errors.New("tmux has-session: exit status 1")
+		case "capture-pane":
+			return "\033[1m›\033[0m \033[2mAsk Codex to do anything\033[0m\n  GPT-6-Sol medium · /w\n", nil
+		}
+		return "", nil
+	}
+}
+
+// Recovery assertions use the known fixture list directly; tmux's own tests
+// cover ListSessions.
 func (r *restoreHarness) restore() error {
 	return r.d.restoreWithSessionList(func() ([]tmux.SessionInfo, error) { return r.infos, nil })
 }

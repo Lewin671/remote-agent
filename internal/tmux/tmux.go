@@ -27,6 +27,11 @@ const HistoryLines = 100000
 type Client struct {
 	Bin    string // tmux binary; "tmux" when empty
 	Socket string // -L socket name
+
+	// Exec, when set, answers every command in place of a tmux subprocess.
+	// Tests use it so that command latency never depends on how quickly the
+	// machine can start a process.
+	Exec func(ctx context.Context, args []string) (string, error)
 }
 
 func (c *Client) bin() string {
@@ -50,6 +55,9 @@ func (c *Client) run(args ...string) (string, error) {
 
 // RunContext runs one bounded command, stopping when the caller cancels.
 func (c *Client) RunContext(ctx context.Context, args ...string) (string, error) {
+	if c.Exec != nil {
+		return c.Exec(ctx, args)
+	}
 	ctx, cancel := context.WithTimeout(ctx, CommandTimeout)
 	defer cancel()
 	argv := c.Command(args...)

@@ -94,6 +94,7 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 								panic(token)
 							}
 						}
+						var runErr error
 						func() {
 							defer func() {
 								if p := recover(); p != nil && p != token {
@@ -101,15 +102,15 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 								}
 							}()
 							if create {
-								_, _ = r.d.createBy(&pb.CreateSessionRequest{Cwd: t.TempDir(), Agent: pb.Agent_AGENT_CODEX, Prompt: "first", ImageIds: ims, FileIds: files}, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "phone"}, false, false, "test PATH")
+								_, runErr = r.d.createBy(&pb.CreateSessionRequest{Cwd: t.TempDir(), Agent: pb.Agent_AGENT_CODEX, Prompt: "first", ImageIds: ims, FileIds: files}, &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "phone"}, false, false, "test PATH")
 							} else {
-								_, _ = s.enqueueInput("send", "request", nil, nil, originLocal, pb.SendMode_SEND_MODE_QUEUE, nil, func(request string) (messageUploads, error) {
+								_, runErr = s.enqueueInput("send", "request", nil, nil, originLocal, pb.SendMode_SEND_MODE_QUEUE, nil, func(request string) (messageUploads, error) {
 									return u.takeUploads(ims, files, "phone", s.meta.ID, request)
 								})
 							}
 						}()
 						if !hit {
-							t.Fatal("crash boundary not reached")
+							t.Fatalf("crash boundary not reached; the operation ended with: %v", runErr)
 						}
 						// The create API's local origin owns these fixtures too. No real tmux
 						// process runs; registration reproduces which CLI startup can recognize.
