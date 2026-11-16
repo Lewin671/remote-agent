@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,19 +14,12 @@ func TestHumanAdmissionBoundsRunningResumeRetry(t *testing.T) {
 	h := resumableHarness(t)
 	defer h.s.log.Close()
 	calls := fakeTmux(t, h)
-	bin := h.d.cfg.Tmux.Bin
-	script, err := os.ReadFile(bin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = os.WriteFile(bin, []byte(strings.ReplaceAll(string(script), "has-session) exit 1", "has-session) exit 0")), 0700); err != nil {
-		t.Fatal(err)
-	}
+	tmuxSessionRuns(t, h)
 	h.s.meta.Exited = true
 	h.s.meta.ScheduledTaskID = "task"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err = h.s.enqueueInputContext(ctx, "human", "human", nil, nil, originLocal, pb.SendMode_SEND_MODE_QUEUE, nil, nil)
+	_, err := h.s.enqueueInputContext(ctx, "human", "human", nil, nil, originLocal, pb.SendMode_SEND_MODE_QUEUE, nil, nil)
 	if !errors.Is(err, errRunning) {
 		t.Fatalf("unbounded admission retry: %v", err)
 	}

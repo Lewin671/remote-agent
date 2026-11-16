@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -121,17 +122,46 @@ func TestLoginShellIsRunnable(t *testing.T) {
 
 // fakeTmux records every tmux call's arguments, one per line, so a test
 // can see how a session was started. has-session answers "no", so a test
-// can resume the session through it.
+// can resume the session through it, unless the file tmux.alive exists in
+// the session directory (see tmuxSessionRuns).
 func fakeTmux(t *testing.T, h *harness) string {
 	t.Helper()
-	bin := filepath.Join(h.dir, "fake-tmux")
 	calls := filepath.Join(h.dir, "tmux.calls")
-	script := "#!/bin/sh\nprintf 'ARG: %s\\n' \"$@\" >> '" + calls + "'\nprintf 'END\\n' >> '" + calls + "'\ncase \"$3\" in has-session) exit 1;; esac\nexit 0\n"
-	if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {
+	alive := filepath.Join(h.dir, "tmux.alive")
+	// Answered in process: a subprocess would be bound by the real tmux
+	// command deadline, which a machine too busy to start processes
+	// quickly exceeds.
+	var mu sync.Mutex
+	h.d.cfg.Tmux = &tmux.Client{Socket: "test", Exec: func(_ context.Context, args []string) (string, error) {
+		var rec strings.Builder
+		for _, a := range append([]string{"-L", "test"}, args...) {
+			rec.WriteString("ARG: " + a + "\n")
+		}
+		rec.WriteString("END\n")
+		mu.Lock()
+		defer mu.Unlock()
+		f, err := os.OpenFile(calls, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+		if _, err := f.WriteString(rec.String()); err != nil {
+			return "", err
+		}
+		if _, err := os.Stat(alive); args[0] == "has-session" && err != nil {
+			return "", errors.New("tmux has-session: exit status 1")
+		}
+		return "", nil
+	}}
+	return calls
+}
+
+// tmuxSessionRuns makes the fake tmux report the session as running.
+func tmuxSessionRuns(t *testing.T, h *harness) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(h.dir, "tmux.alive"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	h.d.cfg.Tmux = &tmux.Client{Bin: bin, Socket: "test"}
-	return calls
 }
 
 func tmuxCalls(t *testing.T, path string) string {
