@@ -125,6 +125,7 @@ private class FakeRtcConnection(
     private val roleTag: String,
     private val listener: RtcPeerListener,
     private val byUfrag: MutableMap<String, FakeRtcConnection>,
+    private val srflx: Boolean = true,
 ) : RtcPeerConnection {
     val ufrag = "ufrag$roleTag$id"
     val localChannels = HashMap<Int, FakeDataChannel>()
@@ -168,11 +169,16 @@ private class FakeRtcConnection(
 
     override suspend fun setLocalDescription(offer: Boolean, sdp: String) {
         listener.onIceCandidate(
-            RtcIceCandidate(
+            if (srflx) RtcIceCandidate(
                 candidate = "candidate:2 1 udp 1686052607 203.0.113.1 ${51000 + id} typ srflx raddr 127.0.0.1 rport ${50000 + id} ufrag $ufrag",
                 sdpMid = "0",
                 sdpMLineIndex = 0,
                 isSrflx = true,
+            ) else RtcIceCandidate(
+                candidate = "candidate:1 1 udp 2122260223 192.0.2.1 ${51000 + id} typ host ufrag $ufrag",
+                sdpMid = "0",
+                sdpMLineIndex = 0,
+                isSrflx = false,
             )
         )
         listener.onIceGatheringComplete()
@@ -242,12 +248,15 @@ private class FakeRtcBridge {
     val phonePcs = CopyOnWriteArrayList<FakeRtcConnection>()
     val daemonPcs = CopyOnWriteArrayList<FakeRtcConnection>()
 
+    /** False: the connections gather host candidates only, as a pair does whose STUN is unreachable. */
+    @Volatile var srflx = true
+
     val phoneFactory = RtcFactory { _, listener ->
-        FakeRtcConnection(idGen.getAndIncrement(), "p", listener, byUfrag).also { phonePcs += it }
+        FakeRtcConnection(idGen.getAndIncrement(), "p", listener, byUfrag, srflx).also { phonePcs += it }
     }
 
     val daemonFactory = RtcFactory { _, listener ->
-        FakeRtcConnection(idGen.getAndIncrement(), "d", listener, byUfrag).also { daemonPcs += it }
+        FakeRtcConnection(idGen.getAndIncrement(), "d", listener, byUfrag, srflx).also { daemonPcs += it }
     }
 }
 
@@ -728,6 +737,41 @@ class DirectTransportTest {
         assertEquals(1_000L, retry.delay("other", null, 0L))
         retry.clear()
         assertEquals(1_000L, retry.delay("m", null, 0L))
+    }
+
+    @Test
+    fun aConnectedAndConfirmedPathIsUsedWithoutAReflexiveCandidate() = runBlocking {
+        val codec = Wire(Wire.utf8("acc-1"), Wire.utf8("domain"), sha256(Wire.utf8("head")), 1L)
+        val selfSeed = sha256(Wire.utf8("self")); val selfBox = sha256(Wire.utf8("self-box"))
+        val peerSeed = sha256(Wire.utf8("peer")); val peerBox = sha256(Wire.utf8("peer-box"))
+        val self = Wire.Identity(Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 }, SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, selfSeed, selfBox)
+        val peerForClient = Wire.Identity(Wire.utf8("m1"), 2L, ByteArray(16) { 3 }, ByteArray(32) { 4 }, Ed25519PrivateKeyParameters(peerSeed, 0).generatePublicKey().encoded, X25519PrivateKeyParameters(peerBox, 0).generatePublicKey().encoded, null, null)
+        val selfDaemon = Wire.Identity(Wire.utf8("m1"), 2L, ByteArray(16) { 3 }, ByteArray(32) { 4 }, SigningKey(peerSeed).publicKey, X25519PrivateKeyParameters(peerBox, 0).generatePublicKey().encoded, peerSeed, peerBox)
+        val peerForDaemon = Wire.Identity(Wire.utf8("p1"), 1L, ByteArray(16) { 1 }, ByteArray(32) { 2 }, SigningKey(selfSeed).publicKey, X25519PrivateKeyParameters(selfBox, 0).generatePublicKey().encoded, null, null)
+        val bridge = FakeRtcBridge().also { it.srflx = false }
+        val conn = ByteArray(16) { 9 }
+        val deadline = System.currentTimeMillis() + 5_000L
+        val events = CopyOnWriteArrayList<String>()
+        lateinit var clientSession: DirectSession
+        lateinit var daemonSession: DirectSession
+        fun options(me: Wire.Identity, other: Wire.Identity, factory: RtcFactory, send: (ByteArray) -> Unit, tag: String) = DirectSessionOptions(
+            self = me, peer = other, codec = codec, connection = conn, deadline = deadline, budget = DirectBudget(), stun = emptyList(), factory = factory,
+            valid = { true }, authorize = {}, send = { out -> send(out.raw); true }, chosen = {}, beforeOffer = {},
+            ready = { use, _ -> events += "$tag:open:$use" }, closed = {}, frame = { _, _ -> }, capability = {},
+        )
+        daemonSession = DirectSession(options(selfDaemon, peerForDaemon, bridge.daemonFactory, { clientSession.receive(it) }, "daemon"))
+        clientSession = DirectSession(options(self, peerForClient, bridge.phoneFactory, { daemonSession.receive(it) }, "client"))
+        clientSession.start()
+        try {
+            val want = listOf("client:open:1", "client:open:2", "daemon:open:1", "daemon:open:2")
+            val until = System.currentTimeMillis() + 4_000L
+            while (!events.containsAll(want) && System.currentTimeMillis() < until) delay(20)
+            assertTrue("both uses ready on both sides without a reflexive candidate, got $events", events.containsAll(want))
+            assertTrue(clientSession.established && daemonSession.established)
+        } finally {
+            clientSession.close()
+            daemonSession.close()
+        }
     }
 
     @Test

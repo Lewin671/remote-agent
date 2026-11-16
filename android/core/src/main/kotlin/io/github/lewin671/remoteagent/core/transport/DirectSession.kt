@@ -617,7 +617,10 @@ internal class DirectSession(val options: DirectSessionOptions) {
             p.confirmed = ok
         }
         if (ch.traversalReady) sawTraversal = true
-        if (ch.traversalReady && p.confirmed && !p.announced && p.gate.ready()) {
+        // A connected DTLS transport and the peer's confirmation prove the pair works; a
+        // server-reflexive candidate is not required (a computer with a public address has
+        // none, and neither has any pair whose STUN is unreachable). It only explains a failure.
+        if (p.confirmed && !p.announced && p.gate.ready()) {
             p.announced = true
             established = true
             ch.confirm()
