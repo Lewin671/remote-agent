@@ -48,6 +48,7 @@ export class DirectSession {
     };
     this.pcs = [pc(1), pc(2)]; this.boot = new Sender(options.deadline); this.retainUntil = options.deadline + 300_000;
     this.timer = setInterval(() => {
+      if (this.ended) return;
       const now = Date.now();
       for (const p of this.pcs) {
         if (!p.announced) p.gate.tick(now); else p.gate.clock = Math.max(p.gate.clock, now);
@@ -85,7 +86,8 @@ export class DirectSession {
   }
   private async receiveNow(raw: w.Bytes) {
     await this.options.authorize(); if (this.ended || !this.options.valid()) return;
-    const now = Date.now(), peer = this.pcs[0].gate.peer, o = await this.options.codec.open(raw, peer, this.options.self, now), c = o.context;
+    const peer = this.pcs[0].gate.peer, o = await this.options.codec.open(raw, peer, this.options.self, Date.now()), c = o.context, now = Date.now();
+    if (this.ended || !this.options.valid() || BigInt(now) >= c.deadline) return;
     if (!w.equal(c.connection, this.options.connection)) return;
     knownPayload(c.cls, o.type, o.payload);
     const key = w.cacheKey(c), oldControl = this.controls.get(key);
@@ -202,20 +204,34 @@ export class DirectSession {
     }
   }
   private async signal(index: number, type: number, body: w.Bytes) {
-    const p = this.pcs[index], now = Date.now();
+    const p = this.pcs[index], now = Date.now(), generation = p.gate.generation, sender = p.sender;
     const context = w.context(this.options.self, p.gate.peer, this.options.connection, index + 1, p.gate.generation, ++p.seq, now); context.deadline = BigInt(this.options.deadline);
     const raw = await this.options.codec.seal(this.options.self, p.gate.peer, context, type, body);
-    return p.sender.enqueue(raw, now, Number(context.deadline), 1);
+    if (!this.active || p.gate.generation !== generation || p.sender !== sender) return false;
+    return sender.enqueue(raw, now, Number(context.deadline), 1);
   }
   private makePC(index: number) {
     const p = this.pcs[index]; if (p.generation !== p.gate.generation) this.resetPC(index); if (p.channel) return true;
     if (!this.active || p.gate.closed || Date.now() >= this.options.deadline) return false;
+    const generation = p.gate.generation;
+    let channel: DirectChannel | undefined;
+    const current = () => channel !== undefined && p.channel === channel && p.generation === generation && p.gate.generation === generation;
     try {
-      p.channel = new DirectChannel({ peer: w.text(this.options.peer.id), connection: this.options.connection, use: index + 1, generation: p.gate.generation, deadline: this.options.deadline, budget: this.options.budget, stun: this.options.stun, valid: () => this.active, factory: this.options.factory,
-        candidate: candidate => { void this.queue(async () => { if (!this.active) return; if (candidate === null) p.ended = true; else if (!p.batch.add(w.utf8(candidate.candidate ?? ""), p.gate.generation, Date.now(), 1)) p.channel?.close(); }); },
-        state: state => { if (["failed", "disconnected"].includes(state)) void this.queue(() => this.restartPC(index)); if (state === "connected") void this.queue(async () => { p.gate.dtls = true; await this.maybeReady(index); }); },
-        frame: raw => this.options.frame(raw, index + 1), closed: () => this.options.closed(index + 1), probe: elapsed => this.options.probe?.(index + 1, elapsed),
-      }); this.options.chosen(); return true;
+      channel = new DirectChannel({ peer: w.text(this.options.peer.id), connection: this.options.connection, use: index + 1, generation, deadline: this.options.deadline, budget: this.options.budget, stun: this.options.stun, valid: () => this.active && p.gate.generation === generation && (!channel || current()), factory: this.options.factory,
+        candidate: candidate => { void this.queue(async () => {
+          if (!this.active || !current()) return;
+          if (candidate === null) p.ended = true;
+          else if (!p.batch.add(w.utf8(candidate.candidate ?? ""), generation, Date.now(), 1)) channel!.close();
+        }); },
+        state: state => { void this.queue(async () => {
+          if (!this.active || !current()) return;
+          if (["failed", "disconnected"].includes(state)) await this.restartPC(index);
+          else if (state === "connected" && !channel!.signal.aborted) { p.gate.dtls = true; await this.maybeReady(index); }
+        }); },
+        frame: raw => { if (this.active && current()) this.options.frame(raw, index + 1); },
+        closed: () => { if (current()) this.options.closed(index + 1); },
+        probe: elapsed => { if (this.active && current()) this.options.probe?.(index + 1, elapsed); },
+      }); p.channel = channel; this.options.chosen(); return true;
     } catch { return false; }
   }
   private async maybeOffer(index: number) {
@@ -251,9 +267,14 @@ export class DirectSession {
     }
   }
   private async maybeReady(index: number) {
-    const p = this.pcs[index]; if (!p.channel || !this.active) return;
-    if (!p.confirmed && p.gate.localSDP && p.gate.remoteSDP && p.gate.dtls) p.confirmed = await this.signal(index, 7, p.gate.confirmBody());
-    if (p.channel.traversalReady && p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; p.channel.confirm(); this.options.ready(index + 1, p.channel); }
+    const p = this.pcs[index], channel = p.channel, generation = p.gate.generation;
+    if (!channel || !this.active || channel.signal.aborted) return;
+    if (!p.confirmed && p.gate.localSDP && p.gate.remoteSDP && p.gate.dtls) {
+      const confirmed = await this.signal(index, 7, p.gate.confirmBody());
+      if (!this.active || p.channel !== channel || p.gate.generation !== generation || channel.signal.aborted) return;
+      p.confirmed = confirmed;
+    }
+    if (channel.traversalReady && p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; channel.confirm(); this.options.ready(index + 1, channel); }
   }
   private async tick() {
     const now = Date.now();
@@ -277,7 +298,7 @@ export class DirectSession {
     }
   }
   private resetPC(index: number) {
-    const p = this.pcs[index]; p.channel?.close(); p.channel = undefined;
+    const p = this.pcs[index], old = p.channel; p.channel = undefined; old?.close();
     p.generation = p.gate.generation; p.seq = 0n; p.sender = new Sender(this.options.deadline);
     p.batch = new CandidateBatcher(p.gate.generation, this.options.deadline, 1);
     p.confirmed = p.announced = p.ended = p.restartSent = false; p.ufrag = p.mid = new Uint8Array();

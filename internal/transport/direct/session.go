@@ -39,6 +39,7 @@ type SessionConfig struct {
 type sessionEvent struct {
 	use         uint64
 	generation  uint64
+	path        *Path
 	candidate   *webrtc.ICECandidateInit
 	state       webrtc.PeerConnectionState
 	kind        int
@@ -49,6 +50,7 @@ type sessionPC struct {
 	business                    atomic.Bool
 	generation                  uint64
 	currentGeneration           atomic.Uint64
+	currentPath                 atomic.Pointer[Path]
 	actions                     []peerwire.Action
 	restartSent                 bool
 	signal                      *peerwire.Signal
@@ -618,29 +620,36 @@ func (s *Session) makePC(i int, now uint64) bool {
 	use := uint64(i + 1)
 	expires := s.cfg.Deadline
 	generation := p.signal.Generation
-	live := func() bool { return p.business.Load() || uint64(time.Now().UnixMilli()) < expires }
+	live := func() bool {
+		return p.currentGeneration.Load() == generation && (p.business.Load() || uint64(time.Now().UnixMilli()) < expires)
+	}
+	var source atomic.Pointer[Path]
+	post := func(e sessionEvent) {
+		path := source.Load()
+		if !s.Active() || path == nil || !path.valid() || p.currentPath.Load() != path || p.currentGeneration.Load() != generation || e.state == webrtc.PeerConnectionStateClosed {
+			return
+		}
+		e.path = path
+		e.use = use
+		e.generation = generation
+		select {
+		case s.events <- e:
+		default:
+			s.cancel()
+		}
+	}
 	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Allow: func() bool {
 		return !s.retired.Load() && live() && (s.cfg.Policy == nil || s.cfg.Policy()) && s.cfg.Allow() && live() && !s.retired.Load() && (s.cfg.Policy == nil || s.cfg.Policy())
 	}, LoopbackOnly: s.cfg.LoopbackOnly,
-		Candidate: func(c *webrtc.ICECandidateInit) {
-			select {
-			case s.events <- sessionEvent{use: use, generation: generation, candidate: c, kind: 1}:
-			default:
-				s.cancel()
-			}
-		},
-		State: func(state webrtc.PeerConnectionState) {
-			select {
-			case s.events <- sessionEvent{use: use, generation: generation, state: state, kind: 2}:
-			default:
-				s.cancel()
-			}
-		},
+		Candidate: func(c *webrtc.ICECandidateInit) { post(sessionEvent{candidate: c, kind: 1}) },
+		State:     func(state webrtc.PeerConnectionState) { post(sessionEvent{state: state, kind: 2}) },
 	})
 	if err != nil {
 		return false
 	}
 	p.path = path
+	source.Store(path)
+	p.currentPath.Store(path)
 	if s.cfg.Chosen != nil {
 		s.cfg.Chosen()
 	}
@@ -700,7 +709,10 @@ func (s *Session) event(e sessionEvent, now uint64) {
 	}
 	i := int(e.use) - 1
 	p := &s.pcs[i]
-	if p.path == nil || e.generation != p.signal.Generation {
+	if !s.Active() || p.path == nil || e.path != p.path || e.generation != p.signal.Generation {
+		return
+	}
+	if (e.kind == 1 || e.state == webrtc.PeerConnectionStateConnected) && !p.path.valid() {
 		return
 	}
 	if e.kind == 1 {
@@ -816,6 +828,8 @@ func (s *Session) SendControl(typ uint64, body []byte) bool {
 // The actor retries pending actions; neither a gap nor restart resets the round.
 func (s *Session) resetPC(i int) {
 	p := &s.pcs[i]
+	p.currentPath.Store(nil)
+	p.currentGeneration.Store(p.signal.Generation)
 	if p.path != nil {
 		p.path.Close()
 		s.closedPaths = append(s.closedPaths, p.path)
