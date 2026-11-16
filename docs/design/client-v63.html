@@ -368,28 +368,30 @@
   .li svg.lead { color: var(--ink2); }
   .li.red { color: var(--red); border-bottom: 0; }
 
-  /* ---------- 宽屏（.desk 四级表面 s0–s3，圆角 4 档：6 / 8 / 14 / 18 + 独立胶囊，无窗口灯，纯黑不用作内容底） ---------- */
-  .win {
+  /* ---------- 宽屏（.desk 四级表面 s0–s3，与 web/src/styles.css 原值一致；圆角 4 档：6 / 8 / 14 / 18 + 独立胶囊） ---------- */
+  .win, .desk {
     --s0: #ececef; --s1: #ffffff; --s2: #f4f4f6; --s3: #ffffff;
-    --paper: var(--s1); --gbg: var(--s2); --lift: var(--s3); --dialog: var(--s3); --bubble: var(--s2);
-    --in-bg: var(--s2); --in-edge: rgba(0,0,0,.10);
+    --paper: var(--s1); --gbg: var(--s2); --lift: var(--s3); --dialog: var(--s3); --bubble: var(--s2); --knob: var(--s3);
+    --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --seg: rgba(0,0,0,.06);
     --hair: rgba(0,0,0,.08); --rim: rgba(0,0,0,.08); --sep: rgba(0,0,0,.08);
-    --float: 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
+    --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
+    --float: var(--elev);
     width: 100%; max-width: 1256px; height: 780px; border-radius: 20px; overflow: hidden; display: flex;
     background: var(--s0); color: var(--ink);
     box-shadow: 0 28px 64px rgba(0,0,0,.18), 0 0 0 .5px var(--rim);
     font-size: 13px; letter-spacing: 0; padding: 8px; gap: 8px;
   }
-  [data-theme="dark"] .win, .win[data-theme="dark"] {
+  [data-theme="dark"] .win, [data-theme="dark"] .desk, .win[data-theme="dark"] {
     --s0: #111113; --s1: #19191c; --s2: #222226; --s3: #2b2b30;
-    --paper: var(--s1); --gbg: var(--s2); --lift: var(--s3); --dialog: var(--s3); --bubble: var(--s2);
-    --ink: #f5f5f7; --ink2: #a1a1a8; --ink3: #6e6e73; --faint: #48484a;
-    --fill: rgba(255,255,255,.06); --fill2: rgba(255,255,255,.11);
-    --btn: #f5f5f7; --btn-fg: #111113;
+    --paper: var(--s1); --gbg: var(--s2); --lift: var(--s3); --dialog: var(--s3); --bubble: var(--s2); --knob: var(--s3);
+    --ink: #f5f5f7; --ink2: #a1a1a6; --ink3: #6e6e73; --faint: #48484a;
+    --fill: rgba(255,255,255,.09); --fill2: rgba(255,255,255,.15); --seg: rgba(0,0,0,.28);
+    --btn: #f5f5f7; --btn-fg: #000000;
     --tc: #0c0c0e; --tc-line: rgba(255,255,255,.12);
     --in-bg: #26262b; --in-edge: rgba(255,255,255,.14);
     --hair: rgba(255,255,255,.07); --rim: rgba(255,255,255,.10); --sep: rgba(255,255,255,.08);
-    --float: 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    --float: var(--elev);
   }
   .side { width: 288px; flex: none; display: flex; flex-direction: column; min-height: 0; padding: 4px 4px 2px; }
   /* 侧栏顶栏：左边范围胶囊，右边级 3 加细边的次级按钮（不用实心墨色，不画系统红黄绿灯） */
@@ -422,15 +424,16 @@
   .side .conn .dotk { width: 7px; height: 7px; margin: 0; }
   .sfoot { display: flex; gap: 8px; padding: 6px 4px 4px; align-items: center; flex: none; }
   .side > .slist + .sfoot { border-top: .5px solid var(--sep); padding-top: 8px; }
-  .sfoot .seg { flex: 1; background: var(--fill); }
-  .sfoot .seg .on, .tool .seg .on { background: var(--s3); color: var(--ink); box-shadow: inset 0 0 0 .5px var(--rim), 0 1px 2px rgba(0,0,0,.06); }
+  .win .seg { background: var(--seg); }
+  .win .seg .on { background: var(--s3); color: var(--ink); box-shadow: inset 0 0 0 .5px var(--rim), 0 1px 2px rgba(0,0,0,.06); }
+  .sfoot .seg { flex: 1; }
   .ib { width: 32px; height: 32px; border-radius: 50%; background: var(--fill); display: flex; align-items: center; justify-content: center; position: relative; flex: none; color: var(--ink); }
   .ib.on { background: var(--s3); box-shadow: inset 0 0 0 .5px var(--rim), 0 1px 2px rgba(0,0,0,.08); }
   .main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; background: var(--s1); border-radius: 12px; box-shadow: 0 0 0 .5px var(--hair); overflow: hidden; }
   .tool { height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 24px; }
   .tool b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .tool .st { color: var(--ink2); display: flex; align-items: center; gap: 6px; flex: none; }
-  .tool .sp { flex: 1; } .tool .seg { background: var(--fill); } .tool .seg span { flex: none; height: 26px; padding: 0 12px; }
+  .tool .sp { flex: 1; } .tool .seg { background: var(--seg); } .tool .seg span { flex: none; height: 26px; padding: 0 12px; }
   .split { flex: 1; min-height: 0; display: flex; padding: 0 8px 8px 0; }
   .split > .col { flex: 1; min-width: 0; position: relative; }
   .colin { position: absolute; inset: 0; overflow-y: auto; padding: 12px 24px 300px; scrollbar-width: none; }
@@ -2631,7 +2634,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 <section id="wide" class="sx-wide">
 <h2>宽屏</h2>
 <div class="win"><div class="side"><div class="side-top"><span class="scp"><span class="av">全</span><span>全部项目</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div><div class="whl"><em>2</em> 件事等你</div><div class="wsub">1 个会话在运行，1 个空闲</div><div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div><div class="slist"><div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">foo · Codex · VPS-dev</div></div></div><div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>升级依赖</b><time>9:20</time></div><div class="r2">等你回答 · 大版本也一起升吗？</div><div class="r3">billing · Antigravity · MacBook</div></div></div><div class="slabel">进行中</div><div class="srow"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">foo · Codex · MacBook</div></div></div><div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="r3">foo · Claude Code · MacBook</div></div></div><div class="slabel">今天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>发布秋季文章</b><time>blog · 7:50</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>foo · 7:10</time></div></div></div><div class="slabel">昨天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>修复 RSS 日期格式</b><time>blog · 18:44</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>整理读书笔记目录</b><time>notes · 11:02</time></div></div></div><div class="slabel">近 7 天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>介绍下这个项目</b><time>foo · 周二</time></div></div></div></div><div class="conn"><i class="dotk g"></i>已连接</div><div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div></div><div class="main"><div class="wstart"><div class="sent"><span class="g">在<span class="tok p"><span class="av">f</span><span>foo · MacBook</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span></span><span class="g">用<span class="tok"><svg class="amk" width="14" height="14"><use href="#mark-codex"/></svg><span>Codex</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span></span></div><div class="wbox"><div class="wtx"><i></i>要做什么</div><div class="wbar"><span class="plus"><svg class="ic" width="18" height="18"><use href="#lu-plus"/></svg></span><span class="wchip">GPT-6-Astra · medium<svg class="ic" width="13" height="13"><use href="#lu-chevron-down"/></svg></span><span class="kh">⌘↵ 开始</span><span class="snd off"><svg class="ic" width="16" height="16"><use href="#lu-arrow-up"/></svg></span></div></div></div></div></div>
-<p class="wcap"><b>主页 · 全部项目（四级表面 s0–s3）。</b>整个桌面由四级表面拉开：窗口与侧栏用 <code>s0</code>（亮 <code>#f2f2f4</code> / 暗 <code>#111113</code>），主区圆角纸用 <code>s1</code>（亮 <code>#ffffff</code> / 暗 <code>#17171a</code>，不再用纯黑 <code>#000</code>），设置分组用 <code>s2</code>，选中会话行、顶栏次级「新任务」按钮和弹出菜单用 <code>s3</code> 加 <code>0.5px rim</code> 细边；网页不画系统窗口红黄绿三点。右边主区域是宽 640 的新任务输入区：「在 [foo · MacBook] 用 [Codex]」下面跟圆角 14 的输入盒，盒内控件一律圆角 8（14 − 6 同心）。侧栏列表在独立滚动区里，底部的「已连接」与底栏上缘以 <code>0.5px sep</code> 分界，绝不浮在列表上切掉最后一行。</p>
+<p class="wcap"><b>主页 · 全部项目（四级表面 s0–s3）。</b>整个桌面由四级表面拉开：窗口与侧栏用 <code>s0</code>（亮 <code>#ececef</code> / 暗 <code>#111113</code>），主区圆角纸用 <code>s1</code>（亮 <code>#ffffff</code> / 暗 <code>#19191c</code>，不再用纯黑 <code>#000</code>），设置分组与气泡用 <code>s2</code>（亮 <code>#f4f4f6</code> / 暗 <code>#222226</code>），选中会话行、顶栏次级「新任务」按钮和弹出菜单用 <code>s3</code>（亮 <code>#ffffff</code> / 暗 <code>#2b2b30</code>）加 <code>0.5px rim</code> 细边；网页不画系统窗口红黄绿三点。右边主区域是宽 640 的新任务输入区：「在 [foo · MacBook] 用 [Codex]」下面跟圆角 14 的输入盒，盒内控件一律圆角 8（14 − 6 同心）。侧栏列表在独立滚动区里，底部的「已连接」与底栏上缘以 <code>0.5px sep</code> 分界，绝不浮在列表上切掉最后一行。</p>
 <div style="height:32px"></div>
 <div class="win"><div class="side"><div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div><div class="whl"><em>1</em> 件事等你</div><div class="wsub">1 个会话在运行，1 个空闲</div><div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div><div class="slist"><div class="srow sel"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div><div class="slabel">进行中</div><div class="srow"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">Codex · MacBook</div></div></div><div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="r3">Claude Code · MacBook</div></div></div><div class="slabel">今天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>7:10</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>给登录接口加限流</b><time>6:42</time></div></div></div><div class="slabel">昨天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>补充错误码说明</b><time>18:44</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>排查偶发的 502</b><time>11:02</time></div></div></div><div class="slabel">近 7 天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>介绍下这个项目</b><time>周二</time></div></div></div></div><div class="conn"><i class="dotk g"></i>已连接</div><div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div></div><div class="main"><div class="tool"><b>重构 API 层</b><span class="st"><i class="dotk o"></i>等待审批 · 询问</span><span class="sp"></span><div class="seg"><span>聊天</span><span>终端</span><span class="on">并排</span></div><span class="ib" style="background:var(--fill)"><svg class="ic" width="18" height="18"><use href="#lu-ellipsis"/></svg></span></div><div class="split"><div class="col"><div class="colin"><div class="me src"><div>把 handler 拆到单独的包里</div><small>MacBook 终端</small></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">编辑 5 个文件　+84 −61</span></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>mkdir -p internal/handler</code><span class="rt">已允许</span></div><div class="ai">拆分完成，跑一下测试确认没有破坏现有行为。</div></div><div class="wdock"><div class="tc"><div class="k"><i></i>请求执行<span>剩 8 分钟</span><a>收起</a></div><div class="cmd mono"><b>❯ </b>go test ./... -count=1</div><div class="y">跑一遍全部测试，确认拆包没有破坏行为</div><div class="bs"><button class="cb no">拒绝</button><button class="cb">允许</button></div></div></div><div class="wcomp"><div class="ph">消息</div><div class="wbar"><span class="plus"><svg class="ic" width="18" height="18"><use href="#lu-plus"/></svg></span><span class="kh">⌘↵ 发送</span><span class="snd"><svg class="ic" width="16" height="16"><use href="#lu-stop"/></svg></span></div></div></div><div class="termcol"><span class="tchip">已适配这块屏幕 · 96×40<a>还原</a></span>
 <span class="d">• Edited</span> 5 files (+84 -61)
