@@ -39,11 +39,15 @@ extension FrameStream {
 struct PathRefusal: Sendable { let reason: String }
 protocol PathAttempt: Sendable {
     var attemptId: String { get }
+    /// A DirectPath attempt: its result carries no relay outcome, only the daemon's signed one.
+    var isDirect: Bool { get }
     func prepare(prior: Bool) async throws
     func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse
     func refusal(_ error: ConnectError) -> PathRefusal?
     func refreshAuth(prior: Bool) async throws
 }
+
+extension PathAttempt { var isDirect: Bool { false } }
 
 /// Paths carry routing and sealed bytes, never command bodies or keys.
 protocol Path: Sendable {
