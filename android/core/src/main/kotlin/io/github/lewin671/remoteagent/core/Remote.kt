@@ -430,6 +430,10 @@ class Remote(
 ) {
     private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
     private val cpuDispatcher: kotlinx.coroutines.CoroutineDispatcher = if (dispatcher == null) Dispatchers.Default else this.dispatcher
+    /** Bulk blocks seal and open on their own, narrower lane, so an approval never queues behind one. */
+    private val bulkCpuDispatcher: kotlinx.coroutines.CoroutineDispatcher = if (dispatcher == null) io.github.lewin671.remoteagent.core.transport.CpuLanes.bulk else this.dispatcher
+    private fun cpuLane(p: PreparedCommand) =
+        if (p.command?.hasGetSharedFileChunk() == true || p.command?.hasPutImageChunk() == true) bulkCpuDispatcher else cpuDispatcher
     private val directDispatcher: kotlinx.coroutines.CoroutineDispatcher = if (dispatcher == null) Dispatchers.IO.limitedParallelism(1) else this.dispatcher
     private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     private val device = SigningKey(account.deviceSeed)
@@ -3557,9 +3561,11 @@ class Remote(
                     }
                     if (serverAhead || security.clockSkew)
                         throw CommandException("failed_precondition", UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText())
-                    if (!Authority.leaseValid(security.record(), clock()))
+                    // Checking the lease signature is public-key work: not on the single worker thread every command shares.
+                    val leaseValid = kotlinx.coroutines.withContext(cpuLane(p)) { Authority.leaseValid(security.record(), clock()) }
+                    if (!leaseValid)
                         throw CommandException("failed_precondition", localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) })
-                    kotlinx.coroutines.withContext(cpuDispatcher) {
+                    kotlinx.coroutines.withContext(cpuLane(p)) {
                         security.seal(
                             DeviceSecurity.Purpose.COMMAND,
                             p.machineId,
@@ -3570,7 +3576,7 @@ class Remote(
                         )
                     }
                 } else {
-                    kotlinx.coroutines.withContext(cpuDispatcher) {
+                    kotlinx.coroutines.withContext(cpuLane(p)) {
                         val (h, plain) = security.openOwnCommand(p.envelope)
                         if (h.machine != p.machineId || h.session != p.sessionId || h.request != p.requestId || h.deadline != p.deadlineMs.toULong()) throw DeviceSecurity.Failure()
                         security.seal(DeviceSecurity.Purpose.COMMAND, h.machine, h.session, h.request, deadline = h.deadline, plain = plain)
@@ -3761,7 +3767,7 @@ class Remote(
                     val authorized = authorize(p,retryOfUnknown=call.hasPrior)
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     checkFileCapability(p, call.uncertain)
-                    val binding = kotlinx.coroutines.withContext(cpuDispatcher) { security.commandIdentity(authorized) }
+                    val binding = kotlinx.coroutines.withContext(cpuLane(p)) { security.commandIdentity(authorized) }
                     if (clock() >= recoveryDeadline) throw forwardLifetimeExpired()
                     val res = recovery.follow { delivery.send(p.machineId, authorized) }
                     val (_, msg) =
@@ -3775,6 +3781,7 @@ class Remote(
                                     requestId = p.requestId,
                                 ),
                                 CommandResult::parseFrom,
+                                bulk = routeHint is RouteHint.Bulk,
                             )
                         } catch (e: Exception) {
                             // A result that does not open says nothing about whether
@@ -4366,6 +4373,7 @@ class Remote(
         want: Place,
         parse: (ByteArray) -> T,
         live: Boolean = true,
+        bulk: Boolean = false,
     ): Pair<Header, T> {
         val history =
             !live ||
@@ -4382,7 +4390,7 @@ class Remote(
         val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
         val (header, m) =
             try {
-                kotlinx.coroutines.withContext(cpuDispatcher) {
+                kotlinx.coroutines.withContext(if (bulk) bulkCpuDispatcher else cpuDispatcher) {
                     security.openMessage(
                         env,
                         history,

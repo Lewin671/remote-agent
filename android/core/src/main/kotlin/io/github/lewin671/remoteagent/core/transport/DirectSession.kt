@@ -47,6 +47,8 @@ internal class DirectSessionOptions(
     val clock: () -> Long = System::currentTimeMillis,
     val monotonic: () -> Long = ::monotonicMillis,
     val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /** Where the bulk path's frames are reassembled and checked: not on every core. */
+    val bulkReceiveDispatcher: CoroutineDispatcher = CpuLanes.bulk,
 )
 
 /** Serial owner for one connection and both uses. Deferred work keeps original bytes. */
@@ -499,6 +501,7 @@ internal class DirectSession(val options: DirectSessionOptions) {
                     clock = options.clock,
                     monotonic = options.monotonic,
                     dispatcher = options.dispatcher,
+                    receiveDispatcher = if (index == 1) options.bulkReceiveDispatcher else Dispatchers.Default,
                 ),
             )
             created = ch
