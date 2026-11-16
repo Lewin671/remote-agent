@@ -18,19 +18,19 @@ Android 原生 App 要把手机上的体验做到原生水平。本文写 App �
 | 扫码 | CameraX + ZXing core | 本地解码，只扫配对二维码这一种 |
 | 构建和分发 | Gradle version catalog 锁定依赖版本；minSdk 26，targetSdk 35，compileSdk 36（connect-kotlin 0.9 依赖的 OkHttp 5.4 要求）；release 构建开 R8，另有一个 `minified` 构建类型，和 release 相同但允许明文 HTTP，用来在本机 server 上测 R8 的包；自己签名，侧载安装；Firebase 的 `google-services.json` 和签名配置放在仓库外的 `~/.config/remote-agent/`，没有时照常构建、推送关闭 | 不上架应用商店；`setAuthenticationRequired` 等 API 31 起的能力按版本判断 |
 
-## 为什么是纯 Kotlin
+## 为什么是 Kotlin 加共享 Go 核心
 
 | 方案 | 结论 | 理由 |
 |---|---|---|
-| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。iOS 最后也没有走这条路，写成了 Swift（[ios-client.md](ios-client.md#为什么是纯-swift)） |
-| gomobile 复用 Go | 暂不采用 | 能直接复用的只有 `internal/e2e`：`relay.JoinByPairing` 按机器登记并写 `account.json`，`remoteclient` 是测试用的客户端，不保存设备私钥；同步引擎和事件归约只有 TS 版，用 Go 也要新写。还要承担：Go 的 TLS 不走 Android 的网络安全策略，系统代理不自动生效，网络切换要由 Kotlin 通知，协程取消要桥接到 `context`，Go 和 JVM 两个堆，以及 NDK、R8、16 KB 页面的构建问题 |
+| KMP 共享核心 | 暂不采用 | 价值在于和 iOS 共享，iOS 还没定；connect-kotlin 只发布 JVM 版（2026-09-29 核实），放不进 `commonMain`，只能自己实现 Connect 协议。iOS 最后也没有走这条路，写成了 Swift（[ios-client.md](ios-client.md#为什么是-swift-加共享-go-核心)） |
+| gomobile 复用 Go | 采用，只放纯逻辑 | 最初只有 TS 一份归约、Go 只有 `internal/e2e` 可复用，所以没用；三端各写一份后改为把纯逻辑收进 `clientcore/`（[architecture.md](architecture.md#客户端共享核心)）。网络仍由 Kotlin 负责，所以 Go 的 TLS、系统代理、网络切换和协程取消的问题不出现；NDK、R8 keep 规则和 16 KB 页面由构建脚本处理 |
 | 只把加密交给 Go | 不采用 | 绑定层的固定成本一样不少，复用最少 |
 | Flutter、React Native | 不采用 | 终端和系统交互仍要写原生模块；Flutter 多出一套 Dart；RN 也搬不动现有网页，它依赖 WebCrypto、IndexedDB、xterm.js 和 DOM |
 | 包装 PWA（TWA、Capacitor） | 不采用 | 界面仍是网页，终端输入、键盘和系统交互达不到原生 |
 
 ## 模块
 
-- **`:core`**：纯 Kotlin/JVM，不依赖 `android.*`。包括 proto、RPC 和 WebSocket、加密、配对、同步、事件归约和项目分组，都能在 JVM 上单独测试
+- **`:core`**：纯 Kotlin/JVM，不依赖 `android.*`。包括 proto、RPC 和 WebSocket、加密、配对、同步和项目分组；事件归约调用共享 Go 核心（`corebind` aar），都能在 JVM 上单独测试
 - **`:app`**：Compose UI、终端视图、生命周期、Keystore、Room 和 DataStore、FCM 和通知、扫码。通过少量接口使用 `:core`，不把 Android 类型传进去
 
 ## 同步和生命周期

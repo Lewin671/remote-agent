@@ -6,10 +6,9 @@ values); no separate copies or generated expected states live in each client.
 `projectionVersion` versions this test contract, not the wire protocol.
 
 Each observation is the domain state after exactly `through` events. `cuts`
-are legal batch boundaries: Kotlin and Swift test both `EventReducer` append
-and `EventProjection` prefix/tail updates at every cut before the observation,
-as well as full replay. Web has a full-replay reducer and checks the same
-prefixes and batches. These are in-memory replay tests, **not snapshot restore,
+are legal batch boundaries. The shared Go core (`clientcore/projection`), which
+all three clients call, is tested for full replay and for incremental appends
+at every cut before the observation. These are in-memory replay tests, **not snapshot restore,
 encryption, transport, or real CLI tests**.
 
 Normalization compares pending IDs in insertion order; inputs in acceptance
@@ -23,25 +22,20 @@ start; it does not consume another tool. Sequence arrays are numerically sorted,
 without key order. `local` is an annotation, not a fabricated device identity.
 Unknown origin is `0`. No layout or translated display strings are expected.
 
-Native compaction facts and Android approval associations live in the core
-reducer and are consumed by chat rendering. Kotlin's test-only javalite JSON
-adapter uses generated builder setters, rejects unknown fields/types, and reads
-the same numeric protobuf JSON as Swift/TS. It is not a production decoder.
+Native compaction facts and approval associations live in the core reducer
+and are consumed by each client's chat rendering.
 
 Run from the repository root:
 
 ```
-pnpm --dir web exec vitest run src/projection-vectors.test.ts --maxWorkers=2
-(cd android && ANDROID_HOME=~/Library/Android/sdk ./gradlew --max-workers=2 -PappIdSuffix=.v2dev :core:test --tests '*ProjectionVectorsTest')
-swift test --package-path ios/RemoteAgentCore -j 2 --filter ProjectionVectorsTests
+(cd clientcore && go test ./projection/)
 ```
 
-`internal/remoteclient` opens and validates events but has no session reducer;
-it is deliberately not given a fourth copy of the projection logic. Go tests
-validate the JSON corpus against the generated protobuf schema and sequence/cut
-boundaries. The shared async-question history observation is also checked through Web
-`timeline`, Swift `buildChat`, and Android app `ProjectionRowsVectorsTest`.
-UI wording remains in platform tests.
+The core test reads the protobuf JSON with protojson and feeds the core the
+standard wire encoding, so it also checks that the core's reflection-free types
+read what the clients' protobuf libraries write. The shared async-question
+history observation is also checked through Web `timeline`, Swift `buildChat`,
+and Android app `ProjectionRowsVectorsTest`. UI wording remains in platform tests.
 
 `skeletons.json` contains one manually specified terminal-only skeleton for
 all 20 event kinds. Web timeline, Swift chat rows and Android chat rows must
@@ -51,11 +45,9 @@ without a payload text field. This is a rendering/marker contract, not a
 transport or real CLI test.
 
 `live-inputs.json` supplies history + an authenticated live snapshot + manually
-specified merged inputs to Web `currentDerived`, Kotlin `currentActions`, and
-Swift `currentActions`. It covers bounded queued/held previews, retained text,
-images, files and sender, explicit false pause, sparse stage/mode, missing
-history/live entries, and history newer than the snapshot watermark. The closed
-plan case has no pending plan reference. Swift stores files in input details;
-for absent live entries the runner checks the retained historical file metadata.
-These are merge tests, not transport tests. Run the Web `current-derived.test.ts`,
-Kotlin `ProjectionVectorsTest`, and Swift `ProjectionVectorsTests` runners.
+specified merged inputs to the core's `CurrentActions`. It covers bounded
+queued/held previews, retained text, images, files and sender, explicit false
+pause, sparse stage/mode, missing history/live entries, and history newer than
+the snapshot watermark. The closed plan case has no pending plan reference.
+These are merge tests, not transport tests. The Go core test and Web
+`current-derived.test.ts` (which goes through the WASM) run them.

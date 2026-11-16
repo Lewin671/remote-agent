@@ -19,17 +19,17 @@ iOS 原生 App 要把 iPhone 和 iPad 上的体验做到原生水平。本文写
 | Markdown | 把网页和 Android 用的那个有界解析器移植成 Swift，原生绘制 | 通用的 Markdown 库是另一种方言，三端要读成一样（[design-system §7](design-system.md)） |
 | 系统版本 | iOS 17 起 | Observation 和现在的 SwiftUI 导航都从 17 起可用，不用为旧系统写两套 |
 
-## 为什么是纯 Swift
+## 为什么是 Swift 加共享 Go 核心
 
-[android-client.md](android-client.md#为什么是纯-kotlin) 把这个问题留到了做 iOS 的时候。
+[android-client.md](android-client.md#为什么是-kotlin-加共享-go-核心) 把这个问题留到了做 iOS 的时候。
 
 | 方案 | 结论 | 理由 |
 |---|---|---|
 | 把 `android/core` 迁到 KMP | 不采用 | `:core` 不依赖 `android.*`，但依赖 JVM：javalite、connect-kotlin 和 OkHttp、Bouncy Castle、JCA、`java.util.zip`，这些都上不了 Kotlin/Native。迁过去等于同时重做 Android 已经在用的传输、生成代码和加密 |
-| gomobile 复用 Go | 不采用 | Go 里能直接用的只有 `internal/e2e`；同步引擎和事件归约只有 TS 和 Kotlin 版，用 Go 也要新写，还多一个运行时和一层绑定 |
-| 纯 Swift | 采用 | 共享的是协议定义和行为约定，不是代码：见下一节 |
+| gomobile 复用 Go | 采用，只放纯逻辑 | 原先因为同步和归约要用 Go 重写而没用；三端各写一份后改为把纯逻辑收进 `clientcore/`（[architecture.md](architecture.md#客户端共享核心)），App 通过 `Corebind.xcframework` 调用 |
+| 其余用 Swift | 采用 | 网络、存储、钥匙串、界面仍是原生；尚未迁进核心的逻辑靠协议定义和行为约定对齐：见下一节 |
 
-代价是同步和归约有了第三份实现。
+同步等尚未迁进核心的逻辑仍是第三份实现，按 [architecture.md](architecture.md#客户端共享核心) 逐步迁移。
 
 ## 和其他端保持一致
 

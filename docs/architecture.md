@@ -179,6 +179,7 @@ RelayPath 的指令由客户端 HTTPS `Forward` 经 server 转给 daemon 主 Web
 | 语言 | daemon 和 server 都用 Go，全部重写，不复用 Happy 和 botmux 的代码 | 单二进制、内存占用低、方便分发；需要的功能远少于 Happy |
 | 参考实现 | Happy（协议、加密、客户端交互）和 botmux（tmux、Codex 的各种坑）**只作参考** | 两者都是 MIT 协议，但它们是 TS 写的，而且范围远大于本项目 |
 | 客户端 | 自己写 PWA（React + Vite + TypeScript），部署在 Cloudflare Pages；Android 和 iOS 另做原生 App（[android-client.md](android-client.md)、[ios-client.md](ios-client.md)） | PWA 一套代码覆盖所有设备，不上架应用商店，网页不和 server 放在一起；Android 是主力手机，终端和通知要做到原生体验 |
+| 客户端共享核心 | 三端共用的客户端纯逻辑放进独立 Go module `clientcore/`：Android、iOS 经 gomobile 调用，网页用 Go 编译的 WASM；见下文「客户端共享核心」 | 同一套规则原来在 TS、Kotlin、Swift 各写一份，改一次写三遍、靠向量对齐；daemon 和 server 已是 Go |
 | 通信 | 服务通信使用 ConnectRPC 和主 WebSocket；设备间通信使用 Link，详见 [transport.md](transport.md) | 见第 3 节 |
 | HTTPS | server 只监听本机端口，由 Caddy 负责证书和反向代理 | |
 | server 存储 | SQLite | 单用户，部署简单 |
@@ -190,6 +191,15 @@ RelayPath 的指令由客户端 HTTPS `Forward` 经 server 转给 daemon 主 Web
 | 本地状态 | 每个会话一个目录：`session.json`、append-only 的 `events.jsonl` 和待发消息 `queue.json`；事件记录里带着读到的 rollout 位置，同时充当读取进度。一次追加的几条事件（一行 rollout 解析出的，或分支复制来的历史）是一批：位置记在最后一条上，其余各条带 `more` 标记；崩溃后文件末尾只剩半批时，打开日志会把这半批整批截掉。事件只在有人读的时候留在内存里，两分钟没读就释放，下次读时再从文件加载；追加和等待新事件只需要条数，不用加载 | 重启后从记录的位置接着读，事件序号连续、不重复，写了一半的那一行重读时每条事件只出现一次；已受理的消息不丢；单用户、单机，不需要数据库 |
 | `/` 开头的输入 | 客户端不直接注入：常用命令做成按钮和面板，其余先提醒再发送 | 带参数的斜杠命令会被当成普通消息发给模型；打开菜单的命令在手机上看不到（[codex-notes §6](codex-notes.md#6-踩过的坑)） |
 | 上下文提示 | 占用超过 80% 时提示，并提供「压缩」按钮（注入 `/compact`） | 数据来自 rollout 的 `token_count` |
+
+
+### 客户端共享核心
+
+- **范围**：只放不做 I/O 的逻辑（目前是会话事件归约 `clientcore/projection`）。网络、存储、钥匙串、推送、界面和文案留在各端；核心不起 goroutine、不读时钟、不打日志
+- **接口**：`clientcore/corebind` 是 gomobile 和 WASM 共用的粗粒度 API，跨边界只传 protobuf 字节；输出类型在 `proto/remoteagent/core/v1/`，是客户端内部的视图模型，不是 wire 协议，改它不升协议版本
+- **体积**：核心不用 protobuf-go 的反射运行时，改用 `cmd/protoc-gen-go-lite` 生成的只依赖 `protowire` 的类型（`clientcore/gen/`），网页的 wasm brotli 后约 630 KB（其中 Go 运行时约 440 KB），Android 每个 ABI 的 `.so` 和 iOS 每个切片约 2–3 MB；用标准 protobuf-go 时 wasm 是 1.5 MB
+- **独立 module**：gomobile 的依赖只进 `clientcore/go.mod`，不影响 daemon 和 server；测试可以引用主 module 做 wire 兼容和向量检查
+- **测试**：规则只在 Go 测一遍（共享向量 + wire 兼容）；各端只留绑定冒烟测试和界面层测试。Android 的 JVM 和 Robolectric 测试加载 `scripts/core/build.sh android-host` 编出的宿主 JNI 库，iOS 的 SwiftPM 测试用 xcframework 的 macOS 切片，网页的 vitest 在 Node 里加载 wasm
 
 ## 6. 接入 Codex
 
@@ -606,7 +616,7 @@ daemon 的设置存在 `~/.remote-agent/settings.json`，客户端可以读取�
 
 ### 客户端状态推导的共同规则
 
-网页、Android、iOS 从同一份按序事件推导领域状态，不能按客户端各自的到达顺序解释。契约和人工指定的期望值在 [`testdata/projection/`](../testdata/projection/README.md)：输入使用当前 proto 的 JSON，序号和 64 位计数写十进制字符串；输出保留领域事实、未知值和历史注解，不比较译文或布局。三端 runner 共读一个文件，核对观察点的完整重放；Android/iOS 还核对每个切点的 reducer 追加和 `EventProjection` 更新。这里只检验内存投影，没有快照协议、持久恢复或分页能力。Go `internal/remoteclient` 没有会话 reducer，只检查向量的 protobuf 格式、连续序号和切点，不再复制一套界面状态机。
+网页、Android、iOS 从同一份按序事件推导领域状态，不能按客户端各自的到达顺序解释。契约和人工指定的期望值在 [`testdata/projection/`](../testdata/projection/README.md)：输入使用当前 proto 的 JSON，序号和 64 位计数写十进制字符串；输出保留领域事实、未知值和历史注解，不比较译文或布局。推导由共享核心 `clientcore/projection` 实现，Go 测试读这个文件，核对观察点的完整重放以及每个切点的追加更新；各端不再各自实现或重复验证。这里只检验内存投影，没有快照协议、持久恢复或分页能力。
 
 - **来源认领**：有明确 `origin` 时以它为准，不猜设备身份；只有带 `request_id` 的用户消息消耗已有的提交认领。没有来源的消息沿用客户端的本地输入注解：提交先于消息时认领下一条；Claude 消息先于确认时，只追认最近三条事件内且晚于该请求首次入队的消息。`UNCONFIRMED` 后的确认只认领后面的消息，不能改变前面的本地输入注解。没有入队记录时仍允许短距离追认，这是当前事件缺失值的规则，不据此生成 `origin` 或 `device_id`。原生 CLI 自动产生的精确文本 `Implement the plan.` 不标为本地输入；有明确本地来源时仍按本地来源处理。改动 CLI 文本适配时三端一起更新向量。
 - **工具配对**：开始与结果只按非空 `call_id` 精确匹配；缺 ID、不同 ID 和 `<id>#2` 不兜底消耗别的起点。轮次结束后保留未完成起点的关联，迟到的真实结果即使跨到下一轮，也追补原起点并撤掉其未知、中断注解。没有结果时保持未知，不能记作成功。
