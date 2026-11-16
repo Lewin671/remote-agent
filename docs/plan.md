@@ -90,7 +90,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 ### 传输模块与直连
 
-- **1d/1e 原生移动 DirectPath**：Android/iOS 已具备协议 16 的认证编解码与 Unsupported；后续分别接入 WebRTC SDK、用途选路与平台生命周期。1c 的本地边界见[验收记录](acceptance-notes.md#transport-1c-2026-11-15)，不将网页或 Pion 结果替代真机验收。
+- **1d/1e 原生移动 DirectPath**：Android 1d 已在本地实现（WebRTC SDK、只读与 bulk 选路、「连接」组），自建模拟器上与隔离 server、daemon 的直连、升级、退路、续传和关闭路径验证通过，**审批 p99 ≤100 ms 与 Pixel 3 真机直连尚未达成**（见 1d 报告）；iOS 1e 仍只有协议 16 的认证编解码与 Unsupported，待接入 WebRTC SDK、用途选路与平台生命周期。1c 的本地边界见[验收记录](acceptance-notes.md#transport-1c-2026-11-15)，不将网页或 Pion 结果替代真机验收。
 
 - **0c 真机网络验收**：[iMac 正式恢复测量](acceptance-notes.md#0c-imac-正式恢复测量2026-11-14)已完成；仍需安排 Android/iPhone/PWA 真机 Wi-Fi↔蜂窝、同接口地址更新与后台/前台测试，故障注入不能代替真实移动网络。纯中继下普通池饱和的交互隔离已完成 [1b 本地验收](acceptance-notes.md#1b-分类调度与完整审批验收2026-11-15)，不代替真机网络验收。
 

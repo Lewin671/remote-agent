@@ -172,6 +172,19 @@ class DirectTransportE2ETest {
         }
     }
 
+    /** The test bench reaches the host through adb reverse, which an adb restart on this Mac drops for a second or two: a command refused as not sent is tried again. Not used on timed operations. */
+    private suspend fun <T> retryNotSent(block: suspend () -> T): T {
+        repeat(8) {
+            try {
+                return block()
+            } catch (e: io.github.lewin671.remoteagent.core.CommandException) {
+                if (e.code != "network" && e.code != "unavailable") throw e
+                delay(1_000)
+            }
+        }
+        return block()
+    }
+
     @Test
     fun fullDirectPathE2ESuite() {
         val args = InstrumentationRegistry.getArguments()
@@ -329,7 +342,7 @@ class DirectTransportE2ETest {
             while (offset < totalBytes24M) {
                 val isDirectNow = remote.filePath(machineId) == RouteName.DIRECT
                 val cStart = System.currentTimeMillis()
-                val res = remote.getSharedFileChunk(sessionId, fid1, offset)
+                val res = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, offset) }
                 val cElapsed = System.currentTimeMillis() - cStart
                 out1.write(res.data.toByteArray())
                 offset += res.data.size()
@@ -395,7 +408,7 @@ class DirectTransportE2ETest {
                 if (!dropped && remote.filePath(machineId) == RouteName.DIRECT && off2 >= 8L * chunkSize) {
                     dropped = true
                     val tDrop = System.currentTimeMillis()
-                    val chunkDeferred = async { remote.getSharedFileChunk(sessionId, fid2, off2) }
+                    val chunkDeferred = async { retryNotSent { remote.getSharedFileChunk(sessionId, fid2, off2) } }
                     delay(15)
                     rtcWrapper.dropActiveConnections()
                     val resumedChunk = chunkDeferred.await()
@@ -405,7 +418,7 @@ class DirectTransportE2ETest {
                     off2 += resumedChunk.data.size()
                     continue
                 }
-                val res = remote.getSharedFileChunk(sessionId, fid2, off2)
+                val res = retryNotSent { remote.getSharedFileChunk(sessionId, fid2, off2) }
                 out2.write(res.data.toByteArray())
                 off2 += res.data.size()
             }
@@ -424,25 +437,25 @@ class DirectTransportE2ETest {
             val uploadShaHex = sha256Hex(uploadBytes)
             val transferId = "ab" + "0".repeat(30).take(30).let { "%030x".format(System.nanoTime()) }.take(30)
             val channel = remote.uploadChannel(machineId)
-            val st0 = channel.beginFile(transferId, "e2e-upload.bin", uploadTotal.toLong(), uploadShaBytes)
+            val st0 = retryNotSent { channel.beginFile(transferId, "e2e-upload.bin", uploadTotal.toLong(), uploadShaBytes) }
             var upOff = st0.persistedBytes
             var uploadedCount = 0
             while (upOff < uploadTotal && uploadedCount < 3) {
                 val end = minOf(uploadTotal.toLong(), upOff + chunkSize).toInt()
-                val st = channel.put(transferId, upOff, uploadBytes.copyOfRange(upOff.toInt(), end))
+                val st = retryNotSent { channel.put(transferId, upOff, uploadBytes.copyOfRange(upOff.toInt(), end)) }
                 upOff = st.persistedBytes
                 uploadedCount++
             }
             // Simulate interruption & check durable persistedBytes via GetImageUploadStatus
-            val stPaused = channel.status(transferId)
+            val stPaused = retryNotSent { channel.status(transferId) }
             assertEquals(3L * chunkSize, stPaused.persistedBytes)
             upOff = stPaused.persistedBytes
             while (upOff < uploadTotal) {
                 val end = minOf(uploadTotal.toLong(), upOff + chunkSize).toInt()
-                val st = channel.put(transferId, upOff, uploadBytes.copyOfRange(upOff.toInt(), end))
+                val st = retryNotSent { channel.put(transferId, upOff, uploadBytes.copyOfRange(upOff.toInt(), end)) }
                 upOff = st.persistedBytes
             }
-            val stDone = channel.complete(transferId)
+            val stDone = retryNotSent { channel.complete(transferId) }
             assertEquals(uploadTotal.toLong(), stDone.persistedBytes)
             val verifyRes = ctrlPost(ctrlBase, "/verify-upload", JSONObject().put("expectedSha256Hex", uploadShaHex))
             assertTrue("Uploaded file SHA-256 must match on daemon disk", verifyRes.getBoolean("matched"))
@@ -458,7 +471,7 @@ class DirectTransportE2ETest {
             delay(500)
             assertEquals(DirectStage.OFF, remote.peer(machineId)?.directStatus?.stage)
             assertEquals(RouteName.RELAY, remote.filePath(machineId))
-            val probeOff = remote.getSharedFileChunk(sessionId, fid1, 0L)
+            val probeOff = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }
             assertEquals(chunkSize, probeOff.data.size())
             remote.setDirectEnabled(machineId, true)
             waitDirectReady(25_000)
@@ -479,7 +492,7 @@ class DirectTransportE2ETest {
             delay(6_000)
             assertFalse("Remote DirectPolicy=Off must keep Direct disabled", isDirectConnected())
             assertEquals(RouteName.RELAY, remote.filePath(machineId))
-            val probePolicy = remote.getSharedFileChunk(sessionId, fid1, 0L)
+            val probePolicy = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }
             assertEquals(chunkSize, probePolicy.data.size())
             ctrlPost(ctrlBase, "/set-direct-policy", JSONObject().put("machineId", machineId).put("enabled", true))
             remote.setDirectEnabled(machineId, false)
@@ -496,7 +509,7 @@ class DirectTransportE2ETest {
             delay(12_000)
             assertFalse("STUN unreachable must stay on relay", isDirectConnected())
             assertEquals(RouteName.RELAY, remote.filePath(machineId))
-            assertEquals(chunkSize, remote.getSharedFileChunk(sessionId, fid1, 0L).data.size())
+            assertEquals(chunkSize, retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }.data.size())
             ctrlPost(ctrlBase, "/stun-control", JSONObject().put("enabled", true))
             remote.setDirectEnabled(machineId, false)
             delay(300)
@@ -512,7 +525,7 @@ class DirectTransportE2ETest {
             delay(12_000)
             assertFalse("UDP dropped must stay on relay", isDirectConnected())
             assertEquals(RouteName.RELAY, remote.filePath(machineId))
-            assertEquals(chunkSize, remote.getSharedFileChunk(sessionId, fid1, 0L).data.size())
+            assertEquals(chunkSize, retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }.data.size())
             rtcWrapper.blockUdp = false
             remote.setDirectEnabled(machineId, false)
             delay(300)
@@ -526,7 +539,7 @@ class DirectTransportE2ETest {
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 150).put("resetCount", true))
             for (warmIdx in 0 until 64) {
                 if (remote.filePath(machineId) == RouteName.DIRECT) break
-                remote.getSharedFileChunk(sessionId, fid1, (warmIdx % 32).toLong() * chunkSize)
+                retryNotSent { remote.getSharedFileChunk(sessionId, fid1, (warmIdx % 32).toLong() * chunkSize) }
             }
             assertEquals(RouteName.DIRECT, remote.filePath(machineId))
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 0).put("bulkMs", 350).put("resetCount", true))
@@ -567,7 +580,7 @@ class DirectTransportE2ETest {
                         idx += 1
                         bulkAttempted.incrementAndGet()
                         try {
-                            remote.getSharedFileChunk(sessionId, fid1, o)
+                            retryNotSent { remote.getSharedFileChunk(sessionId, fid1, o) }
                             bulkSucceeded.incrementAndGet()
                         } catch (c: CancellationException) {
                             throw c

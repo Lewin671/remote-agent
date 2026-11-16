@@ -1,6 +1,6 @@
 # 传输模块与直连
 
-本文负责客户端与 daemon 间的分层、路径选择、恢复、安全绑定与路径状态展示；不定义账户、历史同步或原生 CLI 行为。范围见 [scope.md](scope.md)，既有信封与指令见 [architecture §10](architecture.md#10-报文同步和指令)，证据见 [transport-notes.md](transport-notes.md)，分期、验收和全部未决事项见 [plan.md](plan.md#传输模块与直连)。第 0a 的结果契约与第 0b 的 Link/Router/RelayPath 分层已实现；第 0c 的中继活性与换网恢复已实现。协议 16 的 1c 在本地实现 daemon 与网页的只读/文件 DirectPath；Android/iOS 当前只实现认证编解码与 Unsupported，保留 relay。副作用指令热备、原生移动端 DirectPath 和终端旧流续接仍属后续阶段，已发布产物尚未包含本地 1c。文中的初始预算是实现及验收的起点，不是已测性能。
+本文负责客户端与 daemon 间的分层、路径选择、恢复、安全绑定与路径状态展示；不定义账户、历史同步或原生 CLI 行为。范围见 [scope.md](scope.md)，既有信封与指令见 [architecture §10](architecture.md#10-报文同步和指令)，证据见 [transport-notes.md](transport-notes.md)，分期、验收和全部未决事项见 [plan.md](plan.md#传输模块与直连)。第 0a 的结果契约与第 0b 的 Link/Router/RelayPath 分层已实现；第 0c 的中继活性与换网恢复已实现。协议 16 的 1c 在本地实现 daemon 与网页的只读/文件 DirectPath；Android 的 1d 本地实现同样的只读/文件 DirectPath（模拟器验收；真机与审批 p99 另记），iOS 当前只实现认证编解码与 Unsupported，保留 relay。副作用指令热备、原生移动端 DirectPath 和终端旧流续接仍属后续阶段，已发布产物尚未包含本地 1c。文中的初始预算是实现及验收的起点，不是已测性能。
 
 ## 1. 分层与职责
 
@@ -199,7 +199,7 @@ bulk 用**独立 PeerConnection**隔离拥塞；可靠有序 DataChannel 承载�
 
 能力通过已认证的 Control 1 与 [Control 14 CapabilitySnapshot](transport-wire-draft.md#冻结后的第一个扩展capabilitysnapshotcontrol-14) 提供；快照失效时上传立即回 relay，下载不依赖上传快照。迟到的较旧 Control 序号不能覆盖较新的能力。硬故障立即回 relay，按第 4 节的全抖动退避（均匀分布在 1 / 2 / 4 … 秒的上限之下，最高 30 秒）开启新的有界协商轮并重新测量；旧 SDK 和未退出的写入继续占资源预算。一轮失败、或已建立的路径断开，各算一次失败，同一轮的多条路径只算一次；路径稳定保持 30 秒以上，序列从头开始；主连接恢复、网络代次变化、本机重新打开直连、收到 daemon 新进程实例（新 boot nonce）的 Probe，都立即清除等待中的延迟，不能让旧失败拖慢新的开始。界面只在确有一次重试已排定时才写「稍后会自动再试」。上传换路先经 relay 查询持久 offset，再在有效期限内重试原授权；不延长过期授权，后续取块/续传调用使用新 ID 和已验证 offset。
 
-网页按本设备、账户与电脑保存「直连：自动／关闭」，默认自动。电脑状态页的交互栏仍显示中继，文件栏显示实际文件路径；健康的只读 PC 不能使已经关闭的 bulk PC 显示为直连。Android/iOS 的协议层认证未知类型后回 Unsupported，不分配 SDK 对象。
+网页按本设备、账户与电脑保存「直连：自动／关闭」，默认自动。电脑状态页的交互栏仍显示中继，文件栏显示实际文件路径；健康的只读 PC 不能使已经关闭的 bulk PC 显示为直连。iOS 的协议层认证未知类型后回 Unsupported，不分配 SDK 对象；Android 按上述规则建连，关闭开关或 DirectPolicy 关闭时同样不分配。
 
 ### 指令与结果
 
