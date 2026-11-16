@@ -1770,6 +1770,48 @@
     }
   },
   {
+    "key": "transport.diag_stun",
+    "zh-CN": "地址查询",
+    "en": "Address lookup",
+    "notes": "诊断信息里一行的标签：这一轮用哪些 STUN 服务器查询本机公网地址。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stun_own",
+    "zh-CN": "自建服务器",
+    "en": "Own server",
+    "notes": "只用了中继自带的 STUN 服务器。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.diag_stun_public",
+    "zh-CN": "自建服务器 + 公共服务器",
+    "en": "Own and public servers",
+    "notes": "上一轮因本机 IPv6 地址被隐藏而失败，这一轮另外问了公共的 STUN 服务器（Cloudflare）。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "transport.diag_rej_sdp",
     "zh-CN": "连接信息",
     "en": "Connection details",

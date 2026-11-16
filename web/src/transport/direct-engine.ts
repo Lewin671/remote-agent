@@ -10,7 +10,7 @@ import { newRequestID } from "../crypto";
 import type { FrameStream, PathAttempt } from "./path";
 import { DirectBudget, DirectChannel } from "./direct-channel";
 import { DirectSession, type DirectedOutput } from "./direct-session";
-import { DirectDiag, type RoundData } from "./direct-diag";
+import { DirectDiag, hiddenIPv6, type RoundData } from "./direct-diag";
 import { DirectRouting, READ_RULE, type RouteHint, type RouteName } from "./direct-routing";
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
@@ -37,17 +37,22 @@ export const DIRECT_RETRY = { initialMs: 1000, maxMs: 30_000, stableMs: 30_000 }
 
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
-/** The relay's own STUN (IPv4 only today), plus one dual-stack public STUN so a
- * browser, whose host addresses are hidden behind mDNS names, still learns its
- * public IPv6 address. Without it the computer never sends towards the
- * browser's IPv6, and a default stateful IPv6 firewall in front of the computer
- * drops the browser's checks. The extra server sees only that this address
- * asked for its mapping; set VITE_DIRECT_STUN_EXTRA=none to leave it out. */
-export const DEFAULT_EXTRA_STUN = "stun:stun.cloudflare.com:3478";
-export function stunServers(host: string, own?: string, extra?: string): string[] {
+/** The relay's own STUN (IPv4 only today), and one dual-stack public STUN kept
+ * as a last resort: a round asks it only after a round to the same computer
+ * failed the way `hiddenIPv6` describes, so a browser whose host addresses are
+ * hidden behind mDNS names still learns its public IPv6 address. The public
+ * server sees only that this address asked for its mapping; set
+ * VITE_DIRECT_STUN_EXTRA=none to never ask it. */
+/** Cloudflare's dual-stack STUN, by name and by its IPv6 address: a resolver
+ * that drops AAAA answers (common behind proxies) would otherwise leave the
+ * browser no way to ask it over IPv6, which is the whole point of asking it. */
+export const DEFAULT_EXTRA_STUN = ["stun:stun.cloudflare.com:3478", "stun:[2606:4700:49::]:3478"];
+/** The relay's own STUN, and the public ones kept for the last resort
+ * (VITE_DIRECT_STUN_EXTRA: a comma-separated list, or "none"). */
+export function stunServers(host: string, own?: string, extra?: string): { own: string; extra: string[] } {
   const first = own || `stun:${host.includes(":") ? `[${host}]` : host}:3478`;
-  const second = extra === undefined || extra === "" ? DEFAULT_EXTRA_STUN : extra === "none" ? "" : extra;
-  return second && second !== first ? [first, second] : [first];
+  const list = extra === undefined || extra === "" ? DEFAULT_EXTRA_STUN : extra === "none" ? [] : extra.split(",").map((u) => u.trim()).filter(Boolean);
+  return { own: first, extra: list.filter((u) => u !== first) };
 }
 
 export class DirectEngine {
@@ -79,7 +84,9 @@ export class DirectEngine {
   private retryAfter = new Map<string, number>();
   private failureCount = new Map<string, number>();
   private failures = new Map<string, Exclude<DirectReason, "disabled">>();
-  private readonly stun: string[];
+  private readonly stun: { own: string; extra: string[] };
+  /** Computers whose rounds also ask the public STUN, until the network or lifetime changes. */
+  private publicStun = new Set<string>();
   private readonly diag = new DirectDiag();
   private manualAt = 0;
   /** Sends one authorized background read on the given path and resolves when
@@ -113,7 +120,7 @@ export class DirectEngine {
     this.syncRevision++; this.lifetime++; this.routingOwners.clear(); this.freshUntil = 0;
     for (const p of this.sessions.values()) { p.live = false; p.session.close(); }
     // A new network generation, lifetime or head is a new start: no old failure may delay the next round.
-    this.peers.clear(); this.sessions.clear(); this.failures.clear(); this.retryAfter.clear(); this.failureCount.clear(); for (const r of this.routes.values()) r.fail(); this.notify();
+    this.peers.clear(); this.sessions.clear(); this.failures.clear(); this.retryAfter.clear(); this.failureCount.clear(); this.publicStun.clear(); for (const r of this.routes.values()) r.fail(); this.notify();
   }
   async synced(record: SecurityRecord, started: number) {
     const revision = ++this.syncRevision;
@@ -174,12 +181,15 @@ export class DirectEngine {
     if (!this.current() || !this.enabled(id)) return;
     if (this.sessions.size >= 128 || [...this.sessions.values()].filter(p => p.id === id).length >= 32 || !this.peers.has(id) && this.peers.size >= 4) { this.diag.blocked(id); return; }
     const p = { id, head: this.head, paths: new Map<number, DirectChannel>(), live: true, snapshotUntil: 0, downloadUntil: 0, snapshotSeq: 0n, downloadSeq: 0n } as Peer;
+    const extra = this.publicStun.has(id) && this.stun.extra.length > 0, round = this.diag.begin(id, extra);
     const choose = () => { if (!this.valid(p) || !p.session.active || this.sessions.get(w.hex(connection)) !== p) return; p.selected = true; this.select(p); for (const old of this.sessions.values()) if (old !== p && old.id === id) old.session.retire(); };
-    p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun, diag: this.diag.begin(id),
+    p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: extra ? [this.stun.own, ...this.stun.extra] : [this.stun.own], diag: round,
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
       ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); p.readyAt ??= Date.now(); this.failures.delete(id); if (use === 1) this.routing(id).arm(true); this.notify(); },
-      closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+this.delay(id, p);this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + this.delay(id, p)); } this.notify(); },
+      closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+this.delay(id, p);this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + this.delay(id, p));
+        // Last resort: the next round to this computer also asks the public STUN, at once.
+        if (!extra && this.stun.extra.length > 0 && hiddenIPv6(round.data)) { this.publicStun.add(id); this.retryAfter.set(id, Date.now()); } } this.notify(); },
       frame: (raw, use) => this.frame(p, raw, use), capability: opened => this.capability(p, opened),
     });
     this.sessions.set(w.hex(connection), p); this.notify();

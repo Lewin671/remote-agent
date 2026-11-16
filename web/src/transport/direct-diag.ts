@@ -66,6 +66,8 @@ export interface RoundData {
   endedAt?: number;
   end?: EndReason;
   signals: { unsupported: boolean; limited: number; offline: number };
+  /** The round also asked the public STUN server, not only the relay's own. */
+  publicStun: boolean;
   pcs: [PcData, PcData];
 }
 
@@ -239,9 +241,9 @@ export class PcDiag {
 
 export class RoundDiag {
   readonly data: RoundData;
-  constructor(n: number, readonly clock: () => number = Date.now) {
+  constructor(n: number, readonly clock: () => number = Date.now, publicStun = false) {
     const pc = (use: 1 | 2): PcData => ({ use, marks: {}, attempts: [], rejects: [], blocked: false });
-    this.data = { n, startedAt: clock(), signals: { unsupported: false, limited: 0, offline: 0 }, pcs: [pc(1), pc(2)] };
+    this.data = { n, startedAt: clock(), signals: { unsupported: false, limited: 0, offline: 0 }, publicStun, pcs: [pc(1), pc(2)] };
     this.pcs = [new PcDiag(this.data.pcs[0], this), new PcDiag(this.data.pcs[1], this)];
   }
   readonly pcs: [PcDiag, PcDiag];
@@ -260,8 +262,8 @@ export class DirectDiag {
   private rings = new Map<string, { rounds: RoundDiag[]; blocked?: { at: number; n: number }; count: number }>();
   constructor(private readonly clock: () => number = Date.now) {}
   private ring(id: string) { let r = this.rings.get(id); if (!r) { r = { rounds: [], count: 0 }; this.rings.set(id, r); } return r; }
-  begin(id: string): RoundDiag {
-    const ring = this.ring(id), round = new RoundDiag(++ring.count, this.clock);
+  begin(id: string, publicStun = false): RoundDiag {
+    const ring = this.ring(id), round = new RoundDiag(++ring.count, this.clock, publicStun);
     ring.rounds.unshift(round);
     if (ring.rounds.length > MAX_ROUNDS) ring.rounds.length = MAX_ROUNDS;
     return round;
@@ -278,6 +280,20 @@ export class DirectDiag {
 }
 
 // ---- reading a round ---------------------------------------------------------
+
+/** A round that never connected while this browser showed no IPv6 address of its
+ * own (desktop browsers hide host addresses behind mDNS names, and the relay's
+ * STUN answers over IPv4 only) and the computer offered a global IPv6 one. The
+ * computer then never sends towards the browser's IPv6, and a stateful IPv6
+ * firewall in front of it drops the browser's checks: the case a dual-stack
+ * public STUN server can fix by telling the browser its public IPv6 address. */
+export function hiddenIPv6(r: RoundData): boolean {
+  if (r.established !== undefined) return false;
+  const attempts = r.pcs.flatMap((pc) => pc.attempts);
+  const local = (m: (k: CandKind) => boolean) => attempts.reduce((n, a) => n + tally(a.local, m), 0);
+  const remote = attempts.reduce((n, a) => n + tally(a.remote, (k) => k.family === "6" && k.cls === "global"), 0);
+  return local(() => true) > 0 && local((k) => k.family === "6") === 0 && remote > 0;
+}
 
 const seen = (a: AttemptData | undefined, k: StateKind, ...values: string[]) => !!a?.states.some((s) => s.k === k && values.includes(s.v));
 

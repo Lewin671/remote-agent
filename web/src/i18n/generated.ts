@@ -1524,8 +1524,11 @@ export interface MessageArgs {
   "transport.diag_state_failed": { [name: string]: never };
   "transport.diag_state_none": { [name: string]: never };
   "transport.diag_state_ok": { [name: string]: never };
+  "transport.diag_stun": { [name: string]: never };
   "transport.diag_stun_error": { code: number; count: number; family: string };
   "transport.diag_stun_errors": { [name: string]: never };
+  "transport.diag_stun_own": { [name: string]: never };
+  "transport.diag_stun_public": { [name: string]: never };
   "transport.diag_type_host": { [name: string]: never };
   "transport.diag_type_other": { [name: string]: never };
   "transport.diag_type_prflx": { [name: string]: never };
@@ -3575,8 +3578,11 @@ export const messages = {
     "transport.diag_state_failed": "Failed",
     "transport.diag_state_none": "Not started",
     "transport.diag_state_ok": "Done",
+    "transport.diag_stun": "Address lookup",
     "transport.diag_stun_error": "{code} · {family} ×{count}",
     "transport.diag_stun_errors": "STUN errors",
+    "transport.diag_stun_own": "Own server",
+    "transport.diag_stun_public": "Own and public servers",
     "transport.diag_type_host": "Local interface",
     "transport.diag_type_other": "Other",
     "transport.diag_type_prflx": "Peer-learned",
@@ -5542,8 +5548,11 @@ export const messages = {
     "transport.diag_state_failed": "失败",
     "transport.diag_state_none": "未开始",
     "transport.diag_state_ok": "已完成",
+    "transport.diag_stun": "地址查询",
     "transport.diag_stun_error": "{code} · {family} ×{count}",
     "transport.diag_stun_errors": "STUN 错误",
+    "transport.diag_stun_own": "自建服务器",
+    "transport.diag_stun_public": "自建服务器 + 公共服务器",
     "transport.diag_type_host": "本机网卡",
     "transport.diag_type_other": "其他",
     "transport.diag_type_prflx": "对端发现",

@@ -137,7 +137,7 @@ Router 合并全部路径/尝试：有仍可能返回可信结果的路径就继
 
 RelayPath 适配既有 HTTPS `Forward`、主 WS 和独立终端 WS。第 0b 期完成所有权重构，第 0c 期在协议 15 上实现中继活性与原 ID 调用恢复。账户、历史、通知和图片显示副本不改语义；新增信令定向转发见第 5 节。
 
-DirectPath 四端统一用 WebRTC DataChannel，daemon 用 Pion，自建 STUN，不部署 TURN。网页另加一台双栈公共 STUN（默认 `stun.cloudflare.com:3478`，构建时 `VITE_DIRECT_STUN_EXTRA` 可替换或设为 `none`）：浏览器的本机地址被 mDNS 隐藏，自建 STUN 目前只有 IPv4，没有它浏览器拿不到自己的公网 IPv6，电脑就不会朝浏览器的 IPv6 发包；电脑前面默认的有状态 IPv6 防火墙因此丢掉浏览器发来的检查，只剩单向，2026-11-16 实测两台联通 IPv6 之间因此连不上（电脑端 IPv6 端口收发均为 0 字节），手机浏览器因公开了本机 IPv6 而能连上。daemon 与原生客户端公开本机地址，不需要它。UDP 被挡、NAT 不可穿透、STUN 不可用就走 HTTPS/WSS；浏览器保留默认 mDNS/候选隐私，不为取地址申请音视频权限。
+DirectPath 四端统一用 WebRTC DataChannel，daemon 用 Pion，自建 STUN，不部署 TURN。网页每轮只问自建 STUN；公共双栈 STUN 只作最后手段（默认 Cloudflare，按域名和 IPv6 地址 `2606:4700:49::` 各列一次，因为不少代理的 DNS 会丢掉 AAAA 记录；构建时 `VITE_DIRECT_STUN_EXTRA` 可用逗号分隔替换，或设为 `none`）。只有某台电脑的一轮没连上、本机一个 IPv6 地址都没露出（地址被 mDNS 隐藏、自建 STUN 只有 IPv4）、而电脑给了全球 IPv6 地址时，之后对这台电脑的轮次才加上它并立刻重试，直到网络或连接寿命变化。原因：拿不到自己的公网 IPv6，电脑就不会朝浏览器的 IPv6 发包，电脑前面默认的有状态 IPv6 防火墙因此丢掉浏览器发来的检查，只剩单向；2026-11-16 实测两台联通 IPv6 之间因此连不上（电脑端 IPv6 端口收发均为 0 字节），而手机浏览器公开了本机 IPv6，能连上，也就不会去问公共 STUN。诊断信息写明每轮用了哪组 STUN。只许 IPv6 连国内的网络连不上 Cloudflare 的 IPv6，根本办法是给自建 STUN 配 IPv6。daemon 与原生客户端公开本机地址，不需要它。UDP 被挡、NAT 不可穿透、STUN 不可用就走 HTTPS/WSS；浏览器保留默认 mDNS/候选隐私，不为取地址申请音视频权限。
 
 选择 WebRTC 因为浏览器可用且四端有共同实现路径。[实测](transport-notes.md#2-吞吐与排队)中 QUIC 的吞吐与资源更好，但原型假定 UDP 可达，未验证手机集成或打洞。本期不引入 QUIC；上层不能看到 PeerConnection/SDP。
 
