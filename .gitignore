@@ -1,6 +1,7 @@
 # Go
 /bin/
 /dist/
+/build/
 *.exe
 *.test
 *.out

@@ -2493,5 +2493,35 @@
     "path": "web/src/views/DirectDiagSheet.tsx",
     "literal": "fail",
     "reason": "Internal copy-result state value, never displayed; the labels use transport.* and common.* messages."
+  },
+  {
+    "path": "web/src/core/projection.ts",
+    "literal": "WasmProjection already freed",
+    "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
+    "path": "web/src/core/projection.ts",
+    "literal": "wasm_exec.js must be loaded before RemoteAgentCore.load()",
+    "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "unsupported field kind: %v",
+    "reason": "Build-time code generator panic diagnostic, never shipped to end users."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "unsupported wire kind: %v",
+    "reason": "Build-time code generator panic diagnostic, never shipped to end users."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "unsupported kind: %v",
+    "reason": "Build-time code generator panic diagnostic, never shipped to end users."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "unsupported raw scalar kind: %v",
+    "reason": "Build-time code generator panic diagnostic, never shipped to end users."
   }
 ]

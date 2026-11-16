@@ -1,0 +1,134 @@
+// Minimal loader and wrapper for the Go WASM core (built by scripts/core/build.sh web).
+// Not wired into application views yet; see docs / phase 2 integration.
+
+export interface CoreWasmApi {
+  newProjection(agent: number): number;
+  projectionReset(handle: number, agent: number): void;
+  projectionAppend(handle: number, batchBytes?: Uint8Array): CoreWasmResult;
+  projectionSnapshot(handle: number): CoreWasmResult;
+  projectionCurrentActions(handle: number, liveBytes?: Uint8Array): CoreWasmResult;
+  projectionFree(handle: number): void;
+  reduceProjection(agent: number, batchBytes?: Uint8Array): CoreWasmResult;
+}
+
+type CoreWasmResult = { data: Uint8Array } | { error: string };
+
+interface GoRuntime {
+  importObject: WebAssembly.Imports;
+  run(instance: WebAssembly.Instance): Promise<void>;
+}
+
+declare global {
+  interface Window {
+    Go?: new () => GoRuntime;
+  }
+  // Provided by wasm_exec.js in both browser and worker/node contexts.
+  // eslint-disable-next-line no-var
+  var Go: (new () => GoRuntime) | undefined;
+  // eslint-disable-next-line no-var
+  var __remoteAgentCore: CoreWasmApi | undefined;
+  // eslint-disable-next-line no-var
+  var __remoteAgentCoreReady: ((api: CoreWasmApi) => void) | undefined;
+}
+
+function unwrap(res: CoreWasmResult): Uint8Array {
+  if ("error" in res) {
+    throw new Error(res.error);
+  }
+  return res.data;
+}
+
+export class WasmProjection {
+  private readonly api: CoreWasmApi;
+  private readonly handle: number;
+  private freed = false;
+
+  constructor(api: CoreWasmApi, agent = 0) {
+    this.api = api;
+    this.handle = api.newProjection(agent);
+  }
+
+  reset(agent: number): void {
+    this.assertAlive();
+    this.api.projectionReset(this.handle, agent);
+  }
+
+  append(eventBatchBytes?: Uint8Array): Uint8Array {
+    this.assertAlive();
+    return unwrap(this.api.projectionAppend(this.handle, eventBatchBytes));
+  }
+
+  snapshot(): Uint8Array {
+    this.assertAlive();
+    return unwrap(this.api.projectionSnapshot(this.handle));
+  }
+
+  currentActions(liveSnapshotBytes?: Uint8Array): Uint8Array {
+    this.assertAlive();
+    return unwrap(this.api.projectionCurrentActions(this.handle, liveSnapshotBytes));
+  }
+
+  free(): void {
+    if (!this.freed) {
+      this.freed = true;
+      this.api.projectionFree(this.handle);
+    }
+  }
+
+  private assertAlive(): void {
+    if (this.freed) {
+      throw new Error("WasmProjection already freed");
+    }
+  }
+}
+
+export class RemoteAgentCore {
+  private readonly api: CoreWasmApi;
+
+  private constructor(api: CoreWasmApi) {
+    this.api = api;
+  }
+
+  /**
+   * Instantiates core.wasm after wasm_exec.js has registered globalThis.Go.
+   * Pass either a fetch Response/Promise<Response> or raw WebAssembly bytes.
+   */
+  static async load(source: WebAssembly.WebAssemblyInstantiatedSource | BufferSource | Promise<Response>): Promise<RemoteAgentCore> {
+    if (globalThis.__remoteAgentCore) {
+      return new RemoteAgentCore(globalThis.__remoteAgentCore);
+    }
+    const GoCtor = globalThis.Go;
+    if (!GoCtor) {
+      throw new Error("wasm_exec.js must be loaded before RemoteAgentCore.load()");
+    }
+    const go = new GoCtor();
+    let instantiated: WebAssembly.WebAssemblyInstantiatedSource;
+    if ("instance" in source) {
+      instantiated = source;
+    } else if (source instanceof Promise) {
+      if (typeof WebAssembly.instantiateStreaming === "function") {
+        instantiated = await WebAssembly.instantiateStreaming(source, go.importObject);
+      } else {
+        const bytes = await (await source).arrayBuffer();
+        instantiated = await WebAssembly.instantiate(bytes, go.importObject);
+      }
+    } else {
+      instantiated = await WebAssembly.instantiate(source, go.importObject);
+    }
+
+    const ready = new Promise<CoreWasmApi>((resolve) => {
+      globalThis.__remoteAgentCoreReady = resolve;
+    });
+    void go.run(instantiated.instance);
+    const api = globalThis.__remoteAgentCore ?? (await ready);
+    return new RemoteAgentCore(api);
+  }
+
+  newProjection(agent = 0): WasmProjection {
+    return new WasmProjection(this.api, agent);
+  }
+
+  reduce(agent: number, eventBatchBytes?: Uint8Array): Uint8Array {
+    return unwrap(this.api.reduceProjection(agent, eventBatchBytes));
+  }
+}

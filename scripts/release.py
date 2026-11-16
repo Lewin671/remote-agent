@@ -15,11 +15,11 @@ SEMVER = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
 # the binaries, and the scripts that decide how they are built. The tools
 # that test, version and publish a release are not in it, nor are the
 # installer and the guides, which are read from main.
-PRODUCT_PATHS = ("i18n/", "scripts/i18n_templates/", "cmd/", "internal/", "gen/", "proto/", "android/", "web/", "deploy/self-host/",
+PRODUCT_PATHS = ("i18n/", "scripts/i18n_templates/", "cmd/", "internal/", "gen/", "proto/", "clientcore/", "android/", "web/", "deploy/self-host/",
                  "ios/RemoteAgent/", "ios/RemoteAgentCore/", "ios/RemoteAgent.xcodeproj/")
-PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml", "scripts/daemon.sh", "scripts/build-go.sh", "scripts/build-dist.sh", "scripts/notices.py",
+PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml", "buf.gen.lite.yaml", "scripts/daemon.sh", "scripts/build-go.sh", "scripts/build-dist.sh", "scripts/notices.py",
                  # Writes the signing and Firebase settings the APK is built with.
-                 "scripts/android-ci.py", "scripts/i18n.py", "ios/scripts/version.sh"}
+                 "scripts/android-ci.py", "scripts/i18n.py", "ios/scripts/version.sh", "scripts/core/build.sh"}
 
 
 def git(*args):

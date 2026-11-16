@@ -59,7 +59,8 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - `go test ./...`：单元测试，不依赖真实的 Codex
 - `scripts/acceptance.sh`：用真实的 Codex 跑 P0 验收
 - `cd web && pnpm test`：网页的单元测试，包括和 Go 共用的加密测试向量；迭代时可先用 `pnpm test src/views/flows.test.tsx` 定位交互回归，局部运行不替代网页全套、AGENTS.md 要求的 Go 测试和发布把关。
-- 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），再在 `web/` 里运行 `pnpm gen`；生成的代码在 `gen/` 和 `web/src/gen/`，一并提交
+- 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`）和 `buf generate --template buf.gen.lite.yaml`（更新 `clientcore/gen/` 无反射 lite 代码），再在 `web/` 里运行 `pnpm gen`；生成的代码在 `gen/`、`clientcore/gen/` 和 `web/src/gen/`，一并提交
+- `clientcore/` 是独立的客户端共享 Go 核心 module（事件归约等纯逻辑，供 Android/iOS gomobile 与网页 WASM 复用）；`cd clientcore && go test ./...` 运行其单测，三端产物用 `scripts/core/build.sh android|ios|web` 构建到 `build/core/`
 - Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
 - Android 要复用编译缓存但完整重跑 JVM 测试，用 `cd android && ./gradlew --build-cache :core:test --rerun :terminal:testReleaseUnitTest --rerun :app:testDebugUnitTest --rerun :app:lintVitalRelease`。每个测试任务后的 `--rerun` 强制它执行，禁止复用该任务的增量结果或缓存；编译和 lint 仍可复用未变输入的结果，Go 集成夹具仍从当前 checkout 构建。Release 工作流也用这些任务选项，签名构建与公开扫描照常执行。
 

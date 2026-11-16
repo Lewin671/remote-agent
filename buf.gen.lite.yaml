@@ -1,0 +1,12 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/Lewin671/remote-agent/clientcore/gen
+plugins:
+  - local: ["go", "run", "./cmd/protoc-gen-go-lite"]
+    out: clientcore/gen
+    opt:
+      - paths=source_relative
+      - Mgoogle/protobuf/timestamp.proto=github.com/Lewin671/remote-agent/clientcore/gen/timestamppb

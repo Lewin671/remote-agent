@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/v1/event.proto";
+
+// EventBatch wraps an ordered slice of events passed across the FFI or WASM boundary.
+message EventBatch {
+  repeated remoteagent.v1.Event events = 1;
+}
+
+// PendingApproval is an unresolved approval request, preserved in request order.
+message PendingApproval {
+  string approval_id = 1;
+  remoteagent.v1.ApprovalRequested request = 2;
+}
+
+// ResolvedApproval records how an approval request was resolved and by whom.
+message ResolvedApproval {
+  remoteagent.v1.ApprovalDecision decision = 1;
+  string message = 2;
+  remoteagent.v1.Origin origin = 3;
+}
+
+// PendingQuestion is an unanswered synchronous question, preserved in request order.
+message PendingQuestion {
+  string question_id = 1;
+  remoteagent.v1.QuestionAsked request = 2;
+}
+
+// AnsweredQuestion records the flattened answer strings for a question and who answered it.
+message AnsweredQuestion {
+  repeated string answers = 1;
+  remoteagent.v1.Origin origin = 2;
+}
+
+// AcceptedInput is what the daemon accepted for a client message, shared across clients.
+message AcceptedInput {
+  string text = 1;
+  repeated string image_ids = 2;
+  remoteagent.v1.Origin origin = 3;
+  remoteagent.v1.InputStage stage = 4;
+  repeated remoteagent.v1.SentFile files = 5;
+  int64 time_ms = 6;
+}
+
+// InputProjection is the per-request input state in acceptance order.
+message InputProjection {
+  string request_id = 1;
+  remoteagent.v1.InputStatus status = 2;
+  uint64 last_seq = 3;
+  // Full latest input state with retained metadata; absent if cleared by live snapshot unconfirmation.
+  remoteagent.v1.InputState detail = 4;
+  AcceptedInput accepted = 5;
+  optional string failure_reason = 6;
+}
+
+// PendingInput is an input the model has not received yet (QUEUED or HELD_BY_CLI), in acceptance order.
+message PendingInput {
+  string request_id = 1;
+  string text = 2;
+  remoteagent.v1.SendMode mode = 3;
+  bool paused = 4;
+  bool held = 5;
+  remoteagent.v1.Origin origin = 6;
+  repeated remoteagent.v1.SentFile files = 7;
+}
+
+// UnsentInput records a message canceled with reason "exited" in the order it became unsent.
+message UnsentInput {
+  string request_id = 1;
+  uint64 seq = 2;
+}
+
+// RunningTool is a tool started and not yet completed, or the start metadata for a background tool.
+message RunningTool {
+  string title = 1;
+  string call_id = 2;
+  int64 since_ms = 3;
+  remoteagent.v1.ToolKind kind = 4;
+  string item_type = 5;
+  uint64 seq = 6;
+  string input = 7;
+  string input_digest = 8;
+  bool awaiting_approval = 9;
+}
+
+// BackgroundTool is a tool whose completion is unknown in the current or last turn.
+message BackgroundTool {
+  RunningTool tool = 1;
+  bool returned = 2;
+  remoteagent.v1.ToolBackground background = 3;
+  string background_id = 4;
+}
+
+// ContextCompaction records context occupancy percentages (absent means unknown) around compaction.
+message ContextCompaction {
+  optional int32 before_percent = 1;
+  optional int32 after_percent = 2;
+}
+
+// TerminalChange records a mode or model change made in the terminal at a TurnContext.
+message TerminalChange {
+  oneof kind {
+    TerminalModeChange mode = 1;
+    TerminalModelChange model = 2;
+  }
+}
+
+// TerminalModeChange records a terminal approval mode change.
+message TerminalModeChange {
+  // Known approval mode, or APPROVAL_MODE_UNSPECIFIED for CLI-specific modes named by raw_mode.
+  remoteagent.v1.ApprovalMode mode = 1;
+  string raw_mode = 2;
+}
+
+// TerminalModelChange records a terminal model or effort change.
+message TerminalModelChange {
+  string model = 1;
+  string effort = 2;
+}
+
+// TerminalChangeList wraps the terminal changes observed at a single TurnContext sequence number.
+message TerminalChangeList {
+  repeated TerminalChange changes = 1;
+}
+
+// ProjectionState is the reduced domain state of a session's event stream.
+message ProjectionState {
+  repeated PendingApproval approvals = 1;
+  map<string, ResolvedApproval> resolved = 2;
+  repeated PendingQuestion questions = 3;
+  map<string, AnsweredQuestion> answered = 4;
+  repeated InputProjection inputs = 5;
+  repeated PendingInput pending_inputs = 6;
+  repeated UnsentInput unsent = 7;
+
+  bool running = 8;
+  uint64 running_seq = 9;
+  bool scheduled_closed = 10;
+  bool idle_closed = 11;
+
+  remoteagent.v1.TokenUsage usage = 12;
+  map<uint64, ContextCompaction> compactions = 13;
+  remoteagent.v1.PlanProposed plan = 14;
+
+  repeated RunningTool tools = 15;
+  repeated BackgroundTool background = 16;
+  map<uint64, uint64> completed_at = 17;
+  repeated uint64 unfinished_seqs = 18;
+  repeated uint64 no_result_seqs = 19;
+  repeated uint64 typed_locally_seqs = 20;
+  map<uint64, TerminalChangeList> terminal_changes = 21;
+  map<uint64, string> approval_call_ids = 22;
+}

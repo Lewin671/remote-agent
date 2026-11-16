@@ -52,7 +52,9 @@ jobs:
         run: python3 -m unittest discover -s scripts -p '*_test.py'
       - name: Go tests
         # The restored build cache also holds test results; a release runs them.
-        run: go test -count=1 ./...
+        run: |
+          go test -count=1 ./...
+          (cd clientcore && go test -count=1 ./...)
       - name: Check reachable Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - name: Web tests and build

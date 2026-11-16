@@ -35,7 +35,7 @@
 所有改动，不论大小，默认直接进 `main`，不提 PR，也不走长期分支；任务完成后按下文自动发布：
 
 - 每次提交只做一件事，出问题时用 `git revert` 撤回
-- 推送前 `go test ./...` 必须通过；先 `git fetch`，远端有新提交就 rebase 到最新的 `main` 上，禁止 force push
+- 推送前 `go test ./...` 与 `cd clientcore && go test ./...` 必须通过；先 `git fetch`，远端有新提交就 rebase 到最新的 `main` 上，禁止 force push
 - 里程碑（如 P0、P1 完成）可以继续打里程碑 tag；产品发布用 `vMAJOR.MINOR.PATCH`
 
 ### 迭代与全量检查
