@@ -6,10 +6,17 @@ import io.github.lewin671.remoteagent.proto.MachineCapabilities
 
 /** Connection and route telemetry for per-machine UI presentation. */
 enum class DirectStage {
+    /** This device's switch for the computer is off. */
     OFF,
+    /** A direct path is being established. */
     TRYING,
+    /** Connected, and the warm-up that decides the read path is still running. */
+    MEASURING,
+    /** Connected, and both purposes use the relay. */
     CONNECTED_RELAY,
+    /** Connected, and at least one purpose uses the direct path. */
     DIRECT_ACTIVE,
+    /** No direct path; the relay is in use, with a reason when one is known. */
     UNCONNECTED,
 }
 
@@ -26,7 +33,8 @@ data class DirectStatus(
     val stage: DirectStage = DirectStage.OFF,
     val readDirect: Boolean = false,
     val fileDirect: Boolean = false,
-    val benchmarkDecidedRelay: Boolean = false,
+    /** Measured on both paths and the relay is not slower: the words under "using relay". */
+    val relayNotSlower: Boolean = false,
     val reason: DirectFailReason? = null,
     val bulkDirectMibPerSec: Double? = null,
     val bulkRelayMibPerSec: Double? = null,

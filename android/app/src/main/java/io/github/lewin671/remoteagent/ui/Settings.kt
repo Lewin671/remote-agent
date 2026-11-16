@@ -32,6 +32,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -548,6 +550,15 @@ fun DeviceScreen(
     var directOn by remember(id, remote, m?.pathState?.directStatus?.enabled) {
         mutableStateOf(m?.pathState?.directStatus?.enabled ?: remote.directEnabled(id))
     }
+    var directTurnedOnAt by remember(id, remote) { mutableStateOf<Long?>(null) }
+    // Opening the page refreshes the numbers it shows (one bounded warm-up when the window is thin).
+    LaunchedEffect(id, remote) { remote.refreshDirect(id) }
+    val directNow by produceState(System.currentTimeMillis(), directTurnedOnAt) {
+        while (directTurnedOnAt != null) {
+            value = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
     var activeAgent by remember(id) { mutableStateOf<Agent?>(null) }
     fun update(s: DaemonSettings, cleanImages: Boolean = false) =
         save.run(
@@ -648,9 +659,12 @@ fun DeviceScreen(
                 DirectConnectionGroup(
                     status = uiDirect,
                     online = m.pathState.reachable,
+                    turnedOnAt = directTurnedOnAt,
+                    nowMs = directNow,
                     onToggle = { next ->
                         remote.setDirectEnabled(id, next)
                         directOn = next
+                        directTurnedOnAt = if (next) System.currentTimeMillis() else null
                     },
                 )
             }

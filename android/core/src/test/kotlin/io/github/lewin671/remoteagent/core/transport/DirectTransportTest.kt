@@ -603,7 +603,7 @@ class DirectTransportTest {
     @Test
     fun directRoutingReadAndBulkUpgradeFallbackHysteresis() {
         var now = 10_000L
-        val routing = DirectRouting { now }
+        val routing = DirectRouting(now = { now })
         val readHint = RouteHint.Read
 
         repeat(100) {

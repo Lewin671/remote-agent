@@ -123,6 +123,13 @@ internal class DirectEngine(
     private val retryAfter = HashMap<String, Long>()
     private val failReasons = HashMap<String, DirectFailReason>()
 
+    /** Sends one authorized background read on the given path and returns when it
+     * ends; the owner of the keys (Remote) provides it. Without it no warm-up
+     * sample is taken. */
+    @Volatile var probe: (suspend (id: String, path: RouteName) -> Unit)? = null
+    private val pumpRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val warmShown = HashMap<String, Boolean>()
+
     private fun notifyChanged() {
         runCatching { changed() }
     }
@@ -381,6 +388,7 @@ internal class DirectEngine(
                         } else {
                             p.paths[use] = path
                             failReasons.remove(id)
+                            if (use == 1) routingLocked(id).arm()
                             true
                         }
                     }
@@ -680,7 +688,69 @@ internal class DirectEngine(
         }
     }
 
-    private fun routingLocked(id: String): DirectRouting = routes.getOrPut(id) { DirectRouting(monotonic) }
+    private fun routingLocked(id: String): DirectRouting = routes.getOrPut(id) { DirectRouting(monotonic, ::kick) }
+
+    /** A screen that shows the numbers (the 「连接」 group, the connection check)
+     * was opened: when direct is connected and the live window is too thin to
+     * decide, one warm-up, with the same bounds and merged with a running one. */
+    fun refresh(id: String) {
+        val route = synchronized(stateLock) {
+            if (readyLocked(id, RouteHint.Read)) routingLocked(id) else null
+        } ?: return
+        if (route.sparse()) route.arm()
+    }
+
+    /** Schedules the pump; never blocks, never takes the engine lock. */
+    private fun kick() {
+        if (!pumpRunning.compareAndSet(false, true)) return
+        scope.launch { pump() }
+    }
+
+    /** Drives the warm-up of every computer: one step every 250 ms while any is
+     * open. The numbers (alternation, in-flight, per-path count, rate) are the
+     * routing's; this only asks it, and only while the read path is ready. */
+    private suspend fun pump() {
+        try {
+            while (kotlin.coroutines.coroutineContext.isActive) {
+                var more = false
+                val routesNow = synchronized(stateLock) { routes.entries.map { it.key to it.value } }
+                for ((id, route) in routesNow) {
+                    val warming = route.warming()
+                    if (route.pending()) more = true
+                    val ready = synchronized(stateLock) { readyLocked(id, RouteHint.Read) }
+                    if (warming && ready) {
+                        val path = route.nextProbe()
+                        val fn = probe
+                        if (path != null) {
+                            scope.launch {
+                                try {
+                                    fn?.invoke(id, path)
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                } finally {
+                                    route.probeDone(path)
+                                    notifyChanged()
+                                }
+                            }
+                        }
+                    }
+                    val shown = route.warming()
+                    val changedShown = synchronized(stateLock) {
+                        (warmShown[id] != shown).also { warmShown[id] = shown }
+                    }
+                    if (changedShown) notifyChanged()
+                }
+                if (!more) break
+                delay(ReadRule.WARMUP_MIN_GAP_MS)
+            }
+        } finally {
+            pumpRunning.set(false)
+            // A trigger that landed between the last check and the flag reset.
+            val again = synchronized(stateLock) { routes.values.toList() }.any { it.pending() }
+            if (again && scope.isActive) kick()
+        }
+    }
 
     fun routing(id: String): DirectRouting = synchronized(stateLock) { routingLocked(id) }
 
@@ -705,14 +775,12 @@ internal class DirectEngine(
         return hint !is RouteHint.Bulk || clock() < p.downloadUntil
     }
 
-    fun needsReadSamples(id: String): Boolean = synchronized(stateLock) {
-        readyLocked(id, RouteHint.Read) && routingLocked(id).needsReadSamples()
-    }
-
-    fun attempt(id: String, hint: RouteHint, handoff: () -> Unit, sample: Boolean = false): PathAttempt? {
+    /** `probe` takes a warm-up sample on the direct path whatever the routing
+     * prefers; the routing already bounded it. */
+    fun attempt(id: String, hint: RouteHint, handoff: () -> Unit, probe: Boolean = false): PathAttempt? {
         val chosen = synchronized(stateLock) {
-            if (sample) {
-                if (hint !is RouteHint.Read || !readyLocked(id, hint) || !routingLocked(id).needsReadSamples()) return@synchronized null
+            if (probe) {
+                if (hint !is RouteHint.Read || !readyLocked(id, hint)) return@synchronized null
             } else {
                 if (routingLocked(id).choose(hint, readyLocked(id, hint)) != RouteName.DIRECT) return@synchronized null
             }
@@ -781,7 +849,7 @@ internal class DirectEngine(
             runCatching { preferenceStore.isEnabled(account.server, account.deviceId, id) }.getOrDefault(true)
         }
         val supported = rtcFactory != null
-        val metrics = routingLocked(id).metrics()
+        val m = routingLocked(id).measured()
         if (!supported) {
             return@synchronized DirectStatus(supported = false, enabled = enabled, stage = DirectStage.UNCONNECTED)
         }
@@ -789,15 +857,17 @@ internal class DirectEngine(
             return@synchronized DirectStatus(supported = true, enabled = false, stage = DirectStage.OFF)
         }
         val p = peers[id]
-        val connected = p != null && validLocked(p) && (p.paths[1]?.ready == true || p.paths[2]?.ready == true)
-        val trying = p != null && p.session.active && !connected
-        val failReason = failReasons[id]
-        val readDirect = connected && p?.paths?.get(1)?.ready == true && metrics.readDirect
-        val fileDirect = connected && p?.paths?.get(2)?.ready == true && metrics.fileDirect
+        val live = p != null && validLocked(p) && p.session.active
+        val connected = live && p!!.paths.values.any { it.ready }
+        val readReady = readyLocked(id, RouteHint.Read)
+        val readDirect = connected && readReady && m.readDirect
+        val fileDirect = connected && p!!.paths[2]?.ready == true && m.fileDirect
+        val warming = readReady && m.warming
         val stage = when {
             connected && (readDirect || fileDirect) -> DirectStage.DIRECT_ACTIVE
+            connected && warming -> DirectStage.MEASURING
             connected -> DirectStage.CONNECTED_RELAY
-            trying || failReason == null -> DirectStage.TRYING
+            live -> DirectStage.TRYING
             else -> DirectStage.UNCONNECTED
         }
         DirectStatus(
@@ -806,12 +876,12 @@ internal class DirectEngine(
             stage = stage,
             readDirect = readDirect,
             fileDirect = fileDirect,
-            benchmarkDecidedRelay = metrics.benchmarkDecidedRelay,
-            reason = if (stage == DirectStage.UNCONNECTED) failReason else null,
-            bulkDirectMibPerSec = metrics.bulkDirectMibPerSec,
-            bulkRelayMibPerSec = metrics.bulkRelayMibPerSec,
-            readDirectMs = metrics.readDirectMs,
-            readRelayMs = metrics.readRelayMs,
+            relayNotSlower = m.relayNotSlower,
+            reason = if (stage == DirectStage.UNCONNECTED) failReasons[id] else null,
+            bulkDirectMibPerSec = m.bulkDirectMibPerSec,
+            bulkRelayMibPerSec = m.bulkRelayMibPerSec,
+            readDirectMs = m.readDirectMs,
+            readRelayMs = m.readRelayMs,
         )
     }
 

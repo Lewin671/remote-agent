@@ -58,6 +58,7 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
         { remote.state.value.machines.values.filter { it.pathState.reachable }.map { it.id } },
         { remote.pingServer() }, { remote.pingMachine(it) },
         { remote.reconnectNow() },
+        refreshDirect = { remote.refreshDirect(it) },
     )
 }
 
@@ -71,6 +72,8 @@ internal fun ConnCheckSheet(
     pingMachine: suspend (String) -> Long,
     reconnectNow: () -> Unit,
     clock: () -> Long = System::currentTimeMillis,
+    /** Opening the check warms the direct numbers once when a computer's window is thin. */
+    refreshDirect: (String) -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
@@ -94,6 +97,7 @@ internal fun ConnCheckSheet(
     LaunchedEffect(run) {
         busy = true
         val online = onlineMachines()
+        online.forEach { refreshDirect(it) }
         server = Ping.Wait
         machines.clear()
         online.forEach { machines[it] = Ping.Wait }
@@ -150,8 +154,9 @@ internal fun ConnCheckSheet(
             line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
+                // One line, the same words as the computer's page; none for a computer that is not online, nor where this device cannot do it (the footer says so).
                 val summary = if (m.pathState.reachable && m.pathState.directStatus.supported) {
-                    directSummary(m.pathState.directStatus, copy)
+                    directView(m.pathState.directStatus, copy).summary
                 } else null
                 line(machineLabel(state, m.id), sub = summary) {
                     if (m.pathState.reachable) result(machines[m.id], SLOW_MACHINE_MS)
@@ -175,17 +180,11 @@ internal fun ConnCheckSheet(
                 else -> copy(UiMessages.connectionLivePushIsNotConnected())
             })
         }
-        val directUnsupported = list.any { it.pathState.reachable && !it.pathState.directStatus.supported }
-        val foot = buildString {
-            append(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
-            val viaRelay = copy(UiMessages.transportConnCheckViaRelay())
-            if (isNotEmpty() && !endsWith("。") && !endsWith(" ")) append(" ")
-            append(viaRelay)
-            if (directUnsupported) {
-                if (!endsWith("。") && !endsWith(" ")) append(" ")
-                append(copy(UiMessages.transportUnsupportedDevice()))
-            }
-        }
+        val foot = connFooter(
+            list.filter { it.pathState.reachable }.map { it.pathState.directStatus },
+            LocalMessageLocale.current,
+            copy,
+        )
         Hint(foot)
         Btns(Modifier.padding(top = 12.dp)) {
             if (state.conn != ConnState.ONLINE) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f))

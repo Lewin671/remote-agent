@@ -435,7 +435,6 @@ class Remote(
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     @Volatile private var relayObservation = RemoteState()
-    private val directReadSamples = HashSet<String>()
     private val directTransfers = LinkedHashMap<String, UploadKind>()
     private val scope = CoroutineScope(SupervisorJob() + this.dispatcher)
     internal val direct: DirectEngine = DirectEngine(
@@ -448,7 +447,7 @@ class Remote(
         monotonic = monotonic,
         stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
         dispatcher = directDispatcher,
-    )
+    ).also { engine -> engine.probe = { id, path -> probeRead(id, path) } }
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
         sockets = { socketFactory ?: streamHttp },
@@ -477,6 +476,8 @@ class Remote(
     ))
     fun peer(machineId: String?) = state.value.peer(machineId)
     fun directEnabled(machineId: String): Boolean = direct.enabled(machineId)
+    /** The 「连接」 group or the connection check was opened: refresh the numbers it shows. */
+    fun refreshDirect(machineId: String) = direct.refresh(machineId)
     fun setDirectEnabled(machineId: String, enabled: Boolean) = direct.setEnabled(machineId, enabled)
     fun filePath(machineId: String): RouteName = direct.filePath(machineId)
     fun monotonicMillis(): Long = monotonic()
@@ -732,7 +733,6 @@ class Remote(
         loginTokens.networkChanged()
         security.networkChanged()
         direct.invalidate()
-        directReadSamples.clear()
         directTransfers.clear()
         retireDirectory()
         generation++
@@ -3648,60 +3648,64 @@ class Remote(
         }
     }
 
-    private fun sampleDirectRead(machineId: String, sessionId: String, cmd: Command) {
-        if (!running || removed || !cmd.isReadOnlyCommand() || directReadSamples.contains(machineId) || directReadSamples.size >= 4 || !direct.needsReadSamples(machineId)) return
-        directReadSamples.add(machineId)
-        val probeCmd = prepare(machineId, sessionId, cmd)
+    /** One warm-up sample of the read path (docs/transport.md 「只读选路」): an
+     * authorized read-only status request of its own, on the path asked for,
+     * timed like a user's read. It is a request of its own, so it never changes
+     * a user's request, result or deadline; its count, rate and alternation are
+     * bounded by the routing that asks. A failed direct sample demotes direct,
+     * a failed relay one is only a missing sample. */
+    private suspend fun probeRead(machineId: String, path: RouteName) {
+        if (!running || removed) return
         val hint = RouteHint.Read
         val tracking = direct.track(machineId, hint)
-        // The probe is its own read authorization. Its completion cannot change
-        // the user's already verified result or extend that request's deadline.
-        scope.launch {
-            try {
-                deviceLink.call(probeCmd, prior = false, dispatcher = dispatcher) { call ->
-                    val delivery = deviceLink.delivery(call) { handoff ->
-                        direct.attempt(machineId, hint, handoff, sample = true)
-                    }
-                    if (!delivery.direct) return@call
-                    if (verifiedNetworkGeneration != networkGeneration) {
-                        val gen = networkGeneration
-                        security.sync()
-                        if (gen != networkGeneration) throw DeviceSecurity.Failure("stale")
-                        verifiedNetworkGeneration = gen
-                    }
-                    delivery.prepare(prior = false)
-                    val authorized = authorize(probeCmd, retryOfUnknown = false)
-                    val binding = kotlinx.coroutines.withContext(cpuDispatcher) { security.commandIdentity(authorized) }
-                    val startedMs = monotonic()
-                    val startedNs = System.nanoTime()
-                    val res = delivery.send(machineId, authorized)
-                    val (_, msg) = openSecureMessage(
-                        res.result,
-                        Place(
-                            PayloadKind.PAYLOAD_KIND_COMMAND_RESULT,
-                            machineId = machineId,
-                            sessionId = sessionId,
-                            requestId = probeCmd.requestId,
-                        ),
-                        CommandResult::parseFrom,
-                    )
-                    val elapsedMs = maxOf((monotonic() - startedMs).toDouble(), (System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
-                    val verified = msg.requestKeyHash.toByteArray().contentEquals(binding.first) &&
-                        msg.payloadHash.toByteArray().contentEquals(binding.second) &&
-                        res.attemptId == delivery.attemptId &&
-                        (msg.outcome == "conflict" || msg.conflictKind.isEmpty())
-                    val category = verifiedOutcome(msg, binding.first, binding.second, msg.outcome, msg.reason)
-                    if (verified && category == Outcome.EXECUTED && msg.errorCode.isEmpty()) {
-                        tracking.observe(true, 0, elapsedMs)
-                    }
+        val wantDirect = path == RouteName.DIRECT
+        val probeCmd = prepare(
+            machineId, "",
+            Command.newBuilder().setGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.getDefaultInstance()).build(),
+        )
+        try {
+            deviceLink.call(probeCmd, prior = false, dispatcher = dispatcher) { call ->
+                val delivery = deviceLink.delivery(call, if (wantDirect) { handoff -> direct.attempt(machineId, hint, handoff, probe = true) } else null)
+                if (delivery.direct != wantDirect) return@call
+                if (verifiedNetworkGeneration != networkGeneration) {
+                    val gen = networkGeneration
+                    security.sync()
+                    if (gen != networkGeneration) throw DeviceSecurity.Failure("stale")
+                    verifiedNetworkGeneration = gen
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                tracking.failed()
-            } finally {
-                directReadSamples.remove(machineId)
+                delivery.prepare(prior = false)
+                val authorized = authorize(probeCmd, retryOfUnknown = false)
+                val binding = kotlinx.coroutines.withContext(cpuDispatcher) { security.commandIdentity(authorized) }
+                val startedMs = monotonic()
+                val startedNs = System.nanoTime()
+                val res = delivery.send(machineId, authorized)
+                val (_, msg) = openSecureMessage(
+                    res.result,
+                    Place(
+                        PayloadKind.PAYLOAD_KIND_COMMAND_RESULT,
+                        machineId = machineId,
+                        sessionId = "",
+                        requestId = probeCmd.requestId,
+                    ),
+                    CommandResult::parseFrom,
+                )
+                val elapsedMs = maxOf((monotonic() - startedMs).toDouble(), (System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
+                val verifiedOutcome = if (wantDirect) msg.outcome else res.outcome
+                val verifiedReason = if (wantDirect) msg.reason else res.reason
+                val bound = msg.requestKeyHash.toByteArray().contentEquals(binding.first) &&
+                    msg.payloadHash.toByteArray().contentEquals(binding.second) &&
+                    res.attemptId == delivery.attemptId &&
+                    (wantDirect || (res.outcome == msg.outcome && res.reason == msg.reason)) &&
+                    (msg.outcome == "conflict" || msg.conflictKind.isEmpty())
+                val category = verifiedOutcome(msg, binding.first, binding.second, verifiedOutcome, verifiedReason)
+                if (bound && category == Outcome.EXECUTED && msg.errorCode.isEmpty()) {
+                    tracking.observe(wantDirect, 0, elapsedMs)
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            if (wantDirect) tracking.failed()
         }
     }
 
@@ -3795,9 +3799,6 @@ class Remote(
                         if (!currentScheduleMember(p.machineId)) cache?.removeBlob("schedule:${p.machineId}")
                     }
                     val cmd = p.command
-                    if (routeHint is RouteHint.Read && !delivery.direct && cmd != null) {
-                        sampleDirectRead(p.machineId, p.sessionId, cmd)
-                    }
                     if (routeHint != null) {
                         val bytes = when {
                             cmd?.hasPutImageChunk() == true -> cmd.putImageChunk.data.size()
