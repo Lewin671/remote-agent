@@ -10,12 +10,19 @@ import { newRequestID } from "../crypto";
 import type { FrameStream, PathAttempt } from "./path";
 import { DirectBudget, DirectChannel } from "./direct-channel";
 import { DirectSession, type DirectedOutput } from "./direct-session";
-import { DirectRouting, type RouteHint } from "./direct-routing";
+import { DirectRouting, type RouteHint, type RouteName } from "./direct-routing";
 import { PathChanged, abortable } from "./recovery";
 import * as w from "./peer/wire";
 
 type Peer = { id: string; head: string; session: DirectSession; paths: Map<number, DirectChannel>; live: boolean; capabilities?: MachineCapabilities; snapshotUntil: number; downloadUntil: number; snapshotSeq: bigint; downloadSeq: bigint; redialAt?: number; selected?: boolean; };
 type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
+
+export type DirectState = "unsupported" | "connected" | "connecting" | "none";
+/** Only causes this side can establish. "no_response" means the computer never
+ * answered the handshake: its direct setting may be off, or it may not support it. */
+export type DirectReason = "disabled" | "peer_unsupported" | "no_response" | "no_traversal" | "failed";
+/** Read-only snapshot for display. Speeds are present only when measured. */
+export interface DirectStatus { state: DirectState; reason?: DirectReason; file: RouteName; read: RouteName; fileMiBps: Partial<Record<RouteName, number>>; readMs: Partial<Record<RouteName, number>> }
 
 /** Account owner for optional direct paths. It never owns a logical request or
  * its outcome: Link and Remote retain authorization and delivery evidence. */
@@ -46,6 +53,7 @@ export class DirectEngine {
   private byteTokens = 4 << 20;
   private rateAt = performance.now();
   private retryAfter = new Map<string, number>();
+  private failures = new Map<string, Exclude<DirectReason, "disabled">>();
   private readonly stun: string[];
   constructor(private readonly account: StoredAccount, private readonly authorize: () => Promise<void>, private readonly changed: () => void) {
     const host = new URL(account.server).hostname;
@@ -62,7 +70,7 @@ export class DirectEngine {
     localStorage.setItem(this.key(id), enabled ? "auto" : "off"); this.preferences.set(id, enabled);
     this.lifetime++; this.routingOwners.set(id, {});
     for (const p of this.sessions.values()) if (p.id === id) { p.live = false; p.session.close(); }
-    this.peers.delete(id); this.routing(id).fail(); this.notify();
+    this.peers.delete(id); this.failures.delete(id); this.routing(id).fail(); this.notify();
     if (enabled) void this.discover();
   }
   install(record: SecurityRecord) {
@@ -71,7 +79,7 @@ export class DirectEngine {
   invalidate() {
     this.syncRevision++; this.lifetime++; this.routingOwners.clear(); this.freshUntil = 0;
     for (const p of this.sessions.values()) { p.live = false; p.session.close(); }
-    this.peers.clear(); this.sessions.clear(); for (const r of this.routes.values()) r.fail(); this.notify();
+    this.peers.clear(); this.sessions.clear(); this.failures.clear(); for (const r of this.routes.values()) r.fail(); this.notify();
   }
   async synced(record: SecurityRecord, started: number) {
     const revision = ++this.syncRevision;
@@ -133,11 +141,11 @@ export class DirectEngine {
     p.session = new DirectSession({ self: this.self!, peer, codec: this.codec!, connection, deadline: Math.min(deadline, now + 10_000), budget: this.budget, stun: this.stun,
       valid: () => this.valid(p), authorize: async () => { await this.authorize(); if (!this.valid(p)) throw new PathChanged(); },
       send: out => this.send(p, out), chosen: choose, beforeOffer: choose,
-      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.notify(); },
-      closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+5000;this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
+      ready: (use, path) => { if (!this.valid(p) || !p.session.active || this.peers.get(id) !== p) { path.close(); return; } p.paths.set(use, path); this.failures.delete(id); this.notify(); },
+      closed: use => { if (this.peers.get(id) !== p) return; if (use && p.session.active && p.session.established) {p.redialAt ??= Date.now()+5000;this.routing(id).fail();} if (![...p.paths.values()].some(path => path.ready)) { this.failures.set(id, p.session.failure ?? "failed"); this.routing(id).fail(); if (this.peers.get(id) === p) this.peers.delete(id); this.retryAfter.set(id, Date.now() + 5000); } this.notify(); },
       frame: (raw, use) => this.frame(p, raw, use), capability: opened => this.capability(p, opened),
     });
-    this.sessions.set(w.hex(connection), p);
+    this.sessions.set(w.hex(connection), p); this.notify();
     const prior = this.peers.get(id);
     if (!prior?.selected || !prior.session.active) this.select(p);
     return p;
@@ -255,6 +263,16 @@ export class DirectEngine {
         finally { clearTimeout(timer); if (this.pending.get(request) === pending) this.pending.delete(request); }
       },
     };
+  }
+  /** What the user can be told about this computer's direct path right now. */
+  status(id: string): DirectStatus {
+    const p = this.peers.get(id), live = !!p && this.valid(p) && p.session.active, measured = this.routes.get(id)?.measured() ?? { fileMiBps: {}, readMs: {} };
+    const base = { file: "relay", read: "relay", ...measured } as const;
+    if (typeof RTCPeerConnection === "undefined") return { ...base, state: "unsupported" };
+    if (!this.enabled(id)) return { ...base, state: "none", reason: "disabled" };
+    if (live && [...p.paths.values()].some(path => path.ready)) return { ...base, state: "connected", file: this.filePath(id), read: this.ready(id, { kind: "read" }) ? this.routing(id).readPath() : "relay" };
+    if (live) return { ...base, state: "connecting" };
+    return { ...base, state: "none", reason: this.failures.get(id) };
   }
   filePath(id: string) { const p=this.peers.get(id);return p && this.valid(p) && p.paths.get(2)?.ready ? this.routing(id).filePath : "relay"; }
   close() { clearInterval(this.timer); this.timer = undefined; this.leg = undefined; this.invalidate(); }

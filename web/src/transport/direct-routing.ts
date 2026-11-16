@@ -20,7 +20,23 @@ export class DirectRouting {
   private sample = 0;
   private files = new Map<string, Bulk>();
   filePath: RouteName = "relay";
+  /** Last file throughput per path (bytes per millisecond) over at least 4 MiB
+   * of verified completions; display only, never read by route choice. */
+  private fileRate: Partial<Record<RouteName, number>> = {};
+  private fileTally: Record<RouteName, Window> = pair();
   constructor(private readonly now = () => performance.now()) { this.readWindow = Math.floor(now() / 5000); }
+  /** Read-only view of what has actually been measured. A path with no samples
+   * is absent, never zero. Throughput is in MiB/s, latency the median in ms. */
+  measured(): { fileMiBps: Partial<Record<RouteName, number>>; readMs: Partial<Record<RouteName, number>> } {
+    const fileMiBps: Partial<Record<RouteName, number>> = {}, readMs: Partial<Record<RouteName, number>> = {};
+    for (const path of ["relay", "direct"] as const) {
+      const rate = this.fileRate[path]; if (rate !== undefined) fileMiBps[path] = rate * 1000 / (1 << 20);
+      const samples = this.reads[path]; if (samples.length >= 3) readMs[path] = [...samples].sort((a, b) => a.milliseconds - b.milliseconds)[Math.floor(samples.length / 2)].milliseconds;
+    }
+    return { fileMiBps, readMs };
+  }
+  /** Path that read requests use now; the same gate as choose() for reads. */
+  readPath(): RouteName { return this.now() >= this.readStableAfter ? this.readPreferred : "relay"; }
   needsReadSamples() { return this.readPreferred === "relay" && this.now() >= this.readStableAfter; }
   choose(hint: RouteHint, ready: boolean): RouteName {
     if (!ready) return "relay";
@@ -47,6 +63,8 @@ export class DirectRouting {
     }
     const file = this.file(hint.file); this.advanceBulk(hint,file); this.filePath = path;
     if (bytes <= 0) return;
+    const tally = this.fileTally[path]; tally.bytes += bytes; tally.milliseconds += milliseconds;
+    if (tally.bytes >= 4 << 20) { this.fileRate[path] = rate(tally); this.fileTally[path] = empty(); }
     for (const window of [file.measured[path],file.recent[path]]) { window.bytes += bytes; window.milliseconds += milliseconds; }
     if (file.preferred === "relay") {
       if (file.measuring === "relay" && file.measured.relay.bytes >= 4 << 20) file.measuring = "direct";
@@ -78,7 +96,7 @@ export class DirectRouting {
     if (!hint || hint.kind === "read") { this.readPreferred="relay";this.readStableAfter=until;this.reads={relay:[],direct:[]};this.recentReads={relay:[],direct:[]};this.readBad=0; }
     const files=!hint?[...this.files.values()]:hint.kind==="bulk"?[this.file(hint.file)]:[];
     for(const file of files){file.preferred="relay";file.stableAfter=until;file.comparisons=0;file.measured=pair();file.recent=pair();file.measuring="relay";file.bad=0;}
-    if(!hint||hint.kind==="bulk")this.filePath="relay";
+    if(!hint||hint.kind==="bulk"){this.filePath="relay";this.fileRate={};this.fileTally=pair();}
   }
   private file(key: string): Bulk {
     let file=this.files.get(key);

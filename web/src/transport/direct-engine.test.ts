@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { expect, test, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { CapabilitySnapshotSchema } from "../gen/remoteagent/v1/transport_pb";
 import { MachineCapabilitiesSchema } from "../gen/remoteagent/v1/capabilities_pb";
@@ -117,4 +117,65 @@ test.each(["main leg", "lifetime"])("a delayed discovery import cannot act after
  if(kind==="main leg")Object.assign(engine,{leg:{...leg}});
  else {engine.invalidate();Object.assign(engine,{freshUntil:Date.now()+20000});}
  complete(peer);await pending;expect(create).not.toHaveBeenCalled();
+});
+
+test.describe("status snapshot",()=>{
+ const stub=()=>vi.stubGlobal("RTCPeerConnection",class{});
+ afterEach(()=>{vi.unstubAllGlobals();localStorage.clear();});
+ const route=(engine:DirectEngine)=>engine.routing("machine");
+
+ test("a device without RTCPeerConnection reports unsupported, whatever else is set",()=>{
+  const {engine}=readyEngine();vi.stubGlobal("RTCPeerConnection",undefined);
+  expect(engine.status("machine")).toMatchObject({state:"unsupported",file:"relay",read:"relay"});
+ });
+ test("the local setting off is reported with its reason and nothing is claimed in use",()=>{
+  const {engine}=readyEngine();stub();engine.setEnabled("machine",false);
+  expect(engine.status("machine")).toMatchObject({state:"none",reason:"disabled",file:"relay",read:"relay"});
+ });
+ test("no session at all is plain none, with no invented reason",()=>{
+  const {engine}=readyEngine();stub();Object.assign(engine,{peers:new Map()});
+  expect(engine.status("machine").state).toBe("none");expect(engine.status("machine").reason).toBeUndefined();
+ });
+ test("a live session without a ready path is connecting; a ready path is connected",()=>{
+  const {engine,peer}=readyEngine();stub();peer.paths.clear();
+  expect(engine.status("machine").state).toBe("connecting");
+  peer.paths.set(2,{ready:true});peer.paths.set(1,{ready:true});
+  expect(engine.status("machine")).toMatchObject({state:"connected",file:"relay",read:"relay"});
+ });
+ test("per-purpose paths follow what routing really uses",()=>{
+  const {engine,peer}=readyEngine();stub();peer.paths.set(1,{ready:true});
+  route(engine).filePath="direct";
+  expect(engine.status("machine")).toMatchObject({state:"connected",file:"direct",read:"relay"});
+  // Reads go direct only after routing has promoted them and the read path is ready.
+  Object.assign(route(engine),{readPreferred:"direct"});
+  expect(engine.status("machine").read).toBe("direct");
+  peer.paths.set(1,{ready:false});expect(engine.status("machine").read).toBe("relay");
+ });
+ test("numbers are present only when measured, and never as zero",()=>{
+  const {engine}=readyEngine();stub();
+  expect(engine.status("machine")).toMatchObject({fileMiBps:{},readMs:{}});
+  route(engine).observe({kind:"bulk",file:"f"},"relay",4<<20,500);
+  const got=engine.status("machine");expect(got.fileMiBps).toEqual({relay:8});expect(got.readMs).toEqual({});
+  expect("direct" in got.fileMiBps).toBe(false);
+ });
+ test.each([
+  ["peer_unsupported","peer_unsupported"],["no_response","no_response"],["no_traversal","no_traversal"],[undefined,"failed"],
+ ] as const)("a round that ends without a path (%s) is reported as %s, then cleared by success",async(cause,reason)=>{
+  vi.useFakeTimers();const {engine}=readyEngine();stub();
+  type Peer={session:DirectSession;paths:Map<number,DirectChannel>};
+  const state=engine as unknown as {create(p:w.Public,c:w.Bytes,d:number):Peer;peers:Map<string,Peer>};
+  const self=await fixture("client",1),member=await fixture("machine",2),id=w.text(member.id),now=Date.now();
+  Object.assign(engine,{self,codec:await fixtureCodec(),peers:new Map(),freshUntil:now+1000000});
+  try {
+   const p=state.create(member,new Uint8Array(16),now+10000);
+   expect(engine.status(id).state).toBe("connecting");
+   if(cause)p.session.failure=cause;
+   p.session.close();
+   expect(engine.status(id)).toMatchObject({state:"none",reason});
+   // A later path coming up wipes the stale reason.
+   const next=state.create(member,new Uint8Array(16).fill(1),now+10000);
+   next.session.options.chosen();next.session.options.ready(2,{ready:true,close:vi.fn()} as unknown as DirectChannel);
+   expect(engine.status(id).reason).toBeUndefined();
+  } finally {engine.close();vi.useRealTimers();}
+ });
 });

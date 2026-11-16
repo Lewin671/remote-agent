@@ -38,6 +38,9 @@ export class DirectSession {
   private peerWindows = new Map<bigint, { next: bigint; pending: Map<bigint, { opened: w.Opened; at: number }>; gap: number }>();
   retainUntil: number;
   established = false;
+  /** Why a round ended without a path, as far as this side can tell. Display
+   * only: set where the failure is already detected, never read by control flow. */
+  failure?: "peer_unsupported" | "no_response" | "no_traversal";
   constructor(readonly options: DirectSessionOptions) {
     const now = Date.now();
     if (!options.valid() || options.deadline <= now || options.deadline > now + 10_000) throw new PathChanged();
@@ -200,7 +203,7 @@ export class DirectSession {
       const pending = p.sender.pending.get(w.hex(hash)); if (!pending) continue;
       const original = await this.options.codec.openSent(pending.raw, this.options.self, p.gate.peer, now);
       if (original.context.cls !== w.getUint(fields, 1) || BigInt(original.type) !== w.getUint(fields, 2) || original.context.seq !== w.getUint(fields, 3)) return;
-      p.sender.ack(hash); p.channel?.close(); p.channel = undefined; p.gate.closed = true; this.peerScope.set(String(index), now); return;
+      p.sender.ack(hash); p.channel?.close(); p.channel = undefined; p.gate.closed = true; this.failure ??= "peer_unsupported"; this.peerScope.set(String(index), now); return;
     }
   }
   private async signal(index: number, type: number, body: w.Bytes) {
@@ -284,7 +287,12 @@ export class DirectSession {
     if ([...this.peerWindows.values()].some(w => w.gap && now >= w.gap)) { this.retire(); return; }
     for (const [key, item] of this.controls) if (now > item.until) this.controls.delete(key);
     for (const [key, item] of this.receipts) if (now > item.until) this.receipts.delete(key);
-    if (now >= this.options.deadline && !this.established && !this.retired) { this.close(); return; }
+    if (now >= this.options.deadline && !this.established && !this.retired) {
+      // Without the computer's proof there was no handshake at all; with it but
+      // no server-reflexive address from STUN, the network blocked discovery.
+      this.failure ??= this.pcs.every(p => !p.gate.bootReady) ? "no_response" : this.pcs.some(p => p.channel && !p.channel.traversalReady) ? "no_traversal" : undefined;
+      this.close(); return;
+    }
     for (const raw of await this.boot.tick(now)) await this.transmit(raw);
     for (const [index, p] of this.pcs.entries()) {
       for (const [key, until] of p.gate.cacheUntil) if (now > until) { p.gate.cacheUntil.delete(key); p.gate.seen.delete(key); }

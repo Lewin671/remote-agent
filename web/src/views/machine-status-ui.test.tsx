@@ -7,6 +7,7 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
+import { setDirect } from "../test/direct-state";
 import { ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
 import { localeStore, t as message } from "../i18n";
 import { machineCleanupPrompt } from "../machine-status";
@@ -631,5 +632,44 @@ describe("in English", () => {
     for (const part of ["Live", "CPU", "Memory", "Disk", "Pressure high", "Almost full", "New sessions may not start", "Ask the Agent to clean up", "remote-agent usage", "Top usage", "Show processes", "2 min ago", "Now", "Up 3 d 4 hr", "Battery 81%, charging", "GB used", "16 GB total, 4.8 GB swap", "1.2GB free", "3.1 GB"])
       expect(text).toContain(part);
     expect(text).not.toMatch(/[一-鿿]/);
+  });
+});
+
+describe("direct path on the computer pages", () => {
+  const directRows = (selector: string) => [...host.querySelectorAll(selector)].map((e) => e.textContent);
+  beforeEach(() => vi.stubGlobal("RTCPeerConnection", class {}));
+  afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
+
+  it("shows the live state under the 直连 setting, with measured speeds only", async () => {
+    const r = demo();
+    mount(<MachinePage remote={r} id="mac" go={none} onBack={none} />);
+    const note = () => host.querySelector(".row.help[aria-live]")!;
+    expect(note().textContent).toBe(`${message("transport.status_none")}`);
+    act(() => { setDirect(r.direct, "mac", "failed", "no_traversal"); (r.direct as unknown as { notify(): void }).notify(); });
+    expect(note().textContent).toBe(`${message("transport.status_none")} · ${message("transport.reason_no_traversal")}`);
+    act(() => {
+      setDirect(r.direct, "mac", "connected");
+      r.direct.routing("mac").filePath = "direct";
+      r.direct.routing("mac").observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 500);
+      (r.direct as unknown as { notify(): void }).notify();
+    });
+    expect([...note().children].map((e) => e.textContent)).toEqual([
+      [message("transport.status_connected"), message("transport.file_direct"), message("transport.read_relay")].join(" · "),
+      "文件速度：直连 8.0 MiB/s",
+    ]);
+    // The select stays: the setting itself is unchanged.
+    expect(host.querySelector("select")!.value).toBe("auto");
+  });
+
+  it("says the setting is off in the same words on the settings and status pages", async () => {
+    const r = demo("ms-full");
+    r.direct.setEnabled("mac", false);
+    const want = `${message("transport.status_none")} · ${message("transport.reason_disabled")}`;
+    mount(<MachinePage remote={r} id="mac" go={none} onBack={none} />);
+    expect(host.querySelector(".row.help[aria-live]")!.textContent).toBe(want);
+    act(() => root?.unmount()); host.remove();
+    mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
+    await ready();
+    expect(directRows(".grp[aria-live] .row")).toEqual([message("transport.interaction_relay"), want]);
   });
 });

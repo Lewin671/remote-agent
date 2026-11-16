@@ -60,3 +60,17 @@ test("foreground reads stay on relay until authenticated background samples qual
  for(let i=0;i<100;i++){expect(route.choose(hint,true)).toBe("relay");now+=150;route.observe(hint,"relay",0,150);route.observe(hint,"direct",0,30);}
  expect(route.needsReadSamples()).toBe(false);expect(route.choose(hint,true)).toBe("direct");
 });
+
+test("measured speeds appear only from real samples and are forgotten when measurements are discarded",()=>{
+ let now=0;const route=new DirectRouting(()=>now),file={kind:"bulk",file:"one"} as const,none={fileMiBps:{},readMs:{}};
+ expect(route.measured()).toEqual(none);expect(route.readPath()).toBe("relay");
+ // Under 4 MiB is not a measurement yet; two 2 MiB chunks together are.
+ route.observe(file,"relay",2<<20,100);expect(route.measured()).toEqual(none);
+ route.observe(file,"relay",2<<20,100);expect(route.measured().fileMiBps).toEqual({relay:20});
+ route.observe(file,"direct",4<<20,100);expect(route.measured().fileMiBps).toEqual({relay:20,direct:40});
+ // Read latency is a median and needs a few samples; an empty path stays absent.
+ for(const ms of [300,100,200])route.observe({kind:"read"},"relay",0,ms);
+ route.observe({kind:"read"},"direct",0,20);route.observe({kind:"read"},"direct",0,30);
+ expect(route.measured().readMs).toEqual({relay:200});
+ route.fail();expect(route.measured()).toEqual(none);
+});

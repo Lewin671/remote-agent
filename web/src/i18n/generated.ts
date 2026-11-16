@@ -1451,8 +1451,26 @@ export interface MessageArgs {
   "transport.direct": { [name: string]: never };
   "transport.file_direct": { [name: string]: never };
   "transport.file_relay": { [name: string]: never };
+  "transport.file_speed_both": { direct: string; relay: string };
+  "transport.file_speed_direct": { direct: string };
+  "transport.file_speed_relay": { relay: string };
   "transport.interaction_relay": { [name: string]: never };
   "transport.off": { [name: string]: never };
+  "transport.read_direct": { [name: string]: never };
+  "transport.read_latency_both": { direct: string; relay: string };
+  "transport.read_latency_direct": { direct: string };
+  "transport.read_latency_relay": { relay: string };
+  "transport.read_relay": { [name: string]: never };
+  "transport.reason_disabled": { [name: string]: never };
+  "transport.reason_failed": { [name: string]: never };
+  "transport.reason_no_response": { [name: string]: never };
+  "transport.reason_no_traversal": { [name: string]: never };
+  "transport.reason_peer_unsupported": { [name: string]: never };
+  "transport.speed_footnote": { [name: string]: never };
+  "transport.status_connected": { [name: string]: never };
+  "transport.status_connecting": { [name: string]: never };
+  "transport.status_none": { [name: string]: never };
+  "transport.status_unsupported": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
@@ -3375,8 +3393,26 @@ export const messages = {
     "transport.direct": "Direct connection",
     "transport.file_direct": "Files: Direct",
     "transport.file_relay": "Files: Relay",
+    "transport.file_speed_both": "File speed: direct {direct} MiB/s, relay {relay} MiB/s",
+    "transport.file_speed_direct": "File speed: direct {direct} MiB/s",
+    "transport.file_speed_relay": "File speed: relay {relay} MiB/s",
     "transport.interaction_relay": "Interaction: Relay",
-    "transport.off": "Off"
+    "transport.off": "Off",
+    "transport.read_direct": "Read-only: Direct",
+    "transport.read_latency_both": "Read latency: direct {direct} ms, relay {relay} ms",
+    "transport.read_latency_direct": "Read latency: direct {direct} ms",
+    "transport.read_latency_relay": "Read latency: relay {relay} ms",
+    "transport.read_relay": "Read-only: Relay",
+    "transport.reason_disabled": "Turned off in settings",
+    "transport.reason_failed": "Attempt failed; will retry shortly",
+    "transport.reason_no_response": "The computer did not respond; it may have direct connections off",
+    "transport.reason_no_traversal": "Cannot get through the network (STUN/UDP blocked)",
+    "transport.reason_peer_unsupported": "The computer's version does not support it",
+    "transport.speed_footnote": "Direct speeds come from real use: files use the latest transfer of at least 4 MiB, read-only uses the median of the last minute. Nothing is shown until measured.",
+    "transport.status_connected": "Direct connection established",
+    "transport.status_connecting": "Trying a direct connection",
+    "transport.status_none": "No direct connection",
+    "transport.status_unsupported": "This device does not support direct connections"
   },
   "zh-CN": {
     "approval.allow": "允许",
@@ -5215,7 +5251,25 @@ export const messages = {
     "transport.direct": "直连",
     "transport.file_direct": "文件：直连",
     "transport.file_relay": "文件：中继",
+    "transport.file_speed_both": "文件速度：直连 {direct} MiB/s，中继 {relay} MiB/s",
+    "transport.file_speed_direct": "文件速度：直连 {direct} MiB/s",
+    "transport.file_speed_relay": "文件速度：中继 {relay} MiB/s",
     "transport.interaction_relay": "交互：中继",
-    "transport.off": "关闭"
+    "transport.off": "关闭",
+    "transport.read_direct": "只读：直连",
+    "transport.read_latency_both": "只读延时：直连 {direct} ms，中继 {relay} ms",
+    "transport.read_latency_direct": "只读延时：直连 {direct} ms",
+    "transport.read_latency_relay": "只读延时：中继 {relay} ms",
+    "transport.read_relay": "只读：中继",
+    "transport.reason_disabled": "已在设置中关闭",
+    "transport.reason_failed": "尝试失败，稍后重试",
+    "transport.reason_no_response": "电脑端没有响应，可能已关闭直连",
+    "transport.reason_no_traversal": "无法穿透网络（STUN/UDP 不通）",
+    "transport.reason_peer_unsupported": "对方版本不支持",
+    "transport.speed_footnote": "直连速度来自实际使用：文件取最近一次不少于 4 MiB 的传输，只读取最近一分钟的中位延时。没有实测就不显示。",
+    "transport.status_connected": "直连已建立",
+    "transport.status_connecting": "正在尝试直连",
+    "transport.status_none": "未建立直连",
+    "transport.status_unsupported": "本设备不支持直连"
   }
 } as const;

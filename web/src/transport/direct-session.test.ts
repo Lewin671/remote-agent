@@ -55,3 +55,20 @@ test.each([2,3])("queued receipt %i from a replaced main leg cannot pause the ne
   if(status===2)expect(owner.boot.paused).toBe(true);else expect([...owner.boot.pending.values()][0].notBefore).toBeGreaterThan(0);
  }finally{session.close();}
 });
+
+test.each([
+ ["the computer never answered the handshake","no_response",false,false],
+ ["the handshake worked but STUN gave no address","no_traversal",true,false],
+ ["the handshake worked and STUN answered","",true,true],
+])("a round that ends at its deadline names a cause only when %s",async(_name,expected,boot,stun)=>{
+ vi.useFakeTimers();
+ const sdk=fakeRTC(),closed=vi.fn(),self=await fixture("client",1),peer=await fixture("machine",2);
+ const session=new DirectSession({self,peer,codec:await fixtureCodec(),connection:new Uint8Array(16),deadline:Date.now()+10000,budget:new DirectBudget(),stun:[],valid:()=>true,authorize:async()=>{},send:()=>true,chosen:()=>{},beforeOffer:()=>{},ready:()=>{},closed,frame:()=>{},capability:()=>{},factory:sdk.factory});
+ const owner=session as unknown as Owner;
+ try {
+  if(boot){owner.pcs[0].gate.bootReady=true;expect(owner.makePC(0)).toBe(true);}
+  if(stun)(owner.pcs[0].channel as unknown as {stunReady:boolean}).stunReady=true;
+  vi.setSystemTime(Date.now()+10001);await owner.tick();
+  expect(closed).toHaveBeenCalled();expect(session.failure ?? "").toBe(expected);
+ } finally {session.close();}
+});

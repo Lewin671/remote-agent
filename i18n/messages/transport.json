@@ -180,5 +180,295 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "transport.status_connected",
+    "zh-CN": "直连已建立",
+    "en": "Direct connection established",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_connecting",
+    "zh-CN": "正在尝试直连",
+    "en": "Trying a direct connection",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_none",
+    "zh-CN": "未建立直连",
+    "en": "No direct connection",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.status_unsupported",
+    "zh-CN": "本设备不支持直连",
+    "en": "This device does not support direct connections",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_disabled",
+    "zh-CN": "已在设置中关闭",
+    "en": "Turned off in settings",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_peer_unsupported",
+    "zh-CN": "对方版本不支持",
+    "en": "The computer's version does not support it",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_no_response",
+    "zh-CN": "电脑端没有响应，可能已关闭直连",
+    "en": "The computer did not respond; it may have direct connections off",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_no_traversal",
+    "zh-CN": "无法穿透网络（STUN/UDP 不通）",
+    "en": "Cannot get through the network (STUN/UDP blocked)",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.reason_failed",
+    "zh-CN": "尝试失败，稍后重试",
+    "en": "Attempt failed; will retry shortly",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.read_direct",
+    "zh-CN": "只读：直连",
+    "en": "Read-only: Direct",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.read_relay",
+    "zh-CN": "只读：中继",
+    "en": "Read-only: Relay",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.file_speed_both",
+    "zh-CN": "文件速度：直连 {direct} MiB/s，中继 {relay} MiB/s",
+    "en": "File speed: direct {direct} MiB/s, relay {relay} MiB/s",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {
+      "direct": {
+        "type": "string",
+        "example": "Example"
+      },
+      "relay": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.file_speed_direct",
+    "zh-CN": "文件速度：直连 {direct} MiB/s",
+    "en": "File speed: direct {direct} MiB/s",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {
+      "direct": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.file_speed_relay",
+    "zh-CN": "文件速度：中继 {relay} MiB/s",
+    "en": "File speed: relay {relay} MiB/s",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {
+      "relay": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.read_latency_both",
+    "zh-CN": "只读延时：直连 {direct} ms，中继 {relay} ms",
+    "en": "Read latency: direct {direct} ms, relay {relay} ms",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {
+      "direct": {
+        "type": "string",
+        "example": "Example"
+      },
+      "relay": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.read_latency_direct",
+    "zh-CN": "只读延时：直连 {direct} ms",
+    "en": "Read latency: direct {direct} ms",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {
+      "direct": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.read_latency_relay",
+    "zh-CN": "只读延时：中继 {relay} ms",
+    "en": "Read latency: relay {relay} ms",
+    "notes": "连接检测页、电脑设置页和电脑状态页显示的直连状态。只写本端能证实的状态和原因，速度只在有实测时显示。",
+    "params": {
+      "relay": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "transport.speed_footnote",
+    "zh-CN": "直连速度来自实际使用：文件取最近一次不少于 4 MiB 的传输，只读取最近一分钟的中位延时。没有实测就不显示。",
+    "en": "Direct speeds come from real use: files use the latest transfer of at least 4 MiB, read-only uses the median of the last minute. Nothing is shown until measured.",
+    "notes": "连接检测页脚注，说明直连状态行里速度数字的来源。无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

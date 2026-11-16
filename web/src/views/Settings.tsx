@@ -61,6 +61,7 @@ import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { Check, ChevronLeft, ChevronRight, Globe, Info, Laptop, LoaderCircle, Moon, Smartphone, Tablet } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
+import { directLines } from "./direct-status";
 
 export function Settings({
   remote,
@@ -1082,6 +1083,7 @@ export function MachinePage({
               <option value="off">{l10n.t("transport.off")}</option>
             </select>
           </label>
+          <div className="row help" aria-live="polite">{directLines(remote.direct.status(id)).lines.map((line) => <div key={line}>{line}</div>)}</div>
         </div>
         {versions.length > 0 && (
           <div className="grp">

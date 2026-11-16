@@ -766,6 +766,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 :is(.sheet, .pop) .grp { margin-left: 0; margin-right: 0; }
 :is(.sheet, .pop) .find { margin: 0 0 12px; }
 .conn-check .mt small { display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-check .mt small.direct-line { white-space: normal; }
 .conn-check .mv { flex: none; font-size: 15px; font-variant-numeric: tabular-nums; }
 .conn-check .mv em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
 .conn-check .mv > .ic { width: 12px; height: 12px; }
