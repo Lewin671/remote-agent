@@ -119,6 +119,13 @@ test("warm-up is bounded: at most 10 samples per path, one in flight per path, 4
   // Alternating: neither path gets two in a row.
   for (let i = 1; i < sim.probes.length; i++) expect(sim.probes[i].path).not.toBe(sim.probes[i - 1].path);
 });
+test("a path that never answers holds one slot and the other still stops at 10", () => {
+  const sim = simulate({ direct: () => 1e9, relay: () => 100 });
+  sim.route.arm(); sim.run(20_000);
+  expect(sim.probes.filter(p => p.path === "direct")).toHaveLength(1);
+  expect(sim.probes.filter(p => p.path === "relay")).toHaveLength(10);
+  expect(sim.maxInflight).toBe(1);
+});
 test("triggers while a warm-up runs are absorbed; the next trigger gets its own bounded budget and the rate holds across both", () => {
   const sim = simulate({ ...clearWin, direct: () => 400, relay: () => 400 });
   for (let i = 0; i < 100; i++) sim.route.arm();

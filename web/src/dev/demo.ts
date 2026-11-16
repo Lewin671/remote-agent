@@ -23,7 +23,7 @@
 //   ?demo&quota=fresh|old|unsupported|failed|warning#/q/mac  quota states
 //   ?demo&deny=1                          inline optional denial reason
 //   ?demo&longcmd=1#/s/s-appr               an approval of a 40-line command with a long description
-//   ?demo&direct=direct|file|read|relay|relay-faster|trying|none|peer_unsupported|no_response|no_traversal|failed|off|unsupported|mix&speeds=both|direct|relay|none#/m/mac
+//   ?demo&direct=direct|file|read|measuring|relay|relay-faster|trying|none|peer_unsupported|no_response|no_traversal|failed|off|unsupported|mix&speeds=both|direct|relay|none#/m/mac
 //                                         the direct path of the computers: 「连接」 on the computer's page, the connection check's lines (direct-demo.ts)
 //   ?demo&conncheck=1#/settings            opens the connection check sheet at once
 
