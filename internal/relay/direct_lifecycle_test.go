@@ -1275,14 +1275,19 @@ func TestDirectCoalescedInflightPayloadConflict(t *testing.T) {
 
 	ownerCh := make(chan *pb.ForwardReply, 1)
 	conflictCh := make(chan *pb.ForwardReply, 1)
+	inflight := func() int {
+		ep.admission.mu.Lock()
+		defer ep.admission.mu.Unlock()
+		return len(ep.admission.inflight)
+	}
+	// The blocker may or may not still be listed; wait for A's own entry so
+	// B always arrives second and meets A's payload.
+	before := inflight()
 	ep.dispatch(ctx, &pb.ForwardCall{CallId: 2, Command: envA}, func(rep *pb.ForwardReply) { ownerCh <- rep })
 	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		ep.admission.mu.Lock()
-		n := len(ep.admission.inflight)
-		ep.admission.mu.Unlock()
-		if n == 1 {
-			break
+	for inflight() != before+1 {
+		if time.Now().After(deadline) {
+			t.Fatal("owner never became inflight")
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
