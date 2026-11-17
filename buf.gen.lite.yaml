@@ -7,6 +7,8 @@ managed:
 plugins:
   - local: ["go", "run", "./cmd/protoc-gen-go-lite"]
     out: clientcore/gen
+    strategy: all
     opt:
       - paths=source_relative
+      - entries=cmd/protoc-gen-go-lite/entries.txt
       - Mgoogle/protobuf/timestamp.proto=github.com/Lewin671/remote-agent/clientcore/gen/timestamppb

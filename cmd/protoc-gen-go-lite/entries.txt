@@ -1,0 +1,16 @@
+# Extra protobuf full names (outside package remoteagent.core.v1) directly
+# constructed or referenced by clientcore Go code.
+#
+# cmd/protoc-gen-go-lite automatically includes:
+#   1. All messages and enums in proto/remoteagent/core/v1/*.proto (package remoteagent.core.v1).
+#   2. Any remoteagent.v1 message or enum transitively reachable via field, map,
+#      or oneof references from (1) or from the entry types listed below.
+#
+# How to add an entry:
+#   1. Add the fully-qualified proto message or enum name below (one per line, no leading dot),
+#      for example when clientcore directly marshals/unmarshals a remoteagent.v1 type
+#      carried only as raw bytes in remoteagent.core.v1 (such as Command).
+#   2. Regenerate lite Go bindings: buf generate --template buf.gen.lite.yaml
+#   3. Verify: cd clientcore && go test ./...
+
+remoteagent.v1.Command

@@ -205,3 +205,82 @@ func BenchmarkDispatchSessionPush1000Sessions(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkMarshalViewHome1000Sessions(b *testing.B) {
+	c, _ := seedBenchmarkCore(b, 4, 20, 1000)
+	defer c.Close()
+
+	vm, err := c.View(&corev1.Screen{
+		Screen: &corev1.Screen_Home{
+			Home: &corev1.HomeScreenRequest{EndedLimit: 50},
+		},
+	})
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		raw, err := vm.Marshal()
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(raw) == 0 {
+			b.Fatal("expected non-empty marshaled ViewModel")
+		}
+	}
+}
+
+func BenchmarkMarshalDispatchSessionPush1000Sessions(b *testing.B) {
+	c, legID := seedBenchmarkCore(b, 4, 20, 1000)
+	defer c.Close()
+
+	baseNow := int64(1_776_100_000_000)
+	ev := &corev1.Event{
+		NowMs: baseNow + 100,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_SessionUpdated{
+					SessionUpdated: &corev1.PlainSession{
+						SessionId: "s-0001",
+						MachineId: "m-1",
+						LastSeq:   500,
+						UpdatedMs: baseNow + 100,
+						Meta: &v1.Session{
+							Id:      "s-0001",
+							Cwd:     "/Users/dev/work/proj-01",
+							Agent:   v1.Agent_AGENT_CODEX,
+							Status:  v1.SessionStatus_SESSION_STATUS_RUNNING,
+							Title:   "Session 1",
+							Preview: "Applying patch",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ev.NowMs = baseNow + int64(i)
+		ev.GetStreamFrame().GetSessionUpdated().UpdatedMs = baseNow + int64(i)
+		ev.GetStreamFrame().GetSessionUpdated().LastSeq = uint64(500 + i)
+		evBytes, err := ev.Marshal()
+		if err != nil {
+			b.Fatal(err)
+		}
+		var dec corev1.Event
+		if err := dec.Unmarshal(evBytes); err != nil {
+			b.Fatal(err)
+		}
+		batch := c.Dispatch(&dec)
+		out, err := batch.Marshal()
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(out) == 0 {
+			b.Fatal("expected non-empty EffectBatch")
+		}
+	}
+}

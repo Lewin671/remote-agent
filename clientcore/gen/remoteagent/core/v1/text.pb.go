@@ -5,7 +5,6 @@ package corev1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
-	protowire "google.golang.org/protobuf/encoding/protowire"
 	math "math"
 )
 
@@ -53,8 +52,25 @@ func (m *TimestampArg) Clone() *TimestampArg {
 	return &cp
 }
 
+func (m *TimestampArg) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeVarintField(1, uint64(m.UnixMs))
+	n += litewire.SizeInt32(2, int32(m.Style))
+	return n
+}
+
 func (m *TimestampArg) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *TimestampArg) AppendMarshal(b []byte) []byte {
@@ -74,7 +90,7 @@ func (m *TimestampArg) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -83,7 +99,7 @@ func (m *TimestampArg) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -179,8 +195,40 @@ func (m *Text) Clone() *Text {
 	return &cp
 }
 
+func (m *Text) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Key)
+	for _, v := range m.Args {
+		if v != nil {
+			n += litewire.SizeMessage(2, v.Size())
+		}
+	}
+	n += litewire.SizeString(3, m.Literal)
+	for _, v := range m.Join {
+		if v != nil {
+			n += litewire.SizeMessage(4, v.Size())
+		}
+	}
+	n += litewire.SizeString(5, m.SeparatorKey)
+	n += litewire.SizeString(6, m.SeparatorLiteral)
+	if m.Timestamp != nil {
+		n += litewire.SizeMessage(7, m.Timestamp.Size())
+	}
+	return n
+}
+
 func (m *Text) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *Text) AppendMarshal(b []byte) []byte {
@@ -190,19 +238,22 @@ func (m *Text) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.Key)
 	for _, v := range m.Args {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 2, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 2, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	b = litewire.AppendString(b, 3, m.Literal)
 	for _, v := range m.Join {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 4, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 4, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	b = litewire.AppendString(b, 5, m.SeparatorKey)
 	b = litewire.AppendString(b, 6, m.SeparatorLiteral)
 	if m.Timestamp != nil {
-		b = litewire.AppendBytesAlways(b, 7, m.Timestamp.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 7, m.Timestamp.Size())
+		b = m.Timestamp.AppendMarshal(b)
 	}
 	return b
 }
@@ -215,7 +266,7 @@ func (m *Text) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -224,7 +275,7 @@ func (m *Text) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -237,7 +288,7 @@ func (m *Text) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -246,7 +297,7 @@ func (m *Text) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -259,7 +310,7 @@ func (m *Text) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -268,7 +319,7 @@ func (m *Text) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -277,7 +328,7 @@ func (m *Text) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -406,8 +457,50 @@ func (m *TextArg) Clone() *TextArg {
 	return &cp
 }
 
+func (m *TextArg) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Name)
+	switch x := m.Value.(type) {
+	case *TextArg_StrValue:
+		if x != nil {
+			n += litewire.SizeStringAlways(2, x.StrValue)
+		}
+	case *TextArg_IntValue:
+		if x != nil {
+			n += litewire.SizeVarintFieldAlways(3, uint64(x.IntValue))
+		}
+	case *TextArg_FloatValue:
+		if x != nil {
+			n += litewire.SizeFixed64Always(4)
+		}
+	case *TextArg_TextValue:
+		if x != nil {
+			if x.TextValue != nil {
+				n += litewire.SizeMessage(5, x.TextValue.Size())
+			}
+		}
+	case *TextArg_TimestampValue:
+		if x != nil {
+			if x.TimestampValue != nil {
+				n += litewire.SizeMessage(6, x.TimestampValue.Size())
+			}
+		}
+	}
+	return n
+}
+
 func (m *TextArg) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *TextArg) AppendMarshal(b []byte) []byte {
@@ -431,13 +524,15 @@ func (m *TextArg) AppendMarshal(b []byte) []byte {
 	case *TextArg_TextValue:
 		if x != nil {
 			if x.TextValue != nil {
-				b = litewire.AppendBytesAlways(b, 5, x.TextValue.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 5, x.TextValue.Size())
+				b = x.TextValue.AppendMarshal(b)
 			}
 		}
 	case *TextArg_TimestampValue:
 		if x != nil {
 			if x.TimestampValue != nil {
-				b = litewire.AppendBytesAlways(b, 6, x.TimestampValue.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 6, x.TimestampValue.Size())
+				b = x.TimestampValue.AppendMarshal(b)
 			}
 		}
 	}
@@ -452,7 +547,7 @@ func (m *TextArg) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -461,7 +556,7 @@ func (m *TextArg) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -470,7 +565,7 @@ func (m *TextArg) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -479,7 +574,7 @@ func (m *TextArg) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.Fixed64Type {
+			if wtyp == litewire.Fixed64Type {
 				v, err := litewire.ReadFixed64(&b)
 				if err != nil {
 					return err
@@ -488,7 +583,7 @@ func (m *TextArg) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -507,7 +602,7 @@ func (m *TextArg) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err

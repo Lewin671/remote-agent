@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/hex"
 	"slices"
 	"strconv"
 	"strings"
@@ -244,7 +243,14 @@ func EncodeScope(scope Scope, key []byte) string {
 	if scope.AllProjects {
 		return "all"
 	}
-	return "project:" + hex.EncodeToString(hmacSHA256(key, []byte(scope.Key)))
+	const hexDigits = "0123456789abcdef"
+	sum := hmacSHA256(key, []byte(scope.Key))
+	var buf [64]byte
+	for i, b := range sum {
+		buf[i*2] = hexDigits[b>>4]
+		buf[i*2+1] = hexDigits[b&0xf]
+	}
+	return "project:" + string(buf[:len(sum)*2])
 }
 
 // DecodeScope resolves a persisted scope token using hmacKey against listed projects, or nil if unknown.

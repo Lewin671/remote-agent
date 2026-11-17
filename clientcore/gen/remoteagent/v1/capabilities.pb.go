@@ -5,7 +5,6 @@ package remoteagentv1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
-	protowire "google.golang.org/protobuf/encoding/protowire"
 	slices "slices"
 )
 
@@ -126,8 +125,43 @@ func (m *MachineCapabilities) Clone() *MachineCapabilities {
 	return &cp
 }
 
+func (m *MachineCapabilities) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(2, m.ImageUpload)
+	n += litewire.SizeInt32(3, int32(m.MaxImagesPerMessage))
+	n += litewire.SizeVarintField(4, uint64(m.MaxUploadBytes))
+	n += litewire.SizeInt32(5, int32(m.MaxChunkBytes))
+	if len(m.UploadFormats) > 0 {
+		psz := 0
+		for _, v := range m.UploadFormats {
+			psz += litewire.SizeVarint(uint64(int64(v)))
+		}
+		n += litewire.SizeMessage(6, psz)
+	}
+	n += litewire.SizeBool(10, m.ApprovalAlways)
+	n += litewire.SizeBool(12, m.ScheduledTasks)
+	n += litewire.SizeBool(13, m.FileUpload)
+	n += litewire.SizeVarintField(14, uint64(m.MaxFileUploadBytes))
+	n += litewire.SizeInt32(15, int32(m.MaxFilesPerMessage))
+	n += litewire.SizeBool(16, m.SharedFiles)
+	n += litewire.SizeVarintField(17, uint64(m.MaxSharedFileBytes))
+	n += litewire.SizeInt32(18, int32(m.SharedFileChunkBytes))
+	n += litewire.SizeBool(19, m.MachineStatus)
+	return n
+}
+
 func (m *MachineCapabilities) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *MachineCapabilities) AppendMarshal(b []byte) []byte {
@@ -139,11 +173,14 @@ func (m *MachineCapabilities) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 4, uint64(m.MaxUploadBytes))
 	b = litewire.AppendInt32(b, 5, int32(m.MaxChunkBytes))
 	if len(m.UploadFormats) > 0 {
-		var pb []byte
+		psz := 0
 		for _, v := range m.UploadFormats {
-			pb = protowire.AppendVarint(pb, uint64(int64(v)))
+			psz += litewire.SizeVarint(uint64(int64(v)))
 		}
-		b = litewire.AppendBytesAlways(b, 6, pb)
+		b = litewire.AppendMessagePrefix(b, 6, psz)
+		for _, v := range m.UploadFormats {
+			b = litewire.AppendRawVarint(b, uint64(int64(v)))
+		}
 	}
 	b = litewire.AppendBool(b, 10, m.ApprovalAlways)
 	b = litewire.AppendBool(b, 12, m.ScheduledTasks)
@@ -165,16 +202,16 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ImageUpload = protowire.DecodeBool(v)
+				m.ImageUpload = litewire.DecodeBool(v)
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -183,7 +220,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -192,7 +229,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -201,7 +238,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -215,7 +252,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				}
 				continue
 			}
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -224,34 +261,34 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ApprovalAlways = protowire.DecodeBool(v)
+				m.ApprovalAlways = litewire.DecodeBool(v)
 				continue
 			}
 		case 12:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ScheduledTasks = protowire.DecodeBool(v)
+				m.ScheduledTasks = litewire.DecodeBool(v)
 				continue
 			}
 		case 13:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.FileUpload = protowire.DecodeBool(v)
+				m.FileUpload = litewire.DecodeBool(v)
 				continue
 			}
 		case 14:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -260,7 +297,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -269,16 +306,16 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 16:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SharedFiles = protowire.DecodeBool(v)
+				m.SharedFiles = litewire.DecodeBool(v)
 				continue
 			}
 		case 17:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -287,7 +324,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 18:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -296,12 +333,12 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		case 19:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.MachineStatus = protowire.DecodeBool(v)
+				m.MachineStatus = litewire.DecodeBool(v)
 				continue
 			}
 		}

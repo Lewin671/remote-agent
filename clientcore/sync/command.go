@@ -1,8 +1,6 @@
 package sync
 
 import (
-	"fmt"
-
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -715,7 +713,7 @@ func classifyTransportError(ev *corev1.CommandOutcomeEvent) *corev1.Text {
 		return text.Msg(text.KeyErrorsDisconnectedFromServer)
 	}
 	if ev.TransportDetail != "" {
-		return text.Plain(fmt.Sprintf("%s", ev.TransportDetail))
+		return text.Plain(ev.TransportDetail)
 	}
 	return text.Msg(text.KeyErrorsTheRelayDidNotProvideAVerifiableExecutionResult)
 }

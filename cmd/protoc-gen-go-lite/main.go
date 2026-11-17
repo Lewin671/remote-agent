@@ -1,9 +1,14 @@
 // Command protoc-gen-go-lite generates minimal, reflection-free Go protobuf structs and
-// protowire Marshal/Unmarshal/Clone methods covering the subset of proto3 used in this repo.
+// litewire Marshal/Unmarshal/Size/Clone methods covering the subset of proto3 used in this repo.
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -11,26 +16,184 @@ import (
 )
 
 var (
-	protowirePkg = protogen.GoImportPath("google.golang.org/protobuf/encoding/protowire")
-	litewirePkg  = protogen.GoImportPath("github.com/Lewin671/remote-agent/clientcore/gen/litewire")
-	mathPkg      = protogen.GoImportPath("math")
-	slicesPkg    = protogen.GoImportPath("slices")
+	litewirePkg = protogen.GoImportPath("github.com/Lewin671/remote-agent/clientcore/gen/litewire")
+	mathPkg     = protogen.GoImportPath("math")
+	slicesPkg   = protogen.GoImportPath("slices")
 )
 
+type reachSet struct {
+	msgs  map[*protogen.Message]bool
+	enums map[*protogen.Enum]bool
+}
+
 func main() {
-	protogen.Options{}.Run(func(plugin *protogen.Plugin) error {
+	var flags flag.FlagSet
+	entriesPath := flags.String("entries", "", "path to file listing extra protobuf full names to include")
+	protogen.Options{ParamFunc: flags.Set}.Run(func(plugin *protogen.Plugin) error {
 		plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
+		reach, err := computeReachable(plugin.Files, *entriesPath)
+		if err != nil {
+			return err
+		}
 		for _, f := range plugin.Files {
-			if !f.Generate {
+			if !f.Generate || !fileHasReachable(f, reach) {
 				continue
 			}
-			generateFile(plugin, f)
+			generateFile(plugin, f, reach)
 		}
 		return nil
 	})
 }
 
-func generateFile(plugin *protogen.Plugin, file *protogen.File) {
+func computeReachable(files []*protogen.File, entriesPath string) (*reachSet, error) {
+	if entriesPath == "" {
+		return nil, nil
+	}
+	raw, err := os.ReadFile(entriesPath)
+	if err != nil {
+		return nil, err
+	}
+
+	msgByName := make(map[string]*protogen.Message)
+	enumByName := make(map[string]*protogen.Enum)
+	var indexMsgs func([]*protogen.Message)
+	indexMsgs = func(msgs []*protogen.Message) {
+		for _, m := range msgs {
+			if m.Desc.IsMapEntry() {
+				continue
+			}
+			msgByName[string(m.Desc.FullName())] = m
+			for _, e := range m.Enums {
+				enumByName[string(e.Desc.FullName())] = e
+			}
+			indexMsgs(m.Messages)
+		}
+	}
+	for _, f := range files {
+		for _, e := range f.Enums {
+			enumByName[string(e.Desc.FullName())] = e
+		}
+		indexMsgs(f.Messages)
+	}
+
+	reach := &reachSet{
+		msgs:  make(map[*protogen.Message]bool),
+		enums: make(map[*protogen.Enum]bool),
+	}
+	var queue []*protogen.Message
+
+	markMsg := func(m *protogen.Message) {
+		if m == nil || m.Desc.IsMapEntry() || reach.msgs[m] {
+			return
+		}
+		reach.msgs[m] = true
+		queue = append(queue, m)
+	}
+	markEnum := func(e *protogen.Enum) {
+		if e != nil {
+			reach.enums[e] = true
+		}
+	}
+
+	var markAllInMsgs func([]*protogen.Message)
+	markAllInMsgs = func(msgs []*protogen.Message) {
+		for _, m := range msgs {
+			markMsg(m)
+			for _, e := range m.Enums {
+				markEnum(e)
+			}
+			markAllInMsgs(m.Messages)
+		}
+	}
+
+	for _, f := range files {
+		if f.Generate && f.Desc.Package() == "remoteagent.core.v1" {
+			for _, e := range f.Enums {
+				markEnum(e)
+			}
+			markAllInMsgs(f.Messages)
+		}
+	}
+
+	for _, line := range strings.Split(string(raw), "\n") {
+		if idx := strings.IndexByte(line, '#'); idx >= 0 {
+			line = line[:idx]
+		}
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+		if m, ok := msgByName[name]; ok {
+			markMsg(m)
+			continue
+		}
+		if e, ok := enumByName[name]; ok {
+			markEnum(e)
+			continue
+		}
+		msg := "protoc-gen-go-lite: unknown entry " + name + " in " + entriesPath
+		return nil, errors.New(msg)
+	}
+
+	for len(queue) > 0 {
+		m := queue[0]
+		queue = queue[1:]
+		for _, f := range m.Fields {
+			if f.Desc.IsMap() {
+				vf := f.Message.Fields[1]
+				if vf.Message != nil {
+					markMsg(vf.Message)
+				}
+				if vf.Enum != nil {
+					markEnum(vf.Enum)
+				}
+				continue
+			}
+			if f.Message != nil {
+				markMsg(f.Message)
+			}
+			if f.Enum != nil {
+				markEnum(f.Enum)
+			}
+		}
+	}
+
+	return reach, nil
+}
+
+func fileHasReachable(f *protogen.File, reach *reachSet) bool {
+	if reach == nil {
+		return true
+	}
+	for _, e := range f.Enums {
+		if reach.enums[e] {
+			return true
+		}
+	}
+	var hasMsg func([]*protogen.Message) bool
+	hasMsg = func(msgs []*protogen.Message) bool {
+		for _, m := range msgs {
+			if m.Desc.IsMapEntry() {
+				continue
+			}
+			if reach.msgs[m] {
+				return true
+			}
+			for _, e := range m.Enums {
+				if reach.enums[e] {
+					return true
+				}
+			}
+			if hasMsg(m.Messages) {
+				return true
+			}
+		}
+		return false
+	}
+	return hasMsg(f.Messages)
+}
+
+func generateFile(plugin *protogen.Plugin, file *protogen.File, reach *reachSet) {
 	filename := file.GeneratedFilenamePrefix + ".pb.go"
 	g := plugin.NewGeneratedFile(filename, file.GoImportPath)
 	g.P("// Code generated by cmd/protoc-gen-go-lite. DO NOT EDIT.")
@@ -40,10 +203,12 @@ func generateFile(plugin *protogen.Plugin, file *protogen.File) {
 	g.P()
 
 	for _, enum := range file.Enums {
-		genEnum(g, enum)
+		if reach == nil || reach.enums[enum] {
+			genEnum(g, enum)
+		}
 	}
 	for _, msg := range file.Messages {
-		genMessage(g, msg)
+		genMessage(g, msg, reach)
 	}
 }
 
@@ -143,32 +308,50 @@ func isPackable(f *protogen.Field) bool {
 	}
 }
 
+func fixedPackedElemSize(kind protoreflect.Kind) (int, bool) {
+	switch kind {
+	case protoreflect.BoolKind:
+		return 1, true
+	case protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind, protoreflect.FloatKind:
+		return 4, true
+	case protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind, protoreflect.DoubleKind:
+		return 8, true
+	default:
+		return 0, false
+	}
+}
+
 func wireTypeExpr(g *protogen.GeneratedFile, kind protoreflect.Kind) string {
 	switch kind {
 	case protoreflect.BoolKind, protoreflect.EnumKind,
 		protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
 		protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind:
-		return g.QualifiedGoIdent(protowirePkg.Ident("VarintType"))
+		return g.QualifiedGoIdent(litewirePkg.Ident("VarintType"))
 	case protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind, protoreflect.FloatKind:
-		return g.QualifiedGoIdent(protowirePkg.Ident("Fixed32Type"))
+		return g.QualifiedGoIdent(litewirePkg.Ident("Fixed32Type"))
 	case protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind, protoreflect.DoubleKind:
-		return g.QualifiedGoIdent(protowirePkg.Ident("Fixed64Type"))
+		return g.QualifiedGoIdent(litewirePkg.Ident("Fixed64Type"))
 	case protoreflect.StringKind, protoreflect.BytesKind, protoreflect.MessageKind:
-		return g.QualifiedGoIdent(protowirePkg.Ident("BytesType"))
+		return g.QualifiedGoIdent(litewirePkg.Ident("BytesType"))
 	default:
 		panic(fmt.Sprintf("unsupported wire kind: %v", kind))
 	}
 }
 
-func genMessage(g *protogen.GeneratedFile, msg *protogen.Message) {
+func genMessage(g *protogen.GeneratedFile, msg *protogen.Message, reach *reachSet) {
 	if msg.Desc.IsMapEntry() {
 		return
 	}
 	for _, enum := range msg.Enums {
-		genEnum(g, enum)
+		if reach == nil || reach.enums[enum] {
+			genEnum(g, enum)
+		}
 	}
 	for _, nested := range msg.Messages {
-		genMessage(g, nested)
+		genMessage(g, nested, reach)
+	}
+	if reach != nil && !reach.msgs[msg] {
+		return
 	}
 
 	name := msg.GoIdent.GoName
@@ -240,6 +423,7 @@ func genMessage(g *protogen.GeneratedFile, msg *protogen.Message) {
 	g.P()
 
 	genClone(g, msg)
+	genSize(g, msg)
 	genMarshal(g, msg)
 	genUnmarshal(g, msg)
 }
@@ -318,12 +502,175 @@ func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
 	g.P()
 }
 
+func fieldSizeExpr(g *protogen.GeneratedFile, f *protogen.Field, num protoreflect.FieldNumber, expr string, always bool) string {
+	suffix := ""
+	if always {
+		suffix = "Always"
+	}
+	numStr := strconv.FormatInt(int64(num), 10)
+	call1 := func(fnName string) string {
+		return g.QualifiedGoIdent(litewirePkg.Ident(fnName)) + "(" + numStr + ")"
+	}
+	call2 := func(fnName, arg string) string {
+		return g.QualifiedGoIdent(litewirePkg.Ident(fnName)) + "(" + numStr + ", " + arg + ")"
+	}
+	switch f.Desc.Kind() {
+	case protoreflect.BytesKind:
+		return call2("SizeBytesField"+suffix, expr)
+	case protoreflect.StringKind:
+		return call2("SizeString"+suffix, expr)
+	case protoreflect.BoolKind:
+		if always {
+			return call1("SizeBoolAlways")
+		}
+		return call2("SizeBool", expr)
+	case protoreflect.EnumKind, protoreflect.Int32Kind:
+		return call2("SizeInt32"+suffix, "int32("+expr+")")
+	case protoreflect.Int64Kind, protoreflect.Uint32Kind, protoreflect.Uint64Kind:
+		return call2("SizeVarintField"+suffix, "uint64("+expr+")")
+	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
+		return call2("SizeZigZag"+suffix, "int64("+expr+")")
+	case protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
+		if always {
+			return call1("SizeFixed32Always")
+		}
+		return call2("SizeFixed32", "uint32("+expr+")")
+	case protoreflect.FloatKind:
+		if always {
+			return call1("SizeFixed32Always")
+		}
+		return call2("SizeFloat", expr)
+	case protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		if always {
+			return call1("SizeFixed64Always")
+		}
+		return call2("SizeFixed64", "uint64("+expr+")")
+	case protoreflect.DoubleKind:
+		if always {
+			return call1("SizeFixed64Always")
+		}
+		return call2("SizeDouble", expr)
+	default:
+		panic(fmt.Sprintf("unsupported kind: %v", f.Desc.Kind()))
+	}
+}
+
+func emitSizeField(g *protogen.GeneratedFile, indent, acc string, f *protogen.Field, expr string, always bool) {
+	num := f.Desc.Number()
+	if f.Desc.Kind() == protoreflect.MessageKind {
+		fn := g.QualifiedGoIdent(litewirePkg.Ident("SizeMessage"))
+		g.P(indent, "if ", expr, " != nil { ", acc, " += ", fn, "(", num, ", ", expr, ".Size()) }")
+		return
+	}
+	g.P(indent, acc, " += ", fieldSizeExpr(g, f, num, expr, always))
+}
+
+func packedElemSizeExpr(g *protogen.GeneratedFile, f *protogen.Field, expr string) string {
+	sizeVarint := g.QualifiedGoIdent(litewirePkg.Ident("SizeVarint"))
+	switch f.Desc.Kind() {
+	case protoreflect.EnumKind, protoreflect.Int32Kind:
+		return sizeVarint + "(uint64(int64(" + expr + ")))"
+	case protoreflect.Int64Kind, protoreflect.Uint32Kind, protoreflect.Uint64Kind:
+		return sizeVarint + "(uint64(" + expr + "))"
+	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
+		encodeZigZag := g.QualifiedGoIdent(litewirePkg.Ident("EncodeZigZag"))
+		return sizeVarint + "(" + encodeZigZag + "(int64(" + expr + ")))"
+	default:
+		panic(fmt.Sprintf("unsupported kind: %v", f.Desc.Kind()))
+	}
+}
+
+func genSize(g *protogen.GeneratedFile, msg *protogen.Message) {
+	name := msg.GoIdent.GoName
+	sizeMessage := g.QualifiedGoIdent(litewirePkg.Ident("SizeMessage"))
+
+	g.P("func (m *", name, ") Size() int {")
+	g.P("\tif m == nil { return 0 }")
+	if len(msg.Fields) == 0 {
+		g.P("\treturn 0")
+		g.P("}")
+		g.P()
+		return
+	}
+	g.P("\tn := 0")
+	emittedOneofs := make(map[string]bool)
+	for _, f := range msg.Fields {
+		if isRealOneof(f) {
+			if emittedOneofs[f.Oneof.GoName] {
+				continue
+			}
+			emittedOneofs[f.Oneof.GoName] = true
+			g.P("\tswitch x := m.", f.Oneof.GoName, ".(type) {")
+			for _, of := range f.Oneof.Fields {
+				wrap := of.GoIdent.GoName
+				g.P("\tcase *", wrap, ":")
+				g.P("\t\tif x != nil {")
+				emitSizeField(g, "\t\t\t", "n", of, "x."+of.GoName, true)
+				g.P("\t\t}")
+			}
+			g.P("\t}")
+			continue
+		}
+		num := f.Desc.Number()
+		switch {
+		case f.Desc.IsMap():
+			kf := f.Message.Fields[0]
+			vf := f.Message.Fields[1]
+			kSize := fieldSizeExpr(g, kf, 1, "k", true)
+			var vSize string
+			if vf.Desc.Kind() == protoreflect.MessageKind {
+				vSize = sizeMessage + "(2, v.Size())"
+			} else {
+				vSize = fieldSizeExpr(g, vf, 2, "v", true)
+			}
+			g.P("\tfor k, v := range m.", f.GoName, " {")
+			g.P("\t\tn += ", sizeMessage, "(", num, ", ", kSize, " + ", vSize, ")")
+			g.P("\t}")
+		case f.Desc.IsList():
+			if isPackable(f) {
+				if elemSz, fixed := fixedPackedElemSize(f.Desc.Kind()); fixed {
+					g.P("\tif len(m.", f.GoName, ") > 0 {")
+					if elemSz == 1 {
+						g.P("\t\tn += ", sizeMessage, "(", num, ", len(m.", f.GoName, "))")
+					} else {
+						g.P("\t\tn += ", sizeMessage, "(", num, ", len(m.", f.GoName, ")*", elemSz, ")")
+					}
+					g.P("\t}")
+				} else {
+					g.P("\tif len(m.", f.GoName, ") > 0 {")
+					g.P("\t\tpsz := 0")
+					g.P("\t\tfor _, v := range m.", f.GoName, " { psz += ", packedElemSizeExpr(g, f, "v"), " }")
+					g.P("\t\tn += ", sizeMessage, "(", num, ", psz)")
+					g.P("\t}")
+				}
+			} else {
+				g.P("\tfor _, v := range m.", f.GoName, " {")
+				emitSizeField(g, "\t\t", "n", f, "v", true)
+				g.P("\t}")
+			}
+		case isOptionalPtr(f):
+			g.P("\tif m.", f.GoName, " != nil {")
+			emitSizeField(g, "\t\t", "n", f, "*m."+f.GoName, true)
+			g.P("\t}")
+		default:
+			emitSizeField(g, "\t", "n", f, "m."+f.GoName, false)
+		}
+	}
+	g.P("\treturn n")
+	g.P("}")
+	g.P()
+}
+
 func genMarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 	name := msg.GoIdent.GoName
-	appendBytesAlways := g.QualifiedGoIdent(litewirePkg.Ident("AppendBytesAlways"))
+	appendMsgPrefix := g.QualifiedGoIdent(litewirePkg.Ident("AppendMessagePrefix"))
+	sizeMessage := g.QualifiedGoIdent(litewirePkg.Ident("SizeMessage"))
 
 	g.P("func (m *", name, ") Marshal() ([]byte, error) {")
-	g.P("\treturn m.AppendMarshal(nil), nil")
+	g.P("\tif m == nil { return nil, nil }")
+	g.P("\tsz := m.Size()")
+	g.P("\tif sz == 0 { return nil, nil }")
+	g.P("\treturn m.AppendMarshal(make([]byte, 0, sz)), nil")
 	g.P("}")
 	g.P()
 
@@ -352,24 +699,40 @@ func genMarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 		case f.Desc.IsMap():
 			kf := f.Message.Fields[0]
 			vf := f.Message.Fields[1]
+			kSize := fieldSizeExpr(g, kf, 1, "k", true)
 			g.P("\tfor k, v := range m.", f.GoName, " {")
-			g.P("\t\tvar eb []byte")
-			emitMarshalField(g, "\t\t", "eb", kf, "k", true)
 			if vf.Desc.Kind() == protoreflect.MessageKind {
-				g.P("\t\teb = ", appendBytesAlways, "(eb, 2, v.AppendMarshal(nil))")
+				g.P("\t\tvsz := v.Size()")
+				g.P("\t\tesz := ", kSize, " + ", sizeMessage, "(2, vsz)")
+				g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", esz)")
+				emitMarshalField(g, "\t\t", "b", kf, "k", true)
+				g.P("\t\tb = ", appendMsgPrefix, "(b, 2, vsz)")
+				g.P("\t\tb = v.AppendMarshal(b)")
 			} else {
-				emitMarshalField(g, "\t\t", "eb", vf, "v", true)
+				vSize := fieldSizeExpr(g, vf, 2, "v", true)
+				g.P("\t\tesz := ", kSize, " + ", vSize)
+				g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", esz)")
+				emitMarshalField(g, "\t\t", "b", kf, "k", true)
+				emitMarshalField(g, "\t\t", "b", vf, "v", true)
 			}
-			g.P("\t\tb = ", appendBytesAlways, "(b, ", num, ", eb)")
 			g.P("\t}")
 		case f.Desc.IsList():
 			if isPackable(f) {
 				g.P("\tif len(m.", f.GoName, ") > 0 {")
-				g.P("\t\tvar pb []byte")
+				if elemSz, fixed := fixedPackedElemSize(f.Desc.Kind()); fixed {
+					if elemSz == 1 {
+						g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", len(m.", f.GoName, "))")
+					} else {
+						g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", len(m.", f.GoName, ")*", elemSz, ")")
+					}
+				} else {
+					g.P("\t\tpsz := 0")
+					g.P("\t\tfor _, v := range m.", f.GoName, " { psz += ", packedElemSizeExpr(g, f, "v"), " }")
+					g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", psz)")
+				}
 				g.P("\t\tfor _, v := range m.", f.GoName, " {")
-				emitMarshalPackedElem(g, "\t\t\t", "pb", f, "v")
+				emitMarshalPackedElem(g, "\t\t\t", "b", f, "v")
 				g.P("\t\t}")
-				g.P("\t\tb = ", appendBytesAlways, "(b, ", num, ", pb)")
 				g.P("\t}")
 			} else {
 				g.P("\tfor _, v := range m.", f.GoName, " {")
@@ -397,8 +760,8 @@ func emitMarshalField(g *protogen.GeneratedFile, indent, buf string, f *protogen
 	}
 	switch f.Desc.Kind() {
 	case protoreflect.MessageKind:
-		fn := g.QualifiedGoIdent(litewirePkg.Ident("AppendBytesAlways"))
-		g.P(indent, "if ", expr, " != nil { ", buf, " = ", fn, "(", buf, ", ", num, ", ", expr, ".AppendMarshal(nil)) }")
+		fn := g.QualifiedGoIdent(litewirePkg.Ident("AppendMessagePrefix"))
+		g.P(indent, "if ", expr, " != nil { ", buf, " = ", fn, "(", buf, ", ", num, ", ", expr, ".Size()); ", buf, " = ", expr, ".AppendMarshal(", buf, ") }")
 	case protoreflect.BytesKind:
 		fn := g.QualifiedGoIdent(litewirePkg.Ident("AppendBytes" + suffix))
 		g.P(indent, buf, " = ", fn, "(", buf, ", ", num, ", ", expr, ")")
@@ -435,30 +798,30 @@ func emitMarshalField(g *protogen.GeneratedFile, indent, buf string, f *protogen
 }
 
 func emitMarshalPackedElem(g *protogen.GeneratedFile, indent, buf string, f *protogen.Field, expr string) {
-	appendVarint := g.QualifiedGoIdent(protowirePkg.Ident("AppendVarint"))
+	appendVarint := g.QualifiedGoIdent(litewirePkg.Ident("AppendRawVarint"))
 	switch f.Desc.Kind() {
 	case protoreflect.BoolKind:
-		encodeBool := g.QualifiedGoIdent(protowirePkg.Ident("EncodeBool"))
+		encodeBool := g.QualifiedGoIdent(litewirePkg.Ident("EncodeBool"))
 		g.P(indent, buf, " = ", appendVarint, "(", buf, ", ", encodeBool, "(", expr, "))")
 	case protoreflect.EnumKind, protoreflect.Int32Kind:
 		g.P(indent, buf, " = ", appendVarint, "(", buf, ", uint64(int64(", expr, ")))")
 	case protoreflect.Int64Kind, protoreflect.Uint32Kind, protoreflect.Uint64Kind:
 		g.P(indent, buf, " = ", appendVarint, "(", buf, ", uint64(", expr, "))")
 	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
-		encodeZigZag := g.QualifiedGoIdent(protowirePkg.Ident("EncodeZigZag"))
+		encodeZigZag := g.QualifiedGoIdent(litewirePkg.Ident("EncodeZigZag"))
 		g.P(indent, buf, " = ", appendVarint, "(", buf, ", ", encodeZigZag, "(int64(", expr, ")))")
 	case protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
-		appendFixed32 := g.QualifiedGoIdent(protowirePkg.Ident("AppendFixed32"))
+		appendFixed32 := g.QualifiedGoIdent(litewirePkg.Ident("AppendRawFixed32"))
 		g.P(indent, buf, " = ", appendFixed32, "(", buf, ", uint32(", expr, "))")
 	case protoreflect.FloatKind:
-		appendFixed32 := g.QualifiedGoIdent(protowirePkg.Ident("AppendFixed32"))
+		appendFixed32 := g.QualifiedGoIdent(litewirePkg.Ident("AppendRawFixed32"))
 		float32bits := g.QualifiedGoIdent(mathPkg.Ident("Float32bits"))
 		g.P(indent, buf, " = ", appendFixed32, "(", buf, ", ", float32bits, "(", expr, "))")
 	case protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-		appendFixed64 := g.QualifiedGoIdent(protowirePkg.Ident("AppendFixed64"))
+		appendFixed64 := g.QualifiedGoIdent(litewirePkg.Ident("AppendRawFixed64"))
 		g.P(indent, buf, " = ", appendFixed64, "(", buf, ", uint64(", expr, "))")
 	case protoreflect.DoubleKind:
-		appendFixed64 := g.QualifiedGoIdent(protowirePkg.Ident("AppendFixed64"))
+		appendFixed64 := g.QualifiedGoIdent(litewirePkg.Ident("AppendRawFixed64"))
 		float64bits := g.QualifiedGoIdent(mathPkg.Ident("Float64bits"))
 		g.P(indent, buf, " = ", appendFixed64, "(", buf, ", ", float64bits, "(", expr, "))")
 	}
@@ -489,7 +852,7 @@ func genUnmarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 }
 
 func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
-	bytesType := g.QualifiedGoIdent(protowirePkg.Ident("BytesType"))
+	bytesType := g.QualifiedGoIdent(litewirePkg.Ident("BytesType"))
 	readBytesRaw := g.QualifiedGoIdent(litewirePkg.Ident("ReadBytesRaw"))
 	readTag := g.QualifiedGoIdent(litewirePkg.Ident("ReadTag"))
 	skip := g.QualifiedGoIdent(litewirePkg.Ident("Skip"))
@@ -624,7 +987,7 @@ func emitUnmarshalRawScalarInto(g *protogen.GeneratedFile, indent, buf string, f
 		assign("v")
 	case protoreflect.BoolKind:
 		fn := g.QualifiedGoIdent(litewirePkg.Ident("ReadVarint"))
-		decodeBool := g.QualifiedGoIdent(protowirePkg.Ident("DecodeBool"))
+		decodeBool := g.QualifiedGoIdent(litewirePkg.Ident("DecodeBool"))
 		g.P(indent, "v, err := ", fn, "(&", buf, ")")
 		g.P(indent, "if err != nil { return err }")
 		assign(decodeBool + "(v)")
@@ -655,13 +1018,13 @@ func emitUnmarshalRawScalarInto(g *protogen.GeneratedFile, indent, buf string, f
 		assign("v")
 	case protoreflect.Sint32Kind:
 		fn := g.QualifiedGoIdent(litewirePkg.Ident("ReadVarint"))
-		decodeZigZag := g.QualifiedGoIdent(protowirePkg.Ident("DecodeZigZag"))
+		decodeZigZag := g.QualifiedGoIdent(litewirePkg.Ident("DecodeZigZag"))
 		g.P(indent, "v, err := ", fn, "(&", buf, ")")
 		g.P(indent, "if err != nil { return err }")
 		assign("int32(" + decodeZigZag + "(v))")
 	case protoreflect.Sint64Kind:
 		fn := g.QualifiedGoIdent(litewirePkg.Ident("ReadVarint"))
-		decodeZigZag := g.QualifiedGoIdent(protowirePkg.Ident("DecodeZigZag"))
+		decodeZigZag := g.QualifiedGoIdent(litewirePkg.Ident("DecodeZigZag"))
 		g.P(indent, "v, err := ", fn, "(&", buf, ")")
 		g.P(indent, "if err != nil { return err }")
 		assign(decodeZigZag + "(v)")

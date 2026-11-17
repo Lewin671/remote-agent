@@ -2,7 +2,7 @@
 
 package timestamppb
 
-import "google.golang.org/protobuf/encoding/protowire"
+import "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 
 // Timestamp mirrors google.protobuf.Timestamp without reflection or JSON runtime dependencies.
 type Timestamp struct {
@@ -38,59 +38,73 @@ func (m *Timestamp) Clone() *Timestamp {
 	return &cp
 }
 
+func (m *Timestamp) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	if m.Seconds != 0 {
+		n += litewire.SizeVarintField(1, uint64(m.Seconds))
+	}
+	if m.Nanos != 0 {
+		n += litewire.SizeInt32(2, m.Nanos)
+	}
+	return n
+}
+
 func (m *Timestamp) AppendMarshal(b []byte) []byte {
 	if m == nil {
 		return b
 	}
 	if m.Seconds != 0 {
-		b = protowire.AppendTag(b, 1, protowire.VarintType)
-		b = protowire.AppendVarint(b, uint64(m.Seconds))
+		b = litewire.AppendVarint(b, 1, uint64(m.Seconds))
 	}
 	if m.Nanos != 0 {
-		b = protowire.AppendTag(b, 2, protowire.VarintType)
-		b = protowire.AppendVarint(b, uint64(int64(m.Nanos)))
+		b = litewire.AppendInt32(b, 2, m.Nanos)
 	}
 	return b
 }
 
 func (m *Timestamp) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *Timestamp) Unmarshal(b []byte) error {
 	for len(b) > 0 {
-		num, wtyp, n := protowire.ConsumeTag(b)
-		if n < 0 {
-			return protowire.ParseError(n)
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
 		}
-		b = b[n:]
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
-				v, vn := protowire.ConsumeVarint(b)
-				if vn < 0 {
-					return protowire.ParseError(vn)
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
 				}
 				m.Seconds = int64(v)
-				b = b[vn:]
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
-				v, vn := protowire.ConsumeVarint(b)
-				if vn < 0 {
-					return protowire.ParseError(vn)
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
 				}
 				m.Nanos = int32(v)
-				b = b[vn:]
 				continue
 			}
 		}
-		sn := protowire.ConsumeFieldValue(num, wtyp, b)
-		if sn < 0 {
-			return protowire.ParseError(sn)
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
 		}
-		b = b[sn:]
 	}
 	return nil
 }

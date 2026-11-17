@@ -543,6 +543,7 @@ func TestLiteWireCompatibility(t *testing.T) {
 		name string
 		std  proto.Message
 		lite interface {
+			Size() int
 			Marshal() ([]byte, error)
 			Unmarshal([]byte) error
 		}
@@ -618,17 +619,41 @@ func TestLiteWireCompatibility(t *testing.T) {
 			freshStd: func() proto.Message { return &stdv1.QuotaWindow{} },
 		},
 		{
-			name: "transport-capabilities-packed-uint32",
-			std: &stdv1.Capabilities{
-				CapabilityId:    []byte{9, 8, 7},
-				ControlTypes:    []uint32{1, 2, 100},
-				SignalTypes:     []uint32{5, 6},
-				ExpiresAtMs:     999999,
-				FileDownload:    true,
-				MaxMessageBytes: 65536,
+			name: "machine-capabilities-packed-enum",
+			std: &stdv1.MachineCapabilities{
+				ImageUpload:    true,
+				FileUpload:     true,
+				MaxUploadBytes: 10485760,
+				MaxChunkBytes:  65536,
+				UploadFormats: []stdv1.ImageFormat{
+					stdv1.ImageFormat_IMAGE_FORMAT_PNG,
+					stdv1.ImageFormat_IMAGE_FORMAT_WEBP,
+				},
 			},
-			lite:     &v1.Capabilities{},
-			freshStd: func() proto.Message { return &stdv1.Capabilities{} },
+			lite:     &v1.MachineCapabilities{},
+			freshStd: func() proto.Message { return &stdv1.MachineCapabilities{} },
+		},
+		{
+			name: "answer-question-packed-int32-optional",
+			std: &stdv1.AnswerQuestionRequest{
+				SessionId:        "s1",
+				QuestionId:       "q1",
+				Option:           -1,
+				QuestionIndex:    &exitCode,
+				Options:          []int32{0, 1, -2, 100},
+				ObservedEventSeq: 77,
+			},
+			lite:     &v1.AnswerQuestionRequest{},
+			freshStd: func() proto.Message { return &stdv1.AnswerQuestionRequest{} },
+		},
+		{
+			name: "entropy-packed-double",
+			std: &stdcorev1.EntropyProvided{
+				RandomIds:  []string{"id1", "id2"},
+				UnitFloats: []float64{0.0, 0.25, 0.75, 1.0},
+			},
+			lite:     &corev1.EntropyProvided{},
+			freshStd: func() proto.Message { return &stdcorev1.EntropyProvided{} },
 		},
 		{
 			name:     "maps-string-scalar",
@@ -637,14 +662,73 @@ func TestLiteWireCompatibility(t *testing.T) {
 			freshStd: func() proto.Message { return &stdv1.CreateSessionRequest{} },
 		},
 		{
-			name: "maps-uint64-and-message-values",
+			name: "maps-uint64-and-message-values-and-packed-uint64",
 			std: &stdcorev1.ProjectionState{
-				Resolved:        map[string]*stdcorev1.ResolvedApproval{"a1": {Decision: stdv1.ApprovalDecision(1), Message: "ok"}},
-				CompletedAt:     map[uint64]uint64{3: 7, 0: 1},
-				ApprovalCallIds: map[uint64]string{5: "call-5"},
+				Resolved: map[string]*stdcorev1.ResolvedApproval{
+					"a1": {
+						Decision: stdv1.ApprovalDecision(1),
+						Message:  "ok",
+						Origin:   &stdv1.Origin{Kind: stdv1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "d1", RequestId: "r1"},
+					},
+					"a2": {Decision: stdv1.ApprovalDecision(2), Message: ""},
+				},
+				CompletedAt:      map[uint64]uint64{3: 7, 0: 1},
+				ApprovalCallIds:  map[uint64]string{5: "call-5"},
+				UnfinishedSeqs:   []uint64{10, 200, 300000},
+				NoResultSeqs:     []uint64{11},
+				TypedLocallySeqs: []uint64{12, 13},
 			},
 			lite:     &corev1.ProjectionState{},
 			freshStd: func() proto.Message { return &stdcorev1.ProjectionState{} },
+		},
+		{
+			name: "deep-nested-viewmodel-home",
+			std: &stdcorev1.ViewModel{
+				View: &stdcorev1.ViewModel_Home{
+					Home: &stdcorev1.HomeViewModel{
+						Headline: &stdcorev1.HomeHeadlineView{
+							Title: &stdcorev1.Text{
+								Key: "home.running",
+								Args: []*stdcorev1.TextArg{
+									{Name: "count", Value: &stdcorev1.TextArg_IntValue{IntValue: 3}},
+									{Name: "sub", Value: &stdcorev1.TextArg_TextValue{TextValue: &stdcorev1.Text{Key: "common.ok"}}},
+								},
+							},
+						},
+						Running: []*stdcorev1.SessionRowView{
+							{
+								SessionId:  "s-1",
+								Title:      &stdcorev1.Text{Key: "common.plain", Args: []*stdcorev1.TextArg{{Name: "value", Value: &stdcorev1.TextArg_StrValue{StrValue: "Fix bug"}}}},
+								SecondLine: &stdcorev1.Text{Key: "status.running"},
+								Agent:      stdv1.Agent_AGENT_CODEX,
+							},
+						},
+					},
+				},
+			},
+			lite:     &corev1.ViewModel{},
+			freshStd: func() proto.Message { return &stdcorev1.ViewModel{} },
+		},
+		{
+			name: "nested-project-prefs",
+			std: &stdv1.ProjectPrefs{
+				Schema:    1,
+				Pinned:    []*stdv1.ProjectPref{{Path: "/repo", SinceMs: 123456}},
+				RecentOps: []string{"op-1", "op-2"},
+				Settings: []*stdv1.ProjectSettings{
+					{
+						Path:      "/repo",
+						Agent:     stdv1.Agent_AGENT_CLAUDE,
+						MachineId: "m-1",
+						UpdatedMs: 999,
+						Agents: []*stdv1.AgentSettings{
+							{Agent: stdv1.Agent_AGENT_CLAUDE, Model: "opus", Effort: "high", Mode: stdv1.ApprovalMode_APPROVAL_MODE_AUTO, StandardContext: true},
+						},
+					},
+				},
+			},
+			lite:     &v1.ProjectPrefs{},
+			freshStd: func() proto.Message { return &stdv1.ProjectPrefs{} },
 		},
 	}
 
@@ -657,9 +741,13 @@ func TestLiteWireCompatibility(t *testing.T) {
 			if err := tc.lite.Unmarshal(wire); err != nil {
 				t.Fatal(err)
 			}
+			wantSize := tc.lite.Size()
 			roundWire, err := tc.lite.Marshal()
 			if err != nil {
 				t.Fatal(err)
+			}
+			if len(roundWire) != wantSize {
+				t.Fatalf("Size() = %d, len(Marshal()) = %d", wantSize, len(roundWire))
 			}
 			gotStd := tc.freshStd()
 			if err := proto.Unmarshal(roundWire, gotStd); err != nil {

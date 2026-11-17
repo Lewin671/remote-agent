@@ -1,7 +1,6 @@
 package lists
 
 import (
-	"fmt"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -561,6 +560,7 @@ func Plain(text string, listSeparator ...string) string {
 
 // ApprovalDisplay escapes control and bidi characters in approval text without altering the payload.
 func ApprovalDisplay(text string) string {
+	const hexDigits = "0123456789abcdef"
 	var b strings.Builder
 	b.Grow(len(text))
 	for _, r := range text {
@@ -570,7 +570,11 @@ func ApprovalDisplay(text string) string {
 			(r >= 0x200e && r <= 0x200f) ||
 			(r >= 0x202a && r <= 0x202e) ||
 			(r >= 0x2066 && r <= 0x2069) {
-			fmt.Fprintf(&b, "\\u%04x", r)
+			b.WriteString(`\u`)
+			b.WriteByte(hexDigits[(r>>12)&0xf])
+			b.WriteByte(hexDigits[(r>>8)&0xf])
+			b.WriteByte(hexDigits[(r>>4)&0xf])
+			b.WriteByte(hexDigits[r&0xf])
 		} else {
 			b.WriteRune(r)
 		}
