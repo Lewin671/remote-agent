@@ -143,7 +143,10 @@ fun HomeScreen() {
                     )
                 }
             }
-            item(key = "disk-reminders") { DiskReminderCards(state) }
+            item(key = "disk-reminders") {
+                val settingsView by LocalRemote.current.settingsView.collectAsState()
+                DiskReminderCards(settingsView.diskRemindersList)
+            }
             val emptyKind = if (vm.hasEmpty()) vm.empty.kind else HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED
             if (!hasHeadline && emptyKind == HomeEmptyKind.HOME_EMPTY_KIND_NONE && !hasRows) {
                 item(key = "loading") { Skeleton() }

@@ -61,8 +61,6 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
-import io.github.lewin671.remoteagent.core.StatusText
-import io.github.lewin671.remoteagent.core.machineRings
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.PairingUiState
@@ -587,10 +585,29 @@ fun DeviceScreen(
         }
         Column(Modifier.verticalScrollFaded()) {
             if (member && m.pathState.capabilities?.machineStatus == true) {
-                val fetch = LocalStatusFetch.current
-                val feed = rememberMachineFeed(id, 10_000, true, m.pathState.reachable) { fetch(remote, id) }
-                val text = StatusText(copy, LocalMessageLocale.current)
-                MachineRingsCard(machineRings(feed.last, m.pathState.reachable, text), m.pathState.reachable, onOpen = { nav.machineStatus(id) })
+                val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                val machineSettings by remote.machineSettingsView.collectAsState()
+                LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
+                DisposableEffect(id, owner) {
+                    val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
+                        when (ev) {
+                            androidx.lifecycle.Lifecycle.Event.ON_START ->
+                                remote.coreHost.watchMachineStatus(id, true, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+                            androidx.lifecycle.Lifecycle.Event.ON_STOP ->
+                                remote.coreHost.watchMachineStatus(id, false, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+                            else -> {}
+                        }
+                    }
+                    owner.lifecycle.addObserver(obs)
+                    if (owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                        remote.coreHost.watchMachineStatus(id, true, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+                    }
+                    onDispose {
+                        owner.lifecycle.removeObserver(obs)
+                        remote.coreHost.watchMachineStatus(id, false, io.github.lewin671.remoteagent.core.proto.MachinePollMode.MACHINE_POLL_MODE_OVERVIEW)
+                    }
+                }
+                MachineRingsCard(machineSettings.statusRingsList, m.pathState.reachable, onOpen = { nav.machineStatus(id) })
             }
             if (!member)
                 Notice(

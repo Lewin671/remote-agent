@@ -1,323 +1,486 @@
 package io.github.lewin671.remoteagent.ui
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector2D
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
-import androidx.compose.ui.unit.sp
-import io.github.lewin671.remoteagent.core.CHART_WINDOW_MS
-import io.github.lewin671.remoteagent.core.ChartPoint
-import io.github.lewin671.remoteagent.core.MachineTone
-import io.github.lewin671.remoteagent.core.chartRuns
-import io.github.lewin671.remoteagent.core.nearestSample
-import io.github.lewin671.remoteagent.core.valueAt
-import kotlinx.coroutines.launch
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sqrt
+import io.github.lewin671.remoteagent.core.proto.DiskPressureState
+import io.github.lewin671.remoteagent.core.proto.MachineChartPoint
+import io.github.lewin671.remoteagent.core.proto.MachineChartView
+import io.github.lewin671.remoteagent.core.proto.MachinePressureTone
+import io.github.lewin671.remoteagent.core.proto.MachineRingTone
+import kotlin.math.abs
+import kotlin.math.roundToLong
 
 /*
- * The drawing of 电脑状态 (ui-spec A; 界面稿 v2 第 ② 部分): the surfaces of its cards, the rolling digits,
- * a ring, the memory pressure scale, the disk bar, the chart and the row that slides to a new place.
+ * Drawings and motion for 电脑状态 (machine-status.md + ui-spec): ring gauges, rolling digits,
+ * pressure scale, disk stack, top-usage meter, and the 60fps Canvas history curve with touch scrubbing.
  */
 
-/** The page behind the cards: grey in the light theme, black in the dark one (界面稿: `--gbg`). */
-val Palette.statusPage: Color get() = if (dark) paper else gbg
+internal const val SWAP_MS = 350
 
-/** The card's own surface, `lift`: white in the light theme, the dark card grey in the dark one. */
-val Palette.lift: Color get() = if (dark) gbg else paper
+/** Stops continuous chart animation in tests where Espresso waits for main-thread frames to go idle. */
+val LocalChartFrozen = androidx.compose.runtime.staticCompositionLocalOf { false }
 
-/** Colour of a figure that needs attention: red, or orange (as text, its readable ink). */
-fun Palette.toneInk(tone: MachineTone, normal: Color, text: Boolean = true): Color = when (tone) {
-    MachineTone.NORMAL -> normal
-    MachineTone.WARN -> if (text) orangeInk else orange
-    MachineTone.CRITICAL -> red
+fun Palette.ringToneInk(tone: MachineRingTone, normal: Color, text: Boolean = true): Color = when (tone) {
+    MachineRingTone.MACHINE_RING_TONE_WARN -> if (text) orangeInk else orange
+    MachineRingTone.MACHINE_RING_TONE_CRITICAL -> red
+    else -> normal
 }
 
-/** A card of the page: radius 22, `lift`, and in the light theme the draft's soft shadow. */
+fun Palette.pressureToneInk(tone: MachinePressureTone, normal: Color, text: Boolean = true): Color = when (tone) {
+    MachinePressureTone.MACHINE_PRESSURE_TONE_HIGH -> if (text) orangeInk else orange
+    MachinePressureTone.MACHINE_PRESSURE_TONE_CRITICAL -> red
+    else -> normal
+}
+
+fun Palette.diskToneInk(state: DiskPressureState, normal: Color, text: Boolean = true): Color = when (state) {
+    DiskPressureState.DISK_PRESSURE_STATE_LOW -> if (text) orangeInk else orange
+    DiskPressureState.DISK_PRESSURE_STATE_CRITICAL -> red
+    else -> normal
+}
+
+/** The raised card surface with its 1px light edge. */
 fun Modifier.statusCard(p: Palette): Modifier {
-    val shape = Radii.R22
-    return (if (p.dark) this else this.shadow(6.dp, shape, clip = false, ambientColor = Color(0x0A000000), spotColor = Color(0x1A000000)))
-        .clip(shape).background(p.lift)
+    val edge = if (p.dark) p.faint else Color(0x0D000000)
+    return this
+        .clip(Radii.R22)
+        .background(p.gbg)
+        .border(0.5.dp, edge, Radii.R22)
 }
 
-private val tabular = "tnum"
-
-/** A figure's style with fixed-width digits so that rolling digits do not jitter. */
-fun TextStyle.digits(): TextStyle = copy(fontFeatureSettings = tabular)
+/** Tabular numerals in TextStyle without pulling any font asset. */
+fun TextStyle.digits(): TextStyle = copy(fontFeatureSettings = "tnum")
 
 /**
- * A number whose digits roll (ui-spec A4): only the places that changed move, up when the number grew
- * and down when it fell, 200 ms. With the system's animations reduced it is just text.
+ * Each character glides up/down on its own rail when [value] changes (machine-status.md
+ * 「数字滚轮」). Falls back to plain text when [Motion.reduced] or [LocalChartFrozen] is active.
  */
 @Composable
-fun RollingText(value: String, number: Double, style: TextStyle, color: Color, modifier: Modifier = Modifier, fixedWidth: Boolean = true) {
-    val shape = if (fixedWidth) style.digits() else style
-    if (Motion.reduced) {
-        Text(value, modifier, style = shape, color = color, maxLines = 1)
+fun RollingText(
+    value: String,
+    number: Double,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fixedWidth: Boolean = true,
+) {
+    val static = Motion.reduced || LocalChartFrozen.current
+    val styled = style.digits()
+    if (static) {
+        Text(value, style = styled, color = color, maxLines = 1, softWrap = false, modifier = modifier)
         return
     }
-    val last = remember { doubleArrayOf(number) }
-    val up = number >= last[0]
-    SideEffect { last[0] = number }
-    Row(modifier.clipToBounds()) {
-        value.forEachIndexed { i, ch ->
-            androidx.compose.runtime.key(value.length - i) {
-                AnimatedContent(
-                    targetState = ch,
-                    transitionSpec = {
-                        val d = if (up) 1 else -1
-                        (slideInVertically(tween(Motion.BASE, easing = Motion.Decelerate)) { d * (it * 0.6f).toInt() } + fadeIn(tween(Motion.BASE)))
-                            .togetherWith(slideOutVertically(tween(Motion.BASE, easing = Motion.Decelerate)) { -d * (it * 0.6f).toInt() } + fadeOut(tween(Motion.FAST)))
-                    },
-                ) { c -> Text(c.toString(), style = shape, color = color, maxLines = 1, softWrap = false) }
+    var prev by remember { mutableStateOf(value to number) }
+    val dir = if (number >= prev.second) 1 else -1
+    if (value != prev.first) prev = value to number
+
+    Row(modifier) {
+        value.forEachIndexed { idx, ch ->
+            val fromEnd = value.length - 1 - idx
+            key(if (fixedWidth) idx else fromEnd) {
+                if (ch in '0'..'9') RollingDigit(ch, dir, styled, color)
+                else Text(ch.toString(), style = styled, color = color, maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
-/** A row that glides to its new place when the list around it reorders (300 ms); snaps with reduced motion. */
-fun Modifier.animatePlacement(ms: Int = 300): Modifier = composed {
-    val scope = rememberCoroutineScope()
-    var target by remember { mutableStateOf(IntOffset.Zero) }
-    var anim by remember { mutableStateOf<Animatable<IntOffset, AnimationVector2D>?>(null) }
-    this.onPlaced { target = it.positionInParent().round() }.offset {
-        val a = anim ?: Animatable(target, IntOffset.VectorConverter).also { anim = it }
-        if (a.targetValue != target) scope.launch { if (Motion.reduced) a.snapTo(target) else a.animateTo(target, tween(ms, easing = Motion.Decelerate)) }
-        a.value - target
-    }
-}
-
-/** A progress ring (ui-spec A2): 54 across, line 5.5, round caps, from twelve o'clock; the icon in its middle. */
 @Composable
-fun StatusRing(fraction: Float?, tone: MachineTone, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
-    val p = pal
-    val shown by animateFloatAsState(fraction ?: 0f, if (Motion.reduced) androidx.compose.animation.core.snap() else tween(400, easing = Motion.Decelerate))
-    val color = p.toneInk(tone, p.ink, text = false)
-    Box(modifier.size(54.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val w = 5.5.dp.toPx()
-            val inset = w / 2
-            val arc = Size(size.width - w, size.height - w)
-            drawArc(p.fill2, 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(w))
-            if (fraction != null && shown > 0.002f) drawArc(color, -90f, 360f * shown, false, Offset(inset, inset), arc, style = Stroke(w, cap = StrokeCap.Round))
+private fun RollingDigit(target: Char, direction: Int, style: TextStyle, color: Color) {
+    var shown by remember { mutableStateOf(target) }
+    var prior by remember { mutableStateOf<Char?>(null) }
+    val progress = remember { Animatable(1f) }
+    LaunchedEffect(target) {
+        if (target == shown) return@LaunchedEffect
+        prior = shown
+        shown = target
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(340, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)))
+        prior = null
+    }
+    val t = progress.value
+    Box(Modifier.clip(androidx.compose.ui.graphics.RectangleShape)) {
+        // Reserve single-digit width from a stable zero.
+        Text("0", style = style, color = Color.Transparent, maxLines = 1, softWrap = false)
+        prior?.let { old ->
+            val yFrac = if (direction >= 0) -t else t
+            Text(
+                old.toString(),
+                style = style,
+                color = color,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .alpha(1f - t)
+                    .let { m ->
+                        m.offsetYFraction(yFrac * 0.8f)
+                    },
+            )
         }
-        Ic(icon, 18.dp, p.toneInk(tone, p.ink2, text = false))
+        val enterFrac = if (prior == null) 0f else (if (direction >= 0) 1f - t else -(1f - t))
+        Text(
+            shown.toString(),
+            style = style,
+            color = color,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .alpha(if (prior == null) 1f else t)
+                .offsetYFraction(enterFrac * 0.8f),
+        )
     }
 }
 
-/** The pressure scale (ui-spec A3 ②): 6 high, green to yellow to red, with the dot at the current pressure. */
+private fun Modifier.offsetYFraction(fraction: Float): Modifier =
+    if (fraction == 0f) this else graphicsLayer { translationY = size.height * fraction }
+
+/** One circular ring gauge with an icon at the center. */
+@Composable
+fun StatusRing(
+    fraction: Float?,
+    tone: MachineRingTone,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    val p = pal
+    val accent = p.ringToneInk(tone, p.ink, text = false)
+    val track = if (p.dark) Color(0x18FFFFFF) else Color(0x14000000)
+    val animated by animateFloatAsState(
+        targetValue = (fraction ?: 0f).coerceIn(0f, 1f),
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "ring",
+    )
+    Box(modifier.size(34.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 3.dp.toPx()
+            val inset = stroke / 2f
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(track, 0f, 360f, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            if (fraction != null && animated > 0.005f) {
+                drawArc(accent, -90f, 360f * animated, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
+        }
+        Ic(icon, 14.dp, if (fraction == null) p.ink3 else accent)
+    }
+}
+
+/** Smooth 3-zone gradient scale (blue -> orange -> red) with a floating thumb at [position]. */
 @Composable
 fun PressureScale(position: Float, modifier: Modifier = Modifier) {
     val p = pal
-    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth().height(12.dp)) {
-        Box(
-            Modifier.align(Alignment.CenterStart).fillMaxWidth().height(6.dp).clip(RoundedCornerShapeDp(3.dp)).background(
-                Brush.horizontalGradient(0f to p.green, .45f to p.green, .7f to p.yellow, 1f to p.red),
-            ),
+    val clamped = position.coerceIn(0f, 1f)
+    val animated by animateFloatAsState(
+        targetValue = clamped,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "pressure",
+    )
+    val blue = p.blue
+    val orange = p.orange
+    val red = p.red
+    val paper = p.paper
+    Canvas(modifier.fillMaxWidth().height(10.dp)) {
+        val barH = 4.dp.toPx()
+        val top = (size.height - barH) / 2f
+        val r = barH / 2f
+        drawRoundRect(
+            brush = Brush.horizontalGradient(listOf(blue, orange, red)),
+            topLeft = Offset(0f, top),
+            size = Size(size.width, barH),
+            cornerRadius = CornerRadius(r, r),
         )
-        val x = (maxWidth - 12.dp) * position.coerceIn(0f, 1f)
-        // 12 across in ink, ringed by 3 of the card's own colour.
-        Box(Modifier.align(Alignment.CenterStart).offset(x = x - 3.dp).requiredSize(18.dp).background(p.lift, CircleShape).padding(3.dp).background(p.ink, CircleShape))
+        val cx = (size.width * animated).coerceIn(5.dp.toPx(), size.width - 5.dp.toPx())
+        val cy = size.height / 2f
+        drawCircle(paper, radius = 5.dp.toPx(), center = Offset(cx, cy))
+        drawCircle(
+            when {
+                animated >= 0.72f -> red
+                animated >= 0.45f -> orange
+                else -> blue
+            },
+            radius = 3.5.dp.toPx(),
+            center = Offset(cx, cy),
+        )
     }
 }
 
-private fun RoundedCornerShapeDp(r: Dp) = androidx.compose.foundation.shape.RoundedCornerShape(r)
-
-/** The disk bar (ui-spec A3 ②): remote-agent's share in ink, the rest used in `faint`, the free room as the groove. */
+/** Disk fill bar fed directly from Core's [usedFraction] and [state]. */
 @Composable
-fun DiskBar(agentShare: Float, otherShare: Float, tone: MachineTone, modifier: Modifier = Modifier) {
+fun DiskBar(usedFraction: Float, state: DiskPressureState, modifier: Modifier = Modifier) {
     val p = pal
-    val red = tone == MachineTone.CRITICAL
-    val a = if (red) p.red else p.ink
-    val b = if (red) p.red else p.faint
-    val agent = agentShare.coerceIn(0f, 1f)
-    val other = otherShare.coerceIn(0f, 1f - agent)
-    val rest = (1f - agent - other).coerceAtLeast(0f)
-    Row(modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShapeDp(5.dp)).background(p.fill2), horizontalArrangement = Arrangement.spacedBy(1.5.dp)) {
-        if (agent > 0.0005f) Box(Modifier.weight(agent).fillMaxSize().background(a))
-        if (other > 0.0005f) Box(Modifier.weight(other).fillMaxSize().background(b))
-        if (rest > 0.0005f) Box(Modifier.weight(rest).fillMaxSize())
+    val fill = usedFraction.coerceIn(0f, 1f)
+    val color = p.diskToneInk(state, p.blue, text = false)
+    val track = if (p.dark) Color(0x18FFFFFF) else Color(0x14000000)
+    Row(
+        modifier.fillMaxWidth().height(6.dp).clip(Radii.Pill).background(track),
+    ) {
+        if (fill > 0.005f) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(fill).background(color))
+        }
     }
 }
 
-/** The bar of a ranking row and the words that follow it: the bar's length is its share of the container, never crowding the words out. */
+/** Horizontal usage meter for Top Usage rows. */
 @Composable
 fun UsageMeter(fraction: Float, top: Boolean, dim: Boolean, secondary: String, modifier: Modifier = Modifier) {
     val p = pal
-    val shown by animateFloatAsState(fraction, if (Motion.reduced) androidx.compose.animation.core.snap() else tween(300, easing = Motion.Decelerate))
-    val color = if (dim || !top) p.ink3 else p.ink
-    Layout(
-        modifier = modifier.fillMaxWidth(),
-        content = {
-            Box(Modifier.height(5.dp).clip(RoundedCornerShapeDp(2.5.dp)).background(color))
-            Text(secondary, style = ts(12.5.sp).digits(), color = if (dim) p.ink3 else p.ink2, maxLines = 1)
-        },
-    ) { measurables, constraints ->
-        val gap = 10.dp.roundToPx()
-        val text = measurables[1].measure(constraints.copy(minWidth = 0, maxWidth = max(0, constraints.maxWidth - gap - 5.dp.roundToPx())))
-        val full = constraints.maxWidth
-        val wanted = (shown * full).toInt().coerceAtLeast(5.dp.roundToPx())
-        val barW = min(wanted, full - text.width - gap).coerceAtLeast(5.dp.roundToPx())
-        val bar = measurables[0].measure(androidx.compose.ui.unit.Constraints.fixed(barW, 5.dp.roundToPx()))
-        val h = max(bar.height, text.height)
-        layout(full, h) {
-            bar.placeRelative(0, (h - bar.height) / 2)
-            text.placeRelative(barW + gap, (h - text.height) / 2)
+    val barColor = when {
+        dim -> p.ink3
+        top -> p.blue
+        else -> p.ink2.copy(alpha = .55f)
+    }
+    val track = if (p.dark) Color(0x16FFFFFF) else Color(0x10000000)
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).height(4.dp).clip(Radii.Pill).background(track)) {
+            val w = fraction.coerceIn(0f, 1f)
+            if (w > 0.005f) Box(Modifier.fillMaxHeight().fillMaxWidth(w).background(barColor))
+        }
+        if (secondary.isNotEmpty()) {
+            Spacer(Modifier.width(8.dp))
+            Text(secondary, style = T.s12.digits(), color = p.ink3, maxLines = 1)
         }
     }
 }
 
-/** True while the frame clock of the chart must stand still (tests and screenshots draw a fixed frame). */
-val LocalChartFrozen = androidx.compose.runtime.staticCompositionLocalOf { false }
-
-/** The smooth curve through the points, without overshoot (a monotone cubic). */
+/** Smooth Catmull-Rom / midpoint quadratic Bezier path across [pts]. */
 fun smoothPath(pts: List<Offset>, into: Path = Path()): Path {
+    into.reset()
     if (pts.isEmpty()) return into
-    into.moveTo(pts[0].x, pts[0].y)
+    into.moveTo(pts.first().x, pts.first().y)
     if (pts.size == 1) return into
-    val n = pts.size
-    val dx = FloatArray(n - 1) { pts[it + 1].x - pts[it].x }
-    val d = FloatArray(n - 1) { if (dx[it] == 0f) 0f else (pts[it + 1].y - pts[it].y) / dx[it] }
-    val m = FloatArray(n)
-    m[0] = d[0]; m[n - 1] = d[n - 2]
-    for (i in 1 until n - 1) m[i] = if (d[i - 1] * d[i] <= 0f) 0f else (d[i - 1] + d[i]) / 2
-    for (i in 0 until n - 1) {
-        if (d[i] == 0f) { m[i] = 0f; m[i + 1] = 0f; continue }
-        val a = m[i] / d[i]; val b = m[i + 1] / d[i]
-        val s = a * a + b * b
-        if (s > 9f) { val t = 3f / sqrt(s); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i] }
+    if (pts.size == 2) {
+        into.lineTo(pts[1].x, pts[1].y)
+        return into
     }
-    for (i in 0 until n - 1) {
-        val h = dx[i] / 3
-        into.cubicTo(pts[i].x + h, pts[i].y + m[i] * h, pts[i + 1].x - h, pts[i + 1].y - m[i + 1] * h, pts[i + 1].x, pts[i + 1].y)
+    for (i in 0 until pts.size - 1) {
+        val mid = Offset((pts[i].x + pts[i + 1].x) / 2f, (pts[i].y + pts[i + 1].y) / 2f)
+        if (i == 0) into.lineTo(mid.x, mid.y)
+        else into.quadraticTo(pts[i].x, pts[i].y, mid.x, mid.y)
     }
+    into.lineTo(pts.last().x, pts.last().y)
     return into
 }
 
-/**
- * The chart (ui-spec A3 ①): the last 2 minutes, [endMs] being "now" at the right edge; the vertical axis runs 0 to
- * [ceiling]. Pressing and dragging picks a sample ([onScrub] gets it, or null on release) and draws a line and a dot
- * on it. [dim] is for stale data.
- */
+internal fun swapOldAlpha(progress: Float): Float = (1f - (progress * SWAP_MS) / 100f).coerceIn(0f, 1f)
+internal fun swapNewAlpha(progress: Float): Float = (((progress * SWAP_MS) - 230f) / 120f).coerceIn(0f, 1f)
+
+internal data class ChartRun(val points: List<Offset>)
+
+internal fun chartRuns(
+    points: List<MachineChartPoint>,
+    windowStartMs: Long,
+    windowEndMs: Long,
+    gapThresholdMs: Long,
+    ceiling: Float,
+    w: Float,
+    h: Float,
+): List<ChartRun> {
+    val span = (windowEndMs - windowStartMs).coerceAtLeast(1L).toFloat()
+    val cap = ceiling.coerceAtLeast(1f)
+    val runs = ArrayList<ArrayList<Offset>>()
+    var current = ArrayList<Offset>()
+    var lastTime = Long.MIN_VALUE
+    for (pt in points) {
+        if (lastTime != Long.MIN_VALUE && gapThresholdMs > 0 && pt.timeMs - lastTime > gapThresholdMs) {
+            if (current.isNotEmpty()) runs.add(current)
+            current = ArrayList()
+        }
+        val x = ((pt.timeMs - windowStartMs).toFloat() / span).coerceIn(0f, 1f) * w
+        val y = (1f - (pt.value.toFloat() / cap).coerceIn(0f, 1f)) * h
+        current.add(Offset(x, y))
+        lastTime = pt.timeMs
+    }
+    if (current.isNotEmpty()) runs.add(current)
+    return runs.map { ChartRun(it) }
+}
+
+internal fun nearestSampleIndex(
+    points: List<MachineChartPoint>,
+    startMs: Long,
+    endMs: Long,
+    fracX: Float,
+): Int {
+    if (points.isEmpty()) return -1
+    val targetMs = startMs + ((endMs - startMs).coerceAtLeast(1L) * fracX.coerceIn(0f, 1f)).roundToLong()
+    var bestIdx = 0
+    var bestDist = Long.MAX_VALUE
+    for (i in points.indices) {
+        val d = abs(points[i].timeMs - targetMs)
+        if (d < bestDist) {
+            bestDist = d
+            bestIdx = i
+        }
+    }
+    return bestIdx
+}
+
+/** Smooth Canvas history curve fed from Core's [MachineChartView], forwarding scrub & a11y steps. */
 @Composable
 fun StatusChart(
-    points: List<ChartPoint>,
-    ceiling: Double,
-    endMs: Double,
-    onScrub: (ChartPoint?) -> Unit,
+    chart: MachineChartView,
+    accent: Color,
+    onScrub: (pointIndex: Int, clear: Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    color: Color = pal.ink,
 ) {
     val p = pal
-    val d = LocalDensity.current
-    var width by remember { mutableStateOf(0f) }
-    var fingerX by remember { mutableStateOf<Float?>(null) }
-    val end = endMs.toLong()
-    val selected = fingerX?.takeIf { width > 0f }?.let { x ->
-        val shown = points.filter { it.timeMs <= end }
-        shown.getOrNull(nearestSample(shown, endMs - (1.0 - x / width.toDouble()) * CHART_WINDOW_MS))
-    }
-    val report by rememberUpdatedState(onScrub)
-    val haptic = androidx.compose.ui.platform.LocalView.current
-    LaunchedEffect(selected?.timeMs) {
-        report(selected)
-        if (selected != null) haptic.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-    }
-    Canvas(
-        modifier.fillMaxWidth().height(104.dp).onSizeChanged { width = it.width.toFloat() }.pointerInput(Unit) {
-            awaitEachGesture {
-                val down = awaitFirstDown(requireUnconsumed = false)
-                fingerX = down.position.x
-                down.consume()
-                while (true) {
-                    val event = awaitPointerEvent()
-                    val c = event.changes.firstOrNull { it.id == down.id }
-                    if (c == null || !c.pressed) break
-                    fingerX = c.position.x
-                    c.consume()
-                }
-                fingerX = null
+    val points = chart.pointsList
+    val currentOnScrub by rememberUpdatedState(onScrub)
+    val currentPoints by rememberUpdatedState(points)
+    val currentChart by rememberUpdatedState(chart)
+
+    val frozen = LocalChartFrozen.current || Motion.reduced
+    var animTick by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(frozen, points.size, chart.hasScrub) {
+        if (frozen || chart.hasScrub || points.isEmpty()) return@LaunchedEffect
+        var startNanos = 0L
+        while (true) {
+            withFrameNanos { nanos ->
+                if (startNanos == 0L) startNanos = nanos
+                animTick = (nanos - startNanos) / 16_000_000L
             }
-        },
+        }
+    }
+
+    val hairline = if (p.dark) Color(0x1FFFFFFF) else Color(0x17000000)
+    val grid = if (p.dark) Color(0x14FFFFFF) else Color(0x10000000)
+    val paper = p.paper
+
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(92.dp)
+            .pointerInput(chart.windowStartMs, chart.windowEndMs) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val w = size.width.toFloat().coerceAtLeast(1f)
+                    val c = currentChart
+                    val idx0 = nearestSampleIndex(currentPoints, c.windowStartMs, c.windowEndMs, down.position.x / w)
+                    if (idx0 >= 0) currentOnScrub(idx0, false)
+                    var lastIdx = idx0
+                    do {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        val idx = nearestSampleIndex(currentPoints, c.windowStartMs, c.windowEndMs, change.position.x / w)
+                        if (idx >= 0 && idx != lastIdx) {
+                            lastIdx = idx
+                            currentOnScrub(idx, false)
+                        }
+                    } while (true)
+                    currentOnScrub(lastIdx.coerceAtLeast(0), true)
+                }
+            },
     ) {
-        val h = size.height
-        val pad = 4.dp.toPx()
-        fun px(x: Double, y: Double) = Offset((x * size.width).toFloat(), (pad + (1 - y) * (h - 2 * pad)).toFloat())
-        for (run in chartRuns(points, end, ceiling)) {
-            if (run.size < 2) continue
-            val pts = run.map { px(it.x, it.y) }
-            val line = smoothPath(pts)
-            val fill = Path().apply { addPath(line); lineTo(pts.last().x, h); lineTo(pts.first().x, h); close() }
-            val top = pts.minOf { it.y }
-            drawPath(fill, Brush.verticalGradient(listOf(color.copy(alpha = .16f), color.copy(alpha = 0f)), startY = top, endY = h))
-            drawPath(line, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
-        }
-        valueAt(points, end)?.let { v ->
-            val o = px(1.0, (v / ceiling).coerceIn(0.0, 1.0))
-            drawCircle(color, 3.5.dp.toPx(), Offset(size.width - 4.dp.toPx(), o.y))
-        }
-        selected?.let { s ->
-            val x = ((s.timeMs - (end - CHART_WINDOW_MS)).toDouble() / CHART_WINDOW_MS * size.width).toFloat()
-            drawLine(p.ink3, Offset(x, 0f), Offset(x, h), strokeWidth = 1.dp.toPx())
-            drawCircle(color, 3.5.dp.toPx(), px(x.toDouble() / size.width, (s.value / ceiling).coerceIn(0.0, 1.0)).copy(x = x))
+        Canvas(Modifier.fillMaxSize()) {
+            // 2px padding top/bottom so strokes aren't clipped.
+            val padY = 4.dp.toPx()
+            val h = (size.height - padY * 2f).coerceAtLeast(1f)
+            val w = size.width
+            // Reference dashed horizontal line at 50%.
+            drawLine(
+                color = grid,
+                start = Offset(0f, padY + h * 0.5f),
+                end = Offset(w, padY + h * 0.5f),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
+            )
+            // Keep animTick read so Compose re-draws smoothly when running live.
+            @Suppress("UNUSED_VARIABLE")
+            val frame = animTick
+
+            if (points.isEmpty()) return@Canvas
+            val ceiling = chart.ceiling.toFloat().takeIf { it > 0f } ?: 100f
+            val runs = chartRuns(
+                points = points,
+                windowStartMs = chart.windowStartMs,
+                windowEndMs = chart.windowEndMs,
+                gapThresholdMs = chart.gapThresholdMs,
+                ceiling = ceiling,
+                w = w,
+                h = h,
+            )
+            val strokePx = 2.dp.toPx()
+            for (run in runs) {
+                val shifted = run.points.map { Offset(it.x, it.y + padY) }
+                if (shifted.size == 1) {
+                    drawCircle(accent, radius = 3.dp.toPx(), center = shifted[0])
+                } else {
+                    val line = smoothPath(shifted)
+                    val fill = Path().apply {
+                        addPath(line)
+                        lineTo(shifted.last().x, padY + h)
+                        lineTo(shifted.first().x, padY + h)
+                        close()
+                    }
+                    drawPath(
+                        path = fill,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(accent.copy(alpha = 0.22f), accent.copy(alpha = 0.0f)),
+                            startY = padY,
+                            endY = padY + h,
+                        ),
+                    )
+                    drawPath(line, accent, style = Stroke(strokePx, cap = StrokeCap.Round))
+                }
+            }
+
+            if (chart.hasScrub && chart.scrubIndex in points.indices) {
+                val pt = points[chart.scrubIndex]
+                val span = (chart.windowEndMs - chart.windowStartMs).coerceAtLeast(1L).toFloat()
+                val sx = ((pt.timeMs - chart.windowStartMs).toFloat() / span).coerceIn(0f, 1f) * w
+                val sy = (1f - (pt.value.toFloat() / ceiling).coerceIn(0f, 1f)) * h + padY
+                drawLine(hairline, Offset(sx, 0f), Offset(sx, size.height), strokeWidth = 1.dp.toPx())
+                drawCircle(paper, radius = 5.dp.toPx(), center = Offset(sx, sy))
+                drawCircle(accent, radius = 3.5.dp.toPx(), center = Offset(sx, sy))
+            }
         }
     }
 }

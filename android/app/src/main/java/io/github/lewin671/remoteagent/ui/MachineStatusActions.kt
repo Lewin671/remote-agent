@@ -27,13 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.lewin671.remoteagent.core.DiskReminder
-import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.StatusText
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.cleanupDraft
-import io.github.lewin671.remoteagent.core.diskReminders
-import io.github.lewin671.remoteagent.core.recentMachineProject
+import io.github.lewin671.remoteagent.core.proto.DiskReminderView
 
 /*
  * The other places 电脑状态 and 磁盘保护 show (ui-spec B1, B3, B4): the cards at the top of the home, the card that
@@ -42,21 +37,17 @@ import io.github.lewin671.remoteagent.core.recentMachineProject
 
 /** The home's reminder cards (界面稿「主页提醒」): one per computer under 10 GB, the tightest first. */
 @Composable
-fun DiskReminderCards(state: RemoteState, modifier: Modifier = Modifier) {
-    val copy = uiText()
-    val locale = LocalMessageLocale.current
+fun DiskReminderCards(reminders: List<DiskReminderView>, modifier: Modifier = Modifier) {
+    if (reminders.isEmpty()) return
     val nav = LocalNav.current
-    val cards = remember(state, copy, locale) { diskReminders(state, StatusText(copy, locale)) { machineLabel(state, it) } }
-    if (cards.isEmpty()) return
     Column(modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        for (c in cards) androidx.compose.runtime.key(c.machineId) { DiskReminderCard(c) { nav.machineStatus(c.machineId) } }
+        for (c in reminders) androidx.compose.runtime.key(c.machineId) { DiskReminderCard(c) { nav.machineStatus(c.machineId) } }
     }
 }
 
 @Composable
-fun DiskReminderCard(c: DiskReminder, onOpen: () -> Unit) {
+fun DiskReminderCard(c: DiskReminderView, onOpen: () -> Unit) {
     val p = pal
-    val copy = uiText()
     val colors = if (c.critical) listOf(Color(0xFFFF6B60), Color(0xFFE5342A)) else listOf(Color(0xFFFFB340), Color(0xFFF08A00))
     Row(
         Modifier.fillMaxWidth().clip(Radii.R22).background(p.gbg).clickable(role = Role.Button, onClick = onOpen)
@@ -68,8 +59,8 @@ fun DiskReminderCard(c: DiskReminder, onOpen: () -> Unit) {
             Ic(Lucide.HardDrive, 19.dp, Color.White)
         }
         Column(Modifier.weight(1f)) {
-            Text(copy(c.title), style = ts(16.sp, FontWeight.SemiBold), color = p.ink)
-            Text(copy(c.detail), style = ts(14.sp), color = p.ink2)
+            Text(uiText(c.title), style = ts(16.sp, FontWeight.SemiBold), color = p.ink)
+            Text(uiText(c.detail), style = ts(14.sp), color = p.ink2)
         }
         Arrow(p.ink3, T.s15)
     }
@@ -124,27 +115,4 @@ internal fun cleanupDraftText(existing: String, prompt: String): String {
         trimmed == prompt || trimmed.endsWith("\n\n$prompt") -> trimmed
         else -> "$trimmed\n\n$prompt"
     }
-}
-
-/**
- * Readies the draft of 让 Agent 帮我清理 (ui-spec B4): the computer chosen, the project the computer used last, the
- * words in the box after what was already there. Nothing is sent. The project's key, or null (the prompt is held for the
- * chooser) when the computer has no project yet.
- */
-fun prepareCleanupDraft(
-    state: RemoteState,
-    machine: String,
-    prompt: String,
-    coreHost: io.github.lewin671.remoteagent.core.CoreHost? = null,
-): String? {
-    val project = state.machines[machine]?.meta?.let { recentMachineProject(it) }
-    if (project == null) {
-        CleanupDraft.hold(machine, prompt)
-        return null
-    }
-    val draft = ImageDrafts.forProject(project).text
-    draft.value = cleanupDraft(draft.value, prompt)
-    coreHost?.openNewSession(project)
-    coreHost?.selectNewSessionMachine(machine)
-    return project
 }

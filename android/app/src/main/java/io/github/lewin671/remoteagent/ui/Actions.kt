@@ -43,7 +43,7 @@ class Action(private val scope: CoroutineScope) {
             } catch (e: Exception) {
                 error = displayError(e)
                 unknown = (e as? CommandException)?.unknown == true
-                diskFull = io.github.lewin671.remoteagent.core.isDiskFull(e)
+                diskFull = (e as? CommandException)?.code == "disk_full"
             } finally {
                 running = false
             }

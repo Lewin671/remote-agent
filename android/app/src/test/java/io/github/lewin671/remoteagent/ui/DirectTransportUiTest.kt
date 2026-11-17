@@ -17,11 +17,9 @@ import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.DeviceView
 import io.github.lewin671.remoteagent.core.Link
-import io.github.lewin671.remoteagent.core.MachinePollState
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.StatusMetric
 import io.github.lewin671.remoteagent.core.transport.DirectFailReason
 import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.transport.DirectStatus
@@ -316,26 +314,21 @@ class DirectTransportUiTest {
 
     @Test
     fun machineStatusDoesNotDisplayTransportPaths() {
-        val sampleStatus = MachineFixtures.status().build()
-        val feed = MachineFeed(MachinePollState.LIVE, sampleStatus, MachineFixtures.T0, MachineFixtures.T0 + 118_000L) {}
+        val vm = ScreenGoldenLoader.machineStatusView("machine_status_lifecycle", "liveCriticalDisk")
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalChartFrozen provides true) {
                     MachineStatusContent(
-                        name = "desk.example",
-                        feed = feed,
-                        nowMs = MachineFixtures.T0 + 118_000L,
+                        view = vm,
                         main = StatusMetric.CPU,
                         onMain = {},
-                        showSessions = true,
-                        onShowSessions = {},
-                        titleOf = { null },
-                        agentOf = { null },
+                        onScrub = { _, _, _ -> },
+                        onSelectTab = {},
                         onBack = {},
-                        onSession = {},
+                        onRetry = {},
                         onOpenStorage = {},
                         onCleanup = {},
-                        onRetry = {},
+                        onSession = {},
                     )
                 }
             }
