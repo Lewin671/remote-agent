@@ -41,10 +41,15 @@ import UIKit
         // Selection requires the active window, as it does for a real long press.
         #expect(window.isKeyWindow)
         // The views behind selectable text are made after the first layout.
-        try await Task.sleep(for: .milliseconds(500))
         func count(_ view: UIView) -> Int {
             (String(describing: type(of: view)).contains("TextSelection") ? 1 : 0)
                 + view.subviews.reduce(0) { $0 + count($1) }
+        }
+        var frames = 0
+        try await waitForLayout {
+            frames += 1
+            if selectable { return count(host.view) > 0 }
+            return frames >= 3
         }
         return count(host.view)
     }
@@ -93,7 +98,7 @@ import UIKit
             if let text = view as? UITextView { return text }
             return view.subviews.lazy.compactMap { find($0) }.first
         }
-        await eventually("selection viewport laid out") {
+        try await waitForLayout {
             guard let view = find(host.view) else { return false }
             return view.bounds.width > 0 && view.bounds.height > 0 && view.contentSize.height > 0
         }
@@ -144,13 +149,42 @@ import UIKit
             let range = (message as NSString).range(of: "最后一段。")
             view.selectedRange = range
             view.scrollRangeToVisible(range)
-            try await Task.sleep(for: .milliseconds(300))
+            view.layoutIfNeeded()
+            var lastOffset: CGFloat?
+            var stableFrames = 0
+            try await waitForLayout {
+                let y = view.contentOffset.y
+                if y > 100, let lastOffset, abs(y - lastOffset) < 0.5 {
+                    stableFrames += 1
+                } else {
+                    stableFrames = 0
+                }
+                lastOffset = y
+                return stableFrames >= 2
+            }
             let offset = view.contentOffset.y
             #expect(offset > 100)
             host.rootView = AnyView(
                 MessageTextSelection(text: message, onDone: {}).dynamicTypeSize(.large).environment(
                     \.colorScheme, .dark))
-            try await Task.sleep(for: .milliseconds(300))
+            host.view.setNeedsLayout()
+            host.view.layoutIfNeeded()
+            var lastAfter: CGFloat?
+            var settledFrames = 0
+            try await waitForLayout {
+                guard view.traitCollection.userInterfaceStyle == .dark else {
+                    settledFrames = 0
+                    return false
+                }
+                let y = view.contentOffset.y
+                if let lastAfter, abs(y - lastAfter) < 0.5 {
+                    settledFrames += 1
+                } else {
+                    settledFrames = 0
+                }
+                lastAfter = y
+                return settledFrames >= 2
+            }
             #expect(
                 view.isDescendant(of: host.view),
                 "The test must inspect the text view still on screen")

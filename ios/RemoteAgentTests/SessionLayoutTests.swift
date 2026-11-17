@@ -15,8 +15,8 @@ import UIKit
         var on = false
     }
 
-    /// Lays `view` out in a window `width` wide and waits until `done` holds, or a second.
-    private func show<V: View>(_ view: V, width: CGFloat, until done: @MainActor () -> Bool) async throws {
+    /// Lays `view` out in a window `width` wide and waits until `done` holds, or 5 seconds.
+    private func show<V: View>(_ view: V, width: CGFloat, until done: @MainActor @escaping () -> Bool) async throws {
         await WindowTestGate.shared.acquire()
         defer { WindowTestGate.shared.release() }
         let host = UIHostingController(rootView: view)
@@ -26,14 +26,21 @@ import UIKit
         window.rootViewController = host
         window.isHidden = false
         defer { window.isHidden = true }
-        for _ in 0..<100 where !done() { try await Task.sleep(for: .milliseconds(10)) }
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        try await waitForLayout { done() }
     }
 
-    private func cut(_ text: String, width: CGFloat = 320) async throws -> Bool {
+    private func cut(_ text: String, width: CGFloat = 320, expectCut: Bool = true) async throws -> Bool {
         let flag = Flag()
         let view = CutText(text, style: .subheadline, color: DS.ink, lines: 6, cut: Binding(get: { flag.on }, set: { flag.on = $0 }))
             .frame(maxWidth: .infinity, alignment: .leading)
-        try await show(view, width: width) { flag.on }
+        var frames = 0
+        try await show(view, width: width) {
+            frames += 1
+            if flag.on { return true }
+            return !expectCut && frames >= 4
+        }
         return flag.on
     }
 
@@ -47,7 +54,7 @@ import UIKit
         #expect(!planFolds(items, lines: 6))
         #expect(try await cut(planPreview(items, lines: 6)))
         // What fits is not offered to be opened.
-        #expect(try await !cut(planPreview("1. 抽出 hook\n2. 换成虚拟列表\n3. 更新文档", lines: 6)))
+        #expect(try await !cut(planPreview("1. 抽出 hook\n2. 换成虚拟列表\n3. 更新文档", lines: 6), expectCut: false))
         // More lines than the preview takes is cut however it lays out.
         #expect(planFolds((1...7).map { "\($0). 步骤" }.joined(separator: "\n"), lines: 6))
     }
@@ -73,15 +80,23 @@ import UIKit
     }
 
     /// The size the dock takes in a window `width` wide: wider than that, something does not fit.
-    /// `settle`: for a view that measures itself and then changes, the size a third of a second on.
+    /// `settle`: for a view that measures itself and then changes, wait until size stabilizes across frames.
     private func fitted(_ view: some View, width: CGFloat, settle: Bool = false) async throws -> CGSize {
         let measured = Measured()
         let root = view.onGeometryChange(for: CGSize.self) { $0.size } action: { measured.size = $0 }
             .frame(maxHeight: .infinity, alignment: .top)
-        var ticks = 0
+        var last: CGSize?
+        var stableFrames = 0
         try await show(root, width: width) {
-            ticks += 1
-            return measured.size != nil && (!settle || ticks > 30)
+            guard let current = measured.size else { return false }
+            if !settle { return true }
+            if let last, abs(current.width - last.width) < 0.5, abs(current.height - last.height) < 0.5 {
+                stableFrames += 1
+            } else {
+                stableFrames = 0
+            }
+            last = current
+            return stableFrames >= 3
         }
         return try #require(measured.size)
     }

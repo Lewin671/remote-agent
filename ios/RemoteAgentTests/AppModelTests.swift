@@ -123,10 +123,12 @@ final class Harness {
     func ready() async throws {
         try store()
         model.setForeground(true)
-        await eventually("ready") { self.model.stage == .ready }
+        await model.waitForLoadForTest()
+        #expect(model.stage == .ready)
     }
 
     func cleanUp() {
+        model.closeSyncForTest()
         try? vault.clear()
         try? FileManager.default.removeItem(at: root)
         defaults.removePersistentDomain(forName: suite)
@@ -141,19 +143,25 @@ final class Harness {
         defer { h.cleanUp() }
         try h.vault.savePairingIdentity("registration-intent",Data("synthetic-invalid-receipt".utf8))
         h.model.setForeground(true)
-        await eventually("failed pending registration") { if case .failed = h.model.stage { return true }; return false }
+        await h.model.waitForLoadForTest()
+        guard case .failed = h.model.stage else {
+            Issue.record("expected failed pending registration, got \(h.model.stage)")
+            return
+        }
         #expect(try h.vault.readNamed("registration-intent") != nil)
         await h.model.logout()
         #expect(h.model.stage == .join)
         #expect(try h.vault.readNamed("registration-intent") == nil)
         h.model.loadAccount()
-        await eventually("fresh join after discard") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
     }
     @Test func withoutAnAccountTheJoinFlowIsShown() async {
         defer { h.cleanUp() }
         #expect(h.model.stage == .loading)
         h.model.setForeground(true)
-        await eventually("join") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
         #expect(h.model.context == nil)
         #expect(h.engines.isEmpty)
     }
@@ -177,7 +185,8 @@ final class Harness {
         try h.store()
         h.model.setForeground(false)
         h.model.loadAccount()
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await h.model.waitForLoadForTest()
+        await Task.yield()
         #expect(h.model.stage == .loading)
         #expect(h.engines.isEmpty)
     }
@@ -186,11 +195,12 @@ final class Harness {
         defer { h.cleanUp() }
         try h.vault.write(.account, Data("not an account".utf8))
         h.model.setForeground(true)
-        await eventually("failed") { if case .failed = h.model.stage { true } else { false } }
+        await h.model.waitForLoadForTest()
         #expect(h.model.stage == .failed(VaultError.unreadable.localizedDescription))
         try h.store()
         h.model.loadAccount()
-        await eventually("ready") { h.model.stage == .ready }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .ready)
     }
 
     @Test func theBackgroundStopsTheStreamAndTheForegroundStartsItAgain() async throws {
@@ -334,7 +344,8 @@ final class Harness {
     @Test func joiningStoresTheAccountAndStartsSyncing() async throws {
         defer { h.cleanUp() }
         h.model.setForeground(true)
-        await eventually("join") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
         try await h.model.joined(h.account)
         #expect(h.model.stage == .ready)
         #expect(try h.vault.load() == h.account)
@@ -376,7 +387,7 @@ final class Harness {
         var late = RemoteState()
         late.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 1)
         await engine.remote.showForTest(state: late)
-        try await Task.sleep(nanoseconds: 50_000_000)
+        await Task.yield()
         #expect(h.model.state == RemoteState())
         // The next account starts from nothing kept in memory.
         try await h.model.joined(h.account)
@@ -421,7 +432,7 @@ final class Harness {
         h.model.scenePhase(.background)
         h.model.scenePhase(.active)
         h.model.loadAccount()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        await h.model.waitForLoadForTest()
         // The account being removed is not found and put back in use.
         #expect(h.model.stage == .loading)
         #expect(h.model.context == nil)
@@ -456,14 +467,15 @@ final class Harness {
         #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
         // 重试 erases again, and only then is there no account to find.
         h.model.loadAccount()
-        await eventually("join") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
         #expect(tries.withLock { $0 } == 2)
         #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
         #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
         // Erased once: the next read is only a read.
         h.model.scenePhase(.background)
         h.model.scenePhase(.active)
-        try await Task.sleep(nanoseconds: 100_000_000)
+        await h.model.waitForLoadForTest()
         #expect(tries.withLock { $0 } == 2)
     }
 
@@ -519,7 +531,8 @@ final class Harness {
         h.securityReady = false
         try h.store()
         h.model.setForeground(true)
-        await eventually("retained setup") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
         #expect(h.model.securitySetup != nil)
         let generation = h.model.joinGeneration
         await h.model.logout()
@@ -529,7 +542,8 @@ final class Harness {
         #expect(h.model.joinGeneration != generation)
         #expect(!h.model.joinDirectly)
         h.model.loadAccount()
-        await eventually("fresh join") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
         #expect(h.model.securitySetup == nil)
         #expect(try !h.vault.hasAccount())
     }
@@ -544,7 +558,8 @@ final class Harness {
             }
             try h.store()
             h.model.setForeground(true)
-            await eventually("checked") { h.model.stage == .join }
+            await h.model.waitForLoadForTest()
+            #expect(h.model.stage == .join)
             #expect(h.model.retainedIdentityDenied == denied)
             #expect(h.model.securitySetup != nil)
             #expect(try h.vault.hasAccount())
@@ -566,7 +581,8 @@ final class Harness {
                 if n == 1 { throw ConnectError(code: .permissionDenied, message: "login failed") }
             }
             try h.store(); h.model.setForeground(true)
-            await eventually("retained form after probe") { h.model.stage == .join }
+            await h.model.waitForLoadForTest()
+            #expect(h.model.stage == .join)
             #expect(!h.model.retainedIdentityDenied)
             #expect(h.model.securitySetup != nil)
             #expect(try h.vault.hasAccount())
@@ -579,13 +595,15 @@ final class Harness {
         h.model.bootstrapGate.set(active: true, protectedDataAvailable: true)
         _ = try await h.model.authorityBootstrap.prepareCreation(server: "https://relay.example.com")
         h.model.setForeground(true)
-        await eventually("bootstrap") { h.model.authorityBootstrapPending != nil }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.authorityBootstrapPending != nil)
         #expect(try h.model.rejoinAdvice()?.text.contains(L10n.securityUnfinishedSecurityOperation()) == true)
         await h.model.logout()
         #expect(h.model.authorityBootstrapPending == nil)
         #expect(h.model.securitySetup == nil)
         h.model.loadAccount()
-        await eventually("fresh join") { h.model.stage == .join }
+        await h.model.waitForLoadForTest()
+        #expect(h.model.stage == .join)
         #expect(h.model.authorityBootstrapPending == nil)
         #expect(try h.vault.readOperation() == nil)
     }
@@ -599,19 +617,22 @@ final class Harness {
 
     @Test func lateLoginCannotRestoreDiscardedIdentity() async throws {
         let h = Harness(); defer { h.cleanUp() }
-        let started = OSAllocatedUnfairLock(initialState: false)
-        let finish = OSAllocatedUnfairLock(initialState: false)
+        let (enteredStream, entered) = AsyncStream.makeStream(of: Void.self)
+        let (releaseStream, release) = AsyncStream.makeStream(of: Void.self)
+        let (doneStream, done) = AsyncStream.makeStream(of: Void.self)
         h.securityReady = false
         h.identityCheck = { _ in
-            started.withLock { $0 = true }
-            while !finish.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(5)) }
+            entered.yield()
+            for await _ in releaseStream { break }
+            defer { done.yield() }
             throw ConnectError(code: .permissionDenied, message: "login failed")
         }
         try h.store(); h.model.setForeground(true)
-        await eventually("login started") { started.withLock { $0 } }
+        for await _ in enteredStream { break }
         await h.model.logout()
-        finish.withLock { $0 = true }
-        try await Task.sleep(for: .milliseconds(50))
+        release.yield()
+        for await _ in doneStream { break }
+        await h.model.waitForLoadForTest()
         #expect(h.model.securitySetup == nil && !h.model.retainedIdentityDenied)
         #expect(h.model.stage == .join)
     }

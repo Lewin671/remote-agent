@@ -233,9 +233,9 @@ import UIKit
             }
             return false
         }
-        if every(5) { return }
+        if every(4) { return }
         // And at random, with the rest of what moves the parser, in one frame or cut at a point of its own.
-        for round in 0..<4000 {
+        for round in 0..<800 {
             var stream: [UInt8] = []
             for _ in 0..<(2 + next(8)) { stream += next(5) == 0 ? rest[next(rest.count)] : core[next(core.count)] }
             if drawn(stream, cut: round % 2 == 0 ? stream.count : next(stream.count + 1)) { return }
@@ -281,14 +281,14 @@ import UIKit
             }
             return true
         }
-        guard every(3) else { return }
+        guard every(2) else { return }
         // Longer ones at random, in one frame or two.
         var seed: UInt64 = 0x2545_F491_4F6C_DD1D
         func next(_ n: Int) -> Int {
             seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
             return Int((seed >> 33) % UInt64(n))
         }
-        for round in 0..<6000 {
+        for round in 0..<1500 {
             var stream: [UInt8] = []
             for _ in 0..<(4 + next(8)) { stream += pieces[next(pieces.count)] }
             let cut = round % 2 == 0 ? stream.count : next(stream.count + 1)

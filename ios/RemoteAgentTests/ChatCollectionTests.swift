@@ -56,7 +56,9 @@ import UIKit
             window.isHidden = true
             if let previous, !previous.isHidden { previous.makeKey() }
         }
-        func wait() async throws { try await Task.sleep(for: .milliseconds(180)) }
+        func wait(_ ready: @escaping () -> Bool = { true }) async throws {
+            try await waitUntilSettled(ready)
+        }
 
         func waitUntilSettled(_ ready: @escaping () -> Bool) async throws {
             var previous: [CGFloat] = []
@@ -109,7 +111,7 @@ import UIKit
         h.tracker.controller = h.controller
         h.ids = (0..<80).map { "row-\($0)" }
         h.update()
-        try await h.wait()
+        try await h.wait { abs((try? h.y("row-40")) ?? .infinity) < 1 }
         #expect(abs(try h.y("row-40")) < 1)
         #expect(!h.tracker.scroll.following)
     }
@@ -121,26 +123,26 @@ import UIKit
         defer { h.close() }
         h.ids = (0..<80).map { "row-\($0)" }
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         #expect(h.gap < 1)
         h.heights["row-79"] = 400
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         #expect(h.gap < 1, "same-ID streaming row follows its new height")
         h.tracker.leave()
         h.controller.toRow("row-40")
-        try await h.wait()
+        try await h.wait { h.gap > 100 }
         let y = try h.y("row-40")
         let offset = h.list.contentOffset.y
         h.ids += ["new-1", "new-2"]
         h.update()
-        try await h.wait()
+        try await h.wait { h.source.snapshot().numberOfItems == h.ids.count }
         #expect(abs(try h.y("row-40") - y) < 1)
         #expect(abs(h.list.contentOffset.y - offset) < 1)
         #expect(h.tracker.fresh == 2 && h.tracker.away)
         h.tracker.jump()
         h.controller.toEnd()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         #expect(h.gap < 1 && h.tracker.fresh == 0 && !h.tracker.away)
     }
 
@@ -153,26 +155,26 @@ import UIKit
         defer { h.close() }
         h.ids = (0..<80).map { "row-\($0)" }
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         h.tracker.leave()
         h.controller.toRow("row-10")
-        try await h.wait()
+        try await h.wait { h.gap > 1_000 }
         let offset = h.list.contentOffset.y
         h.ids += ["other-1"]
         h.update()
-        try await h.wait()
+        try await h.wait { h.source.snapshot().numberOfItems == h.ids.count }
         #expect(abs(h.list.contentOffset.y - offset) < 1 && h.gap > 1_000, "a message from elsewhere does not pull the reader down")
         // The send: the end is asked for before the message's own row exists, as in `SessionComposer.send`.
         h.tracker.jump()
         h.controller.toEnd()
         h.ids += ["mine-1"]
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         #expect(h.gap < 1 && h.tracker.scroll.following && h.tracker.fresh == 0, "the sent message is in view")
         h.heights["mine-1"] = 300
         h.ids += ["answer-1"]
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         #expect(h.gap < 1, "and the answer is followed")
     }
 
@@ -183,10 +185,10 @@ import UIKit
         defer { h.close() }
         h.ids = (0..<80).map { "row-\($0)" }
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         h.tracker.leave()
         h.controller.toRow("row-40")
-        try await h.wait()
+        try await h.wait { h.gap > 100 }
         let y = try h.y("row-40")
         let older = (0..<30).map { "older-\($0)" }
         for (i, id) in older.enumerated() { h.heights[id] = i.isMultiple(of: 3) ? 1_600 : 40 }
@@ -194,7 +196,7 @@ import UIKit
         h.joins += 1
         h.inserted = older.count
         h.update()
-        try await h.wait()
+        try await h.wait { h.source.snapshot().numberOfItems == h.ids.count }
         #expect(abs(try h.y("row-40") - y) < 1)
         #expect(h.tracker.fresh == 0 && !h.tracker.scroll.following && !h.tracker.keeping)
     }
@@ -208,22 +210,22 @@ import UIKit
         defer { h.close() }
         h.ids = (0..<50).map { "row-\($0)" }
         h.update()
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         h.controller.scrollViewWillBeginDragging(h.list)
         let offset = h.list.contentOffset.y
         h.heights["row-49"] = 92
         h.update()
         h.controller.scrollViewDidEndDragging(h.list, willDecelerate: true)
-        try await h.wait()
+        try await h.wait { h.tracker.dragging }
         #expect(h.tracker.dragging)
         #expect(abs(h.list.contentOffset.y - offset) < 1)
         h.controller.scrollViewDidEndDecelerating(h.list)
-        try await h.wait()
+        try await h.wait { !h.tracker.dragging && h.gap < 1 }
         #expect(!h.tracker.dragging && h.gap < 1)
         #expect(h.interactions == [true, false])
         h.controller.toRow("row-5")
         h.controller.scrollViewWillBeginDragging(h.list)
-        try await h.wait()
+        try await h.wait { h.gap < 1 }
         #expect(h.gap < 1, "the new gesture canceled the queued programmatic target")
         h.controller.scrollViewDidEndDragging(h.list, willDecelerate: false)
     }
@@ -249,11 +251,11 @@ import UIKit
         var environment = EnvironmentValues()
         environment.horizontalSizeClass = .compact
         h.apply(items, environment: environment)
-        try await h.wait()
+        try await h.wait { probe.sizeClass == .compact }
         #expect(probe.sizeClass == .compact)
         environment.horizontalSizeClass = .regular
         h.apply(items, environment: environment)
-        try await h.wait()
+        try await h.wait { probe.sizeClass == .regular }
         #expect(probe.sizeClass == .regular, "a stable row ID and value must not freeze its hosted environment")
     }
 
@@ -274,22 +276,22 @@ import UIKit
             ChatCollectionItem(id) { ExpandingRow(height: id == "row-19" ? height : Height()) }
         }
         h.apply(items)
-        try await h.wait()
+        try await h.wait { h.gap < 1 && h.list.contentSize.height > 0 }
         let before = h.list.contentSize.height
         height.value = 600
-        try await h.wait()
+        try await h.wait { h.list.contentSize.height > before + 500 && h.gap < 1 }
         #expect(h.list.contentSize.height > before + 500, "SwiftUI state invalidates the cell without a snapshot update")
         #expect(h.gap < 1)
         h.tracker.leave()
         h.controller.toRow("row-15")
-        try await h.wait()
+        try await h.wait { h.gap > 100 }
         let y = try h.y("row-15")
         height.value = 900
         try await h.wait()
         #expect(abs(try h.y("row-15") - y) < 1)
         h.window.frame.size.width = 1_024
         h.window.layoutIfNeeded()
-        try await h.wait()
+        try await h.wait { abs(h.list.bounds.width - 1_024) < 1 }
         let path = try #require(h.source.indexPath(for: "row-15"))
         let frame = try #require(h.list.layoutAttributesForItem(at: path)).frame
         #expect(abs(frame.width - 760) < 1)

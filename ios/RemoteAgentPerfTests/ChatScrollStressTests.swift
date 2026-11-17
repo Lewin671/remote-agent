@@ -12,8 +12,6 @@ import UIKit
 @Suite struct ChatScrollStressTests {
     @Test(.timeLimit(.minutes(1)))
     func tallRowsAtViewportBoundary() async throws {
-        await WindowTestGate.shared.acquire()
-        defer { WindowTestGate.shared.release() }
         let remote = Demo.remote()
         let state = Demo.state(.everyday, now: 1_791_000_000_000)
         let defaultsName = "chat-boundary-\(UUID().uuidString)"

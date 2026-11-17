@@ -292,6 +292,8 @@ final class AppModel {
     @ObservationIgnored private var logins: LoginKeeper?
     @ObservationIgnored private var follower: Task<Void, Never>?
     @ObservationIgnored private var loading = false
+    @ObservationIgnored private var loadId: UUID?
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
     /// A logout is erasing what is stored. Nothing is read meanwhile: the account it is removing would come back.
     @ObservationIgnored private var erasing = false
     /// The last erase failed: the next read erases again first.
@@ -398,17 +400,25 @@ final class AppModel {
             return
         }
         loading = true
+        let id = UUID()
+        loadId = id
         let storage = parts.storage
         let erase = unerased ? parts.erase : nil
         let securityReady = parts.securityReady
         let gen = generation
-        Task {
+        loadTask = Task {
+            defer {
+                if self.loadId == id {
+                    self.loading = false
+                    self.loadTask = nil
+                    self.loadId = nil
+                }
+            }
             do {
                 if erase == nil, let pending = try await authorityBootstrap.status(),
                     pending.kind == .creation || pending.kind == .recovery {
                     guard gen == generation else { return }
                     authorityBootstrapPending = pending
-                    loading = false
                     stage = .join
                     return
                 }
@@ -429,7 +439,6 @@ final class AppModel {
                 }
             } catch {
                 guard gen == generation else { return }
-                loading = false
                 stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: String(describing: error.localizedDescription)))
                 return
             }
@@ -444,7 +453,6 @@ final class AppModel {
                     return (stored, ready)
                 }
             }.value
-            loading = false
             guard gen == generation, context == nil else { return }
             if case .success = result { unerased = false }
             switch result {
@@ -691,6 +699,10 @@ final class AppModel {
         authorityBootstrapPending = nil
         if let account { lastServer = account.server }
         generation += 1
+        loadTask?.cancel()
+        loadTask = nil
+        loadId = nil
+        loading = false
         follower?.cancel()
         follower = nil
         closeTerminals()
@@ -701,7 +713,7 @@ final class AppModel {
         LibraryVideos.discardAll()
         context?.prefsChanges.close()
         if let host = context?.coreHost {
-            Task { await host.close() }
+            Task { await host.closeAsync() }
         }
         context = nil
         state = RemoteState()
@@ -803,6 +815,31 @@ final class AppModel {
             isDemo = true
             self.lastServer = lastServer
             stage = .join
+        }
+
+        func waitForLoadForTest() async {
+            await loadTask?.value
+        }
+
+        func closeSyncForTest() {
+            generation += 1
+            loadTask?.cancel()
+            loadTask = nil
+            loadId = nil
+            loading = false
+            follower?.cancel()
+            follower = nil
+            closeTerminals()
+            engine?.close()
+            engine = nil
+            if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
+            context?.prefsChanges.close()
+            context?.coreHost.close()
+            context = nil
+            try? cache?.close()
+            cache = nil
+            logins?.close()
+            logins = nil
         }
     #endif
 }
