@@ -372,6 +372,43 @@ class DirectTransportUiTest {
     }
 
     @Test
+    fun directDiagSheetShowsActiveDirectVerdictWhenActive() {
+        val state = RemoteState(
+            conn = ConnState.ONLINE,
+            link = Link.ONLINE,
+            machines = mapOf(
+                "m1" to MachineView(
+                    "m1",
+                    online = true,
+                    lastSeenMs = 0L,
+                    linkState = PeerState(
+                        reachable = true,
+                        ready = true,
+                        directStatus = DirectStatus(
+                            supported = true,
+                            enabled = true,
+                            stage = DirectStage.DIRECT_ACTIVE,
+                            reason = null,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                DirectDiagSheet(
+                    machineId = "m1",
+                    state = state,
+                    onRetry = { true },
+                    onClose = {},
+                )
+            }
+        }
+        ui.waitForIdle()
+        ui.onNodeWithText("正在用直连").assertIsDisplayed()
+    }
+
+    @Test
     fun machineStatusDoesNotDisplayTransportPaths() {
         val vm = ScreenGoldenLoader.machineStatusView("machine_status_lifecycle", "liveCriticalDisk")
         ui.setContent {

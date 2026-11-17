@@ -151,6 +151,9 @@ internal fun DirectDiagSheet(
         DirectFailReason.STARTING -> copy(UiMessages.transportReasonStarting())
         null -> when {
             status?.readSlow == true || status?.fileSlow == true -> copy(UiMessages.transportDirectSlow())
+            status?.stage == DirectStage.DIRECT_ACTIVE -> copy(UiMessages.transportStatusDirect())
+            status?.stage == DirectStage.TRYING -> copy(UiMessages.transportStatusConnecting())
+            status?.stage == DirectStage.CONNECTED_RELAY -> copy(UiMessages.transportReasonChannelPending())
             else -> copy(UiMessages.transportDiagVerdictNone())
         }
     }
