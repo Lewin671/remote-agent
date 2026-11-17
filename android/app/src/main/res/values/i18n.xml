@@ -2253,15 +2253,15 @@
     <string name="transport_file_speed_relay">"中继 %1$s MiB/s"</string>
     <string name="transport_footer" formatted="false">"直连只用于加载和文件，发消息和审批始终经中继。"</string>
     <string name="transport_group" formatted="false">"连接"</string>
-    <string name="transport_not_clearly_faster" formatted="false">"直连没有明显更快"</string>
+    <string name="transport_not_clearly_faster" formatted="false">"当前网络下中继同样顺畅，已自动选用"</string>
     <string name="transport_read_latency_both">"直连 %1$s · 中继 %2$s ms"</string>
     <string name="transport_read_latency_direct">"直连 %1$s ms"</string>
     <string name="transport_read_latency_relay">"中继 %1$s ms"</string>
     <string name="transport_reason_failed" formatted="false">"没连上，稍后会自动再试"</string>
     <string name="transport_reason_no_response" formatted="false">"电脑没有回应，可能在电脑上关了直连"</string>
-    <string name="transport_reason_no_traversal" formatted="false">"两边的网络不能直接连通"</string>
+    <string name="transport_reason_no_traversal" formatted="false">"两边的网络隔开了，不能直接连通"</string>
     <string name="transport_reason_peer_unsupported" formatted="false">"电脑上的版本太旧，更新后可用"</string>
-    <string name="transport_relay_faster" formatted="false">"中继更快"</string>
+    <string name="transport_relay_faster" formatted="false">"当前网络下中继响应更快，已自动选用"</string>
     <string name="transport_speed_file" formatted="false">"文件传输"</string>
     <string name="transport_speed_read" formatted="false">"响应时间"</string>
     <string name="transport_status_connecting" formatted="false">"正在建立直连…"</string>
@@ -2269,7 +2269,7 @@
     <string name="transport_status_measuring" formatted="false">"直连已连上，正在测速"</string>
     <string name="transport_status_relay" formatted="false">"正在用中继"</string>
     <string name="transport_summary_off" formatted="false">"直连已关闭"</string>
-    <string name="transport_unavailable">"直连不可用：%1$s"</string>
+    <string name="transport_unavailable">"%1$s"</string>
     <string name="transport_unsupported_device" formatted="false">"这台设备不支持直连"</string>
     <string name="transport_use_file" formatted="false">"用于文件"</string>
     <string name="transport_use_read" formatted="false">"用于加载"</string>

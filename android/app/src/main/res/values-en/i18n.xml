@@ -2347,15 +2347,15 @@
     <string name="transport_file_speed_relay">"Relay %1$s MiB/s"</string>
     <string name="transport_footer" formatted="false">"Direct is used only for loading and files; messages and approvals always go through the relay."</string>
     <string name="transport_group" formatted="false">"Connection"</string>
-    <string name="transport_not_clearly_faster" formatted="false">"Direct isn\'t clearly faster"</string>
+    <string name="transport_not_clearly_faster" formatted="false">"Relay is just as smooth on this network; using it automatically"</string>
     <string name="transport_read_latency_both">"Direct %1$s · Relay %2$s ms"</string>
     <string name="transport_read_latency_direct">"Direct %1$s ms"</string>
     <string name="transport_read_latency_relay">"Relay %1$s ms"</string>
     <string name="transport_reason_failed" formatted="false">"Couldn\'t connect; will try again shortly"</string>
     <string name="transport_reason_no_response" formatted="false">"The computer didn\'t answer; direct may be turned off there"</string>
-    <string name="transport_reason_no_traversal" formatted="false">"The two networks can\'t reach each other directly"</string>
+    <string name="transport_reason_no_traversal" formatted="false">"The two networks are isolated and can\'t reach each other directly"</string>
     <string name="transport_reason_peer_unsupported" formatted="false">"The computer\'s version is too old; update it to use direct"</string>
-    <string name="transport_relay_faster" formatted="false">"Relay is faster"</string>
+    <string name="transport_relay_faster" formatted="false">"Relay responds faster on this network; using it automatically"</string>
     <string name="transport_speed_file" formatted="false">"File transfer"</string>
     <string name="transport_speed_read" formatted="false">"Response time"</string>
     <string name="transport_status_connecting" formatted="false">"Setting up direct…"</string>
@@ -2363,7 +2363,7 @@
     <string name="transport_status_measuring" formatted="false">"Direct connected, measuring speed"</string>
     <string name="transport_status_relay" formatted="false">"Using relay"</string>
     <string name="transport_summary_off" formatted="false">"Direct is off"</string>
-    <string name="transport_unavailable">"Direct unavailable: %1$s"</string>
+    <string name="transport_unavailable">"%1$s"</string>
     <string name="transport_unsupported_device" formatted="false">"This device doesn\'t support direct connection"</string>
     <string name="transport_use_file" formatted="false">"Used for files"</string>
     <string name="transport_use_read" formatted="false">"Used for loading"</string>
