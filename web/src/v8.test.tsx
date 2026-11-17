@@ -21,12 +21,13 @@ import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
 let host: HTMLDivElement;
+const remotes: DemoRemote[] = [];
 function mount(view: React.ReactNode) {
   host = document.createElement("div"); document.body.append(host);
   root = createRoot(host); act(() => root!.render(view));
 }
-afterEach(() => { act(() => root?.unmount()); host?.remove(); root = undefined; });
-const demo = (params = "") => { const r = DemoRemote.create(new URLSearchParams(params)); r.start(); return r; };
+afterEach(() => { act(() => root?.unmount()); host?.remove(); root = undefined; for (const r of remotes.splice(0)) r.dispose(); });
+const demo = (params = "") => { const r = DemoRemote.create(new URLSearchParams(params)); remotes.push(r); r.start(); return r; };
 const event = (seq: number, value: object, deviceId = ME) => create(EventSchema, { seq: BigInt(seq), kind: value as never, origin: { deviceId } });
 
 it("tracks steer, queued, paused, held, canceled and cross-device pending inputs", () => {

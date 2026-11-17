@@ -13,9 +13,11 @@ import { Home } from "./views/Home";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
+let activeRemote: DemoRemote | undefined;
 afterEach(async () => {
   if (root) await act(async () => root!.unmount());
   root = undefined; host?.remove();
+  activeRemote?.dispose(); activeRemote = undefined;
   vi.restoreAllMocks(); vi.useRealTimers();
 });
 async function mount(initiallyHidden = false) {
@@ -25,6 +27,7 @@ async function mount(initiallyHidden = false) {
   vi.spyOn(authoritySetup, "authorityStartup").mockResolvedValue({ kind: "none" } as never);
   vi.spyOn(remoteModule, "resumeRegistration").mockResolvedValue();
   const remote = DemoRemote.create(new URLSearchParams("role=member&empty=none"));
+  activeRemote = remote;
   vi.spyOn(remoteModule.Remote, "load").mockResolvedValue(remote);
   const start = vi.spyOn(remote, "start").mockImplementation(() => {});
   const stop = vi.spyOn(remote, "stop").mockImplementation(() => {});

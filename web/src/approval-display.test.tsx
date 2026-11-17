@@ -43,7 +43,7 @@ it("shows safe approval text without changing the authenticated event or decisio
   } finally {
     act(() => root.unmount());
     host.remove();
-    remote.stop();
+    remote.dispose();
   }
 });
 
@@ -71,5 +71,5 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
     await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.deny"))!.click());
     await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.deny"))!.click());
     expect(command.mock.calls[0][1]).toMatchObject({ case: "resolveApproval", value: { allow: false, approvalId: a.approvalId } });
-  } finally { act(() => root.unmount()); host.remove(); remote.stop(); }
+  } finally { act(() => root.unmount()); host.remove(); remote.dispose(); }
 });

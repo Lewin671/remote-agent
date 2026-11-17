@@ -13,10 +13,12 @@ import { TerminalView } from "./Terminal";
 
 let root: Root | undefined;
 let host: HTMLElement;
+const remotes: DemoRemote[] = [];
 
 afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
+  for (const r of remotes.splice(0)) r.dispose();
   vi.unstubAllGlobals();
 });
 
@@ -26,6 +28,7 @@ function pointer(fine: boolean) {
 
 function show(wide: boolean) {
   const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+  remotes.push(r);
   r.start();
   host = document.createElement("div");
   document.body.append(host);
@@ -60,6 +63,7 @@ it("writes the send shortcut in placeholders by platform, and none on touch", as
 it("leaves the shortcut out of the message box on touch", async () => {
   const { SessionPage } = await import("./Session");
   const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+  remotes.push(r);
   r.start();
   const box = () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.placeholder;
   for (const [fine, want] of [[false, "消息"], [true, /^消息 · (⌘↵|Ctrl\+Enter) 发送$/]] as const) {

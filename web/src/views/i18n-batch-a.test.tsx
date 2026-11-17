@@ -13,9 +13,11 @@ import { useRemote } from "../ui";
 
 let root: Root | undefined;
 let host: HTMLDivElement;
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   act(() => root?.unmount()); host?.remove();
   root = undefined;
+  for (const r of remotes.splice(0)) r.dispose();
   localeStore.overrideForTesting();
   localStorage.clear();
 });
@@ -23,6 +25,7 @@ afterEach(() => {
 it.each(["zh-CN", "en"] as const)("starts the chosen model with the original draft in %s", async locale => {
   localeStore.overrideForTesting(locale);
   const remote = DemoRemote.create(new URLSearchParams(), async () => {});
+  remotes.push(remote);
   remote.start();
   remote.draftMachines.set("/example/project", "mac");
   const send = vi.spyOn(remote, "machineCommand");
@@ -56,7 +59,7 @@ it.each(["zh-CN", "en"] as const)("starts the chosen model with the original dra
 });
 
 it("keeps the draft, input node and status meaning when the test locale changes", async () => {
-  const remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
+  const remote = DemoRemote.create(new URLSearchParams(), async () => {}); remotes.push(remote); remote.start();
   function Form() {
     useLocale(); useRemote(remote);
     return <NewBox remote={remote} projectKey="/example/project" go={() => {}} variant="start" />;

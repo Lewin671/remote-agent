@@ -39,5 +39,5 @@ it.each(["approval", "question", "empty-question", "plan"])("a %s skeleton offer
     expect(host.textContent).toContain(skeletonMessage());
     for (const label of [message("approval.allow"), message("approval.deny"), message("approval.approve_execute"), message("dock.plan_keep"), "unsafe choice", message("dock.plan_clear")]) expect([...host.querySelectorAll("button")].some(b => b.textContent === label)).toBe(false);
     expect(command).not.toHaveBeenCalled();
-  } finally { act(() => root.unmount()); host.remove(); remote.stop(); }
+  } finally { act(() => root.unmount()); host.remove(); remote.dispose(); }
 });

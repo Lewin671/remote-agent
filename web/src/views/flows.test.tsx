@@ -176,7 +176,7 @@ afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
-  for (const r of openedRemotes.splice(0)) r.stop();
+  for (const r of openedRemotes.splice(0)) r.dispose();
   localStorage.clear();
 });
 

@@ -13,13 +13,16 @@ import { ConnCheck, median } from "./ConnCheck";
 
 let root: Root | undefined;
 let host: HTMLElement;
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
+  for (const r of remotes.splice(0)) r.dispose();
 });
 
 function open(query: string, patch?: (r: DemoRemote) => void) {
   const r = DemoRemote.create(new URLSearchParams(query));
+  remotes.push(r);
   r.start();
   patch?.(r);
   host = document.body.appendChild(document.createElement("div"));

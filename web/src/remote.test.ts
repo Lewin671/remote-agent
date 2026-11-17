@@ -7,13 +7,21 @@ import { afterEach, expect, it, vi } from "vitest";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 import { PairingDeliveryError } from "./authority-client";
 const liveFixtures: SyntheticRemote[] = [];
+const demoFixtures: Remote[] = [];
 async function probe() {
   const r = await SyntheticRemote.create();
   liveFixtures.push(r);
   return r;
 }
+function trackDemo<T extends Remote>(r: T): T {
+  demoFixtures.push(r);
+  return r;
+}
 afterEach(async () => {
   for (const r of liveFixtures.splice(0)) await r.dispose();
+  for (const r of demoFixtures.splice(0)) r.dispose();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 import {
@@ -63,27 +71,22 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     ),
     new ConnectError("machine is offline", Code.Unavailable),
   ];
-  (r as unknown as { api: object }).api = {
-    forward: async () => {
-      throw replies.shift();
-    },
-  };
+  const forward = vi.fn(async () => {
+    throw replies.shift();
+  });
+  (r as unknown as { api: object }).api = { forward };
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  const clockTimeout = globalThis.setTimeout;
-  let scheduled!: () => void;
-  const retryScheduled = new Promise<void>(resolve => { scheduled = resolve; });
-  globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => {
-    const handle = clockTimeout(...args);
-    if (args[1] === 1000) scheduled();
-    return handle;
-  }) as typeof setTimeout;
   try {
     const result = r
       .machineCommand(r.machine, { case: "listModels", value: {} })
       .catch((x) => x);
-    // Observing the API call does not guarantee its rejection has reached
-    // forward() and registered the timer yet. Advance only after registration.
-    await retryScheduled;
+    await vi.waitFor(
+      () => {
+        expect(forward).toHaveBeenCalledTimes(1);
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+      },
+      { interval: 5 },
+    );
     expect(replies).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1000);
     const e = await result;
@@ -92,14 +95,13 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     expect((e as CommandError).message).toBe(message("errors.connection_dropped_midway"));
     expect(replies).toHaveLength(0);
   } finally {
-    globalThis.setTimeout = clockTimeout;
     vi.useRealTimers();
   }
 }, 10_000);
 
 it("keeps a message of unknown outcome on its request when the machine is then offline", async () => {
   const { DemoRemote } = await import("./dev/demo");
-  const r = DemoRemote.create(new URLSearchParams());
+  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
   const replies = [
     new CommandError("unknown_outcome", "连接超时", false, false, "unknown"),
     new CommandError("unavailable", "电脑不在线，指令没有发出"),
@@ -345,7 +347,7 @@ it("shows a display copy only where it belongs and in the format it claims", asy
 
 it("uploads an image in chunks and resumes from what the machine has after a lost reply", async () => {
   const { DemoRemote } = await import("./dev/demo");
-  const r = DemoRemote.create(new URLSearchParams());
+  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
   const bytes = new Uint8Array(2_000_000).map((_, i) => i % 251);
   const calls: string[] = [];
   let persisted = 0n;
@@ -432,7 +434,7 @@ it("uploads an image in chunks and resumes from what the machine has after a los
 
 it("lets go of a sent message's local image copies once the CLI records it", async () => {
   const { DemoRemote } = await import("./dev/demo");
-  const r = DemoRemote.create(new URLSearchParams());
+  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
   r.start();
   const blob = new Blob([new Uint8Array(10)]);
   const id = r.send("s-idle", "看图", ["img-1"], [blob]);
@@ -595,7 +597,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
     }
   }
   const identity = await (await probe()).security.localIdentity();
-  const first = Kept.open();
+  const first = trackDemo(Kept.open());
   // Exercise real demo responses/cache writes without its two simulated
   // 500 ms network delays. This test asserts persistence, not latency.
   vi.spyOn(first as any, "pause").mockResolvedValue(undefined);
@@ -609,7 +611,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   await vi.waitFor(() => expect(kept.has("info")).toBe(true));
 
   // The next visit knows them before any machine answers.
-  const next = Kept.open();
+  const next = trackDemo(Kept.open());
   vi.spyOn(next.security, "localIdentity").mockResolvedValue(identity);
   vi.spyOn(next.security, "historicalMachines").mockResolvedValue(new Set());
   await next.warmed();
@@ -620,11 +622,11 @@ it("restores, for the next visit's first paint, the model lists and settings the
   expect(next.cachedSettings("mac")).toEqual(first.cachedSettings("mac"));
 
   // Another account's or device's values are not taken.
-  const other = new (class extends DemoRemote {
+  const other = trackDemo(new (class extends DemoRemote {
     constructor() {
       super({ ...account, deviceId: "someone-else" }, cache);
     }
-  })();
+  })());
   vi.spyOn(other.security, "localIdentity").mockResolvedValue(identity);
   await (other as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
   expect(other.cachedModels("mac", Agent.CODEX)).toBeUndefined();
@@ -705,7 +707,7 @@ it("reports an unreadable prefs object and allows a fresh read retry", async () 
 
 it("removes recorded text and image outbox entries even before the RPC settles", async () => {
   const { DemoRemote } = await import("./dev/demo");
-  const r = DemoRemote.create(new URLSearchParams());
+  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
   let finish!: () => void;
   r.command = () =>
     new Promise((resolve) => {
@@ -768,14 +770,16 @@ it("revokes a removed machine and retains its archive when the head moves withou
   (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
     cb.onReady(legId, BigInt(Date.now()));
   r.start();
+  const { getCoreHost } = await import("./core/host");
   await vi.waitFor(() => {
     expect(r.devices.get(r.machine)).toBeTruthy();
     expect(r.sessions.get("s")).toBeTruthy();
+    expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
+    expect((r as unknown as { coreSyncDepth: number }).coreSyncDepth).toBe(0);
   });
   await r.world.fixture.remove([r.machine]);
   // The relay withholds every removal push; the 60 s head pull must be enough.
   const snap = await (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<unknown> }).syncSecurity(0n, 0n, false);
-  const { getCoreHost } = await import("./core/host");
   const { EventSchema: CoreEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
   getCoreHost(r).dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap as never } }));
   expect(r.devices.get(r.machine)).toBeUndefined();
@@ -1136,19 +1140,21 @@ it("blocks an automatic file retry after metadata refresh and keeps its outcome 
   const forward = vi.fn(async () => { r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false; throw new ConnectError("no reply", Code.DeadlineExceeded); });
   (r as unknown as { api: object }).api = { forward };
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  const timer = globalThis.setTimeout;
-  let scheduled!: () => void;
-  const retryScheduled = new Promise<void>(resolve => { scheduled = resolve; });
-  globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => { const handle = timer(...args); if (args[1] === 1000) scheduled(); return handle; }) as typeof setTimeout;
   try {
     const done = r.command("s", { case: "send", value: { text: "text", fileIds: ["file"] } }).catch(e => e);
-    await retryScheduled;
+    await vi.waitFor(
+      () => {
+        expect(forward).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBeGreaterThan(0);
+      },
+      { interval: 5 },
+    );
     await vi.advanceTimersByTimeAsync(1000);
     const error = await done;
     expect(error.code).toBe("unknown_outcome");
     expect(error.message).toContain(message("session.update_computer"));
     expect(forward).toHaveBeenCalledOnce();
-  } finally { globalThis.setTimeout = timer; vi.useRealTimers(); }
+  } finally { vi.useRealTimers(); }
 });
 
 it.each(["send", "createSession"] as const)("allows text/image-only %s with file capability off", async (kind) => {
@@ -1401,9 +1407,18 @@ it("classifies readOnlyCommand consistently with shared transport fixtures", asy
 
 it("proactively renews security every 12s while foreground and online so direct stays authorized", async () => {
   const r = await probe();
+  const record = await r.security.verifiedRecord();
+  const state = r as unknown as {
+    ensureHost(): { start(): void; stop(): void; setForeground(active: boolean): void };
+  };
+  vi.spyOn(state, "ensureHost").mockReturnValue({
+    start: () => undefined,
+    stop: () => undefined,
+    setForeground: () => undefined,
+  });
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"] });
   try {
-    const syncSpy = vi.spyOn((r as unknown as { security: { sync: () => Promise<unknown> } }).security, "sync");
+    const syncSpy = vi.spyOn(r.security, "sync").mockResolvedValue(record);
     vi.spyOn(r, "conn", "get").mockReturnValue("online");
     r.start();
     const before = syncSpy.mock.calls.length;
@@ -1414,10 +1429,37 @@ it("proactively renews security every 12s while foreground and online so direct 
     await vi.advanceTimersByTimeAsync(24_000);
     expect(syncSpy.mock.calls.length).toBe(afterOnline);
     r.setForeground(true);
-    await vi.advanceTimersByTimeAsync(12_000);
+    await vi.advanceTimersByTimeAsync(11_000);
+    expect(syncSpy.mock.calls.length).toBe(afterOnline);
+    await vi.advanceTimersByTimeAsync(1_000);
     expect(syncSpy.mock.calls.length).toBeGreaterThan(afterOnline);
   } finally {
     r.stop();
     vi.useRealTimers();
   }
+});
+
+it("disposes its CoreHost on dispose() and assigns monotonic pushSeq in sync completion order", async () => {
+  const r = await probe();
+  const { getCoreHost } = await import("./core/host");
+  const host = getCoreHost(r);
+  const record = await r.security.verifiedRecord();
+  let resolveFirst!: (rec: typeof record) => void;
+  let resolveSecond!: (rec: typeof record) => void;
+  vi.spyOn(r.security, "sync")
+    .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+    .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+
+  const first = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<{ pushSeq: bigint }> }).syncSecurity(0n, 0n, false);
+  const second = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<{ pushSeq: bigint }> }).syncSecurity(0n, 0n, false);
+  resolveSecond(record);
+  const secondSnap = await second;
+  resolveFirst(record);
+  const firstSnap = await first;
+  expect(secondSnap.pushSeq).toBeLessThan(firstSnap.pushSeq);
+
+  r.dispose();
+  expect(() => host.viewHome()).toThrow(/closed/);
+  expect(getCoreHost(r)).not.toBe(host);
+  r.dispose();
 });

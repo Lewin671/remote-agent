@@ -16,14 +16,17 @@ import { SessionPage } from "./Session";
 
 let root: Root | undefined;
 let host: HTMLElement;
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
+  for (const r of remotes.splice(0)) r.dispose();
 });
 
 function open(sid: string, text: string, states: InputStatus[], agent = Agent.CODEX) {
   const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+  remotes.push(r);
   r.start();
   const s = r.sessions.get(sid)!;
   s.info!.agent = agent;

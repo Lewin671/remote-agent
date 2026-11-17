@@ -18,7 +18,7 @@ import { useRemote } from "../ui";
 
 let root: Root | undefined, host: HTMLDivElement, remote: DemoRemote;
 afterEach(() => {
-  act(() => root?.unmount()); root = undefined; host?.remove(); remote?.stop();
+  act(() => root?.unmount()); root = undefined; host?.remove(); remote?.dispose();
   localeStore.overrideForTesting(); localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 function mount(sid: string) {

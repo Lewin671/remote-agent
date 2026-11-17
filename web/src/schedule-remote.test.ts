@@ -238,7 +238,7 @@ it("stores only the verified encrypted list and restores it as an offline snapsh
     // A snapshot is never mistaken for a current revision or a live machine.
     expect(other.schedules.get(r.machine)?.revision).toBe(0n);
   } finally {
-    other?.stop();
+    other?.dispose();
     await r.dispose();
   }
 }, 20000);

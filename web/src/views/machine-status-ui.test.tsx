@@ -25,6 +25,7 @@ import Workspace from "../Workspace";
 let root: Root | undefined;
 let host: HTMLElement;
 let reduced = false;
+const remotes: DemoRemote[] = [];
 
 beforeEach(() => {
   localeStore.overrideForTesting("zh-CN");
@@ -43,6 +44,7 @@ afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
+  for (const r of remotes.splice(0)) r.dispose();
   localeStore.overrideForTesting(undefined);
   vi.useRealTimers();
   Object.defineProperty(document, "hidden", { configurable: true, value: false });
@@ -57,6 +59,7 @@ function mount(node: React.ReactNode) {
 
 function demo(query = ""): DemoRemote {
   const r = DemoRemote.create(new URLSearchParams(query), async () => undefined);
+  remotes.push(r);
   r.start();
   return r;
 }

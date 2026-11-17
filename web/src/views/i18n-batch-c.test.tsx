@@ -23,7 +23,7 @@ import { t as launchText } from "../i18n/startup";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined, host: HTMLDivElement, remote: DemoRemote;
 afterEach(() => {
-  act(() => root?.unmount()); root = undefined; host?.remove(); remote?.stop();
+  act(() => root?.unmount()); root = undefined; host?.remove(); remote?.dispose();
   localeStore.overrideForTesting(); localStorage.clear(); vi.restoreAllMocks();
 });
 function demo() {

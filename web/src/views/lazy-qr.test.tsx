@@ -31,7 +31,7 @@ it("loads QR generation on demand and reuses the result on unrelated updates", a
     await act(async () => remote.touch());
     expect(qr.generate).toHaveBeenCalledTimes(1);
   } finally {
-    await act(async () => root.unmount()); host.remove(); remote.stop();
+    await act(async () => root.unmount()); host.remove(); remote.dispose();
     qr.generate.mockReset();
   }
 });

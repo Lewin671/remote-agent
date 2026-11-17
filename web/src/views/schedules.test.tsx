@@ -42,7 +42,7 @@ afterEach(async () => {
   if (root) await act(async () => root!.unmount());
   root = undefined;
   host?.remove();
-  for (const r of remotes.splice(0)) r.stop();
+  for (const r of remotes.splice(0)) r.dispose();
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();

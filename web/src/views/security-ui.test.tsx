@@ -15,9 +15,11 @@ import { Home } from "./Home";
 import * as operations from "../security-operation";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   if (root) act(() => root.unmount());
   host?.remove();
+  for (const r of remotes.splice(0)) r.dispose();
   vi.restoreAllMocks();
 });
 async function mount(node: React.ReactNode) {
@@ -33,6 +35,7 @@ async function click(label: string) {
 }
 function demo(q: string) {
   const r = DemoRemote.create(new URLSearchParams(q), async () => {});
+  remotes.push(r);
   r.start();
   return r;
 }

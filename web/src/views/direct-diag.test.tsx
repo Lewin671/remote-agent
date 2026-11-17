@@ -19,10 +19,12 @@ beforeEach(() => {
   localeStore.overrideForTesting("zh-CN");
   vi.stubGlobal("RTCPeerConnection", class {});
 });
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
+  for (const r of remotes.splice(0)) r.dispose();
   localeStore.overrideForTesting(undefined);
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -32,6 +34,7 @@ afterEach(() => {
 const none = () => undefined;
 function open(query: string, id = "mac"): DemoRemote {
   const r = DemoRemote.create(new URLSearchParams(query), async () => undefined);
+  remotes.push(r);
   r.start();
   host = document.body.appendChild(document.createElement("div"));
   root = createRoot(host);

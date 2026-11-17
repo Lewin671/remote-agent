@@ -49,20 +49,34 @@ function bodyInfo(c){if(text(c.domain)==='bootstrap')return lp(utf8('remote-agen
  return lp(utf8('remote-agent/peer-body/v1'),account,accountDomain,c.from,c.to,c.senderInstance,c.receiverInstance,c.senderBoot,c.receiverBoot,c.connection,num(c.use),num(c.generation),num(c.cls));}
 function aad(from,to,cls,id){return lp(utf8('remote-agent/peer-aad/v1'),account,accountDomain,num(PROTOCOL_VERSION),pb(b(1,from),b(2,to),u(3,cls),b(4,id)))}
 function sigInput(ad,nc,ec,nb,eb){return lp(utf8('remote-agent/peer-signature/v1'),ad,nc,ec,nb,eb)}
-async function kdf(shared,info){const key=await subtle().importKey('raw',shared,'HKDF',false,['deriveBits']);return new Uint8Array(await subtle().deriveBits({name:'HKDF',hash:'SHA-256',salt:await hash(utf8('remote-agent/peer-hkdf/v1')),info},key,256))}
+let hkdfSaltPromise;
+function hkdfSalt(){return (hkdfSaltPromise??=hash(utf8('remote-agent/peer-hkdf/v1')));}
+const hkdfKeyCache=new WeakMap();
+function sharedKey(from,to){
+ let byPeer=hkdfKeyCache.get(from.box);
+ if(!byPeer)hkdfKeyCache.set(from.box,(byPeer=new WeakMap()));
+ let p=byPeer.get(to.boxPub);
+ if(!p){
+  p=subtle().deriveBits({name:'X25519',public:to.boxPub},from.box,256)
+   .then(bits=>subtle().importKey('raw',bits,'HKDF',false,['deriveBits']))
+   .catch(e=>{byPeer.delete(to.boxPub);throw e;});
+  byPeer.set(to.boxPub,p);
+ }
+ return p;
+}
+async function kdf(dhKey,info){return new Uint8Array(await subtle().deriveBits({name:'HKDF',hash:'SHA-256',salt:await hkdfSalt(),info},dhKey,256))}
 async function gcm(key,iv,additionalData,body,seal){const k=await subtle().importKey('raw',key,'AES-GCM',false,[seal?'encrypt':'decrypt']);return new Uint8Array(await subtle()[seal?'encrypt':'decrypt']({name:'AES-GCM',iv,additionalData,tagLength:128},k,body))}
-async function shared(from,to){return new Uint8Array(await subtle().deriveBits({name:'X25519',public:to.boxPub},from.box,256))}
 const omitDefaults=raw=>pb(...[...parse(raw,64).values()].filter(f=>f.bytes?f.value.length:f.value!==0n));
 async function seal(from,to,c,type,payload,id=crypto.getRandomValues(new Uint8Array(16)),nc=crypto.getRandomValues(new Uint8Array(12)),nb=crypto.getRandomValues(new Uint8Array(12)),omit=false){
- const dh=await shared(from,to),ad=aad(from.id,to.id,c.cls,id);
+ const dh=await sharedKey(from,to),ad=aad(from.id,to.id,c.cls,id);
  const ec=await gcm(await kdf(dh,wrapInfo(from.id,to.id)),nc,ad,omit?omitDefaults(encodeContext(c)):encodeContext(c),true);
  const eb=await gcm(await kdf(dh,bodyInfo(c)),nb,lp(ad,await hash(ec)),pb(b(1,omit?omitDefaults(pb(u(1,type),b(2,payload))):pb(u(1,type),b(2,payload)))),true);
  const sig=new Uint8Array(await subtle().sign('Ed25519',from.sign,sigInput(ad,nc,ec,nb,eb)));
  const packet=pb(b(1,from.id),b(2,to.id),u(3,c.cls),b(4,id),b(5,pb(b(1,nc),b(2,ec),b(3,nb),b(4,eb),b(5,sig))));
  if(packet.length>(c.cls===2n?16384:65536))throw Error('size');return packet;
 }
-async function open(raw,from,to,now){return openShared(raw,from,to,now,await shared(to,from))}
-async function openSent(raw,from,to,now){const o=await openShared(raw,from,to,now,await shared(from,to));if(!equal(o.context.senderInstance,from.instance)||!equal(o.context.senderBoot,from.boot))throw Error('sent identity');return o}
+async function open(raw,from,to,now){return openShared(raw,from,to,now,await sharedKey(to,from))}
+async function openSent(raw,from,to,now){const o=await openShared(raw,from,to,now,await sharedKey(from,to));if(!equal(o.context.senderInstance,from.instance)||!equal(o.context.senderBoot,from.boot))throw Error('sent identity');return o}
 async function openShared(raw,from,to,now,dh){
  if(raw.length>65536)throw Error('size');raw=raw.slice();now=BigInt(now);const f=fields(raw,'PeerFrameDelivery');need(f,'bbubb');const v=n=>value(f,n),cls=v(3),id=v(4);
  if(![1n,2n].includes(cls)||raw.length>(cls===2n?16384:65536)||id.length!==16||!equal(v(1),from.id)||!equal(v(2),to.id))throw Error('route');

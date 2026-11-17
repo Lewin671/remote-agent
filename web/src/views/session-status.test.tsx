@@ -17,14 +17,17 @@ import { SessionRow } from "./Home";
 
 let root: Root | undefined;
 let host: HTMLElement;
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = undefined;
+  for (const r of remotes.splice(0)) r.dispose();
 });
 
 function open(setup: (r: DemoRemote) => void, query = "") {
   const r = DemoRemote.create(new URLSearchParams(query), async () => undefined);
+  remotes.push(r);
   r.start();
   setup(r);
   host = document.createElement("div");

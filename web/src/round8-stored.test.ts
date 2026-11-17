@@ -88,11 +88,14 @@ it("keeps returned archives across consecutive refreshes and removes only a dele
       });
     };
     await refresh();
-    await vi.waitFor(() => expect((r as any).coreSyncDepth).toBe(0));
+    const { getCoreHost } = await import("./core/host");
+    await vi.waitFor(() => {
+      expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
+      expect((r as any).coreSyncDepth).toBe(0);
+    });
     await r.world.fixture.remove([r.machine]);
     await vi.waitFor(async () => {
       const snap = await (r as any).syncSecurity(0n, 0n, false);
-      const { getCoreHost } = await import("./core/host");
       const { EventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
       getCoreHost(r).dispatch(create(EventSchema, { event: { case: "securitySnapshot", value: snap } }));
       expect((r as any).trustedMembers.has(r.machine)).toBe(false);

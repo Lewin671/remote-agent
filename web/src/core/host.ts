@@ -991,6 +991,10 @@ export class CoreHost {
     if (this.closed) return;
     this.stop();
     this.closed = true;
+    this.pendingEvents = [];
+    this.dirtyTargets.clear();
+    for (const set of this.listeners.values()) set.clear();
+    this.totalListeners = 0;
     this.trays.clear();
     this.core.close();
   }
@@ -1007,6 +1011,13 @@ export function getCoreHost(remote: Remote): CoreHost {
     hosts.set(remote, host);
   }
   return host;
+}
+
+export function disposeCoreHost(remote: Remote): void {
+  const host = hosts.get(remote);
+  if (!host) return;
+  hosts.delete(remote);
+  host.dispose();
 }
 
 export function useCoreHost(remote: Remote, go?: Go): CoreHost {

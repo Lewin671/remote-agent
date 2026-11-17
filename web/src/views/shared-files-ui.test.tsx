@@ -63,11 +63,13 @@ beforeEach(() => {
   });
 });
 
+const remotes: DemoRemote[] = [];
 afterEach(() => {
   if (root) act(() => root?.unmount());
   host?.remove();
   root = undefined;
   host = undefined;
+  for (const r of remotes.splice(0)) r.dispose();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -90,6 +92,7 @@ function makeEvent(seq: number, kind: MessageInitShape<typeof EventSchema>["kind
 
 function makeDemo(): DemoRemote {
   const r = DemoRemote.create(new URLSearchParams("shared-files=1"), async () => {});
+  remotes.push(r);
   r.start();
   return r;
 }

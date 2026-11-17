@@ -21,9 +21,13 @@ vi.mock("@xterm/xterm", () => ({ Terminal: class {
 } }));
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined, host: HTMLDivElement;
+const remotes: DemoRemote[] = [];
+const track = (r: DemoRemote) => { remotes.push(r); return r; };
 afterEach(async () => {
   if (root) await act(async () => root!.unmount()); root = undefined;
-  host?.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); resetProcessBudgetForTest();
+  host?.remove();
+  for (const r of remotes.splice(0)) r.dispose();
+  vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); resetProcessBudgetForTest();
 });
 async function mount() {
   let hidden = false, width = 600;
@@ -37,7 +41,7 @@ async function mount() {
     observe(el: Element) { this.observation.elements.push(el); } disconnect() {}
   });
   terminal.writes.mockClear(); terminal.resize.mockClear();
-  const remote = DemoRemote.create(new URLSearchParams()); remote.start();
+  const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
   let frame!: Parameters<Remote["openTerminal"]>[1];
   let end!: Parameters<Remote["openTerminal"]>[2];
   const close = vi.fn(), send = vi.fn();
@@ -112,7 +116,7 @@ it("keeps the first screen out of sight until it is fitted to the pane, or for a
   vm.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
   vm.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
   vm.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
-  const remote = DemoRemote.create(new URLSearchParams()); remote.start();
+  const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
   let frame!: Parameters<Remote["openTerminal"]>[1];
   vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => { frame = receive; return { close: vi.fn(), send: vi.fn() } as never; });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
@@ -134,7 +138,7 @@ it("shows the first screen as soon as the fitted one is in", async () => {
   vm.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
   vm.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
   vm.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
-  const remote = DemoRemote.create(new URLSearchParams()); remote.start();
+  const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
   let frame!: Parameters<Remote["openTerminal"]>[1];
   vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => { frame = receive; return { close: vi.fn(), send: vi.fn() } as never; });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
@@ -177,7 +181,7 @@ it("reopens after an opening failure when main transitions from offline to onlin
  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
- const remote = DemoRemote.create(new URLSearchParams()); remote.start();
+ const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
  const open = vi.spyOn(remote, "openTerminal")
    .mockRejectedValueOnce(Error("initial opening failure"))
    .mockResolvedValueOnce({ close: vi.fn(), send: vi.fn() } as never);
@@ -197,7 +201,7 @@ it("does not open a newly selected session while offline, and opens it once onli
  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
- const remote = DemoRemote.create(new URLSearchParams());
+ const remote = track(DemoRemote.create(new URLSearchParams()));
  await act(async () => { remote.start(); });
  patchSyncState(remote, { conn: "offline" });
  const openedSids: string[] = [];

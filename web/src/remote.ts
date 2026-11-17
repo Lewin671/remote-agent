@@ -19,7 +19,7 @@ import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
 import { getCore } from "./core/runtime";
-import { getCoreHost, type CoreExecutor, type HostBridge, type StreamLegCallbacks } from "./core/host";
+import { disposeCoreHost, getCoreHost, type CoreExecutor, type HostBridge, type StreamLegCallbacks } from "./core/host";
 export type { StreamLegCallbacks } from "./core/host";
 import { renderText } from "./core/text";
 import {
@@ -748,6 +748,12 @@ export class Remote implements CoreExecutor {
     this.hostBridge?.stop();
   }
 
+  dispose() {
+    this.stop();
+    disposeCoreHost(this);
+    this.hostBridge = undefined;
+  }
+
   private async watchPairingDelivery() {
     try {
       const pending = await this.authority.pending();
@@ -1194,7 +1200,6 @@ export class Remote implements CoreExecutor {
   }
 
   async syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent> {
-    const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
     const gen = Number(networkGeneration);
     if (gen > this.networkGeneration) { this.networkGeneration = gen; this.retireNetworkIO(); }
     if (touch) this.touchAfterWake();
@@ -1211,8 +1216,10 @@ export class Remote implements CoreExecutor {
       }
       if (this.needsDescribeSelf) await this.describeSelf();
       if (record.member === false) { this.removalVerified = true; this.discardToken(); await this.tokenWrites; }
+      const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
       return this.snapshotFromRecord(opId, networkGeneration, record, pushSeq);
     } catch (e) {
+      const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
       return create(SecuritySnapshotEventSchema, {
         opId, pushSeq, selfDeviceId: this.account.deviceId,
         clockSkewed: this.serverAhead || (e instanceof SecurityError && e.code === "clock"),

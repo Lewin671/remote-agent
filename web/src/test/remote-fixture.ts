@@ -299,7 +299,7 @@ export class SyntheticRemote extends Remote {
     return new SyntheticRemote(this.world, member, this.seed);
   }
   async dispose() {
-    this.stop();
+    super.dispose();
     await this.world.fixture.close();
   }
 }
