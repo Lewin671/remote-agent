@@ -88,6 +88,7 @@ type session struct {
 	scheduledCloseAfter    time.Time
 	scheduledClose         bool
 	scheduledCloseRejected bool
+	scheduledCloseTimedOut bool
 	closing                bool
 	mu                     sync.Mutex
 	meta                   meta
@@ -1790,21 +1791,28 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 			}
 		}
 	}
-	if p.FullyIdle != nil {
+	setFullyIdle := func(fullyIdle bool) {
 		s.mu.Lock()
-		s.backgroundPossible = !*p.FullyIdle
+		s.backgroundPossible = !fullyIdle
 		value := s.backgroundPossible
 		s.meta.BackgroundPossible = &value
-		if *p.FullyIdle {
+		if fullyIdle {
 			s.meta.BackgroundIdleSeq = s.log.LastSeq()
 		}
 		_ = s.meta.save(s.dir)
 		s.mu.Unlock()
 	}
+	if p.FullyIdle != nil && !*p.FullyIdle {
+		setFullyIdle(false)
+	}
 	switch p.HookEventName {
 	case "SessionStart":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
-		return nil, s.withLatestOrCachedContext("session start hook", func() error { return nil })
+		err := s.withLatestOrCachedContext("session start hook", func() error { return nil })
+		if p.FullyIdle != nil && *p.FullyIdle {
+			setFullyIdle(true)
+		}
+		return nil, err
 	case "PermissionRequest":
 		s.bindRollout(p.SessionID, p.TranscriptPath)
 		return s.permission(ctx, p)
@@ -1849,6 +1857,16 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 				}
 				s.afterTranscript(fresh)
 			}
+			if p.FullyIdle != nil && *p.FullyIdle {
+				setFullyIdle(true)
+			}
+			return nil
+		})
+	}
+	if p.FullyIdle != nil && *p.FullyIdle {
+		s.bindRollout(p.SessionID, p.TranscriptPath)
+		return nil, s.withLatestOrCachedContext("hook", func() error {
+			setFullyIdle(true)
 			return nil
 		})
 	}

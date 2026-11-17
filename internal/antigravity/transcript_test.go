@@ -309,3 +309,43 @@ func TestDirectSendFile159Transcript(t *testing.T) {
 		t.Fatalf("missing downloadable result: %+v", result)
 	}
 }
+
+func TestDirectManagedMCPToolsAndMessagePhase(t *testing.T) {
+	p := NewParser()
+	evs, err := p.Parse([]byte(`{"step_index":1,"type":"PLANNER_RESPONSE","status":"DONE","content":"checking","tool_calls":[{"name":"mcp_remote-agent_remote_agent_notify_user","args":{"text":"hello"}}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var msg *pb.AgentMessage
+	var tool *pb.ToolStarted
+	for _, e := range evs {
+		if m := e.GetAgentMessage(); m != nil {
+			msg = m
+		}
+		if s := e.GetToolStarted(); s != nil {
+			tool = s
+		}
+	}
+	if msg == nil || msg.Phase != "commentary" {
+		t.Fatalf("tool step message phase = %+v, want commentary", msg)
+	}
+	if tool == nil || tool.Kind != pb.ToolKind_TOOL_KIND_MCP || tool.Title != "remote_agent/notify_user" {
+		t.Fatalf("direct notify_user tool = %+v", tool)
+	}
+	if _, err := p.Parse([]byte(`{"step_index":2,"type":"GENERIC","status":"DONE","content":"{\"notified\":true}"}`)); err != nil {
+		t.Fatal(err)
+	}
+	evs, err = p.Parse([]byte(`{"step_index":3,"type":"PLANNER_RESPONSE","status":"DONE","content":"all finished"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var finalMsg *pb.AgentMessage
+	for _, e := range evs {
+		if m := e.GetAgentMessage(); m != nil {
+			finalMsg = m
+		}
+	}
+	if finalMsg == nil || finalMsg.Phase != "final_answer" || finalMsg.Text != "all finished" {
+		t.Fatalf("final step message = %+v, want final_answer", finalMsg)
+	}
+}

@@ -113,18 +113,23 @@ type Run struct {
 	NotificationCount int    `json:"notification_count,omitempty"`
 	FinalSummary      string `json:"final_summary,omitempty"`
 
-	ID          string     `json:"id"`
-	SessionID   string     `json:"session_id,omitempty"`
-	RequestID   string     `json:"request_id"`
-	ScheduledAt time.Time  `json:"scheduled_at"`
-	StartedAt   time.Time  `json:"started_at"`
-	EndedAt     *time.Time `json:"ended_at,omitempty"`
-	Status      string     `json:"status"`
-	Reason      string     `json:"reason,omitempty"`
-	AfterSeq    uint64     `json:"after_seq"`
-	TurnID      string     `json:"turn_id,omitempty"`
-	InputPaused bool       `json:"input_paused,omitempty"`
-	MessageSeen bool       `json:"message_seen,omitempty"`
+	ID                  string     `json:"id"`
+	SessionID           string     `json:"session_id,omitempty"`
+	RequestID           string     `json:"request_id"`
+	ScheduledAt         time.Time  `json:"scheduled_at"`
+	StartedAt           time.Time  `json:"started_at"`
+	EndedAt             *time.Time `json:"ended_at,omitempty"`
+	Status              string     `json:"status"`
+	Reason              string     `json:"reason,omitempty"`
+	AfterSeq            uint64     `json:"after_seq"`
+	TurnID              string     `json:"turn_id,omitempty"`
+	InputPaused         bool       `json:"input_paused,omitempty"`
+	MessageSeen         bool       `json:"message_seen,omitempty"`
+	PendingStatus       string     `json:"pending_status,omitempty"`
+	PendingReason       string     `json:"pending_reason,omitempty"`
+	PendingEndedAt      *time.Time `json:"pending_ended_at,omitempty"`
+	BackgroundWaitSince *time.Time `json:"background_wait_since,omitempty"`
+	HumanTakenOver      bool       `json:"human_taken_over,omitempty"`
 }
 
 func DecodeSpec(b []byte) (Spec, error) {
@@ -169,10 +174,14 @@ func Clone(t *Task) *Task {
 	out.Runs = slices.Clone(t.Runs)
 	for i := range out.Runs {
 		out.Runs[i].EndedAt = cloneTime(t.Runs[i].EndedAt)
+		out.Runs[i].PendingEndedAt = cloneTime(t.Runs[i].PendingEndedAt)
+		out.Runs[i].BackgroundWaitSince = cloneTime(t.Runs[i].BackgroundWaitSince)
 	}
 	if t.Active != nil {
 		run := *t.Active
 		run.EndedAt = cloneTime(t.Active.EndedAt)
+		run.PendingEndedAt = cloneTime(t.Active.PendingEndedAt)
+		run.BackgroundWaitSince = cloneTime(t.Active.BackgroundWaitSince)
 		out.Active = &run
 	}
 	return &out

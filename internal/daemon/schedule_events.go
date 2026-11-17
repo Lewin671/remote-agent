@@ -195,6 +195,7 @@ type scheduledRunKey struct {
 func (d *Daemon) scheduledClosures() []*session {
 	ended := map[scheduledRunKey]string{}
 	rejected := map[scheduledRunKey]string{}
+	timedOut := map[scheduledRunKey]string{}
 	uncertain := map[scheduledRunKey]string{}
 	d.scheduleMu.Lock()
 	for _, task := range d.tasks {
@@ -202,6 +203,9 @@ func (d *Daemon) scheduledClosures() []*session {
 			key := scheduledRunKey{task.ID, run.ID}
 			if run.Status == "failed" && run.Reason == "relay_session_limit" {
 				rejected[key] = run.SessionID
+			}
+			if run.Status == "failed" && run.Reason == scheduledBackgroundTimeoutReason {
+				timedOut[key] = run.SessionID
 			}
 			if run.Status == "uncertain" {
 				uncertain[key] = run.SessionID
@@ -229,6 +233,7 @@ func (d *Daemon) scheduledClosures() []*session {
 			s.scheduledClose = true
 		}
 		s.scheduledCloseRejected = rejected[key] == s.meta.ID
+		s.scheduledCloseTimedOut = timedOut[key] == s.meta.ID
 		ready := uncertain[key] != s.meta.ID && s.scheduledCloseEligibleLocked() && !time.Now().Before(s.scheduledCloseAfter)
 		s.mu.Unlock()
 		if ready {
@@ -242,7 +247,7 @@ func (d *Daemon) scheduledClosures() []*session {
 // the same closure owner, transcript read, takeover check and retry policy.
 func (s *session) scheduledCloseEligibleLocked() bool {
 	return s.meta.TaskOwned && !s.meta.TaskCLIClosed && !s.meta.Exited && s.scheduledClose &&
-		(s.scheduledCloseRejected || !s.running && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0)
+		(s.scheduledCloseRejected || !s.running && (!s.backgroundPossible || s.scheduledCloseTimedOut) && len(s.queue.Queue) == 0 && len(s.queue.Held) == 0)
 }
 
 func (d *Daemon) publishedScheduleRevision() uint64 {

@@ -372,7 +372,11 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			emit(&pb.Reasoning{Text: r.Thinking})
 		}
 		if r.Content != "" {
-			emit(&pb.AgentMessage{Text: r.Content})
+			phase := "commentary"
+			if len(r.ToolCalls) == 0 && r.Status != "ERROR" {
+				phase = "final_answer"
+			}
+			emit(&pb.AgentMessage{Text: r.Content, Phase: phase})
 		}
 		for i, tc := range r.ToolCalls {
 			step := r.StepIndex + int64(i) + 1
@@ -734,16 +738,18 @@ func describeTool(name string, raw json.RawMessage) toolDesc {
 			}
 			return toolDesc{title: unquoteString(path)}
 		}
-	case nativeSendFileTool:
-		return toolDesc{title: "remote_agent/send_file"}
 	case "call_mcp_tool":
 		srv, _ := m["ServerName"].(string)
 		tl, _ := m["ToolName"].(string)
-		if srv == "remote-agent_remote_agent" && tl == "send_file" {
-			return toolDesc{title: "remote_agent/send_file"}
+		if srv == "remote-agent_remote_agent" && managedMCPTools[tl] {
+			return toolDesc{title: managedMCPDisplayPrefix + tl}
 		}
 		if srv != "" || tl != "" {
 			return toolDesc{title: fmt.Sprintf("%s/%s", unquoteString(srv), unquoteString(tl))}
+		}
+	default:
+		if tool, ok := managedMCPTool(name); ok {
+			return toolDesc{title: managedMCPDisplayPrefix + tool}
 		}
 	}
 	return toolDesc{title: name}
@@ -765,9 +771,12 @@ func toolKindFor(name string) pb.ToolKind {
 		return pb.ToolKind_TOOL_KIND_COMMAND
 	case "write_file", "edit_file":
 		return pb.ToolKind_TOOL_KIND_FILE_CHANGE
-	case "call_mcp_tool", nativeSendFileTool:
+	case "call_mcp_tool":
 		return pb.ToolKind_TOOL_KIND_MCP
 	default:
+		if _, ok := managedMCPTool(name); ok {
+			return pb.ToolKind_TOOL_KIND_MCP
+		}
 		return pb.ToolKind_TOOL_KIND_OTHER
 	}
 }

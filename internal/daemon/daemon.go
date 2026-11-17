@@ -55,7 +55,10 @@ type Config struct {
 	// shell may take to start the CLI; a shell whose configuration waits
 	// or exits otherwise leaves the session starting forever.
 	ShellStartTimeout time.Duration
-	Width, Height     int // size of new sessions until attached
+	// ScheduledBackgroundTimeout bounds how long a scheduled run waits
+	// idle after a turn ends while background tasks may still be running.
+	ScheduledBackgroundTimeout time.Duration
+	Width, Height              int // size of new sessions until attached
 
 	// Started, if set, runs in its own goroutine once the daemon holds its
 	// lock and has restored its sessions.
@@ -80,6 +83,9 @@ func (c *Config) defaults() {
 	}
 	if c.ShellStartTimeout == 0 {
 		c.ShellStartTimeout = time.Minute
+	}
+	if c.ScheduledBackgroundTimeout == 0 {
+		c.ScheduledBackgroundTimeout = time.Hour
 	}
 	if c.Width == 0 {
 		c.Width, c.Height = 160, 48
@@ -1413,7 +1419,20 @@ func (s *session) resumeStateLocked(pendingInput bool) {
 			s.scheduledCloseAfter = time.Time{}
 		}
 	}
+	if s.ag.Capabilities().ConversationIdentity {
+		idle := false
+		s.backgroundPossible = false
+		s.meta.BackgroundPossible = &idle
+		s.meta.BackgroundIdleSeq = s.log.LastSeq()
+	}
 	s.sawComposer = false
+}
+
+func (d *Daemon) scheduledBackgroundTimeout() time.Duration {
+	if d.cfg.ScheduledBackgroundTimeout > 0 {
+		return d.cfg.ScheduledBackgroundTimeout
+	}
+	return time.Hour
 }
 
 // Shared by create/fork/resume (including Send's auto-resume). Only reads;

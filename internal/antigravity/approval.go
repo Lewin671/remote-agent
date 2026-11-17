@@ -12,10 +12,33 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
-// The managed plugin's directly exposed tool in agy 1.5.9. Do not infer a
+// The managed plugin's directly exposed tools in agy 1.5.9+. Do not infer a
 // server/tool split from underscores: different names can collide.
-const nativeSendFileTool = "mcp_remote-agent_remote_agent_send_file"
-const nativeSendFileTitle = "remote-agent_remote_agent/send_file"
+const (
+	nativeSendFileTool      = "mcp_remote-agent_remote_agent_send_file"
+	nativeSendFileTitle     = "remote-agent_remote_agent/send_file"
+	managedMCPToolPrefix    = "mcp_remote-agent_remote_agent_"
+	managedMCPTitlePrefix   = "remote-agent_remote_agent/"
+	managedMCPDisplayPrefix = "remote_agent/"
+)
+
+var managedMCPTools = map[string]bool{
+	"send_file":       true,
+	"notify_user":     true,
+	"schedule_create": true,
+	"schedule_list":   true,
+	"schedule_update": true,
+	"schedule_get":    true,
+	"schedule_pause":  true,
+	"schedule_resume": true,
+	"schedule_cancel": true,
+	"schedule_run":    true,
+}
+
+func managedMCPTool(name string) (string, bool) {
+	tool, ok := strings.CutPrefix(name, managedMCPToolPrefix)
+	return tool, ok && managedMCPTools[tool]
+}
 
 // permissionBody isolates the active request, excluding history and the menu's
 // permanent-grant command prefixes. Only complete, recognized menus are used.
@@ -112,7 +135,8 @@ func (a *Adapter) MatchApproval(styled string, h *agent.Hook) (*pb.ApprovalReque
 	if deny == "3" && h.ToolName != "read_file" {
 		return nil, false
 	}
-	isMCP := h.ToolName == "call_mcp_tool" || h.ToolName == nativeSendFileTool
+	managedTool, isManagedDirect := managedMCPTool(h.ToolName)
+	isMCP := h.ToolName == "call_mcp_tool" || isManagedDirect
 	if !ok || isMCP != strings.HasPrefix(plain[permissionPosition(plain):], "Allow calling this tool?") {
 		return nil, false
 	}
@@ -120,11 +144,11 @@ func (a *Adapter) MatchApproval(styled string, h *agent.Hook) (*pb.ApprovalReque
 	if json.Unmarshal(h.ToolInput, &args) != nil {
 		return nil, false
 	}
-	if h.ToolName == nativeSendFileTool {
-		// alwaysLoad exposes our plugin's send_file as a direct native tool.
-		// Its menu still omits arguments: require the exact managed identity
+	if isManagedDirect {
+		// alwaysLoad exposes our plugin's tools as direct native tools.
+		// Their menu still omits arguments: require the exact managed identity
 		// and let MatchApprovals reject duplicate or uncertain pending calls.
-		if args == nil || body != nativeSendFileTitle {
+		if args == nil || body != managedMCPTitlePrefix+managedTool {
 			return nil, false
 		}
 		return &pb.ApprovalRequested{ToolName: h.ToolName, ToolInputJson: string(h.ToolInput), InputDigest: agent.InputDigest(h.ToolName, h.ToolInput)}, true

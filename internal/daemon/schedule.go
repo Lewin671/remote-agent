@@ -1232,6 +1232,8 @@ func (d *Daemon) finishScheduledDispatch(ctx context.Context, snapshot *schedule
 	}
 }
 
+const scheduledBackgroundTimeoutReason = "background_timeout"
+
 func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed bool) {
 	run := t.Active
 	if run.Status == "uncertain" || run.Status == "dispatching" {
@@ -1241,6 +1243,12 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 	if err != nil {
 		d.endScheduledRun(t, now, "failed", "execution_session_missing")
 		return true
+	}
+	var priorEnd struct {
+		turnID  string
+		status  string
+		reason  string
+		endedAt *time.Time
 	}
 	err = scanEventsSince(s.log, run.AfterSeq, func(e *pb.Event) bool {
 		run.AfterSeq = e.Seq
@@ -1273,11 +1281,51 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 			run.MessageSeen = true
 			run.TurnID = e.TurnId
 			run.Status = "running"
+		} else if run.MessageSeen {
+			human := humanOrigin(e.Origin) && (e.GetUserMessage() != nil || e.GetSessionState() != nil && e.GetSessionState().Detail == "resumed")
+			otherScheduled := e.GetUserMessage() != nil && e.Origin.GetScheduledRunId() != "" && e.Origin.GetScheduledRunId() != run.ID
+			if human || otherScheduled {
+				run.FollowupsClosed = true
+				if run.PendingStatus != "" {
+					endedAt := now
+					if run.PendingEndedAt != nil {
+						endedAt = *run.PendingEndedAt
+					}
+					d.endScheduledRun(t, endedAt, run.PendingStatus, run.PendingReason)
+					return false
+				}
+				if priorEnd.status != "" && (e.TurnId == "" || priorEnd.turnID == "" || e.TurnId == priorEnd.turnID) {
+					endedAt := now
+					if priorEnd.endedAt != nil {
+						endedAt = *priorEnd.endedAt
+					}
+					d.endScheduledRun(t, endedAt, priorEnd.status, priorEnd.reason)
+					return false
+				}
+				run.HumanTakenOver = true
+			}
+		}
+		if e.GetTurnStarted() != nil && run.MessageSeen && !run.HumanTakenOver {
+			if run.PendingStatus != "" {
+				priorEnd.turnID = e.TurnId
+				priorEnd.status = run.PendingStatus
+				priorEnd.reason = run.PendingReason
+				priorEnd.endedAt = run.PendingEndedAt
+			}
+			if e.TurnId != "" {
+				run.TurnID = e.TurnId
+			}
+			run.PendingStatus = ""
+			run.PendingReason = ""
+			run.PendingEndedAt = nil
+			run.BackgroundWaitSince = nil
+		} else if e.GetTurnContext() == nil {
+			priorEnd.status = ""
 		}
 		if notice := e.GetScheduledNotification(); notice != nil && notice.RunId == run.ID {
 			recordRunNotification(run, e)
 		}
-		if msg := e.GetAgentMessage(); msg != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) && msg.Phase == "final_answer" {
+		if msg := e.GetAgentMessage(); msg != nil && run.MessageSeen && !run.HumanTakenOver && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) && msg.Phase == "final_answer" {
 			run.FinalSummary = finalRunSummary(msg.Text)
 		}
 		if end := e.GetTurnEnded(); end != nil && run.MessageSeen && (run.TurnID == "" || e.TurnId == "" || e.TurnId == run.TurnID) {
@@ -1291,8 +1339,11 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 			if e.Time != nil {
 				endedAt = e.Time.AsTime()
 			}
-			d.endScheduledRun(t, endedAt, status, reason)
-			return false
+			run.PendingStatus = status
+			run.PendingReason = reason
+			run.PendingEndedAt = &endedAt
+			waitSince := endedAt
+			run.BackgroundWaitSince = &waitSince
 		}
 		return true
 	})
@@ -1320,10 +1371,24 @@ func (d *Daemon) watchScheduledRun(t *schedule.Task, now time.Time) (changed boo
 	}
 	s.mu.Lock()
 	exited := s.meta.Exited
+	running := s.running
+	backgroundPossible := s.backgroundPossible
 	s.mu.Unlock()
+	if run.PendingStatus != "" && (run.HumanTakenOver || (!running && !backgroundPossible)) {
+		endedAt := now
+		if run.PendingEndedAt != nil {
+			endedAt = *run.PendingEndedAt
+		}
+		d.endScheduledRun(t, endedAt, run.PendingStatus, run.PendingReason)
+		return true
+	}
 	if exited {
 		d.endScheduledRun(t, now, "failed", "execution_session_exited")
-		changed = true
+		return true
+	}
+	if run.PendingStatus != "" && !running && backgroundPossible && run.BackgroundWaitSince != nil && !now.Before(run.BackgroundWaitSince.Add(d.scheduledBackgroundTimeout())) {
+		d.endScheduledRun(t, now, "failed", scheduledBackgroundTimeoutReason)
+		return true
 	}
 	return changed
 }
@@ -1390,6 +1455,11 @@ func (d *Daemon) reconfirmScheduledRun(t *schedule.Task, now time.Time) bool {
 func (d *Daemon) endScheduledRun(t *schedule.Task, now time.Time, status, reason string) {
 	manual := t.Active.Manual
 	retryFailed := t.Active.RetryFailed
+	t.Active.PendingStatus = ""
+	t.Active.PendingReason = ""
+	t.Active.PendingEndedAt = nil
+	t.Active.BackgroundWaitSince = nil
+	t.Active.HumanTakenOver = false
 	t.Active.Status = status
 	t.Active.Reason = reason
 	t.Active.EndedAt = &now
@@ -1550,6 +1620,11 @@ func visibleTask(t *schedule.Task) []byte {
 	t.IntervalPhase = nil
 	if t.Active != nil {
 		t.Active.AfterSeq = 0
+		t.Active.PendingStatus = ""
+		t.Active.PendingReason = ""
+		t.Active.PendingEndedAt = nil
+		t.Active.BackgroundWaitSince = nil
+		t.Active.HumanTakenOver = false
 	}
 	for i := range t.Runs {
 		t.Runs[i].AfterSeq = 0

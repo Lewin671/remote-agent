@@ -149,6 +149,42 @@ func TestDirectSendFile159Approval(t *testing.T) {
 	}
 }
 
+func TestDirectScheduleAndNotifyMCPApproval(t *testing.T) {
+	a := New("", "")
+	base := readScreenFixture(t, "mcp-direct-permission-1.5.9.txt")
+	for _, tc := range []struct {
+		tool, input string
+	}{
+		{"notify_user", `{"text":"done"}`},
+		{"schedule_list", `{}`},
+		{"schedule_create", `{"task":{"title":"check","message":"ping","trigger":{"type":"after_turn","delay_seconds":60},"target":{"type":"resume_session","session":"current"}}}`},
+	} {
+		t.Run(tc.tool, func(t *testing.T) {
+			screen := strings.ReplaceAll(base, nativeSendFileTitle, managedMCPTitlePrefix+tc.tool)
+			h := &agent.Hook{ToolUseID: "conv/step_20", ToolName: managedMCPToolPrefix + tc.tool, ToolInput: []byte(tc.input)}
+			req, ok := a.MatchApproval(screen, h)
+			if !ok || req.ToolName != h.ToolName || req.InputDigest != agent.InputDigest(h.ToolName, h.ToolInput) {
+				t.Fatalf("missing direct %s approval: ok=%v req=%+v", tc.tool, ok, req)
+			}
+			// Cross-tool mismatch or unapproved direct MCP tool must still fall back to terminal.
+			wrongScreen := strings.ReplaceAll(base, nativeSendFileTitle, managedMCPTitlePrefix+"schedule_pause")
+			if _, ok := a.MatchApproval(wrongScreen, h); ok {
+				t.Fatalf("%s matched another tool's menu", tc.tool)
+			}
+			nullInput := *h
+			nullInput.ToolInput = []byte("null")
+			if _, ok := a.MatchApproval(screen, &nullInput); ok {
+				t.Fatalf("%s matched null input", tc.tool)
+			}
+		})
+	}
+	unknown := &agent.Hook{ToolUseID: "conv/step_21", ToolName: managedMCPToolPrefix + "unknown_tool", ToolInput: []byte(`{}`)}
+	unknownScreen := strings.ReplaceAll(base, nativeSendFileTitle, managedMCPTitlePrefix+"unknown_tool")
+	if _, ok := a.MatchApproval(unknownScreen, unknown); ok {
+		t.Fatal("matched unmanaged direct MCP tool")
+	}
+}
+
 func TestOutsideWorkspaceRead159Approval(t *testing.T) {
 	a := New("", "")
 	screen := readScreenFixture(t, "file-access-1.5.9.txt")
