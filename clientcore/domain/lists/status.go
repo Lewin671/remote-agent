@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"unicode/utf16"
 
-	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
 	"github.com/Lewin671/remote-agent/clientcore/projection"
 )
 

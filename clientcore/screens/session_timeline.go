@@ -1,8 +1,8 @@
 package screens
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -771,7 +771,7 @@ func buildSessionTimeline(
 }
 
 func eventItemID(seq uint64) string {
-	return fmt.Sprintf("e%d", seq)
+	return "e" + strconv.FormatUint(uint64(seq), 10)
 }
 
 func toolOk(t *v1.ToolCall) bool {
@@ -1116,8 +1116,8 @@ func buildSettingsChangedNote(
 		var txt *corev1.Text
 		if comp != nil && comp.BeforePercent != nil && comp.AfterPercent != nil {
 			txt = text.Msg(text.KeySessionAndroidCompactedUsage,
-				text.Str("before", fmt.Sprintf("%d%%", *comp.BeforePercent)),
-				text.Str("after", fmt.Sprintf("%d%%", *comp.AfterPercent)),
+				text.Str("before", strconv.FormatInt(int64(*comp.BeforePercent), 10)+"%"),
+				text.Str("after", strconv.FormatInt(int64(*comp.AfterPercent), 10)+"%"),
 			)
 		} else {
 			txt = text.Msg(text.KeySessionCompacted)

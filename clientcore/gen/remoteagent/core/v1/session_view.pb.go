@@ -6,7 +6,6 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	protowire "google.golang.org/protobuf/encoding/protowire"
 	slices "slices"
 )
 
@@ -120,8 +119,27 @@ func (m *SessionScreenRequest) Clone() *SessionScreenRequest {
 	return &cp
 }
 
+func (m *SessionScreenRequest) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	if m.Window != nil {
+		n += litewire.SizeMessage(2, m.Window.Size())
+	}
+	return n
+}
+
 func (m *SessionScreenRequest) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionScreenRequest) AppendMarshal(b []byte) []byte {
@@ -130,7 +148,8 @@ func (m *SessionScreenRequest) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.SessionId)
 	if m.Window != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Window.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Window.Size())
+		b = m.Window.AppendMarshal(b)
 	}
 	return b
 }
@@ -143,7 +162,7 @@ func (m *SessionScreenRequest) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -152,7 +171,7 @@ func (m *SessionScreenRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -234,8 +253,31 @@ func (m *SessionWindowRequest) Clone() *SessionWindowRequest {
 	return &cp
 }
 
+func (m *SessionWindowRequest) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Limit))
+	n += litewire.SizeVarintField(2, uint64(m.BeforeSeq))
+	n += litewire.SizeVarintField(3, uint64(m.AroundSeq))
+	n += litewire.SizeVarintField(4, uint64(m.RevealSeq))
+	n += litewire.SizeString(5, m.RevealRunId)
+	for _, v := range m.ExpandedGroupIds {
+		n += litewire.SizeStringAlways(6, v)
+	}
+	return n
+}
+
 func (m *SessionWindowRequest) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionWindowRequest) AppendMarshal(b []byte) []byte {
@@ -261,7 +303,7 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -270,7 +312,7 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -279,7 +321,7 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -288,7 +330,7 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -297,7 +339,7 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -306,7 +348,7 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -387,8 +429,39 @@ func (m *SessionViewModel) Clone() *SessionViewModel {
 	return &cp
 }
 
+func (m *SessionViewModel) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	if m.Header != nil {
+		n += litewire.SizeMessage(2, m.Header.Size())
+	}
+	if m.Actions != nil {
+		n += litewire.SizeMessage(3, m.Actions.Size())
+	}
+	if m.Dock != nil {
+		n += litewire.SizeMessage(4, m.Dock.Size())
+	}
+	if m.Composer != nil {
+		n += litewire.SizeMessage(5, m.Composer.Size())
+	}
+	if m.Timeline != nil {
+		n += litewire.SizeMessage(6, m.Timeline.Size())
+	}
+	return n
+}
+
 func (m *SessionViewModel) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionViewModel) AppendMarshal(b []byte) []byte {
@@ -397,19 +470,24 @@ func (m *SessionViewModel) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.SessionId)
 	if m.Header != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Header.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Header.Size())
+		b = m.Header.AppendMarshal(b)
 	}
 	if m.Actions != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.Actions.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.Actions.Size())
+		b = m.Actions.AppendMarshal(b)
 	}
 	if m.Dock != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.Dock.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.Dock.Size())
+		b = m.Dock.AppendMarshal(b)
 	}
 	if m.Composer != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.Composer.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.Composer.Size())
+		b = m.Composer.AppendMarshal(b)
 	}
 	if m.Timeline != nil {
-		b = litewire.AppendBytesAlways(b, 6, m.Timeline.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 6, m.Timeline.Size())
+		b = m.Timeline.AppendMarshal(b)
 	}
 	return b
 }
@@ -422,7 +500,7 @@ func (m *SessionViewModel) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -431,7 +509,7 @@ func (m *SessionViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -445,7 +523,7 @@ func (m *SessionViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -459,7 +537,7 @@ func (m *SessionViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -473,7 +551,7 @@ func (m *SessionViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -487,7 +565,7 @@ func (m *SessionViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -605,8 +683,38 @@ func (m *SessionCommandState) Clone() *SessionCommandState {
 	return &cp
 }
 
+func (m *SessionCommandState) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SlotKey)
+	n += litewire.SizeString(2, m.RequestId)
+	n += litewire.SizeInt32(3, int32(m.Status))
+	n += litewire.SizeBool(4, m.Busy)
+	n += litewire.SizeBool(5, m.Frozen)
+	n += litewire.SizeBool(6, m.Expired)
+	n += litewire.SizeBool(7, m.CanRetry)
+	n += litewire.SizeBool(8, m.CanAbandon)
+	n += litewire.SizeString(9, m.ErrorCode)
+	if m.ErrorText != nil {
+		n += litewire.SizeMessage(10, m.ErrorText.Size())
+	}
+	if m.StatusText != nil {
+		n += litewire.SizeMessage(11, m.StatusText.Size())
+	}
+	return n
+}
+
 func (m *SessionCommandState) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionCommandState) AppendMarshal(b []byte) []byte {
@@ -623,10 +731,12 @@ func (m *SessionCommandState) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 8, m.CanAbandon)
 	b = litewire.AppendString(b, 9, m.ErrorCode)
 	if m.ErrorText != nil {
-		b = litewire.AppendBytesAlways(b, 10, m.ErrorText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 10, m.ErrorText.Size())
+		b = m.ErrorText.AppendMarshal(b)
 	}
 	if m.StatusText != nil {
-		b = litewire.AppendBytesAlways(b, 11, m.StatusText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 11, m.StatusText.Size())
+		b = m.StatusText.AppendMarshal(b)
 	}
 	return b
 }
@@ -639,7 +749,7 @@ func (m *SessionCommandState) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -648,7 +758,7 @@ func (m *SessionCommandState) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -657,7 +767,7 @@ func (m *SessionCommandState) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -666,52 +776,52 @@ func (m *SessionCommandState) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Busy = protowire.DecodeBool(v)
+				m.Busy = litewire.DecodeBool(v)
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Frozen = protowire.DecodeBool(v)
+				m.Frozen = litewire.DecodeBool(v)
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Expired = protowire.DecodeBool(v)
+				m.Expired = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanRetry = protowire.DecodeBool(v)
+				m.CanRetry = litewire.DecodeBool(v)
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanAbandon = protowire.DecodeBool(v)
+				m.CanAbandon = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -720,7 +830,7 @@ func (m *SessionCommandState) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -734,7 +844,7 @@ func (m *SessionCommandState) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -879,8 +989,40 @@ func (m *SessionCapabilitiesView) Clone() *SessionCapabilitiesView {
 	return &cp
 }
 
+func (m *SessionCapabilitiesView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.CanSend)
+	n += litewire.SizeBool(2, m.SupportsImages)
+	n += litewire.SizeBool(3, m.SupportsFiles)
+	n += litewire.SizeBool(4, m.SupportsSendModes)
+	n += litewire.SizeBool(5, m.SupportsSharedFiles)
+	n += litewire.SizeBool(6, m.SupportsAlwaysAllow)
+	n += litewire.SizeBool(7, m.SupportsSteer)
+	n += litewire.SizeBool(8, m.SupportsCompact)
+	n += litewire.SizeBool(9, m.SupportsFork)
+	n += litewire.SizeBool(10, m.SupportsModelSwitch)
+	n += litewire.SizeBool(11, m.SupportsModeSwitch)
+	n += litewire.SizeBool(12, m.SupportsSchedule)
+	n += litewire.SizeBool(13, m.TerminalAvailable)
+	if m.TerminalHint != nil {
+		n += litewire.SizeMessage(14, m.TerminalHint.Size())
+	}
+	n += litewire.SizeInt32(15, int32(m.MaxImages))
+	return n
+}
+
 func (m *SessionCapabilitiesView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionCapabilitiesView) AppendMarshal(b []byte) []byte {
@@ -901,7 +1043,8 @@ func (m *SessionCapabilitiesView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 12, m.SupportsSchedule)
 	b = litewire.AppendBool(b, 13, m.TerminalAvailable)
 	if m.TerminalHint != nil {
-		b = litewire.AppendBytesAlways(b, 14, m.TerminalHint.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 14, m.TerminalHint.Size())
+		b = m.TerminalHint.AppendMarshal(b)
 	}
 	b = litewire.AppendInt32(b, 15, int32(m.MaxImages))
 	return b
@@ -915,124 +1058,124 @@ func (m *SessionCapabilitiesView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanSend = protowire.DecodeBool(v)
+				m.CanSend = litewire.DecodeBool(v)
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsImages = protowire.DecodeBool(v)
+				m.SupportsImages = litewire.DecodeBool(v)
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsFiles = protowire.DecodeBool(v)
+				m.SupportsFiles = litewire.DecodeBool(v)
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsSendModes = protowire.DecodeBool(v)
+				m.SupportsSendModes = litewire.DecodeBool(v)
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsSharedFiles = protowire.DecodeBool(v)
+				m.SupportsSharedFiles = litewire.DecodeBool(v)
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsAlwaysAllow = protowire.DecodeBool(v)
+				m.SupportsAlwaysAllow = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsSteer = protowire.DecodeBool(v)
+				m.SupportsSteer = litewire.DecodeBool(v)
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsCompact = protowire.DecodeBool(v)
+				m.SupportsCompact = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsFork = protowire.DecodeBool(v)
+				m.SupportsFork = litewire.DecodeBool(v)
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsModelSwitch = protowire.DecodeBool(v)
+				m.SupportsModelSwitch = litewire.DecodeBool(v)
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsModeSwitch = protowire.DecodeBool(v)
+				m.SupportsModeSwitch = litewire.DecodeBool(v)
 				continue
 			}
 		case 12:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsSchedule = protowire.DecodeBool(v)
+				m.SupportsSchedule = litewire.DecodeBool(v)
 				continue
 			}
 		case 13:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.TerminalAvailable = protowire.DecodeBool(v)
+				m.TerminalAvailable = litewire.DecodeBool(v)
 				continue
 			}
 		case 14:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1046,7 +1189,7 @@ func (m *SessionCapabilitiesView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1465,8 +1608,104 @@ func (m *SessionHeaderView) Clone() *SessionHeaderView {
 	return &cp
 }
 
+func (m *SessionHeaderView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Found)
+	n += litewire.SizeBool(2, m.SessionsListed)
+	n += litewire.SizeBool(3, m.LiveLoaded)
+	n += litewire.SizeBool(4, m.Missing)
+	if m.Title != nil {
+		n += litewire.SizeMessage(5, m.Title.Size())
+	}
+	if m.ProjectName != nil {
+		n += litewire.SizeMessage(6, m.ProjectName.Size())
+	}
+	n += litewire.SizeString(7, m.ProjectKey)
+	n += litewire.SizeString(8, m.Cwd)
+	n += litewire.SizeInt32(9, int32(m.Agent))
+	n += litewire.SizeString(10, m.AgentName)
+	n += litewire.SizeInt32(11, int32(m.Status))
+	n += litewire.SizeInt32(12, int32(m.Tone))
+	if m.StatusText != nil {
+		n += litewire.SizeMessage(13, m.StatusText.Size())
+	}
+	if m.LiveSummary != nil {
+		n += litewire.SizeMessage(14, m.LiveSummary.Size())
+	}
+	n += litewire.SizeInt32(15, int32(m.ApprovalMode))
+	n += litewire.SizeString(16, m.ApprovalModeRaw)
+	if m.ApprovalModeLabel != nil {
+		n += litewire.SizeMessage(17, m.ApprovalModeLabel.Size())
+	}
+	n += litewire.SizeBool(18, m.TerminalModeOverride)
+	n += litewire.SizeString(19, m.Model)
+	n += litewire.SizeString(20, m.ModelLabel)
+	n += litewire.SizeString(21, m.Effort)
+	if m.EffortLabel != nil {
+		n += litewire.SizeMessage(22, m.EffortLabel.Size())
+	}
+	n += litewire.SizeBool(23, m.StandardContext)
+	n += litewire.SizeBool(24, m.ModelUnknown)
+	n += litewire.SizeBool(25, m.HasContext)
+	n += litewire.SizeInt32(26, int32(m.ContextPercent))
+	n += litewire.SizeVarintField(27, uint64(m.ContextTokens))
+	n += litewire.SizeVarintField(28, uint64(m.ContextWindow))
+	if m.ContextText != nil {
+		n += litewire.SizeMessage(29, m.ContextText.Size())
+	}
+	n += litewire.SizeBool(30, m.HighContextWarning)
+	n += litewire.SizeString(31, m.MachineId)
+	if m.ComputerName != nil {
+		n += litewire.SizeMessage(32, m.ComputerName.Size())
+	}
+	n += litewire.SizeBool(33, m.ComputerOnline)
+	n += litewire.SizeBool(34, m.ComputerUnlinked)
+	n += litewire.SizeVarintField(35, uint64(m.OfflineSinceMs))
+	if m.OfflineText != nil {
+		n += litewire.SizeMessage(36, m.OfflineText.Size())
+	}
+	n += litewire.SizeInt32(37, int32(m.ConnState))
+	n += litewire.SizeBool(38, m.ProtocolMismatch)
+	n += litewire.SizeVarintField(39, uint64(m.DaemonProtocolVersion))
+	n += litewire.SizeVarintField(40, uint64(m.ClientProtocolVersion))
+	if m.ProtocolMismatchText != nil {
+		n += litewire.SizeMessage(41, m.ProtocolMismatchText.Size())
+	}
+	n += litewire.SizeBool(42, m.Exited)
+	n += litewire.SizeVarintField(43, uint64(m.EndedAtMs))
+	if m.EndedText != nil {
+		n += litewire.SizeMessage(44, m.EndedText.Size())
+	}
+	n += litewire.SizeBool(45, m.IdleClosed)
+	n += litewire.SizeString(46, m.ForkedFromId)
+	if m.ForkedFromTitle != nil {
+		n += litewire.SizeMessage(47, m.ForkedFromTitle.Size())
+	}
+	n += litewire.SizeBool(48, m.IsScheduled)
+	n += litewire.SizeString(49, m.ScheduledTaskId)
+	n += litewire.SizeString(50, m.ScheduledTitle)
+	n += litewire.SizeBool(51, m.ScheduledClosed)
+	if m.Capabilities != nil {
+		n += litewire.SizeMessage(52, m.Capabilities.Size())
+	}
+	if m.MissingText != nil {
+		n += litewire.SizeMessage(53, m.MissingText.Size())
+	}
+	return n
+}
+
 func (m *SessionHeaderView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
@@ -1478,10 +1717,12 @@ func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 3, m.LiveLoaded)
 	b = litewire.AppendBool(b, 4, m.Missing)
 	if m.Title != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.Title.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.Title.Size())
+		b = m.Title.AppendMarshal(b)
 	}
 	if m.ProjectName != nil {
-		b = litewire.AppendBytesAlways(b, 6, m.ProjectName.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 6, m.ProjectName.Size())
+		b = m.ProjectName.AppendMarshal(b)
 	}
 	b = litewire.AppendString(b, 7, m.ProjectKey)
 	b = litewire.AppendString(b, 8, m.Cwd)
@@ -1490,22 +1731,26 @@ func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 11, int32(m.Status))
 	b = litewire.AppendInt32(b, 12, int32(m.Tone))
 	if m.StatusText != nil {
-		b = litewire.AppendBytesAlways(b, 13, m.StatusText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 13, m.StatusText.Size())
+		b = m.StatusText.AppendMarshal(b)
 	}
 	if m.LiveSummary != nil {
-		b = litewire.AppendBytesAlways(b, 14, m.LiveSummary.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 14, m.LiveSummary.Size())
+		b = m.LiveSummary.AppendMarshal(b)
 	}
 	b = litewire.AppendInt32(b, 15, int32(m.ApprovalMode))
 	b = litewire.AppendString(b, 16, m.ApprovalModeRaw)
 	if m.ApprovalModeLabel != nil {
-		b = litewire.AppendBytesAlways(b, 17, m.ApprovalModeLabel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 17, m.ApprovalModeLabel.Size())
+		b = m.ApprovalModeLabel.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 18, m.TerminalModeOverride)
 	b = litewire.AppendString(b, 19, m.Model)
 	b = litewire.AppendString(b, 20, m.ModelLabel)
 	b = litewire.AppendString(b, 21, m.Effort)
 	if m.EffortLabel != nil {
-		b = litewire.AppendBytesAlways(b, 22, m.EffortLabel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 22, m.EffortLabel.Size())
+		b = m.EffortLabel.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 23, m.StandardContext)
 	b = litewire.AppendBool(b, 24, m.ModelUnknown)
@@ -1514,45 +1759,53 @@ func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 27, uint64(m.ContextTokens))
 	b = litewire.AppendVarint(b, 28, uint64(m.ContextWindow))
 	if m.ContextText != nil {
-		b = litewire.AppendBytesAlways(b, 29, m.ContextText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 29, m.ContextText.Size())
+		b = m.ContextText.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 30, m.HighContextWarning)
 	b = litewire.AppendString(b, 31, m.MachineId)
 	if m.ComputerName != nil {
-		b = litewire.AppendBytesAlways(b, 32, m.ComputerName.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 32, m.ComputerName.Size())
+		b = m.ComputerName.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 33, m.ComputerOnline)
 	b = litewire.AppendBool(b, 34, m.ComputerUnlinked)
 	b = litewire.AppendVarint(b, 35, uint64(m.OfflineSinceMs))
 	if m.OfflineText != nil {
-		b = litewire.AppendBytesAlways(b, 36, m.OfflineText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 36, m.OfflineText.Size())
+		b = m.OfflineText.AppendMarshal(b)
 	}
 	b = litewire.AppendInt32(b, 37, int32(m.ConnState))
 	b = litewire.AppendBool(b, 38, m.ProtocolMismatch)
 	b = litewire.AppendVarint(b, 39, uint64(m.DaemonProtocolVersion))
 	b = litewire.AppendVarint(b, 40, uint64(m.ClientProtocolVersion))
 	if m.ProtocolMismatchText != nil {
-		b = litewire.AppendBytesAlways(b, 41, m.ProtocolMismatchText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 41, m.ProtocolMismatchText.Size())
+		b = m.ProtocolMismatchText.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 42, m.Exited)
 	b = litewire.AppendVarint(b, 43, uint64(m.EndedAtMs))
 	if m.EndedText != nil {
-		b = litewire.AppendBytesAlways(b, 44, m.EndedText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 44, m.EndedText.Size())
+		b = m.EndedText.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 45, m.IdleClosed)
 	b = litewire.AppendString(b, 46, m.ForkedFromId)
 	if m.ForkedFromTitle != nil {
-		b = litewire.AppendBytesAlways(b, 47, m.ForkedFromTitle.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 47, m.ForkedFromTitle.Size())
+		b = m.ForkedFromTitle.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 48, m.IsScheduled)
 	b = litewire.AppendString(b, 49, m.ScheduledTaskId)
 	b = litewire.AppendString(b, 50, m.ScheduledTitle)
 	b = litewire.AppendBool(b, 51, m.ScheduledClosed)
 	if m.Capabilities != nil {
-		b = litewire.AppendBytesAlways(b, 52, m.Capabilities.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 52, m.Capabilities.Size())
+		b = m.Capabilities.AppendMarshal(b)
 	}
 	if m.MissingText != nil {
-		b = litewire.AppendBytesAlways(b, 53, m.MissingText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 53, m.MissingText.Size())
+		b = m.MissingText.AppendMarshal(b)
 	}
 	return b
 }
@@ -1565,43 +1818,43 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Found = protowire.DecodeBool(v)
+				m.Found = litewire.DecodeBool(v)
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SessionsListed = protowire.DecodeBool(v)
+				m.SessionsListed = litewire.DecodeBool(v)
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.LiveLoaded = protowire.DecodeBool(v)
+				m.LiveLoaded = litewire.DecodeBool(v)
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Missing = protowire.DecodeBool(v)
+				m.Missing = litewire.DecodeBool(v)
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1615,7 +1868,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1629,7 +1882,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1638,7 +1891,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1647,7 +1900,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1656,7 +1909,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1665,7 +1918,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1674,7 +1927,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 12:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1683,7 +1936,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 13:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1697,7 +1950,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 14:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1711,7 +1964,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1720,7 +1973,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 16:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1729,7 +1982,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 17:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1743,16 +1996,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 18:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.TerminalModeOverride = protowire.DecodeBool(v)
+				m.TerminalModeOverride = litewire.DecodeBool(v)
 				continue
 			}
 		case 19:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1761,7 +2014,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 20:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1770,7 +2023,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 21:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1779,7 +2032,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 22:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1793,34 +2046,34 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 23:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.StandardContext = protowire.DecodeBool(v)
+				m.StandardContext = litewire.DecodeBool(v)
 				continue
 			}
 		case 24:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ModelUnknown = protowire.DecodeBool(v)
+				m.ModelUnknown = litewire.DecodeBool(v)
 				continue
 			}
 		case 25:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HasContext = protowire.DecodeBool(v)
+				m.HasContext = litewire.DecodeBool(v)
 				continue
 			}
 		case 26:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1829,7 +2082,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 27:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1838,7 +2091,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 28:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1847,7 +2100,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 29:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1861,16 +2114,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 30:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HighContextWarning = protowire.DecodeBool(v)
+				m.HighContextWarning = litewire.DecodeBool(v)
 				continue
 			}
 		case 31:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -1879,7 +2132,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 32:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1893,25 +2146,25 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 33:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ComputerOnline = protowire.DecodeBool(v)
+				m.ComputerOnline = litewire.DecodeBool(v)
 				continue
 			}
 		case 34:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ComputerUnlinked = protowire.DecodeBool(v)
+				m.ComputerUnlinked = litewire.DecodeBool(v)
 				continue
 			}
 		case 35:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1920,7 +2173,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 36:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1934,7 +2187,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 37:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1943,16 +2196,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 38:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ProtocolMismatch = protowire.DecodeBool(v)
+				m.ProtocolMismatch = litewire.DecodeBool(v)
 				continue
 			}
 		case 39:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1961,7 +2214,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 40:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -1970,7 +2223,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 41:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1984,16 +2237,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 42:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Exited = protowire.DecodeBool(v)
+				m.Exited = litewire.DecodeBool(v)
 				continue
 			}
 		case 43:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -2002,7 +2255,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 44:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2016,16 +2269,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 45:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IdleClosed = protowire.DecodeBool(v)
+				m.IdleClosed = litewire.DecodeBool(v)
 				continue
 			}
 		case 46:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2034,7 +2287,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 47:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2048,16 +2301,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 48:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IsScheduled = protowire.DecodeBool(v)
+				m.IsScheduled = litewire.DecodeBool(v)
 				continue
 			}
 		case 49:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2066,7 +2319,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 50:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2075,16 +2328,16 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 51:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ScheduledClosed = protowire.DecodeBool(v)
+				m.ScheduledClosed = litewire.DecodeBool(v)
 				continue
 			}
 		case 52:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2098,7 +2351,7 @@ func (m *SessionHeaderView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 53:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2195,8 +2448,35 @@ func (m *SessionModelChoiceView) Clone() *SessionModelChoiceView {
 	return &cp
 }
 
+func (m *SessionModelChoiceView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Slug)
+	n += litewire.SizeString(2, m.DisplayName)
+	if m.FixedEffortNote != nil {
+		n += litewire.SizeMessage(3, m.FixedEffortNote.Size())
+	}
+	for _, v := range m.Efforts {
+		n += litewire.SizeStringAlways(4, v)
+	}
+	n += litewire.SizeString(5, m.DefaultEffort)
+	n += litewire.SizeBool(6, m.IsAuto)
+	n += litewire.SizeBool(7, m.Selected)
+	n += litewire.SizeBool(8, m.SupportsStandardContext)
+	return n
+}
+
 func (m *SessionModelChoiceView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionModelChoiceView) AppendMarshal(b []byte) []byte {
@@ -2206,7 +2486,8 @@ func (m *SessionModelChoiceView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.Slug)
 	b = litewire.AppendString(b, 2, m.DisplayName)
 	if m.FixedEffortNote != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.FixedEffortNote.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.FixedEffortNote.Size())
+		b = m.FixedEffortNote.AppendMarshal(b)
 	}
 	for _, v := range m.Efforts {
 		b = litewire.AppendStringAlways(b, 4, v)
@@ -2226,7 +2507,7 @@ func (m *SessionModelChoiceView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2235,7 +2516,7 @@ func (m *SessionModelChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2244,7 +2525,7 @@ func (m *SessionModelChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2258,7 +2539,7 @@ func (m *SessionModelChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2267,7 +2548,7 @@ func (m *SessionModelChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2276,30 +2557,30 @@ func (m *SessionModelChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IsAuto = protowire.DecodeBool(v)
+				m.IsAuto = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Selected = protowire.DecodeBool(v)
+				m.Selected = litewire.DecodeBool(v)
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsStandardContext = protowire.DecodeBool(v)
+				m.SupportsStandardContext = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -2350,8 +2631,28 @@ func (m *SessionEffortChoiceView) Clone() *SessionEffortChoiceView {
 	return &cp
 }
 
+func (m *SessionEffortChoiceView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Id)
+	if m.Label != nil {
+		n += litewire.SizeMessage(2, m.Label.Size())
+	}
+	n += litewire.SizeBool(3, m.Selected)
+	return n
+}
+
 func (m *SessionEffortChoiceView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionEffortChoiceView) AppendMarshal(b []byte) []byte {
@@ -2360,7 +2661,8 @@ func (m *SessionEffortChoiceView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.Id)
 	if m.Label != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Label.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Label.Size())
+		b = m.Label.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 3, m.Selected)
 	return b
@@ -2374,7 +2676,7 @@ func (m *SessionEffortChoiceView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -2383,7 +2685,7 @@ func (m *SessionEffortChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2397,12 +2699,12 @@ func (m *SessionEffortChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Selected = protowire.DecodeBool(v)
+				m.Selected = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -2483,8 +2785,36 @@ func (m *SessionModeChoiceView) Clone() *SessionModeChoiceView {
 	return &cp
 }
 
+func (m *SessionModeChoiceView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Mode))
+	if m.Label != nil {
+		n += litewire.SizeMessage(2, m.Label.Size())
+	}
+	if m.Note != nil {
+		n += litewire.SizeMessage(3, m.Note.Size())
+	}
+	n += litewire.SizeBool(4, m.Available)
+	if m.UnavailableReason != nil {
+		n += litewire.SizeMessage(5, m.UnavailableReason.Size())
+	}
+	n += litewire.SizeBool(6, m.Selected)
+	n += litewire.SizeBool(7, m.SwitchAfterTurn)
+	return n
+}
+
 func (m *SessionModeChoiceView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionModeChoiceView) AppendMarshal(b []byte) []byte {
@@ -2493,14 +2823,17 @@ func (m *SessionModeChoiceView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.Mode))
 	if m.Label != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Label.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Label.Size())
+		b = m.Label.AppendMarshal(b)
 	}
 	if m.Note != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.Note.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.Note.Size())
+		b = m.Note.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 4, m.Available)
 	if m.UnavailableReason != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.UnavailableReason.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.UnavailableReason.Size())
+		b = m.UnavailableReason.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 6, m.Selected)
 	b = litewire.AppendBool(b, 7, m.SwitchAfterTurn)
@@ -2515,7 +2848,7 @@ func (m *SessionModeChoiceView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -2524,7 +2857,7 @@ func (m *SessionModeChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2538,7 +2871,7 @@ func (m *SessionModeChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2552,16 +2885,16 @@ func (m *SessionModeChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Available = protowire.DecodeBool(v)
+				m.Available = litewire.DecodeBool(v)
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2575,21 +2908,21 @@ func (m *SessionModeChoiceView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Selected = protowire.DecodeBool(v)
+				m.Selected = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SwitchAfterTurn = protowire.DecodeBool(v)
+				m.SwitchAfterTurn = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -2847,8 +3180,93 @@ func (m *SessionActionsView) Clone() *SessionActionsView {
 	return &cp
 }
 
+func (m *SessionActionsView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.CanInterrupt)
+	if m.Interrupt != nil {
+		n += litewire.SizeMessage(2, m.Interrupt.Size())
+	}
+	n += litewire.SizeBool(3, m.CanEnd)
+	if m.End != nil {
+		n += litewire.SizeMessage(4, m.End.Size())
+	}
+	if m.EndConfirmNote != nil {
+		n += litewire.SizeMessage(5, m.EndConfirmNote.Size())
+	}
+	n += litewire.SizeBool(6, m.CanResume)
+	if m.Resume != nil {
+		n += litewire.SizeMessage(7, m.Resume.Size())
+	}
+	if m.ResumeNote != nil {
+		n += litewire.SizeMessage(8, m.ResumeNote.Size())
+	}
+	n += litewire.SizeBool(9, m.CanRename)
+	if m.Rename != nil {
+		n += litewire.SizeMessage(10, m.Rename.Size())
+	}
+	n += litewire.SizeBool(11, m.CanFork)
+	if m.ForkBlockedReason != nil {
+		n += litewire.SizeMessage(12, m.ForkBlockedReason.Size())
+	}
+	if m.Fork != nil {
+		n += litewire.SizeMessage(13, m.Fork.Size())
+	}
+	n += litewire.SizeBool(14, m.CanCompact)
+	if m.CompactBlockedReason != nil {
+		n += litewire.SizeMessage(15, m.CompactBlockedReason.Size())
+	}
+	if m.Compact != nil {
+		n += litewire.SizeMessage(16, m.Compact.Size())
+	}
+	n += litewire.SizeBool(17, m.CanSwitchModel)
+	if m.ModelSwitchBlockedReason != nil {
+		n += litewire.SizeMessage(18, m.ModelSwitchBlockedReason.Size())
+	}
+	if m.SetModel != nil {
+		n += litewire.SizeMessage(19, m.SetModel.Size())
+	}
+	n += litewire.SizeBool(20, m.ModelsLoading)
+	n += litewire.SizeBool(21, m.ModelsLoaded)
+	if m.ModelsError != nil {
+		n += litewire.SizeMessage(22, m.ModelsError.Size())
+	}
+	for _, v := range m.ModelChoices {
+		if v != nil {
+			n += litewire.SizeMessage(23, v.Size())
+		}
+	}
+	for _, v := range m.EffortChoices {
+		if v != nil {
+			n += litewire.SizeMessage(24, v.Size())
+		}
+	}
+	n += litewire.SizeBool(25, m.CanSwitchMode)
+	if m.ModeSwitchBlockedReason != nil {
+		n += litewire.SizeMessage(26, m.ModeSwitchBlockedReason.Size())
+	}
+	if m.SetMode != nil {
+		n += litewire.SizeMessage(27, m.SetMode.Size())
+	}
+	for _, v := range m.ModeChoices {
+		if v != nil {
+			n += litewire.SizeMessage(28, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionActionsView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionActionsView) AppendMarshal(b []byte) []byte {
@@ -2857,72 +3275,90 @@ func (m *SessionActionsView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 1, m.CanInterrupt)
 	if m.Interrupt != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Interrupt.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Interrupt.Size())
+		b = m.Interrupt.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 3, m.CanEnd)
 	if m.End != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.End.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.End.Size())
+		b = m.End.AppendMarshal(b)
 	}
 	if m.EndConfirmNote != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.EndConfirmNote.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.EndConfirmNote.Size())
+		b = m.EndConfirmNote.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 6, m.CanResume)
 	if m.Resume != nil {
-		b = litewire.AppendBytesAlways(b, 7, m.Resume.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 7, m.Resume.Size())
+		b = m.Resume.AppendMarshal(b)
 	}
 	if m.ResumeNote != nil {
-		b = litewire.AppendBytesAlways(b, 8, m.ResumeNote.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 8, m.ResumeNote.Size())
+		b = m.ResumeNote.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 9, m.CanRename)
 	if m.Rename != nil {
-		b = litewire.AppendBytesAlways(b, 10, m.Rename.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 10, m.Rename.Size())
+		b = m.Rename.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 11, m.CanFork)
 	if m.ForkBlockedReason != nil {
-		b = litewire.AppendBytesAlways(b, 12, m.ForkBlockedReason.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 12, m.ForkBlockedReason.Size())
+		b = m.ForkBlockedReason.AppendMarshal(b)
 	}
 	if m.Fork != nil {
-		b = litewire.AppendBytesAlways(b, 13, m.Fork.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 13, m.Fork.Size())
+		b = m.Fork.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 14, m.CanCompact)
 	if m.CompactBlockedReason != nil {
-		b = litewire.AppendBytesAlways(b, 15, m.CompactBlockedReason.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 15, m.CompactBlockedReason.Size())
+		b = m.CompactBlockedReason.AppendMarshal(b)
 	}
 	if m.Compact != nil {
-		b = litewire.AppendBytesAlways(b, 16, m.Compact.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 16, m.Compact.Size())
+		b = m.Compact.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 17, m.CanSwitchModel)
 	if m.ModelSwitchBlockedReason != nil {
-		b = litewire.AppendBytesAlways(b, 18, m.ModelSwitchBlockedReason.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 18, m.ModelSwitchBlockedReason.Size())
+		b = m.ModelSwitchBlockedReason.AppendMarshal(b)
 	}
 	if m.SetModel != nil {
-		b = litewire.AppendBytesAlways(b, 19, m.SetModel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 19, m.SetModel.Size())
+		b = m.SetModel.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 20, m.ModelsLoading)
 	b = litewire.AppendBool(b, 21, m.ModelsLoaded)
 	if m.ModelsError != nil {
-		b = litewire.AppendBytesAlways(b, 22, m.ModelsError.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 22, m.ModelsError.Size())
+		b = m.ModelsError.AppendMarshal(b)
 	}
 	for _, v := range m.ModelChoices {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 23, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 23, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	for _, v := range m.EffortChoices {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 24, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 24, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	b = litewire.AppendBool(b, 25, m.CanSwitchMode)
 	if m.ModeSwitchBlockedReason != nil {
-		b = litewire.AppendBytesAlways(b, 26, m.ModeSwitchBlockedReason.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 26, m.ModeSwitchBlockedReason.Size())
+		b = m.ModeSwitchBlockedReason.AppendMarshal(b)
 	}
 	if m.SetMode != nil {
-		b = litewire.AppendBytesAlways(b, 27, m.SetMode.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 27, m.SetMode.Size())
+		b = m.SetMode.AppendMarshal(b)
 	}
 	for _, v := range m.ModeChoices {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 28, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 28, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -2936,16 +3372,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanInterrupt = protowire.DecodeBool(v)
+				m.CanInterrupt = litewire.DecodeBool(v)
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2959,16 +3395,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanEnd = protowire.DecodeBool(v)
+				m.CanEnd = litewire.DecodeBool(v)
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2982,7 +3418,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -2996,16 +3432,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanResume = protowire.DecodeBool(v)
+				m.CanResume = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3019,7 +3455,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3033,16 +3469,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanRename = protowire.DecodeBool(v)
+				m.CanRename = litewire.DecodeBool(v)
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3056,16 +3492,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanFork = protowire.DecodeBool(v)
+				m.CanFork = litewire.DecodeBool(v)
 				continue
 			}
 		case 12:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3079,7 +3515,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 13:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3093,16 +3529,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 14:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanCompact = protowire.DecodeBool(v)
+				m.CanCompact = litewire.DecodeBool(v)
 				continue
 			}
 		case 15:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3116,7 +3552,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 16:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3130,16 +3566,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 17:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanSwitchModel = protowire.DecodeBool(v)
+				m.CanSwitchModel = litewire.DecodeBool(v)
 				continue
 			}
 		case 18:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3153,7 +3589,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 19:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3167,25 +3603,25 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 20:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ModelsLoading = protowire.DecodeBool(v)
+				m.ModelsLoading = litewire.DecodeBool(v)
 				continue
 			}
 		case 21:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ModelsLoaded = protowire.DecodeBool(v)
+				m.ModelsLoaded = litewire.DecodeBool(v)
 				continue
 			}
 		case 22:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3199,7 +3635,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 23:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3212,7 +3648,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 24:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3225,16 +3661,16 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 25:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanSwitchMode = protowire.DecodeBool(v)
+				m.CanSwitchMode = litewire.DecodeBool(v)
 				continue
 			}
 		case 26:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3248,7 +3684,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 27:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3262,7 +3698,7 @@ func (m *SessionActionsView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 28:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3455,8 +3891,71 @@ func (m *SessionDockView) Clone() *SessionDockView {
 	return &cp
 }
 
+func (m *SessionDockView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.HasItem)
+	n += litewire.SizeInt32(2, int32(m.Kind))
+	n += litewire.SizeString(3, m.ItemId)
+	n += litewire.SizeVarintField(4, uint64(m.ObservedSeq))
+	n += litewire.SizeInt32(5, int32(m.MoreCount))
+	if m.Title != nil {
+		n += litewire.SizeMessage(6, m.Title.Size())
+	}
+	if m.Summary != nil {
+		n += litewire.SizeMessage(7, m.Summary.Size())
+	}
+	if m.Meta != nil {
+		n += litewire.SizeMessage(8, m.Meta.Size())
+	}
+	if m.TimeLeft != nil {
+		n += litewire.SizeMessage(9, m.TimeLeft.Size())
+	}
+	n += litewire.SizeVarintField(10, uint64(m.DeadlineMs))
+	n += litewire.SizeBool(11, m.WaitingConfirmation)
+	if m.Command != nil {
+		n += litewire.SizeMessage(12, m.Command.Size())
+	}
+	switch x := m.Detail.(type) {
+	case *SessionDockView_Approval:
+		if x != nil {
+			if x.Approval != nil {
+				n += litewire.SizeMessage(20, x.Approval.Size())
+			}
+		}
+	case *SessionDockView_Question:
+		if x != nil {
+			if x.Question != nil {
+				n += litewire.SizeMessage(21, x.Question.Size())
+			}
+		}
+	case *SessionDockView_Plan:
+		if x != nil {
+			if x.Plan != nil {
+				n += litewire.SizeMessage(22, x.Plan.Size())
+			}
+		}
+	case *SessionDockView_TerminalPopup:
+		if x != nil {
+			if x.TerminalPopup != nil {
+				n += litewire.SizeMessage(23, x.TerminalPopup.Size())
+			}
+		}
+	}
+	return n
+}
+
 func (m *SessionDockView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionDockView) AppendMarshal(b []byte) []byte {
@@ -3469,45 +3968,54 @@ func (m *SessionDockView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 4, uint64(m.ObservedSeq))
 	b = litewire.AppendInt32(b, 5, int32(m.MoreCount))
 	if m.Title != nil {
-		b = litewire.AppendBytesAlways(b, 6, m.Title.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 6, m.Title.Size())
+		b = m.Title.AppendMarshal(b)
 	}
 	if m.Summary != nil {
-		b = litewire.AppendBytesAlways(b, 7, m.Summary.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 7, m.Summary.Size())
+		b = m.Summary.AppendMarshal(b)
 	}
 	if m.Meta != nil {
-		b = litewire.AppendBytesAlways(b, 8, m.Meta.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 8, m.Meta.Size())
+		b = m.Meta.AppendMarshal(b)
 	}
 	if m.TimeLeft != nil {
-		b = litewire.AppendBytesAlways(b, 9, m.TimeLeft.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 9, m.TimeLeft.Size())
+		b = m.TimeLeft.AppendMarshal(b)
 	}
 	b = litewire.AppendVarint(b, 10, uint64(m.DeadlineMs))
 	b = litewire.AppendBool(b, 11, m.WaitingConfirmation)
 	if m.Command != nil {
-		b = litewire.AppendBytesAlways(b, 12, m.Command.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 12, m.Command.Size())
+		b = m.Command.AppendMarshal(b)
 	}
 	switch x := m.Detail.(type) {
 	case *SessionDockView_Approval:
 		if x != nil {
 			if x.Approval != nil {
-				b = litewire.AppendBytesAlways(b, 20, x.Approval.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 20, x.Approval.Size())
+				b = x.Approval.AppendMarshal(b)
 			}
 		}
 	case *SessionDockView_Question:
 		if x != nil {
 			if x.Question != nil {
-				b = litewire.AppendBytesAlways(b, 21, x.Question.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 21, x.Question.Size())
+				b = x.Question.AppendMarshal(b)
 			}
 		}
 	case *SessionDockView_Plan:
 		if x != nil {
 			if x.Plan != nil {
-				b = litewire.AppendBytesAlways(b, 22, x.Plan.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 22, x.Plan.Size())
+				b = x.Plan.AppendMarshal(b)
 			}
 		}
 	case *SessionDockView_TerminalPopup:
 		if x != nil {
 			if x.TerminalPopup != nil {
-				b = litewire.AppendBytesAlways(b, 23, x.TerminalPopup.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 23, x.TerminalPopup.Size())
+				b = x.TerminalPopup.AppendMarshal(b)
 			}
 		}
 	}
@@ -3522,16 +4030,16 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HasItem = protowire.DecodeBool(v)
+				m.HasItem = litewire.DecodeBool(v)
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -3540,7 +4048,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3549,7 +4057,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -3558,7 +4066,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -3567,7 +4075,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3581,7 +4089,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3595,7 +4103,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3609,7 +4117,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 9:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3623,7 +4131,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -3632,16 +4140,16 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.WaitingConfirmation = protowire.DecodeBool(v)
+				m.WaitingConfirmation = litewire.DecodeBool(v)
 				continue
 			}
 		case 12:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3655,7 +4163,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 20:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3674,7 +4182,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 21:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3693,7 +4201,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 22:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3712,7 +4220,7 @@ func (m *SessionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 23:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3850,8 +4358,42 @@ func (m *SessionApprovalDockView) Clone() *SessionApprovalDockView {
 	return &cp
 }
 
+func (m *SessionApprovalDockView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.ApprovalId)
+	n += litewire.SizeString(2, m.ToolName)
+	n += litewire.SizeString(3, m.CommandPreview)
+	n += litewire.SizeString(4, m.Body)
+	n += litewire.SizeBool(5, m.BodyTruncated)
+	n += litewire.SizeBool(6, m.IsSkeleton)
+	n += litewire.SizeString(7, m.Description)
+	n += litewire.SizeBool(8, m.CanAlwaysAllow)
+	n += litewire.SizeInt32(9, int32(m.AlwaysKind))
+	n += litewire.SizeString(10, m.AlwaysTarget)
+	if m.AlwaysLabel != nil {
+		n += litewire.SizeMessage(11, m.AlwaysLabel.Size())
+	}
+	if m.DenyReasonPlaceholder != nil {
+		n += litewire.SizeMessage(12, m.DenyReasonPlaceholder.Size())
+	}
+	if m.DeliveryFailedNote != nil {
+		n += litewire.SizeMessage(13, m.DeliveryFailedNote.Size())
+	}
+	return n
+}
+
 func (m *SessionApprovalDockView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionApprovalDockView) AppendMarshal(b []byte) []byte {
@@ -3869,13 +4411,16 @@ func (m *SessionApprovalDockView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 9, int32(m.AlwaysKind))
 	b = litewire.AppendString(b, 10, m.AlwaysTarget)
 	if m.AlwaysLabel != nil {
-		b = litewire.AppendBytesAlways(b, 11, m.AlwaysLabel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 11, m.AlwaysLabel.Size())
+		b = m.AlwaysLabel.AppendMarshal(b)
 	}
 	if m.DenyReasonPlaceholder != nil {
-		b = litewire.AppendBytesAlways(b, 12, m.DenyReasonPlaceholder.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 12, m.DenyReasonPlaceholder.Size())
+		b = m.DenyReasonPlaceholder.AppendMarshal(b)
 	}
 	if m.DeliveryFailedNote != nil {
-		b = litewire.AppendBytesAlways(b, 13, m.DeliveryFailedNote.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 13, m.DeliveryFailedNote.Size())
+		b = m.DeliveryFailedNote.AppendMarshal(b)
 	}
 	return b
 }
@@ -3888,7 +4433,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3897,7 +4442,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3906,7 +4451,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3915,7 +4460,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3924,25 +4469,25 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.BodyTruncated = protowire.DecodeBool(v)
+				m.BodyTruncated = litewire.DecodeBool(v)
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IsSkeleton = protowire.DecodeBool(v)
+				m.IsSkeleton = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3951,16 +4496,16 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanAlwaysAllow = protowire.DecodeBool(v)
+				m.CanAlwaysAllow = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -3969,7 +4514,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -3978,7 +4523,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -3992,7 +4537,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 12:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4006,7 +4551,7 @@ func (m *SessionApprovalDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 13:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4073,8 +4618,27 @@ func (m *SessionQuestionOptionView) Clone() *SessionQuestionOptionView {
 	return &cp
 }
 
+func (m *SessionQuestionOptionView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.OptionNum))
+	n += litewire.SizeString(2, m.Label)
+	n += litewire.SizeString(3, m.Description)
+	n += litewire.SizeBool(4, m.Recommended)
+	return n
+}
+
 func (m *SessionQuestionOptionView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionQuestionOptionView) AppendMarshal(b []byte) []byte {
@@ -4096,7 +4660,7 @@ func (m *SessionQuestionOptionView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -4105,7 +4669,7 @@ func (m *SessionQuestionOptionView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -4114,7 +4678,7 @@ func (m *SessionQuestionOptionView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -4123,12 +4687,12 @@ func (m *SessionQuestionOptionView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Recommended = protowire.DecodeBool(v)
+				m.Recommended = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -4198,8 +4762,32 @@ func (m *SessionQuestionStepView) Clone() *SessionQuestionStepView {
 	return &cp
 }
 
+func (m *SessionQuestionStepView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Header)
+	n += litewire.SizeString(2, m.QuestionText)
+	n += litewire.SizeBool(3, m.MultiSelect)
+	for _, v := range m.Options {
+		if v != nil {
+			n += litewire.SizeMessage(4, v.Size())
+		}
+	}
+	n += litewire.SizeBool(5, m.CanFreeText)
+	return n
+}
+
 func (m *SessionQuestionStepView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionQuestionStepView) AppendMarshal(b []byte) []byte {
@@ -4211,7 +4799,8 @@ func (m *SessionQuestionStepView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 3, m.MultiSelect)
 	for _, v := range m.Options {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 4, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 4, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	b = litewire.AppendBool(b, 5, m.CanFreeText)
@@ -4226,7 +4815,7 @@ func (m *SessionQuestionStepView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -4235,7 +4824,7 @@ func (m *SessionQuestionStepView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -4244,16 +4833,16 @@ func (m *SessionQuestionStepView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.MultiSelect = protowire.DecodeBool(v)
+				m.MultiSelect = litewire.DecodeBool(v)
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4266,12 +4855,12 @@ func (m *SessionQuestionStepView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanFreeText = protowire.DecodeBool(v)
+				m.CanFreeText = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -4345,8 +4934,39 @@ func (m *SessionQuestionDockView) Clone() *SessionQuestionDockView {
 	return &cp
 }
 
+func (m *SessionQuestionDockView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.QuestionId)
+	n += litewire.SizeInt32(2, int32(m.ActiveIndex))
+	n += litewire.SizeInt32(3, int32(m.TotalQuestions))
+	if m.ProgressText != nil {
+		n += litewire.SizeMessage(4, m.ProgressText.Size())
+	}
+	if m.Question != nil {
+		n += litewire.SizeMessage(5, m.Question.Size())
+	}
+	if len(m.AnsweredIndices) > 0 {
+		psz := 0
+		for _, v := range m.AnsweredIndices {
+			psz += litewire.SizeVarint(uint64(int64(v)))
+		}
+		n += litewire.SizeMessage(6, psz)
+	}
+	return n
+}
+
 func (m *SessionQuestionDockView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionQuestionDockView) AppendMarshal(b []byte) []byte {
@@ -4357,17 +4977,22 @@ func (m *SessionQuestionDockView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 2, int32(m.ActiveIndex))
 	b = litewire.AppendInt32(b, 3, int32(m.TotalQuestions))
 	if m.ProgressText != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.ProgressText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.ProgressText.Size())
+		b = m.ProgressText.AppendMarshal(b)
 	}
 	if m.Question != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.Question.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.Question.Size())
+		b = m.Question.AppendMarshal(b)
 	}
 	if len(m.AnsweredIndices) > 0 {
-		var pb []byte
+		psz := 0
 		for _, v := range m.AnsweredIndices {
-			pb = protowire.AppendVarint(pb, uint64(int64(v)))
+			psz += litewire.SizeVarint(uint64(int64(v)))
 		}
-		b = litewire.AppendBytesAlways(b, 6, pb)
+		b = litewire.AppendMessagePrefix(b, 6, psz)
+		for _, v := range m.AnsweredIndices {
+			b = litewire.AppendRawVarint(b, uint64(int64(v)))
+		}
 	}
 	return b
 }
@@ -4380,7 +5005,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -4389,7 +5014,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -4398,7 +5023,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -4407,7 +5032,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4421,7 +5046,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4435,7 +5060,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4449,7 +5074,7 @@ func (m *SessionQuestionDockView) Unmarshal(b []byte) error {
 				}
 				continue
 			}
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -4505,8 +5130,28 @@ func (m *SessionPlanChoiceOptionView) Clone() *SessionPlanChoiceOptionView {
 	return &cp
 }
 
+func (m *SessionPlanChoiceOptionView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Choice))
+	if m.Label != nil {
+		n += litewire.SizeMessage(2, m.Label.Size())
+	}
+	n += litewire.SizeBool(3, m.Recommended)
+	return n
+}
+
 func (m *SessionPlanChoiceOptionView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionPlanChoiceOptionView) AppendMarshal(b []byte) []byte {
@@ -4515,7 +5160,8 @@ func (m *SessionPlanChoiceOptionView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.Choice))
 	if m.Label != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Label.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Label.Size())
+		b = m.Label.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 3, m.Recommended)
 	return b
@@ -4529,7 +5175,7 @@ func (m *SessionPlanChoiceOptionView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -4538,7 +5184,7 @@ func (m *SessionPlanChoiceOptionView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4552,12 +5198,12 @@ func (m *SessionPlanChoiceOptionView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Recommended = protowire.DecodeBool(v)
+				m.Recommended = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -4629,8 +5275,34 @@ func (m *SessionPlanDockView) Clone() *SessionPlanDockView {
 	return &cp
 }
 
+func (m *SessionPlanDockView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Markdown)
+	n += litewire.SizeBytesField(2, m.ScreenHash)
+	if m.Note != nil {
+		n += litewire.SizeMessage(3, m.Note.Size())
+	}
+	n += litewire.SizeBool(4, m.ClearContextAvailable)
+	for _, v := range m.Choices {
+		if v != nil {
+			n += litewire.SizeMessage(5, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionPlanDockView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionPlanDockView) AppendMarshal(b []byte) []byte {
@@ -4640,12 +5312,14 @@ func (m *SessionPlanDockView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.Markdown)
 	b = litewire.AppendBytes(b, 2, m.ScreenHash)
 	if m.Note != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.Note.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.Note.Size())
+		b = m.Note.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 4, m.ClearContextAvailable)
 	for _, v := range m.Choices {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 5, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 5, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -4659,7 +5333,7 @@ func (m *SessionPlanDockView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -4668,7 +5342,7 @@ func (m *SessionPlanDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
 					return err
@@ -4677,7 +5351,7 @@ func (m *SessionPlanDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4691,16 +5365,16 @@ func (m *SessionPlanDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.ClearContextAvailable = protowire.DecodeBool(v)
+				m.ClearContextAvailable = litewire.DecodeBool(v)
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4761,8 +5435,30 @@ func (m *SessionTerminalPopupDockView) Clone() *SessionTerminalPopupDockView {
 	return &cp
 }
 
+func (m *SessionTerminalPopupDockView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	if m.PopupTitle != nil {
+		n += litewire.SizeMessage(1, m.PopupTitle.Size())
+	}
+	if m.Hint != nil {
+		n += litewire.SizeMessage(2, m.Hint.Size())
+	}
+	n += litewire.SizeBool(3, m.CanGoTerminal)
+	return n
+}
+
 func (m *SessionTerminalPopupDockView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionTerminalPopupDockView) AppendMarshal(b []byte) []byte {
@@ -4770,10 +5466,12 @@ func (m *SessionTerminalPopupDockView) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if m.PopupTitle != nil {
-		b = litewire.AppendBytesAlways(b, 1, m.PopupTitle.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 1, m.PopupTitle.Size())
+		b = m.PopupTitle.AppendMarshal(b)
 	}
 	if m.Hint != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Hint.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Hint.Size())
+		b = m.Hint.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 3, m.CanGoTerminal)
 	return b
@@ -4787,7 +5485,7 @@ func (m *SessionTerminalPopupDockView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4801,7 +5499,7 @@ func (m *SessionTerminalPopupDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -4815,12 +5513,12 @@ func (m *SessionTerminalPopupDockView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanGoTerminal = protowire.DecodeBool(v)
+				m.CanGoTerminal = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -4995,8 +5693,55 @@ func (m *SessionPendingInputView) Clone() *SessionPendingInputView {
 	return &cp
 }
 
+func (m *SessionPendingInputView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.RequestId)
+	n += litewire.SizeString(2, m.Text)
+	n += litewire.SizeInt32(3, int32(m.ImageCount))
+	n += litewire.SizeInt32(4, int32(m.FileCount))
+	n += litewire.SizeInt32(5, int32(m.Mode))
+	n += litewire.SizeInt32(6, int32(m.Status))
+	n += litewire.SizeBool(7, m.Held)
+	n += litewire.SizeBool(8, m.Paused)
+	n += litewire.SizeInt32(9, int32(m.Rank))
+	n += litewire.SizeInt32(10, int32(m.TotalPending))
+	if m.Label != nil {
+		n += litewire.SizeMessage(11, m.Label.Size())
+	}
+	if m.Caption != nil {
+		n += litewire.SizeMessage(12, m.Caption.Size())
+	}
+	if m.OriginLabel != nil {
+		n += litewire.SizeMessage(13, m.OriginLabel.Size())
+	}
+	n += litewire.SizeString(14, m.ScheduledRunId)
+	n += litewire.SizeBool(15, m.CanCancel)
+	n += litewire.SizeBool(16, m.CanResume)
+	if m.Cancel != nil {
+		n += litewire.SizeMessage(17, m.Cancel.Size())
+	}
+	if m.Resume != nil {
+		n += litewire.SizeMessage(18, m.Resume.Size())
+	}
+	if m.Feedback != nil {
+		n += litewire.SizeMessage(19, m.Feedback.Size())
+	}
+	n += litewire.SizeBool(20, m.FeedbackUncertain)
+	return n
+}
+
 func (m *SessionPendingInputView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionPendingInputView) AppendMarshal(b []byte) []byte {
@@ -5014,25 +5759,31 @@ func (m *SessionPendingInputView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 9, int32(m.Rank))
 	b = litewire.AppendInt32(b, 10, int32(m.TotalPending))
 	if m.Label != nil {
-		b = litewire.AppendBytesAlways(b, 11, m.Label.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 11, m.Label.Size())
+		b = m.Label.AppendMarshal(b)
 	}
 	if m.Caption != nil {
-		b = litewire.AppendBytesAlways(b, 12, m.Caption.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 12, m.Caption.Size())
+		b = m.Caption.AppendMarshal(b)
 	}
 	if m.OriginLabel != nil {
-		b = litewire.AppendBytesAlways(b, 13, m.OriginLabel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 13, m.OriginLabel.Size())
+		b = m.OriginLabel.AppendMarshal(b)
 	}
 	b = litewire.AppendString(b, 14, m.ScheduledRunId)
 	b = litewire.AppendBool(b, 15, m.CanCancel)
 	b = litewire.AppendBool(b, 16, m.CanResume)
 	if m.Cancel != nil {
-		b = litewire.AppendBytesAlways(b, 17, m.Cancel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 17, m.Cancel.Size())
+		b = m.Cancel.AppendMarshal(b)
 	}
 	if m.Resume != nil {
-		b = litewire.AppendBytesAlways(b, 18, m.Resume.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 18, m.Resume.Size())
+		b = m.Resume.AppendMarshal(b)
 	}
 	if m.Feedback != nil {
-		b = litewire.AppendBytesAlways(b, 19, m.Feedback.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 19, m.Feedback.Size())
+		b = m.Feedback.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 20, m.FeedbackUncertain)
 	return b
@@ -5046,7 +5797,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5055,7 +5806,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5064,7 +5815,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5073,7 +5824,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5082,7 +5833,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5091,7 +5842,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5100,25 +5851,25 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Held = protowire.DecodeBool(v)
+				m.Held = litewire.DecodeBool(v)
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Paused = protowire.DecodeBool(v)
+				m.Paused = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5127,7 +5878,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5136,7 +5887,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5150,7 +5901,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 12:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5164,7 +5915,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 13:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5178,7 +5929,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 14:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5187,25 +5938,25 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanCancel = protowire.DecodeBool(v)
+				m.CanCancel = litewire.DecodeBool(v)
 				continue
 			}
 		case 16:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanResume = protowire.DecodeBool(v)
+				m.CanResume = litewire.DecodeBool(v)
 				continue
 			}
 		case 17:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5219,7 +5970,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 18:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5233,7 +5984,7 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 19:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5247,12 +5998,12 @@ func (m *SessionPendingInputView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 20:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.FeedbackUncertain = protowire.DecodeBool(v)
+				m.FeedbackUncertain = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -5397,8 +6148,47 @@ func (m *SessionOutgoingView) Clone() *SessionOutgoingView {
 	return &cp
 }
 
+func (m *SessionOutgoingView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.RequestId)
+	n += litewire.SizeString(2, m.SlotKey)
+	n += litewire.SizeString(3, m.Text)
+	for _, v := range m.ImageIds {
+		n += litewire.SizeStringAlways(4, v)
+	}
+	for _, v := range m.FileIds {
+		n += litewire.SizeStringAlways(5, v)
+	}
+	n += litewire.SizeInt32(6, int32(m.Mode))
+	n += litewire.SizeInt32(7, int32(m.State))
+	n += litewire.SizeBool(8, m.Frozen)
+	n += litewire.SizeBool(9, m.Expired)
+	n += litewire.SizeBool(10, m.CanRetry)
+	n += litewire.SizeBool(11, m.CanRestore)
+	n += litewire.SizeBool(12, m.CanDismiss)
+	if m.Caption != nil {
+		n += litewire.SizeMessage(13, m.Caption.Size())
+	}
+	if m.Feedback != nil {
+		n += litewire.SizeMessage(14, m.Feedback.Size())
+	}
+	n += litewire.SizeBool(15, m.FeedbackUncertain)
+	n += litewire.SizeVarintField(16, uint64(m.CreatedMs))
+	return n
+}
+
 func (m *SessionOutgoingView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionOutgoingView) AppendMarshal(b []byte) []byte {
@@ -5422,10 +6212,12 @@ func (m *SessionOutgoingView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 11, m.CanRestore)
 	b = litewire.AppendBool(b, 12, m.CanDismiss)
 	if m.Caption != nil {
-		b = litewire.AppendBytesAlways(b, 13, m.Caption.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 13, m.Caption.Size())
+		b = m.Caption.AppendMarshal(b)
 	}
 	if m.Feedback != nil {
-		b = litewire.AppendBytesAlways(b, 14, m.Feedback.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 14, m.Feedback.Size())
+		b = m.Feedback.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 15, m.FeedbackUncertain)
 	b = litewire.AppendVarint(b, 16, uint64(m.CreatedMs))
@@ -5440,7 +6232,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5449,7 +6241,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5458,7 +6250,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5467,7 +6259,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5476,7 +6268,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -5485,7 +6277,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5494,7 +6286,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5503,52 +6295,52 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Frozen = protowire.DecodeBool(v)
+				m.Frozen = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Expired = protowire.DecodeBool(v)
+				m.Expired = litewire.DecodeBool(v)
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanRetry = protowire.DecodeBool(v)
+				m.CanRetry = litewire.DecodeBool(v)
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanRestore = protowire.DecodeBool(v)
+				m.CanRestore = litewire.DecodeBool(v)
 				continue
 			}
 		case 12:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanDismiss = protowire.DecodeBool(v)
+				m.CanDismiss = litewire.DecodeBool(v)
 				continue
 			}
 		case 13:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5562,7 +6354,7 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 14:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5576,16 +6368,16 @@ func (m *SessionOutgoingView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.FeedbackUncertain = protowire.DecodeBool(v)
+				m.FeedbackUncertain = litewire.DecodeBool(v)
 				continue
 			}
 		case 16:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -5710,8 +6502,46 @@ func (m *SessionComposerView) Clone() *SessionComposerView {
 	return &cp
 }
 
+func (m *SessionComposerView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Enabled)
+	if m.DisabledReason != nil {
+		n += litewire.SizeMessage(2, m.DisabledReason.Size())
+	}
+	if m.Placeholder != nil {
+		n += litewire.SizeMessage(3, m.Placeholder.Size())
+	}
+	n += litewire.SizeBool(4, m.HasActiveTurn)
+	n += litewire.SizeBool(5, m.SteerModeDefault)
+	n += litewire.SizeBool(6, m.SupportsQueueMode)
+	n += litewire.SizeBool(7, m.CanAttachImages)
+	n += litewire.SizeBool(8, m.CanAttachFiles)
+	n += litewire.SizeBool(9, m.InterruptVisible)
+	for _, v := range m.PendingInputs {
+		if v != nil {
+			n += litewire.SizeMessage(10, v.Size())
+		}
+	}
+	for _, v := range m.Outgoing {
+		if v != nil {
+			n += litewire.SizeMessage(11, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionComposerView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionComposerView) AppendMarshal(b []byte) []byte {
@@ -5720,10 +6550,12 @@ func (m *SessionComposerView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 1, m.Enabled)
 	if m.DisabledReason != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.DisabledReason.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.DisabledReason.Size())
+		b = m.DisabledReason.AppendMarshal(b)
 	}
 	if m.Placeholder != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.Placeholder.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.Placeholder.Size())
+		b = m.Placeholder.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 4, m.HasActiveTurn)
 	b = litewire.AppendBool(b, 5, m.SteerModeDefault)
@@ -5733,12 +6565,14 @@ func (m *SessionComposerView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 9, m.InterruptVisible)
 	for _, v := range m.PendingInputs {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 10, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 10, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	for _, v := range m.Outgoing {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 11, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 11, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -5752,16 +6586,16 @@ func (m *SessionComposerView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Enabled = protowire.DecodeBool(v)
+				m.Enabled = litewire.DecodeBool(v)
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5775,7 +6609,7 @@ func (m *SessionComposerView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5789,61 +6623,61 @@ func (m *SessionComposerView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HasActiveTurn = protowire.DecodeBool(v)
+				m.HasActiveTurn = litewire.DecodeBool(v)
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SteerModeDefault = protowire.DecodeBool(v)
+				m.SteerModeDefault = litewire.DecodeBool(v)
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.SupportsQueueMode = protowire.DecodeBool(v)
+				m.SupportsQueueMode = litewire.DecodeBool(v)
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanAttachImages = protowire.DecodeBool(v)
+				m.CanAttachImages = litewire.DecodeBool(v)
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanAttachFiles = protowire.DecodeBool(v)
+				m.CanAttachFiles = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.InterruptVisible = protowire.DecodeBool(v)
+				m.InterruptVisible = litewire.DecodeBool(v)
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -5856,7 +6690,7 @@ func (m *SessionComposerView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6057,8 +6891,55 @@ func (m *SessionTimelineView) Clone() *SessionTimelineView {
 	return &cp
 }
 
+func (m *SessionTimelineView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	for _, v := range m.Items {
+		if v != nil {
+			n += litewire.SizeMessage(1, v.Size())
+		}
+	}
+	n += litewire.SizeBool(2, m.HasEarlier)
+	n += litewire.SizeVarintField(3, uint64(m.NextBeforeSeq))
+	n += litewire.SizeVarintField(4, uint64(m.WindowFirstSeq))
+	n += litewire.SizeVarintField(5, uint64(m.WindowLastSeq))
+	n += litewire.SizeInt32(6, int32(m.TotalItems))
+	n += litewire.SizeVarintField(7, uint64(m.AnchorSeq))
+	n += litewire.SizeString(8, m.AnchorItemId)
+	n += litewire.SizeBool(9, m.Loading)
+	n += litewire.SizeBool(10, m.Loaded)
+	n += litewire.SizeBool(11, m.AwaitingCache)
+	n += litewire.SizeBool(12, m.Backfilling)
+	n += litewire.SizeBool(13, m.Fetching)
+	n += litewire.SizeBool(14, m.HasGap)
+	n += litewire.SizeBool(15, m.Retired)
+	n += litewire.SizeBool(16, m.RetryingCorruptCache)
+	n += litewire.SizeBool(17, m.HistoryPartial)
+	n += litewire.SizeVarintField(18, uint64(m.UnavailableCount))
+	if m.HistoryNotice != nil {
+		n += litewire.SizeMessage(19, m.HistoryNotice.Size())
+	}
+	if m.Error != nil {
+		n += litewire.SizeMessage(20, m.Error.Size())
+	}
+	if m.FetchError != nil {
+		n += litewire.SizeMessage(21, m.FetchError.Size())
+	}
+	n += litewire.SizeBool(22, m.CanLoadEarlier)
+	return n
+}
+
 func (m *SessionTimelineView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionTimelineView) AppendMarshal(b []byte) []byte {
@@ -6067,7 +6948,8 @@ func (m *SessionTimelineView) AppendMarshal(b []byte) []byte {
 	}
 	for _, v := range m.Items {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 1, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 1, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	b = litewire.AppendBool(b, 2, m.HasEarlier)
@@ -6088,13 +6970,16 @@ func (m *SessionTimelineView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 17, m.HistoryPartial)
 	b = litewire.AppendVarint(b, 18, uint64(m.UnavailableCount))
 	if m.HistoryNotice != nil {
-		b = litewire.AppendBytesAlways(b, 19, m.HistoryNotice.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 19, m.HistoryNotice.Size())
+		b = m.HistoryNotice.AppendMarshal(b)
 	}
 	if m.Error != nil {
-		b = litewire.AppendBytesAlways(b, 20, m.Error.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 20, m.Error.Size())
+		b = m.Error.AppendMarshal(b)
 	}
 	if m.FetchError != nil {
-		b = litewire.AppendBytesAlways(b, 21, m.FetchError.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 21, m.FetchError.Size())
+		b = m.FetchError.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 22, m.CanLoadEarlier)
 	return b
@@ -6108,7 +6993,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6121,16 +7006,16 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HasEarlier = protowire.DecodeBool(v)
+				m.HasEarlier = litewire.DecodeBool(v)
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6139,7 +7024,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6148,7 +7033,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6157,7 +7042,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6166,7 +7051,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6175,7 +7060,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -6184,88 +7069,88 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Loading = protowire.DecodeBool(v)
+				m.Loading = litewire.DecodeBool(v)
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Loaded = protowire.DecodeBool(v)
+				m.Loaded = litewire.DecodeBool(v)
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.AwaitingCache = protowire.DecodeBool(v)
+				m.AwaitingCache = litewire.DecodeBool(v)
 				continue
 			}
 		case 12:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Backfilling = protowire.DecodeBool(v)
+				m.Backfilling = litewire.DecodeBool(v)
 				continue
 			}
 		case 13:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Fetching = protowire.DecodeBool(v)
+				m.Fetching = litewire.DecodeBool(v)
 				continue
 			}
 		case 14:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HasGap = protowire.DecodeBool(v)
+				m.HasGap = litewire.DecodeBool(v)
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Retired = protowire.DecodeBool(v)
+				m.Retired = litewire.DecodeBool(v)
 				continue
 			}
 		case 16:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.RetryingCorruptCache = protowire.DecodeBool(v)
+				m.RetryingCorruptCache = litewire.DecodeBool(v)
 				continue
 			}
 		case 17:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HistoryPartial = protowire.DecodeBool(v)
+				m.HistoryPartial = litewire.DecodeBool(v)
 				continue
 			}
 		case 18:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6274,7 +7159,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 19:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6288,7 +7173,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 20:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6302,7 +7187,7 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 21:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6316,12 +7201,12 @@ func (m *SessionTimelineView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 22:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.CanLoadEarlier = protowire.DecodeBool(v)
+				m.CanLoadEarlier = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -6621,8 +7506,126 @@ func (m *SessionTimelineItem) Clone() *SessionTimelineItem {
 	return &cp
 }
 
+func (m *SessionTimelineItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Id)
+	n += litewire.SizeVarintField(2, uint64(m.Seq))
+	n += litewire.SizeVarintField(3, uint64(m.EndSeq))
+	n += litewire.SizeVarintField(4, uint64(m.TimestampMs))
+	n += litewire.SizeString(5, m.TurnId)
+	switch x := m.Kind.(type) {
+	case *SessionTimelineItem_UserMessage:
+		if x != nil {
+			if x.UserMessage != nil {
+				n += litewire.SizeMessage(10, x.UserMessage.Size())
+			}
+		}
+	case *SessionTimelineItem_AgentMessage:
+		if x != nil {
+			if x.AgentMessage != nil {
+				n += litewire.SizeMessage(11, x.AgentMessage.Size())
+			}
+		}
+	case *SessionTimelineItem_Reasoning:
+		if x != nil {
+			if x.Reasoning != nil {
+				n += litewire.SizeMessage(12, x.Reasoning.Size())
+			}
+		}
+	case *SessionTimelineItem_ToolCall:
+		if x != nil {
+			if x.ToolCall != nil {
+				n += litewire.SizeMessage(13, x.ToolCall.Size())
+			}
+		}
+	case *SessionTimelineItem_ToolGroup:
+		if x != nil {
+			if x.ToolGroup != nil {
+				n += litewire.SizeMessage(14, x.ToolGroup.Size())
+			}
+		}
+	case *SessionTimelineItem_SharedFiles:
+		if x != nil {
+			if x.SharedFiles != nil {
+				n += litewire.SizeMessage(15, x.SharedFiles.Size())
+			}
+		}
+	case *SessionTimelineItem_GeneratedImages:
+		if x != nil {
+			if x.GeneratedImages != nil {
+				n += litewire.SizeMessage(16, x.GeneratedImages.Size())
+			}
+		}
+	case *SessionTimelineItem_AsyncQuestion:
+		if x != nil {
+			if x.AsyncQuestion != nil {
+				n += litewire.SizeMessage(17, x.AsyncQuestion.Size())
+			}
+		}
+	case *SessionTimelineItem_Plan:
+		if x != nil {
+			if x.Plan != nil {
+				n += litewire.SizeMessage(18, x.Plan.Size())
+			}
+		}
+	case *SessionTimelineItem_Note:
+		if x != nil {
+			if x.Note != nil {
+				n += litewire.SizeMessage(19, x.Note.Size())
+			}
+		}
+	case *SessionTimelineItem_TurnEnd:
+		if x != nil {
+			if x.TurnEnd != nil {
+				n += litewire.SizeMessage(20, x.TurnEnd.Size())
+			}
+		}
+	case *SessionTimelineItem_ErrorLine:
+		if x != nil {
+			if x.ErrorLine != nil {
+				n += litewire.SizeMessage(21, x.ErrorLine.Size())
+			}
+		}
+	case *SessionTimelineItem_ForkMarker:
+		if x != nil {
+			if x.ForkMarker != nil {
+				n += litewire.SizeMessage(22, x.ForkMarker.Size())
+			}
+		}
+	case *SessionTimelineItem_InputState:
+		if x != nil {
+			if x.InputState != nil {
+				n += litewire.SizeMessage(23, x.InputState.Size())
+			}
+		}
+	case *SessionTimelineItem_QuietScheduledGroup:
+		if x != nil {
+			if x.QuietScheduledGroup != nil {
+				n += litewire.SizeMessage(24, x.QuietScheduledGroup.Size())
+			}
+		}
+	case *SessionTimelineItem_Skeleton:
+		if x != nil {
+			if x.Skeleton != nil {
+				n += litewire.SizeMessage(25, x.Skeleton.Size())
+			}
+		}
+	}
+	return n
+}
+
 func (m *SessionTimelineItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionTimelineItem) AppendMarshal(b []byte) []byte {
@@ -6638,97 +7641,113 @@ func (m *SessionTimelineItem) AppendMarshal(b []byte) []byte {
 	case *SessionTimelineItem_UserMessage:
 		if x != nil {
 			if x.UserMessage != nil {
-				b = litewire.AppendBytesAlways(b, 10, x.UserMessage.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 10, x.UserMessage.Size())
+				b = x.UserMessage.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_AgentMessage:
 		if x != nil {
 			if x.AgentMessage != nil {
-				b = litewire.AppendBytesAlways(b, 11, x.AgentMessage.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 11, x.AgentMessage.Size())
+				b = x.AgentMessage.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_Reasoning:
 		if x != nil {
 			if x.Reasoning != nil {
-				b = litewire.AppendBytesAlways(b, 12, x.Reasoning.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 12, x.Reasoning.Size())
+				b = x.Reasoning.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_ToolCall:
 		if x != nil {
 			if x.ToolCall != nil {
-				b = litewire.AppendBytesAlways(b, 13, x.ToolCall.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 13, x.ToolCall.Size())
+				b = x.ToolCall.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_ToolGroup:
 		if x != nil {
 			if x.ToolGroup != nil {
-				b = litewire.AppendBytesAlways(b, 14, x.ToolGroup.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 14, x.ToolGroup.Size())
+				b = x.ToolGroup.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_SharedFiles:
 		if x != nil {
 			if x.SharedFiles != nil {
-				b = litewire.AppendBytesAlways(b, 15, x.SharedFiles.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 15, x.SharedFiles.Size())
+				b = x.SharedFiles.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_GeneratedImages:
 		if x != nil {
 			if x.GeneratedImages != nil {
-				b = litewire.AppendBytesAlways(b, 16, x.GeneratedImages.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 16, x.GeneratedImages.Size())
+				b = x.GeneratedImages.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_AsyncQuestion:
 		if x != nil {
 			if x.AsyncQuestion != nil {
-				b = litewire.AppendBytesAlways(b, 17, x.AsyncQuestion.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 17, x.AsyncQuestion.Size())
+				b = x.AsyncQuestion.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_Plan:
 		if x != nil {
 			if x.Plan != nil {
-				b = litewire.AppendBytesAlways(b, 18, x.Plan.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 18, x.Plan.Size())
+				b = x.Plan.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_Note:
 		if x != nil {
 			if x.Note != nil {
-				b = litewire.AppendBytesAlways(b, 19, x.Note.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 19, x.Note.Size())
+				b = x.Note.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_TurnEnd:
 		if x != nil {
 			if x.TurnEnd != nil {
-				b = litewire.AppendBytesAlways(b, 20, x.TurnEnd.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 20, x.TurnEnd.Size())
+				b = x.TurnEnd.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_ErrorLine:
 		if x != nil {
 			if x.ErrorLine != nil {
-				b = litewire.AppendBytesAlways(b, 21, x.ErrorLine.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 21, x.ErrorLine.Size())
+				b = x.ErrorLine.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_ForkMarker:
 		if x != nil {
 			if x.ForkMarker != nil {
-				b = litewire.AppendBytesAlways(b, 22, x.ForkMarker.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 22, x.ForkMarker.Size())
+				b = x.ForkMarker.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_InputState:
 		if x != nil {
 			if x.InputState != nil {
-				b = litewire.AppendBytesAlways(b, 23, x.InputState.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 23, x.InputState.Size())
+				b = x.InputState.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_QuietScheduledGroup:
 		if x != nil {
 			if x.QuietScheduledGroup != nil {
-				b = litewire.AppendBytesAlways(b, 24, x.QuietScheduledGroup.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 24, x.QuietScheduledGroup.Size())
+				b = x.QuietScheduledGroup.AppendMarshal(b)
 			}
 		}
 	case *SessionTimelineItem_Skeleton:
 		if x != nil {
 			if x.Skeleton != nil {
-				b = litewire.AppendBytesAlways(b, 25, x.Skeleton.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 25, x.Skeleton.Size())
+				b = x.Skeleton.AppendMarshal(b)
 			}
 		}
 	}
@@ -6743,7 +7762,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -6752,7 +7771,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6761,7 +7780,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6770,7 +7789,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -6779,7 +7798,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -6788,7 +7807,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6807,7 +7826,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6826,7 +7845,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 12:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6845,7 +7864,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 13:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6864,7 +7883,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 14:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6883,7 +7902,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6902,7 +7921,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 16:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6921,7 +7940,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 17:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6940,7 +7959,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 18:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6959,7 +7978,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 19:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6978,7 +7997,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 20:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -6997,7 +8016,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 21:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7016,7 +8035,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 22:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7035,7 +8054,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 23:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7054,7 +8073,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 24:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7073,7 +8092,7 @@ func (m *SessionTimelineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 25:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7145,8 +8164,27 @@ func (m *SessionFileRefView) Clone() *SessionFileRefView {
 	return &cp
 }
 
+func (m *SessionFileRefView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Name)
+	n += litewire.SizeString(2, m.Path)
+	n += litewire.SizeVarintField(3, uint64(m.SizeBytes))
+	n += litewire.SizeString(4, m.MimeType)
+	return n
+}
+
 func (m *SessionFileRefView) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionFileRefView) AppendMarshal(b []byte) []byte {
@@ -7168,7 +8206,7 @@ func (m *SessionFileRefView) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7177,7 +8215,7 @@ func (m *SessionFileRefView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7186,7 +8224,7 @@ func (m *SessionFileRefView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7195,7 +8233,7 @@ func (m *SessionFileRefView) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7306,8 +8344,44 @@ func (m *SessionUserMessageItem) Clone() *SessionUserMessageItem {
 	return &cp
 }
 
+func (m *SessionUserMessageItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Text)
+	for _, v := range m.Images {
+		if v != nil {
+			n += litewire.SizeMessage(2, v.Size())
+		}
+	}
+	for _, v := range m.Files {
+		if v != nil {
+			n += litewire.SizeMessage(3, v.Size())
+		}
+	}
+	if m.Origin != nil {
+		n += litewire.SizeMessage(4, m.Origin.Size())
+	}
+	if m.OriginCaption != nil {
+		n += litewire.SizeMessage(5, m.OriginCaption.Size())
+	}
+	n += litewire.SizeString(6, m.ScheduledTaskId)
+	n += litewire.SizeString(7, m.ScheduledRunId)
+	n += litewire.SizeBool(8, m.IsScheduled)
+	n += litewire.SizeBool(9, m.TypedLocally)
+	return n
+}
+
 func (m *SessionUserMessageItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionUserMessageItem) AppendMarshal(b []byte) []byte {
@@ -7317,19 +8391,23 @@ func (m *SessionUserMessageItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.Text)
 	for _, v := range m.Images {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 2, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 2, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	for _, v := range m.Files {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 3, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 3, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	if m.Origin != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.Origin.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.Origin.Size())
+		b = m.Origin.AppendMarshal(b)
 	}
 	if m.OriginCaption != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.OriginCaption.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.OriginCaption.Size())
+		b = m.OriginCaption.AppendMarshal(b)
 	}
 	b = litewire.AppendString(b, 6, m.ScheduledTaskId)
 	b = litewire.AppendString(b, 7, m.ScheduledRunId)
@@ -7346,7 +8424,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7355,7 +8433,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7368,7 +8446,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7381,7 +8459,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7395,7 +8473,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7409,7 +8487,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7418,7 +8496,7 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7427,21 +8505,21 @@ func (m *SessionUserMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IsScheduled = protowire.DecodeBool(v)
+				m.IsScheduled = litewire.DecodeBool(v)
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.TypedLocally = protowire.DecodeBool(v)
+				m.TypedLocally = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -7484,8 +8562,25 @@ func (m *SessionAgentMessageItem) Clone() *SessionAgentMessageItem {
 	return &cp
 }
 
+func (m *SessionAgentMessageItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Markdown)
+	n += litewire.SizeBool(2, m.Intermediate)
+	return n
+}
+
 func (m *SessionAgentMessageItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionAgentMessageItem) AppendMarshal(b []byte) []byte {
@@ -7505,7 +8600,7 @@ func (m *SessionAgentMessageItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7514,12 +8609,12 @@ func (m *SessionAgentMessageItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Intermediate = protowire.DecodeBool(v)
+				m.Intermediate = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -7562,8 +8657,25 @@ func (m *SessionReasoningItem) Clone() *SessionReasoningItem {
 	return &cp
 }
 
+func (m *SessionReasoningItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Markdown)
+	n += litewire.SizeBool(2, m.Streaming)
+	return n
+}
+
 func (m *SessionReasoningItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionReasoningItem) AppendMarshal(b []byte) []byte {
@@ -7583,7 +8695,7 @@ func (m *SessionReasoningItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7592,12 +8704,12 @@ func (m *SessionReasoningItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Streaming = protowire.DecodeBool(v)
+				m.Streaming = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -7781,8 +8893,52 @@ func (m *SessionToolCallItem) Clone() *SessionToolCallItem {
 	return &cp
 }
 
+func (m *SessionToolCallItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.CallId)
+	n += litewire.SizeInt32(2, int32(m.ToolKind))
+	n += litewire.SizeString(3, m.ItemType)
+	n += litewire.SizeString(4, m.Title)
+	n += litewire.SizeString(5, m.RawInput)
+	n += litewire.SizeString(6, m.Detail)
+	n += litewire.SizeInt32(7, int32(m.Status))
+	n += litewire.SizeInt32(8, int32(m.ExitCode))
+	n += litewire.SizeBool(9, m.HasExitCode)
+	n += litewire.SizeVarintField(10, uint64(m.ElapsedMs))
+	n += litewire.SizeVarintField(11, uint64(m.SinceMs))
+	n += litewire.SizeVarintField(12, uint64(m.FrozenAtMs))
+	n += litewire.SizeBool(13, m.IsBackground)
+	n += litewire.SizeInt32(20, int32(m.BackgroundKind))
+	n += litewire.SizeString(21, m.BackgroundId)
+	if m.BackgroundLabel != nil {
+		n += litewire.SizeMessage(14, m.BackgroundLabel.Size())
+	}
+	n += litewire.SizeBool(15, m.Unconfirmed)
+	n += litewire.SizeBool(16, m.NoResult)
+	if m.DecisionLabel != nil {
+		n += litewire.SizeMessage(17, m.DecisionLabel.Size())
+	}
+	n += litewire.SizeBool(18, m.DecisionAllowed)
+	for _, v := range m.Images {
+		if v != nil {
+			n += litewire.SizeMessage(19, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionToolCallItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionToolCallItem) AppendMarshal(b []byte) []byte {
@@ -7805,17 +8961,20 @@ func (m *SessionToolCallItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 20, int32(m.BackgroundKind))
 	b = litewire.AppendString(b, 21, m.BackgroundId)
 	if m.BackgroundLabel != nil {
-		b = litewire.AppendBytesAlways(b, 14, m.BackgroundLabel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 14, m.BackgroundLabel.Size())
+		b = m.BackgroundLabel.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 15, m.Unconfirmed)
 	b = litewire.AppendBool(b, 16, m.NoResult)
 	if m.DecisionLabel != nil {
-		b = litewire.AppendBytesAlways(b, 17, m.DecisionLabel.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 17, m.DecisionLabel.Size())
+		b = m.DecisionLabel.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 18, m.DecisionAllowed)
 	for _, v := range m.Images {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 19, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 19, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -7829,7 +8988,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7838,7 +8997,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7847,7 +9006,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7856,7 +9015,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7865,7 +9024,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7874,7 +9033,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7883,7 +9042,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7892,7 +9051,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 8:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7901,16 +9060,16 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 9:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.HasExitCode = protowire.DecodeBool(v)
+				m.HasExitCode = litewire.DecodeBool(v)
 				continue
 			}
 		case 10:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7919,7 +9078,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 11:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7928,7 +9087,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 12:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7937,16 +9096,16 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 13:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IsBackground = protowire.DecodeBool(v)
+				m.IsBackground = litewire.DecodeBool(v)
 				continue
 			}
 		case 20:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -7955,7 +9114,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 21:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -7964,7 +9123,7 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 14:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -7978,25 +9137,25 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 15:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Unconfirmed = protowire.DecodeBool(v)
+				m.Unconfirmed = litewire.DecodeBool(v)
 				continue
 			}
 		case 16:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.NoResult = protowire.DecodeBool(v)
+				m.NoResult = litewire.DecodeBool(v)
 				continue
 			}
 		case 17:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8010,16 +9169,16 @@ func (m *SessionToolCallItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 18:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.DecisionAllowed = protowire.DecodeBool(v)
+				m.DecisionAllowed = litewire.DecodeBool(v)
 				continue
 			}
 		case 19:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8106,8 +9265,35 @@ func (m *SessionToolGroupItem) Clone() *SessionToolGroupItem {
 	return &cp
 }
 
+func (m *SessionToolGroupItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	for _, v := range m.Calls {
+		if v != nil {
+			n += litewire.SizeMessage(1, v.Size())
+		}
+	}
+	if m.Summary != nil {
+		n += litewire.SizeMessage(2, m.Summary.Size())
+	}
+	n += litewire.SizeInt32(3, int32(m.CommandCount))
+	n += litewire.SizeInt32(4, int32(m.EditCount))
+	n += litewire.SizeInt32(5, int32(m.OtherCount))
+	n += litewire.SizeInt32(6, int32(m.ImageCount))
+	return n
+}
+
 func (m *SessionToolGroupItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionToolGroupItem) AppendMarshal(b []byte) []byte {
@@ -8116,11 +9302,13 @@ func (m *SessionToolGroupItem) AppendMarshal(b []byte) []byte {
 	}
 	for _, v := range m.Calls {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 1, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 1, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	if m.Summary != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Summary.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Summary.Size())
+		b = m.Summary.AppendMarshal(b)
 	}
 	b = litewire.AppendInt32(b, 3, int32(m.CommandCount))
 	b = litewire.AppendInt32(b, 4, int32(m.EditCount))
@@ -8137,7 +9325,7 @@ func (m *SessionToolGroupItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8150,7 +9338,7 @@ func (m *SessionToolGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8164,7 +9352,7 @@ func (m *SessionToolGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8173,7 +9361,7 @@ func (m *SessionToolGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8182,7 +9370,7 @@ func (m *SessionToolGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8191,7 +9379,7 @@ func (m *SessionToolGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8267,8 +9455,29 @@ func (m *SessionSharedFileItem) Clone() *SessionSharedFileItem {
 	return &cp
 }
 
+func (m *SessionSharedFileItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Path)
+	n += litewire.SizeString(2, m.Name)
+	n += litewire.SizeVarintField(3, uint64(m.SizeBytes))
+	n += litewire.SizeString(4, m.MimeType)
+	n += litewire.SizeString(5, m.FileId)
+	n += litewire.SizeBool(6, m.Available)
+	return n
+}
+
 func (m *SessionSharedFileItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionSharedFileItem) AppendMarshal(b []byte) []byte {
@@ -8292,7 +9501,7 @@ func (m *SessionSharedFileItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8301,7 +9510,7 @@ func (m *SessionSharedFileItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8310,7 +9519,7 @@ func (m *SessionSharedFileItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8319,7 +9528,7 @@ func (m *SessionSharedFileItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8328,7 +9537,7 @@ func (m *SessionSharedFileItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8337,12 +9546,12 @@ func (m *SessionSharedFileItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Available = protowire.DecodeBool(v)
+				m.Available = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -8384,8 +9593,28 @@ func (m *SessionSharedFilesItem) Clone() *SessionSharedFilesItem {
 	return &cp
 }
 
+func (m *SessionSharedFilesItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	for _, v := range m.Files {
+		if v != nil {
+			n += litewire.SizeMessage(1, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionSharedFilesItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionSharedFilesItem) AppendMarshal(b []byte) []byte {
@@ -8394,7 +9623,8 @@ func (m *SessionSharedFilesItem) AppendMarshal(b []byte) []byte {
 	}
 	for _, v := range m.Files {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 1, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 1, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -8408,7 +9638,7 @@ func (m *SessionSharedFilesItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8466,8 +9696,29 @@ func (m *SessionGeneratedImagesItem) Clone() *SessionGeneratedImagesItem {
 	return &cp
 }
 
+func (m *SessionGeneratedImagesItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.RevisedPrompt)
+	for _, v := range m.Images {
+		if v != nil {
+			n += litewire.SizeMessage(2, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionGeneratedImagesItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionGeneratedImagesItem) AppendMarshal(b []byte) []byte {
@@ -8477,7 +9728,8 @@ func (m *SessionGeneratedImagesItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.RevisedPrompt)
 	for _, v := range m.Images {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 2, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 2, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -8491,7 +9743,7 @@ func (m *SessionGeneratedImagesItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8500,7 +9752,7 @@ func (m *SessionGeneratedImagesItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8558,8 +9810,29 @@ func (m *SessionAsyncQuestionItem) Clone() *SessionAsyncQuestionItem {
 	return &cp
 }
 
+func (m *SessionAsyncQuestionItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.QuestionId)
+	for _, v := range m.Questions {
+		if v != nil {
+			n += litewire.SizeMessage(2, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionAsyncQuestionItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionAsyncQuestionItem) AppendMarshal(b []byte) []byte {
@@ -8569,7 +9842,8 @@ func (m *SessionAsyncQuestionItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.QuestionId)
 	for _, v := range m.Questions {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 2, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 2, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -8583,7 +9857,7 @@ func (m *SessionAsyncQuestionItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8592,7 +9866,7 @@ func (m *SessionAsyncQuestionItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8637,8 +9911,24 @@ func (m *SessionPlanItem) Clone() *SessionPlanItem {
 	return &cp
 }
 
+func (m *SessionPlanItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.Markdown)
+	return n
+}
+
 func (m *SessionPlanItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionPlanItem) AppendMarshal(b []byte) []byte {
@@ -8657,7 +9947,7 @@ func (m *SessionPlanItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8736,8 +10026,35 @@ func (m *SessionNoteItem) Clone() *SessionNoteItem {
 	return &cp
 }
 
+func (m *SessionNoteItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Kind))
+	n += litewire.SizeInt32(2, int32(m.Tone))
+	if m.Text != nil {
+		n += litewire.SizeMessage(3, m.Text.Size())
+	}
+	if m.Meta != nil {
+		n += litewire.SizeMessage(4, m.Meta.Size())
+	}
+	if m.Emphasis != nil {
+		n += litewire.SizeMessage(5, m.Emphasis.Size())
+	}
+	n += litewire.SizeString(6, m.ScheduledRunId)
+	return n
+}
+
 func (m *SessionNoteItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionNoteItem) AppendMarshal(b []byte) []byte {
@@ -8747,13 +10064,16 @@ func (m *SessionNoteItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 1, int32(m.Kind))
 	b = litewire.AppendInt32(b, 2, int32(m.Tone))
 	if m.Text != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.Text.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.Text.Size())
+		b = m.Text.AppendMarshal(b)
 	}
 	if m.Meta != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.Meta.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.Meta.Size())
+		b = m.Meta.AppendMarshal(b)
 	}
 	if m.Emphasis != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.Emphasis.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.Emphasis.Size())
+		b = m.Emphasis.AppendMarshal(b)
 	}
 	b = litewire.AppendString(b, 6, m.ScheduledRunId)
 	return b
@@ -8767,7 +10087,7 @@ func (m *SessionNoteItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8776,7 +10096,7 @@ func (m *SessionNoteItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8785,7 +10105,7 @@ func (m *SessionNoteItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8799,7 +10119,7 @@ func (m *SessionNoteItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8813,7 +10133,7 @@ func (m *SessionNoteItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8827,7 +10147,7 @@ func (m *SessionNoteItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -8904,8 +10224,31 @@ func (m *SessionTurnEndItem) Clone() *SessionTurnEndItem {
 	return &cp
 }
 
+func (m *SessionTurnEndItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Outcome))
+	n += litewire.SizeVarintField(2, uint64(m.DurationMs))
+	n += litewire.SizeVarintField(3, uint64(m.TurnTokens))
+	if m.Label != nil {
+		n += litewire.SizeMessage(4, m.Label.Size())
+	}
+	n += litewire.SizeBool(5, m.Interrupted)
+	n += litewire.SizeBool(6, m.IsSessionEnded)
+	return n
+}
+
 func (m *SessionTurnEndItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionTurnEndItem) AppendMarshal(b []byte) []byte {
@@ -8916,7 +10259,8 @@ func (m *SessionTurnEndItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 2, uint64(m.DurationMs))
 	b = litewire.AppendVarint(b, 3, uint64(m.TurnTokens))
 	if m.Label != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.Label.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.Label.Size())
+		b = m.Label.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 5, m.Interrupted)
 	b = litewire.AppendBool(b, 6, m.IsSessionEnded)
@@ -8931,7 +10275,7 @@ func (m *SessionTurnEndItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8940,7 +10284,7 @@ func (m *SessionTurnEndItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8949,7 +10293,7 @@ func (m *SessionTurnEndItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -8958,7 +10302,7 @@ func (m *SessionTurnEndItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -8972,21 +10316,21 @@ func (m *SessionTurnEndItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Interrupted = protowire.DecodeBool(v)
+				m.Interrupted = litewire.DecodeBool(v)
 				continue
 			}
 		case 6:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.IsSessionEnded = protowire.DecodeBool(v)
+				m.IsSessionEnded = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -9030,8 +10374,27 @@ func (m *SessionErrorLineItem) Clone() *SessionErrorLineItem {
 	return &cp
 }
 
+func (m *SessionErrorLineItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.RawReason)
+	if m.Text != nil {
+		n += litewire.SizeMessage(2, m.Text.Size())
+	}
+	return n
+}
+
 func (m *SessionErrorLineItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionErrorLineItem) AppendMarshal(b []byte) []byte {
@@ -9040,7 +10403,8 @@ func (m *SessionErrorLineItem) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.RawReason)
 	if m.Text != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.Text.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.Text.Size())
+		b = m.Text.AppendMarshal(b)
 	}
 	return b
 }
@@ -9053,7 +10417,7 @@ func (m *SessionErrorLineItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9062,7 +10426,7 @@ func (m *SessionErrorLineItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9124,8 +10488,30 @@ func (m *SessionForkItem) Clone() *SessionForkItem {
 	return &cp
 }
 
+func (m *SessionForkItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SourceSessionId)
+	if m.SourceTitle != nil {
+		n += litewire.SizeMessage(2, m.SourceTitle.Size())
+	}
+	if m.Text != nil {
+		n += litewire.SizeMessage(3, m.Text.Size())
+	}
+	return n
+}
+
 func (m *SessionForkItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionForkItem) AppendMarshal(b []byte) []byte {
@@ -9134,10 +10520,12 @@ func (m *SessionForkItem) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendString(b, 1, m.SourceSessionId)
 	if m.SourceTitle != nil {
-		b = litewire.AppendBytesAlways(b, 2, m.SourceTitle.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 2, m.SourceTitle.Size())
+		b = m.SourceTitle.AppendMarshal(b)
 	}
 	if m.Text != nil {
-		b = litewire.AppendBytesAlways(b, 3, m.Text.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 3, m.Text.Size())
+		b = m.Text.AppendMarshal(b)
 	}
 	return b
 }
@@ -9150,7 +10538,7 @@ func (m *SessionForkItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9159,7 +10547,7 @@ func (m *SessionForkItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9173,7 +10561,7 @@ func (m *SessionForkItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9249,8 +10637,32 @@ func (m *SessionInputStateItem) Clone() *SessionInputStateItem {
 	return &cp
 }
 
+func (m *SessionInputStateItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Kind))
+	n += litewire.SizeString(2, m.RequestId)
+	n += litewire.SizeString(3, m.Preview)
+	if m.StatusText != nil {
+		n += litewire.SizeMessage(4, m.StatusText.Size())
+	}
+	if m.ReasonText != nil {
+		n += litewire.SizeMessage(5, m.ReasonText.Size())
+	}
+	return n
+}
+
 func (m *SessionInputStateItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionInputStateItem) AppendMarshal(b []byte) []byte {
@@ -9261,10 +10673,12 @@ func (m *SessionInputStateItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 2, m.RequestId)
 	b = litewire.AppendString(b, 3, m.Preview)
 	if m.StatusText != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.StatusText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.StatusText.Size())
+		b = m.StatusText.AppendMarshal(b)
 	}
 	if m.ReasonText != nil {
-		b = litewire.AppendBytesAlways(b, 5, m.ReasonText.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 5, m.ReasonText.Size())
+		b = m.ReasonText.AppendMarshal(b)
 	}
 	return b
 }
@@ -9277,7 +10691,7 @@ func (m *SessionInputStateItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -9286,7 +10700,7 @@ func (m *SessionInputStateItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9295,7 +10709,7 @@ func (m *SessionInputStateItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9304,7 +10718,7 @@ func (m *SessionInputStateItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9318,7 +10732,7 @@ func (m *SessionInputStateItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9422,8 +10836,45 @@ func (m *SessionQuietScheduledGroupItem) Clone() *SessionQuietScheduledGroupItem
 	return &cp
 }
 
+func (m *SessionQuietScheduledGroupItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.GroupId)
+	n += litewire.SizeString(2, m.ScheduledTaskId)
+	n += litewire.SizeInt32(3, int32(m.RunCount))
+	if len(m.RunTimesMs) > 0 {
+		psz := 0
+		for _, v := range m.RunTimesMs {
+			psz += litewire.SizeVarint(uint64(v))
+		}
+		n += litewire.SizeMessage(4, psz)
+	}
+	for _, v := range m.RunIds {
+		n += litewire.SizeStringAlways(5, v)
+	}
+	if m.Title != nil {
+		n += litewire.SizeMessage(6, m.Title.Size())
+	}
+	n += litewire.SizeBool(7, m.Expanded)
+	for _, v := range m.Items {
+		if v != nil {
+			n += litewire.SizeMessage(8, v.Size())
+		}
+	}
+	return n
+}
+
 func (m *SessionQuietScheduledGroupItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionQuietScheduledGroupItem) AppendMarshal(b []byte) []byte {
@@ -9434,22 +10885,27 @@ func (m *SessionQuietScheduledGroupItem) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 2, m.ScheduledTaskId)
 	b = litewire.AppendInt32(b, 3, int32(m.RunCount))
 	if len(m.RunTimesMs) > 0 {
-		var pb []byte
+		psz := 0
 		for _, v := range m.RunTimesMs {
-			pb = protowire.AppendVarint(pb, uint64(v))
+			psz += litewire.SizeVarint(uint64(v))
 		}
-		b = litewire.AppendBytesAlways(b, 4, pb)
+		b = litewire.AppendMessagePrefix(b, 4, psz)
+		for _, v := range m.RunTimesMs {
+			b = litewire.AppendRawVarint(b, uint64(v))
+		}
 	}
 	for _, v := range m.RunIds {
 		b = litewire.AppendStringAlways(b, 5, v)
 	}
 	if m.Title != nil {
-		b = litewire.AppendBytesAlways(b, 6, m.Title.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 6, m.Title.Size())
+		b = m.Title.AppendMarshal(b)
 	}
 	b = litewire.AppendBool(b, 7, m.Expanded)
 	for _, v := range m.Items {
 		if v != nil {
-			b = litewire.AppendBytesAlways(b, 8, v.AppendMarshal(nil))
+			b = litewire.AppendMessagePrefix(b, 8, v.Size())
+			b = v.AppendMarshal(b)
 		}
 	}
 	return b
@@ -9463,7 +10919,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9472,7 +10928,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9481,7 +10937,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -9490,7 +10946,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9504,7 +10960,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				}
 				continue
 			}
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -9513,7 +10969,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9522,7 +10978,7 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 6:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9536,16 +10992,16 @@ func (m *SessionQuietScheduledGroupItem) Unmarshal(b []byte) error {
 				continue
 			}
 		case 7:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.Expanded = protowire.DecodeBool(v)
+				m.Expanded = litewire.DecodeBool(v)
 				continue
 			}
 		case 8:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9591,8 +11047,26 @@ func (m *SessionSkeletonItem) Clone() *SessionSkeletonItem {
 	return &cp
 }
 
+func (m *SessionSkeletonItem) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	if m.Text != nil {
+		n += litewire.SizeMessage(1, m.Text.Size())
+	}
+	return n
+}
+
 func (m *SessionSkeletonItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionSkeletonItem) AppendMarshal(b []byte) []byte {
@@ -9600,7 +11074,8 @@ func (m *SessionSkeletonItem) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if m.Text != nil {
-		b = litewire.AppendBytesAlways(b, 1, m.Text.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 1, m.Text.Size())
+		b = m.Text.AppendMarshal(b)
 	}
 	return b
 }
@@ -9613,7 +11088,7 @@ func (m *SessionSkeletonItem) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9681,8 +11156,29 @@ func (m *SessionSubmitCommandAction) Clone() *SessionSubmitCommandAction {
 	return &cp
 }
 
+func (m *SessionSubmitCommandAction) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SlotKey)
+	n += litewire.SizeString(2, m.MachineId)
+	n += litewire.SizeString(3, m.SessionId)
+	if m.Command != nil {
+		n += litewire.SizeMessage(4, m.Command.Size())
+	}
+	return n
+}
+
 func (m *SessionSubmitCommandAction) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionSubmitCommandAction) AppendMarshal(b []byte) []byte {
@@ -9693,7 +11189,8 @@ func (m *SessionSubmitCommandAction) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 2, m.MachineId)
 	b = litewire.AppendString(b, 3, m.SessionId)
 	if m.Command != nil {
-		b = litewire.AppendBytesAlways(b, 4, m.Command.AppendMarshal(nil))
+		b = litewire.AppendMessagePrefix(b, 4, m.Command.Size())
+		b = m.Command.AppendMarshal(b)
 	}
 	return b
 }
@@ -9706,7 +11203,7 @@ func (m *SessionSubmitCommandAction) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9715,7 +11212,7 @@ func (m *SessionSubmitCommandAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9724,7 +11221,7 @@ func (m *SessionSubmitCommandAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9733,7 +11230,7 @@ func (m *SessionSubmitCommandAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -9786,8 +11283,25 @@ func (m *SessionSlotAction) Clone() *SessionSlotAction {
 	return &cp
 }
 
+func (m *SessionSlotAction) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SlotKey)
+	n += litewire.SizeString(2, m.SessionId)
+	return n
+}
+
 func (m *SessionSlotAction) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionSlotAction) AppendMarshal(b []byte) []byte {
@@ -9807,7 +11321,7 @@ func (m *SessionSlotAction) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9816,7 +11330,7 @@ func (m *SessionSlotAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9871,8 +11385,26 @@ func (m *SessionOpenAction) Clone() *SessionOpenAction {
 	return &cp
 }
 
+func (m *SessionOpenAction) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	n += litewire.SizeBool(2, m.RefreshModels)
+	n += litewire.SizeBool(3, m.RefreshSettings)
+	return n
+}
+
 func (m *SessionOpenAction) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionOpenAction) AppendMarshal(b []byte) []byte {
@@ -9893,7 +11425,7 @@ func (m *SessionOpenAction) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9902,21 +11434,21 @@ func (m *SessionOpenAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.RefreshModels = protowire.DecodeBool(v)
+				m.RefreshModels = litewire.DecodeBool(v)
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
 				}
-				m.RefreshSettings = protowire.DecodeBool(v)
+				m.RefreshSettings = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -9959,8 +11491,25 @@ func (m *SessionOutgoingAction) Clone() *SessionOutgoingAction {
 	return &cp
 }
 
+func (m *SessionOutgoingAction) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	n += litewire.SizeString(2, m.RequestId)
+	return n
+}
+
 func (m *SessionOutgoingAction) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionOutgoingAction) AppendMarshal(b []byte) []byte {
@@ -9980,7 +11529,7 @@ func (m *SessionOutgoingAction) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -9989,7 +11538,7 @@ func (m *SessionOutgoingAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10044,8 +11593,26 @@ func (m *SessionQuestionStepAction) Clone() *SessionQuestionStepAction {
 	return &cp
 }
 
+func (m *SessionQuestionStepAction) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	n += litewire.SizeString(2, m.QuestionId)
+	n += litewire.SizeInt32(3, int32(m.QuestionIndex))
+	return n
+}
+
 func (m *SessionQuestionStepAction) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionQuestionStepAction) AppendMarshal(b []byte) []byte {
@@ -10066,7 +11633,7 @@ func (m *SessionQuestionStepAction) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10075,7 +11642,7 @@ func (m *SessionQuestionStepAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10084,7 +11651,7 @@ func (m *SessionQuestionStepAction) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.VarintType {
+			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
 					return err
@@ -10125,8 +11692,24 @@ func (m *SessionRefreshHistoryAction) Clone() *SessionRefreshHistoryAction {
 	return &cp
 }
 
+func (m *SessionRefreshHistoryAction) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	return n
+}
+
 func (m *SessionRefreshHistoryAction) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionRefreshHistoryAction) AppendMarshal(b []byte) []byte {
@@ -10145,7 +11728,7 @@ func (m *SessionRefreshHistoryAction) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10216,8 +11799,32 @@ func (m *SessionRestoreComposerEffect) Clone() *SessionRestoreComposerEffect {
 	return &cp
 }
 
+func (m *SessionRestoreComposerEffect) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeString(1, m.SessionId)
+	n += litewire.SizeString(2, m.RequestId)
+	n += litewire.SizeString(3, m.Text)
+	for _, v := range m.ImageIds {
+		n += litewire.SizeStringAlways(4, v)
+	}
+	for _, v := range m.FileIds {
+		n += litewire.SizeStringAlways(5, v)
+	}
+	return n
+}
+
 func (m *SessionRestoreComposerEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
 func (m *SessionRestoreComposerEffect) AppendMarshal(b []byte) []byte {
@@ -10244,7 +11851,7 @@ func (m *SessionRestoreComposerEffect) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10253,7 +11860,7 @@ func (m *SessionRestoreComposerEffect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 2:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10262,7 +11869,7 @@ func (m *SessionRestoreComposerEffect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 3:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10271,7 +11878,7 @@ func (m *SessionRestoreComposerEffect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
@@ -10280,7 +11887,7 @@ func (m *SessionRestoreComposerEffect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 5:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err

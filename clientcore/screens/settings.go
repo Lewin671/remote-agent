@@ -1,15 +1,15 @@
 package screens
 
 import (
-	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
-	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
-	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
+	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -320,12 +320,12 @@ func buildConnCheckSummary(st *State, cc ConnCheckState) *corev1.ConnCheckSummar
 		case corev1.ConnProbeState_CONN_PROBE_STATE_WORKING:
 			out.StatusWord = text.Msg(text.KeyConnectionWorking)
 			if cc.LatencyMs > 0 {
-				out.SummaryText = text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", cc.LatencyMs)))
+				out.SummaryText = text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(cc.LatencyMs), 10)))
 			}
 		case corev1.ConnProbeState_CONN_PROBE_STATE_SLOW:
 			out.StatusWord = text.Msg(text.KeyConnectionSlow)
 			if cc.LatencyMs > 0 {
-				out.SummaryText = text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", cc.LatencyMs)))
+				out.SummaryText = text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(cc.LatencyMs), 10)))
 			}
 		case corev1.ConnProbeState_CONN_PROBE_STATE_UNAVAILABLE:
 			out.StatusWord = text.Msg(text.KeyConnectionUnavailable)
@@ -403,27 +403,27 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	}
 
 	vm := &corev1.SettingsViewModel{
-		Online:             online,
-		ClockSkewed:        st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
-		Unlinked:           unlinked,
-		HasAccount:         syncView.GetSelfDeviceId() != "",
-		IsManager:          isMgr,
-		AuthorityName:      authName,
-		RecoveryPending:    syncView.GetRecoveryPending(),
-		RecoveryReadyMs:    syncView.GetRecoveryReadyMs(),
-		Machines:           buildMachineListCards(st, st.World.Machines, true),
-		CanAddDevice:       isMgr && !unlinked,
-		RecentClients:      recent,
-		HasMoreClients:     hasMore,
-		TotalDevicesCount:  int32(len(st.World.Machines) + len(allClients)),
-		Notifications:      buildNotificationsView(extra.Notifications),
-		Appearance:         buildAppearanceView(extra.Theme),
-		Update:             buildClientUpdateView(extra.Update, st.World.ClientVersion),
-		ConnCheck:          buildConnCheckSummary(st, extra.ConnCheck),
-		DiskReminders:      machine.BuildDiskReminders(st.World.Machines),
-		QuotaBanner:        quota.Banner(st.World.Machines, st.Cal.NowMs),
-		CanExitAccount:     syncView.GetSelfDeviceId() != "",
-		ExitNeedsTransfer:  isMgr && otherClients > 0,
+		Online:            online,
+		ClockSkewed:       st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
+		Unlinked:          unlinked,
+		HasAccount:        syncView.GetSelfDeviceId() != "",
+		IsManager:         isMgr,
+		AuthorityName:     authName,
+		RecoveryPending:   syncView.GetRecoveryPending(),
+		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
+		Machines:          buildMachineListCards(st, st.World.Machines, true),
+		CanAddDevice:      isMgr && !unlinked,
+		RecentClients:     recent,
+		HasMoreClients:    hasMore,
+		TotalDevicesCount: int32(len(st.World.Machines) + len(allClients)),
+		Notifications:     buildNotificationsView(extra.Notifications),
+		Appearance:        buildAppearanceView(extra.Theme),
+		Update:            buildClientUpdateView(extra.Update, st.World.ClientVersion),
+		ConnCheck:         buildConnCheckSummary(st, extra.ConnCheck),
+		DiskReminders:     machine.BuildDiskReminders(st.World.Machines),
+		QuotaBanner:       quota.Banner(st.World.Machines, st.Cal.NowMs),
+		CanExitAccount:    syncView.GetSelfDeviceId() != "",
+		ExitNeedsTransfer: isMgr && otherClients > 0,
 	}
 
 	if vm.ClockSkewed {
@@ -794,14 +794,14 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 	clients, unfinished := buildClientRows(st, syncView, true)
 
 	vm := &corev1.DevicesViewModel{
-		IsManager:         isMgr,
-		Online:            online,
-		Unlinked:          unlinked,
-		AuthorityDeviceId: syncView.GetAuthorityDeviceId(),
-		AuthorityName:     authName,
-		CanAddDevice:      isMgr && !unlinked,
-		Computers:         buildMachineListCards(st, st.World.Machines, false),
-		Clients:           clients,
+		IsManager:          isMgr,
+		Online:             online,
+		Unlinked:           unlinked,
+		AuthorityDeviceId:  syncView.GetAuthorityDeviceId(),
+		AuthorityName:      authName,
+		CanAddDevice:       isMgr && !unlinked,
+		Computers:          buildMachineListCards(st, st.World.Machines, false),
+		Clients:            clients,
 		UnfinishedPairings: unfinished,
 	}
 	if !isMgr && authName != "" {

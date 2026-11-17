@@ -3,9 +3,9 @@ package quota
 import (
 	"testing"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -43,7 +43,7 @@ func TestBeijingDayRolloverAndResetClock(t *testing.T) {
 	// Base: 2026-11-16 00:00:00 UTC = 20773 days since epoch? Compute deterministically:
 	// 1970-01-01 00:00:00 UTC + 100*86400s:
 	baseMidnightUTC := int64(100) * msPerDay
-	now := baseMidnightUTC + 15*msPerHour + 30*msPerMinute   // 23:30 UTC+8 same day
+	now := baseMidnightUTC + 15*msPerHour + 30*msPerMinute     // 23:30 UTC+8 same day
 	sameDay := baseMidnightUTC + 15*msPerHour + 50*msPerMinute // 23:50 UTC+8 same day
 	nextDay := baseMidnightUTC + 16*msPerHour + 30*msPerMinute // 00:30 UTC+8 next day
 

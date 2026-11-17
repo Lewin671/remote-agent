@@ -693,4 +693,3 @@ func MinutesLeft(deadlineMs, nowMs int64) int64 {
 	}
 	return (deadlineMs - nowMs + 59_999) / 60_000
 }
-

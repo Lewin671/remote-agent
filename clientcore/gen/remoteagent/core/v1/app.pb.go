@@ -715,6 +715,48 @@ func (m *Screen) Size() int {
 				n += litewire.SizeMessage(5, x.SessionData.Size())
 			}
 		}
+	case *Screen_Settings:
+		if x != nil {
+			if x.Settings != nil {
+				n += litewire.SizeMessage(30, x.Settings.Size())
+			}
+		}
+	case *Screen_MachineStatus:
+		if x != nil {
+			if x.MachineStatus != nil {
+				n += litewire.SizeMessage(31, x.MachineStatus.Size())
+			}
+		}
+	case *Screen_MachineSettings:
+		if x != nil {
+			if x.MachineSettings != nil {
+				n += litewire.SizeMessage(32, x.MachineSettings.Size())
+			}
+		}
+	case *Screen_Quota:
+		if x != nil {
+			if x.Quota != nil {
+				n += litewire.SizeMessage(33, x.Quota.Size())
+			}
+		}
+	case *Screen_Devices:
+		if x != nil {
+			if x.Devices != nil {
+				n += litewire.SizeMessage(34, x.Devices.Size())
+			}
+		}
+	case *Screen_ClientDetail:
+		if x != nil {
+			if x.ClientDetail != nil {
+				n += litewire.SizeMessage(35, x.ClientDetail.Size())
+			}
+		}
+	case *Screen_Session:
+		if x != nil {
+			if x.Session != nil {
+				n += litewire.SizeMessage(10, x.Session.Size())
+			}
+		}
 	}
 	return n
 }
@@ -773,43 +815,50 @@ func (m *Screen) AppendMarshal(b []byte) []byte {
 	case *Screen_Settings:
 		if x != nil {
 			if x.Settings != nil {
-				b = litewire.AppendBytesAlways(b, 30, x.Settings.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 30, x.Settings.Size())
+				b = x.Settings.AppendMarshal(b)
 			}
 		}
 	case *Screen_MachineStatus:
 		if x != nil {
 			if x.MachineStatus != nil {
-				b = litewire.AppendBytesAlways(b, 31, x.MachineStatus.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 31, x.MachineStatus.Size())
+				b = x.MachineStatus.AppendMarshal(b)
 			}
 		}
 	case *Screen_MachineSettings:
 		if x != nil {
 			if x.MachineSettings != nil {
-				b = litewire.AppendBytesAlways(b, 32, x.MachineSettings.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 32, x.MachineSettings.Size())
+				b = x.MachineSettings.AppendMarshal(b)
 			}
 		}
 	case *Screen_Quota:
 		if x != nil {
 			if x.Quota != nil {
-				b = litewire.AppendBytesAlways(b, 33, x.Quota.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 33, x.Quota.Size())
+				b = x.Quota.AppendMarshal(b)
 			}
 		}
 	case *Screen_Devices:
 		if x != nil {
 			if x.Devices != nil {
-				b = litewire.AppendBytesAlways(b, 34, x.Devices.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 34, x.Devices.Size())
+				b = x.Devices.AppendMarshal(b)
 			}
 		}
 	case *Screen_ClientDetail:
 		if x != nil {
 			if x.ClientDetail != nil {
-				b = litewire.AppendBytesAlways(b, 35, x.ClientDetail.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 35, x.ClientDetail.Size())
+				b = x.ClientDetail.AppendMarshal(b)
 			}
 		}
 	case *Screen_Session:
 		if x != nil {
 			if x.Session != nil {
-				b = litewire.AppendBytesAlways(b, 10, x.Session.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 10, x.Session.Size())
+				b = x.Session.AppendMarshal(b)
 			}
 		}
 	}
@@ -919,7 +968,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 30:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -938,7 +987,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 31:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -957,7 +1006,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 32:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -976,7 +1025,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 33:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -995,7 +1044,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 34:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1014,7 +1063,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 35:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1033,7 +1082,7 @@ func (m *Screen) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1291,6 +1340,48 @@ func (m *ViewModel) Size() int {
 				n += litewire.SizeMessage(5, x.SessionData.Size())
 			}
 		}
+	case *ViewModel_Settings:
+		if x != nil {
+			if x.Settings != nil {
+				n += litewire.SizeMessage(30, x.Settings.Size())
+			}
+		}
+	case *ViewModel_MachineStatus:
+		if x != nil {
+			if x.MachineStatus != nil {
+				n += litewire.SizeMessage(31, x.MachineStatus.Size())
+			}
+		}
+	case *ViewModel_MachineSettings:
+		if x != nil {
+			if x.MachineSettings != nil {
+				n += litewire.SizeMessage(32, x.MachineSettings.Size())
+			}
+		}
+	case *ViewModel_Quota:
+		if x != nil {
+			if x.Quota != nil {
+				n += litewire.SizeMessage(33, x.Quota.Size())
+			}
+		}
+	case *ViewModel_Devices:
+		if x != nil {
+			if x.Devices != nil {
+				n += litewire.SizeMessage(34, x.Devices.Size())
+			}
+		}
+	case *ViewModel_ClientDetail:
+		if x != nil {
+			if x.ClientDetail != nil {
+				n += litewire.SizeMessage(35, x.ClientDetail.Size())
+			}
+		}
+	case *ViewModel_Session:
+		if x != nil {
+			if x.Session != nil {
+				n += litewire.SizeMessage(10, x.Session.Size())
+			}
+		}
 	}
 	return n
 }
@@ -1349,43 +1440,50 @@ func (m *ViewModel) AppendMarshal(b []byte) []byte {
 	case *ViewModel_Settings:
 		if x != nil {
 			if x.Settings != nil {
-				b = litewire.AppendBytesAlways(b, 30, x.Settings.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 30, x.Settings.Size())
+				b = x.Settings.AppendMarshal(b)
 			}
 		}
 	case *ViewModel_MachineStatus:
 		if x != nil {
 			if x.MachineStatus != nil {
-				b = litewire.AppendBytesAlways(b, 31, x.MachineStatus.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 31, x.MachineStatus.Size())
+				b = x.MachineStatus.AppendMarshal(b)
 			}
 		}
 	case *ViewModel_MachineSettings:
 		if x != nil {
 			if x.MachineSettings != nil {
-				b = litewire.AppendBytesAlways(b, 32, x.MachineSettings.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 32, x.MachineSettings.Size())
+				b = x.MachineSettings.AppendMarshal(b)
 			}
 		}
 	case *ViewModel_Quota:
 		if x != nil {
 			if x.Quota != nil {
-				b = litewire.AppendBytesAlways(b, 33, x.Quota.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 33, x.Quota.Size())
+				b = x.Quota.AppendMarshal(b)
 			}
 		}
 	case *ViewModel_Devices:
 		if x != nil {
 			if x.Devices != nil {
-				b = litewire.AppendBytesAlways(b, 34, x.Devices.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 34, x.Devices.Size())
+				b = x.Devices.AppendMarshal(b)
 			}
 		}
 	case *ViewModel_ClientDetail:
 		if x != nil {
 			if x.ClientDetail != nil {
-				b = litewire.AppendBytesAlways(b, 35, x.ClientDetail.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 35, x.ClientDetail.Size())
+				b = x.ClientDetail.AppendMarshal(b)
 			}
 		}
 	case *ViewModel_Session:
 		if x != nil {
 			if x.Session != nil {
-				b = litewire.AppendBytesAlways(b, 10, x.Session.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 10, x.Session.Size())
+				b = x.Session.AppendMarshal(b)
 			}
 		}
 	}
@@ -1495,7 +1593,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 30:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1514,7 +1612,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 31:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1533,7 +1631,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 32:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1552,7 +1650,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 33:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1571,7 +1669,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 34:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1590,7 +1688,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 35:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -1609,7 +1707,7 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 				continue
 			}
 		case 10:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -10307,6 +10405,156 @@ func (m *Event) Size() int {
 				n += litewire.SizeMessage(59, x.NewSessionAbandonStart.Size())
 			}
 		}
+	case *Event_MachineStatusWatch:
+		if x != nil {
+			if x.MachineStatusWatch != nil {
+				n += litewire.SizeMessage(350, x.MachineStatusWatch.Size())
+			}
+		}
+	case *Event_MachineStatusRetry:
+		if x != nil {
+			if x.MachineStatusRetry != nil {
+				n += litewire.SizeMessage(351, x.MachineStatusRetry.Size())
+			}
+		}
+	case *Event_MachineStatusTab:
+		if x != nil {
+			if x.MachineStatusTab != nil {
+				n += litewire.SizeMessage(352, x.MachineStatusTab.Size())
+			}
+		}
+	case *Event_MachineStatusScrub:
+		if x != nil {
+			if x.MachineStatusScrub != nil {
+				n += litewire.SizeMessage(353, x.MachineStatusScrub.Size())
+			}
+		}
+	case *Event_MachineStatusCleanup:
+		if x != nil {
+			if x.MachineStatusCleanup != nil {
+				n += litewire.SizeMessage(354, x.MachineStatusCleanup.Size())
+			}
+		}
+	case *Event_MachineStatusPollTick:
+		if x != nil {
+			if x.MachineStatusPollTick != nil {
+				n += litewire.SizeMessage(355, x.MachineStatusPollTick.Size())
+			}
+		}
+	case *Event_MachineSettingsOpen:
+		if x != nil {
+			if x.MachineSettingsOpen != nil {
+				n += litewire.SizeMessage(360, x.MachineSettingsOpen.Size())
+			}
+		}
+	case *Event_MachineSettingsSelectAgent:
+		if x != nil {
+			if x.MachineSettingsSelectAgent != nil {
+				n += litewire.SizeMessage(361, x.MachineSettingsSelectAgent.Size())
+			}
+		}
+	case *Event_UpdateMachineAgentDefaults:
+		if x != nil {
+			if x.UpdateMachineAgentDefaults != nil {
+				n += litewire.SizeMessage(362, x.UpdateMachineAgentDefaults.Size())
+			}
+		}
+	case *Event_UpdateMachineDaemonSettings:
+		if x != nil {
+			if x.UpdateMachineDaemonSettings != nil {
+				n += litewire.SizeMessage(363, x.UpdateMachineDaemonSettings.Size())
+			}
+		}
+	case *Event_UpdateDirectPreference:
+		if x != nil {
+			if x.UpdateDirectPreference != nil {
+				n += litewire.SizeMessage(364, x.UpdateDirectPreference.Size())
+			}
+		}
+	case *Event_MachineDirectStatus:
+		if x != nil {
+			if x.MachineDirectStatus != nil {
+				n += litewire.SizeMessage(365, x.MachineDirectStatus.Size())
+			}
+		}
+	case *Event_UpdateClientName:
+		if x != nil {
+			if x.UpdateClientName != nil {
+				n += litewire.SizeMessage(370, x.UpdateClientName.Size())
+			}
+		}
+	case *Event_SetNotificationPref:
+		if x != nil {
+			if x.SetNotificationPref != nil {
+				n += litewire.SizeMessage(375, x.SetNotificationPref.Size())
+			}
+		}
+	case *Event_SetAppearancePref:
+		if x != nil {
+			if x.SetAppearancePref != nil {
+				n += litewire.SizeMessage(376, x.SetAppearancePref.Size())
+			}
+		}
+	case *Event_ConnCheckStatus:
+		if x != nil {
+			if x.ConnCheckStatus != nil {
+				n += litewire.SizeMessage(377, x.ConnCheckStatus.Size())
+			}
+		}
+	case *Event_ClientUpdateState:
+		if x != nil {
+			if x.ClientUpdateState != nil {
+				n += litewire.SizeMessage(378, x.ClientUpdateState.Size())
+			}
+		}
+	case *Event_CheckForUpdates:
+		if x != nil {
+			if x.CheckForUpdates != nil {
+				n += litewire.SizeMessage(379, x.CheckForUpdates.Size())
+			}
+		}
+	case *Event_SessionSubmitCommand:
+		if x != nil {
+			if x.SessionSubmitCommand != nil {
+				n += litewire.SizeMessage(200, x.SessionSubmitCommand.Size())
+			}
+		}
+	case *Event_SessionAbandonCommand:
+		if x != nil {
+			if x.SessionAbandonCommand != nil {
+				n += litewire.SizeMessage(201, x.SessionAbandonCommand.Size())
+			}
+		}
+	case *Event_SessionOpen:
+		if x != nil {
+			if x.SessionOpen != nil {
+				n += litewire.SizeMessage(202, x.SessionOpen.Size())
+			}
+		}
+	case *Event_SessionDismissOutgoing:
+		if x != nil {
+			if x.SessionDismissOutgoing != nil {
+				n += litewire.SizeMessage(203, x.SessionDismissOutgoing.Size())
+			}
+		}
+	case *Event_SessionRestoreOutgoing:
+		if x != nil {
+			if x.SessionRestoreOutgoing != nil {
+				n += litewire.SizeMessage(204, x.SessionRestoreOutgoing.Size())
+			}
+		}
+	case *Event_SessionSetQuestionIndex:
+		if x != nil {
+			if x.SessionSetQuestionIndex != nil {
+				n += litewire.SizeMessage(205, x.SessionSetQuestionIndex.Size())
+			}
+		}
+	case *Event_SessionLoadEarlier:
+		if x != nil {
+			if x.SessionLoadEarlier != nil {
+				n += litewire.SizeMessage(206, x.SessionLoadEarlier.Size())
+			}
+		}
 	}
 	n += litewire.SizeVarintField(98, uint64(m.NowMs))
 	n += litewire.SizeVarintField(99, uint64(m.MonoMs))
@@ -10681,151 +10929,176 @@ func (m *Event) AppendMarshal(b []byte) []byte {
 	case *Event_MachineStatusWatch:
 		if x != nil {
 			if x.MachineStatusWatch != nil {
-				b = litewire.AppendBytesAlways(b, 350, x.MachineStatusWatch.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 350, x.MachineStatusWatch.Size())
+				b = x.MachineStatusWatch.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineStatusRetry:
 		if x != nil {
 			if x.MachineStatusRetry != nil {
-				b = litewire.AppendBytesAlways(b, 351, x.MachineStatusRetry.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 351, x.MachineStatusRetry.Size())
+				b = x.MachineStatusRetry.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineStatusTab:
 		if x != nil {
 			if x.MachineStatusTab != nil {
-				b = litewire.AppendBytesAlways(b, 352, x.MachineStatusTab.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 352, x.MachineStatusTab.Size())
+				b = x.MachineStatusTab.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineStatusScrub:
 		if x != nil {
 			if x.MachineStatusScrub != nil {
-				b = litewire.AppendBytesAlways(b, 353, x.MachineStatusScrub.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 353, x.MachineStatusScrub.Size())
+				b = x.MachineStatusScrub.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineStatusCleanup:
 		if x != nil {
 			if x.MachineStatusCleanup != nil {
-				b = litewire.AppendBytesAlways(b, 354, x.MachineStatusCleanup.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 354, x.MachineStatusCleanup.Size())
+				b = x.MachineStatusCleanup.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineStatusPollTick:
 		if x != nil {
 			if x.MachineStatusPollTick != nil {
-				b = litewire.AppendBytesAlways(b, 355, x.MachineStatusPollTick.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 355, x.MachineStatusPollTick.Size())
+				b = x.MachineStatusPollTick.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineSettingsOpen:
 		if x != nil {
 			if x.MachineSettingsOpen != nil {
-				b = litewire.AppendBytesAlways(b, 360, x.MachineSettingsOpen.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 360, x.MachineSettingsOpen.Size())
+				b = x.MachineSettingsOpen.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineSettingsSelectAgent:
 		if x != nil {
 			if x.MachineSettingsSelectAgent != nil {
-				b = litewire.AppendBytesAlways(b, 361, x.MachineSettingsSelectAgent.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 361, x.MachineSettingsSelectAgent.Size())
+				b = x.MachineSettingsSelectAgent.AppendMarshal(b)
 			}
 		}
 	case *Event_UpdateMachineAgentDefaults:
 		if x != nil {
 			if x.UpdateMachineAgentDefaults != nil {
-				b = litewire.AppendBytesAlways(b, 362, x.UpdateMachineAgentDefaults.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 362, x.UpdateMachineAgentDefaults.Size())
+				b = x.UpdateMachineAgentDefaults.AppendMarshal(b)
 			}
 		}
 	case *Event_UpdateMachineDaemonSettings:
 		if x != nil {
 			if x.UpdateMachineDaemonSettings != nil {
-				b = litewire.AppendBytesAlways(b, 363, x.UpdateMachineDaemonSettings.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 363, x.UpdateMachineDaemonSettings.Size())
+				b = x.UpdateMachineDaemonSettings.AppendMarshal(b)
 			}
 		}
 	case *Event_UpdateDirectPreference:
 		if x != nil {
 			if x.UpdateDirectPreference != nil {
-				b = litewire.AppendBytesAlways(b, 364, x.UpdateDirectPreference.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 364, x.UpdateDirectPreference.Size())
+				b = x.UpdateDirectPreference.AppendMarshal(b)
 			}
 		}
 	case *Event_MachineDirectStatus:
 		if x != nil {
 			if x.MachineDirectStatus != nil {
-				b = litewire.AppendBytesAlways(b, 365, x.MachineDirectStatus.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 365, x.MachineDirectStatus.Size())
+				b = x.MachineDirectStatus.AppendMarshal(b)
 			}
 		}
 	case *Event_UpdateClientName:
 		if x != nil {
 			if x.UpdateClientName != nil {
-				b = litewire.AppendBytesAlways(b, 370, x.UpdateClientName.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 370, x.UpdateClientName.Size())
+				b = x.UpdateClientName.AppendMarshal(b)
 			}
 		}
 	case *Event_SetNotificationPref:
 		if x != nil {
 			if x.SetNotificationPref != nil {
-				b = litewire.AppendBytesAlways(b, 375, x.SetNotificationPref.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 375, x.SetNotificationPref.Size())
+				b = x.SetNotificationPref.AppendMarshal(b)
 			}
 		}
 	case *Event_SetAppearancePref:
 		if x != nil {
 			if x.SetAppearancePref != nil {
-				b = litewire.AppendBytesAlways(b, 376, x.SetAppearancePref.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 376, x.SetAppearancePref.Size())
+				b = x.SetAppearancePref.AppendMarshal(b)
 			}
 		}
 	case *Event_ConnCheckStatus:
 		if x != nil {
 			if x.ConnCheckStatus != nil {
-				b = litewire.AppendBytesAlways(b, 377, x.ConnCheckStatus.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 377, x.ConnCheckStatus.Size())
+				b = x.ConnCheckStatus.AppendMarshal(b)
 			}
 		}
 	case *Event_ClientUpdateState:
 		if x != nil {
 			if x.ClientUpdateState != nil {
-				b = litewire.AppendBytesAlways(b, 378, x.ClientUpdateState.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 378, x.ClientUpdateState.Size())
+				b = x.ClientUpdateState.AppendMarshal(b)
 			}
 		}
 	case *Event_CheckForUpdates:
 		if x != nil {
 			if x.CheckForUpdates != nil {
-				b = litewire.AppendBytesAlways(b, 379, x.CheckForUpdates.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 379, x.CheckForUpdates.Size())
+				b = x.CheckForUpdates.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionSubmitCommand:
 		if x != nil {
 			if x.SessionSubmitCommand != nil {
-				b = litewire.AppendBytesAlways(b, 200, x.SessionSubmitCommand.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 200, x.SessionSubmitCommand.Size())
+				b = x.SessionSubmitCommand.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionAbandonCommand:
 		if x != nil {
 			if x.SessionAbandonCommand != nil {
-				b = litewire.AppendBytesAlways(b, 201, x.SessionAbandonCommand.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 201, x.SessionAbandonCommand.Size())
+				b = x.SessionAbandonCommand.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionOpen:
 		if x != nil {
 			if x.SessionOpen != nil {
-				b = litewire.AppendBytesAlways(b, 202, x.SessionOpen.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 202, x.SessionOpen.Size())
+				b = x.SessionOpen.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionDismissOutgoing:
 		if x != nil {
 			if x.SessionDismissOutgoing != nil {
-				b = litewire.AppendBytesAlways(b, 203, x.SessionDismissOutgoing.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 203, x.SessionDismissOutgoing.Size())
+				b = x.SessionDismissOutgoing.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionRestoreOutgoing:
 		if x != nil {
 			if x.SessionRestoreOutgoing != nil {
-				b = litewire.AppendBytesAlways(b, 204, x.SessionRestoreOutgoing.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 204, x.SessionRestoreOutgoing.Size())
+				b = x.SessionRestoreOutgoing.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionSetQuestionIndex:
 		if x != nil {
 			if x.SessionSetQuestionIndex != nil {
-				b = litewire.AppendBytesAlways(b, 205, x.SessionSetQuestionIndex.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 205, x.SessionSetQuestionIndex.Size())
+				b = x.SessionSetQuestionIndex.AppendMarshal(b)
 			}
 		}
 	case *Event_SessionLoadEarlier:
 		if x != nil {
 			if x.SessionLoadEarlier != nil {
-				b = litewire.AppendBytesAlways(b, 206, x.SessionLoadEarlier.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 206, x.SessionLoadEarlier.Size())
+				b = x.SessionLoadEarlier.AppendMarshal(b)
 			}
 		}
 	}
@@ -11782,7 +12055,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 350:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11801,7 +12074,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 351:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11820,7 +12093,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 352:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11839,7 +12112,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 353:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11858,7 +12131,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 354:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11877,7 +12150,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 355:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11896,7 +12169,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 360:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11915,7 +12188,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 361:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11934,7 +12207,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 362:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11953,7 +12226,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 363:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11972,7 +12245,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 364:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -11991,7 +12264,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 365:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12010,7 +12283,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 370:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12029,7 +12302,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 375:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12048,7 +12321,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 376:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12067,7 +12340,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 377:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12086,7 +12359,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 378:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12105,7 +12378,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 379:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12124,7 +12397,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 200:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12143,7 +12416,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 201:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12162,7 +12435,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 202:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12181,7 +12454,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 203:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12200,7 +12473,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 204:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12219,7 +12492,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 205:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -12238,7 +12511,7 @@ func (m *Event) Unmarshal(b []byte) error {
 				continue
 			}
 		case 206:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -16484,6 +16757,48 @@ func (m *Effect) Size() int {
 				n += litewire.SizeMessage(17, x.RequestEntropy.Size())
 			}
 		}
+	case *Effect_ScheduleMachinePoll:
+		if x != nil {
+			if x.ScheduleMachinePoll != nil {
+				n += litewire.SizeMessage(70, x.ScheduleMachinePoll.Size())
+			}
+		}
+	case *Effect_DirectPreference:
+		if x != nil {
+			if x.DirectPreference != nil {
+				n += litewire.SizeMessage(71, x.DirectPreference.Size())
+			}
+		}
+	case *Effect_RenameClient:
+		if x != nil {
+			if x.RenameClient != nil {
+				n += litewire.SizeMessage(72, x.RenameClient.Size())
+			}
+		}
+	case *Effect_CheckUpdates:
+		if x != nil {
+			if x.CheckUpdates != nil {
+				n += litewire.SizeMessage(73, x.CheckUpdates.Size())
+			}
+		}
+	case *Effect_PersistClientPrefs:
+		if x != nil {
+			if x.PersistClientPrefs != nil {
+				n += litewire.SizeMessage(74, x.PersistClientPrefs.Size())
+			}
+		}
+	case *Effect_PrepareCleanupSession:
+		if x != nil {
+			if x.PrepareCleanupSession != nil {
+				n += litewire.SizeMessage(75, x.PrepareCleanupSession.Size())
+			}
+		}
+	case *Effect_SessionRestoreComposer:
+		if x != nil {
+			if x.SessionRestoreComposer != nil {
+				n += litewire.SizeMessage(40, x.SessionRestoreComposer.Size())
+			}
+		}
 	}
 	return n
 }
@@ -16626,43 +16941,50 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 	case *Effect_ScheduleMachinePoll:
 		if x != nil {
 			if x.ScheduleMachinePoll != nil {
-				b = litewire.AppendBytesAlways(b, 70, x.ScheduleMachinePoll.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 70, x.ScheduleMachinePoll.Size())
+				b = x.ScheduleMachinePoll.AppendMarshal(b)
 			}
 		}
 	case *Effect_DirectPreference:
 		if x != nil {
 			if x.DirectPreference != nil {
-				b = litewire.AppendBytesAlways(b, 71, x.DirectPreference.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 71, x.DirectPreference.Size())
+				b = x.DirectPreference.AppendMarshal(b)
 			}
 		}
 	case *Effect_RenameClient:
 		if x != nil {
 			if x.RenameClient != nil {
-				b = litewire.AppendBytesAlways(b, 72, x.RenameClient.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 72, x.RenameClient.Size())
+				b = x.RenameClient.AppendMarshal(b)
 			}
 		}
 	case *Effect_CheckUpdates:
 		if x != nil {
 			if x.CheckUpdates != nil {
-				b = litewire.AppendBytesAlways(b, 73, x.CheckUpdates.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 73, x.CheckUpdates.Size())
+				b = x.CheckUpdates.AppendMarshal(b)
 			}
 		}
 	case *Effect_PersistClientPrefs:
 		if x != nil {
 			if x.PersistClientPrefs != nil {
-				b = litewire.AppendBytesAlways(b, 74, x.PersistClientPrefs.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 74, x.PersistClientPrefs.Size())
+				b = x.PersistClientPrefs.AppendMarshal(b)
 			}
 		}
 	case *Effect_PrepareCleanupSession:
 		if x != nil {
 			if x.PrepareCleanupSession != nil {
-				b = litewire.AppendBytesAlways(b, 75, x.PrepareCleanupSession.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 75, x.PrepareCleanupSession.Size())
+				b = x.PrepareCleanupSession.AppendMarshal(b)
 			}
 		}
 	case *Effect_SessionRestoreComposer:
 		if x != nil {
 			if x.SessionRestoreComposer != nil {
-				b = litewire.AppendBytesAlways(b, 40, x.SessionRestoreComposer.AppendMarshal(nil))
+				b = litewire.AppendMessagePrefix(b, 40, x.SessionRestoreComposer.Size())
+				b = x.SessionRestoreComposer.AppendMarshal(b)
 			}
 		}
 	}
@@ -17000,7 +17322,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 70:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -17019,7 +17341,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 71:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -17038,7 +17360,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 72:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -17057,7 +17379,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 73:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -17076,7 +17398,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 74:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -17095,7 +17417,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 75:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err
@@ -17114,7 +17436,7 @@ func (m *Effect) Unmarshal(b []byte) error {
 				continue
 			}
 		case 40:
-			if wtyp == protowire.BytesType {
+			if wtyp == litewire.BytesType {
 				raw, err := litewire.ReadBytesRaw(&b)
 				if err != nil {
 					return err

@@ -59,14 +59,14 @@ func (p *vecPlace) toPlace() *SessionPlace {
 }
 
 type vecSnapshot struct {
-	Loaded         bool            `json:"loaded"`
-	Synced         bool            `json:"synced"`
-	Conn           int32           `json:"conn"`
-	Link           int32           `json:"link"`
-	SessionsListed bool            `json:"sessionsListed"`
-	SessionsNext   *vecPlace       `json:"sessionsNext"`
-	SessionsError  string          `json:"sessionsError"`
-	Unlinked       *bool           `json:"unlinked"`
+	Loaded         bool      `json:"loaded"`
+	Synced         bool      `json:"synced"`
+	Conn           int32     `json:"conn"`
+	Link           int32     `json:"link"`
+	SessionsListed bool      `json:"sessionsListed"`
+	SessionsNext   *vecPlace `json:"sessionsNext"`
+	SessionsError  string    `json:"sessionsError"`
+	Unlinked       *bool     `json:"unlinked"`
 	Machines       []struct {
 		ID              string          `json:"id"`
 		Online          bool            `json:"online"`
@@ -76,14 +76,14 @@ type vecSnapshot struct {
 		Meta            json.RawMessage `json:"meta"`
 	} `json:"machines"`
 	Sessions []struct {
-		ID                string          `json:"id"`
-		MachineID         string          `json:"machineId"`
-		UpdatedMs         string          `json:"updatedMs"`
-		ListedEndedMs     string          `json:"listedEndedMs"`
-		EndedLocalYear    int32           `json:"endedLocalYear"`
-		EndedLocalMonth   int32           `json:"endedLocalMonth"`
-		CreatedLocalHhmm  string          `json:"createdLocalHhmm"`
-		Info              json.RawMessage `json:"info"`
+		ID               string          `json:"id"`
+		MachineID        string          `json:"machineId"`
+		UpdatedMs        string          `json:"updatedMs"`
+		ListedEndedMs    string          `json:"listedEndedMs"`
+		EndedLocalYear   int32           `json:"endedLocalYear"`
+		EndedLocalMonth  int32           `json:"endedLocalMonth"`
+		CreatedLocalHhmm string          `json:"createdLocalHhmm"`
+		Info             json.RawMessage `json:"info"`
 	} `json:"sessions"`
 	Prefs json.RawMessage `json:"prefs"`
 }
@@ -273,8 +273,12 @@ func TestSharedListsVectors(t *testing.T) {
 				OpID  string `json:"opId"`
 				NowMs string `json:"nowMs"`
 				Op    struct {
-					Pin         *struct{ Path string `json:"path"` } `json:"pin"`
-					Hide        *struct{ Path string `json:"path"` } `json:"hide"`
+					Pin *struct {
+						Path string `json:"path"`
+					} `json:"pin"`
+					Hide *struct {
+						Path string `json:"path"`
+					} `json:"hide"`
 					SetSettings *struct {
 						Path      string `json:"path"`
 						MachineID string `json:"machineId"`
@@ -301,8 +305,8 @@ func TestSharedListsVectors(t *testing.T) {
 					MachineID     string `json:"machineId"`
 					ListedEndedMs string `json:"listedEndedMs"`
 				} `json:"heldEnded"`
-				Want              int                     `json:"want"`
-				Total             int                     `json:"total"`
+				Want              int `json:"want"`
+				Total             int `json:"total"`
 				ReconcileSessions []struct {
 					ID            string `json:"id"`
 					MachineID     string `json:"machineId"`

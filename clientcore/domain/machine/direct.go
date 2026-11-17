@@ -1,7 +1,7 @@
 package machine
 
 import (
-	"fmt"
+	"strconv"
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -149,18 +149,18 @@ func directFailureReasonText(r corev1.DirectRouteReason) *corev1.Text {
 func activeRttText(r *corev1.DirectRouteReport) *corev1.Text {
 	if r.HasActiveRttMs && r.ActiveRttMs >= 0 {
 		if r.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT {
-			return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", fmt.Sprintf("%d", r.ActiveRttMs)))
+			return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", strconv.FormatInt(int64(r.ActiveRttMs), 10)))
 		}
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", r.ActiveRttMs)))
+		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.ActiveRttMs), 10)))
 	}
 	if r.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT && r.HasDirectReadMs {
-		return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", fmt.Sprintf("%d", r.DirectReadMs)))
+		return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", strconv.FormatInt(int64(r.DirectReadMs), 10)))
 	}
 	if r.HasRelayReadMs && r.State != corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED {
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", r.RelayReadMs)))
+		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.RelayReadMs), 10)))
 	}
 	if r.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY && r.HasRelayReadMs {
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", r.RelayReadMs)))
+		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.RelayReadMs), 10)))
 	}
 	return nil
 }
@@ -187,13 +187,13 @@ func formatReadLatencies(r *corev1.DirectRouteReport) *corev1.Text {
 	case r.HasDirectReadMs && r.HasRelayReadMs:
 		return text.Msg(
 			text.KeyTransportReadLatencyBoth,
-			text.Str("direct", fmt.Sprintf("%d", r.DirectReadMs)),
-			text.Str("relay", fmt.Sprintf("%d", r.RelayReadMs)),
+			text.Str("direct", strconv.FormatInt(int64(r.DirectReadMs), 10)),
+			text.Str("relay", strconv.FormatInt(int64(r.RelayReadMs), 10)),
 		)
 	case r.HasDirectReadMs:
-		return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", fmt.Sprintf("%d", r.DirectReadMs)))
+		return text.Msg(text.KeyTransportReadLatencyDirect, text.Str("direct", strconv.FormatInt(int64(r.DirectReadMs), 10)))
 	case r.HasRelayReadMs:
-		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", fmt.Sprintf("%d", r.RelayReadMs)))
+		return text.Msg(text.KeyTransportReadLatencyRelay, text.Str("relay", strconv.FormatInt(int64(r.RelayReadMs), 10)))
 	default:
 		return nil
 	}
@@ -201,7 +201,7 @@ func formatReadLatencies(r *corev1.DirectRouteReport) *corev1.Text {
 
 func formatMiBps(v float64) string {
 	if v >= 10 {
-		return fmt.Sprintf("%.0f", v)
+		return strconv.FormatFloat(v, 'f', 0, 64)
 	}
-	return fmt.Sprintf("%.1f", v)
+	return strconv.FormatFloat(v, 'f', 1, 64)
 }

@@ -1,7 +1,6 @@
 package screens
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -13,38 +12,38 @@ import (
 
 // SessionViewInput carries pure synchronized snapshot fields needed by BuildSessionView.
 type SessionViewInput struct {
-	Found                 bool
-	SessionsListed        bool
-	LiveLoaded            bool
-	Removed               bool
-	AccountControlLost    bool
-	AccountClockSkewed    bool
-	Conn                  lists.ConnectionKind
-	Unlinked              bool
-	LookingUp             bool
-	ProtocolVersion       uint32
-	Session               *lists.Session
-	Machine               *lists.Machine
-	Checkpoint            *v1.LiveSnapshot
-	DeviceNames           map[string]string
-	ThisDeviceID          string
-	Loading               bool
-	Loaded                bool
-	AwaitingCache         bool
-	Backfilling           bool
-	Fetching              bool
-	HasGap                bool
-	TailRequested         bool
-	Retired               bool
-	RetryingCorruptCache  bool
-	Error                 *corev1.Text
-	FetchError            *corev1.Text
-	PrefixLen             uint64
-	PendingCount          int32
-	UnavailableCount      uint32
-	LastSeq               uint64
-	Projection            *corev1.ProjectionState
-	Events                []*v1.Event
+	Found                bool
+	SessionsListed       bool
+	LiveLoaded           bool
+	Removed              bool
+	AccountControlLost   bool
+	AccountClockSkewed   bool
+	Conn                 lists.ConnectionKind
+	Unlinked             bool
+	LookingUp            bool
+	ProtocolVersion      uint32
+	Session              *lists.Session
+	Machine              *lists.Machine
+	Checkpoint           *v1.LiveSnapshot
+	DeviceNames          map[string]string
+	ThisDeviceID         string
+	Loading              bool
+	Loaded               bool
+	AwaitingCache        bool
+	Backfilling          bool
+	Fetching             bool
+	HasGap               bool
+	TailRequested        bool
+	Retired              bool
+	RetryingCorruptCache bool
+	Error                *corev1.Text
+	FetchError           *corev1.Text
+	PrefixLen            uint64
+	PendingCount         int32
+	UnavailableCount     uint32
+	LastSeq              uint64
+	Projection           *corev1.ProjectionState
+	Events               []*v1.Event
 }
 
 const (
@@ -536,14 +535,14 @@ func buildSessionActions(
 		sid = ls.ID
 	}
 	out := &corev1.SessionActionsView{
-		Interrupt:    commandSlotState(ui, "interrupt:"+sid, nil, nil),
-		End:          commandSlotState(ui, "stop:"+sid, nil, nil),
-		Resume:       commandSlotState(ui, "resume:"+sid, nil, nil),
-		Rename:       commandSlotState(ui, "rename:"+sid, nil, nil),
-		Fork:         commandSlotState(ui, "fork:"+sid, text.Msg(text.KeySessionForkExpired), text.Msg(text.KeySessionForkUnknown)),
-		Compact:      commandSlotState(ui, "compact:"+sid, nil, nil),
-		SetModel:     commandSlotState(ui, "set_model:"+sid, nil, nil),
-		SetMode:      commandSlotState(ui, "set_mode:"+sid, nil, nil),
+		Interrupt:     commandSlotState(ui, "interrupt:"+sid, nil, nil),
+		End:           commandSlotState(ui, "stop:"+sid, nil, nil),
+		Resume:        commandSlotState(ui, "resume:"+sid, nil, nil),
+		Rename:        commandSlotState(ui, "rename:"+sid, nil, nil),
+		Fork:          commandSlotState(ui, "fork:"+sid, text.Msg(text.KeySessionForkExpired), text.Msg(text.KeySessionForkUnknown)),
+		Compact:       commandSlotState(ui, "compact:"+sid, nil, nil),
+		SetModel:      commandSlotState(ui, "set_model:"+sid, nil, nil),
+		SetMode:       commandSlotState(ui, "set_mode:"+sid, nil, nil),
 		ModelsLoading: modelsLoading,
 		ModelsLoaded:  hasModels,
 	}
@@ -987,10 +986,10 @@ func questionAnswerHint(ui *SessionUIState, slotKey string) string {
 	}
 	q := rec.Command.GetAnswerQuestion()
 	if len(q.Options) > 0 {
-		return fmt.Sprintf("%v", q.Options)
+		return optionsHint(q.Options)
 	}
 	if q.Option > 0 {
-		return fmt.Sprintf("#%d", q.Option)
+		return "#" + strconv.FormatInt(int64(q.Option), 10)
 	}
 	return ""
 }
@@ -1327,4 +1326,12 @@ func originText(o *v1.Origin, st *State, devices map[string]string, thisDeviceID
 	default:
 		return nil
 	}
+}
+
+func optionsHint(options []int32) string {
+	parts := make([]string, len(options))
+	for i, o := range options {
+		parts[i] = "#" + strconv.FormatInt(int64(o), 10)
+	}
+	return strings.Join(parts, ", ")
 }

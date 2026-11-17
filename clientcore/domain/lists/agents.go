@@ -318,6 +318,5 @@ func SendModeFor(agent v1.Agent, requested v1.SendMode, running bool) v1.SendMod
 	return requested
 }
 
-
 // UnknownCapabilities returns the descriptor used for unrecognized agents.
 func UnknownCapabilities() AgentCapabilities { return unknownCapabilities }

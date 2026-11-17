@@ -87,4 +87,3 @@ func ReconcileEndedSessions(
 	}
 	return removeIDs, unlistIDs
 }
-

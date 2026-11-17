@@ -1,13 +1,13 @@
 package machine
 
 import (
-	"fmt"
 	"math"
 	"sort"
+	"strconv"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -38,7 +38,7 @@ func gbFixed(bytes uint64, binary bool) string {
 	if binary {
 		unit = float64(gibBytes)
 	}
-	return fmt.Sprintf("%.1f", float64(bytes)/unit)
+	return strconv.FormatFloat(float64(bytes)/unit, 'f', 1, 64)
 }
 
 func gbNumber(bytes uint64, binary bool) string {
@@ -48,9 +48,9 @@ func gbNumber(bytes uint64, binary bool) string {
 	}
 	v := float64(bytes) / unit
 	if v >= 9.95 {
-		return fmt.Sprintf("%.0f", v)
+		return strconv.FormatFloat(v, 'f', 0, 64)
 	}
-	s := fmt.Sprintf("%.1f", v)
+	s := strconv.FormatFloat(v, 'f', 1, 64)
 	if len(s) > 2 && s[len(s)-2:] == ".0" {
 		return s[:len(s)-2]
 	}
@@ -68,7 +68,7 @@ func formatSize(bytes uint64, binary bool) *corev1.Text {
 		return text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", gbNumber(bytes, binary)))
 	}
 	mb := math.Round(float64(bytes) / float64(mi))
-	return text.Msg(text.KeyMachineStatusSizeMb, text.Str("size", fmt.Sprintf("%.0f", mb)))
+	return text.Msg(text.KeyMachineStatusSizeMb, text.Str("size", strconv.FormatFloat(mb, 'f', 0, 64)))
 }
 
 // FormatBinarySize formats RAM/swap/process/attachment bytes using 1024-based units displayed as GB/MB.
@@ -140,14 +140,14 @@ func BuildRings(online bool, status *v1.MachineStatus) []*corev1.MachineRingView
 
 	if online && status != nil {
 		pct := clampUnit(status.CpuPercent / 100.0)
-		cpuVal = text.Plain(fmt.Sprintf("%d%%", int(math.Round(status.CpuPercent))))
+		cpuVal = text.Plain(pctText(status.CpuPercent))
 		cpuFrac = pct
 		hasCPU = true
 
 		if status.MemoryTotalBytes > 0 {
 			hasMem = true
 			memFrac = clampUnit(float64(status.MemoryUsedBytes) / float64(status.MemoryTotalBytes))
-			memVal = text.Plain(fmt.Sprintf("%d%%", int(math.Round(memFrac*100))))
+			memVal = text.Plain(pctText(memFrac * 100))
 			memTone = ringToneFromPressure(status.MemoryPressure)
 		}
 		if status.Disk != nil && status.Disk.TotalBytes > 0 {
@@ -223,13 +223,13 @@ func BuildCpuSection(status *v1.MachineStatus, chart *corev1.MachineChartView) *
 		}
 	}
 	pct := int(math.Round(status.CpuPercent))
-	headline := fmt.Sprintf("%d%%", pct)
+	headline := strconv.FormatInt(int64(pct), 10) + "%"
 	var detail, detail2 *corev1.Text
 	if status.Cores > 0 {
 		detail = text.Msg(text.KeyMachineStatusCores, text.Int("count", int64(status.Cores)))
 	}
 	if status.LoadOne != nil {
-		detail2 = text.Msg(text.KeyMachineStatusLoad, text.Str("load", fmt.Sprintf("%.1f", *status.LoadOne)))
+		detail2 = text.Msg(text.KeyMachineStatusLoad, text.Str("load", strconv.FormatFloat(*status.LoadOne, 'f', 1, 64)))
 	}
 	return &corev1.MachineCpuSection{
 		HasValue:  true,
@@ -456,7 +456,7 @@ func BuildChart(
 
 func formatChartValue(v float64, memory bool) *corev1.Text {
 	if !memory {
-		return text.Plain(fmt.Sprintf("%d%%", int(math.Round(v))))
+		return text.Plain(pctText(v))
 	}
 	if v < 0 {
 		v = 0
@@ -566,7 +566,7 @@ func BuildUsageRows(
 			}
 		}
 
-		cpuTxt := text.Plain(fmt.Sprintf("%d%%", int(math.Round(r.CpuPercent))))
+		cpuTxt := text.Plain(pctText(r.CpuPercent))
 		memTxt := FormatBinarySize(r.MemoryBytes)
 		var sec *corev1.Text
 		if !sessionsTab && sessTitle != nil {
@@ -662,4 +662,8 @@ func BuildDiskReminders(machines []*lists.Machine) []*corev1.DiskReminderView {
 		return out[i].MachineId < out[j].MachineId
 	})
 	return out
+}
+
+func pctText(v float64) string {
+	return strconv.Itoa(int(math.Round(v))) + "%"
 }

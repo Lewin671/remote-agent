@@ -242,14 +242,14 @@ type OfflineMachineChoice struct {
 
 // StartResolution is the resolved launch state for starting a new session in a project.
 type StartResolution struct {
-	Config         StartConfig
-	Missing        v1.Agent
-	ConfigFallback bool
-	DefaultMode    DefaultMode
-	Issue          AutoIssueKind
-	PendingSettled bool
-	OfflineDraft   bool
-	Choices        []OfflineMachineChoice
+	Config          StartConfig
+	Missing         v1.Agent
+	ConfigFallback  bool
+	DefaultMode     DefaultMode
+	Issue           AutoIssueKind
+	PendingSettled  bool
+	OfflineDraft    bool
+	Choices         []OfflineMachineChoice
 	AllTriedOffline bool
 }
 

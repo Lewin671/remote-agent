@@ -1,14 +1,13 @@
 package quota
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"strconv"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -108,7 +107,7 @@ func beijingDayIndex(ms int64) int64 {
 // Clock returns HH:MM in Beijing time (UTC+8).
 func Clock(ms int64) string {
 	_, _, _, _, h, m := lists.CivilFromUnixMs(ms, BeijingOffsetMinutes)
-	return fmt.Sprintf("%02d:%02d", h, m)
+	return pad2(h) + ":" + pad2(m)
 }
 
 // Freshness formats how old a quota observation is when >= 30 minutes or missing.
@@ -146,7 +145,7 @@ func ResetRelative(resetsAtMs, nowMs int64) *corev1.Text {
 	if mins < 24*60 {
 		hours := mins / 60
 		rem := mins % 60
-		return text.Msg(text.KeyQuotaResetsInHrMin, text.Int("count", hours), text.Str("detail", fmt.Sprintf("%02d", rem)))
+		return text.Msg(text.KeyQuotaResetsInHrMin, text.Int("count", hours), text.Str("detail", pad2(rem)))
 	}
 	days := mins / (24 * 60)
 	hours := (mins % (24 * 60)) / 60
@@ -259,7 +258,7 @@ func BuildWindow(agent v1.Agent, w *v1.QuotaWindow, nowMs int64, stale bool) *co
 	} else if exhausted {
 		row.RemainingText = text.Msg(text.KeyQuotaExhaustedQuota)
 	} else {
-		row.RemainingText = text.Msg(text.KeyQuotaLeft, text.Str("value", fmt.Sprintf("%d%%", rem)))
+		row.RemainingText = text.Msg(text.KeyQuotaLeft, text.Str("value", strconv.FormatInt(int64(rem), 10)+"%"))
 	}
 	if !pastReset && w.ResetsAtMs > nowMs {
 		row.ResetText = ResetRelative(w.ResetsAtMs, nowMs)
@@ -641,4 +640,11 @@ func Banner(machines []*lists.Machine, nowMs int64) *corev1.QuotaBannerView {
 		return nil
 	}
 	return best.banner
+}
+
+func pad2[T ~int | ~int32 | ~int64](v T) string {
+	if v < 10 && v >= 0 {
+		return "0" + strconv.FormatInt(int64(v), 10)
+	}
+	return strconv.FormatInt(int64(v), 10)
 }

@@ -3,9 +3,9 @@ package machine
 import (
 	"testing"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -156,12 +156,12 @@ func TestDiskRemindersSort(t *testing.T) {
 func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 	// Direct state with active RTT
 	cg := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
-		Enabled:       true,
-		Capable:       true,
-		State:         corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-		ReadRoute:     corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		Enabled:        true,
+		Capable:        true,
+		State:          corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute:      corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
 		HasActiveRttMs: true,
-		ActiveRttMs:   14,
+		ActiveRttMs:    14,
 	})
 	if cg.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT || keyOf(cg.MetricText) != text.KeyTransportReadLatencyDirect {
 		t.Fatalf("unexpected direct connection view: %+v", cg)
