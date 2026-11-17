@@ -390,6 +390,9 @@
                   }
                 ]
               },
+              "detailText": {
+                "key": "transport.use_read"
+              },
               "footerText": {
                 "key": "transport.footer"
               }
@@ -980,6 +983,9 @@
                   }
                 ]
               },
+              "detailText": {
+                "key": "transport.use_read"
+              },
               "footerText": {
                 "key": "transport.footer"
               }
@@ -1528,6 +1534,9 @@
                     "strValue": "12"
                   }
                 ]
+              },
+              "detailText": {
+                "key": "transport.use_read"
               },
               "footerText": {
                 "key": "transport.footer"

@@ -178,6 +178,57 @@ func TestDirectConnectionAndClientsAndUpdates(t *testing.T) {
 		t.Fatalf("failed direct should expose diagnostics entry, got %+v", failed)
 	}
 
+	// Single-channel direct & connected relay match web/android rules without assuming slow fallback.
+	readOnlyDirect := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+	})
+	if keyOf(readOnlyDirect.DetailText) != text.KeyTransportUseRead {
+		t.Fatalf("expected UseRead for read-only direct (with relay file), got %q", keyOf(readOnlyDirect.DetailText))
+	}
+	readOnlyUnspecified := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+	})
+	if keyOf(readOnlyUnspecified.DetailText) != text.KeyTransportUseRead {
+		t.Fatalf("expected UseRead for read-only direct (unspecified file), got %q", keyOf(readOnlyUnspecified.DetailText))
+	}
+	fileOnlyDirect := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+	})
+	if keyOf(fileOnlyDirect.DetailText) != text.KeyTransportUseFile {
+		t.Fatalf("expected UseFile for file-only direct, got %q", keyOf(fileOnlyDirect.DetailText))
+	}
+	bothDirect := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+	})
+	if bothDirect.DetailText != nil {
+		t.Fatalf("expected nil DetailText when both channels are direct, got %+v", bothDirect.DetailText)
+	}
+	connectedRelay := BuildConnectionGroup(true, true, &corev1.DirectRouteReport{
+		Enabled:   true,
+		Capable:   true,
+		State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+		ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+	})
+	if connectedRelay.Stage != corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY || connectedRelay.DetailText != nil {
+		t.Fatalf("expected RELAY with nil DetailText without slow fallback, got stage=%v detail=%+v", connectedRelay.Stage, connectedRelay.DetailText)
+	}
+
 	// Client sort puts self first, then LastSeen desc
 	sorted := SortClients([]*corev1.SyncDeviceView{
 		{DeviceId: "d1", LastSeenMs: 500},

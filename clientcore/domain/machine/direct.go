@@ -87,17 +87,17 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_LIVE
 			view.StatusText = text.Msg(text.KeyTransportStatusDirect)
-			if readDirect && !fileDirect && report.FileRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY {
-				view.DetailText = text.Msg(text.KeyTransportFileFallback)
-			} else if fileDirect && !readDirect && report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY {
-				view.DetailText = text.Msg(text.KeyTransportReadFallback)
+			// Match web/android: only label the active single purpose unless explicit slow-fallback signals exist.
+			if fileDirect && !readDirect {
+				view.DetailText = text.Msg(text.KeyTransportUseFile)
+			} else if readDirect && !fileDirect {
+				view.DetailText = text.Msg(text.KeyTransportUseRead)
 			}
 			return view
 		}
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 		view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-		view.DetailText = text.Msg(text.KeyTransportDirectSlow)
 
 	default:
 		view.FooterText = text.Msg(text.KeyTransportFooter)
