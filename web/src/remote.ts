@@ -2974,7 +2974,7 @@ export class Remote implements CoreExecutor {
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
       const f = msg as unknown as { kind: { case?: string } };
       if (f.kind.case === "resize") purpose = Purpose.TerminalResize;
-      else if (f.kind.case === "history") purpose = Purpose.TerminalHistory;
+      else if (f.kind.case === "historyRequest") purpose = Purpose.TerminalHistory;
     }
     const seed = purpose === Purpose.TerminalInput || purpose === Purpose.TerminalResize || purpose === Purpose.TerminalHistory
       ? this.sessionSeeds.get(h.sessionId ?? "")
@@ -2988,7 +2988,7 @@ export class Remote implements CoreExecutor {
         session: h.sessionId ?? "",
         request: h.requestId ?? "",
         seq: h.seq ?? 0n,
-        deadline: h.deadlineMs ?? 0n,
+        deadline: h.deadlineMs ?? (h.kind === PayloadKind.TERMINAL_INPUT ? BigInt(Date.now() + 60000) : 0n),
         compression: 0,
       },
       plain,
@@ -3290,8 +3290,18 @@ export class Remote implements CoreExecutor {
             observedScreenHash: fresh.planScreenHash,
           },
         };
-      } else if (!current || current.seq !== observed) {
-        throw new Error(l10n.t("errors.the_request_on_the_computer_changed_review_it_again"));
+      } else {
+        if (
+          current?.seq !== observed ||
+          !displayed ||
+          !equalBytes(toBinary(EventSchema, current), toBinary(EventSchema, displayed))
+        ) {
+          throw new Error(l10n.t("errors.the_request_on_the_computer_changed_review_it_again"));
+        }
+        cmd =
+          action.case === "resolveApproval"
+            ? { case: "resolveApproval", value: { ...action.value, observedEventSeq: observed } }
+            : { case: "answerQuestion", value: { ...action.value, observedEventSeq: observed } };
       }
     }
     return this.forwardCall(s.machineId, sid, cmd, slot);

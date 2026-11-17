@@ -914,11 +914,20 @@ it("retries authorized actions with their original observation after completion"
               value: { sessionId: "s", questionId: "q", answers: [] },
             }
           : { case: kind, value: { sessionId: "s", accept: true } };
+    const { CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
     const slot = newSlot();
     await expect(r.command("s", cmd, slot)).rejects.toMatchObject({
       code: "unknown_outcome",
     });
     const first = await r.world.fixture.open(r.machine, sent.at(-1)!);
+    const decoded = fromBinary(CommandSchema, first.plaintext);
+    if (decoded.kind.case === "resolveApproval") {
+      expect(decoded.kind.value.observedEventSeq).toBe(7n);
+    } else if (decoded.kind.case === "answerQuestion") {
+      expect(decoded.kind.value.observedEventSeq).toBe(8n);
+    } else if (decoded.kind.case === "answerPlan") {
+      expect(decoded.kind.value.observedEventSeq).toBe(9n);
+    }
     internal.liveSnapshots.set("s", create(LiveSnapshotSchema));
     const joined = await r.addClient();
     liveFixtures.push(joined);
@@ -939,6 +948,41 @@ it("retries authorized actions with their original observation after completion"
       "当前请求已不可操作",
     );
   }
+
+  // Rejects an interactive answer when the refreshed event payload differs at the same seq.
+  internal.liveSnapshots.set(
+    "s",
+    create(LiveSnapshotSchema, {
+      actions: [
+        create(EventSchema, {
+          seq: 7n,
+          kind: {
+            case: "approvalRequested",
+            value: create(ApprovalRequestedSchema, { approvalId: "a", command: "ls" }),
+          },
+        }),
+      ],
+    }),
+  );
+  internal.refreshLiveSnapshot = async () => {
+    internal.liveSnapshots.set(
+      "s",
+      create(LiveSnapshotSchema, {
+        actions: [
+          create(EventSchema, {
+            seq: 7n,
+            kind: {
+              case: "approvalRequested",
+              value: create(ApprovalRequestedSchema, { approvalId: "a", command: "rm -rf /" }),
+            },
+          }),
+        ],
+      }),
+    );
+  };
+  await expect(
+    r.command("s", { case: "resolveApproval", value: { sessionId: "s", approvalId: "a", allow: true } }, newSlot()),
+  ).rejects.toThrow(message("errors.the_request_on_the_computer_changed_review_it_again"));
 });
 
 
@@ -1294,4 +1338,43 @@ it.each(["canceled", "deadline_exceeded", "aborted", "not_found", "permission_de
  const error=await r.getSharedFileChunk("s","file",0n).catch(e=>e);
  expect(error).toMatchObject({code,fromDaemon:true,readOnly:true});
  expect(uncertain(error)).toBe(false);expect(forward).toHaveBeenCalledTimes(1);
+});
+
+it("seals terminal frames with purpose-specific domains and a default deadline", async () => {
+  const r = await probe();
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
+  const {
+    TerminalFrameSchema,
+    TerminalHistoryRequestSchema,
+    TerminalResizeSchema,
+  } = await import("./gen/remoteagent/v1/remote_pb");
+  const seed = new Uint8Array(32).fill(9);
+  const internal = r as unknown as {
+    sessionSeeds: Map<string, Uint8Array>;
+    sealSecureMessage: (...args: unknown[]) => Promise<Envelope>;
+  };
+  internal.sessionSeeds.set("s", seed);
+  const nowBefore = Date.now();
+  let seq = 1n;
+  for (const kind of [
+    { case: "input" as const, value: new Uint8Array([13]) },
+    { case: "resize" as const, value: create(TerminalResizeSchema, { cols: 80, rows: 24 }) },
+    { case: "historyRequest" as const, value: create(TerminalHistoryRequestSchema, {}) },
+  ]) {
+    const env = await internal.sealSecureMessage.call(
+      r,
+      {
+        kind: PayloadKind.TERMINAL_INPUT,
+        machineId: r.machine,
+        sessionId: "s",
+        requestId: newSlot().requestId,
+        seq: seq++,
+      },
+      TerminalFrameSchema,
+      create(TerminalFrameSchema, { kind }),
+    );
+    const opened = await r.world.fixture.open(r.machine, env, seed);
+    expect(opened.header.deadlineMs).toBeGreaterThanOrEqual(BigInt(nowBefore + 50000));
+    expect(fromBinary(TerminalFrameSchema, opened.plaintext).kind.case).toBe(kind.case);
+  }
 });
