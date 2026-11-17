@@ -774,6 +774,7 @@ export class Remote implements CoreExecutor {
   }
 
   setForeground(active: boolean) {
+    this.direct.setForeground(active);
     this.ensureHost().setForeground(active);
   }
 
@@ -1812,6 +1813,7 @@ export class Remote implements CoreExecutor {
   private roundBudget(): number { return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
 
   private retireNetworkIO() {
+    this.direct.invalidate();
     this.loginController?.abort(new PathChanged());
     this.wakeController?.abort(new PathChanged());
     this.wakeSecurity = undefined;
