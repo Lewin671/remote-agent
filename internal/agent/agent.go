@@ -83,6 +83,16 @@ type Capabilities struct {
 	// ImagesNeedIdle prevents pasting media whose failure cleanup could
 	// otherwise interrupt a foreground turn.
 	ImagesNeedIdle bool
+	// WaitMCPReady reports whether the daemon should wait for the session's
+	// remote_agent MCP handshake before submitting the CLI lifetime's first turn.
+	WaitMCPReady bool
+}
+
+// MCPWarmer is optionally implemented by adapters whose CLI starts plugin MCP
+// servers lazily and needs an explicit UI action (such as /mcp) to load them
+// before the first turn is submitted.
+type MCPWarmer interface {
+	WarmMCP(t Term, ready func() bool, wait time.Duration) error
 }
 
 // StatusLineAccount is optionally implemented by adapters whose account quota

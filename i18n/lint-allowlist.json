@@ -2593,5 +2593,15 @@
     "path": "clientcore/cmd/corewasm/main.go",
     "literal": "dispatch",
     "reason": "WASM JS bridge exported global API method name or internal RPC diagnostic error; never displayed as product copy."
+  },
+  {
+    "path": "internal/antigravity/control.go",
+    "literal": "/mcp",
+    "reason": "Antigravity CLI slash command written to the PTY to pre-warm plugin MCP servers; never user-facing product copy."
+  },
+  {
+    "path": "internal/daemon/schedule.go",
+    "literal": "mcp_ready requires a bound session MCP",
+    "reason": "Internal daemon-MCP scope validation error for local handshake calls; never rendered as product UI copy."
   }
 ]

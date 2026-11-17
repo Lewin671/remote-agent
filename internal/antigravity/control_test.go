@@ -286,3 +286,32 @@ func TestNativePlanSubmitCommitsOnlyTheRequestedChoice(t *testing.T) {
 		t.Fatal("another artifact's unsubmitted choice was committed")
 	}
 }
+
+func TestWarmMCPOpensMenuWaitsReadyAndDismisses(t *testing.T) {
+	a := New("agy", t.TempDir())
+	draft := &fakeTerm{screen: readScreenFixture(t, "draft-oneline.txt")}
+	if err := a.WarmMCP(draft, func() bool { return false }, time.Second); !errors.Is(err, agent.ErrNotReady) || len(draft.written) > 0 {
+		t.Fatalf("draft composer modified during warm check: %v %q", err, draft.written)
+	}
+
+	ready := false
+	term := &fakeTerm{screen: readScreenFixture(t, "idle-empty-box.txt")}
+	term.onWrite = func(b []byte) {
+		switch string(b) {
+		case agent.KeyEnter:
+			term.screen = readScreenFixture(t, "mcp-terminal.txt")
+			ready = true
+		case agent.KeyEsc:
+			term.screen = readScreenFixture(t, "idle-empty-box.txt")
+		}
+	}
+	if err := a.WarmMCP(term, func() bool { return ready }, time.Second); err != nil {
+		t.Fatalf("WarmMCP: %v", err)
+	}
+	if string(term.written) != "/mcp\r\x1b" {
+		t.Fatalf("writes: %q want %q", term.written, "/mcp\r\x1b")
+	}
+	if scr := a.Analyze(term.screen); scr.Popup != "" || !scr.ComposerReady || !scr.DraftEmpty {
+		t.Fatalf("screen left dirty after WarmMCP: %+v", scr)
+	}
+}

@@ -307,6 +307,10 @@ func (s *session) injectLoop(ctx context.Context) {
 			goto wait
 		}
 		if ok {
+			if next.Inflight == nil && next.Stage != pb.InputStage_INPUT_STAGE_PASTING_IMAGES && next.Stage != pb.InputStage_INPUT_STAGE_IMAGES_RECOGNIZED && !s.ensureMCPReady(ctx) {
+				retry.Reset(s.d.cfg.RetryInterval)
+				goto wait
+			}
 			outcome := written
 			var err error
 			switch {
@@ -365,6 +369,127 @@ func (s *session) injectLoop(ctx context.Context) {
 	}
 }
 
+const mcpWarmMenuWait = 5 * time.Second
+
+func (s *session) wakeInject() {
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (s *session) isMCPReady() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.meta.MCPPending || s.cliSubmitted
+}
+
+func (s *session) markMCPReady() {
+	s.mu.Lock()
+	changed := s.meta.MCPPending
+	if changed {
+		s.meta.MCPPending = false
+		if err := s.meta.save(s.dir); err != nil {
+			slog.Warn("save session mcp ready", "session", s.meta.ID, "err", errClass(err))
+		}
+	}
+	s.mu.Unlock()
+	if changed {
+		slog.Info("MCP server reported ready", "session", s.meta.ID)
+		s.wakeInject()
+	}
+}
+
+// ensureMCPReady waits before a CLI lifetime's first turn until its remote_agent
+// MCP reports tools discovered, opening /mcp if the adapter requires explicit warmup.
+func (s *session) ensureMCPReady(ctx context.Context) bool {
+	s.mu.Lock()
+	if !s.meta.MCPPending || s.cliSubmitted || s.meta.Exited {
+		s.mu.Unlock()
+		return true
+	}
+	if s.status == pb.SessionStatus_SESSION_STATUS_STARTING || s.identityPending || s.identityFailed {
+		s.mu.Unlock()
+		return false
+	}
+	needWarm := !s.mcpWarmupAttempted
+	s.mu.Unlock()
+
+	if needWarm {
+		if warmer, ok := s.ag.(agent.MCPWarmer); ok {
+			wait := s.d.mcpReadyTimeout()
+			if wait > mcpWarmMenuWait {
+				wait = mcpWarmMenuWait
+			}
+			err := s.drive(ctx, func(t agent.Term, busy bool) error {
+				if busy {
+					return agent.ErrBusy
+				}
+				styled, capErr := t.Capture()
+				if capErr != nil {
+					return capErr
+				}
+				scr := s.ag.Analyze(styled)
+				if !scr.ComposerReady || !scr.DraftEmpty || scr.Popup != "" || scr.Loading || scr.Busy {
+					return agent.ErrNotReady
+				}
+				s.mu.Lock()
+				alreadyReady := !s.meta.MCPPending || s.cliSubmitted || s.meta.Exited
+				if !alreadyReady {
+					if s.mcpWarmupSince.IsZero() {
+						s.mcpWarmupSince = time.Now()
+					}
+					s.mcpWarmupAttempted = true
+				}
+				s.mu.Unlock()
+				if alreadyReady {
+					return nil
+				}
+				slog.Info("warming session MCP", "session", s.meta.ID)
+				return warmer.WarmMCP(t, s.isMCPReady, wait)
+			})
+			if err != nil && !errors.Is(err, agent.ErrNotReady) && !errors.Is(err, agent.ErrBusy) {
+				slog.Warn("warm session mcp", "session", s.meta.ID, "err", errClass(err))
+			}
+		} else {
+			s.mu.Lock()
+			if s.mcpWarmupSince.IsZero() {
+				s.mcpWarmupSince = time.Now()
+			}
+			s.mcpWarmupAttempted = true
+			s.mu.Unlock()
+		}
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.checkMCPWaitLocked()
+}
+
+// checkMCPWaitLocked reports whether inject should keep waiting for MCP readiness.
+// Caller holds s.mu.
+func (s *session) checkMCPWaitLocked() bool {
+	if !s.meta.MCPPending || s.cliSubmitted || s.meta.Exited {
+		return false
+	}
+	if s.mcpWarmupSince.IsZero() {
+		if s.status == pb.SessionStatus_SESSION_STATUS_STARTING || s.identityPending || s.identityFailed {
+			return true
+		}
+		s.mcpWarmupSince = time.Now()
+	}
+	timeout := s.d.mcpReadyTimeout()
+	if time.Since(s.mcpWarmupSince) >= timeout {
+		slog.Warn("MCP server did not report ready before timeout; delivering input anyway", "session", s.meta.ID, "timeout", timeout)
+		s.meta.MCPPending = false
+		if err := s.meta.save(s.dir); err != nil {
+			slog.Warn("save session mcp timeout", "session", s.meta.ID, "err", errClass(err))
+		}
+		return false
+	}
+	return true
+}
+
 // inject tries once to write the head message. It leaves the message
 // queued when the terminal is not ready: a popup is open or the local user
 // has an unsent draft, which is never overwritten or merged.
@@ -407,8 +532,9 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	}
 	loading := scr.Loading && time.Since(s.loadingSince) < loadingWait
 	mediaWaits := len(in.Images) > 0 && s.ag.Capabilities().ImagesNeedIdle && (s.running || scr.Busy)
+	mcpWaits := !starting && !loading && !mediaWaits && s.checkMCPWaitLocked()
 	s.mu.Unlock()
-	if starting || loading || mediaWaits {
+	if starting || loading || mediaWaits || mcpWaits {
 		return notWritten, nil
 	}
 	s.noteWait(scr)

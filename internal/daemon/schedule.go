@@ -208,6 +208,13 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		})
 		return result, err
 	}
+	if q.Operation == "mcp_ready" {
+		if scope == "" {
+			return nil, outcome.FinalError(errors.New("mcp_ready requires a bound session MCP"))
+		}
+		bound.markMCPReady()
+		return []byte("{}"), nil
+	}
 	if scope != "" && requiresScheduleAdmission(q.Operation) {
 		if err := bound.refreshScheduleObservation(ctx); err != nil {
 			return nil, err

@@ -18,12 +18,20 @@ import (
 
 type backend struct {
 	remoteagentv1connect.UnimplementedLocalServiceHandler
-	requests chan *pb.ScheduleRequest
-	scope    string
+	requests   chan *pb.ScheduleRequest
+	scope      string
+	readyCount int
+	readyScope string
 }
 
 func (b *backend) Schedule(_ context.Context, q *connect.Request[pb.ScheduleRequest]) (*connect.Response[pb.ScheduleResponse], error) {
-	b.scope = q.Header().Get(schedule.MCPScopeHeader)
+	scope := q.Header().Get(schedule.MCPScopeHeader)
+	if q.Msg.Operation == "mcp_ready" {
+		b.readyCount++
+		b.readyScope = scope
+		return connect.NewResponse(&pb.ScheduleResponse{ResultJson: []byte(`{}`)}), nil
+	}
+	b.scope = scope
 	b.requests <- q.Msg
 	return connect.NewResponse(&pb.ScheduleResponse{ResultJson: []byte(`{"id":"created","status":"waiting_turn"}`)}), nil
 }
@@ -57,6 +65,9 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	}
 	if len(list.Tools) != 10 {
 		t.Fatalf("tool count %d", len(list.Tools))
+	}
+	if b.readyCount != 1 || b.readyScope != "bound-session" {
+		t.Fatalf("mcp_ready after tools/list: count=%d scope=%q", b.readyCount, b.readyScope)
 	}
 	for _, tool := range list.Tools {
 		if tool.Name == "notify_user" {

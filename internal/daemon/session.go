@@ -177,6 +177,8 @@ type session struct {
 	statusLineAt       time.Time
 	statusLineIdle     bool
 	backgroundPossible bool
+	mcpWarmupAttempted bool
+	mcpWarmupSince     time.Time
 	planFacts          *agent.PlanFacts
 	*sessionLoops      // replaced only after the previous loops have stopped
 }
@@ -906,6 +908,9 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	// startup, popups and exit.
 	if next != status || nextDetail != detail || planChanged {
 		_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail, PlanOpen: scr.PlanOpen}}})
+		if status == pb.SessionStatus_SESSION_STATUS_STARTING && next == pb.SessionStatus_SESSION_STATUS_IDLE {
+			s.wakeInject()
+		}
 	}
 	s.settleRestoredPrompt(styled)
 	s.settleIdleCompletion(styled)

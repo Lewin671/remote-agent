@@ -241,6 +241,58 @@ func (a *Adapter) Compact(t agent.Term, _ func() bool) (operationErr error) {
 	return agent.Slash(t, "/compact")
 }
 
+// WarmMCP opens /mcp briefly so Antigravity initializes plugin MCP servers before
+// Turn 1, waits up to wait for ready() to report true, then closes the panel.
+func (a *Adapter) WarmMCP(t agent.Term, ready func() bool, wait time.Duration) (operationErr error) {
+	t, nativeWrites := agent.ObserveNative(t)
+	defer func() { operationErr = nativeWrites.Failure(operationErr) }()
+
+	styled, err := t.Capture()
+	if err != nil {
+		return err
+	}
+	scr := a.Analyze(styled)
+	if !scr.ComposerReady || !scr.DraftEmpty || scr.Popup != "" || scr.Loading {
+		return agent.ErrNotReady
+	}
+	if scr.Busy {
+		return agent.ErrBusy
+	}
+	if ready != nil && ready() {
+		return nil
+	}
+	if err := agent.Slash(t, "/mcp"); err != nil {
+		return err
+	}
+	if _, err := agent.WaitFor(t, "mcp menu", func(s string) bool {
+		return a.Analyze(s).Popup == "MCP Servers"
+	}); err != nil {
+		// Clear stray "/mcp" text if the slash command failed to open the panel.
+		if cur, capErr := t.Capture(); capErr == nil {
+			if text, ok := a.ComposerText(cur, ""); ok && strings.HasPrefix(strings.TrimSpace(text), "/mcp") {
+				_ = t.Write(a.ClearInput())
+			}
+		}
+		return err
+	}
+	if ready != nil && wait > 0 {
+		deadline := time.Now().Add(wait)
+		for !ready() && time.Now().Before(deadline) {
+			if err := agent.Wait(t, 50*time.Millisecond); err != nil {
+				break
+			}
+		}
+	}
+	if err := t.Write([]byte(agent.KeyEsc)); err != nil {
+		return err
+	}
+	_, err = agent.WaitFor(t, "composer after mcp menu", func(s string) bool {
+		scr := a.Analyze(s)
+		return scr.Popup == "" && scr.ComposerReady && scr.DraftEmpty
+	})
+	return err
+}
+
 // Mode returns the high-level ApprovalMode corresponding to TurnContext.
 func (a *Adapter) Mode(ctx *pb.TurnContext) pb.ApprovalMode {
 	if ctx == nil {

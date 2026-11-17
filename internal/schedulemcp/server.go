@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -56,6 +57,23 @@ var antigravityAlwaysLoad = mcp.Meta{"antigravity/alwaysLoad": true}
 // The MCP is merely a client; all persistence and timing belong to the daemon.
 func New(client remoteagentv1connect.LocalServiceClient, sessionID, version string) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "remote-agent", Version: version}, nil)
+	var readyOnce sync.Once
+	server.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			res, err := next(ctx, method, req)
+			if err == nil && method == "tools/list" && client != nil && sessionID != "" {
+				readyOnce.Do(func() {
+					// Notify the daemon once the host CLI has fetched the tool schemas.
+					rctx, cancel := context.WithTimeout(ctx, time.Second)
+					defer cancel()
+					q := connect.NewRequest(&pb.ScheduleRequest{Operation: "mcp_ready", SessionId: sessionID})
+					q.Header().Set(schedule.MCPScopeHeader, sessionID)
+					_, _ = client.Schedule(rctx, q)
+				})
+			}
+			return res, err
+		}
+	})
 	call := func(ctx context.Context, op, id string, revision uint64, spec any, key string) (*mcp.CallToolResult, map[string]any, error) {
 		var b []byte
 		var err error

@@ -57,7 +57,8 @@ type meta struct {
 	ForkedSeq  uint64 `json:"forked_seq,omitempty"`
 	// Starting: the session is being created and its CLI may not have
 	// started yet; a restart that finds no tmux session undoes it.
-	Starting bool `json:"starting,omitempty"`
+	Starting   bool `json:"starting,omitempty"`
+	MCPPending bool `json:"mcp_pending,omitempty"`
 }
 
 func loadMeta(dir string) (*meta, error) {

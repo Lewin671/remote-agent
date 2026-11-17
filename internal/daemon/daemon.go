@@ -58,7 +58,10 @@ type Config struct {
 	// ScheduledBackgroundTimeout bounds how long a scheduled run waits
 	// idle after a turn ends while background tasks may still be running.
 	ScheduledBackgroundTimeout time.Duration
-	Width, Height              int // size of new sessions until attached
+	// MCPReadyTimeout bounds how long inject waits for a session's remote_agent
+	// MCP to finish tool discovery before delivering the CLI lifetime's first turn.
+	MCPReadyTimeout time.Duration
+	Width, Height   int // size of new sessions until attached
 
 	// Started, if set, runs in its own goroutine once the daemon holds its
 	// lock and has restored its sessions.
@@ -86,6 +89,9 @@ func (c *Config) defaults() {
 	}
 	if c.ScheduledBackgroundTimeout == 0 {
 		c.ScheduledBackgroundTimeout = time.Hour
+	}
+	if c.MCPReadyTimeout == 0 {
+		c.MCPReadyTimeout = 15 * time.Second
 	}
 	if c.Width == 0 {
 		c.Width, c.Height = 160, 48
@@ -666,7 +672,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 		return nil, err
 	}
 	id := newID(8)
-	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
+	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true, MCPPending: ag.Capabilities().WaitMCPReady,
 		ScheduledRunID: origin.GetScheduledRunId(), ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",
 		StandardContext: ag.StandardWindow() > 0 && req.StandardContext, Shell: viaShell}
 	if ag.Capabilities().ConversationIdentity {
@@ -1402,6 +1408,9 @@ func (d *Daemon) ptySocket(id string) string {
 // The caller holds mu and persists this state before starting workers.
 func (s *session) resumeStateLocked(pendingInput bool) {
 	s.cliSubmitted, s.loadingSince = false, time.Time{}
+	s.mcpWarmupAttempted = false
+	s.mcpWarmupSince = time.Time{}
+	s.meta.MCPPending = s.ag.Capabilities().WaitMCPReady
 	s.meta.Exited = false
 	s.identityPending = s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != ""
 	s.identityResume = s.identityPending
@@ -1433,6 +1442,13 @@ func (d *Daemon) scheduledBackgroundTimeout() time.Duration {
 		return d.cfg.ScheduledBackgroundTimeout
 	}
 	return time.Hour
+}
+
+func (d *Daemon) mcpReadyTimeout() time.Duration {
+	if d.cfg.MCPReadyTimeout > 0 {
+		return d.cfg.MCPReadyTimeout
+	}
+	return 15 * time.Second
 }
 
 // Shared by create/fork/resume (including Send's auto-resume). Only reads;

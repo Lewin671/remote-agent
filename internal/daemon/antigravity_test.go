@@ -530,5 +530,153 @@ func TestAgyUnconfirmedModeIsAbsentUntilIdentityIsProven(t *testing.T) {
 	if i := h.s.info(); i.Mode != 0 || i.ApprovalPolicy != "always-proceed" || i.Sandbox != "disabled" {
 		t.Fatal("exited durable policy was hidden", i)
 	}
+}
 
+func TestAgyMCPReadinessWaitsWarnsOnTimeoutAndResetsOnResume(t *testing.T) {
+	t.Run("warms /mcp and releases once mcp_ready arrives", func(t *testing.T) {
+		h := newHarness(t, Config{
+			RetryInterval:   10 * time.Millisecond,
+			MCPReadyTimeout: 5 * time.Second,
+		})
+		a := antigravity.New("/bin/true", t.TempDir())
+		h.d.agents[a.Kind()] = a
+		h.s.ag = a
+		h.s.parser = a.NewParser()
+		h.s.meta.Agent = a.Kind()
+		h.s.meta.MCPPending = true
+		h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+		h.d.sessions[h.s.meta.ID] = h.s
+
+		// Un-scoped mcp_ready is rejected; scoped mcp_ready clears MCPPending.
+		if _, err := h.d.scheduleCommandScopedContext(context.Background(), &pb.ScheduleRequest{Operation: "mcp_ready", SessionId: h.s.meta.ID}, originLocal, ""); err == nil {
+			t.Fatal("unscoped mcp_ready accepted")
+		}
+
+		h.term.setScreen(agyScreen(t, "idle-empty-box.txt"))
+		h.term.mu.Lock()
+		h.term.onWrite = func(f *fakeTerm, b string) {
+			switch b {
+			case agent.KeyEnter:
+				if strings.Contains(strings.Join(f.writes, ""), "/mcp") && f.screen == agyScreen(t, "idle-empty-box.txt") {
+					f.screen = agyScreen(t, "mcp-terminal.txt")
+					if _, err := h.d.scheduleCommandScopedContext(context.Background(), &pb.ScheduleRequest{Operation: "mcp_ready", SessionId: h.s.meta.ID}, originLocal, h.s.meta.ID); err != nil {
+						t.Errorf("scoped mcp_ready: %v", err)
+					}
+				}
+			case agent.KeyEsc:
+				f.screen = agyScreen(t, "idle-empty-box.txt")
+			}
+		}
+		h.term.mu.Unlock()
+
+		if _, err := h.s.enqueue("first turn", "req-mcp-1", nil, originLocal); err != nil {
+			t.Fatal(err)
+		}
+		if !h.s.ensureMCPReady(context.Background()) {
+			t.Fatal("ensureMCPReady did not become ready after scoped mcp_ready")
+		}
+		writes := strings.Join(h.term.written(), "")
+		if !strings.Contains(writes, "/mcp\r\x1b") {
+			t.Fatalf("missing /mcp warmup + dismiss: %q", writes)
+		}
+		result, err := h.s.inject(h.s.queue.Queue[0])
+		if err != nil || result != written {
+			t.Fatalf("inject after mcp_ready: %v %v", result, err)
+		}
+	})
+
+	t.Run("timeout falls back to delivering input", func(t *testing.T) {
+		h := newHarness(t, Config{MCPReadyTimeout: 40 * time.Millisecond})
+		a := antigravity.New("/bin/true", t.TempDir())
+		h.d.agents[a.Kind()] = a
+		h.s.ag = a
+		h.s.parser = a.NewParser()
+		h.s.meta.Agent = a.Kind()
+		h.s.meta.MCPPending = true
+		h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+		h.term.setScreen(agyScreen(t, "idle-empty-box.txt"))
+		if _, err := h.s.enqueue("hello", "req-timeout", nil, originLocal); err != nil {
+			t.Fatal(err)
+		}
+		// Before deadline: held without writing to CLI.
+		if result, err := h.s.inject(h.s.queue.Queue[0]); err != nil || result != notWritten || len(h.term.written()) != 0 {
+			t.Fatalf("injected before MCPReadyTimeout: %v %v %q", result, err, h.term.written())
+		}
+		time.Sleep(50 * time.Millisecond)
+		// Past deadline: diagnostic logged, MCPPending cleared, input delivered normally.
+		if result, err := h.s.inject(h.s.queue.Queue[0]); err != nil || result != written {
+			t.Fatalf("blocked past MCPReadyTimeout: %v %v", result, err)
+		}
+		if h.s.meta.MCPPending {
+			t.Fatal("MCPPending stayed true after timeout fallback")
+		}
+	})
+
+	t.Run("resume resets MCPPending and warmup state", func(t *testing.T) {
+		h := agyHarness(t)
+		h.s.cliSubmitted = true
+		h.s.meta.MCPPending = false
+		h.s.meta.Exited = true
+		h.s.mcpWarmupAttempted = true
+		h.s.mcpWarmupSince = time.Now()
+		h.s.mu.Lock()
+		h.s.resumeStateLocked(true)
+		h.s.mu.Unlock()
+		if !h.s.meta.MCPPending || h.s.cliSubmitted || h.s.mcpWarmupAttempted || !h.s.mcpWarmupSince.IsZero() {
+			t.Fatalf("resume did not reset MCP readiness state: pending=%v submitted=%v attempted=%v since=%v", h.s.meta.MCPPending, h.s.cliSubmitted, h.s.mcpWarmupAttempted, h.s.mcpWarmupSince)
+		}
+	})
+
+	t.Run("injectLoop runs WarmMCP for INPUT_STAGE_WAITING", func(t *testing.T) {
+		h := newHarness(t, Config{
+			RetryInterval:   10 * time.Millisecond,
+			SubmitTimeout:   2 * time.Second,
+			MCPReadyTimeout: 5 * time.Second,
+		})
+		a := antigravity.New("/bin/true", t.TempDir())
+		h.d.agents[a.Kind()] = a
+		h.s.ag = a
+		h.s.parser = a.NewParser()
+		h.s.meta.Agent = a.Kind()
+		h.s.meta.MCPPending = true
+		h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+		h.d.sessions[h.s.meta.ID] = h.s
+
+		done := make(chan struct{})
+		h.term.setScreen(agyScreen(t, "idle-empty-box.txt"))
+		h.term.mu.Lock()
+		h.term.onWrite = func(f *fakeTerm, b string) {
+			switch {
+			case b == agent.KeyEnter && strings.Contains(strings.Join(f.writes, ""), "/mcp") && f.screen == agyScreen(t, "idle-empty-box.txt"):
+				f.screen = agyScreen(t, "mcp-terminal.txt")
+				if _, err := h.d.scheduleCommandScopedContext(context.Background(), &pb.ScheduleRequest{Operation: "mcp_ready", SessionId: h.s.meta.ID}, originLocal, h.s.meta.ID); err != nil {
+					t.Errorf("scoped mcp_ready: %v", err)
+				}
+			case b == agent.KeyEsc:
+				f.screen = agyScreen(t, "idle-empty-box.txt")
+			case strings.Contains(b, "via loop"):
+				close(done)
+			}
+		}
+		h.term.mu.Unlock()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		loopDone := make(chan struct{})
+		go func() {
+			defer close(loopDone)
+			h.s.injectLoop(ctx)
+		}()
+		t.Cleanup(func() {
+			cancel()
+			<-loopDone
+		})
+		if _, err := h.s.enqueue("via loop", "req-loop-1", nil, originLocal); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			t.Fatalf("injectLoop did not warm MCP and deliver INPUT_STAGE_WAITING: writes=%q", h.term.written())
+		}
+	})
 }
