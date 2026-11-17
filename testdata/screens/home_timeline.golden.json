@@ -209,7 +209,8 @@
                     "intValue": "2"
                   }
                 ]
-              }
+              },
+              "highlightArg": "count"
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NONE"
@@ -283,6 +284,26 @@
                           "strValue": "go test ./..."
                         }
                       ]
+                    },
+                    {
+                      "literal": "alpha"
+                    },
+                    {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "detail": {
+                  "join": [
+                    {
+                      "literal": "go test ./..."
                     },
                     {
                       "literal": "alpha"
@@ -744,7 +765,8 @@
                     "intValue": "1"
                   }
                 ]
-              }
+              },
+              "highlightArg": "count"
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NONE"
@@ -818,6 +840,23 @@
                           "strValue": "go test ./..."
                         }
                       ]
+                    },
+                    {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "detail": {
+                  "join": [
+                    {
+                      "literal": "go test ./..."
                     },
                     {
                       "key": "home.ios_approval_remaining",
@@ -1176,7 +1215,8 @@
                     "intValue": "1"
                   }
                 ]
-              }
+              },
+              "highlightArg": "count"
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NONE"
@@ -1264,6 +1304,23 @@
                           "strValue": "go test ./..."
                         }
                       ]
+                    },
+                    {
+                      "key": "home.ios_approval_remaining",
+                      "args": [
+                        {
+                          "name": "count",
+                          "intValue": "2"
+                        }
+                      ]
+                    }
+                  ],
+                  "separatorLiteral": " · "
+                },
+                "detail": {
+                  "join": [
+                    {
+                      "literal": "go test ./..."
                     },
                     {
                       "key": "home.ios_approval_remaining",

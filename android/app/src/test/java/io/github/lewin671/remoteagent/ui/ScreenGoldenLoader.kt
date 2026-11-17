@@ -162,6 +162,7 @@ object ScreenGoldenLoader {
                     .setKind(h.enum("kind", HeadlineKind.HEADLINE_KIND_UNSPECIFIED))
                     .setTitle(parseText(h.obj("title")))
                     .setHighlightCount(h.i32("highlightCount"))
+                    .setHighlightArg(h.str("highlightArg"))
                     .setSub(parseText(h.obj("sub")))
                     .setSubError(h.bool("subError"))
                     .setSubPath(h.bool("subPath"))
@@ -221,6 +222,7 @@ object ScreenGoldenLoader {
                     .setTitle(parseText(a.obj("title")))
                     .setKindText(parseText(a.obj("kindText")))
                     .setSummary(parseText(a.obj("summary")))
+                    .setDetail(parseText(a.obj("detail")))
                     .setOutsideScope(a.bool("outsideScope")),
             )
         }

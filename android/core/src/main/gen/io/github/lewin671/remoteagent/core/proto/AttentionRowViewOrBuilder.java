@@ -72,4 +72,15 @@ public interface AttentionRowViewOrBuilder extends
    * @return The outsideScope.
    */
   boolean getOutsideScope();
+
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   * @return Whether the detail field is set.
+   */
+  boolean hasDetail();
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   * @return The detail.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDetail();
 }

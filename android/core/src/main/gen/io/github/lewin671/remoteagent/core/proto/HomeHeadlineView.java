@@ -15,6 +15,7 @@ public  final class HomeHeadlineView extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.HomeHeadlineView)
     HomeHeadlineViewOrBuilder {
   private HomeHeadlineView() {
+    highlightArg_ = "";
   }
   private int bitField0_;
   public static final int KIND_FIELD_NUMBER = 1;
@@ -283,6 +284,54 @@ public  final class HomeHeadlineView extends
   private void clearUnlinked() {
 
     unlinked_ = false;
+  }
+
+  public static final int HIGHLIGHT_ARG_FIELD_NUMBER = 9;
+  private java.lang.String highlightArg_;
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   * @return The highlightArg.
+   */
+  @java.lang.Override
+  public java.lang.String getHighlightArg() {
+    return highlightArg_;
+  }
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   * @return The bytes for highlightArg.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getHighlightArgBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(highlightArg_);
+  }
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   * @param value The highlightArg to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHighlightArg(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    highlightArg_ = value;
+  }
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   */
+  private void clearHighlightArg() {
+
+    highlightArg_ = getDefaultInstance().getHighlightArg();
+  }
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   * @param value The bytes for highlightArg to set.
+   */
+  private void setHighlightArgBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    highlightArg_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.HomeHeadlineView parseFrom(
@@ -662,6 +711,55 @@ public  final class HomeHeadlineView extends
       return this;
     }
 
+    /**
+     * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+     * @return The highlightArg.
+     */
+    @java.lang.Override
+    public java.lang.String getHighlightArg() {
+      return instance.getHighlightArg();
+    }
+    /**
+     * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+     * @return The bytes for highlightArg.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getHighlightArgBytes() {
+      return instance.getHighlightArgBytes();
+    }
+    /**
+     * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+     * @param value The highlightArg to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHighlightArg(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setHighlightArg(value);
+      return this;
+    }
+    /**
+     * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHighlightArg() {
+      copyOnWrite();
+      instance.clearHighlightArg();
+      return this;
+    }
+    /**
+     * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+     * @param value The bytes for highlightArg to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHighlightArgBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setHighlightArgBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HomeHeadlineView)
   }
   @java.lang.Override
@@ -687,10 +785,11 @@ public  final class HomeHeadlineView extends
             "subPath_",
             "detailsAction_",
             "unlinked_",
+            "highlightArg_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\f\u0002\u1009\u0000\u0003" +
-              "\u0004\u0004\u1009\u0001\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\f\u0002\u1009\u0000\u0003" +
+              "\u0004\u0004\u1009\u0001\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

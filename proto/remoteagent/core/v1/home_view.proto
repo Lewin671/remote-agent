@@ -63,6 +63,7 @@ message HomeHeadlineView {
   bool sub_path = 6;
   bool details_action = 7;
   bool unlinked = 8;
+  string highlight_arg = 9;
 }
 
 enum HomeEmptyKind {
@@ -138,6 +139,7 @@ message AttentionRowView {
   Text kind_text = 4;
   Text summary = 5;
   bool outside_scope = 6;
+  Text detail = 7;
 }
 
 message SessionRowView {

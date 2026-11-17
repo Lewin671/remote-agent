@@ -285,6 +285,54 @@ public  final class AttentionRowView extends
     outsideScope_ = false;
   }
 
+  public static final int DETAIL_FIELD_NUMBER = 7;
+  private io.github.lewin671.remoteagent.core.proto.Text detail_;
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDetail() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDetail() {
+    return detail_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : detail_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDetail(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    detail_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDetail(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (detail_ != null &&
+        detail_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      detail_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(detail_).mergeFrom(value).buildPartial();
+    } else {
+      detail_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+   */
+  private void clearDetail() {
+    detail_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttentionRowView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -649,6 +697,53 @@ public  final class AttentionRowView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDetail() {
+      return instance.hasDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDetail() {
+      return instance.getDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+     */
+    public Builder setDetail(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDetail(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+     */
+    public Builder setDetail(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDetail(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+     */
+    public Builder mergeDetail(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text detail = 7 [json_name = "detail"];</code>
+     */
+    public Builder clearDetail() {  copyOnWrite();
+      instance.clearDetail();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttentionRowView)
   }
   @java.lang.Override
@@ -672,10 +767,12 @@ public  final class AttentionRowView extends
             "kindText_",
             "summary_",
             "outsideScope_",
+            "detail_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u0007";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u0007\u0007\u1009\u0003" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

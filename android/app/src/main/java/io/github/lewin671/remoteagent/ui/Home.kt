@@ -256,24 +256,9 @@ fun HomeScreen() {
 @Composable
 internal fun Headline(h: HomeHeadlineView, onDetails: () -> Unit) {
     val p = pal
-    val count = h.highlightCount.takeIf { h.kind == HeadlineKind.HEADLINE_KIND_WAITING && it > 0 }
-    val title = uiText(h.title)
     val sub = uiText(h.sub)
     Text(
-        buildAnnotatedString {
-            if (count == null) append(title)
-            else {
-                val n = count.toString()
-                val idx = title.indexOf(n)
-                if (idx >= 0) {
-                    append(title.substring(0, idx))
-                    withStyle(SpanStyle(color = p.orange)) { append(n) }
-                    append(title.substring(idx + n.length))
-                } else {
-                    append(title)
-                }
-            }
-        },
+        uiHighlightedText(h.title, h.highlightArg, SpanStyle(color = p.orange)),
         style = T.title, color = p.ink,
         modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 6.dp).semantics { heading() }.testTag("headline"),
     )

@@ -77,7 +77,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 				vm.TopAttentionSessionId = row.Item.ID
 				if row.Item.RawStatus == lists.StatusApproval {
 					vm.TopAttentionActionable = true
-					vm.TopAttentionCard = buildAttentionCardView(row.Item)
+					vm.TopAttentionCard = buildAttentionCardView(row.Item, st)
 				}
 			}
 			vm.Attention = append(vm.Attention, buildAttentionRowView(row.Item, homeData.Meta))
@@ -199,6 +199,7 @@ func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *
 	case lists.HeadlineWaiting:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_WAITING
 		v.HighlightCount = h.WaitingCount
+		v.HighlightArg = "count"
 		v.Title = text.Msg(text.KeyHomeWaitingCount, text.Int("count", int64(h.WaitingCount)))
 		v.Sub = runningSub(h.RunningCount, h.IdleCount)
 	case lists.HeadlineRunning:
@@ -277,7 +278,7 @@ func buildHomeEmptyView(e *lists.HomeEmptyInfo, st *State) *corev1.HomeEmptyView
 	return v
 }
 
-func buildAttentionCardView(item *lists.SessionItem) *corev1.AttentionCardView {
+func buildAttentionCardView(item *lists.SessionItem, st *State) *corev1.AttentionCardView {
 	if item == nil {
 		return nil
 	}
@@ -310,19 +311,39 @@ func buildAttentionCardView(item *lists.SessionItem) *corev1.AttentionCardView {
 		rem := text.Msg(text.KeyHomeIosApprovalRemaining, text.Int("count", item.MinutesLeft))
 		timeText = text.Msg(text.KeyApprovalTimeoutNote, text.ArgText("remaining", rem))
 	}
+	var alwaysKind corev1.AlwaysAllowKind
+	var alwaysArg string
+	var alwaysLabel *corev1.Text
+	if st != nil {
+		for _, m := range st.World.Machines {
+			if m.ID == item.MachineID && m.Meta != nil && m.Meta.GetCapabilities().GetApprovalAlways() {
+				if isCmd {
+					alwaysKind = corev1.AlwaysAllowKind_ALWAYS_ALLOW_KIND_COMMAND_PREFIX
+				} else {
+					alwaysKind = corev1.AlwaysAllowKind_ALWAYS_ALLOW_KIND_TOOL_CATEGORY
+					alwaysArg = lists.ApprovalDisplay(p.ApprovalToolName)
+				}
+				alwaysLabel = text.Msg(text.KeyApprovalAlwaysAllow)
+				break
+			}
+		}
+	}
 	return &corev1.AttentionCardView{
-		SessionId:  item.ID,
-		MachineId:  item.MachineID,
-		ApprovalId: p.ApprovalID,
-		Title:      sessionTitleText(item),
-		KindText:   kindText,
-		Where:      text.JoinLiteral(" · ", whereParts...),
-		Time:       timeText,
-		Hot:        item.MinutesLeft > 0 && item.MinutesLeft <= 2,
-		Body:       body,
-		ToolName:   lists.ApprovalDisplay(p.ApprovalToolName),
-		IsCommand:  isCmd,
-		Truncated:  p.ApprovalTruncated,
+		SessionId:   item.ID,
+		MachineId:   item.MachineID,
+		ApprovalId:  p.ApprovalID,
+		Title:       sessionTitleText(item),
+		KindText:    kindText,
+		Where:       text.JoinLiteral(" · ", whereParts...),
+		Time:        timeText,
+		Hot:         item.MinutesLeft > 0 && item.MinutesLeft <= 2,
+		Body:        body,
+		ToolName:    lists.ApprovalDisplay(p.ApprovalToolName),
+		IsCommand:   isCmd,
+		Truncated:   p.ApprovalTruncated,
+		AlwaysKind:  alwaysKind,
+		AlwaysArg:   alwaysArg,
+		AlwaysLabel: alwaysLabel,
 	}
 }
 
@@ -333,6 +354,7 @@ func buildAttentionRowView(item *lists.SessionItem, meta lists.RowMeta) *corev1.
 	title := sessionTitleText(item)
 	var kindText *corev1.Text
 	var summary *corev1.Text
+	var detailParts []*corev1.Text
 	p := lists.PendingAction{}
 	if item.Session != nil {
 		p = item.Session.Pending
@@ -340,11 +362,15 @@ func buildAttentionRowView(item *lists.SessionItem, meta lists.RowMeta) *corev1.
 	switch item.RawStatus {
 	case lists.StatusApproval:
 		if p.ApprovalCommand != "" {
+			cmd := lists.ApprovalDisplay(p.ApprovalCommand)
 			kindText = text.Msg(text.KeyListStateRequestCommandPlain)
-			summary = text.Msg(text.KeyListStateRequestCommand, text.Str("command", lists.ApprovalDisplay(p.ApprovalCommand)))
+			summary = text.Msg(text.KeyListStateRequestCommand, text.Str("command", cmd))
+			detailParts = append(detailParts, text.Plain(cmd))
 		} else if p.ApprovalToolName != "" {
+			tool := lists.ApprovalDisplay(p.ApprovalToolName)
 			kindText = text.Msg(text.KeyListStateRequestPermissionPlain)
-			summary = text.Msg(text.KeyListStateRequestPermission, text.Str("tool", lists.ApprovalDisplay(p.ApprovalToolName)))
+			summary = text.Msg(text.KeyListStateRequestPermission, text.Str("tool", tool))
+			detailParts = append(detailParts, text.Plain(tool))
 		} else {
 			kindText = text.Msg(text.KeyListStateApproval)
 			summary = kindText
@@ -381,6 +407,7 @@ func buildAttentionRowView(item *lists.SessionItem, meta lists.RowMeta) *corev1.
 	fullSummary := summary
 	if len(extra) > 0 {
 		fullSummary = text.JoinLiteral(" · ", append([]*corev1.Text{summary}, extra...)...)
+		detailParts = append(detailParts, extra...)
 	}
 	return &corev1.AttentionRowView{
 		SessionId:    item.ID,
@@ -388,6 +415,7 @@ func buildAttentionRowView(item *lists.SessionItem, meta lists.RowMeta) *corev1.
 		Title:        title,
 		KindText:     kindText,
 		Summary:      fullSummary,
+		Detail:       text.JoinLiteral(" · ", detailParts...),
 		OutsideScope: item.OutsideScope,
 	}
 }

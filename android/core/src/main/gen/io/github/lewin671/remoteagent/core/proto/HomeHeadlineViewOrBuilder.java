@@ -72,4 +72,16 @@ public interface HomeHeadlineViewOrBuilder extends
    * @return The unlinked.
    */
   boolean getUnlinked();
+
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   * @return The highlightArg.
+   */
+  java.lang.String getHighlightArg();
+  /**
+   * <code>string highlight_arg = 9 [json_name = "highlightArg"];</code>
+   * @return The bytes for highlightArg.
+   */
+  com.google.protobuf.ByteString
+      getHighlightArgBytes();
 }

@@ -4,9 +4,12 @@ import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.core.app.ApplicationProvider
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.HeadlineKind
 import io.github.lewin671.remoteagent.core.proto.HomeHeadlineView
@@ -47,5 +50,26 @@ class HomeHeadlineLayoutTest {
             ).build()
         }
         assertEquals(top, ui.onNodeWithText("anchor").getUnclippedBoundsInRoot().top)
+    }
+
+    @Test fun highlightsStructuredWaitingCountInZhAndEnWithoutStringSearch() {
+        val ctx = ApplicationProvider.getApplicationContext<Application>()
+        val style = SpanStyle(color = Color(0xFFFF6600))
+        val text = CoreText.newBuilder()
+            .setKey("home.waiting_count")
+            .addArgs(TextArg.newBuilder().setName("count").setIntValue(3))
+            .build()
+
+        val zh = resolveHighlightedCoreText(ctx, text, "count", style, "zh-CN")
+        assertEquals(resolveCoreText(ctx, text, "zh-CN"), zh.text)
+        assertEquals(1, zh.spanStyles.size)
+        assertEquals("3", zh.text.substring(zh.spanStyles[0].start, zh.spanStyles[0].end))
+        assertEquals(style.color, zh.spanStyles[0].item.color)
+
+        val en = resolveHighlightedCoreText(ctx, text, "count", style, "en")
+        assertEquals(resolveCoreText(ctx, text, "en"), en.text)
+        assertEquals(1, en.spanStyles.size)
+        assertEquals("3", en.text.substring(en.spanStyles[0].start, en.spanStyles[0].end))
+        assertEquals(style.color, en.spanStyles[0].item.color)
     }
 }

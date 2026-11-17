@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -157,5 +158,39 @@ class ProjectTest {
         ui.runOnIdle { remote.coreHost.showViewsForTest(newSession = unknown) }
         assertTrue(unknown.frozen)
         assertTrue(unknown.noticesCount > 0)
+    }
+
+    @Test
+    fun sessionAndPendingRowsRenderCoreFieldsWithoutShellReassembly() {
+        val row = io.github.lewin671.remoteagent.core.proto.SessionRowView.newBuilder()
+            .setSessionId("s1")
+            .setMachineId("m1")
+            .setTitle(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Session A"))
+            .setStatusText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("UNUSED_STATUS"))
+            .setPreview(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("UNUSED_PREVIEW"))
+            .setSecondLine(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("core second line"))
+            .build()
+        val pending = io.github.lewin671.remoteagent.core.proto.AttentionRowView.newBuilder()
+            .setSessionId("s2")
+            .setMachineId("m1")
+            .setTitle(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Pending B"))
+            .setKindText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Approval"))
+            .setSummary(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("UNUSED_SUMMARY"))
+            .setDetail(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("Approval"))
+            .build()
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    Column {
+                        SessionRow(row) {}
+                        PendingRow(pending, first = true, last = true) {}
+                    }
+                }
+            }
+        }
+        ui.onNodeWithText("core second line").assertIsDisplayed()
+        ui.onNodeWithText("UNUSED_STATUS", substring = true).assertDoesNotExist()
+        ui.onNodeWithText("Approval · Approval").assertIsDisplayed()
+        ui.onNodeWithText("UNUSED_SUMMARY", substring = true).assertDoesNotExist()
     }
 }

@@ -318,8 +318,7 @@ fun ApprovalCard(
     val command = approvalDisplay(card.body)
     val more = lines - CARD_LINES
     val cut = command.isNotEmpty() && more > 0 && !full
-    val always = card.alwaysKind != AlwaysAllowKind.ALWAYS_ALLOW_KIND_UNSPECIFIED ||
-        capabilities(state.machines[card.machineId])?.approvalAlways == true
+    val always = card.alwaysKind != AlwaysAllowKind.ALWAYS_ALLOW_KIND_UNSPECIFIED
     val locked = state.peer(card.machineId).unlinked
     DarkCard(modifier.semantics(mergeDescendants = false) {}) {
         DarkCardHead(kind, time, card.hot)

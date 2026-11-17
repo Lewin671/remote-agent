@@ -56,10 +56,7 @@ fun SessionRow(
     val copy = uiText()
     val title = uiText(r.title)
     val time = uiText(r.time)
-    val statusStr = uiText(r.statusText)
-    val previewStr = uiText(r.preview)
-    val secondText = listOf(statusStr, previewStr).filter { it.isNotEmpty() }.joinToString(" · ")
-        .ifEmpty { uiText(r.secondLine) }
+    val secondText = uiText(r.secondLine)
     val hasAgent = r.agent != Agent.AGENT_UNSPECIFIED && r.agent != Agent.UNRECOGNIZED
     val metaText = uiText(r.metaLine)
     val spoken = listOf(
@@ -182,9 +179,9 @@ fun groupShape(first: Boolean, last: Boolean, radius: Int = 24): RoundedCornerSh
 fun PendingRow(r: AttentionRowView, first: Boolean, last: Boolean, onClick: () -> Unit) {
     val title = uiText(r.title)
     val kind = uiText(r.kindText)
-    val rawSummary = uiText(r.summary)
-    val detail = if (kind.isEmpty()) "" else rawSummary.removePrefix(kind + " · ").removePrefix(kind).trimStart(' ', '·')
-    val spoken = listOf(title, kind, detail.ifEmpty { if (kind.isEmpty()) rawSummary else "" })
+    val detail = uiText(r.detail)
+    val fallbackSummary = if (kind.isEmpty() && detail.isEmpty()) uiText(r.summary) else ""
+    val spoken = listOf(title, kind, detail.ifEmpty { fallbackSummary })
         .filter { it.isNotEmpty() }.joinToString("，")
     val p = pal
     Row(
@@ -206,7 +203,7 @@ fun PendingRow(r: AttentionRowView, first: Boolean, last: Boolean, onClick: () -
                         withStyle(SpanStyle(color = p.orangeInk, fontWeight = platformWeight(FontWeight.SemiBold))) { append(kind) }
                         if (detail.isNotEmpty()) append(" · " + detail)
                     } else {
-                        append(rawSummary)
+                        append(fallbackSummary.ifEmpty { detail })
                     }
                 },
                 style = T.s15, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp),

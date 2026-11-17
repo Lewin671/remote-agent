@@ -202,6 +202,7 @@ type HomeHeadlineView struct {
 	SubPath        bool
 	DetailsAction  bool
 	Unlinked       bool
+	HighlightArg   string
 }
 
 func (m *HomeHeadlineView) GetKind() HeadlineKind {
@@ -252,6 +253,12 @@ func (m *HomeHeadlineView) GetUnlinked() bool {
 	}
 	return false
 }
+func (m *HomeHeadlineView) GetHighlightArg() string {
+	if m != nil {
+		return m.HighlightArg
+	}
+	return ""
+}
 
 func (m *HomeHeadlineView) Size() int {
 	if m == nil {
@@ -270,6 +277,7 @@ func (m *HomeHeadlineView) Size() int {
 	n += litewire.SizeBool(6, m.SubPath)
 	n += litewire.SizeBool(7, m.DetailsAction)
 	n += litewire.SizeBool(8, m.Unlinked)
+	n += litewire.SizeString(9, m.HighlightArg)
 	return n
 }
 
@@ -300,6 +308,7 @@ func (m *HomeHeadlineView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBool(b, 6, m.SubPath)
 	b = litewire.AppendBool(b, 7, m.DetailsAction)
 	b = litewire.AppendBool(b, 8, m.Unlinked)
+	b = litewire.AppendString(b, 9, m.HighlightArg)
 	return b
 }
 
@@ -601,6 +610,7 @@ type AttentionRowView struct {
 	KindText     *Text
 	Summary      *Text
 	OutsideScope bool
+	Detail       *Text
 }
 
 func (m *AttentionRowView) GetSessionId() string {
@@ -639,6 +649,12 @@ func (m *AttentionRowView) GetOutsideScope() bool {
 	}
 	return false
 }
+func (m *AttentionRowView) GetDetail() *Text {
+	if m != nil {
+		return m.Detail
+	}
+	return nil
+}
 
 func (m *AttentionRowView) Size() int {
 	if m == nil {
@@ -657,6 +673,9 @@ func (m *AttentionRowView) Size() int {
 		n += litewire.SizeMessage(5, m.Summary.Size())
 	}
 	n += litewire.SizeBool(6, m.OutsideScope)
+	if m.Detail != nil {
+		n += litewire.SizeMessage(7, m.Detail.Size())
+	}
 	return n
 }
 
@@ -687,6 +706,9 @@ func (m *AttentionRowView) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 5, m.Summary)
 	}
 	b = litewire.AppendBool(b, 6, m.OutsideScope)
+	if m.Detail != nil {
+		b = litewire.AppendMessage(b, 7, m.Detail)
+	}
 	return b
 }
 
