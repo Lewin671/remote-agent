@@ -161,8 +161,3 @@ public struct PrefsConflictError: Error, LocalizedError, Equatable {
     public init() {}
     public var errorDescription: String? { L10n.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot() }
 }
-
-public func newerPrefs(have: PrefsObject?, got: PrefsObject) -> PrefsObject {
-    guard let have, got.revision < have.revision else { return got }
-    return have
-}

@@ -31,13 +31,6 @@ import Testing
         #expect([with(a, updatedMs: 999999), b].sorted(by: liveOrder).map(\.id) == ["b", "a"])
     }
 
-    @Test func attentionUsesTypeThenOldestWait() {
-        let a = s("a", 100, 99999) { $0.pendingApprovals = 1; $0.attentionSince = Mk.ts(2000) }
-        let b = s("b", 200, 1) { $0.pendingApprovals = 1; $0.attentionSince = Mk.ts(1000) }
-        let q = s("q", 1, 999999) { $0.pendingQuestions = 1; $0.attentionSince = Mk.ts(1) }
-        #expect([q, a, b].sorted(by: attentionOrder(RemoteState())).map(\.id) == ["b", "a", "q"])
-    }
-
     @Test func exitAndLegacyTimesIgnoreRelayTime() {
         let a = s("a", 100, 99999) { $0.endedAt = Mk.ts(1000) }
         let b = s("b", 200, 1) { $0.endedAt = Mk.ts(2000) }

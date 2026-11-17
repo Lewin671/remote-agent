@@ -394,7 +394,13 @@ struct MachineStatusScreen: View {
     }
 
     private func startCleanup(_ key: String, machine: String) {
-        context.newSessionDrafts.prepareCleanup(model.state, key: key, machine: machine, prompt: L10n.machineStatusCleanupPrompt())
+        let prompt = L10n.machineStatusCleanupPrompt()
+        context.newSessionDrafts.prepareCleanup(model.state, key: key, machine: machine, prompt: prompt)
+        Task {
+            await context.coreHost.showNewSession(projectKey: key)
+            await context.coreHost.dispatch(PBCoreEvent.with { $0.newSessionSelectMachine.machineID = machine })
+            await context.coreHost.dispatch(PBCoreEvent.with { $0.newSessionSetPrompt.prompt = prompt })
+        }
         cleanup = .task(key: key, machine: machine)
     }
 

@@ -139,23 +139,8 @@ public func machineProjects(_ state: RemoteState, machineId: String) -> [String]
     return (summed + held).distinct()
 }
 
-/// The project list as the account arranges it (architecture §8): pinned
-/// projects first in the order they were pinned, the others with live
-/// projects first, then by latest session creation; hidden ones apart. Hiding only takes a project off these lists:
-/// its sessions, pending items and notifications are not filtered here.
-public struct ProjectGroups: Equatable, Sendable {
-    public var pinned: [Project]
-    public var others: [Project]
-    public var hidden: [Project]
-
-    public init(pinned: [Project], others: [Project], hidden: [Project]) {
-        self.pinned = pinned
-        self.others = others
-        self.hidden = hidden
-    }
-}
-
-public func projectGroups(_ state: RemoteState) -> ProjectGroups {
+/// Non-hidden projects sorted by pinned order then recency (kept for un-migrated Schedules).
+public func listedProjects(_ state: RemoteState) -> [Project] {
     let all = projects(state)
     let prefs = state.prefs ?? .empty
     let hidden = prefs.hidden
@@ -163,18 +148,7 @@ public func projectGroups(_ state: RemoteState) -> ProjectGroups {
     for p in all { byKey[p.id] = p }
     let pinned = prefs.pinned.filter { !hidden.contains($0) }.compactMap { byKey[$0] }
     let pinnedKeys = Set(pinned.map(\.id))
-    return ProjectGroups(
-        pinned: pinned,
-        others: all.filter { !pinnedKeys.contains($0.id) && !hidden.contains($0.id) },
-        hidden: all.filter { hidden.contains($0.id) }
-    )
-}
-
-public func isHidden(_ state: RemoteState, key: String) -> Bool { state.prefs?.hidden.contains(JvmKey(key)) == true }
-
-public func isPinned(_ state: RemoteState, key: String) -> Bool {
-    guard let p = state.prefs else { return false }
-    return p.pinned.contains(JvmKey(key)) && !p.hidden.contains(JvmKey(key))
+    return pinned + all.filter { !pinnedKeys.contains($0.id) && !hidden.contains($0.id) }
 }
 
 /// A computer's name: its host name without .local, else the start of its ID.

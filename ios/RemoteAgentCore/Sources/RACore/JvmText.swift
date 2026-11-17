@@ -161,7 +161,7 @@ extension String {
     }
 
     /// The string, or `other` when it is empty: Kotlin's ifEmpty.
-    func ifEmpty(_ other: @autoclosure () -> String) -> String { isEmpty ? other() : self }
+    public func ifEmpty(_ other: @autoclosure () -> String) -> String { isEmpty ? other() : self }
 
     /// Kotlin's split(char) for one ASCII character, empty parts kept.
     func split(ascii c: UInt8) -> [String] {

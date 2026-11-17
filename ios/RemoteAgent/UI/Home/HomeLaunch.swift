@@ -1,11 +1,5 @@
 // What the home and project screens do with their launch arguments, for
-// looking at them with sample data (`-demo`) in states that take a hand to
-// reach: the scope and its sheets, a title filter, 项目设置 on a page, a
-// draft and how a start stands, 项目管理's menu and dialogs, a change to
-// the preferences on its way, and `-demoTweak`'s changes to the sample
-// account. Every argument and signal is listed in one place, the head of
-// App/Launch.swift. Debug builds only: in a release build nothing is read
-// and nothing changes.
+// looking at them with sample data (`-demo`).
 import Foundation
 import RACore
 import RAProto
@@ -89,9 +83,9 @@ enum HomeLaunch {
             }
         }
         await remote.showForTest(state: s, modelLists: Demo.models)
-        if let scope = value("-homeScope") { context.homeScopes.show(scope == "all" ? .all : .of(key: scope)) }
-        if let path = value("-prefsSaving") { context.prefsChanges.show(.saving(.pin(path: path)), for: path) }
-        if let path = value("-prefsFailed") { context.prefsChanges.show(.failed(.pin(path: path), L10n.errorsConnectionTimedOut()), for: path) }
+        if let scope = value("-homeScope") {
+            context.dispatch { $0.homeSetScope.scopeKey = scope == "all" ? "" : scope }
+        }
         done = true
     }
 
@@ -119,23 +113,17 @@ enum HomeLaunch {
     #else
     static func value(_ name: String) -> String? { nil }
     static func flag(_ name: String) -> Bool { false }
-    static func settled(_ model: AppModel) async {}
+    static func apply(_ model: AppModel, _ context: AccountContext) async {}
     #endif
 }
 
 extension View {
-    /// Applies the launch arguments above to the sample account (debug builds).
     func homeLaunchTweaks() -> some View {
-        #if DEBUG
-        modifier(HomeLaunchTweaks())
-        #else
-        self
-        #endif
+        modifier(HomeLaunchModifier())
     }
 }
 
-#if DEBUG
-private struct HomeLaunchTweaks: ViewModifier {
+private struct HomeLaunchModifier: ViewModifier {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
 
@@ -143,4 +131,3 @@ private struct HomeLaunchTweaks: ViewModifier {
         content.task { await HomeLaunch.apply(model, context) }
     }
 }
-#endif

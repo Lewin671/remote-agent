@@ -43,7 +43,7 @@ extension ServerTests {
                 let remote = try await w.client()
                 let state = linkedState(w.daemon.id)
                 remote.state.set(state)
-                #expect(canStartSession(state, config: NewConfig(machineId: w.daemon.id, cwd: "/work/example"), drafting: true, settled: true, running: false))
+                #expect(state.peer(w.daemon.id).available)
                 #expect(fileSupported(state.machines[w.daemon.id]))
                 #expect(protocolMismatch(state.machines[w.daemon.id]) == nil)
                 #expect(state.peer(w.daemon.id).canProbe(false))

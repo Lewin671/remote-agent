@@ -172,20 +172,6 @@
     }
   },
   {
-    "key": "connection.ios_no_response",
-    "zh-CN": "服务器没有回应",
-    "en": "The server did not respond",
-    "notes": "首页无服务器且没有详情时的缺省原因。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "connection.ios_reason",
     "zh-CN": "原因　{reason}",
     "en": "Reason  {reason}",

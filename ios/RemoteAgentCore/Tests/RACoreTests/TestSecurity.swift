@@ -208,21 +208,13 @@ func fixtureRemote(
     clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
     sleep: @escaping Sleeper = realSleep,
     jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) }, frameQueue: Int = 1024, frameQueueBytes: Int = 32 << 20,
-    historyIdleMs: Int64 = 60000, historyIdleCount: Int = 8,
-    historyIdleBytes: Int64 = 16 * 1024 * 1024, streamOpenMs: Int64 = 15000,
-    linkGraceMs: Int64 = 10000, securityStorage: (any DeviceSecurity.Storage)? = nil
+    streamOpenMs: Int64 = 15000,
+    securityStorage: (any DeviceSecurity.Storage)? = nil
 ) throws -> Remote {
     try Remote(
         account: account, http: http, cache: cache, log: log, clock: clock, sleep: sleep,
-        jitter: jitter, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes, historyIdleMs: historyIdleMs,
-        historyIdleCount: historyIdleCount, historyIdleBytes: historyIdleBytes,
-        streamOpenMs: streamOpenMs, linkGraceMs: linkGraceMs,
+        jitter: jitter, frameQueue: frameQueue, frameQueueBytes: frameQueueBytes,
+        streamOpenMs: streamOpenMs,
         securityStorage: securityStorage
             ?? TestSecurity.find(account.server)?.store(account.deviceId))
-}
-
-// Each World models a separate application process. Cross-target process
-// credit is tested with a shared budget explicitly in RecoveryTests.
-extension Remote {
-    func isolateRecoveryBudget() { recovery = Recovery(now:monotonic,random:jitter,budget:RecoveryBudget()) }
 }

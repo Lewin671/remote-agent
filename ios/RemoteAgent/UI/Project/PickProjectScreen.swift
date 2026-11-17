@@ -1,61 +1,89 @@
-// 新会话 · 选项目: which project a new session goes to, when the home page
-// lists every project (Android's PickProjectSheet and PickProjectScreen in
-// ui/Project.kt). The list is the one every place shows (`ProjectList`),
-// each row leading to that project's new-session box.
+// 新会话 · 选项目: rendered from `manageProjects.listing` (or `ScheduleConfigSheet`'s legacy wrapper).
 import RACore
+import RAProto
 import SwiftUI
 
-/// The projects as every list shows them, each with an arrow to its new-session box.
-struct ProjectPickList: View {
-    let state: RemoteState
+/// The projects as a pick list, each with an arrow to open or select it.
+struct CoreProjectPickList: View {
+    let listing: PBCoreProjectListingView
+    let onSearch: (String) -> Void
     let onPick: (String) -> Void
     let onNew: () -> Void
 
     var body: some View {
-        ProjectList(state, onNew: onNew) { pr in
-            ProjectRow(state, pr, action: { onPick(pr.key) }) { Arrow(DS.ink3, style: .body) }
+        CoreProjectList(listing: listing, onSearch: onSearch, onNew: onNew) { pr in
+            CoreProjectRow(row: pr, action: { onPick(pr.key) }) { Arrow(DS.ink3, style: .body) }
         }
     }
 }
 
-/// 新会话 · 选项目 from the new-session button on the home page, as a
-/// sheet; 新项目… turns it into 新项目 · 选目录. Choosing a project, or a
-/// folder there, opens 新任务 in it.
+/// Compatibility entry point for `ScheduleConfigSheet`.
+struct ProjectPickList: View {
+    let state: RemoteState
+    let onPick: (String) -> Void
+    let onNew: () -> Void
+    @Environment(AccountContext.self) private var context
+
+    var body: some View {
+        CoreProjectPickList(
+            listing: context.core.manageProjects.listing,
+            onSearch: { q in context.dispatch { $0.projectSetSearch.query = q } },
+            onPick: onPick,
+            onNew: onNew
+        )
+        .task { await context.coreHost.setManageActive(true) }
+        .onDisappear { Task { await context.coreHost.setManageActive(false) } }
+    }
+}
+
+/// 新会话 · 选项目 as a sheet from Home; 新项目… turns it into 新项目 · 选目录.
 struct PickProjectSheet: View {
     let state: RemoteState
     @Binding var browsing: Bool
     let onClose: () -> Void
-    /// The project or folder chosen: 新任务 opens in it.
     let onPick: (NewTaskTarget) -> Void
+    @Environment(AccountContext.self) private var context
 
     var body: some View {
-        if browsing {
-            SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
-            ProjectDirPicker(state) { machine, path in onPick(NewTaskTarget(key: path, machine: machine)) }
-        } else {
-            SheetHead(L10n.newSessionIosChooseProject(), action: L10n.commonCancel(), onAction: onClose)
-            ProjectPickList(
-                state: state,
-                onPick: { onPick(NewTaskTarget(key: $0)) },
-                onNew: { browsing = true })
+        let listing = context.core.manageProjects.listing
+        Group {
+            if browsing {
+                SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
+                CoreDirPicker(forNewTask: true) { machine, path in
+                    onPick(NewTaskTarget(key: path, machine: machine))
+                }
+            } else {
+                SheetHead(L10n.newSessionIosChooseProject(), action: L10n.commonCancel(), onAction: onClose)
+                CoreProjectPickList(
+                    listing: listing,
+                    onSearch: { q in context.dispatch { $0.projectSetSearch.query = q } },
+                    onPick: { onPick(NewTaskTarget(key: $0)) },
+                    onNew: { browsing = true }
+                )
+            }
         }
+        .task { await context.coreHost.setManageActive(true) }
+        .onDisappear { Task { await context.coreHost.setManageActive(false) } }
     }
 }
 
-/// 新会话 · 选项目 as a page, for links that name the route.
+/// 新会话 · 选项目 as a pushed page.
 struct PickProjectScreen: View {
-    @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
+    @Environment(AccountContext.self) private var context
 
     var body: some View {
-        let state = model.state
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        ProjectPickList(
-                            state: state, onPick: { nav.open(.project(key: $0, focusNew: true)) }, onNew: { nav.open(.newProject) })
+                        CoreProjectPickList(
+                            listing: context.core.manageProjects.listing,
+                            onSearch: { q in context.dispatch { $0.projectSetSearch.query = q } },
+                            onPick: { nav.open(.project(key: $0, focusNew: true)) },
+                            onNew: { nav.open(.newProject) }
+                        )
                     }
                     .padding(.horizontal, DS.Space.l).padding(.bottom, 16)
                     .readableColumn()
@@ -64,6 +92,8 @@ struct PickProjectScreen: View {
             }
         }
         .navBar(L10n.newSessionIosChooseProject())
+        .task { await context.coreHost.setManageActive(true) }
+        .onDisappear { Task { await context.coreHost.setManageActive(false) } }
         .homeLaunchTweaks()
     }
 }

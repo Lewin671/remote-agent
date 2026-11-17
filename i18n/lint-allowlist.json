@@ -2663,5 +2663,35 @@
     "path": "cmd/protoc-gen-go-lite/main.go",
     "literal": "protoc-gen-go-lite: clone directive cannot target enum ",
     "reason": "Build-tool error message for developers running buf generate; never shown in the product."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Remote.swift",
+    "literal": "not_found",
+    "reason": "Diagnostic Connect/Command error code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Remote.swift",
+    "literal": "failed_precondition",
+    "reason": "Diagnostic Connect/Command error code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Remote.swift",
+    "literal": "aborted",
+    "reason": "Diagnostic Connect/Command error code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Remote.swift",
+    "literal": "unavailable",
+    "reason": "Diagnostic Connect/Command error code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteCommands.swift",
+    "literal": "failed_precondition",
+    "reason": "Diagnostic Connect/Command error code paired with an existing localized message; never user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteCommands.swift",
+    "literal": "aborted",
+    "reason": "Diagnostic Connect/Command error code paired with an existing localized message; never user-facing text."
   }
 ]

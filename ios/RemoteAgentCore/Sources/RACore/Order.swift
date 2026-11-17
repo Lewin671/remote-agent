@@ -20,11 +20,6 @@ public func endedMs(_ s: SessionView) -> Int64 {
     return timestampMs(i.endedAt)
 }
 
-public func attentionMs(_ s: SessionView) -> Int64 {
-    guard let i = s.info, i.hasAttentionSince else { return createdMs(s) }
-    return timestampMs(i.attentionSince)
-}
-
 /// Sessions that go on: the newest created first.
 public func liveOrder(_ a: SessionView, _ b: SessionView) -> Bool {
     let x = createdMs(a), y = createdMs(b)
@@ -42,15 +37,4 @@ public func sessionOrder(_ a: SessionView, _ b: SessionView) -> Bool {
     let ea = exited(a), eb = exited(b)
     if ea != eb { return !ea }
     return ea ? endedOrder(a, b) : liveOrder(a, b)
-}
-
-/// 需要处理: by what kind of thing waits, then the longest wait first.
-public func attentionOrder(_ state: RemoteState) -> (SessionView, SessionView) -> Bool {
-    { a, b in
-        let sa = statusOf(a, machine: state.machines[a.machineId]).rawValue
-        let sb = statusOf(b, machine: state.machines[b.machineId]).rawValue
-        if sa != sb { return sa < sb }
-        let x = attentionMs(a), y = attentionMs(b)
-        return x != y ? x < y : jvmLess(a.id, b.id)
-    }
 }

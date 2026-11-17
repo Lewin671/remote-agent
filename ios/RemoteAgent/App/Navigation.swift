@@ -13,6 +13,7 @@
 // keep a centred column there, which `Page(gray:)` does.
 import Observation
 import RACore
+import RAProto
 import SwiftUI
 import UIKit
 
@@ -330,6 +331,23 @@ struct MainView: View {
         }
         .debugSignal("app.back") { nav.back() }
         .task { await context.schedules.follow(context.remote) }
+        .task {
+            await context.coreHost.setNavigateHandler { effect in
+                switch effect.route {
+                case .session:
+                    context.dismissNewTask?()
+                    nav.open(.session(id: effect.sessionID))
+                case .project:
+                    nav.open(.project(key: effect.projectKey))
+                case .machineSettings:
+                    nav.open(.machine(id: effect.machineID))
+                case .machineStatus:
+                    nav.open(.machineStatus(id: effect.machineID))
+                case .unspecified, .UNRECOGNIZED:
+                    break
+                }
+            }
+        }
         .modifier(ScheduleViewingObserver(store: context.schedules, page: nav.path.last, foreground: model.foreground))
         .environment(nav)
         .environment(context)
@@ -374,8 +392,10 @@ private struct FirstLevel: View {
     var body: some View {
         @Bindable var nav = nav
         let state = model.state
+        let home = context.core.home
         // What waits for the user, on the 会话 tab; it stays while the server is out of reach.
-        let waiting = state.sessions.values.reduce(0) { $0 + (needsAttention($1, machine: state.machines[$1.machineId]) ? 1 : 0) }
+        let waiting = Int(home.waitingTotal)
+        let canCreate = nav.tab == .home ? home.canStart : state.machines.keys.contains { !state.peer($0).unlinked }
         let schedules = context.schedules
         Group {
             switch nav.tab {
@@ -385,7 +405,7 @@ private struct FirstLevel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Nothing can be started out of reach of the server, nor without a computer to run it.
-        .environment(\.sidebarCreate, sidebar ? SidebarCreate(enabled: state.machines.keys.contains { !state.peer($0).unlinked }) { create(state) } : nil)
+        .environment(\.sidebarCreate, sidebar ? SidebarCreate(enabled: canCreate) { create(home) } : nil)
         .floatingBar(.bottom) {
             if sidebar {
                 SidebarFooter(tab: $nav.tab)
@@ -396,14 +416,14 @@ private struct FirstLevel: View {
                         .home: TabBadge(count: waiting),
                         .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: .tasks),
                     ],
-                    canCreate: state.machines.keys.contains { !state.peer($0).unlinked },
-                    onCreate: { create(state) })
+                    canCreate: canCreate,
+                    onCreate: { create(home) })
             }
         }
         // The bar stays at the bottom when a dialog over the page brings the keyboard up.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .toolbar(.hidden, for: .navigationBar)
-        .kitSheet(isPresented: $pick, size: pickBrowsing || listedProjects(state).count > filterOver ? .large : .fit, onDismiss: {
+        .kitSheet(isPresented: $pick, size: pickBrowsing || home.sidebarProjects.canSearch ? .large : .fit, onDismiss: {
             pickBrowsing = false
             if let chosen { newTask = chosen }
             chosen = nil
@@ -420,6 +440,8 @@ private struct FirstLevel: View {
                     nav.open(.session(id: sid))
                 }
             }
+            .onAppear { context.dismissNewTask = { newTask = nil } }
+            .onDisappear { context.dismissNewTask = nil }
             .sheetSurface()
             .presentationDetents([.large])
         }
@@ -436,13 +458,13 @@ private struct FirstLevel: View {
     }
 
     /// 新定时 opens its page. 新任务 starts in the scope's project; under every project it asks which first.
-    private func create(_ state: RemoteState) {
+    private func create(_ home: PBCoreHomeViewModel) {
         switch nav.tab {
         case .schedules:
             newSchedule = true
         case .home:
-            if case .of(let key) = resolveScope(remembered: context.homeScopes.remembered(state), state: state) {
-                newTask = NewTaskTarget(key: key)
+            if !home.scopeKey.isEmpty {
+                newTask = NewTaskTarget(key: home.scopeKey)
             } else {
                 pick = true
             }

@@ -111,12 +111,11 @@ extension Remote {
     /// Joins a session's terminal stream. Frames are sealed with the session key
     /// and numbered; each side refuses frames out of order.
     public func openTerminal(_ sid: String, listener: any TermListener) async throws -> TermConn {
-        guard let s = sessions[sid], let key = sessionKeys[sid] else {
+        guard let machineId = machineIdForSessionIfKnown(sid), let key = sessionKeys[sid] else {
             throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
         let tok = try await currentToken()
         let streamId = newRequestId()
-        let machineId = s.machineId
         let closed = OSAllocatedUnfairLock(initialState: false)
         var hello = PBTermHello()
         hello.token = tok

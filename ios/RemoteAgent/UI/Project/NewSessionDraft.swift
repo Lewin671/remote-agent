@@ -22,9 +22,14 @@ final class NewSessionDraft {
         var fileIds: [String] = []
     }
 
+    struct ConfigSelection: Equatable {
+        var value: NewConfig?
+        mutating func choose(_ c: NewConfig) { value = c }
+    }
+
     var text: String { didSet { if text != oldValue { saveText?(text) } } }
     @ObservationIgnored private let saveText: ((String) -> Void)?
-    var config: DraftConfig
+    var config: ConfigSelection
     /// The CLI picked next to the message box for this draft, or nil to use the one the project remembers.
     var agent: PBAgent?
 
@@ -49,14 +54,10 @@ final class NewSessionDraft {
     init(_ initial: NewConfig?, settled: Bool, text: String = "", saveText: ((String) -> Void)? = nil) {
         self.text = text
         self.saveText = saveText
-        config = DraftConfig(initial, settled: settled)
+        config = ConfigSelection(value: initial)
     }
 
     var drafting: Bool { !promptText(text).isEmpty }
-
-    var progress: NewSessionProgress {
-        NewSessionProgress(running: running, error: error, diskFull: diskFull, frozen: frozen, expired: expired, prompt: prompt)
-    }
 
     /// Starts a session with what is written and the images of `images`.
     /// There is no start with nothing to send, and none while an image is

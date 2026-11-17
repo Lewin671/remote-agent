@@ -120,10 +120,4 @@ import Testing
         #expect(p.recentOps.count == recentOps)
         #expect(p.recentOps.last == "op99")
     }
-
-    @Test func aPushNeverTakesTheListBack() {
-        let newer = PrefsObject(revision: 5, prefs: PBProjectPrefs())
-        #expect(newerPrefs(have: newer, got: PrefsObject(revision: 4, prefs: PBProjectPrefs())) == newer)
-        #expect(newerPrefs(have: nil, got: newer) == newer)
-    }
 }

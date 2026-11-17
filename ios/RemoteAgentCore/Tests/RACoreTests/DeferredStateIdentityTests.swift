@@ -4,28 +4,6 @@ import Testing
 @testable import RACore
 
 @Suite struct DeferredStateIdentityTests {
-    @Test func anExpiredUnknownAttemptKeepsItsKeyUntilBothErrorDisplays() throws {
-        let attempt = Attempt()
-        _ = try attempt.next { PreparedCommand(machineId: "fixture", sessionId: "", requestId: "same-request", deadlineMs: 1, command: PBCommand()) }
-        attempt.settle(CommandError(CommandError.unknownOutcome, "raw cause", outcome: .unknown))
-        let settled = try #require(attempt.settle(CommandError(CommandError.expired, "raw expiry")) as? CommandError)
-        var thrown: CommandError?
-        do {
-            _ = try attempt.next { Issue.record("expired command was recreated"); throw CancellationError() }
-            Issue.record("expired command was retried")
-        } catch { thrown = error as? CommandError }
-        let next = try #require(thrown)
-        for locale in ["zh-CN", "en", "zh-CN"] {
-            MessageLocale.$overrideForTesting.withValue(locale) {
-                let expected = L10n.errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt()
-                #expect(settled.message == expected && next.message == expected)
-                #expect(settled.localized == Attempt.expiredUnknown && next.localized == Attempt.expiredUnknown)
-                #expect(settled.unknown && next.unknown && attempt.frozen && attempt.expired)
-                #expect(attempt.pending?.requestId == "same-request")
-            }
-        }
-    }
-
     @Test func errorEqualityUsesIdentityNotRenderedText() {
         let a = UserError(L10nMessage.commonSave()), b = UserError(L10nMessage.commonSave())
         let raw = UserError("保存")
@@ -41,13 +19,11 @@ import Testing
 
     @Test func retiredHistoryIsAnExplicitViewerAndCacheState() {
         let view = viewerOutcome(.success(.retiredHistory), online: true).state
-        let buffer = Remote.Buffer(); buffer.historyFailure = .retired
         let raw = retiredHistoryError
         for locale in ["zh-CN", "en", "zh-CN"] {
             MessageLocale.$overrideForTesting.withValue(locale) {
                 #expect(view == .retiredHistory && !viewerCanRetry(view))
                 #expect(viewerNote(view, sync: .synced) == retiredHistoryError)
-                #expect(buffer.historyFailure == .retired && buffer.error == retiredHistoryError)
                 // A raw caption matching the old sentence must not choose a different state.
                 #expect(viewerNote(.corrupt(why: raw), sync: .synced) == L10n.imageIosVerificationFailed(reason: raw))
             }

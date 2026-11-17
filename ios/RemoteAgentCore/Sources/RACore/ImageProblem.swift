@@ -63,11 +63,10 @@ func localImageProblem(_ message: LocalizedMessage) -> ImageProblem? {
     case "attachment_ios_this_phone_s_pending_image_storage_is_full_send",
          "attachment_ios_the_computer_s_attachment_storage_is_full_clear_space",
          "image_the_computer_s_attachment_storage_is_full_clear_space": kind = .storage
-    case "connection_no_server", "connection_no_response", "connection_ios_no_response", "connection_ios_server_error", "errors_connection_timed_out",
+    case "connection_no_server", "connection_no_response", "connection_ios_server_error", "errors_connection_timed_out",
          "errors_connection_timed_out_reconnecting", "errors_connection_dropped_midway",
-         "errors_ios_not_connected_to_the_server", "errors_ios_not_connected_to_the_server_connect_to_make_changes",
          "errors_ios_cannot_find_the_server_check_your_network", "errors_ios_secure_connection_failed",
-         "errors_the_computer_is_offline_the_command_was_not_sent", "errors_ios_network_unavailable_the_command_was_not_sent",
+         "errors_the_computer_is_offline_the_command_was_not_sent",
          "errors_ios_this_command_expired_and_was_not_sent", "errors_ios_unsure_whether_the_computer_executed_this",
          "image_ios_needs_uploading_to_the_computer_again", "image_the_image_could_not_reach_the_computer_retry_when",
          "attachment_ios_could_not_connect_to_the_computer_retry_the_upload": kind = .offline

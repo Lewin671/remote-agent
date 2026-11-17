@@ -287,6 +287,11 @@ public func loginResponse(api: Api, account: Account) async throws -> PBLoginRes
     return try await api.auth.login(request: req).value()
 }
 
+/// Command outcome classification reported back from daemon/command execution.
+public enum Outcome: String, Sendable {
+    case notSent = "not_sent", rejected, executed, unknown, conflict
+}
+
 /// A daemon's answer, or a failure to get one. `code` is a Connect code name.
 public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomStringConvertible {
     public let code: String
@@ -338,6 +343,8 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public static let expired = "expired"
     public static let internalFailure = "internal"
 }
+
+public func uncertain(_ error: Error) -> Bool { (error as? CommandError)?.unknown ?? false }
 
 /// What kept a request from getting an answer, as far as the system says.
 enum NetworkFailure: Equatable {

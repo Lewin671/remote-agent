@@ -77,7 +77,11 @@ struct ProjectSettingsSheet: View {
             }
         }
         // What this CLI's set starts from may be a session not fetched yet.
-        .fetchEarlier(state, page: draft.unread(state))
+        .task(id: draft.unread(state)) {
+            if draft.unread(state) {
+                _ = try? await context.remote.loadMoreSessions()
+            }
+        }
         // The list is read when the sheet opens and again when the models are to be chosen from.
         .task(id: Load(machine: c.machineId, agent: c.agent, picking: shown == .model)) { await load(c) }
         // Chooses what `-settingsEdit` names (standard, effort=<e>, model=<slug>) and saves, for a script (debug builds).
@@ -162,7 +166,13 @@ struct ProjectSettingsSheet: View {
     @ViewBuilder private func reading(_ state: RemoteState, _ agent: PBAgent) -> some View {
         Group {
             if state.conn != .online || !state.sessionsError.isEmpty {
-                EarlierTail(state)
+                let text = state.sessionsError.isEmpty
+                    ? L10n.homeEarlierOffline()
+                    : L10n.homeEarlierFailedRetry(reason: state.sessionsError)
+                EarlierTail(text, retry: !state.sessionsError.isEmpty && state.conn == .online) {
+                    let remote = context.remote
+                    Task { _ = try? await remote.loadMoreSessions() }
+                }
             } else {
                 Text(L10n.projectsIosReadingCli(agent: agentName(agent))).font(.subheadline).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
             }

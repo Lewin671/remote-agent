@@ -75,7 +75,7 @@ struct ServerDetails: View {
             Code(state.errorDetail, maxLines: 4).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10)
         }
         Btn(L10n.connectionIosRetryNow()) {
-            model.remote?.reconnectNow()
+            model.reconnectNow()
             onClose()
         }
         .padding(.top, 14)

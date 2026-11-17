@@ -3,8 +3,8 @@ import Foundation
 import RAProto
 import os
 
-/// Owns call/delivery evidence and logical streams; socket lifetimes cannot
-/// settle authorizations or call the product listener directly.
+/// Owns transport route selection and logical streams; Core owns command
+/// lifecycle, retries, and outcome classification.
 final class Link: Sendable {
     typealias DirectBuilder = @Sendable (@escaping @Sendable () throws -> Void) -> (any PathAttempt)?
     let router: Router
@@ -28,41 +28,27 @@ final class Link: Sendable {
         if states != peers.value { peers.set(states) }
         return states
     }
-    func call<T: Sendable>(_ prepared: PreparedCommand, prior: Bool, work: @Sendable (DispatchState.Call) async throws -> T) async throws -> T {
-        let call = prepared.dispatch.open(prior: prior)
-        defer { call.close() }
-        do { return try await work(call) }
-        catch {
-            let command = error as? CommandError
-            if call.uncertain && command?.unknown != true && !(command?.fromDaemon == true && command?.outcome != .notSent) {
-                throw CommandError.unknownBecause(errorText(error))
-            }
-            throw error
-        }
+
+    /// `direct` gives a DirectPath attempt when routing selects direct; otherwise the relay carries it.
+    func delivery(
+        attemptId: String = newRequestId(),
+        direct: DirectBuilder? = nil,
+        handoff: @escaping @Sendable () throws -> Void = {}
+    ) -> Delivery {
+        Delivery(path: relay, attemptId: attemptId, direct: direct, handoff: handoff)
     }
 
-    /// `direct` gives a DirectPath attempt for a request the routing sends there, or nothing: then the relay carries it.
-    func delivery(_ call: DispatchState.Call, direct: DirectBuilder? = nil) -> Delivery {
-        Delivery(path: router.path, evidence: call.delivery(), direct: direct)
-    }
     final class Delivery: PathAttempt {
         var attemptId: String { attempt.attemptId }
         var isDirect: Bool { attempt.isDirect }
         private let attempt: any PathAttempt
-        private let evidence: DispatchState.Call.Delivery
-        init(path: any Path, evidence: DispatchState.Call.Delivery, direct: DirectBuilder? = nil) {
-            self.evidence = evidence
-            let handoff: @Sendable () throws -> Void = { try evidence.dispatch() }
-            attempt = direct?(handoff) ?? path.attempt(handoff: handoff)
+        init(path: RelayPath, attemptId: String, direct: DirectBuilder? = nil, handoff: @escaping @Sendable () throws -> Void) {
+            attempt = direct?(handoff) ?? path.attempt(attemptId: attemptId, handoff: handoff)
         }
         func prepare(prior: Bool) async throws { try await attempt.prepare(prior: prior) }
         func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse { try await attempt.send(machineId: machineId, command: command) }
         func refreshAuth(prior: Bool) async throws { try await attempt.refreshAuth(prior: prior) }
-        func refusal(_ error: ConnectError) -> PathRefusal? {
-            let proof = attempt.refusal(error)
-            if proof != nil { evidence.notForwarded() }
-            return proof
-        }
+        func refusal(_ error: ConnectError) -> PathRefusal? { attempt.refusal(error) }
     }
 
     func openStream(stop: @escaping @Sendable (Bool) -> Void, onClose: @escaping @Sendable (String) -> Void) -> Stream {

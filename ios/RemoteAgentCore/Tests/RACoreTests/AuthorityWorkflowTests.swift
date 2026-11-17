@@ -677,11 +677,28 @@ extension AuthorityWorkflowTests {
             try await authority.resumeSecurityOperation()
             return value.member.id
         }
+        func pullLists() async -> PBCoreListsFetchedEvent {
+            _ = await remote.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
+            let fetched = await remote.executeRpc(PBCoreRpcEffect.with {
+                $0.opID = 2
+                $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
+            }).listsFetched
+            var s = RemoteState(); s.conn = .online; s.link = .online; s.synced = true
+            for m in fetched.machines {
+                s.machines[m.machineID] = MachineView(id: m.machineID, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.hasMeta ? m.meta : nil, metaRev: m.metaRev)
+                s.currentMachines.insert(m.machineID)
+            }
+            for sess in fetched.sessions {
+                s.sessions[sess.sessionID] = SessionView(id: sess.sessionID, machineId: sess.machineID, info: sess.hasMeta ? sess.meta : nil, metaRev: sess.metaRev, lastSeq: sess.lastSeq, updatedMs: sess.updatedMs, listedEndedMs: sess.listedEndedMs)
+            }
+            await remote.publishSyncState(s)
+            return fetched
+        }
         let machine = try await pair()
         try cli.startDaemon()
-        remote.start()
+        _ = await remote.ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
         for _ in 0..<1000 {
-            _ = await remote.refresh()
+            _ = await pullLists()
             if remote.state.value.machines[machine]?.online == true { break }; try await realSleep(10)
         }
         try #require(remote.state.value.machines[machine]?.online == true)
@@ -691,16 +708,17 @@ extension AuthorityWorkflowTests {
         let result = try await remote.machineCommand(machine, command)
         let sid = result.createSession.session.id
         #expect(!sid.isEmpty)
-        let feed = remote.events(sid)
-        let follow = Task { for await _ in feed.updates() { if Task.isCancelled { break } } }
-        defer { follow.cancel() }
         var answered = false
         for _ in 0..<1200 {
-            remote.retryEvents(sid)
-            if feed.value.events.contains(where: { $0.agentMessage.text.contains("RA_AUTHORITY_ROUNDTRIP_OK") }) { answered = true; break }
+            let page = await remote.executeRpc(PBCoreRpcEffect.with {
+                $0.opID = 3
+                $0.getEvents = PBCoreGetEventsRpc.with { $0.sessionID = sid; $0.afterSeq = 0; $0.limit = 500 }
+            }).eventsPageFetched
+            if page.events.contains(where: { $0.hasEvent && $0.event.agentMessage.text.contains("RA_AUTHORITY_ROUNDTRIP_OK") }) { answered = true; break }
             try await realSleep(100)
         }
         #expect(answered, "real Codex response must return through daemon and relay to Swift Remote")
+        _ = await pullLists()
         let seq = remote.state.value.sessions[sid]?.lastSeq ?? 0
         try await authority.removeDevice(machine)
         let api = try Api(server: server.url, http: HTTP()), tok = try await remote.currentToken()
@@ -713,7 +731,7 @@ extension AuthorityWorkflowTests {
         try cli.startDaemon()
         var retained = false
         for _ in 0..<1000 {
-            _ = await remote.refresh()
+            _ = await pullLists()
             if remote.state.value.sessions[sid]?.machineId == replacement { retained = true; break }
             try await realSleep(25)
         }

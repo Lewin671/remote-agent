@@ -1,6 +1,7 @@
 import Foundation
 import RAProto
 import Testing
+
 @testable import RACore
 
 private func fileCommand(create: Bool) -> PBCommand {
@@ -9,8 +10,8 @@ private func fileCommand(create: Bool) -> PBCommand {
         else { $0.send.sessionID = "s1"; $0.send.requestID = "message-1"; $0.send.text = "keep files"; $0.send.fileIds = ["file-1"] }
     }
 }
-/// Only for a Remote that was never started: a running one republishes its own
-/// machines at any time, dropping what is set here.
+
+/// Only for a Remote that was never started: shows fixed machine capability snapshot.
 private func showFileSupport(_ remote: Remote, machine: String, supported: Bool?) {
     var state = remote.current
     state.machines[machine] = MachineView(id: machine, online: true, lastSeenMs: 0,
@@ -27,7 +28,6 @@ private func showFileSupport(_ remote: Remote, machine: String, supported: Bool?
         var shown = remote.current
         shown.sessions["s1"] = SessionView(id: "s1", machineId: "m")
         remote.state.set(shown)
-        // Only the visible snapshot has the session; no live route was loaded.
         do {
             if prepareOnly { _ = try await remote.prepare("s1", fileCommand(create: false)) }
             else { _ = try await remote.command("s1", fileCommand(create: false)) }
@@ -50,115 +50,5 @@ private func showFileSupport(_ remote: Remote, machine: String, supported: Bool?
         if create { text.createSession.fileIds = []; text.createSession.imageIds = ["image"] }
         else { text.send.fileIds = []; text.send.imageIds = ["image"] }
         _ = try remote.prepare(machineId: "m", sessionId: create ? "" : "s1", text)
-    }
-}
-
-extension ServerTests {
-    @Suite(.serialized) struct FileCapabilityForwardTests {
-        /// The machine advertises file support through its signed meta, as the daemon
-        /// does, and `remote` has taken it in. A running Remote republishes from what
-        /// it holds, so the change must reach it this way, not be set on its snapshot.
-        private func advertise(_ w: World, _ remote: Remote, fileUpload: Bool) async throws {
-            try await w.daemon.putMachine("fixture-mac", fileUpload: fileUpload)
-            _ = try await remote.awaitState("file support \(fileUpload)") { fileSupported($0.machines[w.daemon.id]) == fileUpload }
-        }
-
-        private func world(_ body: (World, Remote) async throws -> Void) async throws {
-            try await World.run(setUp: { w in
-                try await w.daemon.putMachine("fixture-mac", fileUpload: true)
-                try await w.daemon.putSession("s1", session("/work/example", "files"))
-                try await w.daemon.connect()
-            }) { w in
-                let r = try await w.client(); r.start()
-                _ = try await r.awaitState("machine and session") {
-                    $0.conn == .online && $0.sessions["s1"]?.info != nil && fileSupported($0.machines[w.daemon.id])
-                }
-                try await body(w, r)
-            }
-        }
-
-        @Test(arguments: [false, true])
-        func aPreparedOrUnknownRequestIsBlockedUntilSupportReturns(create: Bool) async throws {
-            try await world { w, r in
-                await w.daemon.setAnswer { _, command in
-                    if case .createSession? = command.kind { return .with { $0.createSession.session.id = "created" } }
-                    return FakeDaemon.defaultResult(command)
-                }
-                let cmd = fileCommand(create: create), a = Attempt()
-                let p = try a.next { try r.prepare(machineId: w.daemon.id, sessionId: create ? "" : "s1", cmd) }
-                try await advertise(w, r, fileUpload: false)
-                do { _ = try await r.forward(p); Issue.record("prepared file request crossed the disabled capability") }
-                catch { #expect(!uncertain(error) && errorText(error).contains("更新")) }
-                #expect(await w.daemon.commands.poll(30) == nil)
-                try await advertise(w, r, fileUpload: true)
-                _ = try await r.forward(p)
-                let first = try #require(await w.daemon.commands.poll(1000))
-                a.settle(CommandError(CommandError.unknownOutcome, "lost", outcome: .unknown))
-                try await advertise(w, r, fileUpload: false)
-                do { _ = try await r.forward(p, retryOfUnknown: true); Issue.record("unknown file request crossed the disabled capability") }
-                catch {
-                    #expect(uncertain(error) && errorText(error).contains("更新"))
-                    a.settle(error)
-                }
-                #expect(a.frozen && a.pending === p)
-                #expect(await w.daemon.commands.poll(30) == nil)
-                try await advertise(w, r, fileUpload: true)
-                _ = try await r.forward(try a.next { throw UserError("must reuse the original") }, retryOfUnknown: true)
-                let again = try #require(await w.daemon.commands.poll(1000))
-                #expect(again.0.requestID == first.0.requestID && again.0.deadlineMs == first.0.deadlineMs)
-                #expect(again.1 == first.1)
-            }
-        }
-
-        @Test func signingCannotCarryAFilePastACapabilityRefresh() async throws {
-            try await world { w, r in
-                let p = try r.prepare(machineId: w.daemon.id, sessionId: "s1", fileCommand(create: false))
-                let hash = try await r.authorizationStateHash()
-                _ = p.authorizationResult(stateHash: hash) { verify in Task {
-                    let sealed = try await r.authorizePrepared(p, verifyObservation: verify)
-                    try await advertise(w, r, fileUpload: false)
-                    return sealed
-                } }
-                do { _ = try await r.forward(p); Issue.record("file was forwarded after capability changed while signing") }
-                catch { #expect(errorText(error).contains("更新")) }
-                #expect(await w.daemon.commands.poll(30) == nil)
-            }
-        }
-
-        @Test func textAndImagesCanStillReachTheMachineWithoutFileSupport() async throws {
-            try await world { w, r in
-                try await advertise(w, r, fileUpload: false)
-                var command = fileCommand(create: false)
-                command.send.fileIds = []; command.send.imageIds = ["image-1"]
-                _ = try await r.command("s1", command)
-                let received = try #require(await w.daemon.commands.poll(1000))
-                #expect(received.1.send.text == "keep files" && received.1.send.imageIds == ["image-1"])
-            }
-        }
-
-        @Test func anAutomaticNetworkRetryRechecksCapabilityAndKeepsUnknown() async throws {
-            try await world { w, r in
-                let calls = Counter(), active = Feed<Remote?>(nil)
-                let http = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/Forward") == true {
-                        if calls.increment() == 1, let current = active.value {
-                            try await advertise(w, current, fileUpload: false)
-                            throw URLError(.timedOut)
-                        }
-                    }
-                    return request
-                }
-                let retrying = try await w.remote(try await w.join(), http: http)
-                active.set(retrying); retrying.start()
-                _ = try await retrying.awaitState("retrying machine") {
-                    $0.conn == .online && $0.sessions["s1"]?.info != nil && fileSupported($0.machines[w.daemon.id])
-                }
-                let p = try retrying.prepare(machineId: w.daemon.id, sessionId: "s1", fileCommand(create: false))
-                do { _ = try await retrying.forward(p); Issue.record("expected unknown result") }
-                catch { #expect(uncertain(error) && errorText(error).contains("更新")) }
-                #expect(calls.value == 1)
-                #expect(await w.daemon.commands.poll(30) == nil)
-            }
-        }
     }
 }

@@ -391,20 +391,6 @@
     }
   },
   {
-    "key": "projects.ios_no_sessions",
-    "zh-CN": "这个项目还没有会话",
-    "en": "This project has no sessions yet.",
-    "notes": "项目页空提示；网页首页原句没有句号。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "projects.ios_reading_cli",
     "zh-CN": "正在读取 {agent} 上次的设置…",
     "en": "Reading the previous settings for {agent}…",

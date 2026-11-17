@@ -69,8 +69,7 @@ struct RecoveryIngestionTests {
             w.remote.close()
             TestSecurity.remove(w.server)
         }
-        await w.remote.ingestRecoveryTest(seq: 1, envelope: w.before)
-        await w.remote.ingestRecoveryTest(seq: 2, envelope: w.after)
+        await w.remote.prepareRecoveryIngestion(machine: w.machine.deviceId, seed: w.seed)
         var header = PBHeader()
         header.kind = .event
         header.machineID = w.machine.deviceId
@@ -81,16 +80,15 @@ struct RecoveryIngestionTests {
         event.seq = 3
         event.agentMessage.text = "live message"
         let live = try w.fixture.seal(w.machine, header, event, seed: w.seed)
-        await w.remote.ingestRecoveryTest(seq: 3, envelope: live, history: false)
-        let snapshot = await w.remote.recoveryIngestionSnapshot()
-        #expect(snapshot.events.count == 3)
-        #expect(snapshot.unavailableCount == 1)
-        #expect(snapshot.verifiedEvents.map(\.seq) == [2, 3])
-        if snapshot.events.count == 3 {
-            #expect(snapshot.events[0].kind == nil)
-            #expect(snapshot.events[2].agentMessage.text == "live message")
-        }
-        #expect(snapshot.error == nil)
+        let items = await [
+            w.remote.decodeRecoveryEvent(seq: 1, machine: w.machine.deviceId, envelope: w.before),
+            w.remote.decodeRecoveryEvent(seq: 2, machine: w.machine.deviceId, envelope: w.after),
+            w.remote.decodeRecoveryEvent(seq: 3, machine: w.machine.deviceId, envelope: live, history: false),
+        ]
+        #expect(items.count == 3)
+        #expect(items[0].unavailable && items[0].hasEvent && items[0].event.kind == nil)
+        #expect(items[1].verified && !items[1].unavailable && items[1].seq == 2)
+        #expect(items[2].verified && items[2].event.agentMessage.text == "live message")
     }
     @Test func failedOriginIsNeverAnUnavailableHistorySkip() async throws {
         let w = try await world()
@@ -105,11 +103,8 @@ struct RecoveryIngestionTests {
             _ = try await security.openHistory(forged, sessionSeed: w.seed)
             Issue.record("forged origin accepted")
         } catch { #expect(error as? DeviceSecurity.Failure == .untrusted) }
-        await w.remote.ingestRecoveryTest(seq: 1, envelope: forged)
-        let snapshot = await w.remote.recoveryIngestionSnapshot()
-        #expect(snapshot.events.isEmpty)
-        #expect(snapshot.error != nil)
-        #expect(snapshot.unavailableCount == 0)
+        let decoded = await w.remote.decodeRecoveryEvent(seq: 1, machine: w.machine.deviceId, envelope: forged)
+        #expect(decoded.broken && !decoded.unavailable)
     }
     @Test func changedRouteAndCurrentCiphertextStillStopIngestion() async throws {
         for current in [false, true] {
@@ -118,31 +113,27 @@ struct RecoveryIngestionTests {
                 w.remote.close()
                 TestSecurity.remove(w.server)
             }
-            if current { await w.remote.ingestRecoveryTest(seq: 1, envelope: w.before) }
             var envelope = current ? w.after : w.before
             if current { envelope.ciphertext[0] ^= 1 }
-            await w.remote.ingestRecoveryTest(seq: 2, envelope: envelope)
-            let snapshot = await w.remote.recoveryIngestionSnapshot()
-            #expect(snapshot.events.count == (current ? 1 : 0))
-            #expect(snapshot.unavailableCount == (current ? 1 : 0))
-            #expect(snapshot.error != nil)
+            let decoded = await w.remote.decodeRecoveryEvent(seq: current ? 2 : 1, machine: w.machine.deviceId, envelope: envelope)
+            if current {
+                #expect(decoded.broken && !decoded.unavailable)
+            } else {
+                #expect(decoded.unavailable)
+            }
         }
     }
 }
 
 extension Remote {
     func prepareRecoveryIngestion(machine: String, seed: Data) {
-        sessions["s"] = SessionView(id: "s", machineId: machine)
+        sessionMachines["s"] = machine
         sessionKeys["s"] = seed
-        let buffer = Buffer()
-        buffer.usedAt = clock()
-        buffers["s"] = buffer
     }
-    func ingestRecoveryTest(seq: UInt64, envelope: PBEnvelope, history: Bool = true) async {
+    func decodeRecoveryEvent(seq: UInt64, machine: String, envelope: PBEnvelope, history: Bool = true) async -> PBCorePlainEvent {
         var event = PBStoredEvent()
         event.seq = seq
         event.envelope = envelope
-        await ingest("s", [event], fillGaps: false, save: false, history: history)
+        return await decodeEvents([event], machineId: machine, sessionId: "s", history: history, trackRef: false).first!
     }
-    func recoveryIngestionSnapshot() -> SessionEvents { eventFeed("s").value }
 }

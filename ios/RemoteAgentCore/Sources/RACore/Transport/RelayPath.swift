@@ -39,14 +39,19 @@ final class RelayPath: Path {
         return status
     }
     func attempt(handoff: @escaping @Sendable () throws -> Void) -> any PathAttempt {
-        Attempt(path: self, handoff: handoff)
+        attempt(attemptId: newRequestId(), handoff: handoff)
+    }
+    func attempt(attemptId: String, handoff: @escaping @Sendable () throws -> Void) -> any PathAttempt {
+        Attempt(attemptId: attemptId.isEmpty ? newRequestId() : attemptId, path: self, handoff: handoff)
     }
     private final class Attempt: PathAttempt {
-        let attemptId = newRequestId()
+        let attemptId: String
         private let path: RelayPath
         private let handoff: @Sendable () throws -> Void
         private let epoch = OSAllocatedUnfairLock(initialState: "")
-        init(path: RelayPath, handoff: @escaping @Sendable () throws -> Void) { self.path = path; self.handoff = handoff }
+        init(attemptId: String, path: RelayPath, handoff: @escaping @Sendable () throws -> Void) {
+            self.attemptId = attemptId; self.path = path; self.handoff = handoff
+        }
         func prepare(prior: Bool) async throws { try await path.prepareToken(prior) }
         func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse {
             let current = try await path.api.relayEpoch()

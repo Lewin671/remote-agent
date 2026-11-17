@@ -290,22 +290,6 @@
 			<string>%1$lld minutes left</string>
 		</dict>
 	</dict>
-	<key>home_ios_approval_timeout</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>%1$lld minute left; denied on timeout</string>
-			<key>other</key>
-			<string>%1$lld minutes left; denied on timeout</string>
-		</dict>
-	</dict>
 	<key>home_ios_badge_sessions</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

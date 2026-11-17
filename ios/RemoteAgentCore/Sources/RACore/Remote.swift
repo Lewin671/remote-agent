@@ -1,17 +1,9 @@
-// Remote keeps the app in sync with the server, as web/src/remote.ts and
-// Android's core/Remote.kt do: it logs in, holds the decrypted machines,
-// sessions and events, follows the push stream, and sends sealed commands.
-//
-// It is an actor: all state changes run one at a time and interleave only
-// where they await, like the page's event loop. So after every await the
-// code checks again that what it was doing is still wanted: each connection
-// has a generation, and a step of a replaced one changes nothing. What it
-// knows is published as value snapshots (`state`, `events`), which a screen
-// may read from any thread.
-//
-// The rest of the actor is in RemoteLists.swift (machines, sessions, pages,
-// preferences, devices), RemoteEvents.swift (histories), RemoteCommands.swift
-// and RemoteTerminal.swift.
+// Transport & Security Gate executor for iOS.
+// Sync state (connection machine, directory/paging, event buffers/LRU, live polling,
+// prefs CAS, command retries/outcome classification) lives in Go `clientcore/sync`.
+// `Remote` only provides token login, WebSocket stream frames, RPC execution,
+// DirectEngine bypass, CipherCache I/O, and cryptographic opening/sealing, plus
+// transitional `Feed` mirrors pushed from Core's `SyncStateView` / `SessionDataView`.
 import Connect
 import Foundation
 import RAProto
@@ -20,44 +12,51 @@ import os
 
 public let commandTTLMs: Int64 = 60_000
 
-/// How long after the lists could not be fetched they are asked for again; twice as long each time, up to half a minute.
-let listRetryMs: Int64 = 2_000
-/// Matches server maxFrameBytes and Android STREAM_FRAME_BYTES.
 private let streamFrameBytes = 2 << 20
 
-/// An immutable local intent; retries reuse its request ID, deadline and payload.
+/// An immutable local intent for Step 3-4 transitional commands until those screens migrate to Core.
 public final class PreparedCommand: @unchecked Sendable {
     public let machineId: String
     public let sessionId: String
     public let requestId: String
     public let deadlineMs: Int64
-    /// Immutable plaintext intent stays local so every retry can recheck its requirements.
     let command: PBCommand
     private let payload: Result<Data, Error>
     public func commandBytes() throws -> Data { try payload.get() }
+
     private struct Stored: Codable {
         let machineId, sessionId, requestId: String
         let deadlineMs: Int64
         let payload: Data
     }
-    /// Store this value only through the account's sealed local storage.
+
     public func recordBytes() throws -> Data {
-        try JSONEncoder().encode(Stored(machineId:machineId,sessionId:sessionId,requestId:requestId,deadlineMs:deadlineMs,payload:commandBytes()))
+        try JSONEncoder().encode(Stored(
+            machineId: machineId, sessionId: sessionId, requestId: requestId,
+            deadlineMs: deadlineMs, payload: commandBytes()))
     }
+
     public init(recordBytes: Data, prior: Bool) throws {
-        dispatch = DispatchState(prior: prior)
-        let record=try JSONDecoder().decode(Stored.self,from:recordBytes)
-        machineId=record.machineId;sessionId=record.sessionId;requestId=record.requestId;deadlineMs=record.deadlineMs
+        self.mayHaveRunFlag = OSAllocatedUnfairLock(initialState: prior)
+        let record = try JSONDecoder().decode(Stored.self, from: recordBytes)
+        machineId = record.machineId
+        sessionId = record.sessionId
+        requestId = record.requestId
+        deadlineMs = record.deadlineMs
         payload = .success(record.payload)
-        command=try PBCommand(serializedBytes:record.payload)
+        command = try PBCommand(serializedBytes: record.payload)
     }
+
+    private let mayHaveRunFlag: OSAllocatedUnfairLock<Bool>
+    public var mayHaveRun: Bool { mayHaveRunFlag.withLock { $0 } }
+    func markMayHaveRun() { mayHaveRunFlag.withLock { $0 = true } }
+
     private let sealLock = NSLock()
     private var sealResult: SharedResult<PBEnvelope>?
     private var sealID: UUID?
     private var sealState: Data?
     private var everAuthorized = false
-    let dispatch: DispatchState
-    public var mayHaveRun: Bool { dispatch.unresolved }
+
     private func clearAuthorization(_ id: UUID) {
         sealLock.lock()
         defer { sealLock.unlock() }
@@ -67,11 +66,13 @@ public final class PreparedCommand: @unchecked Sendable {
             sealState = nil
         }
     }
+
     private func authorized(_ id: UUID) {
         sealLock.lock()
         defer { sealLock.unlock() }
         if sealID == id { everAuthorized = true }
     }
+
     func authorizationResult(
         stateHash: Data, _ make: @escaping @Sendable (Bool) -> Task<PBEnvelope, Error>
     ) -> SharedResult<PBEnvelope> {
@@ -106,27 +107,18 @@ public final class PreparedCommand: @unchecked Sendable {
         self.requestId = requestId
         self.deadlineMs = deadlineMs
         self.command = command
-        self.dispatch = DispatchState(prior: false)
+        self.mayHaveRunFlag = OSAllocatedUnfairLock(initialState: false)
         self.payload = Result { try command.serializedData() }
     }
 }
 
-/// A login as the server gave it, for the app to keep between launches
-/// (architecture §10 「WebSocket」: both ends keep the last token and open the
-/// stream with it). It is a bearer credential: the app stores it with the
-/// account's keys, and it describes itself without the token.
-public struct SavedLogin: Equatable, Sendable, CustomStringConvertible,
-    CustomDebugStringConvertible, CustomReflectable
-{
-    public let token: String
-    /// When the server stops taking it, in milliseconds since 1970.
-    public let expiresMs: Int64
-
+public struct SavedLogin: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var token: String
+    public var expiresMs: Int64
     public init(token: String, expiresMs: Int64) {
         self.token = token
         self.expiresMs = expiresMs
     }
-
     public var description: String { "SavedLogin(expiresMs=\(expiresMs))" }
     public var debugDescription: String { description }
     public var customMirror: Mirror { Mirror(self, children: ["expiresMs": expiresMs]) }
@@ -150,286 +142,155 @@ func withTimeout<T: Sendable>(
     }
 }
 
-public actor Remote {
-    private let peerResponder = PeerResponder()
-    /// Direct paths (docs/transport.md §2): nil when the app brought no WebRTC SDK, then only the relay carries traffic.
-    nonisolated let direct: DirectEngine?
-    /// Bumped whenever something a screen shows about a direct path changed.
-    public nonisolated let directChanges = Feed<Int>(0)
-    var directTransfers: [String: UploadKind] = [:]
-    private let peerBudget = StreamByteBudget(limit: 8 * 65536)
-    private func peerFrame(_ bytes: Data, socket: any FrameStream, generation: Int, network: UInt64) async {
-        defer { peerBudget.release(65536) }
-        guard self.generation == generation, networkGeneration == network, ws === socket else { return }
-        do {
-            let record = try await securitySession().record()
-            let reply = await peerResponder.receive(bytes, record: record, seed: account.deviceSeed, now: UInt64(max(1,clock())))
-            guard self.generation == generation, networkGeneration == network, ws === socket,
-                  let reply, let current = try? await securitySession().record(), current.member,
-                  max(UInt64(max(1,clock())),current.floor) < (try await securitySession().leaseExpiration()),
-                  try DeviceSecurity.stateHash(current.state) == DeviceSecurity.stateHash(record.state) else { return }
-            socket.send(reply)
-        } catch { /* Authenticated peer refusal is optional; relay stays available. */ }
-    }
-    public nonisolated let account: Account
-    public nonisolated let api: Api
-    lazy var deviceLink = Link(relay: RelayPath(api: api, sleep: sleep,
-        prepare: { [weak self] prior in
-            guard let self else { throw DeviceSecurity.Failure.storage }
-            try await self.prepareRelayAttempt(prior)
-        }, token: { [weak self] in
-            guard let self else { throw DeviceSecurity.Failure.storage }
-            return await self.relayToken()
-        }, renew: { [weak self] prior in
-            guard let self else { throw DeviceSecurity.Failure.storage }
-            try await self.renewRelayAttempt(prior)
-        }))
-    private func prepareRelayAttempt(_ prior: Bool) async throws {
-        if token.isEmpty { _ = try await relogin(prior) }
-    }
-    private func relayToken() -> String { token }
-    private func renewRelayAttempt(_ prior: Bool) async throws { _ = try await relogin(prior) }
-    public nonisolated func peer(_ machineId: String?) -> PeerState { state.value.peer(machineId) }
-    /// Machines, sessions, devices and the connection, as far as they are known.
-    public nonisolated let state: Feed<RemoteState>
+public final actor Remote {
+    // MARK: - Types
 
-    nonisolated let http: HTTP
-    nonisolated let device: SigningKey
-    nonisolated let cache: (any CipherCache)?
-    nonisolated let log: @Sendable (String) -> Void
-    nonisolated let clock: @Sendable () -> Int64
-    nonisolated let monotonic: @Sendable () -> Int64
-    var recovery: Recovery
-    nonisolated let sleep: Sleeper
-    nonisolated let jitter: @Sendable () -> Double
-    nonisolated let frameParser = OSAllocatedUnfairLock<@Sendable (Data) throws -> PBServerFrame>(
-        initialState: { try PBServerFrame(serializedBytes: $0) }
-    )
-    /// Stream frames waiting to be handled before the stream is dropped and caught up from history.
-    nonisolated let frameQueue: Int
-    nonisolated let frameQueueBytes: Int
-    nonisolated let historyIdleMs: Int64
-    nonisolated let historyIdleCount: Int
-    nonisolated let historyIdleBytes: Int64
-    nonisolated let streamOpenMs: Int64
-    /// How long a lost connection is only being remade, before the server counts as out of reach.
-    nonisolated let linkGraceMs: Int64
-
-    var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
-    public func onSessionRemoved(_ handler: @escaping @Sendable (String) async -> Void) { sessionRemovalHandler = handler }
-
-    var machines: [String: MachineView] = [:]
-    var sessions: [String: SessionView] = [:]
-    var sessionKeys: [String: Data] = [:]
-    var buffers: [String: Buffer] = [:]
-    /// The histories handed out, by session. Read from any thread: `events` is not isolated.
-    nonisolated let eventFeeds = OSAllocatedUnfairLock<[String: Feed<SessionEvents>]>(
-        initialState: [:])
-    var conn = ConnState.connecting
-    var error = ""
-    var clockWarning = ""
-    var loaded = false
-    var offlineSince: Int64 = 0
-    var errorDetail = ""
-    // The device has a network, by the system's word; a server whose address
-    // does not resolve says the same of a network that only looks up.
-    var network = true
-    var unresolved = false
-    var synced = false
-    var grace: Scheduled?
-    var waited = false
-    var prefs: PrefsObject?
-    var devices: [String: DeviceView] = [:]
-    var archiveMachines: Set<String> = []
-    var trustedMembers: [String: DeviceSecurity.Member] = [:]
-    var trustedMetadata: [String: PBEnvelope] = [:]
-    struct DirectoryLoad: Sendable {
+    private struct LoginFlight {
         let id: UUID
-        let head: Data
-        let version: Int
+        let generation: Int
         let task: Task<Void, Never>
-        let result: SharedResult<Void>
+        let result: SharedResult<String>
     }
-    var directoryLoad: DirectoryLoad?
-    var directoryVersion = 0
-    var directoryHead: Data?
-    var recoveryObjectsPending = true
-    var authorityDeviceId = ""
-    var leaseEndMs: UInt64 = 0
-    var liveSnapshots: [String: PBLiveSnapshot] = [:]
-    var liveErrors: [String: String] = [:]
-    var liveJobs: [String: Task<Void, Never>] = [:]
 
-    // Pushes seen per machine, session and machine removal, so that a list
-    // fetched before a push cannot undo it.
-    var machinePushes: [String: Int] = [:]
-    var sessionPushes: [String: Int] = [:]
-    var removedPushes: [String: Int] = [:]
-    // And per device, registered, changed or removed: the same for the list of devices.
-    var devicePushes: [String: Int] = [:]
-
-    var token = ""
-    var tokenExpires: Int64 = 0
-    /// Hears of every login the server gives and of the one in use being refused (`keepLogin`).
-    var onLogin: (@Sendable (SavedLogin?) -> Void)?
-    var ws: (any FrameStream)?
-    struct MainLeg: Sendable {
-        let receive: Task<Void,Never>
-        let process: Task<Void,Never>
-        let queue: AsyncStream<Data>.Continuation
-    }
-    var mainLegs: [ObjectIdentifier: MainLeg] = [:]
-    func retireMainLeg(_ socket: any FrameStream) {
-        direct?.detach(socket)
-        if let leg=mainLegs.removeValue(forKey:ObjectIdentifier(socket)) {
-            leg.queue.finish();leg.receive.cancel();leg.process.cancel()
+    final class StreamLeg {
+        let legId: UInt64
+        let socket: any FrameStream
+        var receiveTask: Task<Void, Never>?
+        var processTask: Task<Void, Never>?
+        var queue: AsyncStream<Data>.Continuation?
+        var closed = false
+        init(legId: UInt64, socket: any FrameStream) {
+            self.legId = legId
+            self.socket = socket
         }
-        socket.cancel()
-    }
-    var candidate: (any FrameStream)?
-    var dialing = false
-    var wantedConnection = false
-    var everReady = false
-    var startedOnce = false
-    var networkGeneration: UInt64 = 0
-    var verifiedNetworkGeneration: UInt64 = 0
-    var networkSignature = ""
-    var activity: PathActivity?
-    var liveness: Task<Void,Never>?
-    var running = false
-    var removed = false
-    var closed = false
-    let signingIn = Gate()
-    struct LoginFlight: Sendable {let id:UUID;let generation:UInt64;let task:Task<Void,Never>;let result:SharedResult<String>}
-    var loginFlight:LoginFlight?
-    var loginGeneration:UInt64=0
-    var securityNetworkReset:(UInt64,Task<Void,Never>)?
-    var reconnect: Scheduled?
-    var connecting: Task<Void, Never>?
-    var opening: Scheduled?
-    // Bumped whenever the connection in use changes, and by stop: a
-    // connection attempt suspended in login when the app went to the
-    // background must not open the stream afterwards, and a frame of a
-    // replaced socket must not be taken.
-    var generation = 0
-    var lifecycleGeneration = 0
-    /// Putting what the cache holds in place, started once; no connection is made before it is done.
-    var restoring: Task<Void, Never>?
-    var restoredResult: SharedResult<Void>?
-    var historySweep: Task<Void, Never>?
-    var useSeq = 0
-    var timerSeq = 0
-
-    // The listing of ended sessions comes a page at a time. next is where the
-    // page after the ones fetched starts, firstEnd where the first page ended:
-    // what the cache keeps is that page. A fetch of the first page starts the
-    // listing over (listing): a page asked for before that continued the old
-    // one and is asked for again from the new cursor. While a first page is on
-    // its way (listsInFlight) no other page is asked for. Of several first
-    // pages in flight, as when a stream was replaced while the one before was
-    // still being listed, only the latest asked for is put in place (refreshRun).
-    var listsInFlight = 0
-    var listWaiters: [CheckedContinuation<Void, Never>] = []
-    var refreshRun = 0
-    let applying = Gate()
-    var listRetry: Scheduled?
-    var listBackoff = listRetryMs
-    // The same for the preferences while there is no copy of them at all: nothing of them can be changed until one is read.
-    var prefsRetry: Scheduled?
-    var prefsBackoff = listRetryMs
-    var next: SessionPlace?
-    var firstEnd: SessionPlace?
-    var firstPage = false
-    var listing = 0
-    var pageJob: Task<Bool, Error>?
-    var allJob: Task<Void, Error>?
-    var byId: [String: Task<Bool, Error>] = [:]
-    var pageError = ""
-    var listed: Set<String> = []
-    var models: [String: ModelList] = [:]
-
-    /// What the lifecycle calls post. They are not isolated, so that a screen
-    /// calls them without awaiting, and they take effect in the order called.
-    enum Op: Sendable {
-        case start, stop, close, reconnectNow, clearRemoved, networkChanged
-        case keepLogin(SavedLogin?, @Sendable (SavedLogin?) -> Void)
-        case setNetwork(Bool)
-        case touch(String)
-        case followers(String)
-        case retryEvents(String)
     }
 
-    private struct NetworkInbox: Sendable { var pending: (String,Bool)?; var queued = false }
-    private nonisolated let networkInbox = OSAllocatedUnfairLock(initialState: NetworkInbox())
-    private nonisolated let ops: AsyncStream<Op>.Continuation
-
-    nonisolated func post(_ op: Op) { ops.yield(op) }
-
-    /// A timer that is someone's to cancel; `id` tells its firing from a later one's in the same place.
-    struct Scheduled {
-        let id: Int
-        let task: Task<Void, Never>
-    }
-
-    /// One at a time, for steps that await in the middle. Only touched on the actor.
-    final class Gate {
-        var held = false
-        var waiters: [CheckedContinuation<Void, Never>] = []
-    }
-
-    final class Buffer {
-        var verifiedSeqs = Set<UInt64>()
-        var unavailableSeqs = Set<UInt64>()
-        var verifiedEvents = PagedList<PBEvent>()
-        var events = PagedList<PBEvent>()
-        var bytes: Int64 = 0
-        var usedAt: Int64 = 0
-        var useOrder = 0
-        var pending: [UInt64: PBEvent] = [:]
-        var tailRequested = false
-        /// The disk cache is still being read: its older prefix is verified in the background.
-        var restoring = false
-        /// The newest seq the disk cache held, once its newest window is read; while
-        /// `restoring`, the relay is asked only for what comes after it.
-        var cachedThrough: UInt64?
-        var fetching = false
-        var refetch = false
-        var loaded = false
-        enum HistoryFailure: Equatable {
-            case unreadable, retired
-            var message: LocalizedMessage {
-                switch self {
-                case .unreadable: L10nMessage.sessionHistoryUnreadable()
-                case .retired: L10nMessage.errorsThisHistoryUsesAnOldEncryptionFormatAndCan()
-                }
-            }
-        }
-        var historyFailure: HistoryFailure?
-        var error: String? { historyFailure?.message.resolve() }
-        // The last fetch failed; cleared by the next one that works.
-        var fetchError: String?
-    }
-
-    /// A machine's models as last asked for, and whether that is done with.
     struct ModelList {
         let task: Task<PBListModelsResponse, Error>
         var done = false
         var failed = false
     }
 
-    /// - Parameters:
-    ///   - http: the app's HTTP stack; tests build one from their own URLSession configuration.
-    ///   - log: gets error texts only, never content or keys.
-    ///   - clock: the time in milliseconds since 1970.
-    ///   - sleep: how every wait here passes, so that tests need not wait.
-    ///   - jitter: a number in 0..<1 that spreads reconnects apart.
+    public struct StreamCallbacks: Sendable {
+        public let onReady: @Sendable (UInt64, Int64) async -> Void
+        public let onFrame: @Sendable (PBCoreStreamFrameEvent) async -> Void
+        public let onClosed: @Sendable (PBCoreStreamClosedEvent) async -> Void
+        public init(
+            onReady: @escaping @Sendable (UInt64, Int64) async -> Void,
+            onFrame: @escaping @Sendable (PBCoreStreamFrameEvent) async -> Void,
+            onClosed: @escaping @Sendable (PBCoreStreamClosedEvent) async -> Void
+        ) {
+            self.onReady = onReady
+            self.onFrame = onFrame
+            self.onClosed = onClosed
+        }
+    }
+
+    // MARK: - Properties
+
+    public nonisolated let account: Account
+    public nonisolated let api: Api
+    nonisolated let http: HTTP
+    nonisolated let device: SigningKey
+    nonisolated let cache: (any CipherCache)?
+    nonisolated let log: @Sendable (String) -> Void
+    nonisolated let clock: @Sendable () -> Int64
+    nonisolated let sleep: Sleeper
     public nonisolated let authorityGate = AuthorityGate()
-    var management: AuthorityCoordinator?
-    var recoveryPending = false
-    var recoveryReadyMs: UInt64 = 0
-    var recoveryStatusStale = true
     let securityStorage: (any DeviceSecurity.Storage)?
     var deviceSecurity: DeviceSecurityClient?
+    var management: AuthorityCoordinator?
+
+    nonisolated let direct: DirectEngine?
+    public nonisolated let directChanges = Feed<Int>(0)
+    var directTransfers: [String: UploadKind] = [:]
+    private let peerBudget = StreamByteBudget(limit: 8 * 65536)
+    private let peerResponder = PeerResponder()
+
+    nonisolated let deviceLink: Link
+
+    private let frameQueue: Int
+    private let frameQueueBytes: Int
+    private let frameParser = OSAllocatedUnfairLock<@Sendable (Data) throws -> PBServerFrame>(
+        initialState: { try PBServerFrame(serializedBytes: $0) }
+    )
+
+    // Token / Auth executor state
+    var token = ""
+    var tokenExpires: Int64 = 0
+    private var onLogin: (@Sendable (SavedLogin?) -> Void)?
+    private var loginGeneration = 0
+    private var loginFlight: LoginFlight?
+    private var signingIn = false
+    private var signInWaiters: [CheckedContinuation<Void, Never>] = []
+    var closed = false
+
+    // Stream executor state (keyed by Core's leg_id)
+    private var streamLegs: [UInt64: StreamLeg] = [:]
+    private var activeLegId: UInt64?
+
+    // Security Gate & opaque cipher cache refs
+    var sessionKeys: [String: Data] = [:]
+    var sessionMachines: [String: String] = [:]
+    var machineReplacements: [String: [PBMachineReplacementProof]] = [:]
+    var trustedMembers: [String: DeviceSecurity.Member] = [:]
+    var archiveMachines: Set<String> = []
+    var cacheRefs: [String: CachedCipherObject] = [:]
+    var cacheRefOrder: [String] = []
+    var sealedCommands: [String: SealedCommandEntry] = [:]
+    var sealedOrder: [String] = []
+    var authorityDeviceId = ""
+    var leaseEndMs: UInt64 = 0
+    var recoveryPending = false
+    var recoveryReadyMs: UInt64 = 0
+    var recoveryObjectsPending = false
+    var recoveryStatusStale = true
+    var clockSkewed = false
+    var networkGeneration: UInt64 = 0
+    var verifiedNetworkGeneration: UInt64 = 0
+    private var securityNetworkReset: (UInt64, Task<Void, Never>)?
+    var models: [String: ModelList] = [:]
+
+    // Transitional Step 3-4 dumb state feeds (populated strictly by CoreHost from SyncStateView / SessionDataView)
+    public nonisolated let state: Feed<RemoteState>
+    private let eventFeeds = OSAllocatedUnfairLock(initialState: [String: Feed<SessionEvents>]())
+    private var watchedSessions = Set<String>()
+    var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
+
+    // Hooks installed by CoreHost so unmigrated Step 3-4 actions still route into Core
+    private var hostHooks: CoreHooks?
+    public struct CoreHooks: Sendable {
+        public var onWatchSession: @Sendable (String, Bool) async -> Void
+        public var onRetryEvents: @Sendable (String) async -> Void
+        public var onFetchSession: @Sendable (String) async -> Void
+        public var onRefresh: @Sendable () async -> Void
+        public var onRefreshDevices: @Sendable () async -> Void
+        public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
+        public var onDirectStatus: @Sendable (String, Bool) async -> Void
+        public var onLoadMoreSessions: @Sendable () async -> Void
+        public init(
+            onWatchSession: @escaping @Sendable (String, Bool) async -> Void,
+            onRetryEvents: @escaping @Sendable (String) async -> Void,
+            onFetchSession: @escaping @Sendable (String) async -> Void,
+            onRefresh: @escaping @Sendable () async -> Void,
+            onRefreshDevices: @escaping @Sendable () async -> Void,
+            onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
+            onDirectStatus: @escaping @Sendable (String, Bool) async -> Void,
+            onLoadMoreSessions: @escaping @Sendable () async -> Void = {}
+        ) {
+            self.onWatchSession = onWatchSession
+            self.onRetryEvents = onRetryEvents
+            self.onFetchSession = onFetchSession
+            self.onRefresh = onRefresh
+            self.onRefreshDevices = onRefreshDevices
+            self.onSavePrefs = onSavePrefs
+            self.onDirectStatus = onDirectStatus
+            self.onLoadMoreSessions = onLoadMoreSessions
+        }
+    }
+
+    // MARK: - Init
+
     public init(
         account: Account,
         http: HTTP,
@@ -440,11 +301,7 @@ public actor Remote {
         jitter: @escaping @Sendable () -> Double = { Double.random(in: 0..<1) },
         frameQueue: Int = 1024,
         frameQueueBytes: Int = 32 << 20,
-        historyIdleMs: Int64 = 60_000,
-        historyIdleCount: Int = 8,
-        historyIdleBytes: Int64 = 16 * 1024 * 1024,
         streamOpenMs: Int64 = 15_000,
-        linkGraceMs: Int64 = 10_000,
         securityStorage: (any DeviceSecurity.Storage)? = nil,
         monotonic: (@Sendable () -> Int64)? = nil,
         rtc: (any RtcFactory)? = nil,
@@ -455,398 +312,240 @@ public actor Remote {
         let holder = WeakRemote()
         if let rtc {
             direct = DirectEngine(
-                server: account.server, deviceId: account.deviceId, deviceSeed: account.deviceSeed, factory: rtc, preferences: directPreferences, stun: directStun,
-                authorize: { try await holder.remote?.directAuthorize() }, changed: { holder.remote?.directChanged() })
-        } else { direct = nil }
+                server: account.server, deviceId: account.deviceId, deviceSeed: account.deviceSeed,
+                factory: rtc, preferences: directPreferences, stun: directStun,
+                authorize: { try await holder.remote?.directAuthorize() },
+                changed: { holder.remote?.directChanged() }
+            )
+        } else {
+            direct = nil
+        }
         self.securityStorage = securityStorage
         self.http = http
         self.cache = cache
         self.log = log
         self.clock = clock
-        let elapsed = monotonic ?? recoveryTime
-        self.monotonic = elapsed
-        self.recovery = Recovery(now: elapsed, random: jitter)
         self.sleep = sleep
-        self.jitter = jitter
         self.frameQueue = frameQueue
         self.frameQueueBytes = frameQueueBytes
-        self.historyIdleMs = historyIdleMs
-        self.historyIdleCount = historyIdleCount
-        self.historyIdleBytes = historyIdleBytes
-        self.streamOpenMs = streamOpenMs
-        self.linkGraceMs = linkGraceMs
         device = try SigningKey(seed: account.deviceSeed)
-        api = try Api(server: account.server, http: http)
+        let builtApi = try Api(server: account.server, http: http)
+        api = builtApi
         state = Feed(RemoteState())
-        let (stream, ops) = AsyncStream<Op>.makeStream()
-        self.ops = ops
-        Task { [weak self] in
-            for await op in stream {
-                guard let self else { return }
-                await self.perform(op)
+        deviceLink = Link(relay: RelayPath(
+            api: builtApi, sleep: sleep,
+            prepare: { [holder] prior in
+                guard let remote = holder.remote else { throw DeviceSecurity.Failure.storage }
+                try await remote.prepareRelayAttempt(prior)
+            },
+            token: { [holder] in
+                guard let remote = holder.remote else { throw DeviceSecurity.Failure.storage }
+                return await remote.relayToken()
+            },
+            renew: { [holder] prior in
+                guard let remote = holder.remote else { throw DeviceSecurity.Failure.storage }
+                try await remote.renewRelayAttempt(prior)
             }
-        }
+        ))
         holder.remote = self
-        // The warm-up asks for its samples through the Remote, which authorizes and signs them like any read.
         direct?.probe = { [holder] id, path in await holder.remote?.probeRead(id, path) }
         direct?.trace = log
     }
 
-    deinit {
-        ops.finish()
-    }
-
-    /// The snapshot now, for code that cannot await.
     public nonisolated var current: RemoteState { state.value }
+    public nonisolated func peer(_ machineId: String?) -> PeerState { state.value.peer(machineId) }
 
-    // --- lifecycle ---
+    // MARK: - Wiring with CoreHost
 
-    /// Connects and keeps reconnecting until `stop`.
-    public nonisolated func start() { ops.yield(.start) }
-
-    /// Disconnects, e.g. when the app goes to the background.
-    public nonisolated func stop() { ops.yield(.stop) }
-
-    /// Whether the device has a network at all. Losing it ends the connection
-    /// at once rather than at the next ping; getting one starts over.
-    public nonisolated func setNetwork(_ available: Bool) { ops.yield(.setNetwork(available)) }
-    public nonisolated func networkChanged(_ signature: String, available: Bool) {
-        let notify = networkInbox.withLock { s in
-            s.pending = (signature,available)
-            if s.queued { return false }; s.queued = true; return true
-        }
-        if notify { ops.yield(.networkChanged) }
+    public func installCoreHooks(_ hooks: CoreHooks) {
+        self.hostHooks = hooks
     }
 
-    /// Ends this Remote for good.
-    public nonisolated func close() {
-        authorityGate.set(active: false, protectedDataAvailable: false)
-        ops.yield(.close)
-    }
-
-    /// Reconnects now instead of waiting for the backoff, e.g. after the network came back.
-    public nonisolated func reconnectNow() {
-        ops.yield(.reconnectNow)
-        Task { await self.authorityForegroundTick() }
-    }
-
-    /// Tries the login again after the server turned this device away.
-    public nonisolated func retryLogin() {
-        ops.yield(.clearRemoved)
-        ops.yield(.start)
-    }
-
-    /// Hands over the login kept from the last run, and where to keep the
-    /// next one. Called before `start`, it saves a cold start the two login
-    /// calls: the stream is opened with the kept token, and only the server
-    /// refusing it (close code 1008) drops it and logs in again.
-    ///
-    /// `onChange` gets every login the server gives from then on, and nil
-    /// when the one in use stops being any good: the server refused it, or
-    /// no longer knows this device. It is called on the actor, in the order
-    /// things happened, and must not block for long.
-    public nonisolated func keepLogin(
-        _ saved: SavedLogin?, onChange: @escaping @Sendable (SavedLogin?) -> Void
-    ) {
-        ops.yield(.keepLogin(saved, onChange))
-    }
-
-    /// One posted call. Nothing here awaits: what does is started and left to
-    /// interleave, so the calls keep their order.
-    private func perform(_ op: Op) {
-        if closed { return }
-        switch op {
-        case .start:
-            if running || removed { return }
-            running = true
-            if startedOnce { networkGeneration += 1; retireCandidate(); direct?.networkChanged() }
-            startedOnce = true
-            startLiveness()
-            beginConnect()
-        case .stop:
-            halt()
-        case .close:
-            halt()
-            deviceLink.closeStreams()
-            direct?.close()
-            closed = true
-            for job in liveJobs.values { job.cancel() }
-            liveJobs.removeAll()
-            liveSnapshots.removeAll()
-            liveErrors.removeAll()
-            if let deviceSecurity { Task { await deviceSecurity.close() } }
-            onLogin = nil
-            historySweep?.cancel()
-            historySweep = nil
-            restoring?.cancel()
-            directoryLoad?.task.cancel()
-            ops.finish()
-        case .setNetwork(let available):
-            if network == available { return }
-            network = available
-            unresolved = false
-            grace?.task.cancel()
-            grace = nil
-            waited = false
-            if running && !removed {
-                networkGeneration += 1
-                direct?.networkChanged()
-                retireCandidate()
-                beginConnect()
-            } else {
-                publish()
-            }
-        case .networkChanged:
-            guard let (signature,available) = networkInbox.withLock({ s in
-                defer {s.pending=nil;s.queued=false};return s.pending
-            }), signature != networkSignature else { return }
-            let changed = !networkSignature.isEmpty
-            networkSignature = signature; network = available
-            if changed {
-                networkGeneration += 1; retireCandidate(); direct?.networkChanged()
-                if running && !removed { beginConnect() } else { publish() }
-            } else { publish() }
-        case .reconnectNow:
-            if !running || removed { return }
-            beginConnect()
-        case .clearRemoved:
-            removed = false
-            publish()
-        case .keepLogin(let saved, let onChange):
-            onLogin = onChange
-            // A login made meanwhile is newer than what was kept.
-            if token.isEmpty, let saved, !saved.token.isEmpty {
-                token = saved.token
-                tokenExpires = saved.expiresMs
-            }
-        case .touch(let sid):
-            touch(sid)
-        case .followers(let sid):
-            followersChanged(sid)
-        case .retryEvents(let sid):
-            buffers[sid]?.historyFailure = nil
-            Task { await self.fetchEvents(sid) }
-        }
-    }
-
-    private func halt() {
-        running = false
-        direct?.invalidate()
-        retireLogin()
-        retireDirectory()
-        liveness?.cancel();liveness=nil
-        if let candidate {retireMainLeg(candidate)};candidate=nil
-        dialing=false
-        if let deviceSecurity {
-            let previous=securityNetworkReset?.1
-            let task=Task {await previous?.value;await deviceSecurity.stopPolling()}
-            securityNetworkReset=(networkGeneration,task)
-        }
-        generation += 1
-        lifecycleGeneration += 1
-        reconnect?.task.cancel()
-        reconnect = nil
-        listRetry?.task.cancel()
-        listRetry = nil
-        prefsRetry?.task.cancel()
-        prefsRetry = nil
-        connecting?.cancel()
-        connecting = nil
-        opening?.task.cancel()
-        opening = nil
-        if let ws {retireMainLeg(ws)}
-        ws = nil
-        conn = .offline
-        error = ""
-        errorDetail = ""
-        unresolved = false
-        publish()
-    }
-
-    /// Runs `run` on the actor after `ms` unless cancelled first. `run` gets
-    /// the timer's ID: a timer cancelled just as it fired still gets here, and
-    /// must find its place taken or empty.
-    func schedule(_ ms: Int64, _ run: @escaping @Sendable (isolated Remote, Int) async -> Void)
-        -> Scheduled
-    {
-        timerSeq += 1
-        let id = timerSeq
-        let sleep = self.sleep
-        let task = Task { [weak self] in
-            guard (try? await sleep(ms)) != nil, !Task.isCancelled, let self else { return }
-            await run(self, id)
-        }
-        return Scheduled(id: id, task: task)
-    }
-
-    func acquire(_ gate: Gate) async {
-        if !gate.held {
-            gate.held = true
-            return
-        }
-        await withCheckedContinuation { gate.waiters.append($0) }
-    }
-
-    func release(_ gate: Gate) {
-        // Handed straight to the next in line, which finds it held.
-        if gate.waiters.isEmpty { gate.held = false } else { gate.waiters.removeFirst().resume() }
-    }
-
-    private var serverLink: ServerLink {
-        if conn == .online { return .online }
-        if !network || unresolved { return .noNetwork }
-        return waited ? .noServer : .waiting
-    }
-
-    // Control can run between an actor update and publication to the UI.
-    // Refresh only the relay observation, then ask Router for the peer status.
-    func controlPeer(_ machineId: String) -> PeerState {
-        var observed = state.value
-        observed.machines = machines
-        observed.conn = conn
-        observed.removed = removed
-        observed.synced = synced
-        observed.link = serverLink
-        _ = deviceLink.observe(observed)
-        return deviceLink.status(machineId)
-    }
-
-    func publish() {
-        if conn == .online { offlineSince = 0 } else if offlineSince == 0 { offlineSince = clock() }
-        if conn == .online || !running {
-            grace?.task.cancel()
-            grace = nil
-            waited = false
-        } else if !waited && grace == nil {
-            grace = schedule(linkGraceMs) { me, id in
-                guard me.grace?.id == id else { return }
-                me.grace = nil
-                me.waited = true
-                me.publish()
-            }
-        }
-        var s = RemoteState()
-        s.machines = machines
-        s.currentMachines = Set(trustedMembers.values.filter { $0.kind == 1 }.map(\.id))
-        s.sessions = sessions
-        s.conn = conn
-        s.error = error
-        s.clockWarning = clockWarning
-        s.loaded = loaded
-        s.offlineSinceMs = offlineSince
-        s.prefs = prefs
-        s.devices = devices
-        s.authorityDeviceId = authorityDeviceId
-        s.leaseEndMs = leaseEndMs
-        s.recoveryPending = recoveryPending
-        s.recoveryReadyMs = recoveryReadyMs
-        s.recoveryStatusStale = recoveryStatusStale
-        s.removed = removed
-        s.sessionsNext = next
-        s.loadingSessions = pageJob != nil
-        s.sessionsError = pageError
-        s.sessionsListed = firstPage
-        s.link = serverLink
-        s.synced = synced
-        s.errorDetail = errorDetail
-        let peers = deviceLink.observe(s)
-        s.machines = s.machines.mapValues { machine in
+    public func publishSyncState(_ snapshot: RemoteState) {
+        self.clockSkewed = !snapshot.clockWarning.isEmpty
+        var updated = snapshot
+        let peers = deviceLink.observe(updated)
+        updated.machines = updated.machines.mapValues { machine in
             var projected = machine
             projected.linkState = peers[machine.id]
             return projected
         }
-        if s != state.value { state.set(s) }
+        // Keep sessionMachines in sync so decodeEvents / image() know owner machine IDs.
+        for (sid, s) in updated.sessions {
+            sessionMachines[sid] = s.machineId
+        }
+        if updated != state.value { state.set(updated) }
     }
 
-    /// Logs in, one login at a time: the server keeps few challenges per
-    /// device, and a denial has to mean what it says. A server restarted
-    /// between the two calls forgets the challenge; denied a fresh one too,
-    /// it no longer knows this device, and nothing connects until it joins again.
+    public func publishSessionData(_ sid: String, events: SessionEvents) {
+        eventFeed(sid).set(events)
+    }
+
+    public func setNetworkGeneration(_ gen: UInt64) {
+        networkGeneration = gen
+    }
+
+    func notifyDirectStatusChanged() async {
+        guard let direct, let hooks = hostHooks else { return }
+        for machineId in state.value.machines.keys {
+            let ready = direct.status(machineId).state == .connected
+            await hooks.onDirectStatus(machineId, ready)
+        }
+    }
+
+    func machineIdForSession(_ sid: String) -> String {
+        sessionMachines[sid] ?? state.value.sessions[sid]?.machineId ?? ""
+    }
+
+    func machineIdForSessionIfKnown(_ sid: String) -> String? {
+        let id = machineIdForSession(sid)
+        return id.isEmpty ? nil : id
+    }
+
+    // MARK: - Login & Token Executor
+
+    public func keepLogin(_ saved: SavedLogin?, save: @escaping @Sendable (SavedLogin?) -> Void) {
+        self.onLogin = save
+        if let saved, token.isEmpty {
+            token = saved.token
+            tokenExpires = saved.expiresMs
+        }
+    }
+
+    func prepareRelayAttempt(_ prior: Bool) async throws {
+        if token.isEmpty { _ = try await relogin(prior) }
+    }
+
+    private func relayToken() -> String { token }
+
+    func renewRelayAttempt(_ prior: Bool) async throws {
+        _ = try await relogin(prior)
+    }
+
+    public func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent {
+        var ev = PBCoreTokenResultEvent()
+        ev.opID = opId
+        if forceLogin {
+            dropToken()
+            retireLogin()
+        }
+        if !forceLogin, !token.isEmpty, tokenExpires == 0 || tokenExpires >= clock() + 86_400_000 {
+            ev.token = token
+            ev.expiresMs = tokenExpires
+            return ev
+        }
+        do {
+            let tok: String
+            if timeoutMs > 0 {
+                tok = try await withTimeout(timeoutMs, sleep: sleep) {
+                    try await self.signIn()
+                }
+            } else {
+                tok = try await signIn()
+            }
+            ev.token = tok
+            ev.expiresMs = tokenExpires
+            return ev
+        } catch let e as ConnectError where e.code == .permissionDenied {
+            dropToken()
+            ev.removed = true
+            ev.errorCode = "permission_denied"
+            ev.error = errorText(e)
+            return ev
+        } catch {
+            ev.errorCode = (error as? ConnectError)?.code.name ?? (error is TimedOut ? "deadline_exceeded" : "unavailable")
+            ev.error = errorText(error)
+            ev.unresolvedHost = unresolvedHost(error)
+            return ev
+        }
+    }
+
+    public func discardToken(_ rejected: String) {
+        rejectCredential(rejected)
+    }
+
     func signIn() async throws -> String {
         while true {
             try Task.checkCancellation()
-            let flight:LoginFlight
-            if let existing=loginFlight {flight=existing}
-            else {
-                let generation=loginGeneration
+            let flight: LoginFlight
+            if let existing = loginFlight {
+                flight = existing
+            } else {
+                let generation = loginGeneration
                 let id = UUID(), result = SharedResult<String>()
                 let task = Task {
                     let outcome: Result<String, Error>
-                    do { outcome = .success(try await withTimeout(self.everReady || self.networkGeneration > 0 ? 3000 : 60_000, sleep: self.sleep) { try await self.performSignIn() }) }
-                    catch { outcome = .failure(error) }
+                    do {
+                        outcome = .success(try await self.performSignIn())
+                    } catch {
+                        outcome = .failure(error)
+                    }
                     if self.loginFlight?.id == id { self.loginFlight = nil }
                     result.resolve(outcome)
                 }
-                flight=LoginFlight(id:id,generation:generation,task:task,result:result)
-                loginFlight=flight
+                flight = LoginFlight(id: id, generation: generation, task: task, result: result)
+                loginFlight = flight
             }
-            do {return try await flight.result.value}
-            catch {
-                if flight.generation != loginGeneration && !Task.isCancelled && !closed {continue}
+            do {
+                return try await flight.result.value
+            } catch {
+                if flight.generation != loginGeneration && !Task.isCancelled && !closed { continue }
                 throw error
             }
         }
     }
+
     func retireLogin() {
-        loginGeneration+=1;loginFlight?.task.cancel();loginFlight=nil
+        loginGeneration += 1
+        loginFlight?.task.cancel()
+        loginFlight = nil
     }
+
     func refreshNetworkSecurity() async throws {
-        let gen=networkGeneration
-        let task:Task<Void,Never>
-        if let current=securityNetworkReset,current.0==gen {task=current.1}
-        else {
-            let client=try securitySession()
-            let previous=securityNetworkReset?.1
-            task=Task {await previous?.value;await client.networkChanged()}
-            securityNetworkReset=(gen,task)
+        let gen = networkGeneration
+        let task: Task<Void, Never>
+        if let current = securityNetworkReset, current.0 == gen {
+            task = current.1
+        } else {
+            let client = try securitySession()
+            let previous = securityNetworkReset?.1
+            task = Task {
+                await previous?.value
+                await client.networkChanged()
+            }
+            securityNetworkReset = (gen, task)
         }
         await task.value
-        guard gen==networkGeneration else {throw PathChanged()}
+        guard gen == networkGeneration else { throw PathChanged() }
     }
 
     private func performSignIn() async throws -> String {
-        await acquire(signingIn)
-        defer { release(signingIn) }
-        // Given up on while waiting for its turn.
+        while signingIn {
+            await withCheckedContinuation { signInWaiters.append($0) }
+        }
+        signingIn = true
+        defer {
+            signingIn = false
+            if !signInWaiters.isEmpty { signInWaiters.removeFirst().resume() }
+        }
         try Task.checkCancellation()
+        let timeout: Int64 = networkGeneration > 0 ? 3000 : 15_000
         do {
-            let response = try await withTimeout(everReady || networkGeneration > 0 ? min(streamOpenMs,3000) : streamOpenMs, sleep:sleep) { [api,account] in
-                try await loginResponse(api:api,account:account)
+            let response = try await withTimeout(timeout, sleep: sleep) { [api, account] in
+                try await loginResponse(api: api, account: account)
             }
             try Task.checkCancellation()
             return signedIn(response)
         } catch let first as ConnectError where first.code == .permissionDenied {
-            do {
-                let response = try await withTimeout(everReady || networkGeneration > 0 ? min(streamOpenMs,3000) : streamOpenMs, sleep:sleep) { [api,account] in
-                try await loginResponse(api:api,account:account)
+            let response = try await withTimeout(timeout, sleep: sleep) { [api, account] in
+                try await loginResponse(api: api, account: account)
             }
-                try Task.checkCancellation()
-                return signedIn(response)
-            } catch let e as ConnectError where e.code == .permissionDenied {
-                try Task.checkCancellation()
-                // The server does not know this device: its token is no login either.
-                dropToken()
-                removed = true
-                running = false
-                connecting?.cancel();dialing = false; connecting = nil
-                if let candidate {retireMainLeg(candidate)}; candidate = nil
-                opening?.task.cancel();opening=nil
-                liveness?.cancel(); liveness = nil
-                generation += 1
-                lifecycleGeneration += 1
-                reconnect?.task.cancel()
-                reconnect = nil
-                if let ws {retireMainLeg(ws)}
-                ws = nil
-                conn = .offline
-                publish()
-                throw e
-            }
+            try Task.checkCancellation()
+            return signedIn(response)
         }
     }
 
     private func signedIn(_ res: PBLoginResponse) -> String {
-        // A Remote closed while the login was on its way keeps nothing: the account may be gone from this device.
         if !closed {
             token = res.token
             tokenExpires = res.expiresMs
@@ -855,170 +554,47 @@ public actor Remote {
         return res.token
     }
 
-    /// Forgets the token in use, here and wherever the app keeps it.
     func rejectCredential(_ rejected: String) {
-        if token == rejected { dropToken() }
+        if rejected.isEmpty || token == rejected { dropToken() }
     }
 
-    private func dropToken() {
+    func dropToken() {
         token = ""
         tokenExpires = 0
         if !closed { onLogin?(nil) }
     }
 
-    /// Waits until what the cache holds is in place. It is read once, however
-    /// many connections wait: one made while it was still being read would
-    /// have its lists overwritten by what was cached before them.
-    private func restored() async throws {
-        guard let cache else { return }
-        if restoring == nil {
-            let result=SharedResult<Void>();restoredResult=result
-            restoring=Task {await self.readCache(cache);result.resolve(.success(()))}
-        }
-        try await restoredResult?.value
-    }
+    // MARK: - Stream Executor (OpenStreamEffect / CloseStreamEffect)
 
-    private func readCache(_ cache: any CipherCache) async {
-        do {
-            let identity = try securityIdentity()
-            trustedMembers = Dictionary(
-                uniqueKeysWithValues: identity.1.core.members.map { ($0.id, $0) })
-            authorityDeviceId = identity.1.core.authorityID
-            leaseEndMs = try await securitySession().leaseExpiration()
-            archiveMachines=try await securitySession().historicalMachines()
-            for id in archiveMachines where trustedMembers[id]?.kind != 1 { await cache.removeBlob(name: "schedules/" + id) }
-        } catch {
-            report(error)
-            return
-        }
-        for var m in await cache.machines() {
-            m.online = false
-            await putMachine(m, save: false)
-        }
-        for s in await cache.sessions() {
-            listed.insert(s.sessionID)
-            await putSession(s, save: false, publish: false)
-        }
-        if let blob = await cache.blob(name: projectPrefsID) {
-            do {
-                await putPrefs(try PBAccountPrefsObject(serializedBytes: blob), save: false)
-            } catch {
-                report(error)
-            }
-        }
-        if !machines.isEmpty || !sessions.isEmpty { loaded = true }
-        publish()
-    }
-
-    /// Replaces the whole attempt, including a login suspended before a socket exists.
-    func beginConnect() {
-        if !running || removed || dialing || candidate != nil || reconnect != nil { return }
-        let wait = recovery.delay()
-        if wait > 0 || !recovery.take() {
-            reconnect = schedule(max(1,wait)) { me,id in
-                guard me.reconnect?.id == id else { return }
-                me.reconnect=nil;me.beginConnect()
-            }
-            return
-        }
-        generation += 1;dialing=true;wantedConnection=false
-        let gen = generation, networkGen = networkGeneration
-        connecting=Task {await self.connect(gen, networkGen)}
-    }
-
-    func retireCandidate() {
-        retireLogin()
-        retireDirectory()
-        wantedConnection=true
-        let old=candidate;candidate=nil
-        opening?.task.cancel();opening=nil
-        let setup=connecting;connecting=nil;dialing=false
-        setup?.cancel()
-        if let client=deviceSecurity {
-            let gen=networkGeneration, previous=securityNetworkReset?.1
-            let reset=Task {await previous?.value;await client.networkChanged()}
-            securityNetworkReset=(gen,reset)
-        }
-        if let old {retireMainLeg(old)}
-    }
-
-    func startLiveness() {
-        liveness?.cancel()
-        let sleep=self.sleep
-        liveness=Task { [weak self] in
-            guard let initial=await self?.livenessTime() else {return}
-            var last=initial
-            while (try? await sleep(1000)) != nil, !Task.isCancelled {
-                guard let self else {return}
-                last=await self.livenessTick(last)
-            }
-        }
-    }
-    func livenessTime() -> (Int64,Int64) { (monotonic(),clock()) }
-    func livenessTick(_ last:(Int64,Int64)) -> (Int64,Int64) {
-        let now=livenessTime()
-        guard running else {return now}
-        let woke=now.0<last.0 || now.0-last.0>3000 || now.1-last.1>3000
-        if woke {networkGeneration+=1;retireCandidate();direct?.networkChanged()}
-        if woke || (ws != nil && (activity?.suspect(now.0) ?? false)) {
-            if conn == .online {conn = .connecting;publish()}
-            beginConnect()
-        }
-        return now
-    }
-
-    private func connect(_ gen: Int, _ networkGen: UInt64) async {
-        if !running || gen != generation || networkGen != networkGeneration || Task.isCancelled { return }
-        let started = monotonic()
-        defer {
-            if generation == gen && !Task.isCancelled {
-                dialing=false;connecting=nil
-                if candidate == nil && running && (ws == nil || wantedConnection) {beginConnect()}
-            }
-        }
-        if ws == nil {conn = .connecting}
-        publish()
-        do {
-            if networkGen != verifiedNetworkGeneration {try await refreshNetworkSecurity()}
-            try await securitySession().touchAfterWake()
-        }
-        catch { if running && gen == generation && !Task.isCancelled {fail(error)};return }
-        do {try await restored()} catch {return}
-        if !running || gen != generation || Task.isCancelled { return }
-        do {
-            let budget = (everReady || networkGen > 0) ? min(streamOpenMs,3000) : streamOpenMs
-            try await withTimeout(budget,sleep:sleep) {
-                try await self.prepareMain(networkGen)
-            }
-        } catch {
-            // Replaced or stopped meanwhile: that attempt says what happens next.
-            if running && gen == generation && networkGen == networkGeneration && !Task.isCancelled {
-                fail(error is TimedOut ? URLError(.timedOut) as Error : error)
-            }
-            return
-        }
-        if !running || gen != generation || Task.isCancelled { return }
-        if networkGen != networkGeneration {wantedConnection=true;return}
-        let credential = token
+    public func openStream(legId: UInt64, token credential: String, callbacks: StreamCallbacks) {
+        closeStream(legId: legId)
         var frame = PBPeerFrame()
         frame.hello.token = credential
-        guard let hello: Data = try? frame.serializedData() else { return }
+        guard let hello: Data = try? frame.serializedData() else {
+            Task {
+                var closed = PBCoreStreamClosedEvent()
+                closed.legID = legId
+                closed.error = L10n.errorsDisconnectedFromServer()
+                await callbacks.onClosed(closed)
+            }
+            return
+        }
         let socket = deviceLink.router.path.openStream("/v1/stream", hello: hello)
-        candidate = socket
-        let activity = PathActivity(initialNow: monotonic())
-        let monotonic=self.monotonic
-        // Bounded: a reader that falls behind drops the stream and catches up
-        // from history after reconnecting, instead of queueing without end.
-        // What was queued before that is still handled; nothing is skipped.
+        let leg = StreamLeg(legId: legId, socket: socket)
+        streamLegs[legId] = leg
+        let netGen = networkGeneration
+
         let (frames, queue) = AsyncStream<Data>.makeStream(
             bufferingPolicy: .bufferingOldest(max(frameQueue, 1)))
+        leg.queue = queue
         let budget = StreamByteBudget(limit: frameQueueBytes)
         let parse = frameParser.withLock { $0 }
-        let peerBudget = self.peerBudget, direct = self.direct
-        let receive = Task.detached { [weak self] in
+        let peerBudget = self.peerBudget
+        let direct = self.direct
+
+        leg.receiveTask = Task.detached { [weak self] in
             while let bytes = try? await socket.receive() {
                 if let direct, let body = PeerResponder.body(bytes) {
-                    // The engine bounds and drops by itself; the frame is a copy the main loop never sees.
                     direct.receive(Array(body), from: socket)
                     continue
                 }
@@ -1028,7 +604,13 @@ public actor Remote {
                 }
                 if let body = PeerResponder.body(bytes) {
                     if peerBudget.reserve(65536) {
-                        Task { if let self { await self.peerFrame(body, socket:socket, generation:gen, network:networkGen) } else { peerBudget.release(65536) } }
+                        Task {
+                            if let self {
+                                await self.handlePeerFrame(body, socket: socket, netGen: netGen)
+                            } else {
+                                peerBudget.release(65536)
+                            }
+                        }
                     }
                     continue
                 }
@@ -1036,13 +618,6 @@ public actor Remote {
                     socket.cancel()
                     break
                 }
-                let isHeartbeat: Bool
-                if case .heartbeat? = (try? parse(bytes))?.kind {
-                    isHeartbeat = true
-                } else {
-                    isHeartbeat = false
-                }
-                activity.received(monotonic(), isHeartbeat: isHeartbeat)
                 if case .dropped = queue.yield(bytes) {
                     budget.release(bytes.count)
                     socket.cancel()
@@ -1051,153 +626,295 @@ public actor Remote {
             }
             queue.finish()
         }
-        opening = schedule((everReady || networkGen > 0) ? max(1,min(streamOpenMs,3000)-(monotonic()-started)) : streamOpenMs) { me, id in
-            guard me.opening?.id == id else { return }
-            me.opening = nil
-            if me.candidate === socket {
-                me.candidate = nil
-                me.retireMainLeg(socket)
-                me.fail(UserError(L10nMessage.errorsConnectionTimedOutReconnecting()))
-            }
+
+        leg.processTask = Task { [weak self] in
+            guard let self else { return }
+            await self.processStream(
+                legId: legId,
+                frames: frames,
+                budget: budget,
+                parse: parse,
+                credential: credential,
+                callbacks: callbacks
+            )
         }
-        let process = Task { await self.follow(socket, frames, gen, networkGen, activity, budget, credential) }
-        mainLegs[ObjectIdentifier(socket)] = MainLeg(receive:receive,process:process,queue:queue)
     }
 
-    /// Handles a stream's frames in order until it ends or is replaced.
-    private func follow(_ socket: any FrameStream, _ frames: AsyncStream<Data>, _ gen: Int, _ networkGen: UInt64, _ activity: PathActivity, _ budget: StreamByteBudget, _ credential: String) async {
-        defer { mainLegs.removeValue(forKey:ObjectIdentifier(socket)) }
-        let parse = frameParser.withLock { $0 }
+    public func closeStream(legId: UInt64) {
+        guard let leg = streamLegs.removeValue(forKey: legId) else { return }
+        if activeLegId == legId {
+            activeLegId = nil
+        }
+        leg.closed = true
+        leg.queue?.finish()
+        leg.receiveTask?.cancel()
+        leg.processTask?.cancel()
+        leg.socket.cancel()
+    }
+
+    private func handlePeerFrame(_ bytes: Data, socket: any FrameStream, netGen: UInt64) async {
+        defer { peerBudget.release(65536) }
+        guard !closed, networkGeneration == netGen, let activeLegId, streamLegs[activeLegId]?.socket === socket else { return }
+        do {
+            let record = try await securitySession().record()
+            let reply = await peerResponder.receive(
+                bytes, record: record, seed: account.deviceSeed, now: UInt64(max(1, clock())))
+            guard !closed, networkGeneration == netGen,
+                  let legId = self.activeLegId, streamLegs[legId]?.socket === socket,
+                  let reply,
+                  let current = try? await securitySession().record(),
+                  current.member,
+                  max(UInt64(max(1, clock())), current.floor) < (try await securitySession().leaseExpiration()),
+                  try DeviceSecurity.stateHash(current.state) == DeviceSecurity.stateHash(record.state)
+            else { return }
+            socket.send(reply)
+        } catch { /* Authenticated peer refusal is optional; relay stays available. */ }
+    }
+
+    private func processStream(
+        legId: UInt64,
+        frames: AsyncStream<Data>,
+        budget: StreamByteBudget,
+        parse: @Sendable (Data) throws -> PBServerFrame,
+        credential: String,
+        callbacks: StreamCallbacks
+    ) async {
+        guard let leg = streamLegs[legId] else { return }
+        func emit(_ fill: (inout PBCoreStreamFrameEvent) -> Void) async {
+            var ev = PBCoreStreamFrameEvent()
+            ev.legID = legId
+            fill(&ev)
+            await callbacks.onFrame(ev)
+        }
         for await bytes in frames {
             defer { budget.release(bytes.count) }
-            if ws !== socket && candidate !== socket { break }
+            guard !closed, !leg.closed, streamLegs[legId] === leg else { break }
             do {
-                let f = try parse(bytes)
-                if candidate === socket {
-                    guard case .ready? = f.kind else {throw UserError(L10nMessage.errorsInvalidPushFrame())}
-                    opening?.task.cancel();opening=nil;candidate=nil
-                    guard gen == generation && networkGen == networkGeneration else {socket.cancel();beginConnect();break}
-                    let old=ws;ws=socket;self.activity=activity;everReady=true
-                    direct?.attach(socket)
-                    recovery.ready();if let old {retireMainLeg(old)}
+                let serverFrame = try parse(bytes)
+                switch serverFrame.kind {
+                case .ready(let ready)?:
+                    activeLegId = legId
+                    direct?.attach(leg.socket)
+                    await callbacks.onReady(legId, ready.serverTimeMs)
+                case .heartbeat?:
+                    await emit { $0.heartbeat = true }
+                case .machineUpdated(let u)?:
+                    let decoded = await decodeMachine(u.machine, trackRef: true)
+                    await emit { $0.machineUpdated = decoded }
+                case .machineRemoved(let u)?:
+                    await emit { $0.machineRemovedID = u.machineID }
+                case .sessionUpdated(let u)?:
+                    let decoded = await decodeSession(u.session, trackRef: true)
+                    await emit { $0.sessionUpdated = decoded }
+                case .eventsAppended(let a)?:
+                    let decoded = await decodeEvents(
+                        a.events, machineId: machineIdForSession(a.sessionID),
+                        sessionId: a.sessionID, history: false, trackRef: true)
+                    await emit {
+                        $0.eventsAppended.sessionID = a.sessionID
+                        $0.eventsAppended.events = decoded
+                    }
+                case .accountPrefsUpdated(let u)?:
+                    if u.object.objectID == projectPrefsID {
+                        let decoded = try await decodeAccountPrefs(u.object, trackRef: true)
+                        await emit { $0.accountPrefsUpdated = decoded }
+                    }
+                case .deviceUpdated(let u)?:
+                    let decoded = await decodeDevice(u.device)
+                    await emit { $0.deviceUpdated = decoded }
+                case .deviceRemoved(let u)?:
+                    await emit { $0.deviceRemovedID = u.deviceID }
+                default:
+                    break
                 }
-                if conn == .connecting && networkGen == networkGeneration, case .heartbeat? = f.kind {conn = .online;publish()}
-                await onFrame(f)
             } catch {
-                if !Task.isCancelled && (ws === socket || candidate === socket) { report(error) }
+                if !Task.isCancelled && !leg.closed { report(error) }
                 break
             }
-            if ws !== socket { break }
         }
-        socket.cancel()
-        guard ws === socket || candidate === socket else { return }
-        let end = await socket.ended()
-        guard ws === socket || candidate === socket else { return }
-        if ws === socket {ws=nil}
-        if candidate === socket {candidate=nil;opening?.task.cancel();opening=nil}
-        // Only an explicit refusal invalidates the token.
-        if end.closeCode == policyViolation && token == credential { dropToken() }
-        fail(end.error ?? UserError(L10nMessage.errorsDisconnectedFromServer()))
+        leg.socket.cancel()
+        guard streamLegs[legId] === leg else { return }
+        streamLegs.removeValue(forKey: legId)
+        if activeLegId == legId { activeLegId = nil }
+        let end = await leg.socket.ended()
+        guard !closed && !leg.closed else { return }
+        if end.closeCode == policyViolation && token == credential {
+            dropToken()
+        }
+        var closedEvent = PBCoreStreamClosedEvent()
+        closedEvent.legID = legId
+        closedEvent.policyViolation = end.closeCode == policyViolation
+        if let err = end.error {
+            closedEvent.errorCode = (err as? ConnectError)?.code.name ?? ""
+            closedEvent.error = errorText(err)
+            closedEvent.unresolvedHost = unresolvedHost(err)
+        } else {
+            closedEvent.error = L10n.errorsDisconnectedFromServer()
+        }
+        await callbacks.onClosed(closedEvent)
     }
 
-    func fail(_ e: Error) {
-        recovery.failed()
-        if ws == nil {
-            conn = .offline
-            error = errorText(e);errorDetail = detailText(e);unresolved = unresolvedHost(e)
+    // MARK: - Device Metadata & Lifecycle
+
+    public func renameDevice(_ id: String, name: String) async throws {
+        guard id == account.deviceId else {
+            throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())
         }
-        publish()
-        if !running {return}
-        reconnect?.task.cancel()
-        reconnect = schedule(max(1,recovery.delay())) {me,id in
-            guard me.reconnect?.id == id else {return}
-            me.reconnect=nil;me.beginConnect()
+        try await changeDeviceMeta(id) { $0.name = name }
+    }
+
+    public func describeSelf(platform: String, description: String) async throws {
+        try await changeDeviceMeta(account.deviceId) {
+            $0.platform = platform
+            $0.description_p = description
         }
     }
 
-    func prepareMain(_ networkGen: UInt64) async throws {
-        if token.isEmpty || tokenExpires < clock()+86_400_000 {
-            _ = try await signIn();try Task.checkCancellation()
-            guard networkGen==networkGeneration else {throw PathChanged()}
-        }
-        if networkGen != verifiedNetworkGeneration {
+    func changeDeviceMeta(_ id: String, _ change: (inout PBDeviceMeta) -> Void) async throws {
+        for _ in 0..<5 {
             _ = try await securitySession().sync()
-            if networkGen == networkGeneration {verifiedNetworkGeneration=networkGen}
+            let listed = try await withAuthRetry { [api] headers in
+                try await api.client.listDevices(request: .init(), headers: headers).value()
+            }
+            guard let raw = listed.devices.first(where: { $0.id == id }) else {
+                throw CommandError("not_found", L10nMessage.settingsDeviceNotFound())
+            }
+            let decoded = await decodeDevice(raw)
+            var meta = decoded.hasMeta ? decoded.meta : PBDeviceMeta()
+            change(&meta)
+            do {
+                let env = try await securitySession().seal(
+                    purpose: .deviceMeta, request: id, seq: decoded.metaRev + 1,
+                    plaintext: meta.serializedData())
+                var req = PBPutDeviceMetaRequest()
+                req.deviceID = id
+                req.expectedRevision = decoded.metaRev
+                req.meta = env
+                let request = req
+                let result = try await withAuthRetry { [api] headers in
+                    try await api.client.putDeviceMeta(request: request, headers: headers).value()
+                }
+                if !result.applied { continue }
+                await refreshDevices()
+                return
+            } catch DeviceSecurity.Failure.conflict {
+                continue
+            }
+        }
+        throw CommandError("aborted", L10nMessage.errorsDeviceInformationIsChangingRetry())
+    }
+
+    public nonisolated func close() {
+        deviceLink.closeStreams()
+        direct?.close()
+        Task { await self.closeActor() }
+    }
+
+    private func closeActor() {
+        guard !closed else { return }
+        closed = true
+        loginGeneration += 1
+        loginFlight?.task.cancel()
+        loginFlight = nil
+        for leg in streamLegs.values {
+            leg.closed = true
+            leg.queue?.finish()
+            leg.receiveTask?.cancel()
+            leg.processTask?.cancel()
+            leg.socket.cancel()
+        }
+        streamLegs.removeAll()
+        activeLegId = nil
+        deviceLink.closeStreams()
+        direct?.close()
+    }
+
+    // MARK: - Transitional Step 3-4 Forwarding to Core
+
+    public func onSessionRemoved(_ action: @escaping @Sendable (String) async -> Void) {
+        sessionRemovalHandler = action
+    }
+
+    @discardableResult
+    public func refresh() async -> Bool {
+        if let hooks = hostHooks {
+            await hooks.onRefresh()
+            return state.value.conn == .online
+        }
+        return false
+    }
+
+    public func refreshDevices() async {
+        await hostHooks?.onRefreshDevices()
+    }
+
+    public func fetchSession(_ id: String) async throws -> Bool {
+        if state.value.sessions[id] != nil { return true }
+        if let hooks = hostHooks {
+            await hooks.onFetchSession(id)
+        }
+        return state.value.sessions[id] != nil
+    }
+
+    @discardableResult
+    public func loadMoreSessions() async throws -> Bool {
+        await hostHooks?.onLoadMoreSessions()
+        return state.value.sessionsNext == nil
+    }
+
+    public nonisolated func retryEvents(_ id: String) {
+        Task { await self.forwardRetryEvents(id) }
+    }
+
+    private func forwardRetryEvents(_ id: String) async {
+        await hostHooks?.onRetryEvents(id)
+    }
+
+    public func changePrefs(_ op: PrefsOp) async throws {
+        guard let hooks = hostHooks else {
+            throw CommandError("unavailable", L10nMessage.connectionNoResponse())
+        }
+        try await hooks.onSavePrefs(op)
+    }
+
+    public nonisolated func eventFeed(_ sid: String) -> Feed<SessionEvents> {
+        let feeds = eventFeeds
+        return feeds.withLock { map in
+            if let f = map[sid] { return f }
+            let f = Feed(SessionEvents()) { [weak self] in
+                Task { await self?.syncWatchCount(sid) }
+            }
+            map[sid] = f
+            return f
         }
     }
 
-    private func onFrame(_ f: PBServerFrame) async {
-        switch f.kind {
-        case .ready?:
-            let leg = ws
-            conn = .online
-            error = ""
-            errorDetail = ""
-            unresolved = false
-            publish()
-            // Subscribed first, then catch up: nothing falls in between.
-            _ = await refresh()
-            if !running || ws !== leg || Task.isCancelled { return }
-            let followed = eventFeeds.withLock { feeds in
-                feeds.filter { $0.value.followers > 0 }.map(\.key)
-            }
-            for sid in Set(buffers.keys).union(followed) {
-                Task {
-                    await self.loadEvents(sid)
-                    await self.fetchEvents(sid)
-                }
-            }
-            Task { await self.loadPrefs() }
-            Task { await self.loadDevices() }
-            startSecurityPolling()
-        case .accountPrefsUpdated(let u)?:
-            if u.object.objectID == projectPrefsID { await putPrefs(u.object) }
-        case .deviceUpdated(let u)?:
-            bump(&devicePushes, u.device.id)
-            await putDevice(u.device)
-            publish()
-        case .deviceRemoved(let u)?:
-            await deviceRemoved(u.deviceID)
-        case .machineRemoved?:
-            await machineRemoved()
-        case .machineUpdated(let u)?:
-            await machineUpdated(u.machine)
-        case .sessionUpdated(let u)?:
-            bump(&sessionPushes, u.session.sessionID)
-            do { try await checkDirectory(u.session.machineID, envelopes: [u.session.key, u.session.meta]) } catch { report(error) }
-            await putSession(u.session, save: onFirstPage(u.session))
-        case .eventsAppended(let a)?:
-            let sid = a.sessionID
-            if sessions[sid] != nil && buffers[sid] != nil {
-                await ingest(sid, a.events, fillGaps: true, save: true, history: false)
-            } else {
-                if var s = sessions[sid] {
-                    for e in a.events { s.lastSeq = max(s.lastSeq, e.seq) }
-                    sessions[sid] = s
-                }
-                publish()
-            }
-        // A heartbeat, a call meant for a machine, or a frame of a later version.
-        default:
-            break
+    public nonisolated func events(_ sid: String) -> Feed<SessionEvents> {
+        eventFeed(sid)
+    }
+
+    private func syncWatchCount(_ sid: String) async {
+        let count = eventFeeds.withLock { $0[sid]?.followers ?? 0 }
+        let watched = count > 0
+        let changed = watched ? watchedSessions.insert(sid).inserted : (watchedSessions.remove(sid) != nil)
+        if changed {
+            await hostHooks?.onWatchSession(sid, watched)
         }
     }
 
-    func bump(_ pushes: inout [String: Int], _ id: String) {
-        pushes[id, default: 0] += 1
-    }
+    // MARK: - Demo / Layout Fixtures
 
-    /// Shows fixed lists and histories without a server, for layout tests and
-    /// screenshots of the screens. Only for a Remote that was never started:
-    /// nothing is fetched, and commands fail as they would offline.
     public func showForTest(
         state shown: RemoteState,
         events: [String: [PBEvent]] = [:],
         modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = [],
         live: Bool = false
     ) {
-        precondition(!running, "showForTest on a started Remote")
         state.set(shown)
+        for (sid, s) in shown.sessions {
+            sessionMachines[sid] = s.machineId
+            sessionKeys[sid] = Data(repeating: 1, count: keySize)
+        }
         for m in modelLists {
             let response = m.models
             models["\(m.machineId)/\(m.agent.rawValue)"] = ModelList(
@@ -1205,14 +922,13 @@ public actor Remote {
         }
         for (sid, list) in events {
             var shownEvents = SessionEvents(events: PagedList(list), loaded: true)
-            if live { shownEvents.live = Self.liveForTest(list, planOpen: shown.sessions[sid]?.info?.planOpen == true) }
+            if live {
+                shownEvents.live = Self.liveForTest(list, planOpen: shown.sessions[sid]?.info?.planOpen == true)
+            }
             eventFeed(sid).set(shownEvents)
         }
     }
 
-    /// What the computer would say waits in a session whose history is `list`: its pending approvals and
-    /// questions, the messages still in its queue, and its plan while the session says one is open.
-    /// Sample data has no computer to ask.
     static func liveForTest(_ list: [PBEvent], planOpen: Bool) -> PBLiveSnapshot {
         let d = derive(list)
         var snapshot = PBLiveSnapshot()
@@ -1236,11 +952,6 @@ public actor Remote {
     }
 
     func report(_ e: Error) {
-        // Only the error text: never content or keys.
-        if let failure = e as? DeviceSecurity.Failure, failure == .clock {
-            clockWarning = L10n.errorsIosThisDeviceIsOver5MinutesBehindTheSecurity()
-        }
         log("remote-agent: " + errorText(e))
-        error = errorText(e)
     }
 }

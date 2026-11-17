@@ -1,6 +1,32 @@
+import Observation
 import RACore
 import RAProto
 import SwiftUI
+
+@MainActor
+@Observable
+final class SummaryModels {
+    struct Key: Hashable, Sendable {
+        var machine: String
+        var agent: PBAgent
+    }
+
+    private(set) var list: PBListModelsResponse?
+    @ObservationIgnored private var wanted: Key?
+    @ObservationIgnored private var request = UUID()
+
+    /// A refresh keeps the current list visible; a different target starts empty.
+    func load(_ key: Key?, fetch: @MainActor (Key) async -> PBListModelsResponse?) async {
+        if wanted != key { list = nil }
+        wanted = key
+        let request = UUID()
+        self.request = request
+        guard let key else { return }
+        let got = await fetch(key)
+        guard wanted == key, self.request == request else { return }
+        if let got { list = got }
+    }
+}
 
 struct ScheduleTargetSheet: View {
     let machine: String

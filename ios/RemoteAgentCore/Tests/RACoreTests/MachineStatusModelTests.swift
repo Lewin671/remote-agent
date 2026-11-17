@@ -297,17 +297,7 @@ private func status(cpu: Double = 23, total: UInt64 = 16 << 30, used: UInt64 = U
         #expect(swapOldAlpha(100) == 0 && swapNewAlpha(230) == 0 && swapNewAlpha(350) == 1)
     }
 
-    @Test func aStartFailedOnAFullDiskHasItsOwnCard() {
-        var s = RemoteState()
-        s.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with { $0.protocolVersion = protocolVersion })
-        let c = NewConfig(machineId: "m", cwd: "/p")
-        func notices(_ p: NewSessionProgress) -> [NewSessionNotice] {
-            newSessionNotices(s, config: c, name: "p", pick: nil, drafting: true, settled: true, start: p)
-        }
-        #expect(notices(NewSessionProgress(error: "这台电脑磁盘满了", diskFull: true)).contains(.diskFull(machine: "m")))
-        // Any other failure keeps its sentence, with the computer's own words after the prefix.
-        let failed = notices(NewSessionProgress(error: "boom"))
-        #expect(failed.contains(.failed(L10n.newSessionStartFailed(reason: "boom", locale: "zh-CN"))))
+    @Test func aStartFailedOnAFullDiskMapsToLocalizedReason() {
         let err = CommandError("disk_full", "mkdir /Users/x: no space left on device")
         #expect(isDiskFull(err) && errorText(err) == "这台电脑磁盘满了")
         #expect(L10n.newSessionStartFailed(reason: errorText(err), locale: "zh-CN") == "启动失败：这台电脑磁盘满了")

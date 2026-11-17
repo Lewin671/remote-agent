@@ -1,14 +1,14 @@
-// Sealed commands through the server's Forward, and what an answer that
-// did not come means (architecture §10 「指令」): a command that may have
-// reached the computer is never called failed, only unknown, and is sent
-// again as it was.
 import Connect
 import Foundation
+import os
 import RAProto
 
 extension CommandError {
-    static func unknownBecause(_ reason: String) -> CommandError {
-        CommandError(unknownOutcome, L10nMessage.errorsIosUnsureWhetherTheComputerExecutedThis(value: String(describing: reason)), outcomeDetail: reason, outcome: .unknown)
+    public static func unknownBecause(_ reason: String) -> CommandError {
+        CommandError(
+            unknownOutcome,
+            L10nMessage.errorsIosUnsureWhetherTheComputerExecutedThis(value: String(describing: reason)),
+            outcomeDetail: reason, outcome: .unknown)
     }
 }
 
@@ -25,54 +25,210 @@ public enum ImageResult: Equatable, Sendable {
 }
 
 extension Remote {
-    /// Prepares an intent; authorization and sealing happen before forwarding.
-    public nonisolated func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws
-        -> PreparedCommand
-    {
+    // MARK: - M2 Core Command Attempt Executor
+
+    /// Executes a single Core-managed command attempt and returns raw cryptographic and transport
+    /// evidence in `PBCoreCommandOutcomeEvent`. Core owns retry scheduling, freezing, and outcome classification.
+    public func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent {
+        var ev = PBCoreCommandOutcomeEvent()
+        ev.requestID = effect.requestID
+        ev.attemptID = effect.attemptID
+
+        let cmd = try? PBCommand(serializedBytes: effect.commandBytes)
+        if let cmd {
+            trackTransfer(machineId: effect.machineID, command: cmd)
+        }
+
+        let hint = effect.forceRelay ? nil : directHint(for: effect)
+        let tracking = hint.flatMap { direct?.track(effect.machineID, $0) }
+        let build = hint.flatMap { directBuilder(direct, effect.machineID, $0) }
+        let handedOffLock = OSAllocatedUnfairLock(initialState: false)
+        let delivery = deviceLink.delivery(
+            attemptId: effect.attemptID,
+            direct: build,
+            handoff: { handedOffLock.withLock { $0 = true } }
+        )
+        ev.routeWasDirect = delivery.isDirect
+        let started = ContinuousClock.now
+
+        do {
+            if let cmd {
+                try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
+            }
+            try await delivery.prepare(prior: effect.retryOfUnknown)
+
+            let stateHash = try await authorizationStateHash()
+            let (envelope, keyHash, payloadHash) = try await sealedForDispatch(
+                effect: effect, stateHash: stateHash)
+            try Task.checkCancellation()
+            if let cmd {
+                try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
+            }
+
+            let res = try await delivery.send(machineId: effect.machineID, command: envelope)
+            let (_, msg): (PBHeader, PBCommandResult)
+            do {
+                (_, msg) = try await openSecureMessage(
+                    envelope: res.result,
+                    want: Place(
+                        .commandResult,
+                        machineId: effect.machineID,
+                        sessionId: effect.sessionID,
+                        requestId: effect.requestID),
+                    as: PBCommandResult.self)
+            } catch {
+                tracking?.failed()
+                ev.source = .daemon
+                ev.notForwarded = false
+                ev.attemptBound = res.attemptID == delivery.attemptId
+                ev.hashesMatch = false
+                ev.signed = false
+                ev.outerMatchesInner = false
+                ev.transportCode = CommandError.unknownOutcome
+                ev.transportDetail = L10n.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs()
+                return ev
+            }
+
+            let hashesMatch = msg.requestKeyHash == keyHash && msg.payloadHash == payloadHash
+            let outerOutcome = delivery.isDirect ? msg.outcome : res.outcome
+            let outerReason = delivery.isDirect ? msg.reason : res.reason
+            let outerMatchesInner = delivery.isDirect || (res.outcome == msg.outcome && res.reason == msg.reason)
+            let signed = msg.outcome == "conflict" || msg.conflictKind.isEmpty
+            let bound = res.attemptID == delivery.attemptId
+
+            let elapsedMs = Double((ContinuousClock.now - started).milliseconds)
+            if delivery.isDirect {
+                if bound && hashesMatch && outerMatchesInner && signed && msg.outcome != "unknown" {
+                    let bytes = effect.bulkFileKey.isEmpty ? 0 : Int(max(0, effect.bulkBytes))
+                    tracking?.observe(true, bytes, elapsedMs)
+                } else {
+                    tracking?.failed()
+                }
+            } else if bound && hashesMatch && outerMatchesInner && signed && msg.outcome == "executed" {
+                let bytes = effect.bulkFileKey.isEmpty ? 0 : Int(max(0, effect.bulkBytes))
+                tracking?.observe(false, bytes, elapsedMs)
+            }
+
+            ev.source = .daemon
+            ev.notForwarded = false
+            ev.attemptBound = bound
+            ev.hashesMatch = hashesMatch
+            ev.outerMatchesInner = outerMatchesInner
+            ev.signed = signed
+            ev.outerOutcome = outerOutcome
+            ev.outerReason = outerReason
+            ev.result = msg
+            return ev
+        } catch let error as CommandError {
+            tracking?.failed()
+            let handedOff = handedOffLock.withLock { $0 }
+            ev.source = .local
+            ev.notForwarded = !handedOff
+            ev.transportCode = error.code
+            ev.transportDetail = error.message
+            return ev
+        } catch let error as ConnectError {
+            tracking?.failed()
+            let handedOff = handedOffLock.withLock { $0 }
+            if let refusal = delivery.refusal(error) {
+                if error.code == .unauthenticated { dropToken() }
+                ev.source = .server
+                ev.notForwarded = true
+                ev.attemptBound = true
+                ev.outerReason = refusal.reason
+                ev.transportCode = error.code.name
+                ev.transportDetail = errorText(error)
+            } else if error.code == .unauthenticated {
+                dropToken()
+                ev.source = .server
+                ev.notForwarded = !handedOff
+                ev.transportCode = "unauthenticated"
+                ev.transportDetail = errorText(error)
+            } else if error.code == .unavailable {
+                ev.source = .transport
+                ev.notForwarded = !handedOff
+                ev.transportCode = CommandError.unavailable
+                ev.transportDetail = errorText(error)
+            } else {
+                ev.source = .server
+                ev.notForwarded = !handedOff
+                ev.attemptBound = false
+                ev.transportCode = error.code.name
+                ev.transportDetail = errorText(error)
+            }
+            return ev
+        } catch is PathChanged {
+            tracking?.failed()
+            let handedOff = handedOffLock.withLock { $0 }
+            ev.source = .transport
+            ev.notForwarded = !handedOff
+            ev.transportCode = "path_changed"
+            return ev
+        } catch {
+            tracking?.failed()
+            let handedOff = handedOffLock.withLock { $0 }
+            ev.source = .transport
+            ev.notForwarded = !handedOff
+            ev.transportCode = unresolvedHost(error) ? "unresolved_host" : (handedOff ? CommandError.unknownOutcome : "network")
+            ev.transportDetail = errorText(error)
+            return ev
+        }
+    }
+
+    private func sealedForDispatch(
+        effect: PBCoreDispatchCommandEffect,
+        stateHash: Data
+    ) async throws -> (PBEnvelope, Data, Data) {
+        if let cached = sealedCommands[effect.requestID], cached.stateHash == stateHash {
+            return (cached.envelope, cached.keyHash, cached.payloadHash)
+        }
+        let env = try await authorizeCommandBytes(
+            machineId: effect.machineID,
+            sessionId: effect.sessionID,
+            requestId: effect.requestID,
+            deadlineMs: effect.deadlineMs,
+            commandBytes: effect.commandBytes
+        )
+        let binding = try await securitySession().commandIdentity(env)
+        storeSealedCommand(
+            requestID: effect.requestID,
+            entry: SealedCommandEntry(
+                stateHash: stateHash, envelope: env, keyHash: binding.key, payloadHash: binding.payload))
+        return (env, binding.key, binding.payload)
+    }
+
+    // MARK: - Transitional Step 3-4 Command & Helper APIs (delete after Step 3-4 migration)
+
+    public nonisolated func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand {
         try requireFileCapability(machineId: machineId, hasFiles: requiresFileCapability(cmd))
         let requestId = newRequestId()
         let deadline = clock() + commandTTLMs
-        var h = PBHeader()
-        h.kind = .command
-        h.machineID = machineId
-        h.sessionID = sessionId
-        h.requestID = requestId
-        h.deadlineMs = deadline
-        h.sender = account.deviceId
         var versioned = cmd
         versioned.protocolVersion = protocolVersion
         versioned = try observedCommand(versioned, snapshot: eventFeed(sessionId).value.live)
-        // Signed by this device, so a daemon can tell who sent it
-        // (architecture §9).
         return PreparedCommand(
             machineId: machineId, sessionId: sessionId, requestId: requestId, deadlineMs: deadline,
             command: versioned)
     }
 
     public func prepare(_ sid: String, _ command: PBCommand) throws -> PreparedCommand {
-        // A visible session can outlive its live route. Keep the file update
-        // notice ahead of route lookup, including when preparing an outbox retry.
         try requireFileCapability(machineId: state.value.sessions[sid]?.machineId ?? "", hasFiles: requiresFileCapability(command))
-        guard let session = sessions[sid] else { throw CommandError("not_found", L10nMessage.errorsIosUnknownSession()) }
+        guard let session = state.value.sessions[sid] else {
+            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
+        }
         return try prepare(machineId: session.machineId, sessionId: sid, command)
     }
 
-    /// Sends a command about a session.
     @discardableResult
     public func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
         try await forward(try prepare(sid, cmd))
     }
 
-    /// Sends a command about a machine, such as starting a session.
     @discardableResult
-    public func machineCommand(_ machineId: String, _ cmd: PBCommand) async throws
-        -> PBCommandResult
-    {
+    public func machineCommand(_ machineId: String, _ cmd: PBCommand) async throws -> PBCommandResult {
         try await forward(try prepare(machineId: machineId, sessionId: "", cmd))
     }
 
-    /// How long one round trip to the server takes now, in ms: a request that does nothing
-    /// there (连接检测). Throws when no answer comes in `timeoutMs`.
     public nonisolated func pingServer(timeoutMs: Int64 = 8_000) async throws -> Int64 {
         var request = URLRequest(url: URL(string: api.server + "/healthz")!)
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
@@ -82,7 +238,9 @@ extension Remote {
             let status = try await withTimeout(timeoutMs, sleep: sleep) { [request] in
                 try await http.data(for: request).1.statusCode
             }
-            if !(200..<300).contains(status) { throw UserError(L10nMessage.errorsServerReturned(value: String(describing: status))) }
+            if !(200..<300).contains(status) {
+                throw UserError(L10nMessage.errorsServerReturned(value: String(describing: status)))
+            }
         } catch is TimedOut {
             throw UserError(L10nMessage.connectionNoResponse())
         } catch let e as URLError where e.code == .timedOut {
@@ -91,10 +249,7 @@ extension Remote {
         return (ContinuousClock.now - started).milliseconds
     }
 
-    /// How long one round trip to a computer takes, through the server and back: a sealed command that only reads its settings.
-    public nonisolated func pingMachine(_ machineId: String, timeoutMs: Int64 = 15_000) async throws
-        -> Int64
-    {
+    public nonisolated func pingMachine(_ machineId: String, timeoutMs: Int64 = 15_000) async throws -> Int64 {
         var cmd = PBCommand()
         cmd.getSettings = PBGetSettingsRequest()
         let started = ContinuousClock.now
@@ -108,220 +263,162 @@ extension Remote {
         return (ContinuousClock.now - started).milliseconds
     }
 
-    /// Forwards a prepared command and returns the opened result. Transport
-    /// failures are retried with the same request ID, which the daemon runs at
-    /// most once; when the outcome stays unknown the error says so.
     @discardableResult
-    public func forward(_ p: PreparedCommand, retryOfUnknown: Bool = false) async throws
-        -> PBCommandResult
-    {
-        try await deviceLink.call(p, prior: retryOfUnknown) { call in
-            try await self.forwardPrepared(p, call: call)
-        }
-    }
-
-    private func forwardLifetimeExpired() -> CommandError {
-        CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
-    }
-
-    private func forwardPrepared(_ p: PreparedCommand, call: DispatchState.Call) async throws -> PBCommandResult {
-        // PathChanged never consumes retries or moves the original recovery cutoff.
+    public func forward(_ p: PreparedCommand, retryOfUnknown: Bool = false) async throws -> PBCommandResult {
         let (sum, overflow) = p.deadlineMs.addingReportingOverflow(resultRetentionMs)
         let recoveryDeadline = overflow ? Int64.max : sum
-        let now = clock()
-        guard now < recoveryDeadline else {
-            if !call.uncertain { throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent()) }
-            throw forwardLifetimeExpired()
-        }
-        let remaining = recoveryDeadline - now
-        let outcome: Result<PBCommandResult, Error>
-        do {
-            outcome = try await withTimeout(remaining, sleep: sleep) {
-                // Preserve errors from inner steps; only this timer owns the cutoff.
-                do { return .success(try await self.forwardWithinLifetime(p, call: call, recoveryDeadline: recoveryDeadline)) }
-                catch { return .failure(error) }
-            }
-        } catch {
-            if error is TimedOut || call.uncertain { throw forwardLifetimeExpired() }
-            throw error
-        }
-        return try outcome.get()
-    }
-
-    private func forwardWithinLifetime(_ p: PreparedCommand, call: DispatchState.Call, recoveryDeadline: Int64) async throws -> PBCommandResult {
-        let prior = call.uncertain
-        if verifiedNetworkGeneration != networkGeneration {
-            let gen=networkGeneration
-            try await refreshNetworkSecurity()
-            _ = try await securitySession().sync()
-            guard gen == networkGeneration else {throw DeviceSecurity.Failure.stale}
-            verifiedNetworkGeneration=gen
-        }
-        // A machine of another protocol version would refuse it: say which
-        // side to update instead of sending.
-        if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
-            throw CommandError("failed_precondition", refusal,outcome:prior ? .unknown : .notSent)
-        }
-        // A command whose outcome is unknown is sent even when expired: the
-        // daemon may still have its result in its log.
-        if !call.uncertain && clock() >= p.deadlineMs {
+        let prior = retryOfUnknown || p.mayHaveRun
+        if !prior && clock() >= p.deadlineMs {
             throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
         }
-        var attempt = 0
-        var recoveryUntil:Int64?
+        guard clock() < recoveryDeadline else {
+            throw prior
+                ? CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
+                : CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
+        }
+        if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
+            throw CommandError("failed_precondition", refusal, outcome: prior ? .unknown : .notSent)
+        }
+        trackTransfer(machineId: p.machineId, command: p.command)
         let routeHint = directHint(p.machineId, p.command)
         var forceRelay = false
-        // Once a try may have reached the daemon, a later try that surely did
-        // not (machine gone, network down) says nothing about that one: the
-        // outcome stays unknown.
-        func notSent(_ code: String, _ text: String) -> CommandError {
-            call.uncertain
-                ? CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
-                : CommandError(code, text)
-        }
-        // Authorize only after login. A prepared intent keeps plaintext locally;
-        // no old-key ciphertext is sent while authority freshness is unknown.
+        var attemptCount = 0
+
         while true {
-            guard clock() < recoveryDeadline else { throw forwardLifetimeExpired() }
-            let tracking = routeHint.flatMap { direct?.track(p.machineId, $0) }
-            let routeStarted = ContinuousClock.now
+            guard clock() < recoveryDeadline else {
+                throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
+            }
             let build = routeHint != nil && !forceRelay ? directBuilder(direct, p.machineId, routeHint!) : nil
-            let delivery = deviceLink.delivery(call, direct: build)
-            let attemptId = delivery.attemptId
+            let tracking = routeHint.flatMap { direct?.track(p.machineId, $0) }
+            let started = ContinuousClock.now
+            let handedOffLock = OSAllocatedUnfairLock(initialState: false)
+            let delivery = deviceLink.delivery(direct: build, handoff: {
+                handedOffLock.withLock { $0 = true }
+                p.markMayHaveRun()
+            })
             do {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
-                try await delivery.prepare(prior: call.uncertain)
+                try await delivery.prepare(prior: p.mayHaveRun)
                 let stateHash = try await authorizationStateHash()
-                let envelope = try await p.authorizationResult(stateHash: stateHash) {
-                    verifyObservation in
+                let envelope = try await p.authorizationResult(stateHash: stateHash) { verifyObservation in
                     Task {
-                        try await self.authorizePrepared(p, verifyObservation: verifyObservation && !call.hasPrior)
+                        try await self.authorizePrepared(p, verifyObservation: verifyObservation && !prior)
                     }
                 }.value
                 try Task.checkCancellation()
-                // Login, authorization and signing can suspend across a machine refresh.
-                try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 let binding = try await securitySession().commandIdentity(envelope)
-                guard clock() < recoveryDeadline else { throw forwardLifetimeExpired() }
-                let res = try await recovery.follow { try await delivery.send(machineId: p.machineId, command: envelope) }
+                let res = try await delivery.send(machineId: p.machineIDOr(p.machineId), command: envelope)
                 let msg: PBCommandResult
                 do {
                     (_, msg) = try await openSecureMessage(
                         envelope: res.result,
-                        want: Place(
-                            .commandResult, machineId: p.machineId, sessionId: p.sessionId,
-                            requestId: p.requestId),
+                        want: Place(.commandResult, machineId: p.machineId, sessionId: p.sessionId, requestId: p.requestId),
                         as: PBCommandResult.self)
                 } catch {
-                    // A result that does not open says nothing about whether
-                    // the command ran; retrying the same request asks again.
+                    tracking?.failed()
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), outcome: .unknown)
                 }
-                // A direct result carries no relay evidence: only the daemon's signed outcome counts.
-                let verified = msg.requestKeyHash == binding.key && msg.payloadHash == binding.payload && res.attemptID == attemptId && (delivery.isDirect || res.outcome == msg.outcome && res.reason == msg.reason) && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
-                let category = verifiedOutcome(msg,key:binding.key,payload:binding.payload,outerOutcome:delivery.isDirect ? msg.outcome : res.outcome,outerReason:delivery.isDirect ? msg.reason : res.reason)
-                if !verified || category == .unknown { throw CommandError(CommandError.unknownOutcome,L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(),fromDaemon:true,outcome:.unknown) }
-
-                if category == .executed && !msg.resultAvailable || category == .conflict && msg.conflictKind == "identity" {
+                let bound = res.attemptID == delivery.attemptId
+                    && msg.requestKeyHash == binding.key
+                    && msg.payloadHash == binding.payload
+                    && (delivery.isDirect || (res.outcome == msg.outcome && res.reason == msg.reason))
+                    && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
+                let category = Outcome(rawValue: msg.outcome) ?? .unknown
+                guard bound && category != .unknown else {
+                    tracking?.failed()
+                    throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), fromDaemon: true, outcome: .unknown)
+                }
+                if (category == .executed && !msg.resultAvailable) || (category == .conflict && msg.conflictKind == "identity") {
                     _ = await refresh()
-                    if !p.sessionId.isEmpty { await refreshLiveSnapshot(p.sessionId) }
-                    throw CommandError(msg.errorCode,category == .executed ? L10nMessage.errorsExecutedResultUnavailable() : L10nMessage.errorsRequestIdentityConflict(),fromDaemon:true,outcome:category,conflictKind:msg.conflictKind,resultAvailable:msg.resultAvailable)
+                    throw CommandError(
+                        msg.errorCode,
+                        category == .executed ? L10nMessage.errorsExecutedResultUnavailable() : L10nMessage.errorsRequestIdentityConflict(),
+                        fromDaemon: true, outcome: category, conflictKind: msg.conflictKind, resultAvailable: msg.resultAvailable)
                 }
                 if !msg.errorCode.isEmpty || category != .executed {
-                    throw CommandError(msg.errorCode,msg.errorMessage.isEmpty ? msg.errorCode : msg.errorMessage,fromDaemon:true,readOnly:p.command.isReadOnlyCommand,outcome:category,conflictKind:msg.conflictKind,resultAvailable:msg.resultAvailable)
+                    throw CommandError(
+                        msg.errorCode.ifEmpty(msg.outcome),
+                        msg.errorMessage.ifEmpty(msg.errorCode),
+                        fromDaemon: true, outcome: category, conflictKind: msg.conflictKind)
                 }
-                if case .schedule(let request) = p.command.kind, request.operation == "list",
-                   (try? decodeScheduleList(msg)) != nil, let bytes = try? res.result.serializedData() {
-                    await keepScheduleSnapshot(p.machineId, data: bytes)
+                let elapsedMs = Double((ContinuousClock.now - started).milliseconds)
+                if delivery.isDirect || routeHint != nil {
+                    tracking?.observe(delivery.isDirect, 0, elapsedMs)
                 }
-                if routeHint != nil {
-                    var bytes = 0
-                    if case .putImageChunk(let c)? = p.command.kind { bytes = c.data.count }
-                    if case .getSharedFileChunk(let c)? = msg.kind { bytes = c.data.count }
-                    tracking?.observe(delivery.isDirect, bytes, Double((ContinuousClock.now - routeStarted).milliseconds))
-                }
-                trackTransfer(p)
                 return msg
+            } catch let e as CommandError {
+                tracking?.failed()
+                if prior && !e.unknown && !(e.fromDaemon && e.outcome != .notSent) {
+                    throw CommandError(e.code, e.message, fromDaemon: e.fromDaemon, readOnly: e.readOnly, outcomeDetail: e.outcomeDetail, outcome: .unknown, conflictKind: e.conflictKind, resultAvailable: e.resultAvailable)
+                }
+                throw e
             } catch is PathChanged {
-                try Task.checkCancellation()
-                if delivery.isDirect, routeHint != nil {
-                    // The relay finishes what the direct path could not, and decides alone from here: a failed direct try is no answer.
-                    forceRelay = true; tracking?.failed()
-                    if case .putImageChunk(let c)? = p.command.kind {
-                        // The status read is relay-only and comes before the original chunk is sent again.
-                        var status = PBCommand(); status.getImageUploadStatus.transferID = c.transferID
-                        _ = try? await machineCommand(p.machineId, status)
-                    }
-                }
-                continue
+                tracking?.failed()
+                if delivery.isDirect { forceRelay = true; continue }
+                throw CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
             } catch let ce as ConnectError {
-                let notForwarded = delivery.refusal(ce)
-                let unsent = notForwarded != nil
-                if unsent {
-                    if !call.uncertain && (ce.code != .unauthenticated || attempt >= 3) { throw CommandError(String(describing:ce.code),notForwarded?.reason == "machine_offline" ? L10n.errorsTheComputerIsOfflineTheCommandWasNotSent() : ce.code == .unavailable ? (ce.message ?? errorText(ce)) : errorText(ce),outcome:.notSent) }
-                }
-                if ce.code == .unavailable && call.uncertain && running {
-                    if recoveryUntil == nil {
-                        recoveryUntil=monotonic()+3000
-                        if notForwarded == nil {beginConnect()}
+                tracking?.failed()
+                if let refusal = delivery.refusal(ce) {
+                    if ce.code == .unauthenticated {
+                        rejectCredential(token)
+                        attemptCount += 1
+                        if attemptCount < 3 { continue }
                     }
-                    if monotonic()+250 < recoveryUntil! {try await sleep(250);continue}
+                    throw CommandError(ce.code.name, refusal.reason.ifEmpty(errorText(ce)), outcome: p.mayHaveRun ? .unknown : .notSent)
                 }
-                // A terminal DNS/connection error can follow an opaque replay. Only
-                // the relay proof may settle a delivery after RPC handoff.
-                if neverSent(ce.exception) { throw notSent("network", L10n.errorsIosNetworkUnavailableTheCommandWasNotSent()) }
-                if ce.code == .unauthenticated && attempt < 3 {
-                    attempt += 1
-                    try await delivery.refreshAuth(prior: call.uncertain)
+                if ce.code == .unauthenticated, attemptCount < 2 {
+                    attemptCount += 1
+                    rejectCredential(token)
                     continue
                 }
-                // aborted: the daemon could not seal a result, as on the web.
-                let unknown = [
-                    Code.deadlineExceeded, .unknown, .internalError, .canceled, .aborted,
-                ].contains(ce.code)
-
-                if unknown && attempt < 3 && clock() + 2000 < p.deadlineMs {
-                    attempt += 1
-                    try await sleep(1000 * Int64(attempt))
+                if (ce.code == .unavailable || ce.code == .deadlineExceeded), attemptCount < 3, clock() + 500 < recoveryDeadline {
+                    attemptCount += 1
+                    try? await sleep(500)
                     continue
                 }
-                if ce.code == .unavailable && ce.exception == nil {
-                    throw notSent(CommandError.unavailable, L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
-                }
-                if unknown || ce.code == .unavailable {
-                    throw CommandError.unknownBecause(errorText(ce))
-                }
-                throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
+                if p.mayHaveRun { throw CommandError.unknownBecause(errorText(ce)) }
+                throw CommandError(ce.code.name, errorText(ce))
             } catch {
-                if delivery.isDirect, routeHint != nil { forceRelay = true; tracking?.failed() }
-                if let answer = error as? CommandError, answer.fromDaemon { throw answer }
-                if let refusal = error as? CommandError, refusal.code == "file_upload_unsupported" {
-                    if call.uncertain { throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertain(value: String(describing: refusal.message)), outcome: .unknown) }
-                    throw refusal
-                }
-                if call.uncertain {
-                    throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosNoVerifiableExecutionResultReceivedRetryTheSameRequest(), outcome: .unknown)
-                }
+                tracking?.failed()
+                if p.mayHaveRun { throw CommandError.unknownBecause(errorText(error)) }
                 throw error
             }
         }
     }
 
-    /// Logs in again during a forward. When an earlier try may already have
-    /// run the command, a failure here is no answer about it: it stays unknown.
+    func fetchLiveSnapshot(_ sid: String) async throws -> PBLiveSnapshot {
+        var cmd = PBCommand()
+        cmd.getLiveSnapshot.sessionID = sid
+        guard let session = state.value.sessions[sid] else {
+            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
+        }
+        let prep = try prepare(machineId: session.machineId, sessionId: sid, cmd)
+        let envelope = try await authorizePrepared(prep, verifyObservation: false)
+        let delivery = deviceLink.delivery()
+        try await delivery.prepare(prior: false)
+        let res = try await delivery.send(machineId: session.machineId, command: envelope)
+        let (_, msg) = try await openSecureMessage(
+            envelope: res.result,
+            want: Place(.commandResult, machineId: session.machineId, sessionId: sid, requestId: prep.requestId),
+            as: PBCommandResult.self)
+        guard case .liveSnapshot(let snapshot)? = msg.kind, snapshot.session.id == sid else {
+            throw DeviceSecurity.Failure.untrusted
+        }
+        return snapshot
+    }
+
     func relogin(_ mayHaveRun: Bool) async throws -> String {
         do {
             return try await signIn()
         } catch {
             if !mayHaveRun { throw error }
-            throw CommandError.unknownBecause(L10n.errorsIosTheRequestMayHaveArrivedButLoginThenFailed(value: String(describing: errorText(error))))
+            throw CommandError.unknownBecause(
+                L10n.errorsIosTheRequestMayHaveArrivedButLoginThenFailed(value: String(describing: errorText(error))))
         }
     }
 
     /// The models a machine's CLI offers, refreshed when a picker opens.
-    public func listModels(_ machineId: String, agent: PBAgent = .unspecified, fresh: Bool = false)
-        async throws -> PBListModelsResponse
-    {
+    public func listModels(_ machineId: String, agent: PBAgent = .unspecified, fresh: Bool = false) async throws -> PBListModelsResponse {
         let k = "\(machineId)/\(agent.rawValue)"
         if let held = models[k], !(held.done && (fresh || held.failed)) {
             return try await held.task.value
@@ -354,8 +451,6 @@ extension Remote {
 
     // --- shared files ---
 
-    /// One block of a file the agent shared (`GetSharedFileChunk`): read-only, so a retry of the same
-    /// request is safe, and never kept in a log.
     public func sharedFileChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
         var cmd = PBCommand()
         cmd.getSharedFileChunk.sessionID = sessionId
@@ -368,30 +463,66 @@ extension Remote {
         return chunk
     }
 
-    /// The fetcher `SharedFileStore` downloads with.
     public nonisolated var sharedFileFetcher: any SharedFileFetching { RemoteSharedFileFetcher(remote: self) }
 
     // --- images ---
 
-    /// An image's display copy, from the cache of envelopes or the server.
-    /// Only the envelope is cached; it is opened and checked in memory each
-    /// time: bound to this machine, session and image, and data that starts
-    /// with its format's signature.
+    /// Transitional Step 3-4 helper used by `SessionScreen` -> `ProjectSettingsSheet` until Session migrates into Core.
+    public func applyTransitionalPrefsOp(_ op: PrefsOp) async throws {
+        let client = try securitySession()
+        let operation = newRequestId()
+        let apiClient = api.client
+        var askReq = PBGetAccountPrefsRequest()
+        askReq.objectID = projectPrefsID
+        let ask = askReq
+        for _ in 0..<5 {
+            let current = try await withAuthRetry { headers in
+                try await apiClient.getAccountPrefs(request: ask, headers: headers).value()
+            }.object
+            let plain = try await decodeAccountPrefs(current, trackRef: false)
+            if plain.broken {
+                throw CommandError("failed_precondition", L10nMessage.errorsProjectPreferencesFormatIsNotSupported())
+            }
+            let base = plain.hasPrefs ? plain.prefs : PBProjectPrefs()
+            if base.recentOps.contains(operation) { return }
+            let next = applyPrefsOp(base: base, op: op, opId: operation, now: clock())
+            let env = try await client.seal(
+                purpose: .prefs,
+                request: projectPrefsID,
+                seq: current.revision + 1,
+                plaintext: try next.serializedData()
+            )
+            var putReq = PBPutAccountPrefsRequest()
+            putReq.objectID = projectPrefsID
+            putReq.expectedRevision = current.revision
+            putReq.envelope = env
+            let put = putReq
+            let reply = try await withAuthRetry { headers in
+                try await apiClient.putAccountPrefs(request: put, headers: headers).value()
+            }
+            if reply.applied {
+                return
+            }
+        }
+        throw CommandError("aborted", L10nMessage.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot())
+    }
+
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
-        guard let s = sessions[sid], sessionKeys[sid] != nil else {
+        guard let machineId = machineIdForSessionIfKnown(sid), sessionKeys[sid] != nil else {
             throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
         let cacheKey = "\(sid)/\(imageId)"
         var env = await cache?.image(key: cacheKey).flatMap { try? PBEnvelope(serializedBytes: $0) }
         if env == nil {
-            var ask = PBGetImageRequest()
-            ask.sessionID = sid
-            ask.imageID = imageId
+            var askReq = PBGetImageRequest()
+            askReq.sessionID = sid
+            askReq.imageID = imageId
+            let ask = askReq
             let r: PBGetImageResponse
             do {
-                let tok = try await currentToken()
-                r = try await api.client.getImage(request: ask, headers: Api.headers(token: tok))
-                    .value()
+                r = try await withAuthRetry { [api] headers in
+                    try await api.client.getImage(request: ask, headers: headers).value()
+                }
             } catch let e as ConnectError where e.code == .notFound {
                 return .missing
             }
@@ -402,19 +533,25 @@ extension Remote {
         do {
             (_, payload) = try await openSecureMessage(
                 envelope: env,
-                want: Place(.image, machineId: s.machineId, sessionId: sid, requestId: imageId),
+                want: Place(.image, machineId: machineId, sessionId: sid, requestId: imageId),
                 as: PBImagePayload.self, history: true)
         } catch is UnsupportedHistoryError {
             return .retiredHistory
         } catch {
             return .corrupt(why: L10n.errorsIosImageContentOrOriginCouldNotBeVerified())
         }
-        if detectFormat(payload.data) != payload.format { return .corrupt(why: L10n.errorsIosImageContentDoesNotMatchItsFormat()) }
+        if detectFormat(payload.data) != payload.format {
+            return .corrupt(why: L10n.errorsIosImageContentDoesNotMatchItsFormat())
+        }
         if let env, let bytes: Data = try? env.serializedData() {
             await cache?.putImage(key: cacheKey, envelope: bytes)
         }
         return .loaded(payload)
     }
+}
+
+private extension PreparedCommand {
+    func machineIDOr(_ fallback: String) -> String { machineId.isEmpty ? fallback : machineId }
 }
 
 extension Duration {
@@ -427,10 +564,12 @@ extension Duration {
 extension PBCommand {
     var isReadOnlyCommand: Bool {
         switch kind {
-        case .getMachineStatus, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus, .getSharedFileChunk: true
-
-        case .schedule(let request): ["list", "get"].contains(request.operation)
-        default: false
+        case .getMachineStatus, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus, .getSharedFileChunk:
+            true
+        case .schedule(let request):
+            ["list", "get"].contains(request.operation)
+        default:
+            false
         }
     }
 }
@@ -440,4 +579,60 @@ private struct RemoteSharedFileFetcher: SharedFileFetching {
     func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
         try await remote.sharedFileChunk(sessionId: sessionId, fileId: fileId, offset: offset)
     }
+}
+
+/// Session ID created by a `createSession` command result, if present.
+public func startedSession(_ r: PBCommandResult?) -> String? {
+    guard case .createSession(let reply)? = r?.kind, reply.hasSession else { return nil }
+    return reply.session.id.isEmpty ? nil : reply.session.id
+}
+
+public func listDirectoriesCommand(path: String) -> PBCommand {
+    var cmd = PBCommand()
+    cmd.listDirectories = .with { $0.path = path }
+    return cmd
+}
+
+public func getSettingsCommand() -> PBCommand {
+    var cmd = PBCommand()
+    cmd.getSettings = PBGetSettingsRequest()
+    return cmd
+}
+
+// Transitional Step 3-4 observed-action preflight helpers (Core owns this for DispatchCommandEffect).
+func isObservedAction(_ command: PBCommand) -> Bool {
+    switch command.kind {
+    case .resolveApproval?, .answerQuestion?, .answerPlan?: return true
+    default: return false
+    }
+}
+
+func observedCommand(_ command: PBCommand, snapshot: PBLiveSnapshot?) throws -> PBCommand {
+    guard isObservedAction(command) else { return command }
+    guard let snapshot else {
+        throw CommandError("failed_precondition", L10nMessage.errorsIosTheCurrentRequestHasNotBeenVerifiedByThe())
+    }
+    var result = command
+    switch command.kind {
+    case .resolveApproval(let request)?:
+        guard let event = snapshot.actions.first(where: {
+            if case .approvalRequested(let a)? = $0.kind { return a.approvalID == request.approvalID }
+            return false
+        }), event.seq > 0 else { throw DeviceSecurity.Failure.stale }
+        result.resolveApproval.observedEventSeq = event.seq
+    case .answerQuestion(let request)?:
+        guard let event = snapshot.actions.first(where: {
+            if case .questionAsked(let q)? = $0.kind { return q.questionID == request.questionID }
+            return false
+        }), event.seq > 0 else { throw DeviceSecurity.Failure.stale }
+        result.answerQuestion.observedEventSeq = event.seq
+    case .answerPlan?:
+        guard snapshot.planEventSeq > 0, snapshot.planScreenHash.count == 32 else {
+            throw DeviceSecurity.Failure.stale
+        }
+        result.answerPlan.observedEventSeq = snapshot.planEventSeq
+        result.answerPlan.observedScreenHash = snapshot.planScreenHash
+    default: break
+    }
+    return result
 }

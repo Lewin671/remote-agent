@@ -14,6 +14,26 @@ managed:
     # apart from Foundation's and the core's own names.
     - file_option: swift_prefix
       value: PB
+    # Client core shell protos share some short names (Event, ConnState) with
+    # remoteagent/v1 and RACore, so they use PBCore.
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/app.proto
+      value: PBCore
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/home_view.proto
+      value: PBCore
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/project_view.proto
+      value: PBCore
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/new_session_view.proto
+      value: PBCore
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/text.proto
+      value: PBCore
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/sync_view.proto
+      value: PBCore
 plugins:
   - remote: buf.build/apple/swift:v1.31.0
     out: RemoteAgentCore/Sources/RAProto

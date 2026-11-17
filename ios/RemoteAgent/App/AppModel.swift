@@ -21,6 +21,7 @@
 import Foundation
 import Observation
 import RACore
+import RAProto
 import RAWebRTC
 import SwiftUI
 import UIKit
@@ -39,15 +40,70 @@ final class AccountContext {
     let draftFiles: (any RACore.SealedFiles)?
     /// What this run keeps in memory for the account: drafts and the like.
     let memory = AccountMemory()
+    let core: CoreScreens
+    let coreHost: CoreHost
+    var dismissNewTask: (@MainActor () -> Void)?
 
     /// This client's device ID.
     var me: String { account.deviceId }
 
-    init(account: Account, remote: Remote, preferenceDefaults: UserDefaults = .standard, draftFiles: (any RACore.SealedFiles)? = nil) {
+    init(
+        account: Account,
+        remote: Remote,
+        preferenceDefaults: UserDefaults = .standard,
+        draftFiles: (any RACore.SealedFiles)? = nil,
+        demoDirectories: DirectorySource? = nil,
+        demoModels: [String: PBListModelsResponse] = [:],
+        demoMode: Bool = false,
+        core: CoreScreens? = nil,
+        coreHost: CoreHost? = nil
+    ) {
         self.account = account
         self.remote = remote
         self.preferenceDefaults = preferenceDefaults
         self.draftFiles = draftFiles
+        let screens = core ?? CoreScreens()
+        self.core = screens
+        self.coreHost = coreHost ?? (try! CoreHost.live(
+            remote: remote,
+            account: account,
+            defaults: preferenceDefaults,
+            screens: screens,
+            demoDirectories: demoDirectories,
+            demoModels: demoModels,
+            demoMode: demoMode,
+            onNavigate: { _ in }
+        ))
+    }
+
+    func dispatch(_ event: PBCoreEvent) {
+        Task { await coreHost.dispatch(event) }
+    }
+
+    func dispatch(_ build: (inout PBCoreEvent) -> Void) {
+        var ev = PBCoreEvent()
+        build(&ev)
+        dispatch(ev)
+    }
+
+    func submitNewSession(
+        projectKey: String,
+        prompt: String,
+        attachmentCount: Int32,
+        attachmentsMoved: Bool,
+        autoModeSupported: Bool,
+        attachments: NewSessionAttachmentsSubmission?
+    ) {
+        Task {
+            await coreHost.submitNewSession(
+                projectKey: projectKey,
+                prompt: prompt,
+                attachmentCount: attachmentCount,
+                attachmentsMoved: attachmentsMoved,
+                autoModeSupported: autoModeSupported,
+                attachments: attachments
+            )
+        }
     }
 }
 
@@ -86,6 +142,8 @@ enum AccountDefaults {
 struct EngineParts {
     var engine: any SyncEngine
     var remote: Remote
+    var coreHost: CoreHost? = nil
+    var coreScreens: CoreScreens? = nil
 }
 
 @MainActor
@@ -127,7 +185,11 @@ final class AppModel {
                     account: account, http: AppModel.http, cache: cache,
                     log: { log.info("\($0, privacy: .public)") }, securityStorage: security,
                     rtc: WebRtcFactory())
-                return EngineParts(engine: remote, remote: remote)
+                let screens = CoreScreens()
+                let host = try CoreHost.live(
+                    remote: remote, account: account, defaults: .standard,
+                    screens: screens, onNavigate: { _ in })
+                return EngineParts(engine: host, remote: remote, coreHost: host, coreScreens: screens)
             }
         var saveJoined: @Sendable (Vault, Account) throws -> Void = { vault, account in
             try vault.save(
@@ -211,6 +273,7 @@ final class AppModel {
 
     var account: Account? { context?.account }
     var remote: Remote? { context?.remote }
+    func reconnectNow() { engine?.reconnectNow() }
     /// The server turned this device away (architecture §13 「移除设备」): only the notice is shown.
     var removed: Bool { stage == .ready && state.removed }
 
@@ -285,9 +348,15 @@ final class AppModel {
         foreground = front
         if front {
             loadAccount()
+            if let host = engine as? CoreHost {
+                Task { await host.setForeground(true) }
+            }
             engine?.start()
         } else {
             closeTerminals()
+            if let host = engine as? CoreHost {
+                Task { await host.setForeground(false) }
+            }
             engine?.stop()
         }
     }
@@ -434,7 +503,7 @@ final class AppModel {
         }
         // Before the engine starts: the stream is opened with the login the last run kept.
         log.info("login from the last run: \(kept == nil ? "none" : "found", privacy: .public)")
-        made.remote.keepLogin(kept) { keeper.keep($0) }
+        await made.remote.keepLogin(kept) { keeper.keep($0) }
         logins = keeper
         await adopt(account: account, made: made, store: store)
         if foreground { made.engine.start() }
@@ -445,17 +514,25 @@ final class AppModel {
         engine = made.engine
         described = nil
         state = made.remote.state.value
-        context = AccountContext(account: account, remote: made.remote, preferenceDefaults: parts.defaults, draftFiles: parts.storage.pending.scoped())
-        if let context {
-            await made.remote.onSessionRemoved { [weak context] sid in
-                await MainActor.run {
-                    guard let context else { return }
-                    context.sessionStore.forgetSession(sid)
-                    ImageCenter.of(context.remote).forgetSession(sid)
-                    SharedFileCenter.of(context.remote).forgetSession(sid)
-                }
+        let ctx = AccountContext(
+            account: account,
+            remote: made.remote,
+            preferenceDefaults: parts.defaults,
+            draftFiles: parts.storage.pending.scoped(),
+            core: made.coreScreens,
+            coreHost: made.coreHost
+        )
+        context = ctx
+        let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
+            await MainActor.run {
+                guard let ctx else { return }
+                ctx.sessionStore.forgetSession(sid)
+                ImageCenter.of(ctx.remote).forgetSession(sid)
+                SharedFileCenter.of(ctx.remote).forgetSession(sid)
             }
         }
+        await made.remote.onSessionRemoved(cleanup)
+        await ctx.coreHost.setSessionRemovedHandler(cleanup)
         installAuthorityProtection(made.remote.authorityGate)
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
@@ -623,6 +700,9 @@ final class AppModel {
         if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
         LibraryVideos.discardAll()
         context?.prefsChanges.close()
+        if let host = context?.coreHost {
+            Task { await host.close() }
+        }
         context = nil
         state = RemoteState()
         described = nil
@@ -697,12 +777,24 @@ final class AppModel {
             generation += 1
             let gen = generation
             state = initial
-            context = AccountContext(account: account, remote: remote)
+            let models = Dictionary(
+                Demo.models.map { ("\($0.machineId)/\($0.agent.rawValue)", $0.models) },
+                uniquingKeysWith: { _, rhs in rhs }
+            )
+            context = AccountContext(
+                account: account,
+                remote: remote,
+                demoDirectories: Demo.directories,
+                demoModels: models,
+                demoMode: true
+            )
             ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
             stage = .ready
+            let host = context?.coreHost
             Task {
                 await load()
                 if gen == generation { follow(remote.state, gen: gen) }
+                await host?.seedDemo(state: remote.current)
             }
         }
 

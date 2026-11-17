@@ -20,7 +20,7 @@ public final class Feed<Value: Sendable>: Sendable {
     /// Called, outside the lock, whenever a follower came or went.
     private let followersChanged: (@Sendable () -> Void)?
 
-    init(_ value: Value, followersChanged: (@Sendable () -> Void)? = nil) {
+    public init(_ value: Value, followersChanged: (@Sendable () -> Void)? = nil) {
         state = OSAllocatedUnfairLock(uncheckedState: State(value: value))
         self.followersChanged = followersChanged
     }

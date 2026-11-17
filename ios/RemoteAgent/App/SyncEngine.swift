@@ -28,7 +28,6 @@ extension SyncEngine {
         if available { reconnectNow() }
     }
 }
-extension Remote: SyncEngine {}
 
 /// What the system says of this device's network. It is evidence, not
 /// proof: a path that looks fine may reach nothing, and one that looks down

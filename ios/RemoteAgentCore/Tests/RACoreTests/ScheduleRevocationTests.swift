@@ -15,22 +15,26 @@ extension ServerTests {
         @Test func revokedArchiveNeverRestoresAndLiveAndColdCachesArePruned() async throws {
             try await World.run(setUp:{w in try await w.daemon.putMachine("test-computer")}) {w in
                 let cache=MemoryCache(), r=try await w.client(cache:cache), id=w.daemon.id
-                try await r.refreshTrustedDirectory()
+                _ = await r.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
                 let bytes=try snapshot(w);await cache.putBlob(name:"schedules/"+id,data:bytes)
                 #expect(await r.cachedSchedules(id)?.count == 1)
-                try await w.phone.remove([id]);try await r.refreshTrustedDirectory()
-                #expect(r.current.machines[id] != nil && !r.current.currentMachines.contains(id))
+                try await w.phone.remove([id])
+                let snap = await r.syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
+                #expect(!snap.trustedMachineIds.contains(id) && snap.archiveMachineIds.contains(id))
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
-                // A stale cache copied from an older run must also be rejected before start().
+                // A stale cache copied from an older run must also be rejected cold.
                 await cache.putBlob(name:"schedules/"+id,data:bytes)
                 let cold=try await w.remote(r.account,cache:cache)
                 #expect(await cold.cachedSchedules(id) == nil)
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
-                // Cold restoration prunes it even when no task screen is opened.
+                // Cold bootstrap read prunes it even when no task screen is opened.
                 await cache.putBlob(name:"schedules/"+id,data:bytes)
                 let reading=Signal(), hooked=HookedCache(cache)
                 hooked.hookMachines { reading.set() }
-                let restoring=try await w.remote(r.account,cache:hooked);restoring.start()
+                let restoring=try await w.remote(r.account,cache:hooked)
+                _ = await restoring.executeCacheRead(PBCoreCacheReadEffect.with {
+                    $0.bootstrap = PBCoreCacheReadBootstrap.with { $0.opID = 1 }
+                })
                 #expect(await reading.wait())
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
             }
@@ -38,13 +42,14 @@ extension ServerTests {
         @Test func revokedDuringCachedReadCannotRestoreHistoricalReply() async throws {
             try await World.run(setUp:{w in try await w.daemon.putMachine("test-computer")}) {w in
                 let cache=HookedCache(), r=try await w.client(cache:cache), id=w.daemon.id
-                try await r.refreshTrustedDirectory()
+                _ = await r.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
                 await cache.putBlob(name:"schedules/"+id,data:try snapshot(w))
                 let entered=Signal(), release=Signal();w.onClose { release.set() }
                 cache.hookBlob { name,value in if name=="schedules/"+id { entered.set();await release.wait() };return value }
                 let read=Task { await r.cachedSchedules(id) }
                 #expect(await entered.wait())
-                try await w.phone.remove([id]);try await r.refreshTrustedDirectory()
+                try await w.phone.remove([id])
+                _ = await r.syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
                 release.set();#expect(await read.value == nil)
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
             }
@@ -52,13 +57,14 @@ extension ServerTests {
         @Test func revokedDuringSnapshotWriteCannotPutBackTheCache() async throws {
             try await World.run(setUp:{w in try await w.daemon.putMachine("test-computer")}) {w in
                 let cache=HookedCache(), r=try await w.client(cache:cache), id=w.daemon.id
-                try await r.refreshTrustedDirectory()
+                _ = await r.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
                 let entered=Signal(), release=Signal();w.onClose { release.set() }
                 cache.hookPutBlob { name,_ in if name=="schedules/"+id { entered.set();await release.wait() } }
                 let bytes=try snapshot(w)
                 let write=Task { await r.keepScheduleSnapshot(id,data:bytes) }
                 #expect(await entered.wait())
-                try await w.phone.remove([id]);try await r.refreshTrustedDirectory()
+                try await w.phone.remove([id])
+                _ = await r.syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
                 release.set();await write.value
                 #expect(await cache.blob(name:"schedules/"+id) == nil)
             }

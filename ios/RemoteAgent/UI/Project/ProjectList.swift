@@ -1,22 +1,12 @@
-// The account's projects as a list, the same in every place that shows
-// them (design-system §6 项目行, architecture §8 「项目列表偏好」): the scope
-// menu of the home page, choosing a project for a new session, and 项目管理.
-// Only what stands at a row's end differs. With it, the changes to the
-// project preferences that are on their way to the server. Counterparts of
-// Android's ui/Manage.kt.
+// Core-driven project lists (`CoreProjectRow`, `CoreProjectList`) shared across
+// Home scope menu, PickProject, and ManageProjects. `PrefsChanges` remains here
+// for the un-migrated `SessionScreen` (`ProjectSettingsSheet`).
 import Observation
 import RACore
+import RAProto
 import SwiftUI
 
-/// Changes to the project preferences in flight, per project path, for
-/// this run: the row says 正在同步 until the server has it, and a failure
-/// leaves the list as it was with a retry.
-///
-/// A project's changes are written one at a time, in the order they were
-/// made: one made while another is on its way waits for it, and is never
-/// dropped (pinning a project and then saving its settings are two
-/// changes). One that fails stops those behind it. They wait with it and go
-/// once it is tried again, by its 重试 or when another change is made.
+/// Changes to the project preferences in flight, per project path, kept for `SessionScreen`.
 @MainActor
 @Observable
 final class PrefsChanges {
@@ -28,17 +18,8 @@ final class PrefsChanges {
             if case .saving = self { return true }
             return false
         }
-
-        /// The change is to the project's settings, not to where it is listed.
-        var ofSettings: Bool {
-            switch self {
-            case .saving(.setSettings), .failed(.setSettings, _): true
-            default: false
-            }
-        }
     }
 
-    /// How a project's changes stand: the one being written, or the one that failed.
     private(set) var states: [JvmKey: State] = [:]
 
     private struct Change {
@@ -47,40 +28,26 @@ final class PrefsChanges {
         var onDone: @MainActor () -> Void
     }
 
-    /// Each project's changes not yet on the server, oldest first; the first is the one `states` is about.
     private var queues: [JvmKey: [Change]] = [:]
-
     private var closed = false
 
-    /// Whether a change to the project's settings is among those not yet on
-    /// the server: the one `states` is about, or one that waits behind it.
-    func settingsWaiting(_ path: String) -> Bool {
-        if states[JvmKey(path)]?.ofSettings == true { return true }
-        return queues[JvmKey(path)]?.contains { if case .setSettings = $0.op { true } else { false } } ?? false
-    }
-
-    /// Writes `op`, after the changes to the same project that are still on their way.
     func run(_ remote: Remote, _ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}) {
         run(op, onDone: onDone) { try await remote.changePrefs($0) }
     }
 
-    /// The same with the write given, which tests answer in the server's place.
     func run(_ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}, write: @escaping (PrefsOp) async throws -> Void) {
         guard !closed else { return }
         let path = JvmKey(op.path)
         let failed = states[path]?.saving == false
         var queue = queues[path] ?? []
         if failed, queue.first?.op == op {
-            // 重试: the change that failed, again, and then those that waited behind it.
         } else if queue.last?.op != op {
-            // Twice the same in a row is one change.
             queue.append(Change(op: op, write: write, onDone: onDone))
         }
         queues[path] = queue
         if states[path]?.saving != true { next(path) }
     }
 
-    /// Writes the oldest change of a project, and then the one after it.
     private func next(_ path: JvmKey) {
         guard let change = queues[path]?.first else {
             queues[path] = nil
@@ -103,77 +70,66 @@ final class PrefsChanges {
         }
     }
 
-    /// Drops retry data and view callbacks when the account is left.
     func close() {
         closed = true
         queues.removeAll()
         states.removeAll()
     }
-
-    #if DEBUG
-    /// A state to look at, for screenshots of sample data.
-    func show(_ state: State, for path: String) { states[JvmKey(path)] = state }
-    #endif
 }
 
 extension AccountContext {
     var prefsChanges: PrefsChanges { memory.value { PrefsChanges() } }
-
-    /// Lists the folder at `path` on `machine` as a project before its first
-    /// session, here and on the account's other clients; a folder removed
-    /// from the list earlier is listed again (`addProjectOp`).
-    func addProject(_ state: RemoteState, machine: String, path: String) {
-        if isHidden(state, key: path) { prefsChanges.run(remote, .unhide(path: path)) }
-        if let op = addProjectOp(state, machine: machine, path: path), case .setSettings = op { prefsChanges.run(remote, op) }
-        let start = projectStart(state, key: path, machine: machine)
-        let draft = newSessionDrafts.of(path, initial: start?.config, settled: start?.settled != false)
-        if let current = draft.config.value, current.machineId != machine {
-            draft.config.choose(switchMachine(current, machineId: machine, agents: machineAgents(state.machines[machine])))
-        }
-    }
 }
 
-/// One project in a list: its mark, its name, and under it `projectDetail`.
-/// `trailing` is what the place puts at the row's end and is part of the
-/// row to the finger (a check, an arrow); `accessory` is a control of its
-/// own there (the ⋯ of 项目管理).
-struct ProjectRow<Trailing: View, Accessory: View>: View {
-    private let state: RemoteState
-    private let project: Project
+/// One project row rendered directly from `PBCoreProjectRowView`.
+struct CoreProjectRow<Trailing: View, Accessory: View>: View {
+    private let row: PBCoreProjectRowView
     private let hint: String?
+    private let canRetry: Bool
     private let action: () -> Void
+    private let onRetry: () -> Void
     private let trailing: Trailing
     private let accessory: Accessory
-    @Environment(AccountContext.self) private var context
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// `hint` says to VoiceOver what a tap does when it is not the obvious thing.
     init(
-        _ state: RemoteState, _ project: Project, hint: String? = nil, action: @escaping () -> Void,
-        @ViewBuilder trailing: () -> Trailing, @ViewBuilder accessory: () -> Accessory
+        row: PBCoreProjectRowView,
+        hint: String? = nil,
+        canRetry: Bool = false,
+        onRetry: @escaping () -> Void = {},
+        action: @escaping () -> Void,
+        @ViewBuilder trailing: () -> Trailing,
+        @ViewBuilder accessory: () -> Accessory
     ) {
-        self.state = state
-        self.project = project
+        self.row = row
         self.hint = hint
+        self.canRetry = canRetry
+        self.onRetry = onRetry
         self.action = action
         self.trailing = trailing()
         self.accessory = accessory()
     }
 
     var body: some View {
-        let change = context.prefsChanges.states[JvmKey(project.key)]
+        let saveError = row.saveError.rendered()
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Button(action: action) {
                     HStack(spacing: 12) {
-                        Avatar(project.key, size: 22)
+                        Avatar(row.key, size: 22)
                         VStack(alignment: .leading, spacing: 0) {
-                            // At the largest text sizes a line holds too little of either: both may take a second one.
-                            Text(project.name).font(.body.weight(.semibold)).ink(DS.ink).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
-                            // A long path gives way in its middle: the folder's own name and what runs there stay.
-                            Text(projectDetail(state, project)).font(.footnote).ink(DS.ink2)
-                                .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).truncationMode(.middle)
-                            if change?.saving == true { IconText(Mark.progress, L10n.projectsIosSyncing(), style: .footnote) }
+                            Text(row.name.rendered())
+                                .font(.body.weight(.semibold))
+                                .ink(DS.ink)
+                                .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                            Text(row.subtitle.rendered())
+                                .font(.footnote)
+                                .ink(DS.ink2)
+                                .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                                .truncationMode(.middle)
+                            if row.syncing {
+                                IconText(Mark.progress, L10n.projectsIosSyncing(), style: .footnote)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         trailing
@@ -185,59 +141,88 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
                 .accessibilityHint(hint ?? "")
                 accessory
             }
-            if case .failed(let op, let error)? = change {
+            if !saveError.isEmpty {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Text(L10n.projectsSaveFailed(reason: error)).font(.footnote).ink(DS.red).frame(maxWidth: .infinity, alignment: .leading)
-                    TextAction(L10n.commonRetry(), style: .footnote.weight(.semibold), enabled: prefsBlocked(state) == nil, alignment: .trailing) {
-                        context.prefsChanges.run(context.remote, op)
-                    }
+                    Text(saveError)
+                        .font(.footnote)
+                        .ink(DS.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    TextAction(L10n.commonRetry(), style: .footnote.weight(.semibold), enabled: canRetry, alignment: .trailing, action: onRetry)
                 }
-                .padding(.leading, 34).padding(.top, -10)
+                .padding(.leading, 34)
+                .padding(.top, -10)
             }
         }
-        // The line between rows starts where the text does.
         .bottomLine(startInset: 34)
     }
 }
 
-extension ProjectRow where Accessory == EmptyView {
-    init(_ state: RemoteState, _ project: Project, hint: String? = nil, action: @escaping () -> Void, @ViewBuilder trailing: () -> Trailing) {
-        self.init(state, project, hint: hint, action: action, trailing: trailing, accessory: { EmptyView() })
+extension CoreProjectRow where Accessory == EmptyView {
+    init(
+        row: PBCoreProjectRowView,
+        hint: String? = nil,
+        canRetry: Bool = false,
+        onRetry: @escaping () -> Void = {},
+        action: @escaping () -> Void,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.init(row: row, hint: hint, canRetry: canRetry, onRetry: onRetry, action: action, trailing: trailing, accessory: { EmptyView() })
     }
 }
 
-/// The projects on the list: 常用 then 其他, titled only when there are
-/// both, a search above more than eight, and 新项目… at the end. `first`
-/// goes above the projects while nothing is searched for.
-///
-/// Its lines are not wrapped in a stack of their own, so the same list
-/// stands in a sheet's column and, as rows, in a `List`.
-struct ProjectList<First: View, Row: View>: View {
-    private let state: RemoteState
+/// Core-rendered project listing (`pinned`, `others`, `titled`, `canSearch`, `emptyMatch`).
+struct CoreProjectList<First: View, Row: View>: View {
+    private let listing: PBCoreProjectListingView
+    private let onSearch: ((String) -> Void)?
     private let onNew: () -> Void
     private let first: First
-    private let row: (Project) -> Row
+    private let row: (PBCoreProjectRowView) -> Row
     @State private var search = ""
 
-    init(_ state: RemoteState, onNew: @escaping () -> Void, @ViewBuilder first: () -> First, @ViewBuilder row: @escaping (Project) -> Row) {
-        self.state = state
+    init(
+        listing: PBCoreProjectListingView,
+        onSearch: ((String) -> Void)? = nil,
+        onNew: @escaping () -> Void,
+        @ViewBuilder first: () -> First,
+        @ViewBuilder row: @escaping (PBCoreProjectRowView) -> Row
+    ) {
+        self.listing = listing
+        self.onSearch = onSearch
         self.onNew = onNew
         self.first = first()
         self.row = row
     }
 
     var body: some View {
-        let l = projectListing(state, search: search)
-        if l.searchable {
-            // The kit's pill brings the page's side margin, which the list already has.
-            FilterBox(text: $search, placeholder: L10n.projectsSearch(), inset: 0).padding(.bottom, 4)
+        let query = onSearch != nil ? listing.searchQuery : search
+        let pinned = onSearch == nil && !query.isEmpty
+            ? listing.pinned.filter { matches($0, query: query) }
+            : listing.pinned
+        let others = onSearch == nil && !query.isEmpty
+            ? listing.others.filter { matches($0, query: query) }
+            : listing.others
+        let emptyMatch = listing.emptyMatch.rendered()
+        if listing.canSearch {
+            FilterBox(text: $search, placeholder: L10n.projectsSearch(), inset: 0)
+                .padding(.bottom, 4)
+                .onChange(of: search) { _, q in
+                    onSearch?(q)
+                }
         }
-        if !l.searching { first }
-        if l.titled { FieldLabel(L10n.projectsPinned()) }
-        ForEach(l.pinned) { row($0) }
-        if l.titled { FieldLabel(L10n.projectsOthers()) }
-        ForEach(l.others) { row($0) }
-        if let none = l.noMatch { Hint(none).padding(.bottom, 8) }
+        if query.isEmpty { first }
+        if listing.titled && !pinned.isEmpty && !others.isEmpty {
+            FieldLabel(L10n.projectsPinned())
+        }
+        ForEach(pinned, id: \.key) { row($0) }
+        if listing.titled && !pinned.isEmpty && !others.isEmpty {
+            FieldLabel(L10n.projectsOthers())
+        }
+        ForEach(others, id: \.key) { row($0) }
+        if !emptyMatch.isEmpty {
+            Hint(emptyMatch).padding(.bottom, 8)
+        } else if onSearch == nil && !query.isEmpty && pinned.isEmpty && others.isEmpty {
+            Hint(L10n.projectsSearchEmpty(query: query)).padding(.bottom, 8)
+        }
         Button(action: onNew) {
             HStack(spacing: 12) {
                 SymbolImage("plus", size: 18, color: DS.blue, relativeTo: .subheadline).frame(width: 22)
@@ -247,37 +232,55 @@ struct ProjectList<First: View, Row: View>: View {
         }
         .buttonStyle(RowPressStyle())
     }
+
+    private func matches(_ row: PBCoreProjectRowView, query: String) -> Bool {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        return row.name.rendered().localizedCaseInsensitiveContains(trimmed)
+            || row.shortPath.localizedCaseInsensitiveContains(trimmed)
+    }
 }
 
-extension ProjectList where First == EmptyView {
-    init(_ state: RemoteState, onNew: @escaping () -> Void, @ViewBuilder row: @escaping (Project) -> Row) {
-        self.init(state, onNew: onNew, first: { EmptyView() }, row: row)
+extension CoreProjectList where First == EmptyView {
+    init(
+        listing: PBCoreProjectListingView,
+        onSearch: ((String) -> Void)? = nil,
+        onNew: @escaping () -> Void,
+        @ViewBuilder row: @escaping (PBCoreProjectRowView) -> Row
+    ) {
+        self.init(listing: listing, onSearch: onSearch, onNew: onNew, first: { EmptyView() }, row: row)
     }
 }
 
 private struct RemoveProjectConfirm: ViewModifier {
     @Binding var key: String?
-    let onRemoved: @MainActor () -> Void
-    @Environment(AccountContext.self) private var context
-    /// The dialog fades out after `key` is cleared; its words stay until it has.
-    @State private var shown = ""
+    let name: String
+    let onConfirm: @MainActor (String) -> Void
+    @State private var shownKey = ""
+    @State private var shownName = ""
 
     func body(content: Content) -> some View {
         content
-            .onChange(of: key, initial: true) { _, new in if let new { shown = new } }
+            .onChange(of: key, initial: true) { _, new in
+                if let new {
+                    shownKey = new
+                    shownName = name.isEmpty ? new : name
+                }
+            }
             .confirm(
                 isPresented: Binding(get: { key != nil }, set: { if !$0 { key = nil } }),
-                title: L10n.projectsRemoveTitle(name: projectName(shown)), text: L10n.projectsRemoveExplanation(),
-                confirm: L10n.commonRemove(), danger: true
+                title: L10n.projectsRemoveTitle(name: shownName),
+                text: L10n.projectsRemoveExplanation(),
+                confirm: L10n.commonRemove(),
+                danger: true
             ) {
-                context.prefsChanges.run(context.remote, .hide(path: shown), onDone: onRemoved)
+                onConfirm(shownKey)
             }
     }
 }
 
 extension View {
-    /// Asks before the project `key` names leaves the list: there is no undo, only adding it again.
-    func removeProjectConfirm(_ key: Binding<String?>, onRemoved: @escaping @MainActor () -> Void = {}) -> some View {
-        modifier(RemoveProjectConfirm(key: key, onRemoved: onRemoved))
+    func removeProjectConfirm(_ key: Binding<String?>, name: String = "", onConfirm: @escaping @MainActor (String) -> Void) -> some View {
+        modifier(RemoveProjectConfirm(key: key, name: name, onConfirm: onConfirm))
     }
 }

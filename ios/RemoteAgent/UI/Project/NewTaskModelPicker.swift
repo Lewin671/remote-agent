@@ -1,75 +1,8 @@
-// A model panel in the composer's hierarchy. It never presents a controller,
-// becomes first responder, or writes the text field's FocusState.
-import Observation
+// A model panel in the composer's hierarchy rendered directly from `PBCoreNewSessionModelPanelView`.
 import RACore
 import RAProto
 import SwiftUI
 import UIKit
-
-@MainActor @Observable
-final class NewTaskModelPicker {
-    struct Target: Equatable {
-        var path: String
-        var machine: String
-        var agent: PBAgent
-        init(_ config: NewConfig) {
-            path = config.cwd
-            machine = config.machineId
-            agent = config.agent
-        }
-    }
-
-    private(set) var initial: NewConfig?
-    var edited: NewConfig?
-    var allModels = false
-    private var settingsMachine: String?
-    private var daemonSettings: PBDaemonSettings?
-    func settings(for config: NewConfig) -> PBDaemonSettings? {
-        settingsMachine == config.machineId ? daemonSettings : nil
-    }
-    func received(_ settings: PBDaemonSettings, machine: String) {
-        settingsMachine = machine
-        daemonSettings = settings
-    }
-    func chooseModel(_ slug: String, models: PBListModelsResponse) {
-        guard let config else { return }
-        edited = chooseNewTaskModel(config, slug: slug, models: models, settings: settings(for: config))
-        allModels = false
-    }
-    var isOpen: Bool { initial != nil }
-    var config: NewConfig? { edited ?? initial }
-
-    func open(_ config: NewConfig) {
-        initial = config
-        edited = nil
-        allModels = false
-    }
-
-    /// Follow settings that were still loading on open, but never replace a
-    /// user's pending choice. A different destination invalidates the panel.
-    func follow(_ config: NewConfig?) {
-        guard let initial else { return }
-        guard let config, Target(initial) == Target(config) else { cancel(); return }
-        if edited == nil { self.initial = config }
-    }
-
-    func cancel() {
-        initial = nil
-        edited = nil
-        allModels = false
-    }
-
-    /// Consume before dispatching the prefs op. Multiple close notifications
-    /// cannot write twice; a changed destination must never receive this edit.
-    func close(target: NewConfig?, settled: Bool, blocked: Bool) -> NewConfig? {
-        let next = edited
-        let from = initial
-        cancel()
-        guard settled, !blocked, let next, let from, let target,
-              Target(from) == Target(target), Target(next) == Target(target) else { return nil }
-        return next
-    }
-}
 
 struct NewTaskPanelAnchors: PreferenceKey {
     static let defaultValue: [String: Anchor<CGRect>] = [:]
@@ -78,119 +11,122 @@ struct NewTaskPanelAnchors: PreferenceKey {
     }
 }
 
-/// The composer has its own compact controls; the settings sheets keep their layout.
+/// Core-rendered composer model panel (`PBCoreNewSessionModelPanelView`).
 struct NewTaskModelPanel: View {
-    let picker: NewTaskModelPicker
-    let models: SummaryModels
+    let vm: PBCoreNewSessionViewModel
     let settled: Bool
+    let blocked: String?
+    let onRetryModels: () -> Void
+    let onSelectModel: (_ slug: String, _ effort: String, _ standardContext: Bool?) -> Void
     let onClose: () -> Void
-    @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
-    @State private var error = ""
+
+    @State private var allModels = false
     @State private var controlsHeight: CGFloat = 0
     @AccessibilityFocusState private var announced: Bool
 
     var body: some View {
-        if let c = picker.config {
-            let blocked = prefsBlocked(model.state)
-            NewTaskPanelLayout {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        if picker.allModels {
-                            Button { picker.allModels = false } label: {
-                                Label(L10n.modelsAll(), systemImage: "chevron.left").font(.headline)
-                            }
-                            .buttonStyle(.plain).tint(DS.blue)
-                            .accessibilityIdentifier("new-model-back")
-                        } else {
-                            Text(L10n.modelsTitle()).font(.headline).ink(DS.ink)
+        let panel = vm.modelPanel
+        let errorText = panel.modelsError.rendered()
+        NewTaskPanelLayout {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    if allModels {
+                        Button { allModels = false } label: {
+                            Label(L10n.modelsAll(), systemImage: "chevron.left").font(.headline)
                         }
-                        Spacer()
-                        Button(L10n.commonDone(), action: onClose).tint(DS.blue)
-                            .frame(minWidth: 44, minHeight: 44)
+                        .buttonStyle(.plain).tint(DS.blue)
+                        .accessibilityIdentifier("new-model-back")
+                    } else {
+                        Text(L10n.modelsTitle()).font(.headline).ink(DS.ink)
                     }
-                    .frame(minHeight: 44)
-                    .accessibilityFocused($announced)
-                    if let blocked { Banner(blocked).padding(.bottom, 8) }
-                    if !settled { Hint(L10n.newSessionReadingPrevious()) }
+                    Spacer()
+                    Button(L10n.commonDone(), action: onClose).tint(DS.blue)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
-                if let ms = models.list {
-                    let selected = projectModel(c, models: ms, settings: picker.settings(for: c))
-                    let shown = shownModels(ms.models, picked: c.model.isEmpty ? nil : selected, all: picker.allModels)
-                    let more = !picker.allModels && shown.count < ms.models.count
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            if !picker.allModels {
-                                controls(c, ms)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .disabled(!settled || blocked != nil)
-                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { controlsHeight = $0 }
-                                    .background(DS.popover)
-                                    // One scroll owner in both modes. Change only the paint
-                                    // position, preserving the list's layout and scroll offset.
-                                    .visualEffect { effect, geometry in
-                                        let pinned = shouldPinModelControls(
-                                            bodyHeight: geometry.bounds(of: .scrollView)?.height ?? 0,
-                                            controlsHeight: geometry.size.height)
-                                        return effect.offset(y: pinned ? max(0, -geometry.frame(in: .scrollView).minY) : 0)
-                                    }
-                                    .zIndex(1)
-                            }
-                            modelRows(c, ms, selected: selected, shown: shown, more: more)
-                                .disabled(!settled || blocked != nil)
-                        }
-                    }
-                    .id(picker.allModels)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .scrollDismissesKeyboard(.never)
-                    .frame(idealHeight: CGFloat(shown.count + 1 + (more ? 1 : 0)) * 44 + (picker.allModels ? 0 : controlsHeight))
-                    .accessibilityIdentifier("new-model-list")
-                } else {
-                    Group {
-                        if !error.isEmpty { Banner(L10n.modelsIosLoadFailed(agent: agentName(c.agent), reason: error), tone: .warn) }
-                        else { LoadingRow(L10n.modelsIosReadingMachine(name: machineLabel(model.state, id: c.machineId)), inset: 0) }
-                    }.frame(height: 120, alignment: .top)
-                }
+                .frame(minHeight: 44)
+                .accessibilityFocused($announced)
+                if let blocked { Banner(blocked).padding(.bottom, 8) }
+                if !settled { Hint(L10n.newSessionReadingPrevious()) }
             }
-            .padding(12)
-            .background(DS.popover)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(DS.rim, lineWidth: 0.5) }
-            .floatShadow()
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(L10n.modelsIosPicker())
-            .accessibilityIdentifier("new-model-popover")
-            .accessibilityAction(.escape, onClose)
-            .onAppear { announced = true }
-            .task {
-                let key = SummaryModels.Key(machine: c.machineId, agent: c.agent)
-                await models.load(key) { key in
-                    await HomeLaunch.settled(model)
-                    do { return try await context.remote.listModels(key.machine, agent: key.agent, fresh: !model.isDemo) }
-                    catch {
-                        if !Task.isCancelled { self.error = errorText(error) }
-                        return nil
+            if !errorText.isEmpty {
+                Banner(
+                    L10n.modelsIosLoadFailed(agent: vm.agentName, reason: errorText),
+                    tone: .warn,
+                    action: L10n.commonRetry(),
+                    onAction: onRetryModels
+                )
+                .frame(height: 120, alignment: .top)
+            } else if panel.modelsLoading && panel.models.isEmpty {
+                LoadingRow(L10n.modelsIosReadingMachine(name: vm.machineName), inset: 0)
+                    .frame(height: 120, alignment: .top)
+            } else {
+                let shown = shownList(panel)
+                let more = !allModels && shown.count < panel.models.count
+                ScrollView {
+                    VStack(spacing: 0) {
+                        if !allModels {
+                            controls(panel)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .disabled(!settled || blocked != nil)
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { controlsHeight = $0 }
+                                .background(DS.popover)
+                                .visualEffect { effect, geometry in
+                                    let pinned = shouldPinModelControls(
+                                        bodyHeight: geometry.bounds(of: .scrollView)?.height ?? 0,
+                                        controlsHeight: geometry.size.height
+                                    )
+                                    return effect.offset(y: pinned ? max(0, -geometry.frame(in: .scrollView).minY) : 0)
+                                }
+                                .zIndex(1)
+                        }
+                        modelRows(panel, shown: shown, more: more)
+                            .disabled(!settled || blocked != nil)
                     }
                 }
-                guard !Task.isCancelled else { return }
-                if case .getSettings(let r)? = try? await context.remote.machineCommand(c.machineId, getSettingsCommand()).kind,
-                   !Task.isCancelled { picker.received(r.settings, machine: c.machineId) }
+                .id(allModels)
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.never)
+                .frame(idealHeight: CGFloat(shown.count + 1 + (more ? 1 : 0)) * 44 + (allModels ? 0 : controlsHeight))
+                .accessibilityIdentifier("new-model-list")
             }
         }
+        .padding(12)
+        .background(DS.popover)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).strokeBorder(DS.rim, lineWidth: 0.5) }
+        .floatShadow()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(L10n.modelsIosPicker())
+        .accessibilityIdentifier("new-model-popover")
+        .accessibilityAction(.escape, onClose)
+        .onAppear { announced = true }
     }
 
-    private func modelRows(_ c: NewConfig, _ ms: PBListModelsResponse, selected: PBModelInfo?, shown: [PBModelInfo], more: Bool) -> some View {
+    private func shownList(_ panel: PBCoreNewSessionModelPanelView) -> [PBCoreModelOptionView] {
+        if allModels || panel.models.count <= 8 { return panel.models }
+        var out = Array(panel.models.prefix(8))
+        if let picked = panel.models.first(where: { $0.checked }), !out.contains(where: { $0.slug == picked.slug }) {
+            out[out.count - 1] = picked
+        }
+        return out
+    }
+
+    private func modelRows(_ panel: PBCoreNewSessionModelPanelView, shown: [PBCoreModelOptionView], more: Bool) -> some View {
         VStack(spacing: 0) {
-            let defaultID = defaultModelName(c, models: ms, settings: picker.settings(for: c))
-            let standing = findModel(ms.models, id: defaultID) { $0.slug }
-            let name = standing.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? defaultID
-            row((name.isEmpty ? L10n.modelsDefault() : L10n.modelsDefaultNamed(model: name)), checked: c.model.isEmpty) { pick("", ms) }
+            row(panel.defaultModelLabel.rendered(), checked: panel.defaultModelChecked) {
+                Haptics.selection()
+                onSelectModel("", "", nil)
+                allModels = false
+            }
             ForEach(shown, id: \.slug) { m in
-                row(m.displayName.isEmpty ? m.slug : m.displayName,
-                    checked: !c.model.isEmpty && selected?.slug == m.slug) { pick(m.slug, ms) }
+                row(m.displayName.isEmpty ? m.slug : m.displayName, checked: m.checked) {
+                    Haptics.selection()
+                    onSelectModel(m.slug, "", nil)
+                    allModels = false
+                }
             }
             if more {
-                Button { picker.allModels = true } label: {
+                Button { allModels = true } label: {
                     HStack {
                         Text(L10n.modelsAll())
                         Spacer()
@@ -204,35 +140,36 @@ struct NewTaskModelPanel: View {
         .font(.subheadline)
     }
 
-    @ViewBuilder private func controls(_ c: NewConfig, _ ms: PBListModelsResponse) -> some View {
+    @ViewBuilder private func controls(_ panel: PBCoreNewSessionModelPanelView) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let effort = effortChoices(c, models: ms, settings: picker.settings(for: c)) {
-                if effort.efforts.count == 1 {
-                    Text(L10n.modelsFixedEffort(effort: effort.efforts[0])).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
+            if !panel.effortChoices.isEmpty {
+                if panel.effortChoices.count == 1 {
+                    Text(L10n.modelsFixedEffort(effort: panel.effortChoices[0])).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
                 } else {
                     Text(L10n.modelsEffort()).font(.caption).ink(DS.ink2)
-                    NewTaskModelSegments(items: effort.efforts, selected: effort.selected) {
-                        var next = c; next.effort = $0; picker.edited = next
+                    NewTaskModelSegments(items: panel.effortChoices, selected: panel.selectedEffort) { effort in
+                        onSelectModel(vm.config.model, effort, nil)
                     }
                 }
             }
-            if agentInfo(c.agent).standardContextOption {
-                let window = settingsContext(c, shown: projectModel(c, models: ms, settings: picker.settings(for: c)))
-                if window.fixed {
-                    Text(window.text).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
+            if panel.supportsContextWindow {
+                let contextText = panel.contextNote.rendered()
+                if panel.contextFixed {
+                    if !contextText.isEmpty {
+                        Text(contextText).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
+                    }
                 } else {
                     Text(L10n.modelsContextWindow()).font(.caption).ink(DS.ink2)
-                    NewTaskModelSegments(items: ["extended", "standard"], selected: c.standardContext ? "standard" : "extended", label: { $0 == "standard" ? L10n.modelsStandardWindow() : L10n.modelsExtendedWindow() }) {
-                        var next = c; next.standardContext = $0 == "standard"; picker.edited = next
+                    NewTaskModelSegments(
+                        items: ["extended", "standard"],
+                        selected: panel.standardContext ? "standard" : "extended",
+                        label: { $0 == "standard" ? L10n.modelsStandardWindow() : L10n.modelsExtendedWindow() }
+                    ) { choice in
+                        onSelectModel(vm.config.model, vm.config.effort, choice == "standard")
                     }
                 }
             }
         }.accessibilityIdentifier("new-model-controls")
-    }
-
-    private func pick(_ slug: String, _ ms: PBListModelsResponse) {
-        Haptics.selection()
-        picker.chooseModel(slug, models: ms)
     }
 
     private func row(_ title: String, checked: Bool, action: @escaping () -> Void) -> some View {
@@ -274,8 +211,7 @@ func shouldPinModelControls(bodyHeight: CGFloat, controlsHeight: CGFloat, rowHei
     rowHeight > 0 && bodyHeight - controlsHeight >= rowHeight * 2 + 8
 }
 
-/// Pin the header, give the scrolling body the remaining height, and wrap
-/// short content. The overlay receives the available height, never sizes the composer.
+/// Pin the header, give the scrolling body the remaining height, and wrap short content.
 struct NewTaskPanelLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? 320
@@ -296,33 +232,27 @@ struct NewTaskModelSummary: Equatable {
     var model: String
     var effort = ""
     var prefix = ""
-    var accessibilityLabel: String { effort.isEmpty ? L10n.modelsSummaryLabel(model: model) : L10n.modelsSummaryEffortLabel(effort: effort, model: model) }
+    var accessibilityLabel: String {
+        effort.isEmpty
+            ? L10n.modelsSummaryLabel(model: model)
+            : L10n.modelsSummaryEffortLabel(effort: effort, model: model)
+    }
+
+    init(vm: PBCoreNewSessionViewModel) {
+        self.model = vm.modelLabel.rendered().ifEmpty(L10n.newSessionDefaultModel())
+        self.effort = vm.effortLabel
+        let singleAgent = vm.availableAgents.count <= 1
+        self.prefix = singleAgent && !vm.agentName.isEmpty ? vm.agentName + " · " : ""
+    }
+
+    init(model: String, effort: String = "", prefix: String = "") {
+        self.model = model
+        self.effort = effort
+        self.prefix = prefix
+    }
 }
 
-func newTaskModelSummary(_ c: NewConfig, models: PBListModelsResponse?, settings: PBDaemonSettings?, singleAgent: Bool) -> NewTaskModelSummary {
-    let m = models.flatMap { projectModel(c, models: $0, settings: settings) }
-    let id = c.model.isEmpty ? (defaultsFor(settings, agent: c.agent).model.isEmpty ? models?.defaultModel ?? "" : defaultsFor(settings, agent: c.agent).model) : c.model
-    let name = m.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? (id.isEmpty ? (models == nil ? L10n.newSessionReadingSettings() : L10n.newSessionDefaultModel()) : id)
-    let effort = models.flatMap { effortChoices(c, models: $0, settings: settings) }
-    return NewTaskModelSummary(model: name, effort: (effort?.efforts.count ?? 0) > 1 ? effort?.selected ?? "" : "",
-                               prefix: singleAgent ? agentName(c.agent) + " · " : "")
-}
-
-func chooseNewTaskModel(_ c: NewConfig, slug: String, models: PBListModelsResponse, settings: PBDaemonSettings?) -> NewConfig {
-    var next = c
-    next.model = slug
-    next.effort = ""
-    let m = projectModel(next, models: models, settings: settings)
-    let effort = effortChoices(c, models: models, settings: settings)?.selected ?? ""
-    next.effort = m?.efforts.contains(effort) == true ? effort : effortChoices(next, models: models, settings: settings)?.selected ?? ""
-    if m?.autoUnavailable == true && next.mode == .auto { next.mode = nil }
-    return next
-}
-
-/// Observe outside touches without a scrim or a competing SwiftUI gesture.
-/// The original touch still reaches the field, native CLI menu or page pan.
-/// Only this page's window is observed; the system keyboard may be in another
-/// process. Text edits also close the panel, covering typing there.
+/// Closes the model panel when a tap falls outside it, letting the original touch pass through.
 struct NewTaskOutsideTouches: UIViewRepresentable {
     var panel: CGRect?
     var chip: CGRect
@@ -331,6 +261,7 @@ struct NewTaskOutsideTouches: UIViewRepresentable {
     var onClose: () -> Void
 
     func makeUIView(context: Context) -> Observer { Observer() }
+
     func updateUIView(_ view: Observer, context: Context) {
         view.panel = panel
         view.chip = chip
@@ -338,6 +269,7 @@ struct NewTaskOutsideTouches: UIViewRepresentable {
         view.onCLI = onCLI
         view.onClose = onClose
     }
+
     static func dismantleUIView(_ view: Observer, coordinator: ()) { view.detach() }
 
     final class Observer: UIView {
@@ -347,6 +279,7 @@ struct NewTaskOutsideTouches: UIViewRepresentable {
         var onCLI: (() -> Void)?
         var onClose: (() -> Void)?
         private var observer: TouchObserver?
+
         override func didMoveToWindow() {
             super.didMoveToWindow()
             detach()
@@ -361,6 +294,7 @@ struct NewTaskOutsideTouches: UIViewRepresentable {
             window.addGestureRecognizer(observer)
             self.observer = observer
         }
+
         func detach() {
             if let observer { observer.view?.removeGestureRecognizer(observer) }
             observer = nil
@@ -370,6 +304,7 @@ struct NewTaskOutsideTouches: UIViewRepresentable {
     /// Fails immediately, so it cannot cancel or delay any native recognizer.
     final class TouchObserver: UIGestureRecognizer {
         let touched: (CGPoint) -> Void
+
         init(touched: @escaping (CGPoint) -> Void) {
             self.touched = touched
             super.init(target: nil, action: nil)
@@ -377,10 +312,12 @@ struct NewTaskOutsideTouches: UIViewRepresentable {
             delaysTouchesBegan = false
             delaysTouchesEnded = false
         }
+
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
             if let touch = touches.first { touched(touch.location(in: view)) }
             state = .failed
         }
+
         override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool { false }
         override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool { false }
     }

@@ -225,6 +225,7 @@ def build(root):
     swift = f'// {HEADER}\nimport Foundation\n\npublic enum L10n {{\n'
     swift += template('swift-runtime.txt')
     deferred = 'public enum L10nMessage {\n'
+    swift_cases = []
     go = '// '+HEADER+'\npackage i18n\n\nimport (\n\t"embed"\n\t"encoding/json"\n\t"fmt"\n\t"regexp"\n\t"strconv"\n\t"strings"\n)\n\n'
     go += template('go-runtime.txt')
     client_keys = '// ' + HEADER + '\npackage text\n\n'
@@ -273,6 +274,24 @@ def build(root):
             deferred += f'        return LocalizedMessage(key: key, arguments: [{deferred_values}])\n    }}\n'
             swiftargs = ', '.join(f'Int64({n})' if row['params'][n]['type']=='integer' else n for n in params)
             swift += f'        return format(key, locale: locale, args: [{swiftargs}])\n    }}\n'
+            dyargs = ', '.join(
+                f'intArg(args["{n}"])' if row['params'][n]['type'] == 'integer'
+                else f'numArg(args["{n}"])' if row['params'][n]['type'] == 'number'
+                else f'strArg(args["{n}"])'
+                for n in params
+            )
+            if kind == 'select':
+                sel = value['select']
+                lines = [f'        case "{key}":', '            let resolvedKey: String', f'            switch strArg(args["{sel}"]) {{']
+                for form in sorted(value['forms']):
+                    if form != 'other':
+                        lines.append(f'            case "{form}": resolvedKey = "{symbol(key)}_{form}"')
+                lines.append(f'            default: resolvedKey = "{symbol(key)}_other"')
+                lines.append('            }')
+                lines.append(f'            return L10n.format(resolvedKey, locale: locale, args: [{dyargs}])')
+                swift_cases.append('\n'.join(lines) + '\n')
+            else:
+                swift_cases.append(f'        case "{key}": return L10n.format("{symbol(key)}", locale: locale, args: [{dyargs}])\n')
         if any(p in row['platforms'] for p in ('web', 'android', 'ios')):
             client_keys += f'const Key{fn[0].upper()+fn[1:]} = "{key}"\n'
         if 'go' in row['platforms']:
@@ -303,6 +322,49 @@ def build(root):
     for n, chunk in enumerate(chunks):
         app += f'\nprivate fun resolveUiMessage{n}(resources: android.content.res.Resources, message: UiMessage): String? {{\n    return when (message.key) {{\n' + ''.join(chunk) + '        else -> null\n    }\n}\n'
     swift += '}\n' + deferred + '}\n' + template('swift-message.txt')
+    swift_chunks = [swift_cases[i:i+150] for i in range(0, len(swift_cases), 150)]
+    swift += '''
+public enum L10nTextValue: Equatable, Sendable {
+    case string(String)
+    case integer(Int64)
+    case number(Double)
+}
+
+public enum L10nText {
+    private static func strArg(_ value: L10nTextValue?) -> String {
+        switch value {
+        case .string(let s): return s
+        case .integer(let n): return String(n)
+        case .number(let n): return String(n)
+        case nil: return ""
+        }
+    }
+    private static func intArg(_ value: L10nTextValue?) -> Int64 {
+        switch value {
+        case .integer(let n): return n
+        case .number(let n): return Int64(n)
+        case .string(let s): return Int64(s) ?? 0
+        case nil: return 0
+        }
+    }
+    private static func numArg(_ value: L10nTextValue?) -> Double {
+        switch value {
+        case .number(let n): return n
+        case .integer(let n): return Double(n)
+        case .string(let s): return Double(s) ?? 0
+        case nil: return 0
+        }
+    }
+    public static func resolve(key: String, args: [String: L10nTextValue] = [:], locale: String = MessageLocale.current) -> String {
+'''
+    for idx in range(len(swift_chunks)):
+        swift += f'        if let hit = resolve{idx}(key, args: args, locale: locale) {{ return hit }}\n'
+    swift += '        preconditionFailure("Unknown UI message key: \\(key)")\n    }\n'
+    for idx, chunk in enumerate(swift_chunks):
+        swift += f'    private static func resolve{idx}(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {{\n        switch key {{\n'
+        swift += ''.join(chunk)
+        swift += '        default: return nil\n        }\n    }\n'
+    swift += '}\n'
     swift += template('swift-locale.txt').replace('APPLE_TAGS', ', '.join(f'"{l}": "{m["apple"]}"' for l,m in metadata.items())).replace('LANGUAGE_MAP', ', '.join(f'"{a}": "{l}"' for l,m in metadata.items() for a in m['languages']))
     put('android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/UiMessages.generated.kt', core)
     put('android/app/src/main/java/io/github/lewin671/remoteagent/ui/UiMessages.generated.kt', app)

@@ -9,85 +9,6 @@ import Testing
 /// start is made of, and the changes to the project's preferences that wait for one another.
 @MainActor
 @Suite struct ProjectPageTests {
-    @Test func modelPanelConsumesEditsOnceAndRejectsChangedTargets() {
-        let picker = NewTaskModelPicker()
-        let original = NewConfig(machineId: "mac", cwd: "/work/app")
-        var edited = original
-        edited.model = "chosen"
-        edited.effort = "high"
-        picker.open(original)
-        picker.follow(edited)
-        #expect(picker.config == edited, "settings that finish loading remain current")
-        picker.edited = edited
-        picker.follow(original)
-        #expect(picker.config == edited, "a refresh does not replace a pending choice")
-        #expect(picker.close(target: original, settled: true, blocked: false) == edited)
-        #expect(picker.close(target: original, settled: true, blocked: false) == nil)
-        for target in [NewConfig(machineId: "other", cwd: original.cwd),
-                       NewConfig(machineId: "mac", cwd: "/work/other"),
-                       NewConfig(machineId: "mac", cwd: original.cwd, agent: .claude)] {
-            picker.open(original)
-            picker.edited = edited
-            #expect(picker.close(target: target, settled: true, blocked: false) == nil)
-            #expect(!picker.isOpen)
-        }
-        for (settled, blocked) in [(false, false), (true, true)] {
-            picker.open(original)
-            picker.edited = edited
-            #expect(picker.close(target: original, settled: settled, blocked: blocked) == nil)
-        }
-        picker.open(original)
-        picker.edited = edited
-        picker.cancel()
-        picker.open(original)
-        #expect(picker.config == original)
-        #expect(picker.close(target: original, settled: true, blocked: false) == nil)
-    }
-
-    @Test func modelSummaryAndEffortFollowImmediateChoices() {
-        let ms = PBListModelsResponse.with {
-            $0.defaultModel = "first"
-            $0.models = [
-                .with { $0.slug = "first"; $0.displayName = "First model"; $0.efforts = ["low", "medium", "high"]; $0.defaultEffort = "medium" },
-                .with { $0.slug = "second"; $0.efforts = ["low", "high"]; $0.defaultEffort = "low" },
-                .with { $0.slug = "limited"; $0.efforts = ["low", "medium"]; $0.defaultEffort = "medium" },
-                .with { $0.slug = "fixed"; $0.efforts = ["medium"]; $0.defaultEffort = "medium" },
-                .with { $0.slug = "none" },
-            ]
-        }
-        var c = NewConfig(machineId: "mac", cwd: "/work/app")
-        #expect(newTaskModelSummary(c, models: ms, settings: nil, singleAgent: false) == .init(model: "First model", effort: "medium"))
-        #expect(newTaskModelSummary(c, models: nil, settings: nil, singleAgent: true) == .init(model: L10n.newSessionReadingSettings(), prefix: "Codex · "))
-        let settings = withDefaults(PBDaemonSettings(), agent: .codex, model: "second", effort: "high")
-        #expect(newTaskModelSummary(c, models: ms, settings: settings, singleAgent: true) == .init(model: "second", effort: "high", prefix: "Codex · "))
-        #expect(chooseNewTaskModel(c, slug: "first", models: ms, settings: settings).effort == "high")
-        c.model = "second"
-        #expect(chooseNewTaskModel(c, slug: "first", models: ms, settings: nil).effort == "low")
-        c.model = ""
-        c.effort = "high"
-        let picker = NewTaskModelPicker()
-        picker.open(c)
-        picker.allModels = true
-        picker.allModels = false
-        #expect(picker.edited == nil && picker.isOpen)
-        picker.allModels = true
-        picker.chooseModel("second", models: ms)
-        #expect(!picker.allModels && picker.isOpen)
-        #expect(picker.config?.effort == "high")
-        #expect(newTaskModelSummary(picker.config!, models: ms, settings: nil, singleAgent: false).accessibilityLabel == L10n.modelsSummaryEffortLabel(effort: "high", model: "second"))
-        picker.chooseModel("limited", models: ms)
-        #expect(picker.config?.effort == "medium", "an unsupported effort falls back to the new model default")
-        picker.chooseModel("fixed", models: ms)
-        #expect(picker.config?.effort == "medium")
-        #expect(newTaskModelSummary(picker.config!, models: ms, settings: nil, singleAgent: false).effort.isEmpty)
-        picker.chooseModel("none", models: ms)
-        #expect(picker.config?.effort == "")
-        picker.chooseModel("", models: ms)
-        #expect(picker.config?.model == "" && picker.config?.effort == "medium")
-        #expect(picker.close(target: c, settled: true, blocked: false)?.effort == "medium")
-        #expect(picker.close(target: c, settled: true, blocked: false) == nil)
-    }
-
     @Test func modelControlsPinOnlyWithRoomForTwoRowsAndPadding() {
         #expect(shouldPinModelControls(bodyHeight: 228, controlsHeight: 132))
         #expect(!shouldPinModelControls(bodyHeight: 227, controlsHeight: 132))
@@ -104,23 +25,6 @@ import Testing
         #expect(ellipsized.cli == 36 && ellipsized.model == 162)
         let single = NewTaskToolsLayout.widths(available: 200, cli: 0, compactCLI: 0, model: 280)
         #expect(single.cli == 0 && single.model == 200)
-    }
-
-    @Test func modelRefreshKeepsCachedChoicesEvenWhenRefreshFails() async {
-        let models = SummaryModels()
-        let key = SummaryModels.Key(machine: "mac", agent: .codex)
-        let cached = PBListModelsResponse.with { $0.defaultModel = "cached" }
-        await models.load(key) { _ in cached }
-        await models.load(key) { _ in
-            #expect(models.list == cached)
-            return nil
-        }
-        #expect(models.list == cached)
-        await models.load(.init(machine: "mac", agent: .claude)) { _ in
-            #expect(models.list == nil)
-            return nil
-        }
-        #expect(models.list == nil)
     }
 
     private let cfg = NewConfig(machineId: "mac", cwd: "/work/app")
@@ -304,7 +208,7 @@ import Testing
         server.answer()
         await eventually { server.asked.count == 2 }
         // The page says its settings are being saved until they are.
-        #expect(changes.states[JvmKey(path)] == .saving(settings) && changes.states[JvmKey(path)]?.ofSettings == true)
+        #expect(changes.states[JvmKey(path)] == .saving(settings))
         #expect(done == ["pin"])
         server.answer()
         await eventually { changes.states[JvmKey(path)] == nil }
@@ -355,7 +259,7 @@ import Testing
         var done = 0
         changes.run(.setSettings(.init(path: a, machineId: "mac")), onDone: { done += 1 }, write: server.write)
         await eventually { server.open == 1 }
-        #expect(!changes.settingsWaiting(b))
+        #expect(changes.states[JvmKey(b)] == nil)
         changes.run(.setSettings(.init(path: b, machineId: "mac")), onDone: { done += 1 }, write: server.write)
         try? await Task.sleep(for: .milliseconds(30))
         #expect(server.open == 2 && changes.states.count == 2)
@@ -365,8 +269,8 @@ import Testing
             return
         }
         server.answer()
-        await eventually { !changes.settingsWaiting(a) }
-        #expect(changes.settingsWaiting(b) && done == 1)
+        await eventually { changes.states[JvmKey(a)] == nil }
+        #expect(changes.states[JvmKey(b)] != nil && done == 1)
         server.answer()
         await eventually { changes.states.isEmpty }
         #expect(done == 2)
@@ -381,7 +285,7 @@ import Testing
         changes.run(.hide(path: path), onDone: { done = true }, write: server.write)
         await eventually { server.open == 1 }
         changes.close()
-        #expect(changes.states.isEmpty && !changes.settingsWaiting(path))
+        #expect(changes.states.isEmpty)
         server.answer()
         try? await Task.sleep(for: .milliseconds(30))
         #expect(!done && changes.states.isEmpty && server.asked == [.pin(path: path)])
@@ -403,8 +307,6 @@ import Testing
         server.answer(Down())
         await eventually { changes.states[JvmKey(path)]?.saving == false }
         #expect(changes.states[JvmKey(path)] == .failed(.pin(path: path), L10n.errorsConnectionTimedOut()))
-        // The project's page says so too: its settings are not saved while they wait behind the pin.
-        #expect(changes.settingsWaiting(path) && !changes.settingsWaiting("/work/other"))
         try? await Task.sleep(for: .milliseconds(30))
         #expect(server.asked == [.pin(path: path)], "the settings wait behind the change that failed")
         // 重试: the pin again, once, and then the settings that waited.
@@ -415,7 +317,6 @@ import Testing
         server.answer()
         await eventually { changes.states[JvmKey(path)] == nil }
         #expect(server.asked == [.pin(path: path), .pin(path: path), settings] && done == ["pin", "settings"])
-        #expect(!changes.settingsWaiting(path))
         // A change made after a failure takes the failed one along, in the order they were made.
         changes.run(.unpin(path: path), write: server.write)
         await eventually { server.open == 1 }

@@ -2056,39 +2056,6 @@
     }
   },
   {
-    "key": "errors.ios_could_not_load_history",
-    "zh-CN": "没能读取历史：{value}",
-    "en": "Could not load history: {value}",
-    "notes": "iOS RemoteEvents.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_could_not_load_the_session_list",
-    "zh-CN": "没能读取会话列表",
-    "en": "Could not load the session list",
-    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.ios_could_not_read_this_phone_s_account_state_management",
     "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。",
     "en": "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.",
@@ -2120,20 +2087,6 @@
     "key": "errors.ios_crypto_bad_session_key",
     "zh-CN": "bad session key",
     "en": "bad session key",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_crypto_bad_session_seed",
-    "zh-CN": "bad session seed",
-    "en": "bad session seed",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
     "params": {},
     "platforms": [
@@ -2272,20 +2225,6 @@
     }
   },
   {
-    "key": "errors.ios_history_is_discontinuous_retry_loading",
-    "zh-CN": "历史记录不连续，请重试读取",
-    "en": "History is discontinuous. Retry loading.",
-    "notes": "iOS RemoteEvents.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.ios_image_content_does_not_match_its_format",
     "zh-CN": "图片内容和格式对不上",
     "en": "Image content does not match its format",
@@ -2390,62 +2329,6 @@
         "example": "Example"
       }
     },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_network_unavailable_the_command_was_not_sent",
-    "zh-CN": "网络不通，指令没有发出",
-    "en": "Network unavailable. The command was not sent.",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_no_verifiable_execution_result_received_retry_the_same_request",
-    "zh-CN": "未收到可验证的执行结果，请重试同一请求",
-    "en": "No verifiable execution result received. Retry the same request.",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_not_connected_to_the_server",
-    "zh-CN": "连不上服务器",
-    "en": "Not connected to the server",
-    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_not_connected_to_the_server_connect_to_make_changes",
-    "zh-CN": "连上服务器后才能修改",
-    "en": "Not connected to the server. Connect to make changes.",
-    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
     "platforms": [
       "ios"
     ],
@@ -2638,58 +2521,6 @@
     }
   },
   {
-    "key": "errors.ios_the_previous_operation_is_unconfirmed_and_has_expired_it",
-    "zh-CN": "不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始",
-    "en": "The previous operation is unconfirmed and has expired. It will not be resent. Check the list first, then abandon and start over if needed.",
-    "notes": "iOS Attempt.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_the_previous_result_is_still_uncertain",
-    "zh-CN": "上一次的结果仍不确定：{value}",
-    "en": "The previous result is still uncertain: {value}",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 refusal.message；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_the_previous_result_is_still_uncertain_retrying_sends_the",
-    "zh-CN": "上一次的结果仍不确定：{value}。重试会发送同一个请求",
-    "en": "The previous result is still uncertain: {value}. Retrying sends the same request.",
-    "notes": "iOS Attempt.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.ios_the_request_may_have_arrived_but_login_then_failed",
     "zh-CN": "请求可能已经送到，之后登录失败（{value}）",
     "en": "The request may have arrived, but login then failed ({value})",
@@ -2755,20 +2586,6 @@
     "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试",
     "en": "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.",
     "notes": "iOS Remote.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.ios_this_directory_does_not_exist",
-    "zh-CN": "这个目录不存在",
-    "en": "This directory does not exist",
-    "notes": "iOS NewSessionBox.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"

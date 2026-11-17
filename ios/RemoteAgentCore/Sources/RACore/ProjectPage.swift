@@ -84,7 +84,10 @@ private final class Inheritance {
 
     init(_ state: RemoteState, key: String) {
         all = projectSessions(state, key: key)
-        sure = all.filter { !pastFetched(state, $0) }
+        sure = all.filter { s in
+            guard let next = state.sessionsNext else { return true }
+            return !afterPlace(endedMs: s.listedEndedMs, sessionId: s.id, place: next)
+        }
         unfetched = state.moreSessions && (project(state, key: key)?.ended ?? 0) > all.filter(exited).count
     }
 
@@ -212,27 +215,6 @@ public func agentConfig(machineId: String, cwd: String, _ s: PBAgentSettings) ->
     NewConfig(machineId: machineId, cwd: cwd, agent: s.agent, model: s.model, effort: s.effort, standardContext: s.standardContext)
 }
 
-/// The CLI that was meant but that the machine of `c` does not have, so `c`
-/// uses another: said above the message box, never silently.
-public func missingAgent(_ state: RemoteState, _ c: NewConfig, pick: PBAgent? = nil) -> PBAgent? {
-    guard let wanted = wantedAgent(state, key: c.cwd, pick: pick), wanted != c.agent,
-        !machineAgents(state.machines[c.machineId]).contains(wanted)
-    else { return nil }
-    return wanted
-}
-
-/// What a started session leaves in the project's settings, or nil when
-/// nothing changes. The first one establishes them; later ones only remember
-/// the CLI and add its set if the project has none for it. `project` is the
-/// project's own configuration for that start: a machine picked just for this
-/// start is not stored, and neither are that machine's defaults.
-public func startSettings(saved: PBProjectSettings?, project: NewConfig, used: NewConfig) -> PrefsOp.SetSettings? {
-    if let saved, saved.agent == used.agent, saved.agents.contains(where: { $0.agent == used.agent }) { return nil }
-    let set: NewConfig? = used.machineId == project.machineId ? used : project.agent == used.agent ? project : nil
-    return PrefsOp.SetSettings(
-        path: used.cwd, machineId: project.machineId, agent: used.agent, sets: set.map { [$0.agentSettings()] } ?? [], keepExisting: true)
-}
-
 /// The mode a CLI gives a session started without one, as the daemon reads
 /// it (AgentInfo.default_mode): not `known` when it could not read the
 /// configuration.
@@ -280,146 +262,13 @@ public func modeLabel(chosen: Mode?, default d: DefaultMode, agent: PBAgent, inc
     return text + (chosen == nil && d.varies ? L10n.errorsIosProjectSettingsMayDiffer() : "")
 }
 
-/// A new session's configuration (architecture §8): it follows the project,
-/// whose latest session or machines may change, until a draft is begun or the
-/// user changes it, then it stays, so an update never retargets a draft.
-public struct DraftConfig: Equatable, Sendable {
-    public private(set) var value: NewConfig?
-    private var chosen = false
-    // What it holds was only a guess (`ProjectStart.settled`): what the project
-    // says next replaces it even under a draft, whose text stays.
-    private var guess: Bool
-
-    public init(_ initial: NewConfig?, settled: Bool = true) {
-        value = initial
-        guess = !settled
-    }
-
-    /// A new suggestion from the project; taken while nothing is written or
-    /// chosen, and always over a guess: a guess is never the user's choice,
-    /// even after they chose for another CLI and then switched to this one.
-    /// `settled`: whether the suggestion is more than a guess itself.
-    public mutating func follow(_ initial: NewConfig?, drafting: Bool, settled: Bool = true) {
-        if value == nil || guess || (!chosen && !drafting) {
-            value = initial
-            guess = !settled
-        }
-    }
-
-    /// Another CLI for this draft: taken at once, written or not, and still following the project.
-    public mutating func retarget(_ c: NewConfig, settled: Bool = true) {
-        value = c
-        guess = !settled
-    }
-
-    /// The user's own choice, kept from now on.
-    public mutating func choose(_ c: NewConfig) {
-        value = c
-        chosen = true
-        guess = false
-    }
-}
-
-/// The configuration a project's page describes under its title: the one ↑
-/// starts the next session with. That is the draft's own (`DraftConfig`),
-/// which stops following the project once something is written or a machine
-/// is picked for this start, so what the page says and what it sends are
-/// one thing. `project` is what the project's settings say now; it stands
-/// in while there is no draft, and for a project removed from the list,
-/// whose page has no message box to keep a draft's configuration current.
-public func launchConfig(draft: NewConfig?, project: NewConfig?, hidden: Bool) -> NewConfig? {
-    hidden ? project : draft ?? project
-}
-
-/// Mode sent for a new session; unspecified lets the daemon use the CLI configuration.
-public enum LaunchMode: Equatable, Sendable {
-    /// Start in this mode; unspecified leaves it to the CLI's default, which the daemon checks again in the folder.
-    case send(PBApprovalMode)
-}
-
-/// Resolves the mode of a start. A chosen mode is sent as it is. Without one
-/// the CLI's effective default on the machine decides (AgentInfo): full
-/// access or an unknown default is left to the daemon without a dialog.
-public func launchMode(chosen: Mode?, default d: DefaultMode) -> LaunchMode { .send(chosen?.proto ?? .unspecified) }
-
-/// The session a start created, or nil when it did not.
-public func startedSession(_ r: PBCommandResult?) -> String? {
-    guard let r, case .createSession(let c) = r.kind, c.hasSession, !c.session.id.isEmpty else { return nil }
-    return c.session.id
-}
-
-private let summaryMachineMax = 16
-
-/// The machine as the summary names it: only where there is more than one to mean, and cut short when long, so it is the name that gives way and not the model after it.
-public func summaryMachine(_ state: RemoteState, id: String) -> String {
-    if state.machines.count <= 1 { return "" }
-    let name = machineLabel(state, id: id)
-    return name.jvmLength > summaryMachineMax ? name.jvmTake(summaryMachineMax - 1) + "…" : name
-}
-
-/// The model a new session starts with, by its name once the list has it: the one chosen, else the list's default; 默认模型 while neither is known.
-public func summaryModel(_ c: NewConfig, models: PBListModelsResponse? = nil) -> String {
-    let modelId = c.model.ifEmpty(models?.defaultModel ?? "")
-    let chosen = models.flatMap { findModel($0.models, id: modelId) { $0.slug } }
-    return chosen.map { $0.displayName.ifEmpty(modelId) } ?? modelId.ifEmpty(L10n.newSessionDefaultModel())
-}
-
-/// What 新任务 shows of where and with what it starts (design-system §6
-/// 「新任务」): the computer under the project in the title, only where the
-/// account has more than one; the CLI in the box, only where that computer
-/// has more than one; and the model beside it, led by the CLI's name when
-/// the CLI is not there to name it.
-public struct NewTaskParts: Equatable, Sendable {
-    public var machine: String
-    public var cli: PBAgent?
-    public var model: String
-
-    public init(machine: String, cli: PBAgent?, model: String) {
-        self.machine = machine
-        self.cli = cli
-        self.model = model
-    }
-}
-
-public func newTaskParts(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil) -> NewTaskParts {
-    let several = machineAgents(state.machines[c.machineId]).count > 1
-    let model = summaryModel(c, models: models)
-    return NewTaskParts(
-        machine: summaryMachine(state, id: c.machineId), cli: several ? c.agent : nil, model: several ? model : agentName(c.agent) + " · " + model)
-}
-
-/// CLI, machine and model; the effort and the context window are in the
-/// project's settings. A new task has no approval mode to name.
-public func projectSummary(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil) -> String {
-    [agentName(c.agent), summaryMachine(state, id: c.machineId), summaryModel(c, models: models)].filter { !$0.isEmpty }.joined(separator: " · ")
-}
-
-/// What keeps a new task from starting in its machine's default mode when
-/// that is auto (design-system §6 「新任务」): the model has no auto mode, or
-/// no model of the account has.
-public enum AutoIssue: Equatable, Sendable {
-    case model, account
-}
-
-/// The `AutoIssue` of starting with `c`, or nil. Nothing is said before the
-/// model list has come; the model is the chosen one, else the list's default.
-public func autoIssue(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse?) -> AutoIssue? {
-    guard agentInfo(c.agent).autoMayBeUnavailable, c.mode == nil,
-        defaultModeOf(state.machines[c.machineId], agent: c.agent).mode == .auto,
-        let list = models?.models, autoUnavailable(list, model: c.model.ifEmpty(models?.defaultModel ?? ""))
-    else { return nil }
-    return allAutoUnavailable(list) ? .account : .model
-}
-
 public func effectiveModeText(chosen: Mode?, default d: DefaultMode) -> String {
     if let chosen { return chosen.text }
     if !d.known { return unknownModeText }
     return d.mode?.text ?? L10n.errorsIosCliSOwnMode()
 }
 
-/// Another CLI for a draft (client-v26): the text and images stay, and the
-/// draft takes the project's set for that CLI (`project`). On a machine
-/// picked just for this start the model and effort are that machine's defaults.
+/// Another CLI for a draft (retained for un-migrated Schedules).
 public func switchAgent(_ c: NewConfig, project: NewConfig?, agent: PBAgent) -> NewConfig {
     var set = project.flatMap { $0.agent == agent ? $0 : nil } ?? NewConfig(machineId: c.machineId, cwd: c.cwd, agent: agent)
     if set.machineId != c.machineId {
@@ -430,11 +279,7 @@ public func switchAgent(_ c: NewConfig, project: NewConfig?, agent: PBAgent) -> 
     return set
 }
 
-/// Another machine for a draft: the model and effort were that machine's
-/// list, so they go, and the mode is that machine's default again. The CLI
-/// stays when the machine has it; otherwise the caller must have the user
-/// pick one (`machineAgents`), never silently. `agents` are that machine's
-/// and never empty.
+/// Another machine for a draft (retained for un-migrated Schedules).
 public func switchMachine(_ c: NewConfig, machineId: String, agents: [PBAgent]) -> NewConfig {
     var out = c
     out.machineId = machineId
@@ -443,14 +288,6 @@ public func switchMachine(_ c: NewConfig, machineId: String, agents: [PBAgent]) 
     out.mode = nil
     out.agent = agents.contains(c.agent) ? c.agent : agents.first ?? defaultAgent
     return out
-}
-
-/// The two lines of the configuration: machine and mode, then model and effort, neither cut.
-public func configLines(_ state: RemoteState, _ c: NewConfig, default d: DefaultMode) -> (String, String) {
-    (
-        "\(machineLabel(state, id: c.machineId)) · \(modeLabel(chosen: c.mode, default: d, agent: c.agent))",
-        [c.model, c.effort].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty(L10n.newSessionDefaultModel())
-    )
 }
 
 /// The model a new session would run: the one chosen, else the daemon's default for that CLI, else the list's.

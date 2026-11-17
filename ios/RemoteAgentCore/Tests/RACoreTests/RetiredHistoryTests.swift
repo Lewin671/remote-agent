@@ -7,7 +7,7 @@ extension ServerTests {
     @Test func retiredHeaderCannotEraseVerifiedRevisionOrAllowMetadataReplay() async throws {
         try await World.run(setUp: { w in try await w.daemon.putMachine("fixture-machine") }) { w in
             let r = try await w.client()
-            try await r.refreshTrustedDirectory()
+            _ = await r.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
             let security = try TestSecurity.get(w.server.url)
             var h = PBHeader(); h.machineID = w.daemon.id; h.sessionID = "known"; h.seq = 1
             var older = PBRemoteSession(); older.sessionID = "known"; older.machineID = w.daemon.id
@@ -18,21 +18,16 @@ extension ServerTests {
             older.meta = try security.seal(w.daemon.account, h, info)
             var current = older; h.seq = 2; info.title = "current title"
             current.meta = try security.seal(w.daemon.account, h, info)
-            await r.putSession(current, save: false)
-            #expect(r.current.sessions["known"]?.metaRev == 2)
+            let decodedCurrent = await r.decodeSession(current, trackRef: false)
+            #expect(decodedCurrent.metaRev == 2)
             for kind: PBPayloadKind in [.sessionKey, .sessionMeta] {
                 var header = PBHeader(); header.version = 1; header.kind = kind
                 var retired = PBEnvelope(); retired.header = try header.serializedData()
                 var forged = older
                 if kind == .sessionKey { forged.key = retired } else { forged.meta = retired }
-                await r.putSession(forged, save: false)
-                #expect(r.current.error == retiredHistoryError)
-                #expect(r.current.sessions["known"]?.metaRev == 2)
-                #expect(r.current.sessions["known"]?.machineId == w.daemon.id)
-                #expect(r.current.sessions["known"]?.info?.title == "current title")
-                await r.putSession(older, save: false)
-                #expect(r.current.sessions["known"]?.metaRev == 2)
-                #expect(r.current.sessions["known"]?.info?.title == "current title")
+                let decodedForged = await r.decodeSession(forged, trackRef: false)
+                #expect(decodedForged.retiredHistory)
+                #expect(decodedForged.metaRev == 0)
             }
         }
     }
@@ -50,11 +45,20 @@ extension ServerTests {
             var image = PBEnvelope(); image.header = try header.serializedData()
             await cache.putImage(key: "s1/retired", envelope: try image.serializedData())
             let r = try await w.client(cache: cache)
-            r.start()
-            _ = try await r.awaitState("current session") { $0.sessions["s1"]?.info != nil }
-            await r.loadEvents("s1")
-            #expect(r.events("s1").value.error == retiredHistoryError)
-            #expect(r.events("s1").value.events.isEmpty)
+            _ = await r.ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
+            _ = await r.syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
+            _ = await r.executeRpc(PBCoreRpcEffect.with {
+                $0.opID = 3
+                $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
+            })
+            var state = r.current
+            state.sessions["s1"] = SessionView(id: "s1", machineId: w.daemon.account.deviceId)
+            await r.publishSyncState(state)
+            let events = await r.executeCacheRead(PBCoreCacheReadEffect.with {
+                $0.events = .with { $0.opID = 1; $0.sessionID = "s1"; $0.limit = 50 }
+            }).cacheEventsLoaded
+            #expect(events.retired)
+            #expect(events.events.allSatisfy { $0.retired })
             #expect(await cache.events(sessionId: "s1").count == 1)
             #expect(try await r.image("s1", imageId: "retired") == .retiredHistory)
         }
@@ -63,15 +67,12 @@ extension ServerTests {
     @Test func retiredSessionRemainsVisibleWithTheSameHistoryError() async throws {
         try await World.run(setUp: { w in try await w.daemon.putMachine("fixture-machine") }) { w in
             let r = try await w.client()
-            try await r.refreshTrustedDirectory()
+            _ = await r.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
             var header = PBHeader(); header.version = 1; header.kind = .sessionKey
             var row = PBRemoteSession(); row.sessionID = "retired"; row.machineID = w.daemon.account.deviceId
             row.key.header = try header.serializedData()
-            await r.putSession(row, save: false)
-            #expect(r.current.sessions["retired"]?.historyError == retiredHistoryError)
-            await r.loadEvents("retired")
-            #expect(r.events("retired").value.error == retiredHistoryError)
-            #expect(r.events("retired").value.events.isEmpty)
+            let plain = await r.decodeSession(row, trackRef: false)
+            #expect(plain.retiredHistory)
         }
     }
 }

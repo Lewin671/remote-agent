@@ -1,7 +1,4 @@
-// Choosing a folder for a new project (architecture §13 「远程新建会话」):
-// a computer first, offline ones greyed, then its folders level by level
-// as the daemon lists them (`ListDirectories`; hidden folders are not
-// listed). Android's DirPicker in ui/Project.kt.
+// Choosing a folder for a new project, rendered from `PBCoreDirPickerView`.
 import RACore
 import RAProto
 import SwiftUI
@@ -20,46 +17,123 @@ struct DirectorySource {
     }
 }
 
-/// The picker's state: which computer and folder, what was listed, and how the last listing went.
-private struct Browsing: Equatable {
-    var machine: String
-    var path = ""
-    var attempt = 0
+/// Core-backed directory picker driven by `PBCoreDirPickerView`.
+struct CoreDirPicker: View {
+    var machine: String? = nil
+    var onPage: Bool = false
+    var forNewTask: Bool = false
+    let onChosen: (_ machine: String, _ path: String) -> Void
+    @Environment(AccountContext.self) private var context
+
+    var body: some View {
+        let picker = context.core.manageProjects.dirPicker
+        CoreDirPickerContent(
+            picker: picker,
+            onPage: onPage,
+            showMachineSwitch: machine == nil && picker.machines.count > 1,
+            onSelectMachine: { next in
+                context.dispatch {
+                    $0.projectOpenDirPicker = .with {
+                        $0.machineID = next
+                        $0.path = ""
+                        $0.forNewTask = forNewTask
+                    }
+                }
+            },
+            onNavigate: { path in
+                context.dispatch {
+                    $0.projectDirNavigate = .with {
+                        $0.machineID = picker.machineID
+                        $0.path = path
+                    }
+                }
+            },
+            onRetry: {
+                context.dispatch {
+                    $0.projectDirNavigate = .with {
+                        $0.machineID = picker.machineID
+                        $0.path = picker.currentPath
+                    }
+                }
+            },
+            onConfirm: {
+                Haptics.confirm()
+                let chosenMachine = picker.machineID
+                let chosenPath = picker.currentPath
+                context.dispatch { $0.projectCloseDirPicker = PBCoreDirPickerCloseAction() }
+                onChosen(chosenMachine, chosenPath)
+            }
+        )
+        .task(id: machine ?? "") {
+            await context.coreHost.setManageActive(true)
+            let initialPath = HomeLaunch.value("-dirPath") ?? ""
+            context.dispatch {
+                $0.projectOpenDirPicker = .with {
+                    $0.machineID = machine ?? ""
+                    $0.path = initialPath
+                    $0.forNewTask = forNewTask
+                }
+            }
+        }
+        .onDisappear {
+            Task {
+                await context.coreHost.dispatch(PBCoreEvent.with { $0.projectCloseDirPicker = PBCoreDirPickerCloseAction() })
+                await context.coreHost.setManageActive(false)
+            }
+        }
+        .debugSignal("dir.first") {
+            if let first = picker.dirs.first {
+                context.dispatch {
+                    $0.projectDirNavigate = .with {
+                        $0.machineID = picker.machineID
+                        $0.path = first.path
+                    }
+                }
+            }
+        }
+        .debugSignal("dir.up") {
+            if !picker.parentPath.isEmpty {
+                context.dispatch {
+                    $0.projectDirNavigate = .with {
+                        $0.machineID = picker.machineID
+                        $0.path = picker.parentPath
+                    }
+                }
+            }
+        }
+        .debugSignal("dir.choose") {
+            if picker.canConfirm {
+                let m = picker.machineID
+                let p = picker.currentPath
+                context.dispatch { $0.projectCloseDirPicker = PBCoreDirPickerCloseAction() }
+                onChosen(m, p)
+            }
+        }
+    }
 }
 
-/// Choose a machine (only where the account has more than one), then browse to a folder; `onChosen` with the
-/// folder. The computers and the path above the list and the button below it stay; only the list between
-/// them scrolls, and it fades into the surface at the edge it passes under. It fills what it is given: a
-/// sheet (which it pins, `sheetPinned()`) or a page (`onPage`).
-struct ProjectDirPicker: View {
-    private let state: RemoteState
-    private let onPage: Bool
-    private let onChosen: (_ machine: String, _ path: String) -> Void
-    @Environment(AppModel.self) private var model
-    @Environment(AccountContext.self) private var context
-    @State private var at: Browsing
-    @State private var dirs: PBListDirectoriesResponse?
-    @State private var loading = false
-    @State private var error = ""
-
-    init(_ state: RemoteState, machine: String? = nil, onPage: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
-        self.state = state
-        self.onPage = onPage
-        self.onChosen = onChosen
-        _at = State(initialValue: Browsing(machine: machine ?? firstOnlineMachine(state), path: HomeLaunch.value("-dirPath") ?? ""))
-    }
-
-    private var source: DirectorySource {
-        #if DEBUG
-        if model.isDemo { return Demo.directories }
-        #endif
-        return .remote(context.remote)
-    }
+/// Pure presentation body for `PBCoreDirPickerView`.
+struct CoreDirPickerContent: View {
+    let picker: PBCoreDirPickerView
+    var onPage = false
+    var showMachineSwitch = true
+    var onSelectMachine: (String) -> Void = { _ in }
+    var onNavigate: (String) -> Void = { _ in }
+    var onRetry: () -> Void = {}
+    var onConfirm: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // A computer is chosen only where the account has more than one (design-system §6 新任务).
-            if state.machines.count > 1 { machines.padding(.bottom, 10) }
+            if showMachineSwitch {
+                MachineSegmented(
+                    items: picker.machines.map { .init(id: $0.machineID, name: $0.name, online: $0.online) },
+                    selected: Binding(
+                        get: { picker.machineID },
+                        set: { if $0 != picker.machineID { onSelectMachine($0) } }
+                    )
+                )
+                .padding(.bottom, 10)
+            }
             listing
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -67,90 +141,75 @@ struct ProjectDirPicker: View {
         .padding(.bottom, onPage ? 8 : 0)
         .readableColumn()
         .sheetPinned()
-        .task(id: at) { await load() }
-        // What a tap here would do, for a script (debug builds).
-        .debugSignal("dir.first") { if let d = dirs, let name = d.dirs.first { at.path = childPath(d.path, name) } }
-        .debugSignal("dir.up") { if let d = dirs, !d.parent.isEmpty { at.path = d.parent } }
-        .debugSignal("dir.choose") { if let d = dirs { onChosen(at.machine, d.path) } }
-        // The first computer to come online is browsed when none was at the start.
-        .onChange(of: firstOnlineMachine(state)) { _, first in
-            if at.machine.isEmpty && !first.isEmpty { at.machine = first }
-        }
-    }
-
-    private func load() async {
-        guard !at.machine.isEmpty else { return }
-        loading = true
-        error = ""
-        do {
-            let listed = try await source.list(at.machine, at.path)
-            if Task.isCancelled { return }
-            dirs = listed
-        } catch is CancellationError {
-            return
-        } catch {
-            if Task.isCancelled { return }
-            self.error = errorText(error)
-        }
-        loading = false
-    }
-
-    private func choose(_ d: PBListDirectoriesResponse) -> some View {
-        Btn(L10n.projectsUseDirectory(name: pathCrumbs(d.path) == ["/"] ? "/" : projectName(d.path)), kind: .primary, enabled: !loading) {
-            Haptics.confirm()
-            onChosen(at.machine, d.path)
-        }
     }
 
     @ViewBuilder private var listing: some View {
-        if at.machine.isEmpty {
+        let errorText = picker.error.rendered()
+        if picker.machineID.isEmpty {
             Banner(L10n.projectsIosNoOnline(), tone: .warn)
-        } else if !error.isEmpty {
-            Banner(L10n.projectsDirectoryFailed(reason: error), tone: .error, action: L10n.commonRetry(), onAction: { at.attempt += 1 })
-        } else if let d = dirs {
-            crumbs(d)
-            if d.dirs.isEmpty { Text(L10n.projectsNoSubdirectories()).font(.subheadline).ink(DS.ink2).padding(.vertical, 8) }
-            // The folder before stays, dimmed, until the next one is listed: no blank in between.
+        } else if !errorText.isEmpty {
+            Banner(errorText, tone: .error, action: L10n.commonRetry(), onAction: onRetry)
+        } else if !picker.currentPath.isEmpty || !picker.dirs.isEmpty || !picker.loading {
+            crumbs
+            if picker.dirs.isEmpty && !picker.loading {
+                Text(L10n.projectsNoSubdirectories()).font(.subheadline).ink(DS.ink2).padding(.vertical, 8)
+            }
             ScrollView {
                 VStack(spacing: 0) {
-                    if !d.parent.isEmpty {
-                        ListItem(L10n.projectsParentDirectory(), last: d.dirs.isEmpty, icon: "chevron.left") { at.path = d.parent }
+                    if !picker.parentPath.isEmpty {
+                        ListItem(L10n.projectsParentDirectory(), last: picker.dirs.isEmpty, icon: "chevron.left") {
+                            onNavigate(picker.parentPath)
+                        }
                     }
-                    ForEach(Array(d.dirs.enumerated()), id: \.element) { i, name in
-                        ListItem(name, last: i == d.dirs.count - 1) { at.path = childPath(d.path, name) }
-                            .trailing { Arrow(DS.ink2, style: .body) }
+                    ForEach(Array(picker.dirs.enumerated()), id: \.element.path) { idx, dir in
+                        ListItem(dir.name, last: idx == picker.dirs.count - 1) {
+                            onNavigate(dir.path)
+                        }
+                        .trailing { Arrow(DS.ink2, style: .body) }
                     }
                 }
-                .opacity(loading ? 0.45 : 1)
-                .disabled(loading)
+                .opacity(picker.loading ? 0.45 : 1)
+                .disabled(picker.loading)
             }
             .scrollEdgeFades()
-            // The list takes what the button leaves, so the button stays at the bottom under a short list too.
             .frame(maxHeight: .infinity, alignment: .top)
-            choose(d).padding(.top, 10)
+            Btn(picker.confirmLabel.rendered(), kind: .primary, enabled: picker.canConfirm, action: onConfirm)
+                .padding(.top, 10)
         } else {
             LoadingRow(inset: 0)
         }
     }
 
-    /// The computers as a segmented control, the chosen one a slider; an offline one cannot be chosen.
-    private var machines: some View {
-        MachineSegmented(
-            items: listedMachines(state).map { .init(id: $0.id, name: machineLabel(state, id: $0.id), online: $0.pathState.reachable) },
-            selected: Binding(get: { at.machine }, set: { if $0 != at.machine { at = Browsing(machine: $0) } }))
-    }
-
-    /// 「~ / Code / ai-bot」, the folder itself in the text colour.
-    private func crumbs(_ d: PBListDirectoriesResponse) -> some View {
-        let parts = pathCrumbs(d.path)
+    private var crumbs: some View {
         var line = Text("")
-        for (i, part) in parts.enumerated() {
+        for (i, crumb) in picker.crumbs.enumerated() {
             if i > 0 { line = line + Text(" / ") }
-            line = line + (i == parts.count - 1 ? Text(part).fontWeight(.semibold).foregroundStyle(DS.ink) : Text(part))
+            let label = crumb.label.rendered()
+            let isLast = i == picker.crumbs.count - 1
+            line = line + (isLast ? Text(label).fontWeight(.semibold).foregroundStyle(DS.ink) : Text(label))
         }
-        return line.font(.footnote.monospaced()).ink(DS.ink2)
+        return line
+            .font(.footnote.monospaced())
+            .ink(DS.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 6)
-            .accessibilityLabel(L10n.projectsIosCurrentDirectory(path: shortPath(d.path)))
+            .accessibilityLabel(L10n.projectsIosCurrentDirectory(path: picker.currentPath))
+    }
+}
+
+/// Compatibility entry point for non-M1 screens (`ScheduleConfigSheet`, `MachineStatusScreen`).
+struct ProjectDirPicker: View {
+    private let machine: String?
+    private let onPage: Bool
+    private let onChosen: (_ machine: String, _ path: String) -> Void
+
+    init(_ ignoredState: RemoteState, machine: String? = nil, onPage: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
+        self.machine = machine
+        self.onPage = onPage
+        self.onChosen = onChosen
+    }
+
+    var body: some View {
+        CoreDirPicker(machine: machine, onPage: onPage, onChosen: onChosen)
     }
 }

@@ -2,6 +2,7 @@
 // head of a row, which always has its status word beside it, and a
 // project's avatar. They are drawn, not icons, and grow with the text.
 import RACore
+import RAProto
 import SwiftUI
 
 /// The status graphic (design-system §2 「状态图形」).
@@ -31,6 +32,23 @@ enum StatusKind: Sendable, Equatable {
         case .off:
             if status == .exited { return nil }
             self = .off
+        }
+    }
+
+    init?(_ row: PBCoreSessionRowView) {
+        switch row.status {
+        case .ended: return nil
+        case .starting, .running: self = .running
+        case .idle: self = .idle
+        case .approval, .question, .plan, .popup: self = .waiting
+        case .offline, .unlinked: self = .off
+        case .unspecified, .UNRECOGNIZED:
+            switch row.tone {
+            case .live: self = .running
+            case .warn: self = .waiting
+            case .bad: self = .off
+            case .neutral, .unspecified, .UNRECOGNIZED: self = .idle
+            }
         }
     }
 }

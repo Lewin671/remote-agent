@@ -26,22 +26,16 @@ extension Remote {
         deviceSecurity = client
         return client
     }
+
     private func fetchSecurityPage(_ after: UInt64) async throws -> PBGetSecurityStatesResponse {
-        var request = PBGetSecurityStatesRequest(); request.afterEpoch = after; request.limit = 8
-        var used = try await currentToken()
+        var req = PBGetSecurityStatesRequest(); req.afterEpoch = after; req.limit = 8
+        let request = req
         do {
-            let response: PBGetSecurityStatesResponse
-            do { response = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: used)).value() }
-            catch let error as ConnectError where error.code == .unauthenticated {
-                try Task.checkCancellation()
-                rejectCredential(used)
-                used = try await currentToken()
-                do { response = try await api.client.getSecurityStates(request: request, headers: Api.headers(token: used)).value() }
-                catch let error as ConnectError where error.code == .unauthenticated {
-                    rejectCredential(used); throw error
-                }
+            let response = try await withAuthRetry { [api] headers in
+                try await api.client.getSecurityStates(request: request, headers: headers).value()
             }
-            try Task.checkCancellation(); receivedRecoveryStatus(response)
+            try Task.checkCancellation()
+            receivedRecoveryStatus(response)
             return response
         } catch {
             if !Task.isCancelled { markRecoveryStatusStale() }
@@ -55,14 +49,26 @@ extension Remote {
             throw CommandError("authorization_unavailable", L10nMessage.securityIosCouldNotVerifyTheCurrentSecurityStateTheOperation())
         }
     }
-    func authorizePrepared(_ p: PreparedCommand, verifyObservation: Bool = true) async throws
-        -> PBEnvelope
-    {
+
+    func authorizeCommandBytes(
+        machineId: String,
+        sessionId: String,
+        requestId: String,
+        deadlineMs: Int64,
+        commandBytes: Data
+    ) async throws -> PBEnvelope {
         do {
-            return try await authorizeIntent(p, verifyObservation: verifyObservation)
+            guard !clockSkewed else {
+                throw CommandError("failed_precondition", L10n.securityIosThisDeviceIsOver5MinutesBehindTheSecurity())
+            }
+            let client = try securitySession()
+            return try await client.seal(
+                purpose: .command, machine: machineId, session: sessionId, request: requestId,
+                deadline: UInt64(bitPattern: deadlineMs), plaintext: commandBytes)
         } catch let e as CommandError {
             throw e
         } catch DeviceSecurity.Failure.lease {
+            let devices = state.value.devices
             let renewal = authorityDeviceId == account.deviceId
                 ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
                 : L10n.securityIosOpenToRenew(value: String(describing: clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices)))
@@ -73,26 +79,22 @@ extension Remote {
             throw CommandError("authorization_unavailable", L10nMessage.securityIosSecurityStateIsUnverifiedTheOperationWasNotSent())
         }
     }
-    private func authorizeIntent(_ p: PreparedCommand, verifyObservation: Bool) async throws
-        -> PBEnvelope
-    {
-        guard clockWarning.isEmpty else {
-            throw CommandError(
-                "failed_precondition", L10n.securityIosThisDeviceIsOver5MinutesBehindTheSecurity())
-        }
-        let client = try securitySession()
-        let cmd = p.command
-        if verifyObservation && isObservedAction(cmd) {
+
+    /// Transitional Step 3-4 helper used by `PreparedCommand` until Session/Schedules migrate to Core.
+    func authorizePrepared(_ p: PreparedCommand, verifyObservation: Bool = true) async throws -> PBEnvelope {
+        if verifyObservation && isObservedAction(p.command) {
             let fresh = try await fetchLiveSnapshot(p.sessionId)
-            let verified = try observedCommand(cmd, snapshot: fresh)
-            guard verified == cmd else {
+            let verified = try observedCommand(p.command, snapshot: fresh)
+            guard verified == p.command else {
                 throw CommandError("failed_precondition", L10nMessage.securityIosTheCurrentRequestChangedReviewItAgain())
             }
         }
-        return try await client.seal(
-            purpose: .command, machine: p.machineId, session: p.sessionId, request: p.requestId,
-            deadline: UInt64(bitPattern: p.deadlineMs), plaintext: p.commandBytes())
+        return try await authorizeCommandBytes(
+            machineId: p.machineId, sessionId: p.sessionId,
+            requestId: p.requestId, deadlineMs: p.deadlineMs,
+            commandBytes: try p.commandBytes())
     }
+
     public func securityIdentity() throws -> (DeviceSecurity.Pin, DeviceSecurity.State) {
         guard let storage = securityStorage else { throw DeviceSecurity.Failure.storage }
         let r = try storage.readSecurity()
@@ -102,22 +104,23 @@ extension Remote {
         }
         return (r.pin, r.state)
     }
+
     func historicalPlace(_ want: Place, header: PBHeader, history: Bool) async throws -> Place {
-        var expected=want
-        if history && [.event,.image].contains(want.kind) && header.machineID != want.machineId {
-            let origins=try await securitySession().replacementOrigins(target:want.machineId,proofs:sessions[want.sessionId]?.info?.machineReplacements ?? [])
-            if origins.contains(header.machineID) {expected.machineId=header.machineID}
+        var expected = want
+        if history && [.event, .image].contains(want.kind) && header.machineID != want.machineId {
+            let proofs = machineReplacements[want.sessionId] ?? state.value.sessions[want.sessionId]?.info?.machineReplacements ?? []
+            let origins = try await securitySession().replacementOrigins(target: want.machineId, proofs: proofs)
+            if origins.contains(header.machineID) { expected.machineId = header.machineID }
         }
         return expected
     }
+
     func openSecureMessage<M: SwiftProtobuf.Message>(
         envelope: PBEnvelope?, want: Place, as type: M.Type, history: Bool = false
     ) async throws -> (PBHeader, M) {
         guard let envelope else { throw DeviceSecurity.Failure.invalid }
         let history = history || [PBPayloadKind.accountPrefs, .deviceMeta, .machineMeta, .sessionMeta, .image].contains(want.kind)
         try rejectRetiredHistory(envelope)
-        // Live frames are authorized by the state they name and the sender's
-        // current membership; stored history is checked against its own state.
         let seed: [DeviceSecurity.Purpose] = [
             .event, .image, .terminalInput, .terminalOutput, .terminalHistory, .terminalResize,
         ]
@@ -126,9 +129,10 @@ extension Remote {
         let (h, m) = try await securitySession().openMessage(
             envelope, as: type, history: history, sessionSeed: sessionSeed)
         let projected = projection(h)
-        try Envelopes.expect(projected, try await historicalPlace(want,header:projected,history:history))
+        try Envelopes.expect(projected, try await historicalPlace(want, header: projected, history: history))
         return (projected, m)
     }
+
     func projection(_ h: DeviceSecurity.Header) -> PBHeader {
         var out = PBHeader()
         out.version = 3
@@ -149,7 +153,9 @@ extension Remote {
         recoveryPending = response.recoveryPending
         recoveryReadyMs = response.recoveryReadyMs
         recoveryStatusStale = false
-        publish()
     }
-    func markRecoveryStatusStale() { recoveryStatusStale = true; publish() }
+
+    func markRecoveryStatusStale() {
+        recoveryStatusStale = true
+    }
 }

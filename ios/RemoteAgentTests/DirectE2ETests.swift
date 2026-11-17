@@ -147,7 +147,7 @@ struct DirectE2ETests {
         throw UserError("timed out waiting for \(what)")
     }
 
-    func make() async throws -> (Remote, String, E2EFactory) {
+    func make() async throws -> (Remote, CoreHost, String, E2EFactory) {
         let server = try read("url"), token = try read("setup-token")
         let vault = Vault(service: "io.github.lewin671.remoteagent.e2e.\(UUID().uuidString)")
         let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true)
@@ -181,14 +181,16 @@ struct DirectE2ETests {
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         say("paired")
-        remote.start()
+        let screens = await MainActor.run { CoreScreens() }
+        let host = try CoreHost.live(remote: remote, account: account, defaults: .standard, screens: screens, onNavigate: { _ in })
+        host.start()
         var machine = ""
         _ = try await wait("the computer online", seconds: 90) {
             if let m = remote.current.machines.values.first(where: { $0.pathState.reachable }) { machine = m.id; return true }
             return false
         }
         say("computer online \(machine.prefix(8))")
-        return (remote, machine, factory)
+        return (remote, host, machine, factory)
     }
 
     func call(_ remote: Remote, _ machine: String, session: String = "", _ cmd: PBCommand) async throws -> PBCommandResult {
@@ -202,8 +204,8 @@ struct DirectE2ETests {
     }
 
     func run() async throws {
-        let (remote, machine, factory) = try await make()
-        defer { remote.stop() }
+        let (remote, host, machine, factory) = try await make()
+        defer { host.stop() }
         var r: [String: Any] = ["scenario": E2E.scenario]
         defer { save(r) }
         let watcher = Task {
