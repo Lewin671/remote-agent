@@ -188,13 +188,14 @@ class Remote(
     // --- Direct peer engine & Security ---
 
     private val _directPeers = MutableStateFlow<Map<String, PeerState>>(emptyMap())
+    private val lastDirectReady = ConcurrentHashMap<String, Boolean>()
 
     internal val direct: DirectEngine = DirectEngine(
         account = account,
         rtcFactory = rtcFactory,
         preferenceStore = directPrefs,
         authorize = { security.sync(5_000L); Unit },
-        changed = { onDirectChanged() },
+        changed = { scope.launch { if (running) onDirectChanged() } },
         clock = clock,
         monotonic = monotonic,
         stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
@@ -208,7 +209,9 @@ class Remote(
         for (m in syncState.machinesList) {
             val id = m.machineId
             val ready = direct.ready(id, RouteHint.Read)
-            coreHost.notifyMachineRouteStatus(id, ready)
+            if (lastDirectReady.put(id, ready) != ready) {
+                coreHost.notifyMachineRouteStatus(id, ready)
+            }
             val base = MachineView(id, m.online, m.lastSeenMs, if (m.hasMeta()) m.meta else null, m.metaRev)
             updatedPeers[id] = RelayPath.discovery(base).copy(
                 reachable = ready || m.online,
@@ -1301,7 +1304,9 @@ class Remote(
         val outerMatchesInner = delivery.direct || (res.outcome == msg.outcome && res.reason == msg.reason)
         val outerOutcome = if (delivery.direct) msg.outcome else res.outcome
         val outerReason = if (delivery.direct) msg.reason else res.reason
-        if (tracking != null && hashesMatch && attemptBound && outerMatchesInner && msg.errorCode.isEmpty()) {
+        if (tracking != null && hashesMatch && attemptBound && outerMatchesInner && msg.errorCode.isEmpty() &&
+            verifiedOutcome(msg, binding.first, binding.second, outerOutcome, outerReason) == Outcome.EXECUTED
+        ) {
             val bytes = when {
                 parsedCmd?.hasPutImageChunk() == true -> parsedCmd.putImageChunk.data.size()
                 msg.hasGetSharedFileChunk() -> msg.getSharedFileChunk.data.size()
@@ -1434,6 +1439,7 @@ class Remote(
     fun stop() {
         running = false
         authorityJob.cancel()
+        lastDirectReady.clear()
         direct.invalidate()
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)
         scope.launch { closeStreamLeg(0L) }
@@ -2236,20 +2242,15 @@ class Remote(
     private fun directHint(p: PreparedCommand): RouteHint? {
         val cmd = p.command ?: return null
         return when (cmd.kindCase) {
-            Command.KindCase.GET_SETTINGS, Command.KindCase.LIST_MODELS, Command.KindCase.LIST_DIRECTORIES,
-            Command.KindCase.GET_LIVE_SNAPSHOT, Command.KindCase.GET_MACHINE_STATUS -> RouteHint.Read
-            Command.KindCase.SCHEDULE -> if (cmd.isReadOnlyCommand()) RouteHint.Read else null
-            Command.KindCase.GET_SHARED_FILE_CHUNK -> RouteHint.Bulk(
-                "${p.sessionId}/${cmd.getSharedFileChunk.fileId}",
-                directTransfers[cmd.getSharedFileChunk.fileId],
-                262_144,
-            )
-            Command.KindCase.PUT_IMAGE_CHUNK -> RouteHint.Bulk(
-                cmd.putImageChunk.transferId,
-                UploadKind.IMAGE,
-                cmd.putImageChunk.data.size(),
-            )
-            else -> null
+            Command.KindCase.GET_SHARED_FILE_CHUNK ->
+                RouteHint.Bulk(file = "${p.sessionId}/${cmd.getSharedFileChunk.fileId}")
+            Command.KindCase.PUT_IMAGE_CHUNK -> {
+                val id = cmd.putImageChunk.transferId
+                val upload = directTransfers["${p.machineId}/$id"] ?: return null
+                RouteHint.Bulk(file = id, upload = upload, bytes = cmd.putImageChunk.data.size())
+            }
+            Command.KindCase.GET_IMAGE_UPLOAD_STATUS -> null
+            else -> if (cmd.isReadOnlyCommand()) RouteHint.Read else null
         }
     }
 
@@ -2266,28 +2267,27 @@ class Remote(
         protocolMismatch(state.value.machines[p.machineId])?.let {
             throw CommandException("failed_precondition", it, outcome = if (prior) Outcome.UNKNOWN else Outcome.NOT_SENT)
         }
-        if (clock() >= p.deadlineMs) {
+        if (!call.uncertain && clock() >= p.deadlineMs) {
             throw CommandException(
                 CommandException.EXPIRED,
-                if (prior) UiMessages.errorsAndroidThePreviousOutcomeIsUnknownTheRequestExpiredAndWill().messageText()
-                else UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText(),
-                outcome = if (prior) Outcome.UNKNOWN else Outcome.NOT_SENT,
+                UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText(),
+                outcome = Outcome.NOT_SENT,
             )
         }
         val authorized = try {
-            authorize(p, prior)
+            authorize(p, call.hasPrior)
         } catch (e: CommandException) {
-            throw if (!prior || e.unknown || e.fromDaemon) e
+            throw if (!call.uncertain || e.unknown || e.fromDaemon) e
             else CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText(), outcome = Outcome.UNKNOWN)
         }
         checkFileCapability(p, call.uncertain)
-        val binding = security.commandIdentity(authorized)
+        val binding = withContext(cpuLane(p)) { security.commandIdentity(authorized) }
         val routeHint = directHint(p)
-        val tracking = routeHint?.let { direct.track(p.machineId, it) }
         var forceRelay = false
         var attempt = 0
         while (true) {
             checkFileCapability(p, call.uncertain)
+            val tracking = routeHint?.let { direct.track(p.machineId, it) }
             val delivery = deviceLink.delivery(
                 call,
                 if (routeHint != null && !forceRelay) { handoff -> direct.attempt(p.machineId, routeHint, handoff) } else null,
