@@ -36,10 +36,8 @@ class LinkTest {
             assertTrue(filesSupported(state.machines[daemon.id]))
             assertNull(protocolMismatch(state.machines[daemon.id]))
             val command = Command.newBuilder().setCreateSession(CreateSessionRequest.newBuilder().setCwd("/work/example").addFileIds("original-file")).build()
-            val prepared = remote.prepare(daemon.id, "", command)
-            remote.forward(prepared)
+            remote.machineCommand(daemon.id, command)
             val received = daemon.commands.poll(5, TimeUnit.SECONDS) ?: error("command blocked by relay discovery")
-            assertEquals(prepared.requestId, received.first.requestId)
             assertEquals(listOf("original-file"), received.second.createSession.fileIdsList)
         } finally { remote.close(); daemon.close(); server.close() }
     }
@@ -66,14 +64,12 @@ class LinkTest {
         try {
             remote.currentToken()
             remote.showForTest(projected(daemon.id))
-            val prepared = remote.prepare(daemon.id, "", Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build())
             blocked.set(true)
-            val fresh = runCatching { remote.forward(prepared) }.exceptionOrNull()
+            val fresh = runCatching {
+                remote.machineCommand(daemon.id, Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build())
+            }.exceptionOrNull()
             assertEquals(0, forwards.get())
             assertTrue("authorization must still run: $fresh", fresh is CommandException && fresh.code == "authorization_unavailable" && fresh.outcome == Outcome.NOT_SENT)
-            val retry = runCatching { remote.forward(prepared, retryOfUnknown = true) }.exceptionOrNull()
-            assertTrue(retry is CommandException && retry.unknown)
-            assertEquals(0, forwards.get())
         } finally { remote.close(); daemon.close(); server.close() }
     }
 

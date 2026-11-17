@@ -20,10 +20,11 @@ class OpenLatencyBenchmarkTest {
         val peer = ColdOpenPeer(fixture, this).apply { latencyMs = 50 }
         val r = peer.remote()
         try {
-            val visible = async { r.events("long").first { it.events.lastOrNull()?.seq == 501L } }
+            val win = io.github.lewin671.remoteagent.core.proto.SessionWindowRequest.newBuilder().setLimit(500).build()
+            val visible = async { r.watchSession("long", win).first { it.timeline.windowLastSeq == 501L } }
             r.start()
             val page = withTimeout(15000) { visible.await() }
-            assertEquals(500, page.events.size)
+            assertEquals(500, page.timeline.itemsCount)
             assertEquals(listOf(1L), peer.after)
             assertEquals(0, peer.calls.count { it == "Login" || it == "GetChallenge" })
             // Upgrade, parallel lists/security, then newest history: three dependent 50 ms waits.

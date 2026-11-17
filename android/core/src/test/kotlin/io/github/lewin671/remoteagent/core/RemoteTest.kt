@@ -1,7 +1,6 @@
 package io.github.lewin671.remoteagent.core
 
-import io.github.lewin671.remoteagent.core.transport.DispatchState
-
+import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 
 import io.github.lewin671.remoteagent.proto.*
@@ -103,77 +102,6 @@ class RemoteTest {
         return r
     }
 
-    @Test fun rpcTransportPreventsUncountedPostReplay() = runBlocking<Unit> {
-        val r=client();r.start();r.awaitState("online") {it.conn==ConnState.ONLINE}
-        val prepared=r.prepare(daemon.id,"s1",Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId("s1")).build())
-        val envelope=r.authorize(prepared)
-        for(mode in listOf("disconnect","retry-after","request-timeout","h2-refused","redirect","authentication","interceptor").filter { System.getenv("RA_WIRE_CASE").isNullOrEmpty() || System.getenv("RA_WIRE_CASE") == it }) {
-            for(protected in listOf(false,true)) {
-                RetryWireServer(mode).use { wire ->
-                    val transport=http.newBuilder().retryOnConnectionFailure(true).apply {
-                        if(mode=="h2-refused") protocols(listOf(okhttp3.Protocol.H2_PRIOR_KNOWLEDGE))
-                        if(mode=="redirect") followRedirects(true)
-                        if(mode=="authentication") authenticator { _,response -> response.request.newBuilder().header("Authorization","fixture").build() }
-                        if(mode=="interceptor") addInterceptor { chain ->
-                            val first=chain.proceed(chain.request());first.close();chain.proceed(chain.request())
-                        }
-                    }.build()
-                    if(mode!="interceptor") transport.newCall(okhttp3.Request.Builder().url(wire.url+"/warm").build()).execute().use {it.body.string()}
-                    val api=if(protected) Api(wire.url,transport).client else ClientServiceClient(com.connectrpc.impl.ProtocolClient(com.connectrpc.okhttp.ConnectOkHttpClient(transport),com.connectrpc.ProtocolClientConfig(host=wire.url,serializationStrategy=LiteProtobufStrategy,networkProtocol=com.connectrpc.protocols.NetworkProtocol.CONNECT)))
-                    val state=DispatchState(false);val call=state.open(false);val delivery=call.delivery()
-                    val request=ForwardRequest.newBuilder().setMachineId(daemon.id).setCommand(envelope).setAttemptId("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").setRelayEpoch("wire-epoch").build()
-                    delivery.dispatch()
-                    val error=runCatching {api.forward(request,emptyMap()).value()}.exceptionOrNull() as com.connectrpc.ConnectException
-                    val refusal=error.details.mapNotNull {runCatching {NotForwarded.parseFrom(it.payload.toByteArray())}.getOrNull()}.any {it.attemptId==request.attemptId&&it.relayEpoch==request.relayEpoch}
-                    if(refusal)delivery.notForwarded()
-                    org.junit.Assert.assertEquals("$mode protected=$protected error=$error",if(protected)1 else 2,wire.posts.get())
-                    org.junit.Assert.assertEquals(protected,call.uncertain)
-                    org.junit.Assert.assertTrue(wire.attempts.all {it==request.attemptId})
-                    call.close()
-                }
-            }
-        }
-    }
-
-    @Test fun aDnsErrorAfterDeliveryCannotClaimNotSent() = runBlocking<Unit> {
-        val delivered = java.util.concurrent.atomic.AtomicInteger()
-        val transport = http.newBuilder().addInterceptor { chain ->
-            val response = chain.proceed(chain.request())
-            if (chain.request().url.encodedPath.endsWith("/Forward")) {
-                response.close(); delivered.incrementAndGet()
-                throw java.net.UnknownHostException("after delivery")
-            }
-            response
-        }.build()
-        val account = approvedClient(daemon.phone, transport)
-        val r = fixtureRemote(account, transport)
-        closers += AutoCloseable { r.close() }
-        r.start();r.awaitState("online") { it.conn == ConnState.ONLINE }
-        val p = r.prepare(daemon.id, "s1", Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId("s1")).build())
-        try { r.forward(p); fail("lost response returned success") } catch (e:Exception) { assertTrue(uncertain(e)) }
-        assertEquals(1,delivered.get());assertTrue(p.mayHaveRun)
-    }
-
-    @Test fun loginDnsBeforeDispatchCannotSpendThePreviousAttempt() = runBlocking<Unit> {
-        val now=java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
-        val failLogin=java.util.concurrent.atomic.AtomicBoolean()
-        val gated=http.newBuilder().addInterceptor { chain ->
-            if(failLogin.get()&&chain.request().url.encodedPath.endsWith("/GetChallenge"))throw java.net.UnknownHostException("fixture login DNS")
-            chain.proceed(chain.request())
-        }.build()
-        val r=fixtureRemote(approvedClient(daemon.phone,http),gated,clock=now::get);closers+=AutoCloseable{r.close()}
-        r.start();r.awaitState("online") {it.conn==ConnState.ONLINE}
-        val p=r.prepare(daemon.id,"s1",Command.newBuilder().setInterrupt(InterruptRequest.newBuilder().setSessionId("s1")).build())
-        daemon.garbleResults=true
-        org.junit.Assert.assertTrue(uncertain(runCatching {r.forward(p)}.exceptionOrNull()!!))
-        daemon.garbleResults=false
-        r.stop();r.awaitState("stopped") {it.conn==ConnState.OFFLINE}
-        failLogin.set(true);now.addAndGet(31L*24*60*60*1000)
-        val error=runCatching {r.forward(p)}.exceptionOrNull()
-        org.junit.Assert.assertTrue("prior was lost: $error",error is CommandException && error.unknown)
-        org.junit.Assert.assertTrue(p.dispatch.hasPrior)
-    }
-
     @Test
     fun retiredSessionAndCachedEventShowTheSameExplicitError() = runBlocking<Unit> {
         val cache = MemoryCache()
@@ -186,11 +114,14 @@ class RemoteTest {
         val r = client(cache = cache)
         r.start()
         r.awaitState("retired session error") { it.sessions["retired"]?.historyError == RETIRED_HISTORY_ERROR }
-        assertEquals(RETIRED_HISTORY_ERROR, withTimeout(5000) { r.events("retired").first { it.error != null } }.error)
+        val retiredVm = withTimeout(5000) { r.watchSession("retired").first { it.timeline.retired } }
+        assertTrue(retiredVm.timeline.retired)
+        assertTrue(retiredVm.timeline.hasHistoryNotice())
         r.awaitState("current session") { it.sessions["s1"]?.info != null }
-        val events = withTimeout(5000) { r.events("s1").first { it.error != null } }
-        assertEquals(RETIRED_HISTORY_ERROR, events.error)
-        assertTrue(events.events.isEmpty())
+        val s1Vm = withTimeout(5000) { r.watchSession("s1").first { it.timeline.retired } }
+        assertTrue(s1Vm.timeline.retired)
+        assertTrue(s1Vm.timeline.hasHistoryNotice())
+        assertTrue(s1Vm.timeline.itemsList.isEmpty())
         assertEquals(1, cache.events("s1").size)
         cache.putImage("s1/retired", old.toBuilder().setHeader(Header.newBuilder().setVersion(1)
             .setKind(PayloadKind.PAYLOAD_KIND_IMAGE).build().toByteString()).build().toByteArray())
@@ -205,116 +136,8 @@ class RemoteTest {
             throw e
         }
 
-    private suspend fun Remote.awaitEvents(sid: String, n: Int): SessionEvents =
-        withTimeout(10_000) { events(sid).first { it.events.size >= n } }
-
-
-    @Test fun createRetryKeepsRawPayloadAcrossRekeyAndClientRestart() = runBlocking<Unit> {
-        val fixture=kotlinx.serialization.json.Json.parseToJsonElement(java.io.File(java.io.File(System.getProperty("outcomeVectors")).parentFile,"prepared-command.json").readText()).jsonObject
-        val raw=java.util.Base64.getDecoder().decode(fixture.getValue("plain").jsonPrimitive.content)
-        val command=Command.parseFrom(raw);assertEquals(3,command.createSession.envCount)
-        assertFalse(raw.contentEquals(command.toByteArray()))
-        val r=client();r.start();r.awaitState("online") {it.conn==ConnState.ONLINE&&it.machines[daemon.id]?.online==true}
-        daemon.answer={_,cmd -> if(cmd.hasCreateSession()) CommandResult.newBuilder().setCreateSession(CreateSessionResponse.newBuilder().setSession(Session.newBuilder().setId("fixture-created"))).build() else FakeDaemon.defaultResult(cmd)}
-        val p=PreparedCommand(daemon.id,"",newRequestId(),System.currentTimeMillis()+60000,Envelope.getDefaultInstance(),serializedCommand=raw, prior=false)
-        r.forward(p)
-        val before=p.authorizedEnvelope!!
-        p.commandBytes()!!.fill(0)
-        approvedClient(daemon.phone,http);r.syncSecurity()
-        r.forward(p,retryOfUnknown=true)
-        assertFalse(before==p.authorizedEnvelope)
-        val saved=checkNotNull(p.commandBytes())
-        r.close()
-        val next=fixtureRemote(r.account,http);closers+=AutoCloseable{next.close()};next.start()
-        next.awaitState("restarted") {it.conn==ConnState.ONLINE&&it.machines[daemon.id]?.online==true}
-        val restored=PreparedCommand(p.machineId,p.sessionId,p.requestId,p.deadlineMs,Envelope.getDefaultInstance(),serializedCommand=saved, prior=true)
-        next.forward(restored,retryOfUnknown=true)
-        val rows=mutableListOf<Pair<Header,ByteArray>>();daemon.commandPayloads.drainTo(rows)
-        val matching=rows.filter{it.first.requestId==p.requestId};assertEquals(3,matching.size)
-        matching.forEach {org.junit.Assert.assertArrayEquals(raw,it.second);assertEquals(p.deadlineMs,it.first.deadlineMs)}
-    }
-
-    @Test
-    fun authorizedActionsResealWithoutReobservingCompletedActions() =
-        runBlocking<Unit> {
-            val r = client()
-            r.start()
-            r.awaitState("session") {
-                it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null
-            }
-            val hash = com.google.protobuf.ByteString.copyFrom(ByteArray(32) { 9 })
-            val actions =
-                listOf(
-                    Command.newBuilder()
-                        .setResolveApproval(
-                            ResolveApprovalRequest.newBuilder()
-                                .setSessionId("s1")
-                                .setApprovalId("a")
-                                .setObservedEventSeq(7),
-                        )
-                        .build(),
-                    Command.newBuilder()
-                        .setAnswerQuestion(
-                            AnswerQuestionRequest.newBuilder()
-                                .setSessionId("s1")
-                                .setQuestionId("q")
-                                .setObservedEventSeq(8),
-                        )
-                        .build(),
-                    Command.newBuilder()
-                        .setAnswerPlan(
-                            AnswerPlanRequest.newBuilder()
-                                .setSessionId("s1")
-                                .setObservedEventSeq(9)
-                                .setObservedScreenHash(hash),
-                        )
-                        .build(),
-                )
-            for (cmd in actions) {
-                var completed = false
-                daemon.liveSnapshot = {
-                    val snapshot =
-                        LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId("s1"))
-                    if (!completed)
-                        snapshot
-                            .addActions(
-                                Event.newBuilder()
-                                    .setSeq(7)
-                                    .setApprovalRequested(
-                                        ApprovalRequested.newBuilder().setApprovalId("a"),
-                                    ),
-                            )
-                            .addActions(
-                                Event.newBuilder()
-                                    .setSeq(8)
-                                    .setQuestionAsked(
-                                        QuestionAsked.newBuilder().setQuestionId("q"),
-                                    ),
-                            )
-                            .setPlanEventSeq(9)
-                            .setPlanScreenHash(hash)
-                    snapshot.build()
-                }
-                daemon.answer = { _, _ ->
-                    completed = true
-                    CommandResult.getDefaultInstance()
-                }
-                val p = r.prepare(daemon.id, "s1", cmd)
-                r.forward(p)
-                assertTrue("first authorization must execute before retry", completed)
-                val original = p.authorizedEnvelope!!
-                approvedClient(daemon.phone, http)
-                r.syncSecurity()
-                r.forward(p, retryOfUnknown = true)
-                assertFalse(original == p.authorizedEnvelope)
-                val received =
-                    mutableListOf<Pair<io.github.lewin671.remoteagent.proto.Header, Command>>()
-                while (true) received += daemon.commands.poll() ?: break
-                val sent = received.filter { it.first.requestId == p.requestId }
-                assertEquals(2, sent.size)
-                assertEquals(sent[0], sent[1])
-            }
-        }
+    private suspend fun Remote.awaitSessionTimeline(sid: String, minItems: Int): SessionViewModel =
+        withTimeout(10_000) { watchSession(sid).first { it.timeline.itemsCount >= minItems } }
 
     @Test
     fun backgroundCancelsRenewalAndRetainsItsPendingOperation() =
@@ -784,12 +607,12 @@ class RemoteTest {
             assertEquals("修复登录超时", titleOf(s, copy = ::messageTextForTest))
             assertEquals("foo", projects(st, copy = ::messageTextForTest).single().name)
 
-            val ev = r.awaitEvents("s1", 3)
-            assertEquals(listOf(1L, 2L, 3L), ev.events.map { it.seq })
+            val vm = r.awaitSessionTimeline("s1", 3)
+            assertEquals(listOf(1L, 2L, 3L), vm.timeline.itemsList.map { it.seq })
             // A pushed event arrives in order, once.
             daemon.upload("s1", agent("第四条"))
-            val ev4 = r.awaitEvents("s1", 4)
-            assertEquals(listOf(1L, 2L, 3L, 4L), ev4.events.map { it.seq })
+            val vm4 = r.awaitSessionTimeline("s1", 4)
+            assertEquals(listOf(1L, 2L, 3L, 4L), vm4.timeline.itemsList.map { it.seq })
             // A newer meta revision replaces the older one.
             daemon.putSession("s1", session("/Users/me/Code/foo", "新的标题"))
             r.awaitState("new title") { it.sessions["s1"]?.info?.title == "新的标题" }
@@ -915,7 +738,7 @@ class RemoteTest {
             val command = if (code == "generation_conflict")
                 Command.newBuilder().setCompleteImageUpload(CompleteImageUploadRequest.newBuilder().setTransferId("test-transfer-id")).build()
             else Command.newBuilder().setListModels(ListModelsRequest.getDefaultInstance()).build()
-            val error = runCatching { r.forward(r.prepare(daemon.id, "", command)) }.exceptionOrNull() as CommandException
+            val error = runCatching { r.machineCommand(daemon.id, command) }.exceptionOrNull() as CommandException
             assertTrue(error.fromDaemon)
             assertEquals(code, error.code)
             assertFalse(error.unknown)
@@ -933,19 +756,20 @@ class RemoteTest {
                     it.machines[daemon.id]?.online == true &&
                     it.sessions["s1"]?.info != null
             }
-            val res =
-                r.command(
-                    "s1",
-                    Command.newBuilder()
-                        .setSend(
-                            SendRequest.newBuilder()
-                                .setSessionId("s1")
-                                .setText("跑一下测试")
-                                .setRequestId("q1"),
-                        )
-                        .build(),
-                )
-            assertEquals(1, res.send.queuePosition)
+            val vmFlow = r.watchSession("s1")
+            withTimeout(5000) { vmFlow.first { it.timeline.loaded } }
+            r.submitSessionCommand(
+                "s1",
+                Command.newBuilder()
+                    .setSend(
+                        SendRequest.newBuilder()
+                            .setSessionId("s1")
+                            .setText("跑一下测试")
+                            .setRequestId("q1"),
+                    )
+                    .build(),
+                machineId = daemon.id,
+            )
             val (h, cmd) = daemon.commands.poll(5, TimeUnit.SECONDS)!!
             assertEquals("s1", h.sessionId)
             assertEquals("跑一下测试", cmd.send.text)
@@ -953,41 +777,45 @@ class RemoteTest {
             assertEquals(r.account.deviceId, h.sender)
             assertTrue(h.deadlineMs > System.currentTimeMillis())
 
-            // The daemon's own error comes back as it is.
-            try {
-                r.command(
-                    "s1",
-                    Command.newBuilder()
-                        .setCompact(
-                            io.github.lewin671.remoteagent.proto.CompactRequest.newBuilder()
-                                .setSessionId("s1"),
-                        )
-                        .build(),
-                )
-                fail("expected an error")
-            } catch (e: CommandException) {
-                assertEquals("unimplemented", e.code)
+            // The daemon's own error comes back in the session command slot.
+            r.submitSessionCommand(
+                "s1",
+                Command.newBuilder()
+                    .setCompact(
+                        io.github.lewin671.remoteagent.proto.CompactRequest.newBuilder()
+                            .setSessionId("s1"),
+                    )
+                    .build(),
+                machineId = daemon.id,
+            )
+            val compactFailed = withTimeout(5000) {
+                vmFlow.first {
+                    it.actions.compact.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
+                }
             }
+            assertEquals("unimplemented", compactFailed.actions.compact.errorCode)
 
             daemon.disconnect()
             r.awaitState("offline machine") { it.machines[daemon.id]?.online == false }
-            try {
-                r.command(
-                    "s1",
-                    Command.newBuilder()
-                        .setInterrupt(
-                            io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
-                                .setSessionId("s1"),
-                        )
-                        .build(),
-                )
-                fail("expected unavailable")
-            } catch (e: CommandException) {
-                assertEquals(CommandException.UNAVAILABLE, e.code)
+            r.submitSessionCommand(
+                "s1",
+                Command.newBuilder()
+                    .setInterrupt(
+                        io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
+                            .setSessionId("s1"),
+                    )
+                    .build(),
+                machineId = daemon.id,
+            )
+            val interruptFailed = withTimeout(5000) {
+                vmFlow.first {
+                    it.actions.interrupt.status == io.github.lewin671.remoteagent.core.proto.SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED
+                }
             }
+            assertEquals(CommandException.UNAVAILABLE, interruptFailed.actions.interrupt.errorCode)
         }
 
-    private suspend fun refused(protocol: Int, prior: Boolean = false): CommandException {
+    private suspend fun refused(protocol: Int): CommandException {
         val r = client()
         r.start()
         r.awaitState("online machine") {
@@ -1000,8 +828,8 @@ class RemoteTest {
             it.machines[daemon.id]?.meta?.protocolVersion == protocol
         }
         try {
-            val command=Command.newBuilder().setInterrupt(io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder().setSessionId("s1")).build()
-            r.forward(r.prepare(daemon.id,"s1",command),retryOfUnknown=prior)
+            val command=Command.newBuilder().setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance()).build()
+            r.machineCommand(daemon.id, command)
             throw AssertionError("expected a version error")
         } catch (e: CommandException) {
             // Nothing was sent.
@@ -1009,12 +837,6 @@ class RemoteTest {
             assertFalse(e.fromDaemon)
             return e
         }
-    }
-
-    @Test fun protocolRefusalCannotSettleAnEarlierAttempt() = runBlocking<Unit> {
-        val error=refused(PROTOCOL_VERSION-1,prior=true)
-        assertEquals(Outcome.UNKNOWN,error.outcome)
-        assertTrue(error.unknown)
     }
 
     @Test

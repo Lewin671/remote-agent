@@ -45,16 +45,17 @@ class AdmissionFlowMeasurementTest {
   try {
    control("reset")
    remote.start();withTimeout(10000){remote.state.first{it.conn==ConnState.ONLINE&&it.sessions[sid]!=null}}
-   val feed=remote.events(sid)
+   val feed=remote.watchSession(sid)
    follow=launch(start=CoroutineStart.UNDISPATCHED){feed.collect{}}
-   withTimeout(10000){feed.first{it.live?.session?.title?.startsWith("owner-read-")==true}}
-   repeat(20){remote.command(sid,approval(it))}
+   withTimeout(10000){feed.first{it.header.title.literal.startsWith("owner-read-")}}
+   repeat(20){remote.machineCommand(remote.state.value.sessions[sid]?.machineId.orEmpty(),approval(it))}
    val load=control("start");loaded=true
    assertEquals(4,load.getValue("normal").jsonPrimitive.int);assertEquals(2,load.getValue("bulk").jsonPrimitive.int)
    val timings=ArrayList<Double>();var completed=0;var failed=0
+   val mid = remote.state.value.sessions[sid]?.machineId.orEmpty()
    for(i in 20 until 120){
     val start=System.nanoTime()
-    try{withTimeout(1500){remote.command(sid,approval(i))};completed++}catch(e:Exception){failed++}
+    try{withTimeout(1500){remote.machineCommand(mid,approval(i))};completed++}catch(e:Exception){failed++}
     timings.add((System.nanoTime()-start)/1000000.0)
     if(failed>0)break
    }

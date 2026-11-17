@@ -146,19 +146,6 @@ data class RemoteState(
         get() = !sessionsListed || sessionsNext != null
 }
 
-data class SessionEvents(
-    val events: List<Event> = emptyList(),
-    val loaded: Boolean = false,
-    val error: MessageText? = null,
-    val fetchError: MessageText? = null,
-    val live: io.github.lewin671.remoteagent.proto.LiveSnapshot? = null,
-    val liveError: MessageText? = null,
-    val verifiedEvents: List<Event> = events,
-    val unavailableCount: Int = 0,
-    val stateEvents: List<Event> = events,
-    val historyPartial: Boolean = false,
-)
-
 fun formatTimestampToMessageText(
     arg: TimestampArg,
     zone: ZoneId = ZoneId.systemDefault(),
@@ -290,22 +277,6 @@ internal fun SyncStateView.toRemoteState(
         clockWarning = accountClockSkewed,
         connStep = stepText,
         connError = if (conn == ConnState.OFFLINE) reasonText else "".messageText(),
-    )
-}
-
-internal fun SessionDataView.toSessionEvents(): SessionEvents {
-    val prefixCount = prefixLen.toInt().coerceIn(0, eventsCount)
-    val stateEvents = if (prefixCount == eventsCount) eventsList else eventsList.subList(0, prefixCount)
-    return SessionEvents(
-        events = eventsList,
-        loaded = loaded,
-        error = if (retired) RETIRED_HISTORY_ERROR else error.takeIf { hasError() }?.let(::coreTextToMessageText),
-        fetchError = fetchError.takeIf { hasFetchError() }?.let(::coreTextToMessageText),
-        live = liveSnapshot.takeIf { hasLiveSnapshot() },
-        verifiedEvents = stateEvents.filter { it.kindCase != Event.KindCase.KIND_NOT_SET },
-        unavailableCount = unavailableCount,
-        stateEvents = stateEvents,
-        historyPartial = hasGap || (session.lastSeq > 0L && prefixLen < session.lastSeq),
     )
 }
 

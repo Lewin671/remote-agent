@@ -1308,10 +1308,6 @@ fun currentActions(
     currentActions(live)
 }
 
-/** Verified history supplies state; fresh snapshots supply current actions. */
-fun currentState(snapshot: SessionEvents, agent: Agent = DEFAULT_AGENT): Derived =
-    currentActions(snapshot.stateEvents, snapshot.live, agent)
-
 fun inputTimingLabel(agent: Agent, mode: SendMode, held: Boolean, starting: String?): UiMessage = when {
     !agentInfo(agent).steersDuringTurn -> starting?.let { UiMessages.queueAgentReady(it) } ?: UiMessages.queueAfterTurn()
     held -> UiMessages.queueInsert()

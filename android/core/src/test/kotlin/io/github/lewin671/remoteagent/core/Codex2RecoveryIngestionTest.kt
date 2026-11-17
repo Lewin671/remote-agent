@@ -147,16 +147,15 @@ class Codex2RecoveryIngestionTest {
                 withTimeout(5000) {
                     r.state.first { it.conn == ConnState.ONLINE && it.sessions["s"]?.info != null }
                 }
-                val events = r.events("s")
+                val feed = r.watchSession("s")
                 run {
-                    val suffix = withTimeout(5000) { events.first { it.events.size == 2 } }
-                    assertEquals(1, suffix.unavailableCount)
-                    assertEquals(Event.KindCase.KIND_NOT_SET, suffix.events[0].kindCase)
-                    assertEquals(listOf(2L), suffix.verifiedEvents.map { it.seq })
+                    val suffix = withTimeout(5000) { feed.first { it.timeline.itemsCount == 1 } }
+                    assertEquals(1, suffix.timeline.unavailableCount)
+                    assertEquals("readable suffix", suffix.timeline.itemsList[0].agentMessage.markdown)
                     d.upload("s", message("live message"))
-                    val live = withTimeout(5000) { events.first { it.events.size == 3 } }
-                    assertEquals("live message", live.events[2].agentMessage.text)
-                    assertNull(live.error)
+                    val live = withTimeout(5000) { feed.first { it.timeline.itemsCount == 2 } }
+                    assertEquals("live message", live.timeline.itemsList[1].agentMessage.markdown)
+                    assertFalse(live.timeline.hasError())
                 }
             } else {
                 val api = Api(server.url, http)
@@ -200,13 +199,12 @@ class Codex2RecoveryIngestionTest {
                 }.build()
                 val r = fixtureRemote(account, damagedHttp)
                 remote = r
-                val events = r.events("s")
+                val feed = r.watchSession("s")
                 r.start()
-                val failed = withTimeout(5000) { events.first { it.error != null } }
-                assertNotNull(failed.error)
-                assertEquals(if (damage == "current-cipher") 1 else 0, failed.events.size)
-                assertTrue(failed.verifiedEvents.isEmpty())
-                assertEquals(if (damage == "current-cipher") 1 else 0, failed.unavailableCount)
+                val failed = withTimeout(5000) { feed.first { it.timeline.hasError() } }
+                assertTrue(failed.timeline.hasError())
+                assertEquals(0, failed.timeline.itemsCount)
+                assertEquals(if (damage == "current-cipher") 1 else 0, failed.timeline.unavailableCount)
                 return
             }
         } finally {

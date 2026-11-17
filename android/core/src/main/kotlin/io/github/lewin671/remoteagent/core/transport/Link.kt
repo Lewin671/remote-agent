@@ -1,9 +1,6 @@
 package io.github.lewin671.remoteagent.core.transport
 
-import com.connectrpc.ConnectException
 import io.github.lewin671.remoteagent.core.*
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class Link(path: Path) {
@@ -12,34 +9,6 @@ internal class Link(path: Path) {
     val peers: kotlinx.coroutines.flow.StateFlow<Map<String, PeerState>> = published
     fun snapshot(ids: Set<String>): Map<String, PeerState> = ids.associateWith(::status).also { published.value = it }
     fun status(machineId: String) = router.status(machineId)
-
-    suspend fun <T> call(p: PreparedCommand, prior: Boolean, dispatcher: CoroutineDispatcher, work: suspend (DispatchState.Call) -> T): T {
-        val call = p.dispatch.open(prior)
-        try { return withContext(dispatcher) { work(call) } }
-        catch (error: Exception) {
-            val command = error as? CommandException
-            if (call.uncertain && command?.unknown != true && !(command?.fromDaemon == true && command.outcome != Outcome.NOT_SENT)) {
-                throw CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, outcome = Outcome.UNKNOWN)
-            }
-            throw error
-        } finally { call.close() }
-    }
-
-    fun delivery(
-        call: DispatchState.Call,
-        direct: ((() -> Unit) -> PathAttempt?)? = null,
-    ): PathAttempt {
-        val evidence = call.delivery()
-        val handoff: () -> Unit = { evidence.dispatch() }
-        val attempt = direct?.invoke(handoff) ?: router.path.attempt(handoff)
-        return object : PathAttempt by attempt {
-            override fun refusal(error: ConnectException): PathRefusal? {
-                val proof = attempt.refusal(error)
-                if (proof != null) evidence.notForwarded()
-                return proof
-            }
-        }
-    }
 
     private val streams = mutableSetOf<Stream>()
     private var closed = false

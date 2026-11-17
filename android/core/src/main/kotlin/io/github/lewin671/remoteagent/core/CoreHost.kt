@@ -10,6 +10,7 @@ import io.github.lewin671.remoteagent.corebind.Core
 import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
+import io.github.lewin671.remoteagent.proto.Command
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -20,6 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
 const val CORE_ENDED_PAGE = 30
+const val CORE_SESSION_WINDOW_LIMIT = 80
+private val DEFAULT_SESSION_WINDOW: SessionWindowRequest =
+    SessionWindowRequest.newBuilder().setLimit(CORE_SESSION_WINDOW_LIMIT).build()
 private const val CALENDAR_MONTH_HISTORY = 35
 private const val INITIAL_ENTROPY_IDS = 32
 private const val INITIAL_ENTROPY_FLOATS = 32
@@ -92,11 +96,13 @@ class CoreHost(
     private val machinePollTimers = HashMap<String, Job>()
 
     private class SessionWatcher(
-        val flow: MutableStateFlow<SessionDataView> = MutableStateFlow(SessionDataView.getDefaultInstance()),
+        val flow: MutableStateFlow<SessionViewModel> = MutableStateFlow(SessionViewModel.getDefaultInstance()),
+        var window: SessionWindowRequest = DEFAULT_SESSION_WINDOW,
         var refCount: Int = 0,
     )
 
     private val sessionWatchers = HashMap<String, SessionWatcher>()
+    private val testSessionViews = HashMap<String, SessionViewModel>()
 
     var onOpenStream: (OpenStreamEffect) -> Unit = {}
     var onCloseStream: (CloseStreamEffect) -> Unit = {}
@@ -171,6 +177,9 @@ class CoreHost(
 
     private val _prepareCleanupEvents = MutableSharedFlow<PrepareCleanupSessionEffect>(extraBufferCapacity = 8)
     val prepareCleanupEvents: SharedFlow<PrepareCleanupSessionEffect> = _prepareCleanupEvents.asSharedFlow()
+
+    private val _restoreComposerEvents = MutableSharedFlow<SessionRestoreComposerEffect>(extraBufferCapacity = 16)
+    val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> = _restoreComposerEvents.asSharedFlow()
 
     init {
         if (!closed.get()) {
@@ -286,7 +295,9 @@ class CoreHost(
     private fun handleEffectOnWorker(effect: Effect) {
         when (effect.effectCase) {
             Effect.EffectCase.RENDER -> {
-                val targets = effect.render.screensList
+                val targets = effect.render.screensList.map {
+                    if (it == ScreenTarget.SCREEN_TARGET_SESSION_DATA) ScreenTarget.SCREEN_TARGET_SESSION else it
+                }.distinct()
                 if (coalescingRenders) {
                     synchronized(pendingRenders) {
                         pendingRenders.addAll(targets)
@@ -330,6 +341,9 @@ class CoreHost(
             Effect.EffectCase.PREPARE_CLEANUP_SESSION -> {
                 _prepareCleanupEvents.tryEmit(effect.prepareCleanupSession)
                 onPrepareCleanupSession(effect.prepareCleanupSession)
+            }
+            Effect.EffectCase.SESSION_RESTORE_COMPOSER -> {
+                _restoreComposerEvents.tryEmit(effect.sessionRestoreComposer)
             }
             Effect.EffectCase.REQUEST_ENTROPY -> {
                 val req = effect.requestEntropy
@@ -421,10 +435,10 @@ class CoreHost(
 
     fun refreshScreenOnWorker(target: ScreenTarget) {
         if (closed.get() || testOverrideViews) return
-        if (target == ScreenTarget.SCREEN_TARGET_SESSION_DATA) {
+        if (target == ScreenTarget.SCREEN_TARGET_SESSION) {
             val activeIds = synchronized(sessionWatchers) { sessionWatchers.keys.toList() }
             for (sid in activeIds) {
-                refreshSessionDataOnWorker(sid)
+                refreshSessionOnWorker(sid)
             }
             return
         }
@@ -490,15 +504,18 @@ class CoreHost(
         }
     }
 
-    private fun refreshSessionDataOnWorker(sessionId: String) {
+    private fun refreshSessionOnWorker(sessionId: String) {
         if (sessionId.isEmpty() || closed.get() || testOverrideViews) return
-        val watcher = synchronized(sessionWatchers) { sessionWatchers[sessionId] } ?: return
+        val (watcher, window) = synchronized(sessionWatchers) {
+            val w = sessionWatchers[sessionId] ?: return
+            w to w.window
+        }
         val screen = Screen.newBuilder()
-            .setSessionData(SessionDataScreenRequest.newBuilder().setSessionId(sessionId))
+            .setSession(SessionScreenRequest.newBuilder().setSessionId(sessionId).setWindow(window))
             .build()
         val vm = viewOnWorker(screen) ?: return
-        if (vm.viewCase == ViewModel.ViewCase.SESSION_DATA) {
-            watcher.flow.value = vm.sessionData
+        if (vm.viewCase == ViewModel.ViewCase.SESSION) {
+            watcher.flow.value = vm.session
         }
     }
 
@@ -511,8 +528,8 @@ class CoreHost(
         return ViewModel.parseFrom(rawVm)
     }
 
-    fun watchSession(sessionId: String): Flow<SessionDataView> = flow {
-        val watcher = acquireSessionWatcher(sessionId)
+    fun watchSession(sessionId: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> = flow {
+        val watcher = acquireSessionWatcher(sessionId, initialWindow)
         try {
             watcher.flow.collect { emit(it) }
         } finally {
@@ -520,24 +537,45 @@ class CoreHost(
         }
     }
 
-    fun currentSessionData(sessionId: String): SessionDataView? =
-        synchronized(sessionWatchers) { sessionWatchers[sessionId]?.flow?.value }
+    fun updateSessionWindow(sessionId: String, window: SessionWindowRequest) {
+        val updated = synchronized(sessionWatchers) {
+            val w = sessionWatchers[sessionId] ?: return@synchronized false
+            if (w.window == window) return@synchronized false
+            w.window = window
+            true
+        }
+        if (updated) dispatchAction { refreshSessionOnWorker(sessionId) }
+    }
 
-    private fun acquireSessionWatcher(sessionId: String): SessionWatcher {
+    fun currentSessionView(sessionId: String): SessionViewModel? =
+        synchronized(sessionWatchers) { sessionWatchers[sessionId]?.flow?.value ?: testSessionViews[sessionId] }
+
+    private fun acquireSessionWatcher(sessionId: String, initialWindow: SessionWindowRequest?): SessionWatcher {
+        var needsWindowRefresh = false
         val (watcher, becameActive) = synchronized(sessionWatchers) {
             val existing = sessionWatchers[sessionId]
             if (existing != null) {
                 existing.refCount++
+                if (initialWindow != null && existing.window != initialWindow) {
+                    existing.window = initialWindow
+                    needsWindowRefresh = true
+                }
                 existing to false
             } else {
-                val created = SessionWatcher(refCount = 1)
+                val created = SessionWatcher(
+                    flow = MutableStateFlow(testSessionViews[sessionId] ?: SessionViewModel.getDefaultInstance()),
+                    window = initialWindow ?: DEFAULT_SESSION_WINDOW,
+                    refCount = 1,
+                )
                 sessionWatchers[sessionId] = created
                 created to true
             }
         }
         if (becameActive) dispatchAction {
             sendOnWorker { setSessionWatch(SessionWatchEvent.newBuilder().setSessionId(sessionId).setWatched(true)) }
-            refreshSessionDataOnWorker(sessionId)
+            refreshSessionOnWorker(sessionId)
+        } else if (needsWindowRefresh) dispatchAction {
+            refreshSessionOnWorker(sessionId)
         }
         return watcher
     }
@@ -862,6 +900,52 @@ class CoreHost(
         setCheckForUpdates(CheckForUpdatesEvent.getDefaultInstance())
     }
 
+    // --- Session screen actions (200..206) ---
+
+    fun openSession(sessionId: String, refreshModels: Boolean = false, refreshSettings: Boolean = false) = send {
+        setSessionOpen(
+            SessionOpenAction.newBuilder()
+                .setSessionId(sessionId)
+                .setRefreshModels(refreshModels)
+                .setRefreshSettings(refreshSettings),
+        )
+    }
+
+    fun submitSessionCommand(sessionId: String, command: Command, machineId: String = "", slotKey: String = "") = send {
+        setSessionSubmitCommand(
+            SessionSubmitCommandAction.newBuilder()
+                .setSessionId(sessionId)
+                .setMachineId(machineId)
+                .setSlotKey(slotKey)
+                .setCommand(command),
+        )
+    }
+
+    fun abandonSessionCommand(sessionId: String, slotKey: String) = send {
+        setSessionAbandonCommand(SessionSlotAction.newBuilder().setSessionId(sessionId).setSlotKey(slotKey))
+    }
+
+    fun dismissOutgoing(sessionId: String, requestId: String) = send {
+        setSessionDismissOutgoing(SessionOutgoingAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun restoreOutgoing(sessionId: String, requestId: String) = send {
+        setSessionRestoreOutgoing(SessionOutgoingAction.newBuilder().setSessionId(sessionId).setRequestId(requestId))
+    }
+
+    fun setSessionQuestionIndex(sessionId: String, questionId: String, questionIndex: Int) = send {
+        setSessionSetQuestionIndex(
+            SessionQuestionStepAction.newBuilder()
+                .setSessionId(sessionId)
+                .setQuestionId(questionId)
+                .setQuestionIndex(questionIndex),
+        )
+    }
+
+    fun loadEarlierSessionHistory(sessionId: String) = send {
+        setSessionLoadEarlier(SessionRefreshHistoryAction.newBuilder().setSessionId(sessionId))
+    }
+
     fun tickClock(nowMs: Long = clock()) =
         send { setClockUpdated(buildLocalCalendar(nowMs, zone())) }
 
@@ -876,6 +960,7 @@ class CoreHost(
         quota: QuotaViewModel? = null,
         devices: DevicesViewModel? = null,
         clientDetail: ClientDetailViewModel? = null,
+        sessions: Map<String, SessionViewModel> = emptyMap(),
     ) {
         testOverrideViews = true
         home?.let { _homeView.value = it }
@@ -888,6 +973,14 @@ class CoreHost(
         quota?.let { _quotaView.value = it }
         devices?.let { _devicesView.value = it }
         clientDetail?.let { _clientDetailView.value = it }
+        if (sessions.isNotEmpty()) {
+            synchronized(sessionWatchers) {
+                testSessionViews.putAll(sessions)
+                for ((sid, vm) in sessions) {
+                    sessionWatchers[sid]?.flow?.value = vm
+                }
+            }
+        }
     }
 
     private inline fun dispatchAction(crossinline block: () -> Unit) {

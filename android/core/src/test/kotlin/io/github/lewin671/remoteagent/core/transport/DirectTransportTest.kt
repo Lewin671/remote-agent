@@ -983,7 +983,7 @@ class DirectTransportTest {
                 assertEquals(RouteName.DIRECT, routing.choose(readHint, ready = true))
 
                 val directBefore = daemon.directCommands.size
-                remote.command("s-direct", Command.newBuilder().setGetLiveSnapshot(GetLiveSnapshotRequest.newBuilder().setSessionId("s-direct").build()).build())
+                remote.machineCommand(daemonAccount.deviceId, Command.newBuilder().setGetLiveSnapshot(GetLiveSnapshotRequest.newBuilder().setSessionId("s-direct").build()).build())
                 assertTrue(daemon.directCommands.size > directBefore)
                 assertTrue(daemon.directCommands.last().hasGetLiveSnapshot())
 
