@@ -1970,4 +1970,83 @@ class DirectTransportTest {
             server.close()
         }
     }
+
+    @Test
+    fun duplicateNetworkChangedAndProactiveKeepalivePreserveSessionWhileCloseReasonSurvivesClosed(): Unit = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        val nowMs = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 18 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val unreachableDaemon = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val bridge = FakeRtcBridge()
+            val delayedHttp = http.newBuilder().addInterceptor { chain ->
+                if (chain.request().url.encodedPath.endsWith("/GetSecurityStates") && System.getProperty("slowKeepaliveTest") == "1") {
+                    Thread.sleep(350)
+                }
+                chain.proceed(chain.request())
+            }.build()
+            val remote = Remote(
+                account = phone,
+                http = delayedHttp,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(phone.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+                clock = { nowMs.get() },
+            )
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, { nowMs.get() }, bridge.daemonFactory)
+            try {
+                daemon.start()
+                remote.start()
+                remote.foregroundChanged(true)
+                val id = daemonAccount.deviceId
+                withTimeout(10_000) {
+                    remote.state.first { it.conn == ConnState.ONLINE && id in it.machines && unreachableDaemon.deviceId in it.machines }
+                }
+                remote.syncSecurity(5_000L)
+                awaitCondition("direct active before network checks", 5_000) {
+                    remote.direct.ready(id, RouteHint.Read)
+                }
+
+                // Initial baseline attach and duplicate identical callbacks must NOT invalidate direct.
+                val diagBefore = DirectDiag.lines().size
+                remote.networkChanged("wifi:net-1", true)
+                remote.networkChanged("wifi:net-1", true)
+                delay(150)
+                assertTrue("duplicate networkChanged must keep Direct ready", remote.direct.ready(id, RouteHint.Read))
+                assertFalse("no closed_by_owner after duplicate networkChanged", DirectDiag.lines().drop(diagBefore).any { "not_allowed" in it })
+
+                // Advance clock inside the proactive <=7s window with slow GetSecurityStates and wait for timer keepalive.
+                System.setProperty("slowKeepaliveTest", "1")
+                nowMs.addAndGet(14_000L)
+                delay(1_800)
+                System.clearProperty("slowKeepaliveTest")
+                assertTrue("proactive keepalive must preserve Direct across 14s mark", remote.direct.ready(id, RouteHint.Read))
+
+                // Real network change tears down and re-establishes.
+                remote.networkChanged("cell:net-2", true)
+                awaitCondition("direct re-establishes after real networkChanged", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read)
+                }
+
+                // A non-responding peer that hits deadline preserves NO_RESPONSE failReason instead of clearing it in closed().
+                val deadId = unreachableDaemon.deviceId
+                awaitCondition("unreachable peer enters TRYING before deadline", 5_000) {
+                    remote.direct.directStatus(deadId).stage == DirectStage.TRYING
+                }
+                nowMs.addAndGet(11_000L)
+                awaitCondition("deadline close preserves NO_RESPONSE failReason", 5_000) {
+                    remote.direct.directStatus(deadId).reason == DirectFailReason.NO_RESPONSE
+                }
+            } finally {
+                System.clearProperty("slowKeepaliveTest")
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
 }

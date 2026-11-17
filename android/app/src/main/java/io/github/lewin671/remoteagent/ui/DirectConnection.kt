@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.animation.AnimatedVisibility
@@ -25,10 +27,24 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.transport.DirectDiag
+import io.github.lewin671.remoteagent.core.transport.DirectFailReason
+import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupView
+import kotlinx.coroutines.delay
 
 /**
  * Renders Core's 「连接」 group ([ConnectionGroupView]) directly inside [DeviceScreen].
@@ -36,6 +52,7 @@ import io.github.lewin671.remoteagent.core.proto.ConnectionGroupView
 @Composable
 internal fun DirectConnectionGroup(
     view: ConnectionGroupView,
+    onDiagnostics: (() -> Unit)? = null,
     onToggle: (Boolean) -> Unit,
 ) {
     val copy = uiText()
@@ -86,8 +103,101 @@ internal fun DirectConnectionGroup(
                 SpeedMetricRow(copy(UiMessages.transportSpeedRead()), readLatency)
             }
         }
+        if (view.showDiagnosticsEntry && onDiagnostics != null) {
+            Box(Modifier.topLine(p.sep, 18.dp)) {
+                GRow(
+                    copy(UiMessages.transportDiag()),
+                    onClick = onDiagnostics,
+                    chevron = true,
+                )
+            }
+        }
     }
     Hint(footerText, Modifier.padding(bottom = 12.dp))
+}
+
+@Composable
+internal fun DirectDiagSheet(
+    machineId: String,
+    state: RemoteState,
+    onRetry: () -> Boolean,
+    onClose: () -> Unit,
+) {
+    val copy = uiText()
+    val p = pal
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    var diagLines by remember(machineId, state) { mutableStateOf(DirectDiag.lines()) }
+    LaunchedEffect(machineId) {
+        while (true) {
+            diagLines = DirectDiag.lines()
+            delay(1000)
+        }
+    }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1500)
+            copied = false
+        }
+    }
+    val status = state.machines[machineId]?.pathState?.directStatus
+    val verdict = when (status?.reason) {
+        DirectFailReason.PEER_UNSUPPORTED -> copy(UiMessages.transportReasonPeerUnsupported())
+        DirectFailReason.NO_RESPONSE -> copy(UiMessages.transportReasonNoResponse())
+        DirectFailReason.NO_TRAVERSAL -> copy(UiMessages.transportReasonNoTraversal())
+        DirectFailReason.FAILED -> copy(UiMessages.transportReasonFailed())
+        DirectFailReason.AT_CAP -> copy(UiMessages.transportReasonAtCap())
+        DirectFailReason.SECURITY_PENDING -> copy(UiMessages.transportReasonSecurityPending())
+        DirectFailReason.STARTING -> copy(UiMessages.transportReasonStarting())
+        null -> when {
+            status?.readSlow == true || status?.fileSlow == true -> copy(UiMessages.transportDirectSlow())
+            else -> copy(UiMessages.transportDiagVerdictNone())
+        }
+    }
+    Sheet(onClose) {
+        SheetHead(copy(UiMessages.transportDiag()), copy(UiMessages.commonDone()), onClose)
+        Text(verdict, style = T.s15, color = p.ink, modifier = Modifier.padding(bottom = 12.dp))
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(Radii.R14)
+                .background(if (LocalOnSoft.current) p.raised else p.gbg)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (diagLines.isEmpty()) {
+                Text(copy(UiMessages.transportDiagVerdictNone()), style = T.s13, color = p.ink2)
+            } else {
+                for (line in diagLines.asReversed()) {
+                    Text(line, style = T.s12.digits(), color = p.ink2)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Btns {
+            PillButton(
+                copy(if (copied) UiMessages.commonCopied() else UiMessages.transportDiagCopy()),
+                onClick = {
+                    val payload = buildString {
+                        appendLine(verdict)
+                        for (line in diagLines.asReversed()) appendLine(line)
+                    }.trim()
+                    clipboard.setText(AnnotatedString(payload))
+                    copied = true
+                },
+                Modifier.weight(1f),
+            )
+            PillButton(
+                copy(UiMessages.transportDiagRetry()),
+                onClick = {
+                    onRetry()
+                    diagLines = DirectDiag.lines()
+                },
+                Modifier.weight(1f),
+                enabled = status?.stage != DirectStage.DIRECT_ACTIVE && status?.stage != DirectStage.TRYING,
+            )
+        }
+        Hint(copy(UiMessages.transportDiagFooter()))
+    }
 }
 
 @Composable

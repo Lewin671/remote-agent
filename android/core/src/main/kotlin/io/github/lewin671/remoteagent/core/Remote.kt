@@ -1722,11 +1722,13 @@ class Remote(
             inFlightToken = null
             inFlightLoginJob?.cancel()
             inFlightLoginJob = null
+            security.networkChanged()
+            direct.invalidate()
         }
-        security.networkChanged()
-        direct.invalidate()
         coreHost.networkChanged(available, signature)
     }
+
+    fun retryDirect(machineId: String): Boolean = direct.retryNow(machineId)
 
     fun setNetwork(available: Boolean) = networkChanged(if (available) "up" else "none", available)
 

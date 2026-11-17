@@ -23,6 +23,9 @@ enum class DirectFailReason {
     NO_RESPONSE,
     NO_TRAVERSAL,
     FAILED,
+    AT_CAP,
+    SECURITY_PENDING,
+    STARTING,
 }
 
 data class DirectStatus(

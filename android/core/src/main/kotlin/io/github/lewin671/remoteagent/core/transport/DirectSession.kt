@@ -804,8 +804,8 @@ internal class DirectSession(val options: DirectSessionOptions) {
         }
         actorJob.cancel()
         mailbox.close()
-        for (ch in toClose) runCatching { ch.close() }
         if (!retiredFlag.get()) options.closeReason?.invoke(reason)
+        for (ch in toClose) runCatching { ch.close() }
         options.closed(null)
     }
 }

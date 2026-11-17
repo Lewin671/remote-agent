@@ -219,6 +219,7 @@ class RaApp : Application() {
 
     /** Called on the app's main dispatcher, including observations before account loading. */
     internal fun observeNetwork(signature: String, available: Boolean) {
+        if (networkSignature == signature && online == available) return
         networkSignature = signature
         online = available
         _remote.value?.networkChanged(signature, available)

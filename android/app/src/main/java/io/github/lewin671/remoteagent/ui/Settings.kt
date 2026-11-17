@@ -566,6 +566,7 @@ fun DeviceScreen(
     val state by remote.state.collectAsState()
     val vm by remote.machineSettingsView.collectAsState()
     val remove = rememberAction(authority = true)
+    var showDirectDiag by remember { mutableStateOf(false) }
     LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
     if (vm.showStatusEntry) {
         val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -599,6 +600,7 @@ fun DeviceScreen(
         onOpenStatus = { nav.machineStatus(id) },
         onOpenQuota = { nav.quota(id) },
         onToggleDirect = { enabled -> remote.coreHost.updateDirectPreference(id, enabled) },
+        onOpenDiagnostics = { showDirectDiag = true },
         onRetrySettings = { remote.coreHost.openMachineSettings(id) },
         onSelectAgent = { agent -> remote.coreHost.selectMachineSettingsAgent(id, agent) },
         onUpdateAgentDefaults = { agent, model, effort, mode ->
@@ -624,6 +626,14 @@ fun DeviceScreen(
             )
         },
     )
+    if (showDirectDiag) {
+        DirectDiagSheet(
+            machineId = id,
+            state = state,
+            onRetry = { remote.retryDirect(id) },
+            onClose = { showDirectDiag = false },
+        )
+    }
 }
 
 @Composable
@@ -637,6 +647,7 @@ internal fun DeviceScreenContent(
     onOpenStatus: () -> Unit = {},
     onOpenQuota: () -> Unit = {},
     onToggleDirect: (Boolean) -> Unit = {},
+    onOpenDiagnostics: (() -> Unit)? = null,
     onRetrySettings: () -> Unit = {},
     onSelectAgent: (Agent) -> Unit = {},
     onUpdateAgentDefaults: (agent: Agent, model: String?, effort: String?, mode: ApprovalMode?) -> Unit = { _, _, _, _ -> },
@@ -721,7 +732,7 @@ internal fun DeviceScreenContent(
                 )
             }
             if (vm.member && vm.hasConnection()) {
-                DirectConnectionGroup(vm.connection, onToggle = onToggleDirect)
+                DirectConnectionGroup(vm.connection, onToggle = onToggleDirect, onDiagnostics = onOpenDiagnostics)
             }
             if (vm.cliVersionsList.isNotEmpty()) {
                 Group(

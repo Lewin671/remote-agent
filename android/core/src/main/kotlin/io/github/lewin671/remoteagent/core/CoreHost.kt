@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
+import io.github.lewin671.remoteagent.core.transport.DirectDiag
 import io.github.lewin671.remoteagent.core.transport.DirectFailReason
 import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.transport.DirectStatus
@@ -1053,6 +1054,9 @@ fun DirectStatus.toRouteReport(): DirectRouteReport {
                 s.reason == DirectFailReason.NO_RESPONSE -> DirectRouteReason.DIRECT_ROUTE_REASON_NO_RESPONSE
                 s.reason == DirectFailReason.NO_TRAVERSAL -> DirectRouteReason.DIRECT_ROUTE_REASON_NO_TRAVERSAL
                 s.reason == DirectFailReason.FAILED -> DirectRouteReason.DIRECT_ROUTE_REASON_FAILED
+                s.reason == DirectFailReason.AT_CAP -> DirectRouteReason.DIRECT_ROUTE_REASON_AT_CAP
+                s.reason == DirectFailReason.SECURITY_PENDING -> DirectRouteReason.DIRECT_ROUTE_REASON_SECURITY_PENDING
+                s.reason == DirectFailReason.STARTING -> DirectRouteReason.DIRECT_ROUTE_REASON_STARTING
                 else -> DirectRouteReason.DIRECT_ROUTE_REASON_UNSPECIFIED
             },
         )
@@ -1060,6 +1064,12 @@ fun DirectStatus.toRouteReport(): DirectRouteReport {
         readRoute = if (s.readDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
         warming = false
         compared = s.readSlow || s.fileSlow
+        readSlow = s.readSlow
+        fileSlow = s.fileSlow
+        hasDiagnostics = DirectDiag.lines().isNotEmpty() ||
+            s.reason == DirectFailReason.NO_RESPONSE ||
+            s.reason == DirectFailReason.NO_TRAVERSAL ||
+            s.reason == DirectFailReason.FAILED
         s.bulkDirectMibPerSec?.let {
             hasDirectFileMibps = true
             directFileMibps = it
@@ -1086,4 +1096,13 @@ fun DirectStatus.toRouteReport(): DirectRouteReport {
             activeRttMs = it.roundToInt()
         }
     }.build()
+}
+
+fun buildDirectViews(online: Boolean, prefEnabled: Boolean, status: DirectStatus): DirectViewsResponse {
+    val req = DirectViewsRequest.newBuilder()
+        .setOnline(online)
+        .setPrefEnabled(prefEnabled)
+        .setReport(status.toRouteReport())
+        .build()
+    return DirectViewsResponse.parseFrom(Corebind.buildDirectViews(req.toByteArray()))
 }

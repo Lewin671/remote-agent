@@ -253,6 +253,125 @@ class DirectTransportUiTest {
     }
 
     @Test
+    fun connCheckSheetShowsDirectRowWithLatencyAndReasonsAndDiagSheetRetries() {
+        val m1State = RemoteState(
+            conn = ConnState.ONLINE,
+            link = Link.ONLINE,
+            machines = mapOf(
+                "m1" to MachineView(
+                    "m1",
+                    online = true,
+                    lastSeenMs = 0L,
+                    linkState = PeerState(
+                        reachable = true,
+                        ready = true,
+                        directStatus = DirectStatus(
+                            supported = true,
+                            enabled = true,
+                            stage = DirectStage.DIRECT_ACTIVE,
+                            readDirect = true,
+                            fileDirect = true,
+                            readDirectMs = 18.0,
+                        ),
+                    ),
+                    meta = MachineMeta.newBuilder().setHostname("alpha").build(),
+                ),
+                "m2" to MachineView(
+                    "m2",
+                    online = true,
+                    lastSeenMs = 0L,
+                    linkState = PeerState(
+                        reachable = true,
+                        ready = true,
+                        directStatus = DirectStatus(
+                            supported = true,
+                            enabled = true,
+                            stage = DirectStage.UNCONNECTED,
+                            reason = DirectFailReason.NO_TRAVERSAL,
+                        ),
+                    ),
+                    meta = MachineMeta.newBuilder().setHostname("beta").build(),
+                ),
+            ),
+        )
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                ConnCheckSheet(
+                    state = m1State,
+                    onClose = {},
+                    serverAddress = "https://example.com",
+                    onlineMachines = { listOf("m1", "m2") },
+                    pingServer = { 20L },
+                    pingMachine = { 40L },
+                    reconnectNow = {},
+                    clock = { 1000L },
+                )
+            }
+        }
+        ui.waitForIdle()
+        ui.onNodeWithText("正在用直连 · 直连 18 ms").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("两边的网络不能直接连通").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun directDiagEntryOpensSheetAndTriggersRetry() {
+        val vm = ScreenGoldenLoader.machineSettingsView("machine_settings_edit", "relayFailedDiag")
+        var openedDiag = false
+        var retried = false
+        val state = RemoteState(
+            conn = ConnState.ONLINE,
+            link = Link.ONLINE,
+            machines = mapOf(
+                "m1" to MachineView(
+                    "m1",
+                    online = true,
+                    lastSeenMs = 0L,
+                    linkState = PeerState(
+                        reachable = true,
+                        ready = true,
+                        directStatus = DirectStatus(
+                            supported = true,
+                            enabled = true,
+                            stage = DirectStage.UNCONNECTED,
+                            reason = DirectFailReason.NO_TRAVERSAL,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val showDiag = androidx.compose.runtime.mutableStateOf(false)
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                if (!showDiag.value) {
+                    DirectConnectionGroup(
+                        vm.connection,
+                        onDiagnostics = {
+                            openedDiag = true
+                            showDiag.value = true
+                        },
+                    ) {}
+                } else {
+                    DirectDiagSheet(
+                        machineId = "m1",
+                        state = state,
+                        onRetry = {
+                            retried = true
+                            true
+                        },
+                        onClose = { showDiag.value = false },
+                    )
+                }
+            }
+        }
+        ui.onNodeWithText("诊断信息").performClick()
+        assertTrue(openedDiag)
+        ui.waitForIdle()
+        ui.onNodeWithText("两边的网络不能直接连通").assertIsDisplayed()
+        ui.onNodeWithText("重新尝试").performClick()
+        assertTrue(retried)
+    }
+
+    @Test
     fun machineStatusDoesNotDisplayTransportPaths() {
         val vm = ScreenGoldenLoader.machineStatusView("machine_status_lifecycle", "liveCriticalDisk")
         ui.setContent {

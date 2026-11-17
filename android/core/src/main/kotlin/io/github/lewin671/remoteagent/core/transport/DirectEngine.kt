@@ -108,6 +108,7 @@ internal class DirectEngine(
     private var head = ""
     private var freshUntil = 0L
     private var lastAuthorizeAttemptMs = Long.MIN_VALUE
+    private var authorizeInFlight = false
     private var syncRevision = 0L
     private var lifetime = 0L
     private var foreground = true
@@ -162,19 +163,49 @@ internal class DirectEngine(
         if (shouldDiscover) refreshAndDiscover(forceAuthorize = true)
     }
 
+    fun retryNow(id: String): Boolean {
+        val shouldStart = synchronized(stateLock) {
+            if (!enabled(id) || !foreground || leg == null) return false
+            if (peers[id]?.session?.active == true) return false
+            retryAfter.remove(id)
+            retry.reset(id)
+            failReasons.remove(id)
+            true
+        }
+        if (!shouldStart) return false
+        notifyChanged()
+        if (synchronized(stateLock) { currentLocked() }) {
+            scope.launch { discover() }
+        } else {
+            refreshAndDiscover(forceAuthorize = true)
+        }
+        return true
+    }
+
     private fun refreshAndDiscover(forceAuthorize: Boolean) {
         scope.launch {
             val shouldAuthorize = synchronized(stateLock) {
-                if (!foreground || leg == null || currentLocked()) {
+                if (!foreground || leg == null || authorizeInFlight) {
+                    false
+                } else if (currentLocked() && !forceAuthorize) {
                     false
                 } else {
                     val now = monotonic()
-                    val allowed = forceAuthorize || lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 15_000L
-                    if (allowed) lastAuthorizeAttemptMs = now
+                    val allowed = forceAuthorize || lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 12_000L
+                    if (allowed) {
+                        authorizeInFlight = true
+                        lastAuthorizeAttemptMs = now
+                    }
                     allowed
                 }
             }
-            if (shouldAuthorize) runCatching { authorize() }
+            if (shouldAuthorize) {
+                try {
+                    runCatching { authorize() }
+                } finally {
+                    synchronized(stateLock) { authorizeInFlight = false }
+                }
+            }
             discover()
         }
     }
@@ -199,8 +230,11 @@ internal class DirectEngine(
                     startDiscoverTimerLocked()
                 }
                 canDiscoverNow = currentLocked()
-                shouldAuthorize = !canDiscoverNow && leg != null
-                if (shouldAuthorize) lastAuthorizeAttemptMs = monotonic()
+                shouldAuthorize = !canDiscoverNow && leg != null && !authorizeInFlight
+                if (shouldAuthorize) {
+                    authorizeInFlight = true
+                    lastAuthorizeAttemptMs = monotonic()
+                }
             }
         }
         if (!active) {
@@ -209,7 +243,14 @@ internal class DirectEngine(
         } else if (canDiscoverNow) {
             scope.launch { discover() }
         } else if (shouldAuthorize) {
-            scope.launch { runCatching { authorize() }; discover() }
+            scope.launch {
+                try {
+                    runCatching { authorize() }
+                } finally {
+                    synchronized(stateLock) { authorizeInFlight = false }
+                }
+                discover()
+            }
         }
     }
 
@@ -247,13 +288,27 @@ internal class DirectEngine(
                     val fresh = currentLocked()
                     val inv = !fresh && peers.isNotEmpty()
                     val now = monotonic()
-                    val auth = foreground && leg != null &&
-                        (lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 15_000L)
-                    if (auth) lastAuthorizeAttemptMs = now
+                    val remainingMs = freshUntil - clock()
+                    val dueByCadence = lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 12_000L
+                    val dueByExpiry = remainingMs <= 7_000L && (lastAuthorizeAttemptMs == Long.MIN_VALUE || now - lastAuthorizeAttemptMs >= 2_000L)
+                    val auth = foreground && leg != null && !authorizeInFlight && (dueByCadence || dueByExpiry)
+                    if (auth) {
+                        authorizeInFlight = true
+                        lastAuthorizeAttemptMs = now
+                    }
                     inv to auth
                 }
                 if (shouldInvalidate) invalidate()
-                if (shouldAuthorize) runCatching { authorize() }
+                if (shouldAuthorize) {
+                    scope.launch {
+                        try {
+                            runCatching { authorize() }
+                        } finally {
+                            synchronized(stateLock) { authorizeInFlight = false }
+                        }
+                        discover()
+                    }
+                }
                 discover()
             }
         }
@@ -310,7 +365,9 @@ internal class DirectEngine(
                 record = r
                 head = hash
                 freshUntil = minOf(started + 20_000L, r.leaseExpiration())
-                lastAuthorizeAttemptMs = monotonic()
+                if (lastAuthorizeAttemptMs == Long.MIN_VALUE) {
+                    lastAuthorizeAttemptMs = monotonic()
+                }
                 self = nextSelf
                 codec = nextCodec
                 closedSessions
@@ -928,6 +985,13 @@ internal class DirectEngine(
             live -> DirectStage.TRYING
             else -> DirectStage.UNCONNECTED
         }
+        val resolvedReason = when {
+            stage != DirectStage.UNCONNECTED -> null
+            failReasons[id] != null -> failReasons[id]
+            !currentLocked() -> DirectFailReason.SECURITY_PENDING
+            peers.size >= 4 -> DirectFailReason.AT_CAP
+            else -> DirectFailReason.STARTING
+        }
         DirectStatus(
             supported = true,
             enabled = true,
@@ -936,7 +1000,7 @@ internal class DirectEngine(
             fileDirect = fileDirect,
             readSlow = readSlow,
             fileSlow = fileSlow,
-            reason = if (stage == DirectStage.UNCONNECTED) failReasons[id] else null,
+            reason = resolvedReason,
             bulkDirectMibPerSec = m.bulkDirectMibPerSec,
             bulkRelayMibPerSec = m.bulkRelayMibPerSec,
             readDirectMs = m.readDirectMs,

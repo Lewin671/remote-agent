@@ -1,6 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.buildDirectViews
+import io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView
+import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
+import io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -156,9 +160,54 @@ internal fun ConnCheckSheet(
             line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
+                val directRow: ConnCheckDirectRowView? = if (m.pathState.reachable && !m.pathState.unlinked) {
+                    buildDirectViews(
+                        online = true,
+                        prefEnabled = m.pathState.directStatus.enabled,
+                        status = m.pathState.directStatus,
+                    ).connCheckDirect
+                } else {
+                    null
+                }
                 line(machineLabel(state, m.id)) {
                     if (m.pathState.reachable) result(machines[m.id], SLOW_MACHINE_MS)
                     else dotted(p.faint, copy(UiMessages.settingsOffline()), p.ink2)
+                }
+                if (directRow != null && directRow.visible) {
+                    val label = uiText(directRow.labelText).ifEmpty { copy(UiMessages.transportDirect()) }
+                    val statusWord = uiText(directRow.statusText)
+                    val detailWord = uiText(directRow.detailText).takeIf { it.isNotEmpty() }
+                    val metricWord = uiText(directRow.metricText)
+                    val trailingWord = listOf(statusWord, metricWord).filter { it.isNotEmpty() }.joinToString(" · ")
+                    val markColor = when (directRow.tone) {
+                        ConnectionGroupTone.CONNECTION_GROUP_TONE_LIVE -> p.green
+                        ConnectionGroupTone.CONNECTION_GROUP_TONE_WARN -> p.orange
+                        else -> p.faint
+                    }
+                    val markKind = when (directRow.stage) {
+                        ConnectionGroupStage.CONNECTION_GROUP_STAGE_DIRECT -> MarkKind.ONLINE
+                        ConnectionGroupStage.CONNECTION_GROUP_STAGE_CONNECTING,
+                        ConnectionGroupStage.CONNECTION_GROUP_STAGE_MEASURING -> MarkKind.RUNNING
+                        else -> MarkKind.OFF
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 38.dp).padding(start = 28.dp, end = 14.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(label, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (detailWord != null) {
+                                Text(detailWord, style = T.s12, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (trailingWord.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                StatusMark(markKind, color = markColor)
+                                Text(trailingWord, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
                 }
             }
         }
