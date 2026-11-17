@@ -656,7 +656,9 @@ class Remote(
     // --- Security Gate ---
 
     private suspend fun syncSecurityForCore(opId: Long, networkGeneration: Long) =
-        sendEvent { setSecuritySnapshot(buildSecuritySnapshotEvent(opId, networkGeneration, sync = true)) }
+        withContext(authorityJob) {
+            sendEvent { setSecuritySnapshot(buildSecuritySnapshotEvent(opId, networkGeneration, sync = true)) }
+        }
 
     private suspend fun buildSecuritySnapshotEvent(
         opId: Long,
@@ -1893,9 +1895,12 @@ class Remote(
 
     private val securityOperationLock = Mutex()
 
-    suspend fun resumeSecurityOperation(dispatchSnapshot: Boolean = true) = securityOperationLock.withLock {
-        resumeSecurityOperationLocked(dispatchSnapshot)
-    }
+    suspend fun resumeSecurityOperation(dispatchSnapshot: Boolean = true) =
+        withContext(authorityJob) {
+            securityOperationLock.withLock {
+                resumeSecurityOperationLocked(dispatchSnapshot)
+            }
+        }
 
     private suspend fun resumeSecurityOperationLocked(dispatchSnapshot: Boolean) {
         val storage = securityStorage ?: throw DeviceSecurity.Failure("storage")
@@ -1920,6 +1925,7 @@ class Remote(
                 req = PutSecurityStateRequest.newBuilder().setLease(ByteString.copyFrom(cert.bytes())).build()
                 storage.writeSecurityOperation(SecurityOperation("lease", hash, req.toByteArray()))
             }
+            authorityForeground()
             api.client.putSecurityState(req, Api.headers(currentToken())).value()
             security.install(emptyList(), lease = cert)
             storage.clearSecurityOperation()
@@ -1976,6 +1982,7 @@ class Remote(
                 val certificate = retryCertificate(request, target, verified.floor) ?: throw DeviceSecurity.Failure("lease")
                 val renewal = PutSecurityStateRequest.newBuilder().setLease(ByteString.copyFrom(certificate.bytes())).build()
                 saveRetryCertificate(certificate)
+                authorityForeground()
                 api.client.putSecurityState(renewal, Api.headers(currentToken())).value()
                 security.install(emptyList(), lease = certificate)
             }
@@ -1988,6 +1995,7 @@ class Remote(
                 certificate?.let { setLease(ByteString.copyFrom(it.bytes())) }
             }.build()
             saveRetryCertificate(certificate)
+            authorityForeground()
             api.client.putSecurityState(retry, Api.headers(currentToken())).value()
             security.install(
                 states,
@@ -1998,6 +2006,7 @@ class Remote(
         storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.PUBLISHED))
         if (op.delivery.isNotEmpty()) {
             val delivery = ApprovePairingRequest.parseFrom(op.delivery)
+            authorityForeground()
             api.pairing.approvePairing(delivery, Api.headers(currentToken())).value()
             val status = api.pairing.getPairing(
                 GetPairingRequest.newBuilder().setPairingId(delivery.pairingId).build(),
@@ -2115,7 +2124,7 @@ class Remote(
     fun renewLeaseIfNeeded() = renewLease(force = false)
     fun renewLeaseNow() = renewLease(force = true)
 
-    private fun renewLease(force: Boolean) {
+    private fun renewLease(force: Boolean): Job =
         scope.launch {
             try {
                 withContext(authorityJob) {
@@ -2146,7 +2155,6 @@ class Remote(
                 report(e)
             }
         }
-    }
 
     fun prepareHandoffCode(): Pair<String, ByteArray> {
         val (seed, pub) = Authority.newRecovery()

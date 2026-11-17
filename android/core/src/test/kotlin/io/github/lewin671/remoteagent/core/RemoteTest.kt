@@ -146,27 +146,33 @@ class RemoteTest {
             val hold = java.util.concurrent.atomic.AtomicBoolean(false)
             val entered = java.util.concurrent.CountDownLatch(1)
             val release = java.util.concurrent.CountDownLatch(1)
+            val exited = java.util.concurrent.CountDownLatch(1)
             val published = java.util.concurrent.atomic.AtomicInteger()
             val slow =
                 http
                     .newBuilder()
                     .addInterceptor { chain ->
-                        if (
+                        val held =
                             chain.request().url.encodedPath.endsWith("/GetSecurityStates") &&
                                 hold.compareAndSet(true, false)
-                        ) {
+                        if (held) {
                             entered.countDown()
                             check(release.await(10, TimeUnit.SECONDS))
                         }
-                        if (chain.request().url.encodedPath.endsWith("/PutSecurityState"))
-                            published.incrementAndGet()
-                        chain.proceed(chain.request())
+                        try {
+                            if (chain.request().url.encodedPath.endsWith("/PutSecurityState"))
+                                published.incrementAndGet()
+                            chain.proceed(chain.request())
+                        } finally {
+                            if (held) exited.countDown()
+                        }
                     }
                     .build()
             val phone = fixtureRemote(daemon.phone, slow)
             closers += AutoCloseable { phone.close() }
             phone.start()
-            phone.awaitState("online") { it.conn == ConnState.ONLINE }
+            phone.awaitState("online") { it.conn == ConnState.ONLINE && it.synced }
+            phone.renewLeaseIfNeeded().join()
             val storage = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
             val record = phone.security.record()
             val req =
@@ -178,7 +184,7 @@ class RemoteTest {
             storage.writeSecurityOperation(pending)
             try {
                 hold.set(true)
-                phone.renewLeaseNow()
+                val renewal = phone.renewLeaseNow()
                 assertTrue(
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         entered.await(5, TimeUnit.SECONDS)
@@ -187,7 +193,12 @@ class RemoteTest {
                 phone.stop()
                 phone.awaitState("background") { it.conn == ConnState.OFFLINE }
                 release.countDown()
-                delay(500)
+                renewal.join()
+                assertTrue(
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        exited.await(5, TimeUnit.SECONDS)
+                    },
+                )
                 assertEquals("background renewal published", 0, published.get())
                 assertArrayEquals(pending.signed, storage.readSecurityOperation()!!.signed)
                 phone.start()
