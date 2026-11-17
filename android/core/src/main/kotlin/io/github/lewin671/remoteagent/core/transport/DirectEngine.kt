@@ -201,7 +201,7 @@ internal class DirectEngine(
             }
             if (shouldAuthorize) {
                 try {
-                    runCatching { authorize() }
+                    runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
                 } finally {
                     synchronized(stateLock) { authorizeInFlight = false }
                 }
@@ -239,13 +239,13 @@ internal class DirectEngine(
         }
         if (!active) {
             timerToCancel?.cancel()
-            invalidate()
+            invalidate("background")
         } else if (canDiscoverNow) {
             scope.launch { discover() }
         } else if (shouldAuthorize) {
             scope.launch {
                 try {
-                    runCatching { authorize() }
+                    runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
                 } finally {
                     synchronized(stateLock) { authorizeInFlight = false }
                 }
@@ -254,7 +254,8 @@ internal class DirectEngine(
         }
     }
 
-    private fun closePeers() {
+    private fun closePeers(reason: String) {
+        DirectDiag.trace("engine invalidate why=$reason fresh_left=${freshUntil - clock()}")
         val toClose: List<DirectSession>
         val allRoutes: List<DirectRouting>
         val toFailPending: List<PendingRequest>
@@ -298,11 +299,11 @@ internal class DirectEngine(
                     }
                     inv to auth
                 }
-                if (shouldInvalidate) invalidate()
+                if (shouldInvalidate) invalidate("stale")
                 if (shouldAuthorize) {
                     scope.launch {
                         try {
-                            runCatching { authorize() }
+                            runCatching { authorize() }.onFailure { DirectDiag.trace("engine authorize failed kind=${it::class.simpleName}") }
                         } finally {
                             synchronized(stateLock) { authorizeInFlight = false }
                         }
@@ -324,20 +325,27 @@ internal class DirectEngine(
                 Wire.hex(DeviceSecurity.stateHash(r.head)) != head
             shouldRefresh = shouldInvalidate && r.member && foreground && leg != null
         }
-        if (shouldInvalidate) invalidate()
+        if (shouldInvalidate) invalidate("security_changed")
         if (shouldRefresh) refreshAndDiscover(forceAuthorize = true)
     }
 
-    fun invalidate() = closePeers()
+    fun invalidate(reason: String = "external") = closePeers(reason)
 
     suspend fun synced(r: DeviceSecurity.Record, started: Long) {
         val revision = synchronized(stateLock) { ++syncRevision }
+        var rejectWhy = "other"
         try {
             val h = r.head
             val at = maxOf(clock(), r.floor.coerceAtMost(9_223_372_036_854_775_807uL).toLong())
+            rejectWhy = "lease"
             if (!Authority.leaseValid(r, at)) throw PathChanged()
-            if (!r.member || r.memberID != account.deviceId || clock() >= started + 20_000L) throw PathChanged()
+            rejectWhy = "member"
+            if (!r.member || r.memberID != account.deviceId) throw PathChanged()
+            rejectWhy = "slow_sync"
+            if (clock() >= started + 20_000L) throw PathChanged()
+            rejectWhy = "member"
             val member = h.core.member(r.memberID) ?: throw PathChanged()
+            rejectWhy = "keys"
             val xPrivate = r.peerBoxKey()
             val edPub = Ed25519PrivateKeyParameters(account.deviceSeed, 0).generatePublicKey().encoded
             val xPub = X25519PrivateKeyParameters(xPrivate, 0).generatePublicKey().encoded
@@ -348,7 +356,10 @@ internal class DirectEngine(
             val hash = Wire.hex(stateHashBytes)
 
             val toClose: List<DirectSession> = synchronized(stateLock) {
-                if (revision != syncRevision) return
+                if (revision != syncRevision) {
+                    DirectDiag.trace("engine sync dropped superseded=true")
+                    return
+                }
                 val closedSessions = if (head != hash) {
                     lifetime++
                     routingOwners.clear()
@@ -365,6 +376,7 @@ internal class DirectEngine(
                 record = r
                 head = hash
                 freshUntil = minOf(started + 20_000L, r.leaseExpiration())
+                DirectDiag.trace("engine sync ok fresh_for=${freshUntil - clock()} age=${clock() - started}")
                 if (lastAuthorizeAttemptMs == Long.MIN_VALUE) {
                     lastAuthorizeAttemptMs = monotonic()
                 }
@@ -374,9 +386,10 @@ internal class DirectEngine(
             }
             for (s in toClose) s.close()
             discover()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             val shouldInvalidate = synchronized(stateLock) { revision == syncRevision }
-            if (shouldInvalidate) invalidate()
+            DirectDiag.trace("engine sync rejected why=$rejectWhy current=$shouldInvalidate kind=${e::class.simpleName}")
+            if (shouldInvalidate) invalidate("sync_rejected")
         }
     }
 
@@ -1014,7 +1027,7 @@ internal class DirectEngine(
             discoverTimer = null
             leg = null
         }
-        invalidate()
+        invalidate("closed")
         engineJob.cancel()
     }
 

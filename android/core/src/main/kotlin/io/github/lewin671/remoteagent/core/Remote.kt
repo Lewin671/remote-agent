@@ -326,7 +326,7 @@ class Remote(
         expectedAccount = account.accountId.ifEmpty { null },
         clock = clock,
         onSync = { record, started -> direct.synced(record, started) },
-        onSyncFailed = { direct.invalidate() },
+        onSyncFailed = { direct.invalidate("sync_failed") },
         onInstall = { record -> direct.install(record) },
     ) { after ->
         api.client.getSecurityStates(
@@ -1250,7 +1250,7 @@ class Remote(
                     val mid = eff.removeMachineId
                     cache?.removeBlob("schedule:$mid")
                     cache?.removeMachine(mid)
-                    direct.invalidate()
+                    direct.invalidate("machine_removed")
                 }
                 else -> {}
             }
@@ -1723,7 +1723,7 @@ class Remote(
             inFlightLoginJob?.cancel()
             inFlightLoginJob = null
             security.networkChanged()
-            direct.invalidate()
+            direct.invalidate("network")
         }
         coreHost.networkChanged(available, signature)
     }

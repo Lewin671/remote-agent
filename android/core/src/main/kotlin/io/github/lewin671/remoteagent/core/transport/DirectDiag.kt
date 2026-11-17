@@ -22,6 +22,11 @@ object DirectDiag {
         sink?.invoke(line)
     }
 
+    /** Engine state changes go to the host log only, so they never push attempt lines out of the ring. */
+    fun trace(line: String) {
+        sink?.invoke(line)
+    }
+
     fun lines(): List<String> = synchronized(ring) { ring.toList() }
 
     fun clear() = synchronized(ring) { ring.clear() }
