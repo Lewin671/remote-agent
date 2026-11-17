@@ -71,8 +71,17 @@ trap 'exit 1' INT TERM
 say "release $tag ($commit)"
 run=$(gh run list --workflow release.yml --commit "$commit" --event push --limit 1 --json databaseId --jq '.[0].databaseId // empty')
 [ -n "$run" ] || fail "no Release workflow ran for $tag"
-if gh run watch "$run" --exit-status >/dev/null; then
-	echo "Release workflow succeeded"
+# Wait for the publish job only: the iOS app tests that run beside it gate
+# just the App Store upload, not what ships here.
+publish_result() { gh run view "$run" --json jobs --jq '.jobs[] | select(.name == "publish") | .status + " " + .conclusion'; }
+while :; do
+	state=$(publish_result) || state=
+	case "$state" in "completed "*) break ;; esac
+	[ "$(gh run view "$run" --json status --jq .status)" != completed ] || break
+	sleep 20
+done
+if [ "$state" = "completed success" ]; then
+	echo "Release workflow published $tag"
 # A failed run can be retried by hand for the same tag; only a run whose
 # checks all passed publishes the release.
 elif [ "$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)" = false ]; then

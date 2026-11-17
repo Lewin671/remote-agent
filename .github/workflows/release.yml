@@ -429,6 +429,54 @@ jobs:
           path: ios/RemoteAgentCore/.build
           key: spm-core-${{ runner.os }}-${{ hashFiles('ios/RemoteAgentCore/Package.swift', 'ios/RemoteAgentCore/Package.resolved', 'clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
           restore-keys: spm-core-${{ runner.os }}-
+      - name: Build Corebind.xcframework and validate localization
+        run: |
+          set -euo pipefail
+          python3 scripts/i18n.py generate --check
+          resources=$(mktemp -d)
+          trap 'rm -rf "$resources"' EXIT
+          xcrun xcstringstool compile ios/RemoteAgentCore/Localization/Localizable.xcstrings --output-directory "$resources"
+          scripts/core/build.sh ios
+      - name: Swift package tests (RACoreTests)
+        run: swift test --package-path ios/RemoteAgentCore --jobs 4
+
+  # App-hosted simulator tests gate only the App Store upload (its workflow
+  # needs the whole Release run to succeed), not the shared release, which
+  # would otherwise wait on the slowest runner.
+  ios-app-checks:
+    needs: source
+    runs-on: xcode-27
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum', 'clientcore/go.mod', 'clientcore/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: core-ios-cache
+        with:
+          path: build/core/ios
+          key: core-ios-${{ runner.os }}-${{ hashFiles('clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached Corebind timestamp
+        if: steps.core-ios-cache.outputs.cache-hit == 'true'
+        run: touch build/core/ios/Corebind.xcframework/Info.plist
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ios/RemoteAgentCore/.build
+          key: spm-core-${{ runner.os }}-${{ hashFiles('ios/RemoteAgentCore/Package.swift', 'ios/RemoteAgentCore/Package.resolved', 'clientcore/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+          restore-keys: spm-core-${{ runner.os }}-
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/SourcePackages
@@ -447,8 +495,6 @@ jobs:
           trap 'rm -rf "$resources"' EXIT
           xcrun xcstringstool compile ios/RemoteAgentCore/Localization/Localizable.xcstrings --output-directory "$resources"
           scripts/core/build.sh ios
-      - name: Swift package tests (RACoreTests)
-        run: swift test --package-path ios/RemoteAgentCore --jobs 4
       - name: App build and tests (RemoteAgentTests, excluding performance and UI tests)
         run: |
           set -euo pipefail
