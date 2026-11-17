@@ -13,7 +13,12 @@
 -dontwarn javax.naming.**
 -dontwarn io.ktor.**
 -dontwarn org.slf4j.**
-# WebRTC DataChannel-only JNI callbacks; unused audio/video classes can be stripped.
+# WebRTC: libjingle_peerconnection's JNI_OnLoad and callbacks look classes up by
+# name (org.jni_zero.JniZero, WebRtcClassLoader and others), so R8 must not strip or rename any of
+# org.webrtc; a missing one aborts the process when direct first loads WebRTC.
+-keep class org.webrtc.** { *; }
+-keep class org.jni_zero.** { *; }
+-dontwarn org.jni_zero.**
 -keep @interface org.webrtc.CalledByNative
 -keep @interface org.webrtc.CalledByNativeUnchecked
 -keepclasseswithmembers class * {
