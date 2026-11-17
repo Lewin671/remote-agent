@@ -50,19 +50,23 @@ const (
 type ScreenTarget int32
 
 const (
-	ScreenTarget_SCREEN_TARGET_UNSPECIFIED      ScreenTarget = 0
-	ScreenTarget_SCREEN_TARGET_HOME             ScreenTarget = 1
-	ScreenTarget_SCREEN_TARGET_PROJECT          ScreenTarget = 2
-	ScreenTarget_SCREEN_TARGET_NEW_SESSION      ScreenTarget = 3
-	ScreenTarget_SCREEN_TARGET_SYNC_STATE       ScreenTarget = 4
-	ScreenTarget_SCREEN_TARGET_SESSION_DATA     ScreenTarget = 5
-	ScreenTarget_SCREEN_TARGET_SETTINGS         ScreenTarget = 30
-	ScreenTarget_SCREEN_TARGET_MACHINE_STATUS   ScreenTarget = 31
-	ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS ScreenTarget = 32
-	ScreenTarget_SCREEN_TARGET_QUOTA            ScreenTarget = 33
-	ScreenTarget_SCREEN_TARGET_DEVICES          ScreenTarget = 34
-	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL    ScreenTarget = 35
-	ScreenTarget_SCREEN_TARGET_SESSION          ScreenTarget = 10
+	ScreenTarget_SCREEN_TARGET_UNSPECIFIED            ScreenTarget = 0
+	ScreenTarget_SCREEN_TARGET_HOME                   ScreenTarget = 1
+	ScreenTarget_SCREEN_TARGET_PROJECT                ScreenTarget = 2
+	ScreenTarget_SCREEN_TARGET_NEW_SESSION            ScreenTarget = 3
+	ScreenTarget_SCREEN_TARGET_SYNC_STATE             ScreenTarget = 4
+	ScreenTarget_SCREEN_TARGET_SESSION_DATA           ScreenTarget = 5
+	ScreenTarget_SCREEN_TARGET_SETTINGS               ScreenTarget = 30
+	ScreenTarget_SCREEN_TARGET_MACHINE_STATUS         ScreenTarget = 31
+	ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS       ScreenTarget = 32
+	ScreenTarget_SCREEN_TARGET_QUOTA                  ScreenTarget = 33
+	ScreenTarget_SCREEN_TARGET_DEVICES                ScreenTarget = 34
+	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL          ScreenTarget = 35
+	ScreenTarget_SCREEN_TARGET_SESSION                ScreenTarget = 10
+	ScreenTarget_SCREEN_TARGET_SCHEDULES              ScreenTarget = 20
+	ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL        ScreenTarget = 21
+	ScreenTarget_SCREEN_TARGET_SCHEDULE_FORM          ScreenTarget = 22
+	ScreenTarget_SCREEN_TARGET_SCHEDULE_SESSION_STRIP ScreenTarget = 23
 )
 
 type CommandRouteHint int32
@@ -536,6 +540,24 @@ type Screen_Session struct{ Session *SessionScreenRequest }
 
 func (*Screen_Session) isScreen_Screen() {}
 
+type Screen_Schedules struct{ Schedules *SchedulesScreenRequest }
+
+func (*Screen_Schedules) isScreen_Screen() {}
+
+type Screen_ScheduleDetail struct{ ScheduleDetail *ScheduleDetailScreenRequest }
+
+func (*Screen_ScheduleDetail) isScreen_Screen() {}
+
+type Screen_ScheduleForm struct{ ScheduleForm *ScheduleFormScreenRequest }
+
+func (*Screen_ScheduleForm) isScreen_Screen() {}
+
+type Screen_ScheduleSessionStrip struct {
+	ScheduleSessionStrip *ScheduleSessionStripScreenRequest
+}
+
+func (*Screen_ScheduleSessionStrip) isScreen_Screen() {}
+
 func (m *Screen) Reset() {
 	if m != nil {
 		*m = Screen{}
@@ -620,6 +642,30 @@ func (m *Screen) GetSession() *SessionScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetSchedules() *SchedulesScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_Schedules); ok && x != nil {
+		return x.Schedules
+	}
+	return nil
+}
+func (m *Screen) GetScheduleDetail() *ScheduleDetailScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_ScheduleDetail); ok && x != nil {
+		return x.ScheduleDetail
+	}
+	return nil
+}
+func (m *Screen) GetScheduleForm() *ScheduleFormScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_ScheduleForm); ok && x != nil {
+		return x.ScheduleForm
+	}
+	return nil
+}
+func (m *Screen) GetScheduleSessionStrip() *ScheduleSessionStripScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_ScheduleSessionStrip); ok && x != nil {
+		return x.ScheduleSessionStrip
+	}
+	return nil
+}
 
 func (m *Screen) Clone() *Screen {
 	if m == nil {
@@ -674,6 +720,22 @@ func (m *Screen) Clone() *Screen {
 	case *Screen_Session:
 		if v != nil {
 			cp.Screen = &Screen_Session{Session: v.Session.Clone()}
+		}
+	case *Screen_Schedules:
+		if v != nil {
+			cp.Screen = &Screen_Schedules{Schedules: v.Schedules.Clone()}
+		}
+	case *Screen_ScheduleDetail:
+		if v != nil {
+			cp.Screen = &Screen_ScheduleDetail{ScheduleDetail: v.ScheduleDetail.Clone()}
+		}
+	case *Screen_ScheduleForm:
+		if v != nil {
+			cp.Screen = &Screen_ScheduleForm{ScheduleForm: v.ScheduleForm.Clone()}
+		}
+	case *Screen_ScheduleSessionStrip:
+		if v != nil {
+			cp.Screen = &Screen_ScheduleSessionStrip{ScheduleSessionStrip: v.ScheduleSessionStrip.Clone()}
 		}
 	}
 	return &cp
@@ -755,6 +817,30 @@ func (m *Screen) Size() int {
 		if x != nil {
 			if x.Session != nil {
 				n += litewire.SizeMessage(10, x.Session.Size())
+			}
+		}
+	case *Screen_Schedules:
+		if x != nil {
+			if x.Schedules != nil {
+				n += litewire.SizeMessage(20, x.Schedules.Size())
+			}
+		}
+	case *Screen_ScheduleDetail:
+		if x != nil {
+			if x.ScheduleDetail != nil {
+				n += litewire.SizeMessage(21, x.ScheduleDetail.Size())
+			}
+		}
+	case *Screen_ScheduleForm:
+		if x != nil {
+			if x.ScheduleForm != nil {
+				n += litewire.SizeMessage(22, x.ScheduleForm.Size())
+			}
+		}
+	case *Screen_ScheduleSessionStrip:
+		if x != nil {
+			if x.ScheduleSessionStrip != nil {
+				n += litewire.SizeMessage(23, x.ScheduleSessionStrip.Size())
 			}
 		}
 	}
@@ -859,6 +945,34 @@ func (m *Screen) AppendMarshal(b []byte) []byte {
 			if x.Session != nil {
 				b = litewire.AppendMessagePrefix(b, 10, x.Session.Size())
 				b = x.Session.AppendMarshal(b)
+			}
+		}
+	case *Screen_Schedules:
+		if x != nil {
+			if x.Schedules != nil {
+				b = litewire.AppendMessagePrefix(b, 20, x.Schedules.Size())
+				b = x.Schedules.AppendMarshal(b)
+			}
+		}
+	case *Screen_ScheduleDetail:
+		if x != nil {
+			if x.ScheduleDetail != nil {
+				b = litewire.AppendMessagePrefix(b, 21, x.ScheduleDetail.Size())
+				b = x.ScheduleDetail.AppendMarshal(b)
+			}
+		}
+	case *Screen_ScheduleForm:
+		if x != nil {
+			if x.ScheduleForm != nil {
+				b = litewire.AppendMessagePrefix(b, 22, x.ScheduleForm.Size())
+				b = x.ScheduleForm.AppendMarshal(b)
+			}
+		}
+	case *Screen_ScheduleSessionStrip:
+		if x != nil {
+			if x.ScheduleSessionStrip != nil {
+				b = litewire.AppendMessagePrefix(b, 23, x.ScheduleSessionStrip.Size())
+				b = x.ScheduleSessionStrip.AppendMarshal(b)
 			}
 		}
 	}
@@ -1100,6 +1214,82 @@ func (m *Screen) Unmarshal(b []byte) error {
 				m.Screen = &Screen_Session{Session: sub}
 				continue
 			}
+		case 20:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SchedulesScreenRequest
+				if cur, ok := m.Screen.(*Screen_Schedules); ok && cur != nil {
+					sub = cur.Schedules
+				}
+				if sub == nil {
+					sub = &SchedulesScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_Schedules{Schedules: sub}
+				continue
+			}
+		case 21:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleDetailScreenRequest
+				if cur, ok := m.Screen.(*Screen_ScheduleDetail); ok && cur != nil {
+					sub = cur.ScheduleDetail
+				}
+				if sub == nil {
+					sub = &ScheduleDetailScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_ScheduleDetail{ScheduleDetail: sub}
+				continue
+			}
+		case 22:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormScreenRequest
+				if cur, ok := m.Screen.(*Screen_ScheduleForm); ok && cur != nil {
+					sub = cur.ScheduleForm
+				}
+				if sub == nil {
+					sub = &ScheduleFormScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_ScheduleForm{ScheduleForm: sub}
+				continue
+			}
+		case 23:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleSessionStripScreenRequest
+				if cur, ok := m.Screen.(*Screen_ScheduleSessionStrip); ok && cur != nil {
+					sub = cur.ScheduleSessionStrip
+				}
+				if sub == nil {
+					sub = &ScheduleSessionStripScreenRequest{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Screen = &Screen_ScheduleSessionStrip{ScheduleSessionStrip: sub}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -1160,6 +1350,24 @@ func (*ViewModel_ClientDetail) isViewModel_View() {}
 type ViewModel_Session struct{ Session *SessionViewModel }
 
 func (*ViewModel_Session) isViewModel_View() {}
+
+type ViewModel_Schedules struct{ Schedules *SchedulesViewModel }
+
+func (*ViewModel_Schedules) isViewModel_View() {}
+
+type ViewModel_ScheduleDetail struct{ ScheduleDetail *ScheduleDetailViewModel }
+
+func (*ViewModel_ScheduleDetail) isViewModel_View() {}
+
+type ViewModel_ScheduleForm struct{ ScheduleForm *ScheduleFormViewModel }
+
+func (*ViewModel_ScheduleForm) isViewModel_View() {}
+
+type ViewModel_ScheduleSessionStrip struct {
+	ScheduleSessionStrip *ScheduleSessionStripViewModel
+}
+
+func (*ViewModel_ScheduleSessionStrip) isViewModel_View() {}
 
 func (m *ViewModel) Reset() {
 	if m != nil {
@@ -1245,6 +1453,30 @@ func (m *ViewModel) GetSession() *SessionViewModel {
 	}
 	return nil
 }
+func (m *ViewModel) GetSchedules() *SchedulesViewModel {
+	if x, ok := m.GetView().(*ViewModel_Schedules); ok && x != nil {
+		return x.Schedules
+	}
+	return nil
+}
+func (m *ViewModel) GetScheduleDetail() *ScheduleDetailViewModel {
+	if x, ok := m.GetView().(*ViewModel_ScheduleDetail); ok && x != nil {
+		return x.ScheduleDetail
+	}
+	return nil
+}
+func (m *ViewModel) GetScheduleForm() *ScheduleFormViewModel {
+	if x, ok := m.GetView().(*ViewModel_ScheduleForm); ok && x != nil {
+		return x.ScheduleForm
+	}
+	return nil
+}
+func (m *ViewModel) GetScheduleSessionStrip() *ScheduleSessionStripViewModel {
+	if x, ok := m.GetView().(*ViewModel_ScheduleSessionStrip); ok && x != nil {
+		return x.ScheduleSessionStrip
+	}
+	return nil
+}
 
 func (m *ViewModel) Clone() *ViewModel {
 	if m == nil {
@@ -1299,6 +1531,22 @@ func (m *ViewModel) Clone() *ViewModel {
 	case *ViewModel_Session:
 		if v != nil {
 			cp.View = &ViewModel_Session{Session: v.Session.Clone()}
+		}
+	case *ViewModel_Schedules:
+		if v != nil {
+			cp.View = &ViewModel_Schedules{Schedules: v.Schedules.Clone()}
+		}
+	case *ViewModel_ScheduleDetail:
+		if v != nil {
+			cp.View = &ViewModel_ScheduleDetail{ScheduleDetail: v.ScheduleDetail.Clone()}
+		}
+	case *ViewModel_ScheduleForm:
+		if v != nil {
+			cp.View = &ViewModel_ScheduleForm{ScheduleForm: v.ScheduleForm.Clone()}
+		}
+	case *ViewModel_ScheduleSessionStrip:
+		if v != nil {
+			cp.View = &ViewModel_ScheduleSessionStrip{ScheduleSessionStrip: v.ScheduleSessionStrip.Clone()}
 		}
 	}
 	return &cp
@@ -1380,6 +1628,30 @@ func (m *ViewModel) Size() int {
 		if x != nil {
 			if x.Session != nil {
 				n += litewire.SizeMessage(10, x.Session.Size())
+			}
+		}
+	case *ViewModel_Schedules:
+		if x != nil {
+			if x.Schedules != nil {
+				n += litewire.SizeMessage(20, x.Schedules.Size())
+			}
+		}
+	case *ViewModel_ScheduleDetail:
+		if x != nil {
+			if x.ScheduleDetail != nil {
+				n += litewire.SizeMessage(21, x.ScheduleDetail.Size())
+			}
+		}
+	case *ViewModel_ScheduleForm:
+		if x != nil {
+			if x.ScheduleForm != nil {
+				n += litewire.SizeMessage(22, x.ScheduleForm.Size())
+			}
+		}
+	case *ViewModel_ScheduleSessionStrip:
+		if x != nil {
+			if x.ScheduleSessionStrip != nil {
+				n += litewire.SizeMessage(23, x.ScheduleSessionStrip.Size())
 			}
 		}
 	}
@@ -1484,6 +1756,34 @@ func (m *ViewModel) AppendMarshal(b []byte) []byte {
 			if x.Session != nil {
 				b = litewire.AppendMessagePrefix(b, 10, x.Session.Size())
 				b = x.Session.AppendMarshal(b)
+			}
+		}
+	case *ViewModel_Schedules:
+		if x != nil {
+			if x.Schedules != nil {
+				b = litewire.AppendMessagePrefix(b, 20, x.Schedules.Size())
+				b = x.Schedules.AppendMarshal(b)
+			}
+		}
+	case *ViewModel_ScheduleDetail:
+		if x != nil {
+			if x.ScheduleDetail != nil {
+				b = litewire.AppendMessagePrefix(b, 21, x.ScheduleDetail.Size())
+				b = x.ScheduleDetail.AppendMarshal(b)
+			}
+		}
+	case *ViewModel_ScheduleForm:
+		if x != nil {
+			if x.ScheduleForm != nil {
+				b = litewire.AppendMessagePrefix(b, 22, x.ScheduleForm.Size())
+				b = x.ScheduleForm.AppendMarshal(b)
+			}
+		}
+	case *ViewModel_ScheduleSessionStrip:
+		if x != nil {
+			if x.ScheduleSessionStrip != nil {
+				b = litewire.AppendMessagePrefix(b, 23, x.ScheduleSessionStrip.Size())
+				b = x.ScheduleSessionStrip.AppendMarshal(b)
 			}
 		}
 	}
@@ -1723,6 +2023,82 @@ func (m *ViewModel) Unmarshal(b []byte) error {
 					return err
 				}
 				m.View = &ViewModel_Session{Session: sub}
+				continue
+			}
+		case 20:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *SchedulesViewModel
+				if cur, ok := m.View.(*ViewModel_Schedules); ok && cur != nil {
+					sub = cur.Schedules
+				}
+				if sub == nil {
+					sub = &SchedulesViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_Schedules{Schedules: sub}
+				continue
+			}
+		case 21:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleDetailViewModel
+				if cur, ok := m.View.(*ViewModel_ScheduleDetail); ok && cur != nil {
+					sub = cur.ScheduleDetail
+				}
+				if sub == nil {
+					sub = &ScheduleDetailViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_ScheduleDetail{ScheduleDetail: sub}
+				continue
+			}
+		case 22:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormViewModel
+				if cur, ok := m.View.(*ViewModel_ScheduleForm); ok && cur != nil {
+					sub = cur.ScheduleForm
+				}
+				if sub == nil {
+					sub = &ScheduleFormViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_ScheduleForm{ScheduleForm: sub}
+				continue
+			}
+		case 23:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleSessionStripViewModel
+				if cur, ok := m.View.(*ViewModel_ScheduleSessionStrip); ok && cur != nil {
+					sub = cur.ScheduleSessionStrip
+				}
+				if sub == nil {
+					sub = &ScheduleSessionStripViewModel{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.View = &ViewModel_ScheduleSessionStrip{ScheduleSessionStrip: sub}
 				continue
 			}
 		}
@@ -9316,6 +9692,154 @@ type Event_SessionLoadEarlier struct{ SessionLoadEarlier *SessionRefreshHistoryA
 
 func (*Event_SessionLoadEarlier) isEvent_Event() {}
 
+type Event_ScheduleCacheLoaded struct{ ScheduleCacheLoaded *ScheduleCacheLoadedEvent }
+
+func (*Event_ScheduleCacheLoaded) isEvent_Event() {}
+
+type Event_ScheduleSeenLoaded struct{ ScheduleSeenLoaded *ScheduleSeenLoadedEvent }
+
+func (*Event_ScheduleSeenLoaded) isEvent_Event() {}
+
+type Event_ScheduleLocalContext struct{ ScheduleLocalContext *ScheduleLocalContextEvent }
+
+func (*Event_ScheduleLocalContext) isEvent_Event() {}
+
+type Event_ScheduleRefresh struct{ ScheduleRefresh *ScheduleStringAction }
+
+func (*Event_ScheduleRefresh) isEvent_Event() {}
+
+type Event_ScheduleSetVisibleSession struct{ ScheduleSetVisibleSession *ScheduleStringAction }
+
+func (*Event_ScheduleSetVisibleSession) isEvent_Event() {}
+
+type Event_ScheduleListOpen struct{ ScheduleListOpen *ScheduleBoolAction }
+
+func (*Event_ScheduleListOpen) isEvent_Event() {}
+
+type Event_ScheduleSelectTask struct{ ScheduleSelectTask *ScheduleTaskRef }
+
+func (*Event_ScheduleSelectTask) isEvent_Event() {}
+
+type Event_ScheduleToggleEnded struct{ ScheduleToggleEnded *ScheduleBoolAction }
+
+func (*Event_ScheduleToggleEnded) isEvent_Event() {}
+
+type Event_ScheduleMarkRead struct{ ScheduleMarkRead *ScheduleMarkReadAction }
+
+func (*Event_ScheduleMarkRead) isEvent_Event() {}
+
+type Event_ScheduleMarkUnread struct{ ScheduleMarkUnread *ScheduleTaskBoolAction }
+
+func (*Event_ScheduleMarkUnread) isEvent_Event() {}
+
+type Event_ScheduleDetailOpen struct{ ScheduleDetailOpen *ScheduleTaskRef }
+
+func (*Event_ScheduleDetailOpen) isEvent_Event() {}
+
+type Event_ScheduleDetailHide struct{ ScheduleDetailHide *ScheduleTaskRef }
+
+func (*Event_ScheduleDetailHide) isEvent_Event() {}
+
+type Event_ScheduleDetailClose struct{ ScheduleDetailClose *ScheduleTaskRef }
+
+func (*Event_ScheduleDetailClose) isEvent_Event() {}
+
+type Event_ScheduleDetailShowLatestResult struct{ ScheduleDetailShowLatestResult *ScheduleTaskRef }
+
+func (*Event_ScheduleDetailShowLatestResult) isEvent_Event() {}
+
+type Event_ScheduleDetailToggleQuietGroup struct{ ScheduleDetailToggleQuietGroup *ScheduleTaskStringAction }
+
+func (*Event_ScheduleDetailToggleQuietGroup) isEvent_Event() {}
+
+type Event_ScheduleDetailShowAllRuns struct{ ScheduleDetailShowAllRuns *ScheduleTaskBoolAction }
+
+func (*Event_ScheduleDetailShowAllRuns) isEvent_Event() {}
+
+type Event_ScheduleDetailOpenRun struct{ ScheduleDetailOpenRun *ScheduleTaskStringAction }
+
+func (*Event_ScheduleDetailOpenRun) isEvent_Event() {}
+
+type Event_ScheduleOperate struct{ ScheduleOperate *ScheduleOperateAction }
+
+func (*Event_ScheduleOperate) isEvent_Event() {}
+
+type Event_ScheduleRename struct{ ScheduleRename *ScheduleTaskStringAction }
+
+func (*Event_ScheduleRename) isEvent_Event() {}
+
+type Event_ScheduleSetNotify struct{ ScheduleSetNotify *ScheduleTaskBoolAction }
+
+func (*Event_ScheduleSetNotify) isEvent_Event() {}
+
+type Event_ScheduleUpdateMessage struct{ ScheduleUpdateMessage *ScheduleTaskStringAction }
+
+func (*Event_ScheduleUpdateMessage) isEvent_Event() {}
+
+type Event_ScheduleAbandonMutation struct{ ScheduleAbandonMutation *ScheduleMutationRef }
+
+func (*Event_ScheduleAbandonMutation) isEvent_Event() {}
+
+type Event_ScheduleRetryMutation struct{ ScheduleRetryMutation *ScheduleMutationRef }
+
+func (*Event_ScheduleRetryMutation) isEvent_Event() {}
+
+type Event_ScheduleFormOpen struct{ ScheduleFormOpen *ScheduleFormOpenAction }
+
+func (*Event_ScheduleFormOpen) isEvent_Event() {}
+
+type Event_ScheduleFormClose struct{ ScheduleFormClose *ScheduleFormBoolAction }
+
+func (*Event_ScheduleFormClose) isEvent_Event() {}
+
+type Event_ScheduleFormSetMessage struct{ ScheduleFormSetMessage *ScheduleFormStringAction }
+
+func (*Event_ScheduleFormSetMessage) isEvent_Event() {}
+
+type Event_ScheduleFormSetTitle struct{ ScheduleFormSetTitle *ScheduleFormStringAction }
+
+func (*Event_ScheduleFormSetTitle) isEvent_Event() {}
+
+type Event_ScheduleFormSetNotify struct{ ScheduleFormSetNotify *ScheduleFormBoolAction }
+
+func (*Event_ScheduleFormSetNotify) isEvent_Event() {}
+
+type Event_ScheduleFormSelectProject struct {
+	ScheduleFormSelectProject *ScheduleFormSelectProjectAction
+}
+
+func (*Event_ScheduleFormSelectProject) isEvent_Event() {}
+
+type Event_ScheduleFormSelectMachine struct{ ScheduleFormSelectMachine *ScheduleFormStringAction }
+
+func (*Event_ScheduleFormSelectMachine) isEvent_Event() {}
+
+type Event_ScheduleFormSelectAgent struct {
+	ScheduleFormSelectAgent *ScheduleFormSelectAgentAction
+}
+
+func (*Event_ScheduleFormSelectAgent) isEvent_Event() {}
+
+type Event_ScheduleFormSelectModel struct {
+	ScheduleFormSelectModel *ScheduleFormSelectModelAction
+}
+
+func (*Event_ScheduleFormSelectModel) isEvent_Event() {}
+
+type Event_ScheduleFormUpdateTiming struct {
+	ScheduleFormUpdateTiming *ScheduleFormUpdateTimingAction
+}
+
+func (*Event_ScheduleFormUpdateTiming) isEvent_Event() {}
+
+type Event_ScheduleFormSubmit struct{ ScheduleFormSubmit *ScheduleFormBoolAction }
+
+func (*Event_ScheduleFormSubmit) isEvent_Event() {}
+
+type Event_ScheduleFormRetryModels struct{ ScheduleFormRetryModels *ScheduleFormStringAction }
+
+func (*Event_ScheduleFormRetryModels) isEvent_Event() {}
+
 func (m *Event) Reset() {
 	if m != nil {
 		*m = Event{}
@@ -9772,6 +10296,216 @@ func (m *Event) GetSessionLoadEarlier() *SessionRefreshHistoryAction {
 	}
 	return nil
 }
+func (m *Event) GetScheduleCacheLoaded() *ScheduleCacheLoadedEvent {
+	if x, ok := m.GetEvent().(*Event_ScheduleCacheLoaded); ok && x != nil {
+		return x.ScheduleCacheLoaded
+	}
+	return nil
+}
+func (m *Event) GetScheduleSeenLoaded() *ScheduleSeenLoadedEvent {
+	if x, ok := m.GetEvent().(*Event_ScheduleSeenLoaded); ok && x != nil {
+		return x.ScheduleSeenLoaded
+	}
+	return nil
+}
+func (m *Event) GetScheduleLocalContext() *ScheduleLocalContextEvent {
+	if x, ok := m.GetEvent().(*Event_ScheduleLocalContext); ok && x != nil {
+		return x.ScheduleLocalContext
+	}
+	return nil
+}
+func (m *Event) GetScheduleRefresh() *ScheduleStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleRefresh); ok && x != nil {
+		return x.ScheduleRefresh
+	}
+	return nil
+}
+func (m *Event) GetScheduleSetVisibleSession() *ScheduleStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleSetVisibleSession); ok && x != nil {
+		return x.ScheduleSetVisibleSession
+	}
+	return nil
+}
+func (m *Event) GetScheduleListOpen() *ScheduleBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleListOpen); ok && x != nil {
+		return x.ScheduleListOpen
+	}
+	return nil
+}
+func (m *Event) GetScheduleSelectTask() *ScheduleTaskRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleSelectTask); ok && x != nil {
+		return x.ScheduleSelectTask
+	}
+	return nil
+}
+func (m *Event) GetScheduleToggleEnded() *ScheduleBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleToggleEnded); ok && x != nil {
+		return x.ScheduleToggleEnded
+	}
+	return nil
+}
+func (m *Event) GetScheduleMarkRead() *ScheduleMarkReadAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleMarkRead); ok && x != nil {
+		return x.ScheduleMarkRead
+	}
+	return nil
+}
+func (m *Event) GetScheduleMarkUnread() *ScheduleTaskBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleMarkUnread); ok && x != nil {
+		return x.ScheduleMarkUnread
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailOpen() *ScheduleTaskRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailOpen); ok && x != nil {
+		return x.ScheduleDetailOpen
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailHide() *ScheduleTaskRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailHide); ok && x != nil {
+		return x.ScheduleDetailHide
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailClose() *ScheduleTaskRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailClose); ok && x != nil {
+		return x.ScheduleDetailClose
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailShowLatestResult() *ScheduleTaskRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailShowLatestResult); ok && x != nil {
+		return x.ScheduleDetailShowLatestResult
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailToggleQuietGroup() *ScheduleTaskStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailToggleQuietGroup); ok && x != nil {
+		return x.ScheduleDetailToggleQuietGroup
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailShowAllRuns() *ScheduleTaskBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailShowAllRuns); ok && x != nil {
+		return x.ScheduleDetailShowAllRuns
+	}
+	return nil
+}
+func (m *Event) GetScheduleDetailOpenRun() *ScheduleTaskStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleDetailOpenRun); ok && x != nil {
+		return x.ScheduleDetailOpenRun
+	}
+	return nil
+}
+func (m *Event) GetScheduleOperate() *ScheduleOperateAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleOperate); ok && x != nil {
+		return x.ScheduleOperate
+	}
+	return nil
+}
+func (m *Event) GetScheduleRename() *ScheduleTaskStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleRename); ok && x != nil {
+		return x.ScheduleRename
+	}
+	return nil
+}
+func (m *Event) GetScheduleSetNotify() *ScheduleTaskBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleSetNotify); ok && x != nil {
+		return x.ScheduleSetNotify
+	}
+	return nil
+}
+func (m *Event) GetScheduleUpdateMessage() *ScheduleTaskStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleUpdateMessage); ok && x != nil {
+		return x.ScheduleUpdateMessage
+	}
+	return nil
+}
+func (m *Event) GetScheduleAbandonMutation() *ScheduleMutationRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleAbandonMutation); ok && x != nil {
+		return x.ScheduleAbandonMutation
+	}
+	return nil
+}
+func (m *Event) GetScheduleRetryMutation() *ScheduleMutationRef {
+	if x, ok := m.GetEvent().(*Event_ScheduleRetryMutation); ok && x != nil {
+		return x.ScheduleRetryMutation
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormOpen() *ScheduleFormOpenAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormOpen); ok && x != nil {
+		return x.ScheduleFormOpen
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormClose() *ScheduleFormBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormClose); ok && x != nil {
+		return x.ScheduleFormClose
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSetMessage() *ScheduleFormStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSetMessage); ok && x != nil {
+		return x.ScheduleFormSetMessage
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSetTitle() *ScheduleFormStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSetTitle); ok && x != nil {
+		return x.ScheduleFormSetTitle
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSetNotify() *ScheduleFormBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSetNotify); ok && x != nil {
+		return x.ScheduleFormSetNotify
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSelectProject() *ScheduleFormSelectProjectAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSelectProject); ok && x != nil {
+		return x.ScheduleFormSelectProject
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSelectMachine() *ScheduleFormStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSelectMachine); ok && x != nil {
+		return x.ScheduleFormSelectMachine
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSelectAgent() *ScheduleFormSelectAgentAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSelectAgent); ok && x != nil {
+		return x.ScheduleFormSelectAgent
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSelectModel() *ScheduleFormSelectModelAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSelectModel); ok && x != nil {
+		return x.ScheduleFormSelectModel
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormUpdateTiming() *ScheduleFormUpdateTimingAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormUpdateTiming); ok && x != nil {
+		return x.ScheduleFormUpdateTiming
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormSubmit() *ScheduleFormBoolAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormSubmit); ok && x != nil {
+		return x.ScheduleFormSubmit
+	}
+	return nil
+}
+func (m *Event) GetScheduleFormRetryModels() *ScheduleFormStringAction {
+	if x, ok := m.GetEvent().(*Event_ScheduleFormRetryModels); ok && x != nil {
+		return x.ScheduleFormRetryModels
+	}
+	return nil
+}
 func (m *Event) GetNowMs() int64 {
 	if m != nil {
 		return m.NowMs
@@ -10098,6 +10832,146 @@ func (m *Event) Clone() *Event {
 	case *Event_SessionLoadEarlier:
 		if v != nil {
 			cp.Event = &Event_SessionLoadEarlier{SessionLoadEarlier: v.SessionLoadEarlier.Clone()}
+		}
+	case *Event_ScheduleCacheLoaded:
+		if v != nil {
+			cp.Event = &Event_ScheduleCacheLoaded{ScheduleCacheLoaded: v.ScheduleCacheLoaded.Clone()}
+		}
+	case *Event_ScheduleSeenLoaded:
+		if v != nil {
+			cp.Event = &Event_ScheduleSeenLoaded{ScheduleSeenLoaded: v.ScheduleSeenLoaded.Clone()}
+		}
+	case *Event_ScheduleLocalContext:
+		if v != nil {
+			cp.Event = &Event_ScheduleLocalContext{ScheduleLocalContext: v.ScheduleLocalContext.Clone()}
+		}
+	case *Event_ScheduleRefresh:
+		if v != nil {
+			cp.Event = &Event_ScheduleRefresh{ScheduleRefresh: v.ScheduleRefresh.Clone()}
+		}
+	case *Event_ScheduleSetVisibleSession:
+		if v != nil {
+			cp.Event = &Event_ScheduleSetVisibleSession{ScheduleSetVisibleSession: v.ScheduleSetVisibleSession.Clone()}
+		}
+	case *Event_ScheduleListOpen:
+		if v != nil {
+			cp.Event = &Event_ScheduleListOpen{ScheduleListOpen: v.ScheduleListOpen.Clone()}
+		}
+	case *Event_ScheduleSelectTask:
+		if v != nil {
+			cp.Event = &Event_ScheduleSelectTask{ScheduleSelectTask: v.ScheduleSelectTask.Clone()}
+		}
+	case *Event_ScheduleToggleEnded:
+		if v != nil {
+			cp.Event = &Event_ScheduleToggleEnded{ScheduleToggleEnded: v.ScheduleToggleEnded.Clone()}
+		}
+	case *Event_ScheduleMarkRead:
+		if v != nil {
+			cp.Event = &Event_ScheduleMarkRead{ScheduleMarkRead: v.ScheduleMarkRead.Clone()}
+		}
+	case *Event_ScheduleMarkUnread:
+		if v != nil {
+			cp.Event = &Event_ScheduleMarkUnread{ScheduleMarkUnread: v.ScheduleMarkUnread.Clone()}
+		}
+	case *Event_ScheduleDetailOpen:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailOpen{ScheduleDetailOpen: v.ScheduleDetailOpen.Clone()}
+		}
+	case *Event_ScheduleDetailHide:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailHide{ScheduleDetailHide: v.ScheduleDetailHide.Clone()}
+		}
+	case *Event_ScheduleDetailClose:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailClose{ScheduleDetailClose: v.ScheduleDetailClose.Clone()}
+		}
+	case *Event_ScheduleDetailShowLatestResult:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailShowLatestResult{ScheduleDetailShowLatestResult: v.ScheduleDetailShowLatestResult.Clone()}
+		}
+	case *Event_ScheduleDetailToggleQuietGroup:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailToggleQuietGroup{ScheduleDetailToggleQuietGroup: v.ScheduleDetailToggleQuietGroup.Clone()}
+		}
+	case *Event_ScheduleDetailShowAllRuns:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailShowAllRuns{ScheduleDetailShowAllRuns: v.ScheduleDetailShowAllRuns.Clone()}
+		}
+	case *Event_ScheduleDetailOpenRun:
+		if v != nil {
+			cp.Event = &Event_ScheduleDetailOpenRun{ScheduleDetailOpenRun: v.ScheduleDetailOpenRun.Clone()}
+		}
+	case *Event_ScheduleOperate:
+		if v != nil {
+			cp.Event = &Event_ScheduleOperate{ScheduleOperate: v.ScheduleOperate.Clone()}
+		}
+	case *Event_ScheduleRename:
+		if v != nil {
+			cp.Event = &Event_ScheduleRename{ScheduleRename: v.ScheduleRename.Clone()}
+		}
+	case *Event_ScheduleSetNotify:
+		if v != nil {
+			cp.Event = &Event_ScheduleSetNotify{ScheduleSetNotify: v.ScheduleSetNotify.Clone()}
+		}
+	case *Event_ScheduleUpdateMessage:
+		if v != nil {
+			cp.Event = &Event_ScheduleUpdateMessage{ScheduleUpdateMessage: v.ScheduleUpdateMessage.Clone()}
+		}
+	case *Event_ScheduleAbandonMutation:
+		if v != nil {
+			cp.Event = &Event_ScheduleAbandonMutation{ScheduleAbandonMutation: v.ScheduleAbandonMutation.Clone()}
+		}
+	case *Event_ScheduleRetryMutation:
+		if v != nil {
+			cp.Event = &Event_ScheduleRetryMutation{ScheduleRetryMutation: v.ScheduleRetryMutation.Clone()}
+		}
+	case *Event_ScheduleFormOpen:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormOpen{ScheduleFormOpen: v.ScheduleFormOpen.Clone()}
+		}
+	case *Event_ScheduleFormClose:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormClose{ScheduleFormClose: v.ScheduleFormClose.Clone()}
+		}
+	case *Event_ScheduleFormSetMessage:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSetMessage{ScheduleFormSetMessage: v.ScheduleFormSetMessage.Clone()}
+		}
+	case *Event_ScheduleFormSetTitle:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSetTitle{ScheduleFormSetTitle: v.ScheduleFormSetTitle.Clone()}
+		}
+	case *Event_ScheduleFormSetNotify:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSetNotify{ScheduleFormSetNotify: v.ScheduleFormSetNotify.Clone()}
+		}
+	case *Event_ScheduleFormSelectProject:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSelectProject{ScheduleFormSelectProject: v.ScheduleFormSelectProject.Clone()}
+		}
+	case *Event_ScheduleFormSelectMachine:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSelectMachine{ScheduleFormSelectMachine: v.ScheduleFormSelectMachine.Clone()}
+		}
+	case *Event_ScheduleFormSelectAgent:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSelectAgent{ScheduleFormSelectAgent: v.ScheduleFormSelectAgent.Clone()}
+		}
+	case *Event_ScheduleFormSelectModel:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSelectModel{ScheduleFormSelectModel: v.ScheduleFormSelectModel.Clone()}
+		}
+	case *Event_ScheduleFormUpdateTiming:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormUpdateTiming{ScheduleFormUpdateTiming: v.ScheduleFormUpdateTiming.Clone()}
+		}
+	case *Event_ScheduleFormSubmit:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormSubmit{ScheduleFormSubmit: v.ScheduleFormSubmit.Clone()}
+		}
+	case *Event_ScheduleFormRetryModels:
+		if v != nil {
+			cp.Event = &Event_ScheduleFormRetryModels{ScheduleFormRetryModels: v.ScheduleFormRetryModels.Clone()}
 		}
 	}
 	cp.RandomIds = slices.Clone(m.RandomIds)
@@ -10553,6 +11427,216 @@ func (m *Event) Size() int {
 		if x != nil {
 			if x.SessionLoadEarlier != nil {
 				n += litewire.SizeMessage(206, x.SessionLoadEarlier.Size())
+			}
+		}
+	case *Event_ScheduleCacheLoaded:
+		if x != nil {
+			if x.ScheduleCacheLoaded != nil {
+				n += litewire.SizeMessage(300, x.ScheduleCacheLoaded.Size())
+			}
+		}
+	case *Event_ScheduleSeenLoaded:
+		if x != nil {
+			if x.ScheduleSeenLoaded != nil {
+				n += litewire.SizeMessage(301, x.ScheduleSeenLoaded.Size())
+			}
+		}
+	case *Event_ScheduleLocalContext:
+		if x != nil {
+			if x.ScheduleLocalContext != nil {
+				n += litewire.SizeMessage(302, x.ScheduleLocalContext.Size())
+			}
+		}
+	case *Event_ScheduleRefresh:
+		if x != nil {
+			if x.ScheduleRefresh != nil {
+				n += litewire.SizeMessage(303, x.ScheduleRefresh.Size())
+			}
+		}
+	case *Event_ScheduleSetVisibleSession:
+		if x != nil {
+			if x.ScheduleSetVisibleSession != nil {
+				n += litewire.SizeMessage(304, x.ScheduleSetVisibleSession.Size())
+			}
+		}
+	case *Event_ScheduleListOpen:
+		if x != nil {
+			if x.ScheduleListOpen != nil {
+				n += litewire.SizeMessage(310, x.ScheduleListOpen.Size())
+			}
+		}
+	case *Event_ScheduleSelectTask:
+		if x != nil {
+			if x.ScheduleSelectTask != nil {
+				n += litewire.SizeMessage(311, x.ScheduleSelectTask.Size())
+			}
+		}
+	case *Event_ScheduleToggleEnded:
+		if x != nil {
+			if x.ScheduleToggleEnded != nil {
+				n += litewire.SizeMessage(312, x.ScheduleToggleEnded.Size())
+			}
+		}
+	case *Event_ScheduleMarkRead:
+		if x != nil {
+			if x.ScheduleMarkRead != nil {
+				n += litewire.SizeMessage(313, x.ScheduleMarkRead.Size())
+			}
+		}
+	case *Event_ScheduleMarkUnread:
+		if x != nil {
+			if x.ScheduleMarkUnread != nil {
+				n += litewire.SizeMessage(314, x.ScheduleMarkUnread.Size())
+			}
+		}
+	case *Event_ScheduleDetailOpen:
+		if x != nil {
+			if x.ScheduleDetailOpen != nil {
+				n += litewire.SizeMessage(320, x.ScheduleDetailOpen.Size())
+			}
+		}
+	case *Event_ScheduleDetailHide:
+		if x != nil {
+			if x.ScheduleDetailHide != nil {
+				n += litewire.SizeMessage(321, x.ScheduleDetailHide.Size())
+			}
+		}
+	case *Event_ScheduleDetailClose:
+		if x != nil {
+			if x.ScheduleDetailClose != nil {
+				n += litewire.SizeMessage(322, x.ScheduleDetailClose.Size())
+			}
+		}
+	case *Event_ScheduleDetailShowLatestResult:
+		if x != nil {
+			if x.ScheduleDetailShowLatestResult != nil {
+				n += litewire.SizeMessage(323, x.ScheduleDetailShowLatestResult.Size())
+			}
+		}
+	case *Event_ScheduleDetailToggleQuietGroup:
+		if x != nil {
+			if x.ScheduleDetailToggleQuietGroup != nil {
+				n += litewire.SizeMessage(324, x.ScheduleDetailToggleQuietGroup.Size())
+			}
+		}
+	case *Event_ScheduleDetailShowAllRuns:
+		if x != nil {
+			if x.ScheduleDetailShowAllRuns != nil {
+				n += litewire.SizeMessage(325, x.ScheduleDetailShowAllRuns.Size())
+			}
+		}
+	case *Event_ScheduleDetailOpenRun:
+		if x != nil {
+			if x.ScheduleDetailOpenRun != nil {
+				n += litewire.SizeMessage(326, x.ScheduleDetailOpenRun.Size())
+			}
+		}
+	case *Event_ScheduleOperate:
+		if x != nil {
+			if x.ScheduleOperate != nil {
+				n += litewire.SizeMessage(330, x.ScheduleOperate.Size())
+			}
+		}
+	case *Event_ScheduleRename:
+		if x != nil {
+			if x.ScheduleRename != nil {
+				n += litewire.SizeMessage(331, x.ScheduleRename.Size())
+			}
+		}
+	case *Event_ScheduleSetNotify:
+		if x != nil {
+			if x.ScheduleSetNotify != nil {
+				n += litewire.SizeMessage(332, x.ScheduleSetNotify.Size())
+			}
+		}
+	case *Event_ScheduleUpdateMessage:
+		if x != nil {
+			if x.ScheduleUpdateMessage != nil {
+				n += litewire.SizeMessage(333, x.ScheduleUpdateMessage.Size())
+			}
+		}
+	case *Event_ScheduleAbandonMutation:
+		if x != nil {
+			if x.ScheduleAbandonMutation != nil {
+				n += litewire.SizeMessage(334, x.ScheduleAbandonMutation.Size())
+			}
+		}
+	case *Event_ScheduleRetryMutation:
+		if x != nil {
+			if x.ScheduleRetryMutation != nil {
+				n += litewire.SizeMessage(335, x.ScheduleRetryMutation.Size())
+			}
+		}
+	case *Event_ScheduleFormOpen:
+		if x != nil {
+			if x.ScheduleFormOpen != nil {
+				n += litewire.SizeMessage(338, x.ScheduleFormOpen.Size())
+			}
+		}
+	case *Event_ScheduleFormClose:
+		if x != nil {
+			if x.ScheduleFormClose != nil {
+				n += litewire.SizeMessage(339, x.ScheduleFormClose.Size())
+			}
+		}
+	case *Event_ScheduleFormSetMessage:
+		if x != nil {
+			if x.ScheduleFormSetMessage != nil {
+				n += litewire.SizeMessage(340, x.ScheduleFormSetMessage.Size())
+			}
+		}
+	case *Event_ScheduleFormSetTitle:
+		if x != nil {
+			if x.ScheduleFormSetTitle != nil {
+				n += litewire.SizeMessage(341, x.ScheduleFormSetTitle.Size())
+			}
+		}
+	case *Event_ScheduleFormSetNotify:
+		if x != nil {
+			if x.ScheduleFormSetNotify != nil {
+				n += litewire.SizeMessage(342, x.ScheduleFormSetNotify.Size())
+			}
+		}
+	case *Event_ScheduleFormSelectProject:
+		if x != nil {
+			if x.ScheduleFormSelectProject != nil {
+				n += litewire.SizeMessage(343, x.ScheduleFormSelectProject.Size())
+			}
+		}
+	case *Event_ScheduleFormSelectMachine:
+		if x != nil {
+			if x.ScheduleFormSelectMachine != nil {
+				n += litewire.SizeMessage(344, x.ScheduleFormSelectMachine.Size())
+			}
+		}
+	case *Event_ScheduleFormSelectAgent:
+		if x != nil {
+			if x.ScheduleFormSelectAgent != nil {
+				n += litewire.SizeMessage(345, x.ScheduleFormSelectAgent.Size())
+			}
+		}
+	case *Event_ScheduleFormSelectModel:
+		if x != nil {
+			if x.ScheduleFormSelectModel != nil {
+				n += litewire.SizeMessage(346, x.ScheduleFormSelectModel.Size())
+			}
+		}
+	case *Event_ScheduleFormUpdateTiming:
+		if x != nil {
+			if x.ScheduleFormUpdateTiming != nil {
+				n += litewire.SizeMessage(347, x.ScheduleFormUpdateTiming.Size())
+			}
+		}
+	case *Event_ScheduleFormSubmit:
+		if x != nil {
+			if x.ScheduleFormSubmit != nil {
+				n += litewire.SizeMessage(348, x.ScheduleFormSubmit.Size())
+			}
+		}
+	case *Event_ScheduleFormRetryModels:
+		if x != nil {
+			if x.ScheduleFormRetryModels != nil {
+				n += litewire.SizeMessage(349, x.ScheduleFormRetryModels.Size())
 			}
 		}
 	}
@@ -11099,6 +12183,251 @@ func (m *Event) AppendMarshal(b []byte) []byte {
 			if x.SessionLoadEarlier != nil {
 				b = litewire.AppendMessagePrefix(b, 206, x.SessionLoadEarlier.Size())
 				b = x.SessionLoadEarlier.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleCacheLoaded:
+		if x != nil {
+			if x.ScheduleCacheLoaded != nil {
+				b = litewire.AppendMessagePrefix(b, 300, x.ScheduleCacheLoaded.Size())
+				b = x.ScheduleCacheLoaded.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleSeenLoaded:
+		if x != nil {
+			if x.ScheduleSeenLoaded != nil {
+				b = litewire.AppendMessagePrefix(b, 301, x.ScheduleSeenLoaded.Size())
+				b = x.ScheduleSeenLoaded.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleLocalContext:
+		if x != nil {
+			if x.ScheduleLocalContext != nil {
+				b = litewire.AppendMessagePrefix(b, 302, x.ScheduleLocalContext.Size())
+				b = x.ScheduleLocalContext.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleRefresh:
+		if x != nil {
+			if x.ScheduleRefresh != nil {
+				b = litewire.AppendMessagePrefix(b, 303, x.ScheduleRefresh.Size())
+				b = x.ScheduleRefresh.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleSetVisibleSession:
+		if x != nil {
+			if x.ScheduleSetVisibleSession != nil {
+				b = litewire.AppendMessagePrefix(b, 304, x.ScheduleSetVisibleSession.Size())
+				b = x.ScheduleSetVisibleSession.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleListOpen:
+		if x != nil {
+			if x.ScheduleListOpen != nil {
+				b = litewire.AppendMessagePrefix(b, 310, x.ScheduleListOpen.Size())
+				b = x.ScheduleListOpen.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleSelectTask:
+		if x != nil {
+			if x.ScheduleSelectTask != nil {
+				b = litewire.AppendMessagePrefix(b, 311, x.ScheduleSelectTask.Size())
+				b = x.ScheduleSelectTask.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleToggleEnded:
+		if x != nil {
+			if x.ScheduleToggleEnded != nil {
+				b = litewire.AppendMessagePrefix(b, 312, x.ScheduleToggleEnded.Size())
+				b = x.ScheduleToggleEnded.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleMarkRead:
+		if x != nil {
+			if x.ScheduleMarkRead != nil {
+				b = litewire.AppendMessagePrefix(b, 313, x.ScheduleMarkRead.Size())
+				b = x.ScheduleMarkRead.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleMarkUnread:
+		if x != nil {
+			if x.ScheduleMarkUnread != nil {
+				b = litewire.AppendMessagePrefix(b, 314, x.ScheduleMarkUnread.Size())
+				b = x.ScheduleMarkUnread.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailOpen:
+		if x != nil {
+			if x.ScheduleDetailOpen != nil {
+				b = litewire.AppendMessagePrefix(b, 320, x.ScheduleDetailOpen.Size())
+				b = x.ScheduleDetailOpen.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailHide:
+		if x != nil {
+			if x.ScheduleDetailHide != nil {
+				b = litewire.AppendMessagePrefix(b, 321, x.ScheduleDetailHide.Size())
+				b = x.ScheduleDetailHide.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailClose:
+		if x != nil {
+			if x.ScheduleDetailClose != nil {
+				b = litewire.AppendMessagePrefix(b, 322, x.ScheduleDetailClose.Size())
+				b = x.ScheduleDetailClose.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailShowLatestResult:
+		if x != nil {
+			if x.ScheduleDetailShowLatestResult != nil {
+				b = litewire.AppendMessagePrefix(b, 323, x.ScheduleDetailShowLatestResult.Size())
+				b = x.ScheduleDetailShowLatestResult.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailToggleQuietGroup:
+		if x != nil {
+			if x.ScheduleDetailToggleQuietGroup != nil {
+				b = litewire.AppendMessagePrefix(b, 324, x.ScheduleDetailToggleQuietGroup.Size())
+				b = x.ScheduleDetailToggleQuietGroup.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailShowAllRuns:
+		if x != nil {
+			if x.ScheduleDetailShowAllRuns != nil {
+				b = litewire.AppendMessagePrefix(b, 325, x.ScheduleDetailShowAllRuns.Size())
+				b = x.ScheduleDetailShowAllRuns.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleDetailOpenRun:
+		if x != nil {
+			if x.ScheduleDetailOpenRun != nil {
+				b = litewire.AppendMessagePrefix(b, 326, x.ScheduleDetailOpenRun.Size())
+				b = x.ScheduleDetailOpenRun.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleOperate:
+		if x != nil {
+			if x.ScheduleOperate != nil {
+				b = litewire.AppendMessagePrefix(b, 330, x.ScheduleOperate.Size())
+				b = x.ScheduleOperate.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleRename:
+		if x != nil {
+			if x.ScheduleRename != nil {
+				b = litewire.AppendMessagePrefix(b, 331, x.ScheduleRename.Size())
+				b = x.ScheduleRename.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleSetNotify:
+		if x != nil {
+			if x.ScheduleSetNotify != nil {
+				b = litewire.AppendMessagePrefix(b, 332, x.ScheduleSetNotify.Size())
+				b = x.ScheduleSetNotify.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleUpdateMessage:
+		if x != nil {
+			if x.ScheduleUpdateMessage != nil {
+				b = litewire.AppendMessagePrefix(b, 333, x.ScheduleUpdateMessage.Size())
+				b = x.ScheduleUpdateMessage.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleAbandonMutation:
+		if x != nil {
+			if x.ScheduleAbandonMutation != nil {
+				b = litewire.AppendMessagePrefix(b, 334, x.ScheduleAbandonMutation.Size())
+				b = x.ScheduleAbandonMutation.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleRetryMutation:
+		if x != nil {
+			if x.ScheduleRetryMutation != nil {
+				b = litewire.AppendMessagePrefix(b, 335, x.ScheduleRetryMutation.Size())
+				b = x.ScheduleRetryMutation.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormOpen:
+		if x != nil {
+			if x.ScheduleFormOpen != nil {
+				b = litewire.AppendMessagePrefix(b, 338, x.ScheduleFormOpen.Size())
+				b = x.ScheduleFormOpen.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormClose:
+		if x != nil {
+			if x.ScheduleFormClose != nil {
+				b = litewire.AppendMessagePrefix(b, 339, x.ScheduleFormClose.Size())
+				b = x.ScheduleFormClose.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSetMessage:
+		if x != nil {
+			if x.ScheduleFormSetMessage != nil {
+				b = litewire.AppendMessagePrefix(b, 340, x.ScheduleFormSetMessage.Size())
+				b = x.ScheduleFormSetMessage.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSetTitle:
+		if x != nil {
+			if x.ScheduleFormSetTitle != nil {
+				b = litewire.AppendMessagePrefix(b, 341, x.ScheduleFormSetTitle.Size())
+				b = x.ScheduleFormSetTitle.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSetNotify:
+		if x != nil {
+			if x.ScheduleFormSetNotify != nil {
+				b = litewire.AppendMessagePrefix(b, 342, x.ScheduleFormSetNotify.Size())
+				b = x.ScheduleFormSetNotify.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSelectProject:
+		if x != nil {
+			if x.ScheduleFormSelectProject != nil {
+				b = litewire.AppendMessagePrefix(b, 343, x.ScheduleFormSelectProject.Size())
+				b = x.ScheduleFormSelectProject.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSelectMachine:
+		if x != nil {
+			if x.ScheduleFormSelectMachine != nil {
+				b = litewire.AppendMessagePrefix(b, 344, x.ScheduleFormSelectMachine.Size())
+				b = x.ScheduleFormSelectMachine.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSelectAgent:
+		if x != nil {
+			if x.ScheduleFormSelectAgent != nil {
+				b = litewire.AppendMessagePrefix(b, 345, x.ScheduleFormSelectAgent.Size())
+				b = x.ScheduleFormSelectAgent.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSelectModel:
+		if x != nil {
+			if x.ScheduleFormSelectModel != nil {
+				b = litewire.AppendMessagePrefix(b, 346, x.ScheduleFormSelectModel.Size())
+				b = x.ScheduleFormSelectModel.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormUpdateTiming:
+		if x != nil {
+			if x.ScheduleFormUpdateTiming != nil {
+				b = litewire.AppendMessagePrefix(b, 347, x.ScheduleFormUpdateTiming.Size())
+				b = x.ScheduleFormUpdateTiming.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormSubmit:
+		if x != nil {
+			if x.ScheduleFormSubmit != nil {
+				b = litewire.AppendMessagePrefix(b, 348, x.ScheduleFormSubmit.Size())
+				b = x.ScheduleFormSubmit.AppendMarshal(b)
+			}
+		}
+	case *Event_ScheduleFormRetryModels:
+		if x != nil {
+			if x.ScheduleFormRetryModels != nil {
+				b = litewire.AppendMessagePrefix(b, 349, x.ScheduleFormRetryModels.Size())
+				b = x.ScheduleFormRetryModels.AppendMarshal(b)
 			}
 		}
 	}
@@ -12527,6 +13856,671 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_SessionLoadEarlier{SessionLoadEarlier: sub}
+				continue
+			}
+		case 300:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleCacheLoadedEvent
+				if cur, ok := m.Event.(*Event_ScheduleCacheLoaded); ok && cur != nil {
+					sub = cur.ScheduleCacheLoaded
+				}
+				if sub == nil {
+					sub = &ScheduleCacheLoadedEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleCacheLoaded{ScheduleCacheLoaded: sub}
+				continue
+			}
+		case 301:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleSeenLoadedEvent
+				if cur, ok := m.Event.(*Event_ScheduleSeenLoaded); ok && cur != nil {
+					sub = cur.ScheduleSeenLoaded
+				}
+				if sub == nil {
+					sub = &ScheduleSeenLoadedEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleSeenLoaded{ScheduleSeenLoaded: sub}
+				continue
+			}
+		case 302:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleLocalContextEvent
+				if cur, ok := m.Event.(*Event_ScheduleLocalContext); ok && cur != nil {
+					sub = cur.ScheduleLocalContext
+				}
+				if sub == nil {
+					sub = &ScheduleLocalContextEvent{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleLocalContext{ScheduleLocalContext: sub}
+				continue
+			}
+		case 303:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleStringAction
+				if cur, ok := m.Event.(*Event_ScheduleRefresh); ok && cur != nil {
+					sub = cur.ScheduleRefresh
+				}
+				if sub == nil {
+					sub = &ScheduleStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleRefresh{ScheduleRefresh: sub}
+				continue
+			}
+		case 304:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleStringAction
+				if cur, ok := m.Event.(*Event_ScheduleSetVisibleSession); ok && cur != nil {
+					sub = cur.ScheduleSetVisibleSession
+				}
+				if sub == nil {
+					sub = &ScheduleStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleSetVisibleSession{ScheduleSetVisibleSession: sub}
+				continue
+			}
+		case 310:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleListOpen); ok && cur != nil {
+					sub = cur.ScheduleListOpen
+				}
+				if sub == nil {
+					sub = &ScheduleBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleListOpen{ScheduleListOpen: sub}
+				continue
+			}
+		case 311:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskRef
+				if cur, ok := m.Event.(*Event_ScheduleSelectTask); ok && cur != nil {
+					sub = cur.ScheduleSelectTask
+				}
+				if sub == nil {
+					sub = &ScheduleTaskRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleSelectTask{ScheduleSelectTask: sub}
+				continue
+			}
+		case 312:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleToggleEnded); ok && cur != nil {
+					sub = cur.ScheduleToggleEnded
+				}
+				if sub == nil {
+					sub = &ScheduleBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleToggleEnded{ScheduleToggleEnded: sub}
+				continue
+			}
+		case 313:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleMarkReadAction
+				if cur, ok := m.Event.(*Event_ScheduleMarkRead); ok && cur != nil {
+					sub = cur.ScheduleMarkRead
+				}
+				if sub == nil {
+					sub = &ScheduleMarkReadAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleMarkRead{ScheduleMarkRead: sub}
+				continue
+			}
+		case 314:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleMarkUnread); ok && cur != nil {
+					sub = cur.ScheduleMarkUnread
+				}
+				if sub == nil {
+					sub = &ScheduleTaskBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleMarkUnread{ScheduleMarkUnread: sub}
+				continue
+			}
+		case 320:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskRef
+				if cur, ok := m.Event.(*Event_ScheduleDetailOpen); ok && cur != nil {
+					sub = cur.ScheduleDetailOpen
+				}
+				if sub == nil {
+					sub = &ScheduleTaskRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailOpen{ScheduleDetailOpen: sub}
+				continue
+			}
+		case 321:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskRef
+				if cur, ok := m.Event.(*Event_ScheduleDetailHide); ok && cur != nil {
+					sub = cur.ScheduleDetailHide
+				}
+				if sub == nil {
+					sub = &ScheduleTaskRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailHide{ScheduleDetailHide: sub}
+				continue
+			}
+		case 322:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskRef
+				if cur, ok := m.Event.(*Event_ScheduleDetailClose); ok && cur != nil {
+					sub = cur.ScheduleDetailClose
+				}
+				if sub == nil {
+					sub = &ScheduleTaskRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailClose{ScheduleDetailClose: sub}
+				continue
+			}
+		case 323:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskRef
+				if cur, ok := m.Event.(*Event_ScheduleDetailShowLatestResult); ok && cur != nil {
+					sub = cur.ScheduleDetailShowLatestResult
+				}
+				if sub == nil {
+					sub = &ScheduleTaskRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailShowLatestResult{ScheduleDetailShowLatestResult: sub}
+				continue
+			}
+		case 324:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskStringAction
+				if cur, ok := m.Event.(*Event_ScheduleDetailToggleQuietGroup); ok && cur != nil {
+					sub = cur.ScheduleDetailToggleQuietGroup
+				}
+				if sub == nil {
+					sub = &ScheduleTaskStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailToggleQuietGroup{ScheduleDetailToggleQuietGroup: sub}
+				continue
+			}
+		case 325:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleDetailShowAllRuns); ok && cur != nil {
+					sub = cur.ScheduleDetailShowAllRuns
+				}
+				if sub == nil {
+					sub = &ScheduleTaskBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailShowAllRuns{ScheduleDetailShowAllRuns: sub}
+				continue
+			}
+		case 326:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskStringAction
+				if cur, ok := m.Event.(*Event_ScheduleDetailOpenRun); ok && cur != nil {
+					sub = cur.ScheduleDetailOpenRun
+				}
+				if sub == nil {
+					sub = &ScheduleTaskStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleDetailOpenRun{ScheduleDetailOpenRun: sub}
+				continue
+			}
+		case 330:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleOperateAction
+				if cur, ok := m.Event.(*Event_ScheduleOperate); ok && cur != nil {
+					sub = cur.ScheduleOperate
+				}
+				if sub == nil {
+					sub = &ScheduleOperateAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleOperate{ScheduleOperate: sub}
+				continue
+			}
+		case 331:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskStringAction
+				if cur, ok := m.Event.(*Event_ScheduleRename); ok && cur != nil {
+					sub = cur.ScheduleRename
+				}
+				if sub == nil {
+					sub = &ScheduleTaskStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleRename{ScheduleRename: sub}
+				continue
+			}
+		case 332:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleSetNotify); ok && cur != nil {
+					sub = cur.ScheduleSetNotify
+				}
+				if sub == nil {
+					sub = &ScheduleTaskBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleSetNotify{ScheduleSetNotify: sub}
+				continue
+			}
+		case 333:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleTaskStringAction
+				if cur, ok := m.Event.(*Event_ScheduleUpdateMessage); ok && cur != nil {
+					sub = cur.ScheduleUpdateMessage
+				}
+				if sub == nil {
+					sub = &ScheduleTaskStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleUpdateMessage{ScheduleUpdateMessage: sub}
+				continue
+			}
+		case 334:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleMutationRef
+				if cur, ok := m.Event.(*Event_ScheduleAbandonMutation); ok && cur != nil {
+					sub = cur.ScheduleAbandonMutation
+				}
+				if sub == nil {
+					sub = &ScheduleMutationRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleAbandonMutation{ScheduleAbandonMutation: sub}
+				continue
+			}
+		case 335:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleMutationRef
+				if cur, ok := m.Event.(*Event_ScheduleRetryMutation); ok && cur != nil {
+					sub = cur.ScheduleRetryMutation
+				}
+				if sub == nil {
+					sub = &ScheduleMutationRef{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleRetryMutation{ScheduleRetryMutation: sub}
+				continue
+			}
+		case 338:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormOpenAction
+				if cur, ok := m.Event.(*Event_ScheduleFormOpen); ok && cur != nil {
+					sub = cur.ScheduleFormOpen
+				}
+				if sub == nil {
+					sub = &ScheduleFormOpenAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormOpen{ScheduleFormOpen: sub}
+				continue
+			}
+		case 339:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleFormClose); ok && cur != nil {
+					sub = cur.ScheduleFormClose
+				}
+				if sub == nil {
+					sub = &ScheduleFormBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormClose{ScheduleFormClose: sub}
+				continue
+			}
+		case 340:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormStringAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSetMessage); ok && cur != nil {
+					sub = cur.ScheduleFormSetMessage
+				}
+				if sub == nil {
+					sub = &ScheduleFormStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSetMessage{ScheduleFormSetMessage: sub}
+				continue
+			}
+		case 341:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormStringAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSetTitle); ok && cur != nil {
+					sub = cur.ScheduleFormSetTitle
+				}
+				if sub == nil {
+					sub = &ScheduleFormStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSetTitle{ScheduleFormSetTitle: sub}
+				continue
+			}
+		case 342:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSetNotify); ok && cur != nil {
+					sub = cur.ScheduleFormSetNotify
+				}
+				if sub == nil {
+					sub = &ScheduleFormBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSetNotify{ScheduleFormSetNotify: sub}
+				continue
+			}
+		case 343:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormSelectProjectAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSelectProject); ok && cur != nil {
+					sub = cur.ScheduleFormSelectProject
+				}
+				if sub == nil {
+					sub = &ScheduleFormSelectProjectAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSelectProject{ScheduleFormSelectProject: sub}
+				continue
+			}
+		case 344:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormStringAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSelectMachine); ok && cur != nil {
+					sub = cur.ScheduleFormSelectMachine
+				}
+				if sub == nil {
+					sub = &ScheduleFormStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSelectMachine{ScheduleFormSelectMachine: sub}
+				continue
+			}
+		case 345:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormSelectAgentAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSelectAgent); ok && cur != nil {
+					sub = cur.ScheduleFormSelectAgent
+				}
+				if sub == nil {
+					sub = &ScheduleFormSelectAgentAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSelectAgent{ScheduleFormSelectAgent: sub}
+				continue
+			}
+		case 346:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormSelectModelAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSelectModel); ok && cur != nil {
+					sub = cur.ScheduleFormSelectModel
+				}
+				if sub == nil {
+					sub = &ScheduleFormSelectModelAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSelectModel{ScheduleFormSelectModel: sub}
+				continue
+			}
+		case 347:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormUpdateTimingAction
+				if cur, ok := m.Event.(*Event_ScheduleFormUpdateTiming); ok && cur != nil {
+					sub = cur.ScheduleFormUpdateTiming
+				}
+				if sub == nil {
+					sub = &ScheduleFormUpdateTimingAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormUpdateTiming{ScheduleFormUpdateTiming: sub}
+				continue
+			}
+		case 348:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormBoolAction
+				if cur, ok := m.Event.(*Event_ScheduleFormSubmit); ok && cur != nil {
+					sub = cur.ScheduleFormSubmit
+				}
+				if sub == nil {
+					sub = &ScheduleFormBoolAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormSubmit{ScheduleFormSubmit: sub}
+				continue
+			}
+		case 349:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleFormStringAction
+				if cur, ok := m.Event.(*Event_ScheduleFormRetryModels); ok && cur != nil {
+					sub = cur.ScheduleFormRetryModels
+				}
+				if sub == nil {
+					sub = &ScheduleFormStringAction{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Event = &Event_ScheduleFormRetryModels{ScheduleFormRetryModels: sub}
 				continue
 			}
 		case 98:
@@ -16386,6 +18380,32 @@ type Effect_SessionRestoreComposer struct{ SessionRestoreComposer *SessionRestor
 
 func (*Effect_SessionRestoreComposer) isEffect_Effect() {}
 
+type Effect_ScheduleReadCache struct{ ScheduleReadCache *ScheduleReadCacheEffect }
+
+func (*Effect_ScheduleReadCache) isEffect_Effect() {}
+
+type Effect_ScheduleDeleteCache struct{ ScheduleDeleteCache *ScheduleDeleteCacheEffect }
+
+func (*Effect_ScheduleDeleteCache) isEffect_Effect() {}
+
+type Effect_ScheduleLoadSeen struct{ ScheduleLoadSeen *ScheduleLoadSeenEffect }
+
+func (*Effect_ScheduleLoadSeen) isEffect_Effect() {}
+
+type Effect_ScheduleSaveSeen struct{ ScheduleSaveSeen *ScheduleSaveSeenEffect }
+
+func (*Effect_ScheduleSaveSeen) isEffect_Effect() {}
+
+type Effect_ScheduleDismissNotifications struct {
+	ScheduleDismissNotifications *ScheduleDismissNotificationsEffect
+}
+
+func (*Effect_ScheduleDismissNotifications) isEffect_Effect() {}
+
+type Effect_ScheduleNavigate struct{ ScheduleNavigate *ScheduleNavigateEffect }
+
+func (*Effect_ScheduleNavigate) isEffect_Effect() {}
+
 func (m *Effect) Reset() {
 	if m != nil {
 		*m = Effect{}
@@ -16542,6 +18562,42 @@ func (m *Effect) GetSessionRestoreComposer() *SessionRestoreComposerEffect {
 	}
 	return nil
 }
+func (m *Effect) GetScheduleReadCache() *ScheduleReadCacheEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleReadCache); ok && x != nil {
+		return x.ScheduleReadCache
+	}
+	return nil
+}
+func (m *Effect) GetScheduleDeleteCache() *ScheduleDeleteCacheEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleDeleteCache); ok && x != nil {
+		return x.ScheduleDeleteCache
+	}
+	return nil
+}
+func (m *Effect) GetScheduleLoadSeen() *ScheduleLoadSeenEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleLoadSeen); ok && x != nil {
+		return x.ScheduleLoadSeen
+	}
+	return nil
+}
+func (m *Effect) GetScheduleSaveSeen() *ScheduleSaveSeenEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleSaveSeen); ok && x != nil {
+		return x.ScheduleSaveSeen
+	}
+	return nil
+}
+func (m *Effect) GetScheduleDismissNotifications() *ScheduleDismissNotificationsEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleDismissNotifications); ok && x != nil {
+		return x.ScheduleDismissNotifications
+	}
+	return nil
+}
+func (m *Effect) GetScheduleNavigate() *ScheduleNavigateEffect {
+	if x, ok := m.GetEffect().(*Effect_ScheduleNavigate); ok && x != nil {
+		return x.ScheduleNavigate
+	}
+	return nil
+}
 
 func (m *Effect) Clone() *Effect {
 	if m == nil {
@@ -16644,6 +18700,30 @@ func (m *Effect) Clone() *Effect {
 	case *Effect_SessionRestoreComposer:
 		if v != nil {
 			cp.Effect = &Effect_SessionRestoreComposer{SessionRestoreComposer: v.SessionRestoreComposer.Clone()}
+		}
+	case *Effect_ScheduleReadCache:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleReadCache{ScheduleReadCache: v.ScheduleReadCache.Clone()}
+		}
+	case *Effect_ScheduleDeleteCache:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleDeleteCache{ScheduleDeleteCache: v.ScheduleDeleteCache.Clone()}
+		}
+	case *Effect_ScheduleLoadSeen:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleLoadSeen{ScheduleLoadSeen: v.ScheduleLoadSeen.Clone()}
+		}
+	case *Effect_ScheduleSaveSeen:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleSaveSeen{ScheduleSaveSeen: v.ScheduleSaveSeen.Clone()}
+		}
+	case *Effect_ScheduleDismissNotifications:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleDismissNotifications{ScheduleDismissNotifications: v.ScheduleDismissNotifications.Clone()}
+		}
+	case *Effect_ScheduleNavigate:
+		if v != nil {
+			cp.Effect = &Effect_ScheduleNavigate{ScheduleNavigate: v.ScheduleNavigate.Clone()}
 		}
 	}
 	return &cp
@@ -16797,6 +18877,42 @@ func (m *Effect) Size() int {
 		if x != nil {
 			if x.SessionRestoreComposer != nil {
 				n += litewire.SizeMessage(40, x.SessionRestoreComposer.Size())
+			}
+		}
+	case *Effect_ScheduleReadCache:
+		if x != nil {
+			if x.ScheduleReadCache != nil {
+				n += litewire.SizeMessage(60, x.ScheduleReadCache.Size())
+			}
+		}
+	case *Effect_ScheduleDeleteCache:
+		if x != nil {
+			if x.ScheduleDeleteCache != nil {
+				n += litewire.SizeMessage(61, x.ScheduleDeleteCache.Size())
+			}
+		}
+	case *Effect_ScheduleLoadSeen:
+		if x != nil {
+			if x.ScheduleLoadSeen != nil {
+				n += litewire.SizeMessage(62, x.ScheduleLoadSeen.Size())
+			}
+		}
+	case *Effect_ScheduleSaveSeen:
+		if x != nil {
+			if x.ScheduleSaveSeen != nil {
+				n += litewire.SizeMessage(63, x.ScheduleSaveSeen.Size())
+			}
+		}
+	case *Effect_ScheduleDismissNotifications:
+		if x != nil {
+			if x.ScheduleDismissNotifications != nil {
+				n += litewire.SizeMessage(64, x.ScheduleDismissNotifications.Size())
+			}
+		}
+	case *Effect_ScheduleNavigate:
+		if x != nil {
+			if x.ScheduleNavigate != nil {
+				n += litewire.SizeMessage(65, x.ScheduleNavigate.Size())
 			}
 		}
 	}
@@ -16985,6 +19101,48 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 			if x.SessionRestoreComposer != nil {
 				b = litewire.AppendMessagePrefix(b, 40, x.SessionRestoreComposer.Size())
 				b = x.SessionRestoreComposer.AppendMarshal(b)
+			}
+		}
+	case *Effect_ScheduleReadCache:
+		if x != nil {
+			if x.ScheduleReadCache != nil {
+				b = litewire.AppendMessagePrefix(b, 60, x.ScheduleReadCache.Size())
+				b = x.ScheduleReadCache.AppendMarshal(b)
+			}
+		}
+	case *Effect_ScheduleDeleteCache:
+		if x != nil {
+			if x.ScheduleDeleteCache != nil {
+				b = litewire.AppendMessagePrefix(b, 61, x.ScheduleDeleteCache.Size())
+				b = x.ScheduleDeleteCache.AppendMarshal(b)
+			}
+		}
+	case *Effect_ScheduleLoadSeen:
+		if x != nil {
+			if x.ScheduleLoadSeen != nil {
+				b = litewire.AppendMessagePrefix(b, 62, x.ScheduleLoadSeen.Size())
+				b = x.ScheduleLoadSeen.AppendMarshal(b)
+			}
+		}
+	case *Effect_ScheduleSaveSeen:
+		if x != nil {
+			if x.ScheduleSaveSeen != nil {
+				b = litewire.AppendMessagePrefix(b, 63, x.ScheduleSaveSeen.Size())
+				b = x.ScheduleSaveSeen.AppendMarshal(b)
+			}
+		}
+	case *Effect_ScheduleDismissNotifications:
+		if x != nil {
+			if x.ScheduleDismissNotifications != nil {
+				b = litewire.AppendMessagePrefix(b, 64, x.ScheduleDismissNotifications.Size())
+				b = x.ScheduleDismissNotifications.AppendMarshal(b)
+			}
+		}
+	case *Effect_ScheduleNavigate:
+		if x != nil {
+			if x.ScheduleNavigate != nil {
+				b = litewire.AppendMessagePrefix(b, 65, x.ScheduleNavigate.Size())
+				b = x.ScheduleNavigate.AppendMarshal(b)
 			}
 		}
 	}
@@ -17452,6 +19610,120 @@ func (m *Effect) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Effect = &Effect_SessionRestoreComposer{SessionRestoreComposer: sub}
+				continue
+			}
+		case 60:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleReadCacheEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleReadCache); ok && cur != nil {
+					sub = cur.ScheduleReadCache
+				}
+				if sub == nil {
+					sub = &ScheduleReadCacheEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleReadCache{ScheduleReadCache: sub}
+				continue
+			}
+		case 61:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleDeleteCacheEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleDeleteCache); ok && cur != nil {
+					sub = cur.ScheduleDeleteCache
+				}
+				if sub == nil {
+					sub = &ScheduleDeleteCacheEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleDeleteCache{ScheduleDeleteCache: sub}
+				continue
+			}
+		case 62:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleLoadSeenEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleLoadSeen); ok && cur != nil {
+					sub = cur.ScheduleLoadSeen
+				}
+				if sub == nil {
+					sub = &ScheduleLoadSeenEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleLoadSeen{ScheduleLoadSeen: sub}
+				continue
+			}
+		case 63:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleSaveSeenEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleSaveSeen); ok && cur != nil {
+					sub = cur.ScheduleSaveSeen
+				}
+				if sub == nil {
+					sub = &ScheduleSaveSeenEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleSaveSeen{ScheduleSaveSeen: sub}
+				continue
+			}
+		case 64:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleDismissNotificationsEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleDismissNotifications); ok && cur != nil {
+					sub = cur.ScheduleDismissNotifications
+				}
+				if sub == nil {
+					sub = &ScheduleDismissNotificationsEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleDismissNotifications{ScheduleDismissNotifications: sub}
+				continue
+			}
+		case 65:
+			if wtyp == litewire.BytesType {
+				raw, err := litewire.ReadBytesRaw(&b)
+				if err != nil {
+					return err
+				}
+				var sub *ScheduleNavigateEffect
+				if cur, ok := m.Effect.(*Effect_ScheduleNavigate); ok && cur != nil {
+					sub = cur.ScheduleNavigate
+				}
+				if sub == nil {
+					sub = &ScheduleNavigateEffect{}
+				}
+				if err := sub.Unmarshal(raw); err != nil {
+					return err
+				}
+				m.Effect = &Effect_ScheduleNavigate{ScheduleNavigate: sub}
 				continue
 			}
 		}

@@ -8,6 +8,7 @@ import "remoteagent/core/v1/new_session_view.proto";
 import "remoteagent/core/v1/project_view.proto";
 import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/session_view.proto";
+import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
@@ -52,6 +53,10 @@ message Screen {
     DevicesScreenRequest devices = 34;
     ClientDetailScreenRequest client_detail = 35;
     SessionScreenRequest session = 10;
+    SchedulesScreenRequest schedules = 20;
+    ScheduleDetailScreenRequest schedule_detail = 21;
+    ScheduleFormScreenRequest schedule_form = 22;
+    ScheduleSessionStripScreenRequest schedule_session_strip = 23;
   }
 }
 
@@ -71,6 +76,10 @@ message ViewModel {
     DevicesViewModel devices = 34;
     ClientDetailViewModel client_detail = 35;
     SessionViewModel session = 10;
+    SchedulesViewModel schedules = 20;
+    ScheduleDetailViewModel schedule_detail = 21;
+    ScheduleFormViewModel schedule_form = 22;
+    ScheduleSessionStripViewModel schedule_session_strip = 23;
   }
 }
 
@@ -540,6 +549,41 @@ message Event {
     SessionOutgoingAction session_restore_outgoing = 204;
     SessionQuestionStepAction session_set_question_index = 205;
     SessionRefreshHistoryAction session_load_earlier = 206;
+    ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
+    ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
+    ScheduleLocalContextEvent schedule_local_context = 302;
+    ScheduleStringAction schedule_refresh = 303;
+    ScheduleStringAction schedule_set_visible_session = 304;
+    ScheduleBoolAction schedule_list_open = 310;
+    ScheduleTaskRef schedule_select_task = 311;
+    ScheduleBoolAction schedule_toggle_ended = 312;
+    ScheduleMarkReadAction schedule_mark_read = 313;
+    ScheduleTaskBoolAction schedule_mark_unread = 314;
+    ScheduleTaskRef schedule_detail_open = 320;
+    ScheduleTaskRef schedule_detail_hide = 321;
+    ScheduleTaskRef schedule_detail_close = 322;
+    ScheduleTaskRef schedule_detail_show_latest_result = 323;
+    ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324;
+    ScheduleTaskBoolAction schedule_detail_show_all_runs = 325;
+    ScheduleTaskStringAction schedule_detail_open_run = 326;
+    ScheduleOperateAction schedule_operate = 330;
+    ScheduleTaskStringAction schedule_rename = 331;
+    ScheduleTaskBoolAction schedule_set_notify = 332;
+    ScheduleTaskStringAction schedule_update_message = 333;
+    ScheduleMutationRef schedule_abandon_mutation = 334;
+    ScheduleMutationRef schedule_retry_mutation = 335;
+    ScheduleFormOpenAction schedule_form_open = 338;
+    ScheduleFormBoolAction schedule_form_close = 339;
+    ScheduleFormStringAction schedule_form_set_message = 340;
+    ScheduleFormStringAction schedule_form_set_title = 341;
+    ScheduleFormBoolAction schedule_form_set_notify = 342;
+    ScheduleFormSelectProjectAction schedule_form_select_project = 343;
+    ScheduleFormStringAction schedule_form_select_machine = 344;
+    ScheduleFormSelectAgentAction schedule_form_select_agent = 345;
+    ScheduleFormSelectModelAction schedule_form_select_model = 346;
+    ScheduleFormUpdateTimingAction schedule_form_update_timing = 347;
+    ScheduleFormBoolAction schedule_form_submit = 348;
+    ScheduleFormStringAction schedule_form_retry_models = 349;
   }
   int64 now_ms = 98;
   int64 mono_ms = 99;
@@ -563,6 +607,10 @@ enum ScreenTarget {
   SCREEN_TARGET_DEVICES = 34;
   SCREEN_TARGET_CLIENT_DETAIL = 35;
   SCREEN_TARGET_SESSION = 10;
+  SCREEN_TARGET_SCHEDULES = 20;
+  SCREEN_TARGET_SCHEDULE_DETAIL = 21;
+  SCREEN_TARGET_SCHEDULE_FORM = 22;
+  SCREEN_TARGET_SCHEDULE_SESSION_STRIP = 23;
 }
 
 message RenderEffect {
@@ -782,6 +830,12 @@ message Effect {
     PersistClientPrefsEffect persist_client_prefs = 74;
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
     SessionRestoreComposerEffect session_restore_composer = 40;
+    ScheduleReadCacheEffect schedule_read_cache = 60;
+    ScheduleDeleteCacheEffect schedule_delete_cache = 61;
+    ScheduleLoadSeenEffect schedule_load_seen = 62;
+    ScheduleSaveSeenEffect schedule_save_seen = 63;
+    ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64;
+    ScheduleNavigateEffect schedule_navigate = 65;
   }
 }
 

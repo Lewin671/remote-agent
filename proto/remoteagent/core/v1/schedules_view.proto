@@ -1,0 +1,709 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/home_view.proto";
+import "remoteagent/core/v1/new_session_view.proto";
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+
+// --- Shared Enums ---
+
+enum ScheduleDisplayGroup {
+  SCHEDULE_DISPLAY_GROUP_UNSPECIFIED = 0;
+  SCHEDULE_DISPLAY_GROUP_ATTENTION = 1;
+  SCHEDULE_DISPLAY_GROUP_FRESH = 2;
+  SCHEDULE_DISPLAY_GROUP_OTHER = 3;
+  SCHEDULE_DISPLAY_GROUP_ENDED = 4;
+}
+
+enum ScheduleTaskStatus {
+  SCHEDULE_TASK_STATUS_UNSPECIFIED = 0;
+  SCHEDULE_TASK_STATUS_ACTIVE = 1;
+  SCHEDULE_TASK_STATUS_PAUSED = 2;
+  SCHEDULE_TASK_STATUS_FAILED = 3;
+  SCHEDULE_TASK_STATUS_UNCERTAIN = 4;
+  SCHEDULE_TASK_STATUS_COMPLETED = 5;
+  SCHEDULE_TASK_STATUS_CANCELLED = 6;
+}
+
+enum ScheduleTone {
+  SCHEDULE_TONE_UNSPECIFIED = 0;
+  SCHEDULE_TONE_NEUTRAL = 1;
+  SCHEDULE_TONE_LIVE = 2;
+  SCHEDULE_TONE_WARN = 3;
+  SCHEDULE_TONE_BAD = 4;
+}
+
+enum ScheduleRunStatus {
+  SCHEDULE_RUN_STATUS_UNSPECIFIED = 0;
+  SCHEDULE_RUN_STATUS_DISPATCHING = 1;
+  SCHEDULE_RUN_STATUS_QUEUED = 2;
+  SCHEDULE_RUN_STATUS_RUNNING = 3;
+  SCHEDULE_RUN_STATUS_COMPLETED = 4;
+  SCHEDULE_RUN_STATUS_FAILED = 5;
+  SCHEDULE_RUN_STATUS_UNCERTAIN = 6;
+  SCHEDULE_RUN_STATUS_INTERRUPTED = 7;
+  SCHEDULE_RUN_STATUS_SKIPPED = 8;
+  SCHEDULE_RUN_STATUS_CANCELLED = 9;
+}
+
+enum ScheduleTargetType {
+  SCHEDULE_TARGET_TYPE_UNSPECIFIED = 0;
+  SCHEDULE_TARGET_TYPE_NEW_SESSION = 1;
+  SCHEDULE_TARGET_TYPE_RESUME_SESSION = 2;
+}
+
+enum ScheduleSource {
+  SCHEDULE_SOURCE_UNSPECIFIED = 0;
+  SCHEDULE_SOURCE_CLIENT = 1;
+  SCHEDULE_SOURCE_AGENT = 2;
+  SCHEDULE_SOURCE_LOCAL = 3;
+}
+
+enum ScheduleTakeoverVia {
+  SCHEDULE_TAKEOVER_VIA_UNSPECIFIED = 0;
+  SCHEDULE_TAKEOVER_VIA_CLIENT = 1;
+  SCHEDULE_TAKEOVER_VIA_LOCAL = 2;
+}
+
+enum ScheduleHeadlineKind {
+  SCHEDULE_HEADLINE_KIND_UNSPECIFIED = 0;
+  SCHEDULE_HEADLINE_KIND_EMPTY = 1;
+  SCHEDULE_HEADLINE_KIND_STOPPED = 2;
+  SCHEDULE_HEADLINE_KIND_NEW_RESULTS = 3;
+  SCHEDULE_HEADLINE_KIND_NO_NEW_RESULTS = 4;
+}
+
+enum ScheduleOperationKind {
+  SCHEDULE_OPERATION_KIND_UNSPECIFIED = 0;
+  SCHEDULE_OPERATION_KIND_PAUSE = 1;
+  SCHEDULE_OPERATION_KIND_RESUME = 2;
+  SCHEDULE_OPERATION_KIND_RUN = 3;
+  SCHEDULE_OPERATION_KIND_CANCEL = 4;
+  SCHEDULE_OPERATION_KIND_RECOVER = 5;
+}
+
+enum ScheduleRecoveryActionKind {
+  SCHEDULE_RECOVERY_ACTION_KIND_UNSPECIFIED = 0;
+  SCHEDULE_RECOVERY_ACTION_KIND_RUN_ONCE = 1;
+  SCHEDULE_RECOVERY_ACTION_KIND_RESUME = 2;
+  SCHEDULE_RECOVERY_ACTION_KIND_REACTIVATE_UPDATE = 3;
+  SCHEDULE_RECOVERY_ACTION_KIND_REARM_TIMING = 4;
+}
+
+enum ScheduleTimingKind {
+  SCHEDULE_TIMING_KIND_UNSPECIFIED = 0;
+  SCHEDULE_TIMING_KIND_ONCE = 1;
+  SCHEDULE_TIMING_KIND_DAILY = 2;
+  SCHEDULE_TIMING_KIND_WEEKLY = 3;
+  SCHEDULE_TIMING_KIND_INTERVAL = 4;
+  SCHEDULE_TIMING_KIND_AFTER_TURN = 5;
+}
+
+enum ScheduleIntervalUnit {
+  SCHEDULE_INTERVAL_UNIT_UNSPECIFIED = 0;
+  SCHEDULE_INTERVAL_UNIT_MINUTES = 1;
+  SCHEDULE_INTERVAL_UNIT_HOURS = 2;
+  SCHEDULE_INTERVAL_UNIT_DAYS = 3;
+  SCHEDULE_INTERVAL_UNIT_SECONDS = 4;
+}
+
+enum ScheduleTimingEnd {
+  SCHEDULE_TIMING_END_UNSPECIFIED = 0;
+  SCHEDULE_TIMING_END_NEVER = 1;
+  SCHEDULE_TIMING_END_COUNT = 2;
+  SCHEDULE_TIMING_END_DATE = 3;
+}
+
+enum ScheduleFormMode {
+  SCHEDULE_FORM_MODE_UNSPECIFIED = 0;
+  SCHEDULE_FORM_MODE_CREATE_NEW = 1;
+  SCHEDULE_FORM_MODE_CREATE_FOR_SESSION = 2;
+  SCHEDULE_FORM_MODE_EDIT_TIMING = 3;
+  SCHEDULE_FORM_MODE_EDIT_TARGET = 4;
+  SCHEDULE_FORM_MODE_EDIT_MODE = 5;
+  SCHEDULE_FORM_MODE_EDIT_MESSAGE = 6;
+  SCHEDULE_FORM_MODE_EDIT_RENAME = 7;
+}
+
+enum ScheduleFormNoticeSeverity {
+  SCHEDULE_FORM_NOTICE_SEVERITY_UNSPECIFIED = 0;
+  SCHEDULE_FORM_NOTICE_SEVERITY_INFO = 1;
+  SCHEDULE_FORM_NOTICE_SEVERITY_WARN = 2;
+  SCHEDULE_FORM_NOTICE_SEVERITY_ERROR = 3;
+}
+
+enum ScheduleFormNoticeKind {
+  SCHEDULE_FORM_NOTICE_KIND_UNSPECIFIED = 0;
+  SCHEDULE_FORM_NOTICE_KIND_UNSUPPORTED_MACHINE = 1;
+  SCHEDULE_FORM_NOTICE_KIND_MACHINE_OFFLINE = 2;
+  SCHEDULE_FORM_NOTICE_KIND_PLAN_MODE_BLOCKED = 3;
+  SCHEDULE_FORM_NOTICE_KIND_MODE_REQUIRED = 4;
+  SCHEDULE_FORM_NOTICE_KIND_READING_PREVIOUS = 5;
+  SCHEDULE_FORM_NOTICE_KIND_INTERVAL_HINT = 6;
+  SCHEDULE_FORM_NOTICE_KIND_TARGET_INFO_HINT = 7;
+  SCHEDULE_FORM_NOTICE_KIND_FROZEN_ATTEMPT = 8;
+}
+
+enum ScheduleNavigateRoute {
+  SCHEDULE_NAVIGATE_ROUTE_UNSPECIFIED = 0;
+  SCHEDULE_NAVIGATE_ROUTE_LIST = 1;
+  SCHEDULE_NAVIGATE_ROUTE_DETAIL = 2;
+  SCHEDULE_NAVIGATE_ROUTE_SESSION = 3;
+  SCHEDULE_NAVIGATE_ROUTE_FORM_TIMING = 4;
+  SCHEDULE_NAVIGATE_ROUTE_CLOSE_FORM = 5;
+}
+
+// --- Screen Requests ---
+
+message SchedulesScreenRequest {
+  int32 ended_limit = 1;
+}
+
+message ScheduleDetailScreenRequest {
+  string machine_id = 1;
+  string task_id = 2;
+  int32 earlier_runs_limit = 3;
+}
+
+message ScheduleFormScreenRequest {
+  string form_key = 1;
+}
+
+message ScheduleSessionStripScreenRequest {
+  string session_id = 1;
+}
+
+// --- Shared Sub-Views ---
+
+message ScheduleTakeoverView {
+  bool has_takeover = 1;
+  string session_id = 2;
+  ScheduleTakeoverVia via = 3;
+  Text label = 4;
+}
+
+message ScheduleTaskActionsView {
+  bool can_run_now = 1;
+  Text run_now_disabled_reason = 2;
+  bool show_toggle_action = 3;
+  bool is_resume_action = 4;
+  Text toggle_label = 5;
+  bool can_toggle = 6;
+  Text toggle_disabled_reason = 7;
+  bool can_delete = 8;
+  Text delete_disabled_reason = 9;
+  bool can_mark_read = 10;
+  bool can_mark_unread = 11;
+  bool can_rename = 12;
+  Text rename_disabled_reason = 13;
+  bool can_edit_definition = 14;
+  Text edit_definition_disabled_reason = 15;
+  bool can_toggle_notify = 16;
+  Text notify_disabled_reason = 17;
+}
+
+message ScheduleMutationView {
+  bool busy = 1;
+  bool frozen = 2;
+  bool expired = 3;
+  Text error = 4;
+  Text notice = 5;
+  bool can_retry = 6;
+  bool can_abandon = 7;
+  Text frozen_hint = 8;
+}
+
+// --- List Screen ViewModel ---
+
+message ScheduleHeadlineView {
+  ScheduleHeadlineKind kind = 1;
+  int32 highlight_count = 2;
+  Text title = 3;
+  Text sub = 4;
+}
+
+message ScheduleMachineErrorView {
+  string machine_id = 1;
+  string machine_name = 2;
+  Text error = 3;
+  bool can_retry = 4;
+}
+
+message ScheduleTaskItemView {
+  string machine_id = 1;
+  string task_id = 2;
+  string title = 3;
+  ScheduleDisplayGroup group = 4;
+  ScheduleTaskStatus status = 5;
+  ScheduleTone tone = 6;
+  bool has_unread = 7;
+  bool in_progress = 8;
+  bool paused = 9;
+  bool machine_offline = 10;
+  bool selected = 11;
+  Text time_text = 12;
+  Text attention_lead = 13;
+  Text attention_reason = 14;
+  Text preview = 15;
+  bool preview_is_placeholder = 16;
+  Text metadata = 17;
+  Text timing_text = 18;
+  Text next_run_text = 19;
+  int64 next_run_ms = 20;
+  bool has_notification = 21;
+  bool is_agent_created = 22;
+  ScheduleTakeoverView takeover = 23;
+  bool read_only = 24;
+  Text read_only_reason = 25;
+  ScheduleTaskActionsView actions = 26;
+  Text menu_subtitle = 27;
+}
+
+message SchedulesViewModel {
+  int32 attention_count = 1;
+  bool has_new_results = 2;
+  string attention_badge_text = 3;
+  bool can_create = 4;
+  ConnectionStatusView connection = 5;
+  ScheduleHeadlineView headline = 6;
+  bool any_machine_supported = 7;
+  Text unsupported_notice = 8;
+  Text offline_notice = 9;
+  repeated ScheduleMachineErrorView machine_errors = 10;
+  bool loading = 11;
+  bool show_empty_hint = 12;
+  Text empty_hint = 13;
+  repeated ScheduleTaskItemView attention = 14;
+  repeated ScheduleTaskItemView fresh = 15;
+  repeated ScheduleTaskItemView others = 16;
+  repeated ScheduleTaskItemView ended = 17;
+  int32 total_ended = 18;
+  bool has_more_ended = 19;
+  bool ended_expanded = 20;
+  Text ended_label = 21;
+  Text others_section_title = 22;
+  bool can_mark_all_read = 23;
+  string selected_machine_id = 24;
+  string selected_task_id = 25;
+}
+
+// --- Detail Screen ViewModel ---
+
+message ScheduleAttentionView {
+  bool show = 1;
+  Text message = 2;
+  bool show_primary_action = 3;
+  Text primary_action_label = 4;
+  ScheduleRecoveryActionKind primary_action_kind = 5;
+  bool primary_action_enabled = 6;
+  Text primary_action_disabled_reason = 7;
+}
+
+message ScheduleActiveRunView {
+  bool has_active = 1;
+  string run_id = 2;
+  string session_id = 3;
+  uint64 first_seq = 4;
+  ScheduleRunStatus status = 5;
+  Text status_text = 6;
+  bool can_open_session = 7;
+}
+
+message ScheduleResultCardView {
+  bool has_result = 1;
+  string run_id = 2;
+  string session_id = 3;
+  uint64 first_seq = 4;
+  bool unread_on_entry = 5;
+  bool has_newer_result = 6;
+  Text time_text = 7;
+  string result_title = 8;
+  string markdown_body = 9;
+  Text fallback_reason_text = 10;
+  bool result_loading = 11;
+  bool show_conversation_action = 12;
+}
+
+message ScheduleRunRowView {
+  string run_id = 1;
+  string session_id = 2;
+  uint64 first_seq = 3;
+  ScheduleRunStatus status = 4;
+  bool unread_on_entry = 5;
+  bool manual = 6;
+  bool notified = 7;
+  Text notification_source_text = 8;
+  Text time_text = 9;
+  Text summary_text = 10;
+  bool can_open_session = 11;
+}
+
+message ScheduleHistoryGroupView {
+  string group_key = 1;
+  bool folded_quiet = 2;
+  bool expanded = 3;
+  Text folded_title = 4;
+  Text folded_summary = 5;
+  repeated ScheduleRunRowView runs = 6;
+}
+
+message ScheduleDetailViewModel {
+  bool found = 1;
+  bool loading = 2;
+  Text not_found_text = 3;
+  string machine_id = 4;
+  string task_id = 5;
+  uint64 revision = 6;
+  string title = 7;
+  Text subtitle = 8;
+  ConnectionStatusView connection = 9;
+  bool machine_online = 10;
+  bool machine_supported = 11;
+  bool read_only = 12;
+  Text read_only_notice = 13;
+  Text machine_error = 14;
+  bool can_retry_machine_list = 15;
+  ScheduleMutationView mutation = 16;
+  ScheduleAttentionView attention = 17;
+  ScheduleActiveRunView active_run = 18;
+  ScheduleResultCardView result_card = 19;
+  repeated ScheduleHistoryGroupView earlier_groups = 20;
+  int32 total_earlier_runs = 21;
+  bool has_more_earlier_runs = 22;
+  bool show_all_runs = 23;
+  Text earlier_count_text = 24;
+  Text view_all_text = 25;
+  bool empty_history = 26;
+  Text empty_history_text = 27;
+  string message = 28;
+  Text timing_text = 29;
+  bool notify_on_finish = 30;
+  bool has_limits = 31;
+  Text limits_text = 32;
+  ScheduleTargetType target_type = 33;
+  string target_session_id = 34;
+  Text target_label = 35;
+  Text target_value = 36;
+  bool can_open_target_session = 37;
+  Text permissions_text = 38;
+  bool permissions_is_danger = 39;
+  bool can_edit_permissions = 40;
+  string task_name = 41;
+  Text creation_footer = 42;
+  Text run_once_footer = 43;
+  ScheduleSource source = 44;
+  ScheduleTakeoverView takeover = 45;
+  string scoped_session_id = 46;
+  string scoped_mode = 47;
+  ScheduleTaskActionsView actions = 48;
+  Text menu_subtitle = 49;
+}
+
+// --- Form Screen ViewModel ---
+
+message ScheduleTimingDraftView {
+  ScheduleTimingKind kind = 1;
+  bool after_turn_unselected = 2;
+  Text after_turn_hint = 3;
+  string date = 4;
+  string time = 5;
+  string zone = 6;
+  bool workdays = 7;
+  repeated int32 weekdays = 8;
+  string interval = 9;
+  ScheduleIntervalUnit unit = 10;
+  ScheduleTimingEnd end = 11;
+  string count = 12;
+  string until_date = 13;
+  int64 until_ms = 14;
+  bool show_interval_hint = 15;
+  Text interval_hint = 16;
+  Text timing_error = 17;
+  bool timing_done_enabled = 18;
+  bool timing_applied = 19;
+}
+
+message ScheduleProjectOptionView {
+  string project_key = 1;
+  Text name = 2;
+  string short_path = 3;
+  bool selected = 4;
+}
+
+message ScheduleMachineOptionView {
+  string machine_id = 1;
+  string name = 2;
+  bool online = 3;
+  bool supported = 4;
+  bool selected = 5;
+  Text note = 6;
+}
+
+message ScheduleModeOptionView {
+  remoteagent.v1.ApprovalMode mode = 1;
+  Text label = 2;
+  bool is_danger = 3;
+  bool selected = 4;
+  bool enabled = 5;
+  Text disabled_reason = 6;
+}
+
+message ScheduleModelPanelView {
+  bool models_loading = 1;
+  Text models_error = 2;
+  Text default_model_label = 3;
+  bool default_model_checked = 4;
+  repeated ModelOptionView models = 5;
+  repeated string effort_choices = 6;
+  string selected_effort = 7;
+  bool panel_enabled = 8;
+}
+
+message ScheduleFormNoticeView {
+  ScheduleFormNoticeKind kind = 1;
+  ScheduleFormNoticeSeverity severity = 2;
+  Text text = 3;
+}
+
+message ScheduleFormViewModel {
+  string form_key = 1;
+  ScheduleFormMode mode = 2;
+  bool open = 3;
+  string machine_id = 4;
+  string task_id = 5;
+  string session_id = 6;
+  string project_key = 7;
+  bool lock_machine = 8;
+  string message = 9;
+  bool message_valid = 10;
+  bool message_too_long = 11;
+  Text message_error = 12;
+  string title = 13;
+  Text title_placeholder = 14;
+  string auto_title = 15;
+  bool notify_on_finish = 16;
+  Text timing_summary = 17;
+  ScheduleTimingDraftView timing = 18;
+  Text project_name = 19;
+  string project_short_path = 20;
+  bool has_project = 21;
+  repeated ScheduleProjectOptionView project_choices = 22;
+  string machine_name = 23;
+  bool machine_selectable = 24;
+  repeated ScheduleMachineOptionView machine_choices = 25;
+  remoteagent.v1.Agent agent = 26;
+  string agent_name = 27;
+  repeated AgentOptionView available_agents = 28;
+  string model = 29;
+  string effort = 30;
+  Text model_label = 31;
+  string effort_label = 32;
+  ScheduleModelPanelView model_panel = 33;
+  remoteagent.v1.ApprovalMode approval_mode = 34;
+  Text approval_mode_label = 35;
+  bool approval_mode_is_danger = 36;
+  repeated ScheduleModeOptionView mode_choices = 37;
+  bool requires_full_access_confirm = 38;
+  Text location_text = 39;
+  bool editable = 40;
+  bool can_submit = 41;
+  Text submit_label = 42;
+  Text submit_disabled_reason = 43;
+  bool has_unsaved_changes = 44;
+  repeated ScheduleFormNoticeView notices = 45;
+  ScheduleMutationView mutation = 46;
+}
+
+// --- Session Strip ViewModel ---
+
+message ScheduleSessionStripTaskView {
+  string machine_id = 1;
+  string task_id = 2;
+  string title = 3;
+  Text timing_text = 4;
+  Text next_run_text = 5;
+  bool has_unread = 6;
+  ScheduleTaskStatus status = 7;
+}
+
+message ScheduleSessionStripViewModel {
+  string session_id = 1;
+  bool visible = 2;
+  int32 count = 3;
+  Text summary_text = 4;
+  repeated ScheduleSessionStripTaskView tasks = 5;
+  bool machine_offline = 6;
+}
+
+// --- Effects (60-69) ---
+
+message ScheduleReadCacheEffect {
+  uint64 op_id = 1;
+  string machine_id = 2;
+}
+
+message ScheduleDeleteCacheEffect {
+  string machine_id = 1;
+}
+
+message ScheduleSeenToken {
+  string task_id = 1;
+  string run_id = 2;
+}
+
+message ScheduleLoadSeenEffect {
+  string machine_id = 1;
+}
+
+message ScheduleSaveSeenEffect {
+  string machine_id = 1;
+  repeated ScheduleSeenToken tokens = 2;
+}
+
+message ScheduleNotificationRef {
+  string machine_id = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string session_id = 4;
+  uint64 notification_seq = 5;
+}
+
+message ScheduleDismissNotificationsEffect {
+  repeated ScheduleNotificationRef runs = 1;
+}
+
+message ScheduleNavigateEffect {
+  ScheduleNavigateRoute route = 1;
+  string machine_id = 2;
+  string task_id = 3;
+  string session_id = 4;
+  string run_id = 5;
+  uint64 first_seq = 6;
+  string form_key = 7;
+}
+
+// --- Events (300-349) ---
+
+message ScheduleCacheLoadedEvent {
+  uint64 op_id = 1;
+  string machine_id = 2;
+  bytes result_json = 3;
+  string error = 4;
+}
+
+message ScheduleSeenLoadedEvent {
+  string machine_id = 1;
+  repeated ScheduleSeenToken tokens = 2;
+  bool found = 3;
+  string error = 4;
+}
+
+message ScheduleLocalContextEvent {
+  string local_timezone = 1;
+  int64 tomorrow_start_ms = 2;
+  int64 day_after_tomorrow_start_ms = 3;
+}
+
+message ScheduleStringAction {
+  string value = 1;
+}
+
+message ScheduleBoolAction {
+  optional bool value = 1;
+}
+
+message ScheduleTaskRef {
+  string machine_id = 1;
+  string task_id = 2;
+}
+
+message ScheduleTaskStringAction {
+  string machine_id = 1;
+  string task_id = 2;
+  string value = 3;
+}
+
+message ScheduleTaskBoolAction {
+  string machine_id = 1;
+  string task_id = 2;
+  bool value = 3;
+}
+
+message ScheduleMutationRef {
+  string machine_id = 1;
+  string task_id = 2;
+  string form_key = 3;
+}
+
+message ScheduleMarkReadAction {
+  repeated ScheduleTaskRef tasks = 1;
+  bool all_fresh = 2;
+}
+
+message ScheduleOperateAction {
+  string machine_id = 1;
+  string task_id = 2;
+  ScheduleOperationKind operation = 3;
+}
+
+message ScheduleFormOpenAction {
+  ScheduleFormMode mode = 1;
+  string machine_id = 2;
+  string task_id = 3;
+  string session_id = 4;
+  string project_key = 5;
+  string local_timezone = 6;
+}
+
+message ScheduleFormStringAction {
+  string form_key = 1;
+  string value = 2;
+}
+
+message ScheduleFormBoolAction {
+  string form_key = 1;
+  bool value = 2;
+}
+
+message ScheduleFormSelectProjectAction {
+  string form_key = 1;
+  string project_key = 2;
+  string machine_id = 3;
+}
+
+message ScheduleFormSelectAgentAction {
+  string form_key = 1;
+  remoteagent.v1.Agent agent = 2;
+}
+
+message ScheduleFormSelectModelAction {
+  string form_key = 1;
+  string model = 2;
+  string effort = 3;
+  optional remoteagent.v1.ApprovalMode mode = 4;
+}
+
+message ScheduleFormUpdateTimingAction {
+  string form_key = 1;
+  optional ScheduleTimingKind kind = 2;
+  optional string date = 3;
+  optional string time = 4;
+  optional string zone = 5;
+  optional bool workdays = 6;
+  bool replace_weekdays = 7;
+  repeated int32 weekdays = 8;
+  optional string interval = 9;
+  optional ScheduleIntervalUnit unit = 10;
+  optional ScheduleTimingEnd end = 11;
+  optional string count = 12;
+  optional string until_date = 13;
+  optional int64 until_ms = 14;
+  optional int64 at_ms = 15;
+  optional bool zone_valid = 16;
+  optional bool at_dst_gap = 17;
+  optional bool until_dst_gap = 18;
+  bool apply = 19;
+  bool reset_draft = 20;
+}
