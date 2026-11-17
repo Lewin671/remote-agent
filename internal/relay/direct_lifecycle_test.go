@@ -309,12 +309,25 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 
 			r := New(directLifecycleBackend{})
 			SetDirectLoopbackForTest(r)
+			baseReal := time.Now()
+			var clockPaused atomic.Bool
+			var pausedAtMs atomic.Int64
+			var extraOffsetMs atomic.Int64
+			fakeNow := func() time.Time {
+				if clockPaused.Load() {
+					return time.UnixMilli(pausedAtMs.Load() + extraOffsetMs.Load())
+				}
+				return time.UnixMilli(baseReal.UnixMilli() + time.Since(baseReal).Milliseconds() + extraOffsetMs.Load())
+			}
+			fakeNowUint := func() uint64 { return uint64(fakeNow().UnixMilli()) }
+			SetDirectClockForTest(r, fakeNow)
 
 			var c *conn
 			var keys *testSecurityKeys
 			for {
 				c = &conn{r: r}
 				keys = initializeTestSecurityKeys(t, c)
+				c.security.clock = fakeNowUint
 				_, head, selfID := c.security.endpoint.Snapshot()
 				if (selfID < head.Core.AuthorityID) == wantDaemonOfferer {
 					break
@@ -420,7 +433,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 					return
 				}
 				packet := fields[11].B
-				if o, err := codec.Open(packet, m.self.Public(), clientSelf, uint64(time.Now().UnixMilli())); err == nil {
+				if o, err := codec.Open(packet, m.self.Public(), clientSelf, fakeNowUint()); err == nil {
 					if o.Context.Class == 1 && o.Type == 2 {
 						select {
 						case challengeSeen <- append([]byte(nil), o.Context.Connection...):
@@ -467,10 +480,11 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 					Peer:         daemonPublic,
 					Codec:        codec,
 					Connection:   connID,
-					Deadline:     uint64(time.Now().Add(10 * time.Second).UnixMilli()),
+					Deadline:     fakeNowUint() + 10_000,
 					Pool:         clientPool,
 					Allow:        func() bool { return ctx.Err() == nil },
 					LoopbackOnly: true,
+					Now:          fakeNow,
 					Send:         forwardToDaemon,
 					Ready: func(use uint64, p *direct.Path) {
 						ready <- struct {
@@ -502,7 +516,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				plain, _ := proto.Marshal(cmd)
 				var nonce [16]byte
 				_, _ = rand.Read(nonce[:])
-				reqNow := uint64(time.Now().UnixMilli())
+				reqNow := fakeNowUint()
 				h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Deadline: reqNow + 5000}
 				sealed, err := clientEndpoint.Prepare(h, nil, plain)
 				if err != nil {
@@ -530,7 +544,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				got, body, err := clientEndpoint.Open(wire, nil, true, uint64(time.Now().UnixMilli()))
+				got, body, err := clientEndpoint.Open(wire, nil, true, fakeNowUint())
 				if err != nil {
 					return err
 				}
@@ -559,8 +573,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 
 			// Wait until daemon's directPeer also marks both paths ready.
 			var pA *directPeer
-			waitDeadline := time.Now().Add(5 * time.Second)
-			for time.Now().Before(waitDeadline) {
+			for ctx.Err() == nil {
 				m.mu.Lock()
 				cand := m.active[clientID]
 				if cand != nil && cand.session.Established() && cand.paths[0] != nil && cand.paths[1] != nil {
@@ -580,9 +593,13 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			}
 
 			// 2. Deliver a delayed Probe from a retired losing connection (connB, same client Boot).
+			// Pause the virtual clock while waiting for Challenge(connB) so CPU load cannot expire
+			// the 800 ms Probe deadline before the daemon answers it.
+			pausedAtMs.Store(baseReal.UnixMilli() + time.Since(baseReal).Milliseconds())
+			clockPaused.Store(true)
 			connB := make([]byte, 16)
 			_, _ = rand.Read(connB)
-			probeNow := uint64(time.Now().UnixMilli())
+			probeNow := fakeNowUint()
 			pc := peerwire.NewProbeContext(clientSelf, daemonPublic, connB, 1, probeNow)
 			pc.Deadline = probeNow + 800
 			probeRaw, err := codec.Seal(clientSelf, daemonPublic, pc, 1, peerwire.PB(peerwire.B(1, connB), peerwire.B(2, clientInstance), peerwire.B(3, clientBoot)), nil, nil, nil)
@@ -594,17 +611,28 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			}
 
 			// Wait for daemon to open the candidate round and emit Challenge(connB).
+			// If directManager.receive dropped the first packet under TryLock contention, resend until observed.
 			gotChallenge := false
+			retryTick := time.NewTicker(20 * time.Millisecond)
+			defer retryTick.Stop()
 			for !gotChallenge {
 				select {
 				case conn := <-challengeSeen:
 					if bytes.Equal(conn, connB) {
 						gotChallenge = true
 					}
+				case <-retryTick.C:
+					m.mu.Lock()
+					_, created := m.sessions[string(connB)]
+					m.mu.Unlock()
+					if !created {
+						_ = forwardToDaemon(direct.Outbound{Raw: probeRaw, Deadline: pc.Deadline, Critical: true})
+					}
 				case <-ctx.Done():
 					t.Fatal("daemon never sent Challenge for late Probe")
 				}
 			}
+			retryTick.Stop()
 
 			// Client retired connB and ignores Challenge(connB). Verify pA stays active & healthy immediately...
 			m.mu.Lock()
@@ -621,7 +649,9 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				t.Fatalf("established Pion path failed right after late Probe: %v", err)
 			}
 
-			// ...and after the uncompleted candidate round times out.
+			// ...and after advancing the virtual clock past the candidate round's deadline.
+			extraOffsetMs.Add(1000)
+			clockPaused.Store(false)
 			select {
 			case <-pB.session.Done():
 			case <-ctx.Done():
@@ -647,8 +677,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				csC.Wait()
 			}()
 			var pC *directPeer
-			waitDeadline = time.Now().Add(5 * time.Second)
-			for time.Now().Before(waitDeadline) {
+			for ctx.Err() == nil {
 				m.mu.Lock()
 				cand := m.active[clientID]
 				if cand != nil && cand != pA && bytes.Equal(cand.connection, connC) && cand.session.Established() && cand.paths[0] != nil && cand.paths[1] != nil {

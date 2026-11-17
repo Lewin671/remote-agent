@@ -62,6 +62,7 @@ type ImageUpload struct {
 type Relay struct {
 	directSTUN     []string
 	directLoopback bool
+	directClock    func() time.Time
 
 	observeApproval func(acquired bool, wait time.Duration)
 	scheduling      atomic.Pointer[transport.Scheduler]

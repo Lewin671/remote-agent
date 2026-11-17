@@ -83,6 +83,7 @@ type directManager struct {
 	announced           uint64
 	stun                []string
 	loopback            bool
+	clock               func() time.Time
 	port                *direct.PortMux
 	capabilities        atomic.Pointer[pb.MachineCapabilities]
 }
@@ -118,6 +119,7 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 		m.stun = []string{"stun:" + net.JoinHostPort(server.Hostname(), "3478")}
 	}
 	m.loopback = d.endpoint.r.directLoopback
+	m.clock = d.endpoint.r.directClock
 	if d.endpoint.r.directSTUN != nil {
 		m.stun = append([]string{}, d.endpoint.r.directSTUN...)
 	}
@@ -137,6 +139,13 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	m.workers.Go(m.maintenance)
 	m.workers.Go(m.capabilityLoop)
 	return m, nil
+}
+
+func (m *directManager) nowTime() time.Time {
+	if m.clock != nil {
+		return m.clock()
+	}
+	return time.Now()
 }
 
 // directPort reads REMOTE_AGENT_DIRECT_PORT: empty is the default port, 0 or
@@ -194,7 +203,7 @@ func (m *directManager) receive(raw []byte) {
 	if !m.mu.TryLock() {
 		return
 	}
-	if !m.closed && !f[3].Bytes && m.allowIncoming(peer, int(f[3].U)-1, len(raw), time.Now()) {
+	if !m.closed && !f[3].Bytes && m.allowIncoming(peer, int(f[3].U)-1, len(raw), m.nowTime()) {
 		frame := &peerInput{peer, append([]byte(nil), raw...)}
 		if m.incoming.Push(frame.peer, frame.peer, len(raw), frame) {
 			notify(m.readWake)
@@ -259,7 +268,8 @@ func (m *directManager) readLoop() {
 		if !ok {
 			continue
 		}
-		now := uint64(time.Now().UnixMilli())
+		nowTime := m.nowTime()
+		now := uint64(nowTime.UnixMilli())
 		// Bootstrap authenticates with member public keys; a formal packet also
 		// needs the process pair already learned by its connection's gate.
 		opened, err := codec.Open(input.raw, peer, m.self, now)
@@ -270,7 +280,7 @@ func (m *directManager) readLoop() {
 		}
 		var target *directPeer
 		if err == nil && opened.Context.Class == 1 && (opened.Type == 1 || opened.Type == 2) {
-			if _, err := peerwire.KnownPayload(opened.Context.Class, opened.Type, opened.Payload); err != nil || !m.reserveAuthentication(input.peer, opened, time.Now()) {
+			if _, err := peerwire.KnownPayload(opened.Context.Class, opened.Type, opened.Payload); err != nil || !m.reserveAuthentication(input.peer, opened, nowTime) {
 				m.mu.Unlock()
 				continue
 			}
@@ -290,7 +300,7 @@ func (m *directManager) readLoop() {
 					continue
 				}
 				if candidate, e := codec.Open(input.raw, p.peer, m.self, now); e == nil && bytes.Equal(candidate.Context.Connection, p.connection) {
-					if _, err := peerwire.KnownPayload(candidate.Context.Class, candidate.Type, candidate.Payload); err == nil && m.reserveAuthentication(input.peer, candidate, time.Now()) {
+					if _, err := peerwire.KnownPayload(candidate.Context.Class, candidate.Type, candidate.Payload); err == nil && m.reserveAuthentication(input.peer, candidate, nowTime) {
 						target = p
 					}
 					break
@@ -337,7 +347,7 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 	}
 	_, head, _ := m.d.security.endpoint.Snapshot()
 	authority := head.Core.AuthorityID
-	s, err := direct.NewSession(m.ctx, direct.SessionConfig{Self: m.self, Peer: peer, Codec: codec, Connection: connection, Deadline: deadline, Pool: m.pool, Allow: allow, Policy: func() bool { return m.policy.matches(id, p.policyVersion) }, STUN: m.stun, LoopbackOnly: m.loopback, Port: m.port,
+	s, err := direct.NewSession(m.ctx, direct.SessionConfig{Self: m.self, Peer: peer, Codec: codec, Connection: connection, Deadline: deadline, Pool: m.pool, Allow: allow, Policy: func() bool { return m.policy.matches(id, p.policyVersion) }, STUN: m.stun, LoopbackOnly: m.loopback, Port: m.port, Now: m.nowTime,
 		Send:   func(out direct.Outbound) bool { return m.send(id, out) },
 		Chosen: func() { m.choose(p) }, BeforeOffer: func() { m.choose(p) },
 		Control: func(o peerwire.Opened, now uint64) (uint64, []byte) {
@@ -451,7 +461,7 @@ func (m *directManager) send(peer string, out direct.Outbound) bool {
 	} else if !out.Critical {
 		queue = 2
 	}
-	now := time.Now()
+	now := m.nowTime()
 	until := minTime(now.Add(time.Second), time.UnixMilli(int64(out.Deadline)))
 	if !now.Before(until) {
 		return false
@@ -522,7 +532,7 @@ func (m *directManager) writeLoop() {
 			}
 		}
 		path := m.path
-		now := time.Now()
+		now := m.nowTime()
 		expired := found && !now.Before(q.until)
 		allowed := found && (expired || m.reserveRate(q.class, len(q.data), now))
 		if found && !allowed {
@@ -550,7 +560,7 @@ func (m *directManager) writeLoop() {
 			}
 			continue
 		}
-		if !expired && path != nil && time.Now().Before(q.until) && q.out.Valid != nil && q.out.Valid() {
+		if !expired && path != nil && m.nowTime().Before(q.until) && q.out.Valid != nil && q.out.Valid() {
 			// Optional signaling uses the shared main WebSocket's normal write
 			// timeout; residence expiry only decides whether to drop before write.
 			ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
@@ -575,7 +585,8 @@ func (m *directManager) maintenance() {
 			m.mu.Unlock()
 			return
 		}
-		now := uint64(time.Now().UnixMilli())
+		nowTime := m.nowTime()
+		now := uint64(nowTime.UnixMilli())
 		for key, p := range m.sessions {
 			select {
 			case <-p.session.Done():
@@ -597,7 +608,7 @@ func (m *directManager) maintenance() {
 		}
 		for i := range m.outgoing {
 			for {
-				q, ok := m.outgoing[i].Pop(func(q *peerOutput) bool { return !time.Now().Before(q.until) })
+				q, ok := m.outgoing[i].Pop(func(q *peerOutput) bool { return !nowTime.Before(q.until) })
 				if !ok {
 					break
 				}

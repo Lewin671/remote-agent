@@ -40,6 +40,7 @@ type SessionConfig struct {
 	STUN         []string
 	LoopbackOnly bool
 	Port         *PortMux
+	Now          func() time.Time
 }
 type sessionEvent struct {
 	use         uint64
@@ -100,16 +101,31 @@ type deliveryResult struct {
 	retry   uint64
 }
 
+func (s *Session) nowTime() time.Time {
+	if s.cfg.Now != nil {
+		return s.cfg.Now()
+	}
+	return time.Now()
+}
+
+func (s *Session) nowMs() uint64 {
+	return uint64(s.nowTime().UnixMilli())
+}
+
 func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Session, error) {
 	if cfg.Codec == nil || cfg.Allow == nil || cfg.Send == nil || !cfg.Allow() || len(cfg.Connection) != 16 || len(cfg.Self.Instance) != 16 || len(cfg.Self.Boot) != 32 {
 		return nil, ErrClosed
 	}
-	now := uint64(time.Now().UnixMilli())
+	nowFn := cfg.Now
+	if nowFn == nil {
+		nowFn = time.Now
+	}
+	now := uint64(nowFn().UnixMilli())
 	if cfg.Deadline <= now || cfg.Deadline > now+10000 {
 		return nil, ErrClosed
 	}
 	ctx, cancel := context.WithCancel(parent)
-	s := &Session{born: time.Now(), finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string][]byte{}, controlSeen: map[string][]byte{}}
+	s := &Session{born: nowFn(), finished: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 8), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string][]byte{}, controlSeen: map[string][]byte{}}
 	s.retainUntil.Store(cfg.Deadline + 300000)
 	for i := range s.pcs {
 		g := peerwire.NewSignal(cfg.Codec, cfg.Self, cfg.Peer, cfg.Connection, uint64(i+1), now)
@@ -208,7 +224,7 @@ func (s *Session) run() {
 		}
 	}()
 	for {
-		now := uint64(time.Now().UnixMilli())
+		now := s.nowMs()
 		if !s.cfg.Allow() {
 			s.endFor("not_allowed")
 			return
@@ -222,11 +238,11 @@ func (s *Session) run() {
 			return
 		case raw := <-s.input:
 			s.held.Add(-int64(len(raw)))
-			s.receive(raw, uint64(time.Now().UnixMilli()))
+			s.receive(raw, s.nowMs())
 		case e := <-s.events:
-			s.event(e, uint64(time.Now().UnixMilli()))
+			s.event(e, s.nowMs())
 		case r := <-s.delivery:
-			s.result(r, uint64(time.Now().UnixMilli()))
+			s.result(r, s.nowMs())
 		case <-ticker.C:
 			if now >= s.cfg.Deadline {
 				complete := false
@@ -509,7 +525,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 			typ = 10
 			body = peerwire.PB(peerwire.U(1, c.Class), peerwire.U(2, o.Type), peerwire.U(3, c.Seq), peerwire.B(4, o.Hash))
 		}
-		if !s.cfg.Allow() || uint64(time.Now().UnixMilli()) >= c.Deadline {
+		if !s.cfg.Allow() || s.nowMs() >= c.Deadline {
 			return
 		}
 		if reply := s.controlUntil(typ, body, now, c.Deadline); reply != nil {
@@ -643,7 +659,7 @@ func (s *Session) makePC(i int, now uint64) bool {
 			return "session_retired"
 		case p.currentGeneration.Load() != generation:
 			return "generation_retired"
-		case !p.business.Load() && uint64(time.Now().UnixMilli()) >= expires:
+		case !p.business.Load() && s.nowMs() >= expires:
 			return "round_deadline"
 		case s.cfg.Policy != nil && !s.cfg.Policy():
 			return "policy"
@@ -825,7 +841,7 @@ type Outbound struct {
 }
 
 func (s *Session) transmit(raw []byte) bool {
-	now := uint64(time.Now().UnixMilli())
+	now := s.nowMs()
 	peer := s.pcs[0].signal.Peer
 	original, err := s.cfg.Codec.OpenSent(raw, s.cfg.Self, peer, now)
 	if err != nil || !s.cfg.Allow() {
@@ -844,7 +860,7 @@ func (s *Session) transmit(raw []byte) bool {
 			if original.Context.Class == 1 && original.Type == 1 && !s.cfg.Pool.ownerAvailable(string(s.cfg.Peer.ID), string(s.cfg.Connection)) {
 				return false
 			}
-			return s.ctx.Err() == nil && s.cfg.Allow() && uint64(time.Now().UnixMilli()) < deadline
+			return s.ctx.Err() == nil && s.cfg.Allow() && s.nowMs() < deadline
 		},
 	})
 	s.traceAdd("tx", original.Type, original.Context.Use, sent)
