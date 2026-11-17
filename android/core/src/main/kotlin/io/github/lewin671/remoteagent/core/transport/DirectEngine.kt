@@ -303,7 +303,12 @@ internal class DirectEngine(
             toDiscover = sessions.values.map { it.session }
         }
         for (s in toDiscover) s.discovered()
-        scope.launch { discover() }
+        scope.launch {
+            if (!synchronized(stateLock) { currentLocked() }) {
+                runCatching { authorize() }
+            }
+            discover()
+        }
     }
 
     fun detach(stream: FrameStream) {

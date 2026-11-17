@@ -338,3 +338,19 @@ test("background invalidates direct freshness and bumps syncRevision so resume r
   expect(discover).not.toHaveBeenCalled();
   expect(authorize).toHaveBeenCalledTimes(1);
 });
+
+test("attach authorizes stale direct state before discovering peers after background/stop", async () => {
+  const { engine } = readyEngine();
+  engine.setForeground(false);
+  engine.setForeground(true);
+  const discover = vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+  const authorize = vi.spyOn(engine as unknown as { authorize(): Promise<void> }, "authorize").mockImplementation(async () => {
+    (engine as unknown as { freshUntil: number }).freshUntil = Date.now() + 20_000;
+  });
+
+  engine.attach({ ready: true, send: vi.fn() } as never);
+  await vi.waitFor(() => {
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(discover).toHaveBeenCalledTimes(1);
+  });
+});

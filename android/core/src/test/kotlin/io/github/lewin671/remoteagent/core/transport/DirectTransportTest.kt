@@ -1712,9 +1712,10 @@ class DirectTransportTest {
                     bridge.phonePcs.size,
                 )
 
-                // Once security sync recovers, Direct re-establishes cleanly.
+                // Once security sync recovers, normal foreground toggle resumes Direct without manual syncSecurity().
                 failSecuritySync.set(false)
-                remote.syncSecurity()
+                remote.foregroundChanged(false)
+                remote.foregroundChanged(true)
                 awaitCondition("direct ready after post-wake sync", 10_000) { remote.direct.ready(id, RouteHint.Read) }
             } finally {
                 remote.close()
@@ -1831,6 +1832,81 @@ class DirectTransportTest {
                     DirectStage.DIRECT_ACTIVE,
                     remote.peer(id)?.directStatus?.stage,
                 )
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun backgroundStopAndResumeSyncsSecurityAndReconnectsDirectWithoutManualSync(): Unit = runBlocking {
+        val server = TestServer()
+        val getSecurityCount = AtomicInteger(0)
+        val baseHttp = Api.defaultHttp()
+        val countingHttp = baseHttp.newBuilder()
+            .addInterceptor { chain ->
+                if (chain.request().url.encodedPath.contains("GetSecurityStates")) {
+                    getSecurityCount.incrementAndGet()
+                }
+                chain.proceed(chain.request())
+            }
+            .build()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 17 }, server.url, baseHttp, server.setupToken)
+            val daemonAccount = approvedClient(phone, baseHttp, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, baseHttp, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, baseHttp, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = countingHttp,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                awaitCondition("cold start direct ready via SyncSecurityEffect", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read) &&
+                        remote.peer(id)?.directStatus?.stage == DirectStage.DIRECT_ACTIVE
+                }
+                val initialSyncCount = getSecurityCount.get()
+                assertTrue("cold start should have synced security at least once", initialSyncCount >= 1)
+
+                getSecurityCount.set(0)
+                remote.foregroundChanged(false)
+                remote.stop()
+                awaitCondition("direct cleared after stop", 3_000) {
+                    !remote.direct.ready(id, RouteHint.Read) &&
+                        remote.peer(id)?.directStatus?.stage != DirectStage.DIRECT_ACTIVE
+                }
+
+                // Real resume path without any manual remote.syncSecurity():
+                remote.start()
+                remote.foregroundChanged(true)
+                awaitCondition("direct automatically reconnects on resume via post-wake Touch+security sync", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read) &&
+                        remote.peer(id)?.directStatus?.stage == DirectStage.DIRECT_ACTIVE
+                }
+                assertTrue("resume must trigger GetSecurityStates at least once", getSecurityCount.get() >= 1)
+
+                // Also verify foregroundChanged(false) -> foregroundChanged(true) without stop() recovers Direct.
+                getSecurityCount.set(0)
+                remote.foregroundChanged(false)
+                awaitCondition("direct closed on background", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
+                remote.foregroundChanged(true)
+                awaitCondition("direct reconnects on foreground resume without stop", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read) &&
+                        remote.peer(id)?.directStatus?.stage == DirectStage.DIRECT_ACTIVE
+                }
+                assertTrue("background->foreground resume must trigger GetSecurityStates", getSecurityCount.get() >= 1)
             } finally {
                 remote.close()
                 daemon.close()

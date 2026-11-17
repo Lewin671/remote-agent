@@ -259,7 +259,11 @@ export class DirectEngine {
     // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
     this.retryAfter.clear();
     for (const p of this.sessions.values()) p.session.discovered();
-    void this.discover();
+    if (!this.current()) {
+      void this.authorize().then(() => this.discover()).catch(() => undefined);
+    } else {
+      void this.discover();
+    }
   }
 
   detach(leg: FrameStream) {

@@ -27,6 +27,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.foreground = true
 		e.removed = false
 		e.lifecycleGen++
+		if e.security.Loaded || e.everReady {
+			e.networkGen++
+		}
 		e.connectGen++
 		e.connecting = false
 		e.streamOpen = false
@@ -85,9 +88,21 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		ctx.Dirty.MarkAll()
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND:
+		wasForeground := e.foreground
 		e.foreground = true
 		e.updateLivePollers(ctx)
-		if e.running && !e.removed && e.networkAvailable && !e.streamOpen && !e.connecting {
+		if !wasForeground && e.running && !e.removed {
+			if e.security.Loaded || e.everReady {
+				e.networkGen++
+			}
+			if !e.streamOpen && !e.connecting {
+				if e.networkAvailable {
+					e.beginConnect(ctx)
+				}
+			} else if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
+				e.requestSyncSecurity(ctx, true)
+			}
+		} else if e.running && !e.removed && e.networkAvailable && !e.streamOpen && !e.connecting {
 			e.beginConnect(ctx)
 		}
 

@@ -1041,7 +1041,7 @@ fun DirectStatus.toRouteReport(): DirectRouteReport {
             !s.supported -> DirectRouteState.DIRECT_ROUTE_STATE_UNSUPPORTED
             !s.enabled || s.stage == DirectStage.OFF -> DirectRouteState.DIRECT_ROUTE_STATE_NONE
             s.stage == DirectStage.TRYING -> DirectRouteState.DIRECT_ROUTE_STATE_CONNECTING
-            s.stage == DirectStage.MEASURING || s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE ->
+            s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE ->
                 DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED
             s.reason == DirectFailReason.PEER_UNSUPPORTED -> DirectRouteState.DIRECT_ROUTE_STATE_UNSUPPORTED
             else -> DirectRouteState.DIRECT_ROUTE_STATE_NONE
@@ -1058,8 +1058,8 @@ fun DirectStatus.toRouteReport(): DirectRouteReport {
         )
         fileRoute = if (s.fileDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
         readRoute = if (s.readDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
-        warming = s.stage == DirectStage.MEASURING
-        compared = s.relayNotSlower
+        warming = false
+        compared = s.readSlow || s.fileSlow
         s.bulkDirectMibPerSec?.let {
             hasDirectFileMibps = true
             directFileMibps = it
@@ -1078,7 +1078,7 @@ fun DirectStatus.toRouteReport(): DirectRouteReport {
         }
         val activeMs = when {
             s.readDirect -> s.readDirectMs
-            s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE || s.stage == DirectStage.MEASURING -> s.readRelayMs
+            s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE -> s.readRelayMs
             else -> null
         }
         activeMs?.let {

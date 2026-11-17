@@ -1409,3 +1409,71 @@ func TestBackgroundAndStopClearDirectReady(t *testing.T) {
 		t.Fatalf("expected STOP to clear directReady for offline machine, got directReady=%v reachable=%v", e.directReady["m-1"], e.machineReachable(m))
 	}
 }
+
+func TestResumeAfterStopAndBackgroundEmitsTouchSyncSecurity(t *testing.T) {
+	e := NewEngine()
+	startAndConnect(t, e, 1_000)
+	if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
+		t.Fatalf("expected loaded security at VerifiedNetGen=%d", e.networkGen)
+	}
+
+	// 1. STOP -> START on unchanged network must advance networkGen and emit SyncSecurityEffect(Touch=true).
+	e.HandleEvent(&corev1.Event{
+		NowMs: 2_000,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
+		},
+	})
+	_, res := e.HandleEvent(&corev1.Event{
+		NowMs:      2_100,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	var startSec *corev1.SyncSecurityEffect
+	for _, eff := range res.Effects {
+		if ss := eff.GetSyncSecurity(); ss != nil {
+			startSec = ss
+		}
+	}
+	if startSec == nil || !startSec.Touch || startSec.NetworkGeneration == 0 {
+		t.Fatalf("expected START after STOP to emit SyncSecurityEffect(Touch=true, NetworkGeneration>0), got %+v", startSec)
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: 2_110,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				OpId:              startSec.OpId,
+				NetworkGeneration: startSec.NetworkGeneration,
+				IsMember:          true,
+				HeadEpoch:         1,
+				LeaseEndMs:        9_999_999,
+			},
+		},
+	})
+
+	// 2. BACKGROUND -> FOREGROUND while running/stream open must also emit SyncSecurityEffect(Touch=true).
+	prevGen := startSec.NetworkGeneration
+	e.streamOpen = true
+	e.HandleEvent(&corev1.Event{
+		NowMs: 2_200,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND},
+		},
+	})
+	_, fgRes := e.HandleEvent(&corev1.Event{
+		NowMs: 2_300,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND},
+		},
+	})
+	var fgSec *corev1.SyncSecurityEffect
+	for _, eff := range fgRes.Effects {
+		if ss := eff.GetSyncSecurity(); ss != nil {
+			fgSec = ss
+		}
+	}
+	if fgSec == nil || !fgSec.Touch || fgSec.NetworkGeneration <= prevGen {
+		t.Fatalf("expected FOREGROUND after BACKGROUND to emit SyncSecurityEffect(Touch=true, NetworkGeneration>%d), got %+v", prevGen, fgSec)
+	}
+}
