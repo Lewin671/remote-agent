@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -128,36 +129,36 @@ func (t *blockedQuestionControl) Control() (control, error) {
 
 func TestQueuedQuestionAnswerRechecksPendingAfterTerminalLock(t *testing.T) {
 	t.Parallel()
-	h := newHarness(t, Config{})
-	if err := h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}}}); err != nil {
-		t.Fatal(err)
-	}
-	h.term.setScreen(answerRaceQuestionScreen)
-	term := &blockedQuestionControl{terminal: h.s.term, entered: make(chan struct{}), release: make(chan struct{})}
-	h.s.term = term
-	first := answerRaceOrigin(h.s, remoteQuestion, "q", "first-queued-question")
-	second := answerRaceOrigin(h.s, remoteQuestion, "q", "second-queued-question")
-	a, b := make(chan error, 1), make(chan error, 1)
-	go func() { a <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, first) }()
-	<-term.entered // first holds ctlMu, but has not installed answeredBy yet
-	started := make(chan struct{})
-	go func() { close(started); b <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, second) }()
-	<-started
-	// Let the second request pass its early check and queue for ctlMu.
-	time.Sleep(100 * time.Millisecond)
-	close(term.release)
-	if err := <-a; err != nil {
-		t.Fatal(err)
-	}
-	if err := <-b; !errors.Is(err, errRemoteAnswerStale) {
-		t.Errorf("queued question answer=%v, want stale", err)
-	}
-	if w := h.term.written(); len(w) != 1 {
-		t.Errorf("queued request repeated question keys: %q", w)
-	}
-	if n := term.calls.Load(); n != 2 {
-		t.Fatalf("did not exercise the post-control-lock check: %d Control calls", n)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t, Config{})
+		if err := h.s.emit(&pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}}}); err != nil {
+			t.Fatal(err)
+		}
+		h.term.setScreen(answerRaceQuestionScreen)
+		term := &blockedQuestionControl{terminal: h.s.term, entered: make(chan struct{}), release: make(chan struct{})}
+		h.s.term = term
+		first := answerRaceOrigin(h.s, remoteQuestion, "q", "first-queued-question")
+		second := answerRaceOrigin(h.s, remoteQuestion, "q", "second-queued-question")
+		a, b := make(chan error, 1), make(chan error, 1)
+		go func() { a <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, first) }()
+		<-term.entered // first holds ctlMu, but has not installed answeredBy yet
+		go func() { b <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, second) }()
+		// Wait deterministically for second to pass its early check and queue on ctlMu.
+		synctest.Wait()
+		close(term.release)
+		if err := <-a; err != nil {
+			t.Fatal(err)
+		}
+		if err := <-b; !errors.Is(err, errRemoteAnswerStale) {
+			t.Errorf("queued question answer=%v, want stale", err)
+		}
+		if w := h.term.written(); len(w) != 1 {
+			t.Errorf("queued request repeated question keys: %q", w)
+		}
+		if n := term.calls.Load(); n != 2 {
+			t.Fatalf("did not exercise the post-control-lock check: %d Control calls", n)
+		}
+	})
 }
 
 func (a *blockedQuestionAnswer) Answer(term agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
@@ -181,68 +182,71 @@ func TestConcurrentQuestionAnswersRespectPendingAndRollback(t *testing.T) {
 	t.Parallel()
 	for _, fails := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "failure-rollback"}[fails], func(t *testing.T) {
-			h := newHarness(t, Config{})
-			q := func() *pb.Event {
-				return &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}}}
-			}
-			if err := h.s.emit(q()); err != nil {
-				t.Fatal(err)
-			}
-			h.term.setScreen(answerRaceQuestionScreen)
-			adapter := &blockedQuestionAnswer{Adapter: h.s.ag, entered: make(chan struct{}), release: make(chan struct{}), fail: fails}
-			h.s.ag = adapter
-			first := answerRaceOrigin(h.s, remoteQuestion, "q", "first-question-request")
-			second := answerRaceOrigin(h.s, remoteQuestion, "q", "second-question-request")
-			a, b := make(chan error, 1), make(chan error, 1)
-			go func() { a <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, first) }()
-			<-adapter.entered
-			go func() { b <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, second) }()
-			// Pending is already set before keys are sent. Both the early
-			// request check and the post-ctlMu check must reject it.
-			var secondErr error
-			select {
-			case secondErr = <-b:
-			case <-time.After(300 * time.Millisecond):
-				t.Error("a request with a pending answer waited instead of refusing stale")
-			}
-			close(adapter.release)
-			firstErr := <-a
-			if secondErr == nil {
-				secondErr = <-b
-			}
-			if !errors.Is(secondErr, errRemoteAnswerStale) {
-				t.Errorf("second question answer=%v", secondErr)
-			}
-			if fails {
-				if firstErr == nil {
-					t.Error("first answer unexpectedly succeeded")
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t, Config{})
+				q := func() *pb.Event {
+					return &pb.Event{Kind: &pb.Event_QuestionAsked{QuestionAsked: &pb.QuestionAsked{QuestionId: "q", Questions: []*pb.Question{{Text: "Which language?", Options: []*pb.QuestionOption{{Label: "Go"}}}}}}}
 				}
-				if err := h.s.answerBy(context.Background(), "q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "retry-after-failure")); err != nil {
-					t.Errorf("failed answer did not roll back: %v", err)
-				}
-			} else {
-				if firstErr != nil {
-					t.Error(firstErr)
-				}
-				if got := adapter.calls.Load(); got != 1 {
-					t.Errorf("answered same question %d times", got)
-				}
-				// Use the transcript annotation/commit path to settle the pending claim.
-				ev := &pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{QuestionId: "q"}}}
-				consume := h.s.annotate([]*pb.Event{ev})
-				if err := h.s.emit(ev); err != nil {
-					t.Fatal(err)
-				}
-				h.s.mu.Lock()
-				consume()
-				h.s.mu.Unlock()
 				if err := h.s.emit(q()); err != nil {
 					t.Fatal(err)
 				}
-				if err := h.s.answerBy(context.Background(), "q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "new-question-request")); err != nil {
-					t.Errorf("settled question stayed blocked: %v", err)
+				h.term.setScreen(answerRaceQuestionScreen)
+				adapter := &blockedQuestionAnswer{Adapter: h.s.ag, entered: make(chan struct{}), release: make(chan struct{}), fail: fails}
+				h.s.ag = adapter
+				first := answerRaceOrigin(h.s, remoteQuestion, "q", "first-question-request")
+				second := answerRaceOrigin(h.s, remoteQuestion, "q", "second-question-request")
+				a, b := make(chan error, 1), make(chan error, 1)
+				go func() { a <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, first) }()
+				<-adapter.entered
+				go func() { b <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, second) }()
+				// Pending is already set before keys are sent. Both the early
+				// request check and the post-ctlMu check must reject it without waiting.
+				synctest.Wait()
+				var secondErr error
+				select {
+				case secondErr = <-b:
+				default:
+					t.Error("a request with a pending answer waited instead of refusing stale")
 				}
-			}
+				close(adapter.release)
+				firstErr := <-a
+				if secondErr == nil {
+					secondErr = <-b
+				}
+				if !errors.Is(secondErr, errRemoteAnswerStale) {
+					t.Errorf("second question answer=%v", secondErr)
+				}
+				if fails {
+					if firstErr == nil {
+						t.Error("first answer unexpectedly succeeded")
+					}
+					if err := h.s.answerBy(context.Background(), "q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "retry-after-failure")); err != nil {
+						t.Errorf("failed answer did not roll back: %v", err)
+					}
+				} else {
+					if firstErr != nil {
+						t.Error(firstErr)
+					}
+					if got := adapter.calls.Load(); got != 1 {
+						t.Errorf("answered same question %d times", got)
+					}
+					// Use the transcript annotation/commit path to settle the pending claim.
+					ev := &pb.Event{Kind: &pb.Event_QuestionAnswered{QuestionAnswered: &pb.QuestionAnswered{QuestionId: "q"}}}
+					consume := h.s.annotate([]*pb.Event{ev})
+					if err := h.s.emit(ev); err != nil {
+						t.Fatal(err)
+					}
+					h.s.mu.Lock()
+					consume()
+					h.s.mu.Unlock()
+					if err := h.s.emit(q()); err != nil {
+						t.Fatal(err)
+					}
+					if err := h.s.answerBy(context.Background(), "q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "new-question-request")); err != nil {
+						t.Errorf("settled question stayed blocked: %v", err)
+					}
+				}
+			})
 		})
 	}
 }

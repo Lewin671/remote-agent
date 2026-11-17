@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"connectrpc.com/connect"
@@ -12,25 +13,29 @@ import (
 )
 
 func TestDirectoryRPCDeadlineDoesNotWaitForBlockedReader(t *testing.T) {
-	entered, release := make(chan struct{}), make(chan struct{})
-	defer close(release)
-	h := &handler{openDir: func(string) (directoryReader, error) { close(entered); <-release; return nil, os.ErrNotExist }}
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	result := make(chan error, 1)
-	go func() {
-		_, err := h.ListDirectories(ctx, connect.NewRequest(&pb.ListDirectoriesRequest{Path: "/synthetic/blocked"}))
-		result <- err
-	}()
-	<-entered
-	select {
-	case err := <-result:
-		if connect.CodeOf(err) != connect.CodeDeadlineExceeded {
-			t.Fatalf("error=%v", err)
+	synctest.Test(t, func(t *testing.T) {
+		entered, release := make(chan struct{}), make(chan struct{})
+		defer close(release)
+		h := &handler{openDir: func(string) (directoryReader, error) { close(entered); <-release; return nil, os.ErrNotExist }}
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+		result := make(chan error, 1)
+		go func() {
+			_, err := h.ListDirectories(ctx, connect.NewRequest(&pb.ListDirectoriesRequest{Path: "/synthetic/blocked"}))
+			result <- err
+		}()
+		<-entered
+		time.Sleep(50 * time.Millisecond)
+		synctest.Wait()
+		select {
+		case err := <-result:
+			if connect.CodeOf(err) != connect.CodeDeadlineExceeded {
+				t.Fatalf("error=%v", err)
+			}
+		default:
+			t.Error("request deadline waited for blocked directory reader")
 		}
-	case <-time.After(300 * time.Millisecond):
-		t.Error("request deadline waited for blocked directory reader")
-	}
+	})
 }
 
 func TestReadOnlySettingsAndUploadQueriesDoNotRunFilesystemCleanup(t *testing.T) {
