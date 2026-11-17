@@ -127,13 +127,13 @@ fun Thumb(ref: ImageRef, modifier: Modifier, more: Int = 0, onClick: () -> Unit)
 
 /** A generated image: its own card across the chat, with the prompt the CLI rewrote behind 提示词. */
 @Composable
-fun GeneratedCard(item: ChatItem.Generated, onOpen: (Int) -> Unit) {
+fun GeneratedCard(rowKey: String, images: List<ImageRef>, prompt: String, onOpen: (Int) -> Unit) {
     val copy = uiText()
     val p = pal
-    var open by rememberSaveable(item.key) { mutableStateOf(false) }
+    var open by rememberSaveable(rowKey) { mutableStateOf(false) }
     Column(Modifier.padding(horizontal = ChatSide, vertical = 6.dp).fillMaxWidth().clip(Radii.R18).background(p.gbg)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item.images.forEachIndexed { i, ref ->
+            images.forEachIndexed { i, ref ->
                 val bmp = rememberPreview(ref)
                 Box(Modifier.fillMaxWidth().aspectRatio(aspect(ref)).clip(Radii.R14).background(p.fill).clickable { onOpen(i) }) {
                     if (bmp != null) Image(bmp, copy(UiMessages.imageGenerated()), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
@@ -141,12 +141,12 @@ fun GeneratedCard(item: ChatItem.Generated, onOpen: (Int) -> Unit) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val r = item.images.firstOrNull()
+                val r = images.firstOrNull()
                 val size = r?.let { if (it.width > 0) " · ${it.width} × ${it.height}" else "" }.orEmpty()
                 Text(copy(UiMessages.imageAndroidGeneratedSize(size = size)), Modifier.weight(1f), style = T.s13, color = p.ink2)
-                if (item.prompt.isNotEmpty()) Box(Modifier.clickable { open = !open }.padding(6.dp)) { ArrowText(copy(UiMessages.imagePrompt()), p.blue, T.s13, down = !open, up = open) }
+                if (prompt.isNotEmpty()) Box(Modifier.clickable { open = !open }.padding(6.dp)) { ArrowText(copy(UiMessages.imagePrompt()), p.blue, T.s13, down = !open, up = open) }
             }
-            if (open) Text(item.prompt, style = T.s15, color = p.ink)
+            if (open) Text(prompt, style = T.s15, color = p.ink)
         }
     }
 }

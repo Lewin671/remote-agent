@@ -250,12 +250,6 @@ class MainActivity : ComponentActivity() {
                 remote.coreNavigation.collect { eff ->
                     when (eff.route) {
                         io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_SESSION -> {
-                            if (eff.projectKey.isNotEmpty() && eff.sessionId.isNotEmpty()) {
-                                io.github.lewin671.remoteagent.ui.Outbox.rememberPrompt(
-                                    eff.sessionId,
-                                    io.github.lewin671.remoteagent.ui.Starts.of(eff.projectKey).prompt,
-                                )
-                            }
                             actions.startedSession(eff.sessionId)
                         }
                         io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_PROJECT ->

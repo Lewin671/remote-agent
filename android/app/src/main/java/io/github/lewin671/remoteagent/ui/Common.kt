@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -331,25 +332,6 @@ fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id, copy = ::sessionText)
 
-/** Incremental event state, with an immutable result per history snapshot. */
-@Composable
-fun rememberDerived(
-    events: List<io.github.lewin671.remoteagent.proto.Event>,
-    agent: io.github.lewin671.remoteagent.proto.Agent,
-): io.github.lewin671.remoteagent.core.Derived {
-    val projection = remember { io.github.lewin671.remoteagent.core.EventProjection() }
-    return remember(events, agent) { projection.update(events, agent) }
-}
-
-@Composable
-fun rememberDerived(
-    events: io.github.lewin671.remoteagent.core.SessionEvents,
-    agent: io.github.lewin671.remoteagent.proto.Agent,
-): io.github.lewin671.remoteagent.core.Derived {
-    val readable = events.stateEvents
-    val projection = remember { io.github.lewin671.remoteagent.core.EventProjection() }
-    return remember(readable, agent, events.live) {
-        projection.update(readable, agent)
-        projection.currentActions(events.live)
-    }
+object ScheduleJump {
+    val requested = mutableStateMapOf<String, Long>()
 }

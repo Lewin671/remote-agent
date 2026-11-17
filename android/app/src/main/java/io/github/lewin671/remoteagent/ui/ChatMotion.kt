@@ -13,6 +13,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.unit.dp
+import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import kotlin.math.roundToInt
 
 /** How a row that has just come into the chat arrives (design-system §4 动效). */
@@ -45,9 +46,9 @@ internal class RowEntrances {
     private var sentAt = 0L
 
     /** The rows of the chat now; [joined]: rows came in front, which are history, not new. */
-    fun rows(items: List<ChatItem>, joined: Boolean) {
+    fun rows(items: List<SessionTimelineItem>, joined: Boolean) {
         val now = SystemClock.uptimeMillis()
-        val added = items.filter { known.add(it.key) }
+        val added = items.filter { known.add(it.id) }
         if (!armed) {
             armed = true
             return
@@ -55,15 +56,19 @@ internal class RowEntrances {
         // A catch-up of many rows at once is not a row arriving.
         if (joined || added.size > MOST_AT_ONCE) return
         for (item in added) {
-            val kind = when (item) {
-                is ChatItem.User ->
-                    if (item.from != null) Entrance.RISE
+            val kind = when (item.kindCase) {
+                SessionTimelineItem.KindCase.USER_MESSAGE ->
+                    if (!item.userMessage.typedLocally) Entrance.RISE
                     else if (now - sentAt < SENT_MS) Entrance.SETTLE
                     else null
-                is ChatItem.Tool, is ChatItem.Tools, is ChatItem.Running, is ChatItem.Note, is ChatItem.TurnEnd, is ChatItem.Generated -> Entrance.FADE
+                SessionTimelineItem.KindCase.TOOL_CALL,
+                SessionTimelineItem.KindCase.TOOL_GROUP,
+                SessionTimelineItem.KindCase.NOTE,
+                SessionTimelineItem.KindCase.TURN_END,
+                SessionTimelineItem.KindCase.GENERATED_IMAGES -> Entrance.FADE
                 else -> null
             }
-            if (kind != null) fresh[item.key] = kind to now
+            if (kind != null) fresh[item.id] = kind to now
         }
     }
 

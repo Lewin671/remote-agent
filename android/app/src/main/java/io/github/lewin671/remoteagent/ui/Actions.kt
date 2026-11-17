@@ -1,33 +1,34 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.messageText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.ui.displayError
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.messageText
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.CommandResult
+import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.SendRequest
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** One command with its progress: running, and the error of the last try. */
 class Action(private val scope: CoroutineScope) {
     var running by mutableStateOf(false)
         private set
     var error by mutableStateOf("")
-    /** The last failure left the outcome unknown. */
     var unknown by mutableStateOf(false)
         private set
-    /** The last failure was the computer's disk being full: the page may say it its own way (ui-spec B3). */
     var diskFull by mutableStateOf(false)
         private set
 
@@ -60,116 +61,21 @@ fun rememberAction(vararg keys: Any?, authority: Boolean = false): Action {
 fun Remote.cmd(b: Command.Builder.() -> Unit): Command = Command.newBuilder().apply(b).build()
 
 /**
- * A message sent from this device. Its text stays in memory only (the disk
- * never holds plaintext); the daemon dedupes by [requestId], so a retry
- * never submits it twice.
+ * Local attachment thumbnails and disk-sealed copies for outgoing messages with images/files
+ * while they are in flight or failed/unknown, keyed by [requestId].
+ * Command lifecycle, retries, and state belong to Core (`SessionViewModel.composer.outgoing`).
  */
 class Outgoing(
     val requestId: String,
-    val text: String,
-    /** Image IDs on the machine, sent with the message; the same on every retry. */
-    val imageIds: List<String> = emptyList(),
-    /** The picked images, for their thumbnails while sending and to put them back. */
     val images: List<PendingImage> = emptyList(),
-    /** They were sent as originals. */
     val original: Boolean = false,
-    val mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
-    val fileIds: List<String> = emptyList(),
-    /** Frozen before persistence/dispatch, including after process death. */
-    commandDeadlineMs: Long = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS,
-    targetMachineId: String? = null,
-    commandRequestId: String = newRequestId(),
-    commandBytes: ByteArray? = null,
 ) {
-    private var preparedBytes: ByteArray? = commandBytes?.copyOf()
-    private var preparedCommand: io.github.lewin671.remoteagent.core.PreparedCommand? = null
-    internal fun commandBytes(): ByteArray? = preparedBytes?.copyOf()
-    var commandRequestId: String = commandRequestId
-        private set
-    var commandDeadlineMs: Long = commandDeadlineMs
-        private set
-    var targetMachineId: String? = targetMachineId
-        private set
-    enum class State { SENDING, SENT, FAILED, UNKNOWN }
-
-    var state by mutableStateOf(State.SENDING)
-    var error by mutableStateOf("")
-    var failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
-        internal set
-    var failureDisplay: io.github.lewin671.remoteagent.core.MessageText? = null
-        private set
-    var missingImages by mutableStateOf(false)
-        private set
     val hasLocalAttachments: Boolean get() = images.isNotEmpty() && images.all { it.hasSource() }
-    val canPutBack: Boolean get() = (state == State.FAILED || state == State.UNKNOWN) && (hasLocalAttachments || (imageIds.isEmpty() && fileIds.isEmpty() && text.isNotEmpty()))
-
-    /** Retries preserve the message request and image IDs, even when an upload has since expired. */
-    internal suspend fun deliver( send: suspend (SendRequest) -> Unit) {
-        if (state == State.SENDING && delivering) return
-        val wasUnknown = state == State.UNKNOWN
-        val wasFailed = state == State.FAILED
-        delivering = true
-        state = State.SENDING
-        error = ""
-        failureDisplay = null
-        failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
-        missingImages = false
-        try {
-            // A definite rejection permits a fresh outer command. The message's dedupe ID and
-            // payload stay the same. Unknown outcomes never renew either command field.
-            if (wasFailed) {
-                commandRequestId = newRequestId()
-                preparedBytes = null
-                preparedCommand = null
-                commandDeadlineMs = System.currentTimeMillis() + io.github.lewin671.remoteagent.core.COMMAND_TTL_MS
-            }
-            send(SendRequest.newBuilder().setText(text).setRequestId(requestId).addAllImageIds(imageIds).addAllFileIds(fileIds).setMode(mode).build())
-            state = State.SENT
-        } catch (e: Exception) {
-            val ce = e as? CommandException
-            val final = ce?.fromDaemon == true && !ce.unknown && ce.outcome != io.github.lewin671.remoteagent.core.Outcome.NOT_SENT
-            val unknown = ce?.unknown == true || (wasUnknown && !final) || (preparedCommand?.mayHaveRun == true && !final)
-            state = if (unknown) State.UNKNOWN else State.FAILED
-            missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
-                (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
-            failureKind = if (ce?.needsResultRefresh == true) {
-                if (ce.outcome == io.github.lewin671.remoteagent.core.Outcome.EXECUTED) io.github.lewin671.remoteagent.core.CommandFailureKind.EXECUTED_RESULT_UNAVAILABLE
-                else io.github.lewin671.remoteagent.core.CommandFailureKind.IDENTITY_CONFLICT
-            } else if (missingImages && fileIds.isEmpty()) io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING else ce?.failureKind ?: io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
-            failureDisplay = if (missingImages) {
-                (if (fileIds.isNotEmpty()) UiMessages.attachmentAndroidMissingFiles() else UiMessages.imageAndroidMissingUploads()).messageText()
-            } else io.github.lewin671.remoteagent.core.errorText(e)
-            error = sessionText(checkNotNull(failureDisplay))
-        } finally {
-            delivering = false
-        }
-    }
-
-    /** The disk record contains intent, not a previous error or a settled outcome. */
-    internal fun restoreUnconfirmed() {
-        state = State.UNKNOWN
-        failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
-        failureDisplay = UiMessages.composerAndroidRestartUnknown().messageText()
-        error = sessionText(checkNotNull(failureDisplay))
-    }
-
-    internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest, prior: Boolean): io.github.lewin671.remoteagent.core.PreparedCommand {
-        val machine = targetMachineId ?: remote.state.value.sessions[sid]?.machineId
-            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        targetMachineId = machine
-        preparedCommand?.let { return it }
-        preparedBytes?.let { return io.github.lewin671.remoteagent.core.PreparedCommand(machine,sid,commandRequestId,commandDeadlineMs,io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance(),serializedCommand=it, prior=prior).also { restored -> preparedCommand = restored } }
-        return remote.prepare(machine, sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() },
-            requestId = commandRequestId, deadlineMs = commandDeadlineMs).also { preparedBytes=it.commandBytes(); preparedCommand=it }
-    }
-
-    private var delivering = false
 }
 
 /**
- * Text being written outside a session's message box: first messages and
- * deny reasons. It lives in memory for this run only, never in saved
- * instance state, which the system may write to disk in plaintext.
+ * Text being written outside a session's message box: deny reasons.
+ * Lives in memory only for this run.
  */
 object Drafts {
     private val texts = HashMap<String, androidx.compose.runtime.MutableState<String>>()
@@ -182,23 +88,18 @@ object Drafts {
 }
 
 /**
- * What this run keeps in memory for the signed-in account: drafts, messages
- * sent from here, and starts and answers whose outcome may be unknown. They
- * are keyed by project path, session or question ID, which another account
- * can share, so all of it goes when the account changes or is logged out.
+ * What this run keeps in memory for the signed-in account. Cleared whenever the account changes.
  */
 object AccountMemory {
     var token: Any = Any()
         private set
     private var account: String? = null
 
-    /** The account now in use; a different one than before starts from nothing. */
     fun use(account: String) {
         if (account != this.account) clear()
         this.account = account
     }
 
-    /** Forgets everything, e.g. on logout. */
     fun clear() {
         token = Any()
         account = null
@@ -206,24 +107,13 @@ object AccountMemory {
         CleanupDraft.clear()
         Outbox.clear()
         Starts.clear()
-        Forks.clear()
-        Answers.clear()
-        Plans.clear()
-        Cancels.clear()
         ImageDrafts.clear()
         PendingUris.clear()
         ViewerImages.clear()
-        Resolves.clear()
-        QuestionPicks.clear()
-        DockFolds.clear()
     }
 }
 
-/**
- * Messages with images kept on disk, sealed, from send until the CLI has
- * them (architecture §17): a reclaimed process can then still retry the
- * same request or put the message back. An index lists them by session.
- */
+/** Sealed disk store for local outgoing image thumbnails until Core confirms acceptance or dismisses them. */
 class OutgoingRecords(private val files: SealedFiles) {
     private fun folder(sid: String, requestId: String) = "out:$sid:$requestId"
 
@@ -237,16 +127,10 @@ class OutgoingRecords(private val files: SealedFiles) {
         try {
             saveImages(files, f, o.images, original)
             saveOrder(files, f, o.images, original)
-            files.put(f, "text", o.text.toByteArray())
-            writeIntent(f, o)
-            files.put(f, "ids", o.imageIds.joinToString("\n").toByteArray())
-            files.put(f, "mode", o.mode.name.toByteArray())
-            if (o.fileIds.isNotEmpty()) files.put(f, "file-ids", o.fileIds.joinToString("\n").toByteArray())
             val line = "$sid\t${o.requestId}"
             val idx = index()
             if (line !in idx) writeIndex(idx + line)
         } catch (e: Exception) {
-            // Not in the index: nothing would find what was written, and it would take up room unseen.
             runCatching { files.clearFolder(f) }
             throw e
         }
@@ -256,24 +140,8 @@ class OutgoingRecords(private val files: SealedFiles) {
         index().mapNotNull { line ->
             val (s, req) = line.split("\t").takeIf { it.size == 2 } ?: return@mapNotNull null
             if (s != sid) return@mapNotNull null
-            val f = folder(sid, req)
-            val text = files.get(f, "text")?.toString(Charsets.UTF_8) ?: return@mapNotNull null
-            val ids = files.get(f, "ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
-            val (images, original) = loadImages(files, f, thumb)
-            val mode = files.get(f, "mode")?.toString(Charsets.UTF_8)?.let { runCatching { io.github.lewin671.remoteagent.proto.SendMode.valueOf(it) }.getOrNull() }
-                ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
-            val fileIds = files.get(f, "file-ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
-            val intent = files.get(f, "intent") ?: io.github.lewin671.remoteagent.core.messageError(UiMessages.composerAndroidOutboxFormat().messageText())
-            val input=java.io.DataInputStream(intent.inputStream())
-            require(input.readInt()==1)
-            val commandId=input.readUTF(); val deadline=input.readLong(); val machine=input.readUTF().ifEmpty {null}
-            val length=input.readInt();require(length in -1..(4 shl 20))
-            val payload=if(length<0)null else ByteArray(length).also(input::readFully)
-            require(input.available()==0)
-            Outgoing(req, text, ids, images, original, mode, fileIds, deadline, machine, commandId,payload).apply {
-                // From a run that ended: whether it reached the computer is not known.
-                restoreUnconfirmed()
-            }
+            val (images, original) = loadImages(files, folder(sid, req), thumb)
+            Outgoing(req, images, original)
         }
     }
 
@@ -283,60 +151,17 @@ class OutgoingRecords(private val files: SealedFiles) {
         writeIndex(old.filterNot { it.startsWith("$sid\t") })
     }
 
-    private fun writeIntent(folder: String, o: Outgoing) {
-        val bytes = java.io.ByteArrayOutputStream()
-        java.io.DataOutputStream(bytes).use {
-            it.writeInt(1)
-            it.writeUTF(o.commandRequestId); it.writeLong(o.commandDeadlineMs); it.writeUTF(o.targetMachineId.orEmpty())
-            val payload=o.commandBytes();it.writeInt(payload?.size ?: -1);if(payload!=null)it.write(payload)
-        }
-        // Binding metadata and optional first bytes land in one atomic sealed file.
-        // -1 explicitly denotes a current intent that has not been prepared yet.
-        files.put(folder, "intent", bytes.toByteArray())
-    }
-
-    /** Renewing a definitely rejected command does not rewrite the local attachment bytes. */
-    fun saveIntent(sid: String, o: Outgoing) = files.transaction { writeIntent(folder(sid, o.requestId), o) }
-
     fun remove(sid: String, requestId: String) = files.transaction {
         files.clearFolder(folder(sid, requestId))
         writeIndex(index().filter { it != "$sid\t$requestId" })
     }
 }
 
-/** The latest state of each message by request ID, from a session's events. */
-fun inputStates(events: List<io.github.lewin671.remoteagent.proto.Event>): Map<String, io.github.lewin671.remoteagent.proto.InputState> {
-    val out = HashMap<String, io.github.lewin671.remoteagent.proto.InputState>()
-    for (e in events) if (e.kindCase == io.github.lewin671.remoteagent.proto.Event.KindCase.INPUT_STATE) out[e.inputState.requestId] = e.inputState
-    return out
-}
-
-/**
- * The messages to let go of: submitted, or canceled by the user. One the
- * session ended on (CANCELED, reason "exited") is kept: the chat offers to
- * put it back into the message box, text and images.
- */
-fun recorded(list: List<Outgoing>, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputState>): List<Outgoing> =
-    list.filter {
-        val st = inputs[it.requestId]
-        st?.status == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_SUBMITTED ||
-            (st?.status == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED && st.reason != "exited")
-    }
-
-/**
- * Whether a message sent from here is still shown under the chat: until the
- * daemon's events have it, and for as long as they say it did not go. The
- * events are the truth: once they have the message queued, submitted or
- * canceled, a try from here that failed or was left unknown did arrive.
- */
-fun outgoingShown(input: io.github.lewin671.remoteagent.proto.InputStatus?): Boolean =
-    input == null || input == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_UNCONFIRMED ||
-        input == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_FAILED || input == io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_NEEDS_TERMINAL
-
-/** Messages sent from this device, per session, for this run of the app (and those with images, from before it). */
+/** Local attachment bridge between [ImageDrafts] and Core's [SessionComposerView.outgoing]. */
 object Outbox {
     private val forgotten = HashSet<String>()
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
+    private val keepingNow = mutableStateMapOf<String, Boolean>()
     private val records get() = OutgoingRecords(io.github.lewin671.remoteagent.RaApp.instance.pendingStore.scoped())
 
     fun of(sid: String): androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing> {
@@ -347,191 +172,128 @@ object Outbox {
         return list
     }
 
-    /** A session may collect new messages while its old encrypted records are read on IO. */
     internal fun restore(
-        sid: String, scope: CoroutineScope, records: OutgoingRecords,
+        sid: String,
+        scope: CoroutineScope,
+        records: OutgoingRecords,
         thumb: (ByteArray) -> androidx.compose.ui.graphics.ImageBitmap? = ::thumbnail,
-    ): kotlinx.coroutines.Job {
+    ) = scope.launch {
         val list = bySession.getOrPut(sid) { mutableStateListOf() }
         val account = AccountMemory.token
-        return scope.launch {
-            val loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching { records.load(sid, thumb) }.getOrDefault(emptyList())
-            }
-            if (account !== AccountMemory.token || bySession[sid] !== list) { loaded.flatMap { it.images }.forEach { PendingUris.release(it) }; return@launch }
-            val restored = loaded.filter { old -> list.none { it.requestId == old.requestId } }
-            restored.flatMap { it.images }.forEach { PendingUris.retain(it) }
-            list += restored
+        val loaded = withContext(Dispatchers.IO) { runCatching { records.load(sid, thumb) }.getOrDefault(emptyList()) }
+        if (account !== AccountMemory.token || bySession[sid] !== list) {
+            loaded.flatMap { it.images }.forEach { PendingUris.release(it) }
+            return@launch
         }
+        val restored = loaded.filter { old -> list.none { it.requestId == old.requestId } }
+        restored.flatMap { it.images }.forEach { PendingUris.retain(it) }
+        list += restored
     }
 
-    fun send(scope: CoroutineScope, remote: Remote, sid: String, text: String, mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER) {
-        val o = Outgoing(newRequestId(), text, mode = mode)
-        of(sid) += o
-        deliver(scope, remote, sid, o)
-    }
+    fun keeping(sid: String): Boolean = keepingNow[sid] == true
 
     /**
-     * Sends a message with images. They are first kept on disk, sealed, off
-     * the main thread; only once that worked is the message sent and
-     * [onKept] told true, for the caller to take the images out of the draft.
-     * If keeping them failed nothing is sent and the draft stays as it is.
-     * Meanwhile [keeping] is true and a second send does nothing: the
-     * images are still in the draft and would be taken a second time.
+     * Seals local attachment copies on disk off the main thread before submitting `SendRequest` to Core.
      */
     fun sendWithImages(
-        scope: CoroutineScope, remote: Remote, sid: String, text: String,
-        imageIds: List<String>, images: List<PendingImage>, original: Boolean,
-        mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
-        store: ((String, Outgoing, Boolean) -> Unit)? = null,
-        discard: ((String, String) -> Unit)? = null,
-        fileIds: List<String> = emptyList(), onKept: (Result<Unit>) -> Unit) {
+        scope: CoroutineScope,
+        remote: Remote,
+        sid: String,
+        text: String,
+        imageIds: List<String>,
+        images: List<PendingImage>,
+        original: Boolean,
+        mode: SendMode = SendMode.SEND_MODE_STEER,
+        fileIds: List<String> = emptyList(),
+        onKept: (Result<Unit>) -> Unit,
+    ) {
         if (keeping(sid)) return
         val machine = images.firstOrNull()?.machineId
-        try { remote.requireFileSupport(machine, fileIds.isNotEmpty()) }
-        catch (e: CommandException) { onKept(Result.failure(e)); return }
+        try {
+            remote.requireFileSupport(machine, fileIds.isNotEmpty())
+        } catch (e: CommandException) {
+            onKept(Result.failure(e))
+            return
+        }
         keepingNow[sid] = true
-        val o = Outgoing(newRequestId(), text, imageIds, images, original, mode, fileIds, targetMachineId = machine)
+        val reqId = newRequestId()
+        val o = Outgoing(reqId, images, original)
         val account = AccountMemory.token
-        val ownedRecords = if (store == null) records else null
-        val keep = store ?: { s: String, message: Outgoing, orig: Boolean -> ownedRecords!!.save(s, message, orig) }
-        val drop = discard ?: { s: String, id: String -> ownedRecords?.remove(s, id); Unit }
         scope.launch {
-            val kept = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val kept = withContext(Dispatchers.IO) {
                 runCatching {
-                    keep(sid, o, original)
-                    try { remote.requireFileSupport(machine, fileIds.isNotEmpty()) }
-                    catch (e: CommandException) { drop(sid, o.requestId); throw e }
-                    // Saving large originals can outlast the upload. Nothing has been sent yet:
-                    // discard this record and leave the draft to upload again with a fresh ID.
+                    records.save(sid, o, original)
+                    try {
+                        remote.requireFileSupport(machine, fileIds.isNotEmpty())
+                    } catch (e: CommandException) {
+                        records.remove(sid, reqId)
+                        throw e
+                    }
                     if (machine == null || images.any { !it.readyFor(machine) } ||
                         images.filterNot { it.isFile }.mapNotNull { it.imageId } != imageIds ||
-                        images.filter { it.isFile }.mapNotNull { it.fileId } != fileIds) {
-                        drop(sid, o.requestId)
+                        images.filter { it.isFile }.mapNotNull { it.fileId } != fileIds
+                    ) {
+                        records.remove(sid, reqId)
                         throw io.github.lewin671.remoteagent.core.MessageException(UiMessages.attachmentAndroidUploadRequired().messageText())
                     }
                 }
             }
             if (account !== AccountMemory.token) return@launch
-            if (sid in forgotten) { drop(sid, o.requestId); return@launch }
+            if (sid in forgotten) {
+                withContext(Dispatchers.IO) { runCatching { records.remove(sid, reqId) } }
+                return@launch
+            }
             keepingNow.remove(sid)
             onKept(kept)
             if (kept.isFailure) return@launch
             of(sid) += o
-            watch(remote, sid)
-            deliver(scope, remote, sid, o)
+            remote.submitSessionCommand(
+                sid,
+                remote.cmd {
+                    send = SendRequest.newBuilder()
+                        .setSessionId(sid)
+                        .setText(text)
+                        .setRequestId(reqId)
+                        .addAllImageIds(imageIds)
+                        .addAllFileIds(fileIds)
+                        .setMode(mode)
+                        .build()
+                },
+                machineId = machine.orEmpty(),
+            )
         }
     }
 
-    private val keepingNow = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
-
-    /**
-     * A message's images are being kept before it is sent. The lock is the
-     * session's, not the message box's: the box goes away and comes back
-     * with the 聊天 / 终端 tabs while the images are still being kept.
-     */
-    fun keeping(sid: String): Boolean = keepingNow[sid] == true
-
-    private val watching = HashMap<String, kotlinx.coroutines.Job>()
-
-    /**
-     * Follows a session's events while messages with images wait here, and
-     * lets them go once the CLI has recorded them, whether or not the chat
-     * is on screen.
-     */
-    fun watch(remote: Remote, sid: String) {
-        if (sid in watching) return
-        lateinit var job: kotlinx.coroutines.Job
-        job = io.github.lewin671.remoteagent.RaApp.instance.scope.launch {
-            try {
-                remote.events(sid).collect { ev -> settle(sid, inputStates(ev.events)) }
-            } finally {
-                if (watching[sid] === job) watching.remove(sid)
-            }
-        }
-        watching[sid] = job
+    fun remove(sid: String, requestId: String, releaseImages: Boolean = true) {
+        val list = bySession[sid] ?: return
+        val hit = list.firstOrNull { it.requestId == requestId } ?: return
+        list.remove(hit)
+        runCatching { records.remove(sid, requestId) }
+        if (releaseImages) hit.images.forEach { it.release(abort = false) }
     }
 
-    /**
-     * A session's last message with images is gone: its events are let go
-     * of too. Waiting for the next batch to notice would keep the whole
-     * history of a session that sends none, one that ended or whose
-     * computer is offline.
-     */
-    private fun unwatch(sid: String) {
-        if (bySession[sid]?.none { it.images.isNotEmpty() } != false) watching.remove(sid)?.cancel()
+    fun takeBack(sid: String, requestId: String, draft: ImageDraft): Boolean {
+        val hit = bySession[sid]?.firstOrNull { it.requestId == requestId } ?: return false
+        if (!hit.hasLocalAttachments) return false
+        val attached = draft.attach(hit.images, io.github.lewin671.remoteagent.core.MAX_IMAGES, hit.original)
+        if (!attached) return false
+        bySession[sid]?.remove(hit)
+        draft.whenKept(hit.images.map { it.id }) { runCatching { records.remove(sid, requestId) } }
+        return true
     }
 
-    fun deliver(scope: CoroutineScope, remote: Remote, sid: String, o: Outgoing) {
-        val account = AccountMemory.token
-        scope.launch {
-            if (account !== AccountMemory.token) return@launch
-            val retry = o.state == Outgoing.State.UNKNOWN
-            o.deliver { request ->
-                val prepared = o.prepareDelivery(remote, sid, request, prior = retry)
-                remote.requireFileSupport(prepared.machineId, o.fileIds.isNotEmpty(), retry)
-                if (o.images.isNotEmpty()) {
-                    val kept = records
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { kept.saveIntent(sid, o) }
-                    if (account !== AccountMemory.token) throw kotlinx.coroutines.CancellationException("account changed")
-                }
-                remote.forward(prepared, retryOfUnknown = retry)
-            }
-        }
+    /** Releases local attachment copies once Core no longer keeps the outgoing entry around. */
+    fun pruneSettled(sid: String, activeRequestIds: Set<String>) {
+        val list = bySession[sid] ?: return
+        val stale = list.filter { it.requestId !in activeRequestIds }
+        for (o in stale) remove(sid, o.requestId, releaseImages = true)
     }
 
-    /** Drops a message from here for good: its kept images and their bytes go too. */
-    fun remove(sid: String, o: Outgoing) {
-        of(sid).remove(o)
-        if (o.images.isNotEmpty()) runCatching { records.remove(sid, o.requestId) }
-        unwatch(sid)
-    }
-
-    /**
-     * Takes a message back for the message box: its images live on in
-     * [draft]. Its record goes once they are on disk there: until then it is
-     * the only copy a reclaimed process would find.
-     */
-    fun takeBack(sid: String, o: Outgoing, draft: ImageDraft) {
-        of(sid).remove(o)
-        if (o.images.isNotEmpty()) {
-            val kept = records
-            draft.whenKept(o.images.map { it.id }) { runCatching { kept.remove(sid, o.requestId) } }
-        }
-        unwatch(sid)
-    }
-
-    /**
-     * Lets go of messages submitted or canceled by the user ([recorded]):
-     * their images' bytes, thumbnails and picker grants, and the copies on
-     * disk.
-     */
-    fun settle(sid: String, inputs: Map<String, io.github.lewin671.remoteagent.proto.InputState>) {
-        for (o in recorded(of(sid), inputs)) {
-            remove(sid, o)
-            o.images.forEach { it.release(abort = false) }
-        }
-    }
-
-    fun find(sid: String, requestId: String): Outgoing? = of(sid).firstOrNull { it.requestId == requestId }
-
-    private val prompts = HashMap<String, String>()
-
-    /** What is being typed in a session's message box, so a message can be put back into it. */
-    fun draft(sid: String) = ImageDrafts.forSession(sid).text
-
-    /** The first message of a session started here, sent by the daemon once the CLI is ready. */
-    fun rememberPrompt(sid: String, text: String) {
-        if (text.isNotEmpty()) prompts[sid] = text
-    }
-
-    fun prompt(sid: String): String? = prompts[sid]
+    fun find(sid: String, requestId: String): Outgoing? = bySession[sid]?.firstOrNull { it.requestId == requestId }
 
     fun forgetSession(sid: String) {
         forgotten += sid
-        watching.remove(sid)?.cancel()
         bySession.remove(sid)?.flatMap { it.images }?.forEach { it.release(abort = false) }
-        prompts.remove(sid)
         keepingNow.remove(sid)
     }
 
@@ -539,11 +301,5 @@ object Outbox {
         forgotten.clear()
         bySession.clear()
         keepingNow.clear()
-        watching.values.forEach { it.cancel() }
-        watching.clear()
-        prompts.clear()
     }
-
-    /** Local text of a request, for queued messages. */
-    fun text(sid: String, requestId: String): String? = bySession[sid]?.firstOrNull { it.requestId == requestId }?.text
 }

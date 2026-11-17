@@ -109,8 +109,16 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
     val state by remote.state.collectAsState()
     val s = state.sessions[sid]
     val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
-    val events by remote.events(sid).collectAsState()
-    val all = remember(events.events) { sessionImages(events.events) }
+    val win = remember(seq) {
+        io.github.lewin671.remoteagent.core.proto.SessionWindowRequest.newBuilder()
+            .setLimit(200)
+            .apply { if (seq > 0) aroundSeq = seq }
+            .build()
+    }
+    val vm by remote.watchSession(sid, win).collectAsState(
+        initial = io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance(),
+    )
+    val all = remember(vm.timeline.itemsList) { sessionTimelineImages(vm.timeline.itemsList) }
     val start =
         remember(all.size > 0) {
             var n = 0
@@ -123,7 +131,9 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
         picture = { page -> ViewerPage(remote, sid, all[page], state.conn == ConnState.ONLINE) },
         info = { page ->
             val cur = all[page]
-            val agent = agentName(s?.agent() ?: DEFAULT_AGENT, copy = copy)
+            val agentValue = vm.header.agent.takeIf { it != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED }
+                ?: s?.agent() ?: DEFAULT_AGENT
+            val agent = agentName(agentValue, copy = copy)
             val from = when (cur.ref.source) {
                 ImageSource.IMAGE_SOURCE_TOOL -> copy(UiMessages.imageAndroidViewedBy(agent = agent))
                 ImageSource.IMAGE_SOURCE_GENERATED -> copy(UiMessages.imageAndroidGeneratedBy(agent = agent))
@@ -132,9 +142,39 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
             val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
             val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
-            Text(listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it, copy = copy) }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
+            val title = uiText(vm.header.title).ifEmpty { s?.let { titleOf(it, copy = copy) }.orEmpty() }
+            Text(listOfNotNull(if (w > 0) "$w × $h" else null, title.ifEmpty { null }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
             ViewerActions(remote, sid, cur)
         })
+}
+
+private fun sessionTimelineImages(items: List<io.github.lewin671.remoteagent.core.proto.SessionTimelineItem>): List<SessionImage> = buildList {
+    fun appendItem(item: io.github.lewin671.remoteagent.core.proto.SessionTimelineItem) {
+        when (item.kindCase) {
+            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.USER_MESSAGE ->
+                item.userMessage.imagesList.forEach {
+                    add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.USER_MESSAGE))
+                }
+            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.TOOL_CALL ->
+                item.toolCall.imagesList.forEach {
+                    add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.TOOL_CALL, item.toolCall.title))
+                }
+            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.TOOL_GROUP ->
+                item.toolGroup.callsList.forEach { call ->
+                    call.imagesList.forEach {
+                        add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.TOOL_CALL, call.title))
+                    }
+                }
+            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.GENERATED_IMAGES ->
+                item.generatedImages.imagesList.forEach {
+                    add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.IMAGE_GENERATED))
+                }
+            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.QUIET_SCHEDULED_GROUP ->
+                item.quietScheduledGroup.itemsList.forEach(::appendItem)
+            else -> {}
+        }
+    }
+    items.forEach(::appendItem)
 }
 
 /** The same full-screen paging/close controls for message and draft images. */

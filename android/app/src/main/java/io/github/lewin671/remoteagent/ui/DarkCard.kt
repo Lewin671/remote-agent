@@ -23,16 +23,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.SessionView
-import io.github.lewin671.remoteagent.core.agent
-import io.github.lewin671.remoteagent.core.approvalDisplay
-import io.github.lewin671.remoteagent.core.approvalTruncated
-import io.github.lewin671.remoteagent.core.approvalTruncatedMessage
+import io.github.lewin671.remoteagent.core.UiMessage
 import io.github.lewin671.remoteagent.core.capabilities
-import io.github.lewin671.remoteagent.core.isSkeleton
 import io.github.lewin671.remoteagent.core.proto.AlwaysAllowKind
 import io.github.lewin671.remoteagent.core.proto.AttentionCardView
-import io.github.lewin671.remoteagent.proto.ApprovalRequested
+import io.github.lewin671.remoteagent.core.proto.SessionApprovalDockView
+import io.github.lewin671.remoteagent.core.proto.SessionCommandState
+import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
+import io.github.lewin671.remoteagent.core.proto.SessionDockKind
+import io.github.lewin671.remoteagent.core.proto.SessionViewModel
+import io.github.lewin671.remoteagent.proto.Command
+import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 
 /*
  * The dark card (design-system §6 终端卡): what waits for the user, dark in
@@ -186,93 +187,115 @@ fun DarkCardLine(kind: String, status: String, modifier: Modifier = Modifier, er
 }
 
 /**
- * A decision on an approval sent from here: which way it went, whether it is
- * on its way or its outcome unknown ([Resolves]). [submitted] once the user
- * chose; the card is then one line.
+ * Core-backed approval reply state on [SessionCommandState] for Home, Dock and ApprovalPage.
  */
 class ApprovalReply internal constructor(
-    val act: Action,
-    val r: Resolves.Resolve,
-    private val which: androidx.compose.runtime.MutableState<Boolean?>,
+    val cmdState: SessionCommandState?,
+    val chosenAllow: Boolean?,
+    val message: String,
+    val always: Boolean,
     private val send: (allow: Boolean, message: String, always: Boolean) -> Unit,
 ) {
-    val submitted: Boolean get() = act.running || r.attempt.frozen || which.value != null
+    val running: Boolean get() = cmdState?.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING || cmdState?.busy == true
+    val failed: Boolean get() = cmdState != null && !running && (
+        cmdState.status == SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED ||
+            cmdState.status == SessionCommandStatus.SESSION_COMMAND_STATUS_UNKNOWN ||
+            cmdState.frozen
+        )
+    val submitted: Boolean get() = running || cmdState?.frozen == true || chosenAllow != null
 
     fun resolve(allow: Boolean, message: String = "", always: Boolean = false) = send(allow, message, always)
 
-    internal val said: io.github.lewin671.remoteagent.core.UiMessage get() = if (which.value ?: r.allow) UiMessages.approvalAllowed() else UiMessages.approvalDenied()
+    internal val said: UiMessage get() = if (chosenAllow != false) UiMessages.approvalAllowed() else UiMessages.approvalDenied()
 }
-
-@Composable
-fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply =
-    rememberApprovalReply(s.machineId, s.id, a.approvalId, approvalTruncated(a), skeleton = isSkeleton(a))
 
 @Composable
 fun rememberApprovalReply(
     machineId: String,
     sessionId: String,
     approvalId: String,
-    truncated: Boolean,
+    observedSeq: Long,
+    cmdState: SessionCommandState?,
     skeleton: Boolean = false,
 ): ApprovalReply {
     val remote = LocalRemote.current
-    val act = rememberAction(approvalId)
-    val r = Resolves.of(approvalId)
-    val which = remember(approvalId) { mutableStateOf(if (r.attempt.frozen) r.allow else null) }
     val view = androidx.compose.ui.platform.LocalView.current
-    return ApprovalReply(act, r, which) { allow, message, always ->
+    var chosenAllow by remember(approvalId) { mutableStateOf<Boolean?>(null) }
+    var lastMessage by remember(approvalId) { mutableStateOf("") }
+    var lastAlways by remember(approvalId) { mutableStateOf(false) }
+    return ApprovalReply(cmdState, chosenAllow, lastMessage, lastAlways) { allow, message, always ->
+        if (skeleton) return@ApprovalReply
         Motion.tap(view)
-        which.value = allow
-        act.run({
-            require(!skeleton) { sessionText(UiMessages.sessionSkeleton()) }
-            resolveApproval(remote, machineId, sessionId, approvalId, truncated, allow, message, always)
-            null
-        })
+        chosenAllow = allow
+        lastMessage = message
+        lastAlways = always
+        remote.submitSessionCommand(
+            sessionId,
+            Command.newBuilder()
+                .setResolveApproval(
+                    ResolveApprovalRequest.newBuilder()
+                        .setSessionId(sessionId)
+                        .setApprovalId(approvalId)
+                        .setAllow(allow)
+                        .setMessage(message)
+                        .setAlways(always)
+                        .apply { if (observedSeq > 0) setObservedEventSeq(observedSeq) },
+                )
+                .build(),
+            machineId = machineId,
+        )
     }
 }
 
 /**
- * The one line a submitted approval shrinks to: 已允许 / 已拒绝, or, when it
- * did not reach the computer, why in red with 重试. One whose outcome is
- * unknown is only ever sent again as it was.
+ * The one line a submitted approval shrinks to: 已允许 / 已拒绝, or why in red with 重试.
  */
 @Composable
 fun ApprovalSubmitted(kind: String, d: ApprovalReply, modifier: Modifier = Modifier) {
     val copy = uiText()
-    val failed = !d.act.running && (d.r.attempt.frozen || d.act.error.isNotEmpty())
+    val st = d.cmdState
     when {
-        !failed -> DarkCardLine(kind, copy(d.said), modifier)
-        d.r.attempt.expired -> DarkCardLine(kind, copy(UiMessages.approvalAndroidReplyExpired(decision = (if (d.r.allow) copy(UiMessages.approvalAllow()) else copy(UiMessages.approvalAndroidDenyDecision())).toString())), modifier, error = true)
-        else -> DarkCardLine(kind, copy(UiMessages.approvalDeliveryFailed(reason = (d.act.error.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) }).toString())), modifier, error = true) { d.resolve(d.r.allow, d.r.message, d.r.always) }
+        !d.failed -> DarkCardLine(kind, copy(d.said), modifier)
+        st?.expired == true -> DarkCardLine(
+            kind,
+            copy(UiMessages.approvalAndroidReplyExpired(decision = (if (d.chosenAllow != false) copy(UiMessages.approvalAllow()) else copy(UiMessages.approvalAndroidDenyDecision())).toString())),
+            modifier,
+            error = true,
+        )
+        else -> {
+            val reason = st?.takeIf { it.hasErrorText() }?.let { uiText(it.errorText) }
+                ?.ifEmpty { st.errorCode }
+                ?.ifEmpty { copy(UiMessages.approvalAndroidUnknownResult()) }
+                ?: copy(UiMessages.approvalAndroidUnknownResult())
+            val retry: (() -> Unit)? = if (st == null || st.canRetry || !st.expired) {
+                { d.resolve(d.chosenAllow ?: true, d.message, d.always) }
+            } else null
+            DarkCardLine(kind, copy(UiMessages.approvalDeliveryFailed(reason = reason)), modifier, error = true, retry = retry)
+        }
     }
 }
 
 /**
- * An approval's buttons on the dark card, the same on the home page, in the
- * dock and on its page: 不允许 and 允许, and under them 「允许，这类请求以后
- * 不再问」 where the computer offers it. A command not shown whole ([cut])
- * offers 看完整命令 in place of 允许. 不允许 asks for an optional reason in
- * place ([denying]). [locked]: out of reach of the server, or past the
- * deadline; nothing can be decided.
+ * An approval's buttons on the dark card (home card, dock, and approval page).
  */
 @Composable
 fun ApprovalButtons(
-    state: RemoteState,
-    s: SessionView,
-    a: ApprovalRequested,
+    approvalId: String,
     d: ApprovalReply,
     denying: Boolean,
     onDenying: (Boolean) -> Unit,
     locked: Boolean,
+    truncated: Boolean,
+    always: Boolean,
+    alwaysLabel: String,
+    denyPlaceholder: String = uiText(UiMessages.approvalReasonPlaceholder()),
     cut: Boolean = false,
     onFull: () -> Unit = {},
 ) {
     val copy = uiText()
-    var reason by Drafts.of("deny:${a.approvalId}")
-    val truncated = approvalTruncated(a)
-    val always = capabilities(state.machines[s.machineId])?.approvalAlways == true
+    var reason by Drafts.of("deny:$approvalId")
     if (denying) {
-        CardField(reason, { reason = it }, copy(UiMessages.approvalReasonPlaceholder()), Modifier.padding(top = 12.dp), label = copy(UiMessages.approvalDenialReason()))
+        CardField(reason, { reason = it }, denyPlaceholder, Modifier.padding(top = 12.dp), label = copy(UiMessages.approvalDenialReason()))
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CardButton(copy(UiMessages.commonCancel()), { onDenying(false) }, Modifier.weight(1f))
             CardButton(copy(UiMessages.approvalDeny()), { d.resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
@@ -287,13 +310,7 @@ fun ApprovalButtons(
     if (always && !cut && !locked && !truncated) Box(
         Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { d.resolve(true, always = true) },
         contentAlignment = Alignment.Center,
-    ) { Text(copy(UiMessages.approvalAlwaysAllow()), style = T.s15, color = CardColors.link) }
-}
-
-/** Whether an approval can be decided now: not out of reach of the server, and not past its deadline. */
-fun approvalLocked(state: RemoteState, machineId: String, a: ApprovalRequested, now: Long): Boolean {
-    val deadline = if (a.hasDeadline()) a.deadline.seconds * 1000 else 0
-    return state.peer(machineId).unlinked || (deadline > 0 && now >= deadline)
+    ) { Text(alwaysLabel, style = T.s15, color = CardColors.link) }
 }
 
 /**
@@ -308,14 +325,19 @@ fun ApprovalCard(
     modifier: Modifier = Modifier,
 ) {
     val copy = uiText()
+    val remote = LocalRemote.current
+    val svm by remote.watchSession(card.sessionId).collectAsState(initial = SessionViewModel.getDefaultInstance())
+    val cmdState = svm.dock.takeIf {
+        it.hasItem && it.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL && it.approval.approvalId == card.approvalId
+    }?.command
     val kind = uiText(card.kindText)
     val time = uiText(card.time)
-    val d = rememberApprovalReply(card.machineId, card.sessionId, card.approvalId, card.truncated)
+    val d = rememberApprovalReply(card.machineId, card.sessionId, card.approvalId, 0L, cmdState)
     var full by rememberSaveable(card.approvalId) { mutableStateOf(false) }
     var denying by rememberSaveable(card.approvalId) { mutableStateOf(false) }
     var lines by remember(card.approvalId) { mutableIntStateOf(0) }
     if (d.submitted) return ApprovalSubmitted(kind, d, modifier)
-    val command = approvalDisplay(card.body)
+    val command = card.body.trim()
     val more = lines - CARD_LINES
     val cut = command.isNotEmpty() && more > 0 && !full
     val always = card.alwaysKind != AlwaysAllowKind.ALWAYS_ALLOW_KIND_UNSPECIFIED
@@ -347,8 +369,8 @@ fun ApprovalCard(
                 }
             }
         }
-        if (card.truncated) Text(uiText(approvalTruncatedMessage), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
-        ApprovalCardActions(
+        if (card.truncated) Text(copy(UiMessages.approvalTruncated()), style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+        ApprovalButtons(
             approvalId = card.approvalId,
             d = d,
             denying = denying,
@@ -361,38 +383,4 @@ fun ApprovalCard(
             onFull = { full = true },
         )
     }
-}
-
-@Composable
-private fun ApprovalCardActions(
-    approvalId: String,
-    d: ApprovalReply,
-    denying: Boolean,
-    onDenying: (Boolean) -> Unit,
-    locked: Boolean,
-    truncated: Boolean,
-    always: Boolean,
-    alwaysLabel: String,
-    cut: Boolean,
-    onFull: () -> Unit,
-) {
-    val copy = uiText()
-    var reason by Drafts.of("deny:$approvalId")
-    if (denying) {
-        CardField(reason, { reason = it }, copy(UiMessages.approvalReasonPlaceholder()), Modifier.padding(top = 12.dp), label = copy(UiMessages.approvalDenialReason()))
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CardButton(copy(UiMessages.commonCancel()), { onDenying(false) }, Modifier.weight(1f))
-            CardButton(copy(UiMessages.approvalDeny()), { d.resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
-        }
-        return
-    }
-    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CardButton(copy(UiMessages.approvalDeny()), { onDenying(true) }, Modifier.weight(1f), enabled = !locked)
-        if (cut) CardButton(copy(UiMessages.approvalFullCommand()), onFull, Modifier.weight(1f), primary = true)
-        else CardButton(copy(UiMessages.approvalAllow()), { d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
-    }
-    if (always && !cut && !locked && !truncated) Box(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { d.resolve(true, always = true) },
-        contentAlignment = Alignment.Center,
-    ) { Text(alwaysLabel, style = T.s15, color = CardColors.link) }
 }

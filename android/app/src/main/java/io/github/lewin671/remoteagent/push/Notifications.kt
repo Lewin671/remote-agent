@@ -1,11 +1,10 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.resolveUiMessage
 import io.github.lewin671.remoteagent.ui.sessionText
 
 import io.github.lewin671.remoteagent.core.machineDiskNotice
 import io.github.lewin671.remoteagent.core.UiMessages
-
-import io.github.lewin671.remoteagent.core.approvalDisplay
 
 import android.app.KeyguardManager
 import android.app.Notification
@@ -31,26 +30,29 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.CommandException
-import io.github.lewin671.remoteagent.core.PreparedCommand
+import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.ui.displayError
+import io.github.lewin671.remoteagent.core.coreTextToMessageText
 import io.github.lewin671.remoteagent.core.long
+import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
+import io.github.lewin671.remoteagent.core.proto.SessionDockKind
+import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.NotifyContent
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val TAG = "remote-agent"
 
@@ -194,11 +196,11 @@ object Notifier {
         val oldToolInput =
             a.toolInput.isEmpty() && a.command.trimStart().startsWith("{") && a.toolName != "Bash"
         val command = if (oldToolInput) "" else a.command
-        if (command.isNotEmpty()) return copy(UiMessages.listStateAndroidRequestCommand()) to approvalDisplay(command)
+        if (command.isNotEmpty()) return copy(UiMessages.listStateAndroidRequestCommand()) to command.trim()
         val input = a.toolInput.ifEmpty { if (oldToolInput) a.command else "" }
         return copy(UiMessages.listStateAndroidRequestPermission()) +
-            (if (a.toolName.isNotEmpty()) " · ${approvalDisplay(a.toolName)}" else "") to
-            approvalDisplay(a.description.ifEmpty { input }.ifEmpty { a.toolName })
+            (if (a.toolName.isNotEmpty()) " · ${a.toolName.trim()}" else "") to
+            input.ifEmpty { a.toolName }.let { a.description.ifEmpty { it } }.trim()
     }
 
     /** How a push is shown. */
@@ -303,7 +305,7 @@ object Notifier {
                 .setStyle(
                     NotificationCompat.BigTextStyle()
                         .bigText(
-                            listOf(approvalDisplay(approval.description), what)
+                            listOf(approval.description.trim(), what)
                                 .filter { it.isNotEmpty() }
                                 .distinct()
                                 .joinToString("\n"),
@@ -439,46 +441,22 @@ class ApprovalReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 null
             } ?: return Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCouldNotReadTheAccountOpenTheAppToContinue()), true)
-        val remote = Remote(acct, RaApp.instance.http, securityStorage = RaApp.instance.vault)
-        val p =
-            remote.prepare(
-                machine,
-                session,
-                Command.newBuilder()
-                    .setResolveApproval(
-                        ResolveApprovalRequest.newBuilder()
-                            .setSessionId(session)
-                            .setApprovalId(approval)
-                            .setAllow(allow)
-                            .setObservedEventSeq(intent.getLongExtra("sourceSeq", 0)),
-                    )
-                    .build(),
-            )
-        val authorized =
-            try {
-                remote.authorize(p)
-            } catch (_: Exception) {
-                remote.close()
-                Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCurrentAuthorizationCouldNotBeVerifiedOpenTheAppTo()), true)
-                return
-            }
-        remote.close()
+        val sourceSeq = intent.getLongExtra("sourceSeq", 0)
         Notifier.update(context, nid, if (allow) sessionText(UiMessages.notificationsAndroidAllowing()) else sessionText(UiMessages.notificationsAndroidRejecting()), false)
         val data =
             Data.Builder()
                 .putString("machine", machine)
                 .putString("session", session)
-                .putString("request", p.requestId)
-                .putLong("deadline", p.deadlineMs)
-                .putByteArray("envelope", authorized.toByteArray())
+                .putString("approval", approval)
+                .putLong("sourceSeq", sourceSeq)
+                .putLong("deadline", deadline)
                 .putBoolean("allow", allow)
                 .putInt("nid", nid)
                 .build()
         val work =
             OneTimeWorkRequestBuilder<ApprovalWorker>()
                 .setInputData(data)
-                // Finds the work of a recorded reply (ApprovalWorker).
-                .addTag(p.requestId)
+                .addTag("approval-$approval")
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                 .build()
@@ -487,28 +465,41 @@ class ApprovalReceiver : BroadcastReceiver() {
     }
 }
 
+/** Local choices apply even before the server has received a subscription update. */
+fun acceptPush(hasAccount: Boolean, kind: NotifyKind, settings: Settings): Boolean = hasAccount && when (kind) {
+    NotifyKind.NOTIFY_KIND_ATTENTION -> settings.notifyAttention
+    NotifyKind.NOTIFY_KIND_TURN_ENDED -> settings.notifyTurnEnded
+    NotifyKind.NOTIFY_KIND_SECURITY, NotifyKind.NOTIFY_KIND_MACHINE_DISK -> true
+    NotifyKind.NOTIFY_KIND_SCHEDULED -> settings.notifyScheduled
+    else -> false
+}
+
+private enum class ApprovalRecord { SENT, DONE }
+
 /**
- * Forwards a sealed approval reply. Retries reuse the same request ID, which the daemon runs at
- * most once; the notification says what happened, or that it is unknown.
+ * Dispatches an approval reply from a push notification through CoreHost.
  */
 class ApprovalWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val d = inputData
         val nid = d.getInt("nid", 0)
+        val machine = d.getString("machine").orEmpty()
+        val session = d.getString("session").orEmpty()
+        val approval = d.getString("approval").orEmpty()
+        val sourceSeq = d.getLong("sourceSeq", 0L)
         val allow = d.getBoolean("allow", false)
-        val request = d.getString("request").orEmpty()
-        val deadline = d.getLong("deadline", 0)
+        val deadline = d.getLong("deadline", 0L)
+        val key = "$session:$approval"
         val records =
             applicationContext.getSharedPreferences("approval-attempts", Context.MODE_PRIVATE)
-        // What an earlier run of this work recorded: it may be run again after the process was
-        // killed.
         fun recorded() =
-            records.getString(request, null)?.let {
+            records.getString(key, null)?.let {
                 runCatching { ApprovalRecord.valueOf(it) }.getOrNull()
             }
-        // An earlier attempt of this reply may have gone through.
         fun wasUnknown() = recorded() == ApprovalRecord.SENT
+        fun saveRecord(r: ApprovalRecord?): Boolean =
+            records.edit().apply { if (r == null) remove(key) else putString(key, r.name) }.commit()
         fun done(): Result {
             Notifier.update(applicationContext, nid, if (allow) sessionText(UiMessages.approvalAllowed()) else sessionText(UiMessages.approvalDenied()), true)
             return Result.success()
@@ -517,71 +508,117 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
             Notifier.update(applicationContext, nid, text, true)
             return Result.failure()
         }
-        // A record is kept until WorkManager has recorded the end of its work: only then is no run
-        // left to read it.
         withContext(Dispatchers.IO) {
             val wm = WorkManager.getInstance(applicationContext)
             val over =
                 records.all.keys.filter {
-                    it != request && wm.getWorkInfosByTag(it).get().all { w -> w.state.isFinished }
+                    it != key && wm.getWorkInfosByTag(it).get().all { w -> w.state.isFinished }
                 }
             if (over.isNotEmpty()) records.edit().apply { over.forEach { remove(it) } }.commit()
         }
-        // Confirmed by an earlier run that was killed before its success was recorded.
         if (recorded() == ApprovalRecord.DONE) return done()
         val acct =
             try {
                 RaApp.instance.vault.load()
             } catch (e: Exception) {
-                // The phone locked again before this ran: the account key needs it unlocked.
-                if (System.currentTimeMillis() + 5_000 < deadline) {
+                if (deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) {
                     Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidPhoneLockedSubmissionContinuesAfterUnlocking()), false)
                     return Result.retry()
                 }
                 return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitPhoneStayedLockedUntilApprovalTimedOut()))
             } ?: return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitThisPhoneHasNoAccount()))
-        val p =
-            PreparedCommand(
-                d.getString("machine").orEmpty(),
-                d.getString("session").orEmpty(),
-                d.getString("request").orEmpty(),
-                d.getLong("deadline", 0),
-                Envelope.parseFrom(
-                    ByteString.copyFrom(d.getByteArray("envelope") ?: return Result.failure()),
-                ), prior=wasUnknown(),
-            )
+        if (machine.isEmpty() || session.isEmpty() || approval.isEmpty()) return Result.failure()
         val remote = Remote(acct, RaApp.instance.http, securityStorage = RaApp.instance.vault)
         try {
-            sendApproval(
-                p,
-                recorded(),
-                record = { r ->
-                    records
-                        .edit()
-                        .apply { if (r == null) remove(request) else putString(request, r.name) }
-                        .commit()
-                },
-            ) { prepared, retry ->
-                remote.forward(prepared, retryOfUnknown = retry)
+            remote.start()
+            val ready = withTimeoutOrNull(10_000L) {
+                remote.state.first {
+                    it.conn == ConnState.ONLINE && it.machines[machine]?.online == true && it.sessions[session]?.info != null
+                }
+                true
+            } ?: false
+            if (!ready) {
+                if ((deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) && runAttemptCount < 5) {
+                    Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidSubmittingApproval()), false)
+                    return Result.retry()
+                }
+                return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent()))
             }
-            return done()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: CommandException) {
-            if (
-                (e.unknown || e.code == "network") &&
-                    System.currentTimeMillis() + 5_000 < p.deadlineMs &&
-                    runAttemptCount < 5
+            val vmFlow = remote.watchSession(session)
+            remote.openSession(session)
+            val initialVm = withTimeoutOrNull(5_000L) {
+                vmFlow.first { vm ->
+                    vm.timeline.loaded || (vm.dock.hasItem && vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL)
+                }
+            }
+            if (initialVm != null && initialVm.timeline.loaded &&
+                (!initialVm.dock.hasItem || initialVm.dock.kind != SessionDockKind.SESSION_DOCK_KIND_APPROVAL || initialVm.dock.approval.approvalId != approval)
             ) {
-                Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidStillSubmittingValue1((displayError(e)).toString())), false)
-                return Result.retry()
+                saveRecord(ApprovalRecord.DONE)
+                return done()
             }
-            // Expired after an unknown attempt: that attempt may have worked.
-            return finish(
-                if (e.unknown || wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.dockSubmitFailed((displayError(e)).toString())),
+            check(saveRecord(ApprovalRecord.SENT)) {
+                sessionText(UiMessages.notificationsAndroidCouldNotSaveApprovalSubmissionStateNothingWasSent())
+            }
+            remote.submitSessionCommand(
+                session,
+                Command.newBuilder()
+                    .setResolveApproval(
+                        ResolveApprovalRequest.newBuilder()
+                            .setSessionId(session)
+                            .setApprovalId(approval)
+                            .setAllow(allow)
+                            .apply { if (sourceSeq > 0) setObservedEventSeq(sourceSeq) },
+                    )
+                    .build(),
+                machineId = machine,
             )
+            val settled = withTimeoutOrNull(30_000L) {
+                vmFlow.first { vm ->
+                    val same = vm.dock.hasItem &&
+                        vm.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL &&
+                        vm.dock.approval.approvalId == approval
+                    if (!same) return@first true
+                    val st = vm.dock.command.status
+                    st == SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED ||
+                        st == SessionCommandStatus.SESSION_COMMAND_STATUS_UNKNOWN
+                }
+            }
+            if (settled == null) {
+                if ((deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) && runAttemptCount < 5) {
+                    return Result.retry()
+                }
+                return finish(sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()))
+            }
+            val same = settled.dock.hasItem &&
+                settled.dock.kind == SessionDockKind.SESSION_DOCK_KIND_APPROVAL &&
+                settled.dock.approval.approvalId == approval
+            if (!same) {
+                saveRecord(ApprovalRecord.DONE)
+                return done()
+            }
+            val cmdState = settled.dock.command
+            if (cmdState.status == SessionCommandStatus.SESSION_COMMAND_STATUS_FAILED) {
+                saveRecord(null)
+                val msg = if (cmdState.hasErrorText()) {
+                    coreTextToMessageText(cmdState.errorText).resolve { resolveUiMessage(applicationContext, it) }
+                } else cmdState.errorCode.ifEmpty { sessionText(UiMessages.approvalAndroidUnknownResult()) }
+                return finish(sessionText(UiMessages.dockSubmitFailed(msg)))
+            }
+            if (cmdState.errorCode == "network" || !cmdState.expired) {
+                if ((deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) && runAttemptCount < 5) {
+                    val msg = if (cmdState.hasErrorText()) {
+                        coreTextToMessageText(cmdState.errorText).resolve { resolveUiMessage(applicationContext, it) }
+                    } else sessionText(UiMessages.approvalAndroidUnknownResult())
+                    Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidStillSubmittingValue1(msg)), false)
+                    return Result.retry()
+                }
+            }
+            return finish(sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.dockSubmitFailed((displayError(e)).toString())))
+            return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.dockSubmitFailed(e.message ?: e.javaClass.simpleName)))
         } finally {
             remote.close()
         }

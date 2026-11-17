@@ -8,46 +8,87 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.first
 import io.github.lewin671.remoteagent.core.*
-import java.time.Instant
+import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
+import io.github.lewin671.remoteagent.core.proto.SessionViewModel
+import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+import java.time.Instant
 
 /** Resolve once per result: a saved plain summary must never masquerade as the formatted answer. */
 @Composable
 internal fun rememberScheduleResultText(run: ScheduledRun): String? {
     val remote = LocalRemote.current
-    val events = remember(remote, run.session) { run.session.takeIf { it.isNotEmpty() }?.let(remote::events) }
+    val flow = remember(remote, run.session, run.id) {
+        if (run.session.isNotEmpty()) {
+            val win = SessionWindowRequest.newBuilder().setLimit(80).apply {
+                if (run.id.isNotEmpty()) revealRunId = run.id
+            }.build()
+            remote.watchSession(run.session, win)
+        } else null
+    }
     return key(remote, run.id, run.status, run.json.text("final_summary")) {
-        val initial = events?.value?.takeIf(::scheduleResultSettled)?.let { resolvedScheduleResult(run, it) }
-            ?: if (events == null) resolvedScheduleResult(run, SessionEvents()) else null
+        val current = flow?.collectAsState(initial = SessionViewModel.getDefaultInstance())?.value
+        val initial = current?.takeIf(::scheduleResultSettled)?.let { resolvedScheduleResult(run, it) }
+            ?: if (flow == null) resolvedScheduleResult(run, null) else null
         val text by produceState<String?>(initial) {
             value = loadScheduleResultText(run) {
                 if (remote.state.value.sessions[run.session]?.info == null) remote.fetchSession(run.session)
-                events!!.first(::scheduleResultSettled)
+                flow!!.first(::scheduleResultSettled)
             }
         }
         text
     }
 }
 
-private fun scheduleResultSettled(events: SessionEvents) =
-    events.loaded && !events.historyPartial || events.error != null || events.fetchError != null || events.unavailableCount > 0
+private fun scheduleResultSettled(vm: SessionViewModel): Boolean {
+    val tl = vm.timeline
+    return (tl.loaded && !tl.historyPartial) || tl.hasError() || tl.hasFetchError() || tl.unavailableCount > 0 || tl.retired
+}
 
-internal suspend fun loadScheduleResultText(run: ScheduledRun, read: suspend () -> SessionEvents): String = try {
+internal suspend fun loadScheduleResultText(run: ScheduledRun, read: suspend () -> SessionViewModel?): String = try {
     kotlinx.coroutines.withTimeoutOrNull(8_000) {
-        if (run.session.isEmpty()) resolvedScheduleResult(run, SessionEvents())
+        if (run.session.isEmpty()) resolvedScheduleResult(run, null)
         else resolvedScheduleResult(run, read())
-    } ?: resolvedScheduleResult(run, SessionEvents())
-} catch (e: CancellationException) { throw e }
-catch (_: Exception) { resolvedScheduleResult(run, SessionEvents()) }
+    } ?: resolvedScheduleResult(run, null)
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    resolvedScheduleResult(run, null)
+}
 
-internal fun resolvedScheduleResult(run: ScheduledRun, events: SessionEvents): String {
-    val answer = if (events.loaded && events.error == null && events.fetchError == null && !events.historyPartial)
-        scheduleFinalAnswer(run, events.verifiedEvents) else null
+internal fun resolvedScheduleResult(run: ScheduledRun, vm: SessionViewModel?): String {
+    val answer = vm?.let { extractScheduleFinalAnswer(run, it) }
     return answer ?: run.json.text("final_summary").ifBlank {
         run.json.text("reason").takeIf { it.isNotBlank() }?.let { scheduleReason(it, copy = ::sessionText) }.orEmpty()
     }
+}
+
+private fun extractScheduleFinalAnswer(run: ScheduledRun, vm: SessionViewModel): String? {
+    if (run.id.isEmpty()) return null
+    val tl = vm.timeline
+    if (!tl.loaded || tl.hasError() || tl.hasFetchError() || tl.historyPartial || tl.retired) return null
+    val flat = ArrayList<SessionTimelineItem>()
+    for (item in tl.itemsList) {
+        if (item.hasQuietScheduledGroup()) flat += item.quietScheduledGroup.itemsList
+        else flat += item
+    }
+    val start = flat.indexOfFirst { it.hasUserMessage() && it.userMessage.scheduledRunId == run.id }
+    if (start < 0) return null
+    var answer: String? = null
+    for (item in flat.drop(start + 1)) {
+        if (item.hasUserMessage()) {
+            val um = item.userMessage
+            if (!um.isScheduled || (um.scheduledRunId.isNotEmpty() && um.scheduledRunId != run.id)) break
+        }
+        if (item.hasForkMarker()) break
+        if (item.hasTurnEnd() && item.turnEnd.isSessionEnded) break
+        if (item.hasAgentMessage() && !item.agentMessage.intermediate) {
+            answer = item.agentMessage.markdown.takeIf { it.isNotBlank() }
+        }
+    }
+    return answer
 }
 
 /** The card enters together with the rest of the detail, after its text is resolved. */

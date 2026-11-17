@@ -76,7 +76,9 @@ fun HomeScreen() {
     val showCard = vm.topAttentionActionable && vm.hasTopAttentionCard() && vm.topAttentionCard.approvalId.isNotEmpty()
     if (vm.topAttentionActionable && !showCard && vm.topAttentionSessionId.isNotEmpty()) {
         // Hydrate approval details for the top attention item when only metadata was available.
-        remote.events(vm.topAttentionSessionId).collectAsState()
+        remote.watchSession(vm.topAttentionSessionId).collectAsState(
+            initial = io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance(),
+        )
     }
     val attentionRows =
         if (showCard && vm.attentionList.firstOrNull()?.sessionId == vm.topAttentionSessionId) {
