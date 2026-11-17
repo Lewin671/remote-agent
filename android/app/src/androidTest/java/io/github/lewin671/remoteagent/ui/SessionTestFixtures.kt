@@ -208,11 +208,12 @@ internal fun sessionFixtureVm(
     val questionEv = live?.actionsList?.firstOrNull { it.hasQuestionAsked() } ?: events.lastOrNull { it.hasQuestionAsked() }
     val hasPlan = info?.planOpen == true
     when {
-        approvalEv != null && info?.pendingApprovals != 0 -> {
+        approvalEv != null && (live != null || info?.pendingApprovals != 0) -> {
             val a = approvalEv.approvalRequested
             dockBuilder.setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_APPROVAL).setItemId(a.approvalId).setObservedSeq(approvalEv.seq)
-                .setTitle(Text.newBuilder().setLiteral("请求运行命令"))
-                .setMeta(Text.newBuilder().setLiteral(a.command.lines().firstOrNull().orEmpty()))
+                .setTitle(Text.newBuilder().setKey(UiMessages.approvalTitle().key))
+                .setSummary(Text.newBuilder().setLiteral(a.command.lines().firstOrNull().orEmpty()))
+                .setMeta(Text.newBuilder().setLiteral(a.toolName))
                 .setApproval(
                     SessionApprovalDockView.newBuilder()
                         .setApprovalId(a.approvalId)
@@ -222,7 +223,7 @@ internal fun sessionFixtureVm(
                         .setCanAlwaysAllow(true),
                 )
         }
-        questionEv != null && (info?.pendingQuestions ?: 1) > 0 -> {
+        questionEv != null && (live != null || (info?.pendingQuestions ?: 1) > 0) -> {
             val q = questionEv.questionAsked
             val first = q.questionsList.firstOrNull()
             dockBuilder.setHasItem(true).setKind(SessionDockKind.SESSION_DOCK_KIND_QUESTION).setItemId(q.questionId).setObservedSeq(questionEv.seq)
@@ -322,10 +323,10 @@ internal fun sessionFixtureVm(
                 .setCanEnd(!exited)
                 .setCanSwitchMode(!exited)
                 .setCanSwitchModel(!exited && !running)
-                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_ASK).setLabel(Text.newBuilder().setKey(UiMessages.modesAsk().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_ASK))
-                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_AUTO).setLabel(Text.newBuilder().setKey(UiMessages.modesAuto().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_AUTO))
-                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_PLAN).setLabel(Text.newBuilder().setKey(UiMessages.modesPlan().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_PLAN))
-                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_FULL_ACCESS).setLabel(Text.newBuilder().setKey(UiMessages.modesFullAccess().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS)),
+                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_ASK).setLabel(Text.newBuilder().setKey(UiMessages.modesAsk().key)).setNote(Text.newBuilder().setKey(UiMessages.modesAskDesc().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_ASK))
+                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_AUTO).setLabel(Text.newBuilder().setKey(UiMessages.modesAuto().key)).setNote(Text.newBuilder().setKey(UiMessages.modesAutoDesc(agent = "").key).addArgs(TextArg.newBuilder().setName("agent").setStrValue("CLI"))).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_AUTO))
+                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_PLAN).setLabel(Text.newBuilder().setKey(UiMessages.modesPlan().key)).setNote(Text.newBuilder().setKey(UiMessages.modesPlanDesc().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_PLAN))
+                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_FULL_ACCESS).setLabel(Text.newBuilder().setKey(UiMessages.modesFullAccess().key)).setNote(Text.newBuilder().setKey(UiMessages.modesSkipAll().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS)),
         )
         .setDock(dockBuilder)
         .setComposer(

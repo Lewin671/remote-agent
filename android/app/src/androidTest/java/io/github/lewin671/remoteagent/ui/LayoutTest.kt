@@ -267,7 +267,7 @@ class LayoutTest {
         }
         // Open by itself: one head line, the command before the description, the buttons in view.
         ui.onNodeWithText("收起", substring = true).assertIsDisplayed()
-        ui.onAllNodesWithText("请求执行", substring = true).assertCountEquals(1)
+        ui.onAllNodesWithText("审批", substring = true).assertCountEquals(1)
         ui.onNodeWithText("允许").assertIsDisplayed()
         val command = ui.onNodeWithText("echo step-1", substring = true).fetchSemanticsNode().positionInRoot
         val description = ui.onNodeWithText("说明文字", substring = true).fetchSemanticsNode().positionInRoot
@@ -335,7 +335,8 @@ class LayoutTest {
             .setBody(a.command)
             .setToolName(a.toolName)
             .setIsCommand(a.command.isNotEmpty())
-            .setTruncated(a.command.lines().size > CARD_LINES)
+            .setTruncated(false)
+            .apply { if (unlinked) setTime(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(UiMessages.listStateUnlinked().key)) }
             .build()
         ui.setContent {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {

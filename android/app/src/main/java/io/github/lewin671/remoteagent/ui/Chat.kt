@@ -311,6 +311,7 @@ internal fun TimelineItemView(
         SessionTimelineItem.KindCase.TOOL_GROUP -> {
             val g = item.toolGroup
             var expanded by rememberSaveable(item.id) { mutableStateOf(false) }
+            var commands by rememberSaveable(item.id) { mutableStateOf(emptyList<String>()) }
             val groupIcon = when {
                 g.callsList.any { it.status == SessionToolStatus.SESSION_TOOL_STATUS_ERROR || it.status == SessionToolStatus.SESSION_TOOL_STATUS_DENIED } -> Lucide.X
                 g.callsList.any {
@@ -330,7 +331,17 @@ internal fun TimelineItemView(
                     trailing = { Arrow(p.ink2, T.s13, down = !expanded, up = expanded) },
                 )
                 if (expanded) g.callsList.forEachIndexed { idx, call ->
-                    ToolCallRow(call, "${item.id}:$idx", item.seq, modifier = Modifier.padding(start = 10.dp))
+                    val cid = call.callId.ifEmpty { idx.toString() }
+                    androidx.compose.runtime.key(cid) {
+                        ToolCallRow(
+                            call,
+                            "${item.id}:$cid",
+                            item.seq,
+                            expanded = cid in commands,
+                            onToggle = { commands = if (cid in commands) commands - cid else commands + cid },
+                            modifier = Modifier.padding(start = 10.dp),
+                        )
+                    }
                 }
             }
         }
