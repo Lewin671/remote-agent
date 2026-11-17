@@ -19,11 +19,14 @@ import (
 // Account usage limits (architecture "账户额度"). Codex reports them in its
 // rollouts, read from every run on this machine, not only managed sessions
 // (accountLimitsLoop); Claude Code only in the input of its status line, which
-// remote-agent's status line command passes on. Nothing here asks the
-// model or any service for them. Provider limits are kept per login
-// account (a fingerprint, never the account's IDs), in quota.json, so a
-// restart shows the last record; a record of another account than the
-// one logged in now is dropped. Limits never reach the log.
+// remote-agent's status line command passes on; Antigravity (agy) reports them
+// both in its managed session status line and via `agy -p /usage
+// --output-format json` (0-token command, never a model prompt) triggered when
+// passive log-directory activity is observed or on startup if no record is
+// saved. Provider limits are kept per login account (a fingerprint, never the
+// account's IDs), in quota.json, so a restart shows the last record; a record
+// of another account than the one logged in now is dropped. Limits and emails
+// never reach the log.
 
 // quotaStore separates providers even when account fingerprints collide.
 type quotaStore map[string]*pb.AgentQuota
@@ -163,6 +166,9 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 				dropped = true
 			}
 		}
+		if e.Agent == pb.Agent_AGENT_ANTIGRAVITY {
+			delete(d.quotas, "agy:session:"+agyUsageProbeSource)
+		}
 	}
 	// The status line does not say whose limits it shows, and a session
 	// repeats those of its last reply until the next one. The same
@@ -172,7 +178,7 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 	}
 	last, known := d.reported[sessionID]
 	unchanged := known && proto.Equal(&pb.AgentQuota{Windows: last.windows}, &pb.AgentQuota{Windows: e.Windows})
-	if unchanged && last.account != e.Account {
+	if monotonic && unchanged && last.account != e.Account {
 		if dropped {
 			d.saveQuotasLocked()
 		}
@@ -310,6 +316,9 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 				out = append(out, agentQuotas...)
 			} else {
 				e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
+				if ag.Kind() == pb.Agent_AGENT_ANTIGRAVITY {
+					e.Detail = i18n.QuotaAgyWaiting("zh-CN")
+				}
 				if detail := d.quotaErrors[ag.Kind()]; detail != "" {
 					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail
 				}

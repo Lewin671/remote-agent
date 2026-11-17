@@ -279,10 +279,11 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := updater.EnsureState(d.dir); err != nil {
 		return err
 	}
+	d.loadQuotas()
 	background.Go(func() { d.statusCollector.Run(ctx) })
 	background.Go(func() { d.diskLoop(ctx) })
 	background.Go(func() { d.accountLimitsLoop(ctx) })
-	d.loadQuotas()
+	background.Go(func() { d.agyQuotaLoop(ctx) })
 	// Finish transfer intents before restoring queue refs, without treating
 	// persisted Exited as final: tmux may still be alive and reattach below.
 	d.uploads.reconcile()
