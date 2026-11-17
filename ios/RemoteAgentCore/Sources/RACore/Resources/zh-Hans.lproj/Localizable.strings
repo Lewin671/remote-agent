@@ -235,13 +235,10 @@
 "dock_waiting_confirmation" = "等待确认";
 "errors_account_creation_draft_preserved_continue_the_original_creation_flow" = "账户创建草稿已保留，请继续原创建流程和恢复码确认";
 "errors_cannot_connect_to_terminal" = "连不上终端";
-"errors_cannot_sign_with_the_current_security_state_the_operation" = "无法用当前安全状态签名，操作尚未发出；请重试";
 "errors_client_out_of_date" = "这个客户端版本较旧，请更新后再试";
 "errors_connection_dropped_midway" = "连接中途断了";
 "errors_connection_timed_out" = "连接超时";
 "errors_connection_timed_out_reconnecting" = "连接超时，正在重连";
-"errors_current_membership_could_not_be_verified" = "无法核实当前成员";
-"errors_device_directory_state_changed" = "设备目录状态已变化";
 "errors_device_information_could_not_be_verified" = "无法核实设备信息";
 "errors_device_information_is_changing_retry" = "设备信息正在变化，请重试";
 "errors_device_registration_is_unfinished_retry_it_first" = "还有未完成的设备注册，请先重试";
@@ -252,7 +249,6 @@
 "errors_history_could_not_continue_loading_retry" = "历史记录未能继续加载，请重试";
 "errors_history_has_a_gap_retry" = "历史记录不连续，请重试读取";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "历史密钥不可用：恢复前的记录无法解密";
-"errors_invalid_ciphertext_current_state_checkpoint_mismatch" = "密文无效：当前状态 checkpoint 不匹配";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "密文无效：签名、密钥或内容校验失败";
 "errors_invalid_current_request_snapshot" = "当前请求快照无效";
 "errors_invalid_pairing_approval_signature" = "配对批准签名无效";
@@ -303,11 +299,9 @@
 "errors_it_may_have_been_deleted_or_belong_to_a" = "它可能已经被删除，或者属于一台被移除的电脑。";
 "errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" = "成员链冲突，安全操作已停止；请核对设备后明确重新加入";
 "errors_names_can_only_be_changed_on_that_device" = "名称只能在那台设备上修改";
-"errors_network_changed_reconnecting" = "网络已变化，正在重连";
 "errors_not_connected" = "连不上服务器";
 "errors_other_clients_kept_changing_the_project_list_changes_could" = "项目列表一直在被别的客户端修改，没能保存";
 "errors_pending_requests_on_the_computer_could_not_be_verified" = "无法核实电脑上的待处理请求，请重试或在电脑终端处理";
-"errors_project_preferences_format_is_not_supported" = "项目偏好格式不受支持";
 "errors_push_backlog_reconnecting" = "推送积压，正在重连";
 "errors_queued_records_could_not_be_restored_you_can_still" = "待发记录没能恢复，仍可输入和发送，下次重试";
 "errors_queued_records_could_not_be_saved_locally_messages_will" = "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果";
@@ -319,10 +313,8 @@
 "errors_security_body_type_or_direction_mismatch" = "安全正文类型或方向不匹配";
 "errors_security_envelope_missing" = "缺少安全信封";
 "errors_server_returned" = "服务器返回 %1$@";
-"errors_session_key_envelope_missing" = "缺少会话密钥信封";
 "errors_setup_request_preserved" = "%1$@。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。";
 "errors_signing_in" = "登录";
-"errors_syncing_device_state" = "同步设备状态";
 "errors_terminal_connection_canceled" = "终端连接已取消";
 "errors_terminal_connection_closed" = "终端连接已关闭";
 "errors_terminal_connection_dropped" = "终端连接断开";
@@ -337,14 +329,12 @@
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "电脑仍在校验附件，请稍后重试";
 "errors_the_computer_s_reply_could_not_be_verified_command" = "电脑的回复未通过验证，不确定指令是否执行";
 "errors_the_current_request_could_not_be_verified_again" = "无法重新核实当前请求";
-"errors_the_device_directory_response_is_out_of_date" = "设备目录响应已过时";
 "errors_the_draft_could_not_be_restored_you_can_still" = "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试";
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "草稿没能保存到本机，关闭页面前请保留原图和文字";
 "errors_the_draft_could_not_be_saved_the_original_message" = "草稿没能保存，原消息的本机副本仍保留";
 "errors_the_event_s_position_was_changed" = "事件的位置被改动";
 "errors_the_plan_display_changed_review_it_again" = "计划画面已变化，请重新核对";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "上次操作的结果仍未知，请重新读取任务核实后再操作";
-"errors_the_previous_request_s_outcome_is_still_unknown_cannot" = "之前请求的结果仍未知，当前无法重新登录";
 "errors_the_recovery_object_was_updated_concurrently_retrying_on_the" = "恢复对象同时更新，将在下次同步重试";
 "errors_the_relay_did_not_provide_a_verifiable_execution_result" = "未收到可验证的执行结果，请重试同一请求";
 "errors_the_request_on_the_computer_changed_review_it_again" = "电脑上的请求已变化，请重新核对";
@@ -364,7 +354,6 @@
 "errors_this_page_is_out_of_date_refresh_or_update" = "这个网页版本较旧，请刷新或更新后再试";
 "errors_this_request_can_no_longer_be_acted_on" = "当前请求已不可操作";
 "errors_this_request_has_not_been_verified_by_the_computer" = "当前请求尚未由电脑核实，请等待同步";
-"errors_timed_out_reconnecting" = "%1$@超时，正在重连";
 "errors_update_remote_agent_on_this_computer_to_use_scheduled" = "需要更新这台电脑上的 remote-agent 才能使用定时任务。";
 "errors_upload_made_no_progress" = "上传没有进展";
 "errors_waiting_for_the_owning_computer_to_update_the_current" = "等待所属电脑更新当前状态";
@@ -374,7 +363,6 @@
 "home_all_projects" = "全部项目";
 "home_choose_scope" = "看哪个项目";
 "home_clear_filter" = "清空筛选";
-"home_computer_runs_cli" = "电脑运行 CLI，客户端操作会话。";
 "home_connection_check" = "连接检测";
 "home_connection_label" = "%1$@，连接检测";
 "home_earlier_failed_retry" = "没能读取更早的会话：%1$@ · 点这里重试";
@@ -618,7 +606,6 @@
 "models_ios_load_failed" = "没能读取模型列表，会用 %1$@ 自己的默认模型：%2$@";
 "models_ios_picker" = "模型选择";
 "models_ios_reading_machine" = "读取 %1$@ 的设置…";
-"models_load_failed_default" = "没能读取模型列表，会用 %1$@ 自己的默认模型";
 "models_load_failed_reason" = "没能读取模型列表，会用 %1$@ 自己的默认模型：%2$@";
 "models_reading_machine" = "读取 %1$@ 的设置…";
 "models_standard_only" = "标准 200k · 这个模型只有标准窗口";
@@ -672,11 +659,8 @@
 "new_session_cli_fallback" = "%3$@ 没有 %2$@，这次用 %1$@";
 "new_session_cli_label" = "CLI：%1$@";
 "new_session_cli_picker_label" = "CLI";
-"new_session_config_fallback" = "所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值";
 "new_session_default_model" = "默认模型";
-"new_session_disconnected" = "和服务器断线了";
 "new_session_draft_kept" = "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。";
-"new_session_each_cli_has_its_own_settings_choose_the_cli" = "每个 CLI 各存一套，新建时用哪个在句子里选。";
 "new_session_expired_start" = "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求";
 "new_session_expired_start_prompt" = "不确定「%1$@」有没有启动，它已过期，不会再重发。请先看看进行中的会话";
 "new_session_first_message" = "新会话的第一句话";
@@ -709,8 +693,6 @@
 "new_session_model_list_default" = "没能读取模型列表，会用 %1$@ 自己的默认模型";
 "new_session_model_no_auto" = "这个模型没有自动模式，而 %1$@ 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认";
 "new_session_offline_draft" = "%1$@ 已离线，任务尚未开始";
-"new_session_offline_last_seen" = "%1$@在线，现在不能新建";
-"new_session_offline_no_start" = "现在不能新建";
 "new_session_offline_no_start_named" = "%1$@ 不在线，现在不能新建";
 "new_session_offline_with_draft" = "%1$@ 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。";
 "new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" = "只影响之后新建的会话，进行中的不变；在你的设备之间同步。";
@@ -721,7 +703,6 @@
 "new_session_project_session_label" = "%1$@ · 新会话";
 "new_session_prompt" = "要做什么";
 "new_session_reading_cli" = "正在读取 %1$@ 上次的设置…";
-"new_session_reading_models" = "正在读取模型列表…";
 "new_session_reading_previous" = "正在读取这个项目上次的设置…";
 "new_session_reading_settings" = "读取设置…";
 "new_session_removed_blocked" = "这个项目已从列表移除，先重新添加";
@@ -734,7 +715,6 @@
 "new_session_starting_on" = "正在 %1$@ 上启动…";
 "new_session_task_settings" = "任务设置";
 "new_session_this_model_has_no_auto_mode" = "当前模型没有自动模式";
-"new_session_unconfirmed_start" = "上次的启动结果还没有确认";
 "new_session_unexpected_reply" = "意外的回复";
 "new_session_unknown_start_retry" = "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次";
 "new_session_use_machine" = "改用 %1$@";

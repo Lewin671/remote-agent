@@ -226,14 +226,11 @@ export interface MessageArgs {
   "dock.waiting_confirmation": { [name: string]: never };
   "errors.account_creation_draft_preserved_continue_the_original_creation_flow": { [name: string]: never };
   "errors.cannot_connect_to_terminal": { [name: string]: never };
-  "errors.cannot_sign_with_the_current_security_state_the_operation": { [name: string]: never };
   "errors.client_out_of_date": { [name: string]: never };
   "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
   "errors.core_load_failed": { reason: string };
-  "errors.current_membership_could_not_be_verified": { [name: string]: never };
-  "errors.device_directory_state_changed": { [name: string]: never };
   "errors.device_information_could_not_be_verified": { [name: string]: never };
   "errors.device_information_is_changing_retry": { [name: string]: never };
   "errors.device_registration_is_unfinished_retry_it_first": { [name: string]: never };
@@ -244,7 +241,6 @@ export interface MessageArgs {
   "errors.history_could_not_continue_loading_retry": { [name: string]: never };
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
-  "errors.invalid_ciphertext_current_state_checkpoint_mismatch": { [name: string]: never };
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
   "errors.invalid_current_request_snapshot": { [name: string]: never };
   "errors.invalid_pairing_approval_signature": { [name: string]: never };
@@ -253,11 +249,9 @@ export interface MessageArgs {
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
   "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
-  "errors.network_changed_reconnecting": { [name: string]: never };
   "errors.not_connected": { [name: string]: never };
   "errors.other_clients_kept_changing_the_project_list_changes_could": { [name: string]: never };
   "errors.pending_requests_on_the_computer_could_not_be_verified": { [name: string]: never };
-  "errors.project_preferences_format_is_not_supported": { [name: string]: never };
   "errors.push_backlog_reconnecting": { [name: string]: never };
   "errors.queued_records_could_not_be_restored_you_can_still": { [name: string]: never };
   "errors.queued_records_could_not_be_saved_locally_messages_will": { [name: string]: never };
@@ -269,10 +263,8 @@ export interface MessageArgs {
   "errors.security_body_type_or_direction_mismatch": { [name: string]: never };
   "errors.security_envelope_missing": { [name: string]: never };
   "errors.server_returned": { value: string };
-  "errors.session_key_envelope_missing": { [name: string]: never };
   "errors.setup_request_preserved": { reason: string };
   "errors.signing_in": { [name: string]: never };
-  "errors.syncing_device_state": { [name: string]: never };
   "errors.terminal_connection_canceled": { [name: string]: never };
   "errors.terminal_connection_closed": { [name: string]: never };
   "errors.terminal_connection_dropped": { [name: string]: never };
@@ -287,14 +279,12 @@ export interface MessageArgs {
   "errors.the_computer_is_still_verifying_attachments_retry_shortly": { [name: string]: never };
   "errors.the_computer_s_reply_could_not_be_verified_command": { [name: string]: never };
   "errors.the_current_request_could_not_be_verified_again": { [name: string]: never };
-  "errors.the_device_directory_response_is_out_of_date": { [name: string]: never };
   "errors.the_draft_could_not_be_restored_you_can_still": { [name: string]: never };
   "errors.the_draft_could_not_be_saved_locally_keep_the": { [name: string]: never };
   "errors.the_draft_could_not_be_saved_the_original_message": { [name: string]: never };
   "errors.the_event_s_position_was_changed": { [name: string]: never };
   "errors.the_plan_display_changed_review_it_again": { [name: string]: never };
   "errors.the_previous_operation_s_outcome_is_still_unknown_reload": { [name: string]: never };
-  "errors.the_previous_request_s_outcome_is_still_unknown_cannot": { [name: string]: never };
   "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": { [name: string]: never };
   "errors.the_relay_did_not_provide_a_verifiable_execution_result": { [name: string]: never };
   "errors.the_request_on_the_computer_changed_review_it_again": { [name: string]: never };
@@ -314,7 +304,6 @@ export interface MessageArgs {
   "errors.this_page_is_out_of_date_refresh_or_update": { [name: string]: never };
   "errors.this_request_can_no_longer_be_acted_on": { [name: string]: never };
   "errors.this_request_has_not_been_verified_by_the_computer": { [name: string]: never };
-  "errors.timed_out_reconnecting": { value: string };
   "errors.update_remote_agent_on_this_computer_to_use_scheduled": { [name: string]: never };
   "errors.upload_made_no_progress": { [name: string]: never };
   "errors.waiting_for_the_owning_computer_to_update_the_current": { [name: string]: never };
@@ -324,7 +313,6 @@ export interface MessageArgs {
   "home.all_projects": { [name: string]: never };
   "home.choose_scope": { [name: string]: never };
   "home.clear_filter": { [name: string]: never };
-  "home.computer_runs_cli": { [name: string]: never };
   "home.connection_check": { [name: string]: never };
   "home.connection_label": { state: string };
   "home.earlier_failed_retry": { reason: string };
@@ -527,7 +515,6 @@ export interface MessageArgs {
   "models.effort_default": { [name: string]: never };
   "models.extended_window": { [name: string]: never };
   "models.fixed_effort": { effort: string };
-  "models.load_failed_default": { agent: string };
   "models.load_failed_reason": { agent: string; reason: string };
   "models.reading_machine": { name: string };
   "models.standard_only": { [name: string]: never };
@@ -581,11 +568,8 @@ export interface MessageArgs {
   "new_session.cli_fallback": { agent: string; missing: string; name: string };
   "new_session.cli_label": { agent: string };
   "new_session.cli_picker_label": { [name: string]: never };
-  "new_session.config_fallback": { [name: string]: never };
   "new_session.default_model": { [name: string]: never };
-  "new_session.disconnected": { [name: string]: never };
   "new_session.draft_kept": { [name: string]: never };
-  "new_session.each_cli_has_its_own_settings_choose_the_cli": { [name: string]: never };
   "new_session.expired_start": { [name: string]: never };
   "new_session.expired_start_prompt": { prompt: string };
   "new_session.first_message": { [name: string]: never };
@@ -605,8 +589,6 @@ export interface MessageArgs {
   "new_session.model_list_default": { name: string };
   "new_session.model_no_auto": { name: string };
   "new_session.offline_draft": { name: string };
-  "new_session.offline_last_seen": { time: string };
-  "new_session.offline_no_start": { [name: string]: never };
   "new_session.offline_no_start_named": { name: string };
   "new_session.offline_with_draft": { name: string };
   "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": { [name: string]: never };
@@ -617,7 +599,6 @@ export interface MessageArgs {
   "new_session.project_session_label": { name: string };
   "new_session.prompt": { [name: string]: never };
   "new_session.reading_cli": { agent: string };
-  "new_session.reading_models": { [name: string]: never };
   "new_session.reading_previous": { [name: string]: never };
   "new_session.reading_settings": { [name: string]: never };
   "new_session.removed_blocked": { [name: string]: never };
@@ -630,7 +611,6 @@ export interface MessageArgs {
   "new_session.starting_on": { name: string };
   "new_session.task_settings": { [name: string]: never };
   "new_session.this_model_has_no_auto_mode": { [name: string]: never };
-  "new_session.unconfirmed_start": { [name: string]: never };
   "new_session.unexpected_reply": { [name: string]: never };
   "new_session.unknown_start_retry": { [name: string]: never };
   "new_session.use_machine": { name: string };
@@ -1951,14 +1931,11 @@ export const messages = {
     "dock.waiting_confirmation": "Waiting for confirmation",
     "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.",
     "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
-    "errors.cannot_sign_with_the_current_security_state_the_operation": "Cannot sign with the current security state. The operation has not been sent; retry.",
     "errors.client_out_of_date": "This client version is out of date. Update and retry.",
     "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
     "errors.core_load_failed": "Failed to load core module: {reason}",
-    "errors.current_membership_could_not_be_verified": "Current membership could not be verified",
-    "errors.device_directory_state_changed": "Device directory state changed",
     "errors.device_information_could_not_be_verified": "Device information could not be verified",
     "errors.device_information_is_changing_retry": "Device information is changing. Retry.",
     "errors.device_registration_is_unfinished_retry_it_first": "Device registration is unfinished. Retry it first.",
@@ -1969,7 +1946,6 @@ export const messages = {
     "errors.history_could_not_continue_loading_retry": "History could not continue loading. Retry.",
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
-    "errors.invalid_ciphertext_current_state_checkpoint_mismatch": "Invalid ciphertext: current state checkpoint mismatch",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
     "errors.invalid_current_request_snapshot": "Invalid current request snapshot",
     "errors.invalid_pairing_approval_signature": "Invalid pairing approval signature",
@@ -1978,11 +1954,9 @@ export const messages = {
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
-    "errors.network_changed_reconnecting": "Network changed. Reconnecting.",
     "errors.not_connected": "Not connected to the server",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "Other clients kept changing the project list. Changes could not be saved.",
     "errors.pending_requests_on_the_computer_could_not_be_verified": "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.",
-    "errors.project_preferences_format_is_not_supported": "Project preferences format is not supported",
     "errors.push_backlog_reconnecting": "Push backlog. Reconnecting.",
     "errors.queued_records_could_not_be_restored_you_can_still": "Queued records could not be restored. You can still type and send; retry next time.",
     "errors.queued_records_could_not_be_saved_locally_messages_will": "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.",
@@ -1994,10 +1968,8 @@ export const messages = {
     "errors.security_body_type_or_direction_mismatch": "Security body type or direction mismatch",
     "errors.security_envelope_missing": "Security envelope missing",
     "errors.server_returned": "Server returned {value}",
-    "errors.session_key_envelope_missing": "Session key envelope missing",
     "errors.setup_request_preserved": "{reason}. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account.",
     "errors.signing_in": "Signing in",
-    "errors.syncing_device_state": "Syncing device state",
     "errors.terminal_connection_canceled": "Terminal connection canceled",
     "errors.terminal_connection_closed": "Terminal connection closed",
     "errors.terminal_connection_dropped": "Terminal connection dropped",
@@ -2012,14 +1984,12 @@ export const messages = {
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "The computer is still verifying attachments. Retry shortly.",
     "errors.the_computer_s_reply_could_not_be_verified_command": "The computer’s reply could not be verified. Command execution is uncertain.",
     "errors.the_current_request_could_not_be_verified_again": "The current request could not be verified again",
-    "errors.the_device_directory_response_is_out_of_date": "The device directory response is out of date",
     "errors.the_draft_could_not_be_restored_you_can_still": "The draft could not be restored. You can still type and send; retry when opening or editing next time.",
     "errors.the_draft_could_not_be_saved_locally_keep_the": "The draft could not be saved locally. Keep the original images and text before closing the page.",
     "errors.the_draft_could_not_be_saved_the_original_message": "The draft could not be saved. The original message’s local copy is preserved.",
     "errors.the_event_s_position_was_changed": "The event’s position was changed",
     "errors.the_plan_display_changed_review_it_again": "The plan display changed. Review it again.",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
-    "errors.the_previous_request_s_outcome_is_still_unknown_cannot": "The previous request’s outcome is still unknown. Cannot sign in again yet.",
     "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "The recovery object was updated concurrently. Retrying on the next sync.",
     "errors.the_relay_did_not_provide_a_verifiable_execution_result": "The relay did not provide a verifiable execution result. Retry the same request.",
     "errors.the_request_on_the_computer_changed_review_it_again": "The request on the computer changed. Review it again.",
@@ -2039,7 +2009,6 @@ export const messages = {
     "errors.this_page_is_out_of_date_refresh_or_update": "This page is out of date. Refresh or update it and retry.",
     "errors.this_request_can_no_longer_be_acted_on": "This request can no longer be acted on",
     "errors.this_request_has_not_been_verified_by_the_computer": "This request has not been verified by the computer yet. Wait for sync.",
-    "errors.timed_out_reconnecting": "{value} timed out. Reconnecting.",
     "errors.update_remote_agent_on_this_computer_to_use_scheduled": "Update remote-agent on this computer to use scheduled tasks",
     "errors.upload_made_no_progress": "Upload made no progress",
     "errors.waiting_for_the_owning_computer_to_update_the_current": "Waiting for the owning computer to update the current state",
@@ -2049,7 +2018,6 @@ export const messages = {
     "home.all_projects": "All projects",
     "home.choose_scope": "Which project?",
     "home.clear_filter": "Clear filter",
-    "home.computer_runs_cli": "Run the CLI on your computer and control sessions from a client.",
     "home.connection_check": "Check connection",
     "home.connection_label": "{state}, check connection",
     "home.earlier_failed_retry": "Could not load earlier sessions: {reason} · Tap to retry",
@@ -2420,7 +2388,6 @@ export const messages = {
     "models.effort_default": "Reasoning effort · Default",
     "models.extended_window": "1M",
     "models.fixed_effort": "Reasoning effort is fixed at {effort}",
-    "models.load_failed_default": "Could not load models. Using {agent}’s own default model",
     "models.load_failed_reason": "Could not load models. Using {agent}’s own default model: {reason}",
     "models.reading_machine": "Reading settings from {name}…",
     "models.standard_only": "Standard 200k · This model only supports the standard window",
@@ -2474,11 +2441,8 @@ export const messages = {
     "new_session.cli_fallback": "{name} does not have {missing}. Using {agent} for this session",
     "new_session.cli_label": "CLI: {agent}",
     "new_session.cli_picker_label": "CLI",
-    "new_session.config_fallback": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
     "new_session.default_model": "Default model",
-    "new_session.disconnected": "Disconnected from server",
     "new_session.draft_kept": "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.",
-    "new_session.each_cli_has_its_own_settings_choose_the_cli": "Each CLI has its own settings. Choose the CLI in the sentence when creating a task.",
     "new_session.expired_start": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
     "new_session.expired_start_prompt": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check active sessions first.",
     "new_session.first_message": "First message of the new session",
@@ -2498,8 +2462,6 @@ export const messages = {
     "new_session.model_list_default": "Could not read the model list. Using {name}’s default model.",
     "new_session.model_no_auto": "This model has no Auto mode, but {name} uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.",
     "new_session.offline_draft": "{name} is offline. The task has not started.",
-    "new_session.offline_last_seen": "Last online {time}. Cannot start a session now",
-    "new_session.offline_no_start": "Cannot start a session now",
     "new_session.offline_no_start_named": "{name} is offline. Cannot start a session now.",
     "new_session.offline_with_draft": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
     "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "Only affects future sessions. Active sessions stay unchanged; synced across your devices.",
@@ -2510,7 +2472,6 @@ export const messages = {
     "new_session.project_session_label": "{name} · New session",
     "new_session.prompt": "What would you like to do?",
     "new_session.reading_cli": "Reading previous settings for {agent}…",
-    "new_session.reading_models": "Loading models…",
     "new_session.reading_previous": "Loading this project’s previous settings…",
     "new_session.reading_settings": "Loading settings…",
     "new_session.removed_blocked": "This project was removed. Add it again first.",
@@ -2523,7 +2484,6 @@ export const messages = {
     "new_session.starting_on": "Starting on {name}…",
     "new_session.task_settings": "Task settings",
     "new_session.this_model_has_no_auto_mode": "This model has no Auto mode",
-    "new_session.unconfirmed_start": "The previous start is still unconfirmed",
     "new_session.unexpected_reply": "Unexpected response",
     "new_session.unknown_start_retry": "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.",
     "new_session.use_machine": "Use {name}",
@@ -4160,14 +4120,11 @@ export const messages = {
     "dock.waiting_confirmation": "等待确认",
     "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "账户创建草稿已保留，请继续原创建流程和恢复码确认",
     "errors.cannot_connect_to_terminal": "连不上终端",
-    "errors.cannot_sign_with_the_current_security_state_the_operation": "无法用当前安全状态签名，操作尚未发出；请重试",
     "errors.client_out_of_date": "这个客户端版本较旧，请更新后再试",
     "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
     "errors.core_load_failed": "核心模块加载失败：{reason}",
-    "errors.current_membership_could_not_be_verified": "无法核实当前成员",
-    "errors.device_directory_state_changed": "设备目录状态已变化",
     "errors.device_information_could_not_be_verified": "无法核实设备信息",
     "errors.device_information_is_changing_retry": "设备信息正在变化，请重试",
     "errors.device_registration_is_unfinished_retry_it_first": "还有未完成的设备注册，请先重试",
@@ -4178,7 +4135,6 @@ export const messages = {
     "errors.history_could_not_continue_loading_retry": "历史记录未能继续加载，请重试",
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
-    "errors.invalid_ciphertext_current_state_checkpoint_mismatch": "密文无效：当前状态 checkpoint 不匹配",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
     "errors.invalid_current_request_snapshot": "当前请求快照无效",
     "errors.invalid_pairing_approval_signature": "配对批准签名无效",
@@ -4187,11 +4143,9 @@ export const messages = {
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
-    "errors.network_changed_reconnecting": "网络已变化，正在重连",
     "errors.not_connected": "连不上服务器",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "项目列表一直在被别的客户端修改，没能保存",
     "errors.pending_requests_on_the_computer_could_not_be_verified": "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
-    "errors.project_preferences_format_is_not_supported": "项目偏好格式不受支持",
     "errors.push_backlog_reconnecting": "推送积压，正在重连",
     "errors.queued_records_could_not_be_restored_you_can_still": "待发记录没能恢复，仍可输入和发送，下次重试",
     "errors.queued_records_could_not_be_saved_locally_messages_will": "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果",
@@ -4203,10 +4157,8 @@ export const messages = {
     "errors.security_body_type_or_direction_mismatch": "安全正文类型或方向不匹配",
     "errors.security_envelope_missing": "缺少安全信封",
     "errors.server_returned": "服务器返回 {value}",
-    "errors.session_key_envelope_missing": "缺少会话密钥信封",
     "errors.setup_request_preserved": "{reason}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
     "errors.signing_in": "登录",
-    "errors.syncing_device_state": "同步设备状态",
     "errors.terminal_connection_canceled": "终端连接已取消",
     "errors.terminal_connection_closed": "终端连接已关闭",
     "errors.terminal_connection_dropped": "终端连接断开",
@@ -4221,14 +4173,12 @@ export const messages = {
     "errors.the_computer_is_still_verifying_attachments_retry_shortly": "电脑仍在校验附件，请稍后重试",
     "errors.the_computer_s_reply_could_not_be_verified_command": "电脑的回复未通过验证，不确定指令是否执行",
     "errors.the_current_request_could_not_be_verified_again": "无法重新核实当前请求",
-    "errors.the_device_directory_response_is_out_of_date": "设备目录响应已过时",
     "errors.the_draft_could_not_be_restored_you_can_still": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试",
     "errors.the_draft_could_not_be_saved_locally_keep_the": "草稿没能保存到本机，关闭页面前请保留原图和文字",
     "errors.the_draft_could_not_be_saved_the_original_message": "草稿没能保存，原消息的本机副本仍保留",
     "errors.the_event_s_position_was_changed": "事件的位置被改动",
     "errors.the_plan_display_changed_review_it_again": "计划画面已变化，请重新核对",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "上次操作的结果仍未知，请重新读取任务核实后再操作",
-    "errors.the_previous_request_s_outcome_is_still_unknown_cannot": "之前请求的结果仍未知，当前无法重新登录",
     "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "恢复对象同时更新，将在下次同步重试",
     "errors.the_relay_did_not_provide_a_verifiable_execution_result": "未收到可验证的执行结果，请重试同一请求",
     "errors.the_request_on_the_computer_changed_review_it_again": "电脑上的请求已变化，请重新核对",
@@ -4248,7 +4198,6 @@ export const messages = {
     "errors.this_page_is_out_of_date_refresh_or_update": "这个网页版本较旧，请刷新或更新后再试",
     "errors.this_request_can_no_longer_be_acted_on": "当前请求已不可操作",
     "errors.this_request_has_not_been_verified_by_the_computer": "当前请求尚未由电脑核实，请等待同步",
-    "errors.timed_out_reconnecting": "{value}超时，正在重连",
     "errors.update_remote_agent_on_this_computer_to_use_scheduled": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "errors.upload_made_no_progress": "上传没有进展",
     "errors.waiting_for_the_owning_computer_to_update_the_current": "等待所属电脑更新当前状态",
@@ -4258,7 +4207,6 @@ export const messages = {
     "home.all_projects": "全部项目",
     "home.choose_scope": "看哪个项目",
     "home.clear_filter": "清空筛选",
-    "home.computer_runs_cli": "电脑运行 CLI，客户端操作会话。",
     "home.connection_check": "连接检测",
     "home.connection_label": "{state}，连接检测",
     "home.earlier_failed_retry": "没能读取更早的会话：{reason} · 点这里重试",
@@ -4601,7 +4549,6 @@ export const messages = {
     "models.effort_default": "推理强度 · 默认",
     "models.extended_window": "1M",
     "models.fixed_effort": "推理强度固定为 {effort}",
-    "models.load_failed_default": "没能读取模型列表，会用 {agent} 自己的默认模型",
     "models.load_failed_reason": "没能读取模型列表，会用 {agent} 自己的默认模型：{reason}",
     "models.reading_machine": "读取 {name} 的设置…",
     "models.standard_only": "标准 200k · 这个模型只有标准窗口",
@@ -4655,11 +4602,8 @@ export const messages = {
     "new_session.cli_fallback": "{name} 没有 {missing}，这次用 {agent}",
     "new_session.cli_label": "CLI：{agent}",
     "new_session.cli_picker_label": "CLI",
-    "new_session.config_fallback": "所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值",
     "new_session.default_model": "默认模型",
-    "new_session.disconnected": "和服务器断线了",
     "new_session.draft_kept": "草稿已保留，请选择在线电脑；不自动换电脑或 CLI。",
-    "new_session.each_cli_has_its_own_settings_choose_the_cli": "每个 CLI 各存一套，新建时用哪个在句子里选。",
     "new_session.expired_start": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
     "new_session.expired_start_prompt": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
     "new_session.first_message": "新会话的第一句话",
@@ -4679,8 +4623,6 @@ export const messages = {
     "new_session.model_list_default": "没能读取模型列表，会用 {name} 自己的默认模型",
     "new_session.model_no_auto": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认",
     "new_session.offline_draft": "{name} 已离线，任务尚未开始",
-    "new_session.offline_last_seen": "{time}在线，现在不能新建",
-    "new_session.offline_no_start": "现在不能新建",
     "new_session.offline_no_start_named": "{name} 不在线，现在不能新建",
     "new_session.offline_with_draft": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
     "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
@@ -4691,7 +4633,6 @@ export const messages = {
     "new_session.project_session_label": "{name} · 新会话",
     "new_session.prompt": "要做什么",
     "new_session.reading_cli": "正在读取 {agent} 上次的设置…",
-    "new_session.reading_models": "正在读取模型列表…",
     "new_session.reading_previous": "正在读取这个项目上次的设置…",
     "new_session.reading_settings": "读取设置…",
     "new_session.removed_blocked": "这个项目已从列表移除，先重新添加",
@@ -4704,7 +4645,6 @@ export const messages = {
     "new_session.starting_on": "正在 {name} 上启动…",
     "new_session.task_settings": "任务设置",
     "new_session.this_model_has_no_auto_mode": "当前模型没有自动模式",
-    "new_session.unconfirmed_start": "上次的启动结果还没有确认",
     "new_session.unexpected_reply": "意外的回复",
     "new_session.unknown_start_retry": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
     "new_session.use_machine": "改用 {name}",

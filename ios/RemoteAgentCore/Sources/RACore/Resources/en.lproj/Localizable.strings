@@ -235,13 +235,10 @@
 "dock_waiting_confirmation" = "Waiting for confirmation";
 "errors_account_creation_draft_preserved_continue_the_original_creation_flow" = "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.";
 "errors_cannot_connect_to_terminal" = "Cannot connect to terminal";
-"errors_cannot_sign_with_the_current_security_state_the_operation" = "Cannot sign with the current security state. The operation has not been sent; retry.";
 "errors_client_out_of_date" = "This client version is out of date. Update and retry.";
 "errors_connection_dropped_midway" = "Connection dropped midway";
 "errors_connection_timed_out" = "Connection timed out";
 "errors_connection_timed_out_reconnecting" = "Connection timed out. Reconnecting.";
-"errors_current_membership_could_not_be_verified" = "Current membership could not be verified";
-"errors_device_directory_state_changed" = "Device directory state changed";
 "errors_device_information_could_not_be_verified" = "Device information could not be verified";
 "errors_device_information_is_changing_retry" = "Device information is changing. Retry.";
 "errors_device_registration_is_unfinished_retry_it_first" = "Device registration is unfinished. Retry it first.";
@@ -252,7 +249,6 @@
 "errors_history_could_not_continue_loading_retry" = "History could not continue loading. Retry.";
 "errors_history_has_a_gap_retry" = "History has a gap. Retry.";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
-"errors_invalid_ciphertext_current_state_checkpoint_mismatch" = "Invalid ciphertext: current state checkpoint mismatch";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "Invalid ciphertext: signature, key, or content verification failed";
 "errors_invalid_current_request_snapshot" = "Invalid current request snapshot";
 "errors_invalid_pairing_approval_signature" = "Invalid pairing approval signature";
@@ -303,11 +299,9 @@
 "errors_it_may_have_been_deleted_or_belong_to_a" = "It may have been deleted, or belong to a computer that was removed.";
 "errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" = "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.";
 "errors_names_can_only_be_changed_on_that_device" = "Names can only be changed on that device";
-"errors_network_changed_reconnecting" = "Network changed. Reconnecting.";
 "errors_not_connected" = "Not connected to the server";
 "errors_other_clients_kept_changing_the_project_list_changes_could" = "Other clients kept changing the project list. Changes could not be saved.";
 "errors_pending_requests_on_the_computer_could_not_be_verified" = "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.";
-"errors_project_preferences_format_is_not_supported" = "Project preferences format is not supported";
 "errors_push_backlog_reconnecting" = "Push backlog. Reconnecting.";
 "errors_queued_records_could_not_be_restored_you_can_still" = "Queued records could not be restored. You can still type and send; retry next time.";
 "errors_queued_records_could_not_be_saved_locally_messages_will" = "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.";
@@ -319,10 +313,8 @@
 "errors_security_body_type_or_direction_mismatch" = "Security body type or direction mismatch";
 "errors_security_envelope_missing" = "Security envelope missing";
 "errors_server_returned" = "Server returned %1$@";
-"errors_session_key_envelope_missing" = "Session key envelope missing";
 "errors_setup_request_preserved" = "%1$@. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account.";
 "errors_signing_in" = "Signing in";
-"errors_syncing_device_state" = "Syncing device state";
 "errors_terminal_connection_canceled" = "Terminal connection canceled";
 "errors_terminal_connection_closed" = "Terminal connection closed";
 "errors_terminal_connection_dropped" = "Terminal connection dropped";
@@ -337,14 +329,12 @@
 "errors_the_computer_is_still_verifying_attachments_retry_shortly" = "The computer is still verifying attachments. Retry shortly.";
 "errors_the_computer_s_reply_could_not_be_verified_command" = "The computer’s reply could not be verified. Command execution is uncertain.";
 "errors_the_current_request_could_not_be_verified_again" = "The current request could not be verified again";
-"errors_the_device_directory_response_is_out_of_date" = "The device directory response is out of date";
 "errors_the_draft_could_not_be_restored_you_can_still" = "The draft could not be restored. You can still type and send; retry when opening or editing next time.";
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "The draft could not be saved locally. Keep the original images and text before closing the page.";
 "errors_the_draft_could_not_be_saved_the_original_message" = "The draft could not be saved. The original message’s local copy is preserved.";
 "errors_the_event_s_position_was_changed" = "The event’s position was changed";
 "errors_the_plan_display_changed_review_it_again" = "The plan display changed. Review it again.";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.";
-"errors_the_previous_request_s_outcome_is_still_unknown_cannot" = "The previous request’s outcome is still unknown. Cannot sign in again yet.";
 "errors_the_recovery_object_was_updated_concurrently_retrying_on_the" = "The recovery object was updated concurrently. Retrying on the next sync.";
 "errors_the_relay_did_not_provide_a_verifiable_execution_result" = "The relay did not provide a verifiable execution result. Retry the same request.";
 "errors_the_request_on_the_computer_changed_review_it_again" = "The request on the computer changed. Review it again.";
@@ -364,7 +354,6 @@
 "errors_this_page_is_out_of_date_refresh_or_update" = "This page is out of date. Refresh or update it and retry.";
 "errors_this_request_can_no_longer_be_acted_on" = "This request can no longer be acted on";
 "errors_this_request_has_not_been_verified_by_the_computer" = "This request has not been verified by the computer yet. Wait for sync.";
-"errors_timed_out_reconnecting" = "%1$@ timed out. Reconnecting.";
 "errors_update_remote_agent_on_this_computer_to_use_scheduled" = "Update remote-agent on this computer to use scheduled tasks";
 "errors_upload_made_no_progress" = "Upload made no progress";
 "errors_waiting_for_the_owning_computer_to_update_the_current" = "Waiting for the owning computer to update the current state";
@@ -374,7 +363,6 @@
 "home_all_projects" = "All projects";
 "home_choose_scope" = "Which project?";
 "home_clear_filter" = "Clear filter";
-"home_computer_runs_cli" = "Run the CLI on your computer and control sessions from a client.";
 "home_connection_check" = "Check connection";
 "home_connection_label" = "%1$@, check connection";
 "home_earlier_failed_retry" = "Could not load earlier sessions: %1$@ · Tap to retry";
@@ -618,7 +606,6 @@
 "models_ios_load_failed" = "Could not load models. Using %1$@’s own default model: %2$@";
 "models_ios_picker" = "Model selection";
 "models_ios_reading_machine" = "Reading settings from %1$@…";
-"models_load_failed_default" = "Could not load models. Using %1$@’s own default model";
 "models_load_failed_reason" = "Could not load models. Using %1$@’s own default model: %2$@";
 "models_reading_machine" = "Reading settings from %1$@…";
 "models_standard_only" = "Standard 200k · This model only supports the standard window";
@@ -672,11 +659,8 @@
 "new_session_cli_fallback" = "%3$@ does not have %2$@. Using %1$@ for this session";
 "new_session_cli_label" = "CLI: %1$@";
 "new_session_cli_picker_label" = "CLI";
-"new_session_config_fallback" = "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.";
 "new_session_default_model" = "Default model";
-"new_session_disconnected" = "Disconnected from server";
 "new_session_draft_kept" = "Your draft is saved. Choose an online computer; the computer and CLI will not switch automatically.";
-"new_session_each_cli_has_its_own_settings_choose_the_cli" = "Each CLI has its own settings. Choose the CLI in the sentence when creating a task.";
 "new_session_expired_start" = "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.";
 "new_session_expired_start_prompt" = "It is unclear whether “%1$@” started. The request has expired and will not be resent. Check active sessions first.";
 "new_session_first_message" = "First message of the new session";
@@ -709,8 +693,6 @@
 "new_session_model_list_default" = "Could not read the model list. Using %1$@’s default model.";
 "new_session_model_no_auto" = "This model has no Auto mode, but %1$@ uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.";
 "new_session_offline_draft" = "%1$@ is offline. The task has not started.";
-"new_session_offline_last_seen" = "Last online %1$@. Cannot start a session now";
-"new_session_offline_no_start" = "Cannot start a session now";
 "new_session_offline_no_start_named" = "%1$@ is offline. Cannot start a session now.";
 "new_session_offline_with_draft" = "%1$@ is offline. The task has not started. Your draft is saved. Choose an online computer.";
 "new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" = "Only affects future sessions. Active sessions stay unchanged; synced across your devices.";
@@ -721,7 +703,6 @@
 "new_session_project_session_label" = "%1$@ · New session";
 "new_session_prompt" = "What would you like to do?";
 "new_session_reading_cli" = "Reading previous settings for %1$@…";
-"new_session_reading_models" = "Loading models…";
 "new_session_reading_previous" = "Loading this project’s previous settings…";
 "new_session_reading_settings" = "Loading settings…";
 "new_session_removed_blocked" = "This project was removed. Add it again first.";
@@ -734,7 +715,6 @@
 "new_session_starting_on" = "Starting on %1$@…";
 "new_session_task_settings" = "Task settings";
 "new_session_this_model_has_no_auto_mode" = "This model has no Auto mode";
-"new_session_unconfirmed_start" = "The previous start is still unconfirmed";
 "new_session_unexpected_reply" = "Unexpected response";
 "new_session_unknown_start_retry" = "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.";
 "new_session_use_machine" = "Use %1$@";
