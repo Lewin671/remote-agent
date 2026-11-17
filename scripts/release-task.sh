@@ -41,11 +41,33 @@ fi
 tag=$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag"])')
 git add version.properties
 git commit -m "Release $tag" -m "$summary"
-# The tests of the release tools decide eligibility themselves.
-env -u RA_REPUBLISH python3 -m unittest discover -s scripts -p '*_test.py'
+# The tests of the release tools decide eligibility themselves. Run slow modules
+# in parallel while keeping public_scan_test before publish_public_test so the
+# test-only RA_PUBLIC_DENY fixture initializes before publish_public imports it.
+env -u RA_REPUBLISH PYTHONPATH="$ROOT/scripts" python3 - <<'PY'
+import concurrent.futures, glob, os, subprocess, sys
+
+paired = ["public_scan_test", "publish_public_test"]
+all_mods = [os.path.splitext(os.path.basename(p))[0] for p in sorted(glob.glob("scripts/*_test.py"))]
+groups = [paired] + [[m] for m in all_mods if m not in paired]
+with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(groups))) as pool:
+    results = list(pool.map(
+        lambda mods: (mods, subprocess.run([sys.executable, "-m", "unittest", *mods], capture_output=True, text=True)),
+        groups,
+    ))
+failed = False
+for mods, res in results:
+    if res.returncode != 0:
+        failed = True
+        sys.stderr.write(f"=== {' '.join(mods)} ===\n{res.stdout}{res.stderr}\n")
+if failed:
+    sys.exit(1)
+print(f"scripts tests: {len(all_mods)} modules passed")
+PY
 # Release binaries are built with CGO_ENABLED=0 (scripts/build-dist.sh); test the same way,
-# so a local C toolchain without a usable SDK cannot fail the release.
-CGO_ENABLED=0 go test ./...
+# so a local C toolchain without a usable SDK cannot fail the release. Omit -count=1 so
+# repeated local runs reuse Go's build and test cache for unchanged packages.
+CGO_ENABLED=0 go test -parallel=8 ./...
 git tag -a "$tag" -m "$summary"
 python3 scripts/release.py validate "$tag"
 # If main moved during tests this fails without publishing either ref.

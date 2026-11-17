@@ -30,7 +30,7 @@ class DeploymentMetadataTests(unittest.TestCase):
 
 
 class WebOnlyShipTests(unittest.TestCase):
-    def run_ship(self, protocol='13'):
+    def run_ship(self, protocol='13', prebuilt_core=False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / 'scripts').mkdir()
@@ -38,6 +38,16 @@ class WebOnlyShipTests(unittest.TestCase):
             (root / 'temp').mkdir()
             for name in ('ship.sh', 'web-deployment.py'):
                 shutil.copy(Path(__file__).with_name(name), root / 'scripts' / name)
+            if prebuilt_core:
+                (root / 'scripts/core').mkdir()
+                (root / 'scripts/core/build.sh').write_text('#!/bin/sh\n')
+                (root / 'go.mod').write_text('module test\n')
+                (root / 'go.sum').write_text('')
+                (root / 'clientcore').mkdir()
+                (root / 'proto').mkdir()
+                (root / 'build/core/web').mkdir(parents=True)
+                (root / 'build/core/web/wasm_exec.js').write_text('// wasm exec\n')
+                (root / 'build/core/web/core.wasm').write_bytes(b'wasm-bytes')
             fake = root / 'bin' / 'fake'
             fake.write_text('''#!/usr/bin/env python3
 import json,os,pathlib,shutil,sys
@@ -56,7 +66,10 @@ if name=='git':
 elif name=='gh':
     if args[:2]==['run','list']: print('123')
 elif name=='pnpm':
-    if args[:2]==['run','deploy']: (root/'deployed').touch()
+    if args[:2]==['run','deploy']:
+        (root/'deployed').touch()
+        if pathlib.Path('..', 'build', 'core', 'web', 'core.wasm').is_file():
+            (root/'reused_core').touch()
     elif args[:3]==['exec','wrangler','pages']:
         source='aaaaaaa' if (root/'deployed').exists() else 'bbbbbbb'
         print(json.dumps([dict(Environment='Production',Branch='main',Source=source,Status='just now')]))
@@ -70,17 +83,25 @@ elif name in ('ssh','daemon','curl'): sys.exit('forbidden non-web operation')
                        BIN=str(root / 'bin' / 'daemon'))
             result = subprocess.run(['sh', str(root / 'scripts/ship.sh'), '--web-only', 'v0.56.3'],
                                     cwd=root, env=env, text=True, capture_output=True)
-            return result, (root / 'calls').read_text()
+            return result, (root / 'calls').read_text(), (root / 'reused_core').exists()
 
     def test_deploys_and_verifies_web_without_server_daemon_or_public_http(self):
-        result, calls = self.run_ship()
+        result, calls, reused = self.run_ship()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('pnpm install --frozen-lockfile --prefer-offline --silent', calls)
         self.assertIn('pnpm run deploy', calls)
+        self.assertFalse(reused)
         self.assertIn('Cloudflare production points to v0.56.3', result.stdout)
         self.assertFalse(any(line.startswith(('ssh ', 'daemon ', 'curl ')) for line in calls.splitlines()), calls)
 
+    def test_reuses_current_local_web_core_when_inputs_match(self):
+        result, calls, reused = self.run_ship(prebuilt_core=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(reused)
+        self.assertIn('pnpm run deploy', calls)
+
     def test_protocol_change_stops_before_deployment(self):
-        result, calls = self.run_ship('12')
+        result, calls, _ = self.run_ship('12')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('cannot change protocol', result.stderr)
         self.assertNotIn('pnpm run deploy', calls)

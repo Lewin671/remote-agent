@@ -132,7 +132,7 @@ cloudflare_source() {
 	python3 "$ROOT/scripts/web-deployment.py" --source <"$cloudflare_record"
 }
 if [ "$web_only" = true ]; then
-	(cd "$work/web" && pnpm install --frozen-lockfile --silent)
+	(cd "$work/web" && pnpm install --frozen-lockfile --prefer-offline --silent)
 	cloudflare_record=$(mktemp "${TMPDIR:-/tmp}/remote-agent-web.XXXXXX")
 	deployed_web=$(cloudflare_source) || fail "cannot verify the deployed web source through Cloudflare"
 	previous_protocol=$(git -C "$ROOT" show "$deployed_web:internal/protocol/protocol.go" | sed -n 's/^const Version = //p')
@@ -166,10 +166,24 @@ fi
 if [ "${RA_WEB_REDEPLOY:-}" != 1 ] && web_has "$commit"; then
 	echo "skipped: already $tag"
 else
+	# Reuse the already-built web core WASM from ROOT when its inputs match the
+	# shipped commit and are clean/current, avoiding a redundant WASM rebuild.
+	if [ "${RA_CORE_FORCE:-}" != 1 ] &&
+	   [ -s "$ROOT/build/core/web/core.wasm" ] && [ -f "$ROOT/build/core/web/wasm_exec.js" ] &&
+	   git -C "$ROOT" diff --quiet "$commit" -- clientcore/ go.mod go.sum scripts/core/build.sh &&
+	   [ -z "$(git -C "$ROOT" status --porcelain -- clientcore/ go.mod go.sum scripts/core/build.sh)" ] &&
+	   [ ! "$ROOT/scripts/core/build.sh" -nt "$ROOT/build/core/web/core.wasm" ] &&
+	   [ ! "$ROOT/go.mod" -nt "$ROOT/build/core/web/core.wasm" ] &&
+	   [ ! "$ROOT/go.sum" -nt "$ROOT/build/core/web/core.wasm" ] &&
+	   [ -z "$(find "$ROOT/clientcore" "$ROOT/proto" -type f \( -name '*.go' -o -name '*.proto' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$ROOT/build/core/web/core.wasm" 2>/dev/null | head -n 1)" ]; then
+		mkdir -p "$work/build/core/web"
+		cp -f "$ROOT/build/core/web/core.wasm" "$ROOT/build/core/web/wasm_exec.js" "$work/build/core/web/"
+		touch "$work/build/core/web/core.wasm"
+	fi
 	if [ "$web_only" = true ]; then
 		(cd "$work/web" && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
 	else
-		(cd "$work/web" && pnpm install --frozen-lockfile --silent && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
+		(cd "$work/web" && pnpm install --frozen-lockfile --prefer-offline --silent && VITE_DEFAULT_SERVER=$SERVER_URL VITE_DIRECT_STUN_URL=$stun_url pnpm run deploy)
 	fi
 	i=0
 	until web_has "$commit"; do
