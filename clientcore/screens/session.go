@@ -301,7 +301,7 @@ func buildSessionHeader(
 	mode, rawMode := lists.SessionMode(ls)
 	out.ApprovalMode = mode
 	out.ApprovalModeRaw = rawMode
-	out.ApprovalModeLabel = sessionApprovalModeText(mode, rawMode)
+	out.ApprovalModeLabel = sessionApprovalModeText(mode, rawMode, caps.Name)
 	if in.Projection != nil && len(in.Projection.TerminalChanges) > 0 {
 		out.TerminalModeOverride = rawMode != ""
 	}
@@ -449,14 +449,14 @@ func maxImagesCount(mc *v1.MachineCapabilities) int32 {
 	return mc.MaxImagesPerMessage
 }
 
-func sessionApprovalModeText(mode v1.ApprovalMode, raw string) *corev1.Text {
+func sessionApprovalModeText(mode v1.ApprovalMode, raw, agentName string) *corev1.Text {
 	if t := modeNameText(mode); t != nil {
 		return t
 	}
 	if raw != "" {
 		return text.Plain(raw)
 	}
-	return text.Msg(text.KeyModesAgentOwn)
+	return text.Msg(text.KeyModesAgentOwn, text.Str("agent", agentName))
 }
 
 func effortLabelText(effort string) *corev1.Text {
@@ -659,9 +659,9 @@ func buildSessionActions(
 		out.ModeChoices = append(out.ModeChoices, &corev1.SessionModeChoiceView{
 			Mode:              m,
 			Label:             modeNameText(m),
-			Note:              modeNoteText(caps.Agent, m),
+			Note:              modeNoteText(caps, m),
 			Available:         available,
-			UnavailableReason: modeUnavailableText(reason, header.Model),
+			UnavailableReason: modeUnavailableText(reason, caps.Name),
 			Selected:          header.ApprovalMode == m,
 			SwitchAfterTurn:   runningTurn,
 		})
@@ -670,7 +670,8 @@ func buildSessionActions(
 	return out
 }
 
-func modeNoteText(agent v1.Agent, mode v1.ApprovalMode) *corev1.Text {
+func modeNoteText(caps lists.AgentCapabilities, mode v1.ApprovalMode) *corev1.Text {
+	agent := caps.Agent
 	switch mode {
 	case v1.ApprovalMode_APPROVAL_MODE_ASK:
 		if agent == v1.Agent_AGENT_ANTIGRAVITY {
@@ -678,29 +679,28 @@ func modeNoteText(agent v1.Agent, mode v1.ApprovalMode) *corev1.Text {
 		}
 		return text.Msg(text.KeyModesAskDesc)
 	case v1.ApprovalMode_APPROVAL_MODE_AUTO:
-		return text.Msg(text.KeyModesAutoDesc)
+		return text.Msg(text.KeyModesAutoDesc, text.Str("agent", caps.Name))
 	case v1.ApprovalMode_APPROVAL_MODE_PLAN:
 		if agent == v1.Agent_AGENT_ANTIGRAVITY {
 			return text.Msg(text.KeyModesAgyPlanDesc)
 		}
 		return text.Msg(text.KeyModesAskGenericDesc)
 	case v1.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
-		return text.Msg(text.KeyModesAutoDesc)
+		return text.Msg(text.KeyModesAutoDesc, text.Str("agent", caps.Name))
 	default:
 		return nil
 	}
 }
 
-func modeUnavailableText(r lists.ModeUnavailableReason, model string) *corev1.Text {
+func modeUnavailableText(r lists.ModeUnavailableReason, agentName string) *corev1.Text {
 	switch r {
 	case lists.ModeAccountNoAuto:
 		return text.Msg(text.KeyModesAccountNoAuto)
 	case lists.ModeModelNoAuto:
 		return text.Msg(text.KeyModesAccountUnsupported)
 	case lists.ModeLockedFullAccess, lists.ModeFullAccessRequiresStart:
-		return text.Msg(text.KeyModesAgentOwn)
+		return text.Msg(text.KeyModesAgentOwn, text.Str("agent", agentName))
 	default:
-		_ = model
 		return nil
 	}
 }

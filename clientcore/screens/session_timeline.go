@@ -695,7 +695,7 @@ func buildSessionTimeline(
 		case *v1.Event_TurnContext:
 			if ch := p.TerminalChanges[e.Seq]; ch != nil && len(ch.Changes) > 0 {
 				flushTools()
-				changesTxt := terminalChangesText(ch.Changes)
+				changesTxt := terminalChangesText(ch.Changes, caps.Name)
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
 					Id:          key,
 					Seq:         e.Seq,
@@ -1163,7 +1163,7 @@ func buildSettingsChangedNote(
 	return nil
 }
 
-func terminalChangesText(changes []*corev1.TerminalChange) *corev1.Text {
+func terminalChangesText(changes []*corev1.TerminalChange, agentName string) *corev1.Text {
 	var parts []*corev1.Text
 	for _, ch := range changes {
 		if ch == nil {
@@ -1173,7 +1173,7 @@ func terminalChangesText(changes []*corev1.TerminalChange) *corev1.Text {
 		case *corev1.TerminalChange_Mode:
 			if k.Mode != nil {
 				m := k.Mode.Mode
-				label := sessionApprovalModeText(m, k.Mode.RawMode)
+				label := sessionApprovalModeText(m, k.Mode.RawMode, agentName)
 				parts = append(parts, text.Msg(text.KeySessionTerminalModeChange, text.ArgText("value", label)))
 			}
 		case *corev1.TerminalChange_Model:

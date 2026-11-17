@@ -422,7 +422,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true
                 },
@@ -442,7 +448,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true
                 }
@@ -805,7 +817,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true
                 },
@@ -825,7 +843,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true
                 }

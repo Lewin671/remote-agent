@@ -302,7 +302,13 @@
                 "key": "list_state.approval"
               },
               "approvalModeLabel": {
-                "key": "modes.agent_own"
+                "key": "modes.agent_own",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  }
+                ]
               },
               "model": "claude-sonnet-4-6",
               "modelLabel": "claude-sonnet-4-6",
@@ -425,7 +431,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Claude Code"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -447,7 +459,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Claude Code"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -574,7 +592,13 @@
                 "key": "list_state.approval"
               },
               "approvalModeLabel": {
-                "key": "modes.agent_own"
+                "key": "modes.agent_own",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  }
+                ]
               },
               "model": "claude-sonnet-4-6",
               "modelLabel": "claude-sonnet-4-6",
@@ -697,7 +721,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Claude Code"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -719,7 +749,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Claude Code"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -876,7 +912,13 @@
                 "key": "list_state.idle"
               },
               "approvalModeLabel": {
-                "key": "modes.agent_own"
+                "key": "modes.agent_own",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  }
+                ]
               },
               "model": "claude-sonnet-4-6",
               "modelLabel": "claude-sonnet-4-6",
@@ -993,7 +1035,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Claude Code"
+                      }
+                    ]
                   },
                   "available": true
                 },
@@ -1013,7 +1061,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Claude Code"
+                      }
+                    ]
                   },
                   "available": true
                 }

@@ -357,7 +357,13 @@
                 "key": "list_state.running"
               },
               "approvalModeLabel": {
-                "key": "modes.agent_own"
+                "key": "modes.agent_own",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  }
+                ]
               },
               "modelUnknown": true,
               "machineId": "m1",
@@ -479,7 +485,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -501,7 +513,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -693,7 +711,13 @@
                 "key": "list_state.running"
               },
               "approvalModeLabel": {
-                "key": "modes.agent_own"
+                "key": "modes.agent_own",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  }
+                ]
               },
               "modelUnknown": true,
               "machineId": "m1",
@@ -815,7 +839,13 @@
                     "key": "modes.auto"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true
@@ -837,7 +867,13 @@
                     "key": "modes.full_access"
                   },
                   "note": {
-                    "key": "modes.auto_desc"
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
                   },
                   "available": true,
                   "switchAfterTurn": true

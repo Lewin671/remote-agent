@@ -68,15 +68,6 @@ val modeHelp get() =
     )
 
 @Composable
-private fun modeChoiceText(t: io.github.lewin671.remoteagent.core.proto.Text, agentLabel: String): String {
-    val copy = uiText()
-    return when {
-        t.key == UiMessages.modesAgentOwn("").key && t.argsCount == 0 -> copy(UiMessages.modesAgentOwn(agent = agentLabel))
-        t.key == UiMessages.modesAutoDesc("").key && t.argsCount == 0 -> copy(UiMessages.modesAutoDesc(agent = agentLabel))
-        else -> uiText(t)
-    }
-}
-
 /** Approval mode picker rendered from [SessionViewModel.actions]. */
 @Composable
 fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
@@ -110,13 +101,12 @@ fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
             )
         }
         val choices = vm.actions.modeChoicesList
-        val agentLabel = vm.header.agentName.ifEmpty { io.github.lewin671.remoteagent.core.agentName(vm.header.agent, copy = copy) }
         SheetList {
             choices.forEachIndexed { i, c ->
-                val reason = if (!c.available && c.hasUnavailableReason()) modeChoiceText(c.unavailableReason, agentLabel) else null
+                val reason = if (!c.available && c.hasUnavailableReason()) uiText(c.unavailableReason) else null
                 ListItem(
                     uiText(c.label),
-                    reason ?: modeChoiceText(c.note, agentLabel),
+                    reason ?: uiText(c.note),
                     checked = c.selected,
                     enabled = c.available && !busy,
                     danger = c.mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS && c.available,

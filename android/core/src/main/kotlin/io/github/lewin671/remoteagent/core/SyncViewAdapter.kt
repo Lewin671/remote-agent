@@ -198,9 +198,6 @@ fun coreTextToMessageText(t: CoreText?): MessageText {
                     else -> ""
                 }
             }
-            if ((t.key == UiMessages.modesAgentOwn("").key || t.key == UiMessages.modesAutoDesc("").key) && "agent" !in args) {
-                args["agent"] = "CLI"
-            }
             copy(UiMessage(t.key, args))
         }
     }
