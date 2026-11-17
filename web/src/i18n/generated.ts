@@ -1444,7 +1444,6 @@ export interface MessageArgs {
   "terminal.up": { [name: string]: never };
   "terminal.view_details": { [name: string]: never };
   "time.calendar_date_year": { day: number; month: number; year: number };
-  "time.date_time": { day: number; month: number; time: string };
   "time.day_clock": { clock: string; day: string };
   "time.duration_hours_minutes": { hours: number; minutes: number };
   "time.duration_minutes_seconds": { minutes: number; seconds: number };
@@ -3480,7 +3479,6 @@ export const messages = {
     "terminal.up": "Up",
     "terminal.view_details": "View details",
     "time.calendar_date_year": "{year}/{month}/{day}",
-    "time.date_time": "{month}/{day} {time}",
     "time.day_clock": "{day} {clock}",
     "time.duration_hours_minutes": "{hours} hr {minutes} min",
     "time.duration_minutes_seconds": "{minutes} min {seconds} sec",
@@ -5486,7 +5484,6 @@ export const messages = {
     "terminal.up": "上",
     "terminal.view_details": "查看详情",
     "time.calendar_date_year": "{year}年{month}月{day}日",
-    "time.date_time": "{month}月{day}日 {time}",
     "time.day_clock": "{day} {clock}",
     "time.duration_hours_minutes": "{hours} 小时 {minutes} 分",
     "time.duration_minutes_seconds": "{minutes} 分 {seconds} 秒",

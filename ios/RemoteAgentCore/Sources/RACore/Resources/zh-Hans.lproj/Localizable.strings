@@ -1878,7 +1878,6 @@
 "terminal_up" = "上";
 "terminal_view_details" = "查看详情";
 "time_calendar_date_year" = "%3$lld年%2$lld月%1$lld日";
-"time_date_time" = "%2$lld月%1$lld日 %3$@";
 "time_day_clock" = "%2$@ %1$@";
 "time_duration_hours_minutes" = "%1$lld 小时 %2$lld 分";
 "time_duration_minutes_seconds" = "%1$lld 分 %2$lld 秒";

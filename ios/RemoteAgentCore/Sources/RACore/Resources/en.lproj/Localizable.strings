@@ -1878,7 +1878,6 @@
 "terminal_up" = "Up";
 "terminal_view_details" = "View details";
 "time_calendar_date_year" = "%3$lld/%2$lld/%1$lld";
-"time_date_time" = "%2$lld/%1$lld %3$@";
 "time_day_clock" = "%2$@ %1$@";
 "time_duration_hours_minutes" = "%1$lld hr %2$lld min";
 "time_duration_minutes_seconds" = "%1$lld min %2$lld sec";

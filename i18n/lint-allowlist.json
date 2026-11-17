@@ -2603,5 +2603,50 @@
     "path": "internal/daemon/schedule.go",
     "literal": "mcp_ready requires a bound session MCP",
     "reason": "Internal daemon-MCP scope validation error for local handshake calls; never rendered as product UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/CoreText.kt",
+    "literal": "zh-CN",
+    "reason": "Default BCP-47 locale tag passed to resolveUiMessage; internal identifier, never displayed as UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/DarkCard.kt",
+    "literal": "deny:$approvalId",
+    "reason": "Internal Drafts state map key for pending approval denial reasons; never displayed as UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/LegacyNewSettings.kt",
+    "literal": "model",
+    "reason": "Legacy subpage route identifier used by M2/M3 settings navigation; never displayed as UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/LegacyNewSettings.kt",
+    "literal": "machine",
+    "reason": "Legacy subpage route identifier used by M2/M3 settings navigation; never displayed as UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/LegacyNewSettings.kt",
+    "literal": "mode",
+    "reason": "Legacy subpage route identifier used by M2/M3 settings navigation; never displayed as UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt",
+    "literal": "disk_full",
+    "reason": "Relay CommandException wire error code matched before mapping to StartSessionResult; never displayed as UI copy."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Project.kt",
+    "literal": "storage_exhausted",
+    "reason": "Relay CommandException wire error code matched before mapping to StartSessionResult; never displayed as UI copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "disk_full",
+    "reason": "Relay CommandException wire error code matched before mapping to CommandResult; never displayed as UI copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "storage_exhausted",
+    "reason": "Relay CommandException wire error code matched before mapping to CommandResult; never displayed as UI copy."
   }
 ]

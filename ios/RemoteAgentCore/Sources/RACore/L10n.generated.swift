@@ -7881,10 +7881,6 @@ public enum L10n {
         let key = "time_calendar_date_year"
         return format(key, locale: locale, args: [Int64(day), Int64(month), Int64(year)])
     }
-    public static func timeDateTime(day: Int, month: Int, time: String, locale: String = MessageLocale.current) -> String {
-        let key = "time_date_time"
-        return format(key, locale: locale, args: [Int64(day), Int64(month), time])
-    }
     public static func timeDayClock(clock: String, day: String, locale: String = MessageLocale.current) -> String {
         let key = "time_day_clock"
         return format(key, locale: locale, args: [clock, day])
@@ -16040,10 +16036,6 @@ public enum L10nMessage {
     public static func timeCalendarDateYear(day: Int, month: Int, year: Int) -> LocalizedMessage {
         let key = "time_calendar_date_year"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .integer(Int64(year))])
-    }
-    public static func timeDateTime(day: Int, month: Int, time: String) -> LocalizedMessage {
-        let key = "time_date_time"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .string(time)])
     }
     public static func timeDayClock(clock: String, day: String) -> LocalizedMessage {
         let key = "time_day_clock"

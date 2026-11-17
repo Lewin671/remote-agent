@@ -84,114 +84,6 @@
     }
   },
   {
-    "key": "errors.android_cannot_verify_the_current_request",
-    "zh-CN": "无法核实当前请求",
-    "en": "Cannot verify the current request",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends",
-    "zh-CN": "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求",
-    "en": "Computer outcome unknown: stopped waiting for a reply. Retrying sends the same request",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_computer_outcome_unknown_the_connection_dropped",
-    "zh-CN": "不确定电脑有没有执行：连接中途断了",
-    "en": "Computer outcome unknown: the connection dropped",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_computer_outcome_unknown_the_request_may_have_arrived_before_login",
-    "zh-CN": "不确定电脑有没有执行：请求可能已经送到，之后登录失败（{value1}）",
-    "en": "Computer outcome unknown: the request may have arrived before login failed ({value1})",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_computer_outcome_unknown_value1",
-    "zh-CN": "不确定电脑有没有执行：{value1}",
-    "en": "Computer outcome unknown: {value1}",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_could_not_connect_to_the_server",
-    "zh-CN": "连不上服务器",
-    "en": "Could not connect to the server",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_could_not_read_the_session_list",
-    "zh-CN": "没能读取会话列表",
-    "en": "Could not read the session list",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "errors.android_file_name_is_too_long_or_empty_rename_the_file",
     "zh-CN": "文件名过长或为空，请重命名后重新选择",
     "en": "File name is too long or empty. Rename the file and select it again",
@@ -229,39 +121,6 @@
     "zh-CN": "文件校验失败，请重试或重新选择文件",
     "en": "File verification failed. Retry or select the file again",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_history_read_failed",
-    "zh-CN": "没能读取历史：{reason}",
-    "en": "Could not read history: {reason}",
-    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_history_records_are_discontinuous_retry_reading",
-    "zh-CN": "历史记录不连续，请重试读取",
-    "en": "History records are discontinuous. Retry reading",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -310,34 +169,6 @@
         "example": "Example"
       }
     },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_network_unavailable_command_was_not_sent",
-    "zh-CN": "网络不通，指令没有发出",
-    "en": "Network unavailable. Command was not sent",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_no_verifiable_execution_result_received_retry_the_same_request",
-    "zh-CN": "未收到可验证的执行结果，请重试同一请求",
-    "en": "No verifiable execution result received. Retry the same request",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
     "platforms": [
       "android"
     ],
@@ -398,20 +229,6 @@
     "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效",
     "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
     "notes": "Android Approval 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "errors.android_project_preferences_are_changing_retry",
-    "zh-CN": "项目偏好正在变化，请重试",
-    "en": "Project preferences are changing. Retry",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"

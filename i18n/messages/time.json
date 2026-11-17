@@ -510,35 +510,6 @@
     }
   },
   {
-    "key": "time.date_time",
-    "zh-CN": "{month}月{day}日 {time}",
-    "en": "{month}/{day} {time}",
-    "notes": "月日与时刻组合。",
-    "params": {
-      "month": {
-        "type": "integer",
-        "example": 4
-      },
-      "day": {
-        "type": "integer",
-        "example": 12
-      },
-      "time": {
-        "type": "string",
-        "example": "09:30"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "time.used_time",
     "zh-CN": "{time} 使用",
     "en": "Used {time}",
