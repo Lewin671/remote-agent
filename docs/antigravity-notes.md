@@ -477,7 +477,7 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
   - `cycle_mode`: 当前 Shift+Tab 轮转模式（`null`、`"accept-edits"`、`"auto"`、`"plan"`）。
   - `artifact_count`: 当前会话生成的工件总数。
   - `email` / `plan_tier`: 登录邮箱与订阅级别（`"Google AI Pro"`）。
-  - `quota`: 包含上述 5 个配额桶的结构化对象。
+  - `quota`: 包含上述 5 个配额桶的结构化对象（或通过无头命令 `agy -p /usage --output-format json` 直接查询，见 §15）。
   - `transcript_path`: 当前会话 transcript 的全路径。
   - `model`: 模型名称与标识。
   - `terminal_width`: 终端宽度。
@@ -599,3 +599,10 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 工具已握手并写出 `send_file` 的 schema 缓存，不能把模型不调用工具等同于 MCP 未注册。CLI 自带 changelog 的 1.3.3 条目说明：MCP 工具可按需发现，`tools/list` 的 `_meta: {"antigravity/alwaysLoad": true}` 可让工具直接暴露；同版本自带定制文档推荐 `plugins/<name>/plugin.json` 与同目录的 `mcp_config.json`。本地候选改为该注册方式并给 `send_file` 加元数据。额外 addon 规则和延迟首条消息的试验未解决发现问题，未保留；注册方式是否就是缺口的根因、候选是否解决首轮发现，均尚未由成功的真实轮次证明。
 
 Gemini Flash 随后达到额度上限。分别用新会话请求 Claude Sonnet 5.5、GPT-OSS 120B、Gemini 4 Argon、Gemini 4 Hydrogen、Claude Opus 5.5，也均在原生终端得到 `Individual quota reached`，停止模型验收。两条中文、一条英文、无发送请求反例、远程允许与拒绝及文件哈希核对尚未完成。新增的解析、菜单匹配和 daemon 卡片/决策测试属于自动测试，不能替代真实 CLI 链路。
+
+## 15. 无头 `/usage` 配额查询（1.5.10，2026-11-17）
+
+- 执行 `AGY_CLI_DISABLE_AUTO_UPDATE=true agy -p /usage --output-format json` 不发起模型推理请求（`duration_seconds: 0`、`num_turns: 0`、`usage` 各项 token 均为 `0`），只查询账户配额并返回单行 JSON。
+- 返回结构包含 `"status": "SUCCESS"` 与 `"command": {"name": "usage", "data": {"groups": [...]}}`；每个 group 下的 `buckets` 数组携带 `id`（如 `gemini-weekly`、`gemini-5h`、`3p-weekly`、`3p-5h`）、`window`（`weekly` / `5h`）、`remaining_fraction` 和 `reset_time`。由于 proto3 JSON 会省略 `0` 值浮点字段，当 `status == "SUCCESS"` 且桶对象存在但缺少 `remaining_fraction` 时，表示剩余比例为 `0`（已用 `100%`）。
+- 每次 `agy` 运行（交互或无头，含 `-p /usage`）都会在 `~/.gemini/antigravity-cli/log/` 新建 `cli-YYYYMMDD_HHMMSS.log`；`/usage` JSON 输出不含 `email`，登录邮箱仅记录在 CLI 日志中的 `applyAuthResult: email=..., authMethod=consumer, quotaProject=` 行内。
+- 禁用自动更新的环境变量 `AGY_CLI_DISABLE_AUTO_UPDATE` 必须为小写 `true`。

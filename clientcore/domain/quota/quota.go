@@ -425,7 +425,7 @@ func buildAccountGroup(agent v1.Agent, q *v1.AgentQuota, reachable bool, nowMs i
 		Groups:              groupWindowRows(agent, rows),
 	}
 
-	if q.Detail != "" {
+	if q.Detail != "" && !waiting {
 		grp.ErrorText = text.Plain(q.Detail)
 	}
 	switch {
@@ -442,7 +442,13 @@ func buildAccountGroup(agent v1.Agent, q *v1.AgentQuota, reachable bool, nowMs i
 		}
 		grp.UsageHint = usageHintForAgent(agent)
 	case waiting:
-		grp.StatusText = text.Msg(text.KeyQuotaWaiting, text.Str("name", agentDisplayName(agent)))
+		if q.Detail != "" {
+			grp.StatusText = text.Plain(q.Detail)
+		} else if agent == v1.Agent_AGENT_ANTIGRAVITY {
+			grp.StatusText = text.Msg(text.KeyQuotaAgyWaiting)
+		} else {
+			grp.StatusText = text.Msg(text.KeyQuotaWaiting, text.Str("name", agentDisplayName(agent)))
+		}
 	case !reachable:
 		if recv := ReceivedAt(q.ObservedMs, nowMs, false); recv != nil {
 			grp.StatusText = recv

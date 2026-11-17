@@ -56,7 +56,7 @@ struct QuotaScreen: View {
                                 g.detail.or(L10n.quotaIosRemoteAgentOnThisComputerCannotReadSQuota(value: String(describing: agentName(g.agent))))
                                     + (agentInfo(g.agent).usageHint ?? ""))
                         } else if g.status == .waiting {
-                            QuotaState(L10n.quotaQuotaNotAvailableYet(), g.detail.isEmpty ? L10n.quotaWaiting(name: agentName(g.agent)) : g.detail)
+                            QuotaState(L10n.quotaQuotaNotAvailableYet(), quotaWaitingDetail(g))
                         }
                         for row in g.rows { QuotaWindow(row: row) }
                     }

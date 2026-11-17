@@ -2947,6 +2947,8 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   expect(host.textContent).not.toContain(message("quota.quota_lookup_is_not_supported_yet"));
   expect(host.textContent).toContain("剩 72%");
   expect(host.textContent).toContain(message("quota.quota_not_available_yet"));
+  expect(host.textContent).toContain(message("quota.agy_waiting"));
+  expect(host.textContent).not.toContain(message("quota.waiting", { name: "Antigravity" }));
   expect(host.textContent).not.toContain(message("quota.days", { count: 7 }));
   expect(host.textContent).toContain("最近收到");
 });

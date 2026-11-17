@@ -147,3 +147,35 @@ func TestAntigravityGroupingMissingOmittedAndBannerPriority(t *testing.T) {
 		t.Fatalf("banner should prioritize 100%% exhausted over 85%% warn, got %+v", b)
 	}
 }
+
+func TestAntigravityWaitingDetailUsesAgyCopyWithoutErrorText(t *testing.T) {
+	now := int64(1_760_000_000_000)
+	online := true
+	m := &lists.Machine{
+		ID:        "m1",
+		Online:    true,
+		Reachable: &online,
+		Meta: &v1.MachineMeta{
+			Hostname: "Mac",
+			Agents:   []*v1.AgentInfo{{Agent: v1.Agent_AGENT_ANTIGRAVITY, Version: "1.5.10"}},
+			Quotas: []*v1.AgentQuota{
+				{Agent: v1.Agent_AGENT_ANTIGRAVITY, State: v1.QuotaState_QUOTA_STATE_WAITING},
+			},
+		},
+	}
+	secs := BuildCliSections(m, v1.Agent_AGENT_UNSPECIFIED, now)
+	if len(secs) != 1 || len(secs[0].Accounts) != 1 {
+		t.Fatalf("unexpected sections: %+v", secs)
+	}
+	acct := secs[0].Accounts[0]
+	if acct.ErrorText != nil || keyOf(acct.StatusText) != text.KeyQuotaAgyWaiting {
+		t.Fatalf("expected quota.agy_waiting StatusText with nil ErrorText, got status=%+v err=%+v", acct.StatusText, acct.ErrorText)
+	}
+
+	m.Meta.Quotas[0].Detail = "custom daemon waiting detail"
+	secs2 := BuildCliSections(m, v1.Agent_AGENT_UNSPECIFIED, now)
+	acct2 := secs2[0].Accounts[0]
+	if acct2.ErrorText != nil || keyOf(acct2.StatusText) != "custom daemon waiting detail" {
+		t.Fatalf("expected daemon Detail as plain StatusText without ErrorText, got status=%+v err=%+v", acct2.StatusText, acct2.ErrorText)
+	}
+}

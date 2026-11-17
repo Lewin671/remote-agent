@@ -246,4 +246,11 @@ import Testing
         #expect(quotaCardLine([group(nil)]).left == nil)
         #expect(quotaLeft(37.6) == "剩 63%")
     }
+
+    @Test func waitingDetailUsesAntigravityCopy() {
+        let agyWaiting = QuotaGroup(agent: .antigravity, title: "Antigravity", status: .waiting, rows: [], received: "", detail: "", lastRecord: false)
+        #expect(quotaWaitingDetail(agyWaiting) == L10n.quotaAgyWaiting())
+        let claudeWaiting = QuotaGroup(agent: .claude, title: "Claude Code", status: .waiting, rows: [], received: "", detail: "", lastRecord: false)
+        #expect(quotaWaitingDetail(claudeWaiting) == L10n.quotaWaiting(name: agentName(.claude)))
+    }
 }

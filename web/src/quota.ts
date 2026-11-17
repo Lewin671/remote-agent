@@ -6,7 +6,7 @@ import * as l10n from "./i18n";
 // passed does not mean the quota is back.
 
 import { t } from "./i18n";
-import type { Agent, RateLimit } from "./gen/remoteagent/v1/event_pb";
+import { Agent, type RateLimit } from "./gen/remoteagent/v1/event_pb";
 import { QuotaState, type AgentQuota, type MachineMeta, type QuotaWindow } from "./gen/remoteagent/v1/remote_pb";
 import { agentInfo, normalizePlanName } from "./agents";
 
@@ -170,7 +170,8 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
     for (const q of mine) {
       const who = mine.length > 1 ? (q.account ? l10n.t("quota.account", { value: String(q.account) }) : q.sourceSessionId ? l10n.t("quota.session", { value: String(q.sourceSessionId.slice(-4)) }) : "") : "";
       if (q.state === QuotaState.WAITING || (q.state === QuotaState.UNSPECIFIED && !q.windows.length)) {
-        out.push({ ...base, title: name + who, kind: "waiting", head: l10n.t("quota.quota_not_available_yet"), detail: q.detail || t("quota.waiting", { name }) });
+        const fallbackDetail = agent === Agent.ANTIGRAVITY ? t("quota.agy_waiting") : t("quota.waiting", { name });
+        out.push({ ...base, title: name + who, kind: "waiting", head: l10n.t("quota.quota_not_available_yet"), detail: q.detail || fallbackDetail });
         continue;
       }
       if (q.state === QuotaState.UNSUPPORTED) {

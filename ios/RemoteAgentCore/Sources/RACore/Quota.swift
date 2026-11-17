@@ -275,6 +275,12 @@ public func quotaBanner(_ g: QuotaGroup) -> String {
     return ""
 }
 
+/// The waiting explanation for a group without quota numbers yet.
+public func quotaWaitingDetail(_ g: QuotaGroup) -> String {
+    if !g.detail.isEmpty { return g.detail }
+    return g.agent == .antigravity ? L10n.quotaAgyWaiting() : L10n.quotaWaiting(name: agentName(g.agent))
+}
+
 /// The device page's line for a CLI: its most-used window, or its state.
 public func quotaLine(_ g: QuotaGroup) -> String {
     switch g.status {
