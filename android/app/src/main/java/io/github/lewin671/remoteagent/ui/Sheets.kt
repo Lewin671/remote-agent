@@ -67,7 +67,6 @@ val modeHelp get() =
         Mode.FULL to sessionText(UiMessages.modesSkipAll()),
     )
 
-@Composable
 /** Approval mode picker rendered from [SessionViewModel.actions]. */
 @Composable
 fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
