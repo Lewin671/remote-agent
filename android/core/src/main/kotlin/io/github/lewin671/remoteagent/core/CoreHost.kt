@@ -529,14 +529,36 @@ class CoreHost(
         return ViewModel.parseFrom(rawVm)
     }
 
-    fun watchSession(sessionId: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> = flow {
-        val watcher = acquireSessionWatcher(sessionId, initialWindow)
-        try {
-            watcher.flow.collect { emit(it) }
-        } finally {
-            releaseSessionWatcher(sessionId)
+    private class SessionWatchFlow(
+        private val host: CoreHost,
+        private val sessionId: String,
+        private val initialWindow: SessionWindowRequest?,
+    ) : Flow<SessionViewModel> {
+        override suspend fun collect(collector: FlowCollector<SessionViewModel>) {
+            val watcher = host.acquireSessionWatcher(sessionId, initialWindow)
+            try {
+                watcher.flow.collect { collector.emit(it) }
+            } finally {
+                host.releaseSessionWatcher(sessionId)
+            }
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is SessionWatchFlow &&
+                host === other.host &&
+                sessionId == other.sessionId &&
+                initialWindow == other.initialWindow
+
+        override fun hashCode(): Int {
+            var h = System.identityHashCode(host)
+            h = 31 * h + sessionId.hashCode()
+            h = 31 * h + (initialWindow?.hashCode() ?: 0)
+            return h
         }
     }
+
+    fun watchSession(sessionId: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
+        SessionWatchFlow(this, sessionId, initialWindow)
 
     fun updateSessionWindow(sessionId: String, window: SessionWindowRequest) {
         val updated = synchronized(sessionWatchers) {

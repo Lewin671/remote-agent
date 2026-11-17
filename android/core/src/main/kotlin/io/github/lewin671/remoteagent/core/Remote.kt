@@ -362,6 +362,9 @@ class Remote(
     fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> =
         coreHost.watchSession(sid, initialWindow)
 
+    fun currentSessionView(sid: String): SessionViewModel? =
+        coreHost.currentSessionView(sid)
+
     fun updateSessionWindow(sid: String, window: SessionWindowRequest) =
         coreHost.updateSessionWindow(sid, window)
 

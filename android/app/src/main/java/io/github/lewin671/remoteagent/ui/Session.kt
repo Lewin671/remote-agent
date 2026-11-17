@@ -155,7 +155,8 @@ fun SessionScreen(sid: String) {
         )
     }
 
-    val vm by remote.watchSession(sid, initialWindow).collectAsState(initial = SessionViewModel.getDefaultInstance())
+    val vm by remember(remote, sid, initialWindow) { remote.watchSession(sid, initialWindow) }
+        .collectAsState(initial = remember(sid) { remote.currentSessionView(sid) ?: SessionViewModel.getDefaultInstance() })
     val header = vm.header
 
     LaunchedEffect(remote, sid, header.machineId) {
