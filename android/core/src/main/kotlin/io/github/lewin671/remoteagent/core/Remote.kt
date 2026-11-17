@@ -2292,8 +2292,29 @@ class Remote(
         return result.machineStatus
     }
 
+    private fun commandSessionId(cmd: Command): String = when (cmd.kindCase) {
+        Command.KindCase.SEND -> cmd.send.sessionId
+        Command.KindCase.INTERRUPT -> cmd.interrupt.sessionId
+        Command.KindCase.RESOLVE_APPROVAL -> cmd.resolveApproval.sessionId
+        Command.KindCase.ANSWER_QUESTION -> cmd.answerQuestion.sessionId
+        Command.KindCase.STOP_SESSION -> cmd.stopSession.sessionId
+        Command.KindCase.CANCEL_INPUT -> cmd.cancelInput.sessionId
+        Command.KindCase.SET_MODEL -> cmd.setModel.sessionId
+        Command.KindCase.SET_APPROVAL_MODE -> cmd.setApprovalMode.sessionId
+        Command.KindCase.COMPACT -> cmd.compact.sessionId
+        Command.KindCase.ANSWER_PLAN -> cmd.answerPlan.sessionId
+        Command.KindCase.OPEN_TERMINAL -> cmd.openTerminal.sessionId
+        Command.KindCase.RESUME_SESSION -> cmd.resumeSession.sessionId
+        Command.KindCase.RESUME_INPUT -> cmd.resumeInput.sessionId
+        Command.KindCase.RENAME_SESSION -> cmd.renameSession.sessionId
+        Command.KindCase.FORK_SESSION -> cmd.forkSession.sessionId
+        Command.KindCase.GET_LIVE_SNAPSHOT -> cmd.getLiveSnapshot.sessionId
+        Command.KindCase.GET_SHARED_FILE_CHUNK -> cmd.getSharedFileChunk.sessionId
+        else -> ""
+    }
+
     suspend fun machineCommand(machineId: String, cmd: Command): CommandResult =
-        sendMachineCommand(machineId, cmd)
+        sendMachineCommand(machineId, cmd, sessionId = commandSessionId(cmd))
 
     suspend fun pingServer(timeoutMs: Long = 8_000): Long = withContext(Dispatchers.IO) {
         val req = okhttp3.Request.Builder().url(api.server.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build()

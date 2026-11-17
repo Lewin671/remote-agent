@@ -749,6 +749,33 @@ class RemoteTest {
     }
 
     @Test
+    fun machineCommandCarriesSessionIdOnlyForSessionScopedCommands() = runBlocking<Unit> {
+        val r = client()
+        r.start()
+        r.awaitState("online machine") { it.machines[daemon.id]?.online == true }
+
+        val headers = java.util.concurrent.CopyOnWriteArrayList<String>()
+        daemon.answer = { header, cmd ->
+            headers.add(header.sessionId)
+            when (cmd.kindCase) {
+                Command.KindCase.RESOLVE_APPROVAL -> CommandResult.newBuilder().setResolveApproval(ResolveApprovalResponse.getDefaultInstance()).build()
+                else -> CommandResult.newBuilder().setSchedule(ScheduleResponse.getDefaultInstance()).build()
+            }
+        }
+        r.machineCommand(
+            daemon.id,
+            Command.newBuilder().setResolveApproval(
+                ResolveApprovalRequest.newBuilder().setSessionId("s1").setApprovalId("a1").setAllow(true),
+            ).build(),
+        )
+        r.machineCommand(
+            daemon.id,
+            Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list").setSessionId("s1")).build(),
+        )
+        assertEquals(listOf("s1", ""), headers.toList())
+    }
+
+    @Test
     fun forwardsCommandsAndReportsOffline() =
         runBlocking<Unit> {
             val r = client()
