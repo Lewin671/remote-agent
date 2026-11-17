@@ -675,6 +675,11 @@ func (e *Engine) ingestEvents(
 					b.reducer.Append([]*v1.Event{nxtEv})
 				}
 			}
+			if len(b.pending) == 0 {
+				// The prefix has caught up with the tail it was showing; a later
+				// out-of-order live event must not switch the display back to it.
+				b.tailRequested = false
+			}
 		case pe.Seq > expected:
 			if _, exists := b.pending[pe.Seq]; !exists {
 				b.pending[pe.Seq] = ev

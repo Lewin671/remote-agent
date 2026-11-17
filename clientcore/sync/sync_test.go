@@ -559,6 +559,13 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	if !e.SessionEntry("s1").LivePending.HasApproval || e.SessionEntry("s1").LivePending.ApprovalID != "ap-tail" {
 		t.Fatalf("expected approval projection ap-tail after draining, got %+v", e.SessionEntry("s1").LivePending)
 	}
+	// Once drained, an out-of-order live event (1202 before 1201) must not
+	// switch the display back to a one-event tail.
+	buf.pending[1202] = &v1.Event{Seq: 1202}
+	if shown := buf.ShownEvents(); len(shown) != 1200 {
+		t.Fatalf("display collapsed to %d events after an out-of-order live event", len(shown))
+	}
+	delete(buf.pending, 1202)
 
 	// Verify LRU protection while watched/pinned vs eviction when unwatched after 60s.
 	e.HandleEvent(&corev1.Event{
