@@ -3402,6 +3402,17 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.creating" -> {
             resources.getString(R.string.schedule_creating)
         }
+        "schedule.creation_summary" -> {
+            val kind = message.args.getValue("kind") as String
+            val owner = message.args.getValue("owner") as String
+            resources.getString(R.string.schedule_creation_summary, kind, owner)
+        }
+        "schedule.creation_summary_at" -> {
+            val kind = message.args.getValue("kind") as String
+            val owner = message.args.getValue("owner") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_creation_summary_at, kind, owner, time)
+        }
         "schedule.daily" -> {
             resources.getString(R.string.schedule_daily)
         }
@@ -3457,6 +3468,13 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.ended" -> {
             resources.getString(R.string.schedule_ended)
         }
+        "schedule.ended_cannot_run" -> {
+            resources.getString(R.string.schedule_ended_cannot_run)
+        }
+        "schedule.ended_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_ended_count, count, count)
+        }
         "schedule.every" -> {
             resources.getString(R.string.schedule_every)
         }
@@ -3494,6 +3512,11 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.frequency" -> {
             resources.getString(R.string.schedule_frequency)
         }
+        "schedule.frequency_in_zone" -> {
+            val frequency = message.args.getValue("frequency") as String
+            val zone = message.args.getValue("zone") as String
+            resources.getString(R.string.schedule_frequency_in_zone, frequency, zone)
+        }
         "schedule.fri" -> {
             resources.getString(R.string.schedule_fri)
         }
@@ -3519,6 +3542,32 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         }
         "schedule.interval_minutes" -> {
             resources.getString(R.string.schedule_interval_minutes)
+        }
+        "schedule.ios_attention_once" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.schedule_ios_attention_once, reason)
+        }
+        "schedule.ios_choose_a_valid_iana_time_zone" -> {
+            resources.getString(R.string.schedule_ios_choose_a_valid_iana_time_zone)
+        }
+        "schedule.ios_confirm_the_previous_change_s_result_first" -> {
+            resources.getString(R.string.schedule_ios_confirm_the_previous_change_s_result_first)
+        }
+        "schedule.ios_enter_a_valid_interval" -> {
+            resources.getString(R.string.schedule_ios_enter_a_valid_interval)
+        }
+        "schedule.ios_takeover_notice" -> {
+            val notice = message.args.getValue("notice") as String
+            resources.getString(R.string.schedule_ios_takeover_notice, notice)
+        }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
+        "schedule.ios_task_details" -> {
+            resources.getString(R.string.schedule_ios_task_details)
         }
         "schedule.last_result" -> {
             val result = message.args.getValue("result") as String
@@ -3561,17 +3610,14 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.mark_all_as_read" -> {
             resources.getString(R.string.schedule_mark_all_as_read)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "schedule.mark_as_read" -> {
             resources.getString(R.string.schedule_mark_as_read)
         }
         "schedule.mark_as_unread" -> {
             resources.getString(R.string.schedule_mark_as_unread)
+        }
+        "schedule.message_required" -> {
+            resources.getString(R.string.schedule_message_required)
         }
         "schedule.messages_go_to_the_current_conversation_and_wait_for" -> {
             resources.getString(R.string.schedule_messages_go_to_the_current_conversation_and_wait_for)
@@ -3655,6 +3701,10 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "schedule.notify_on_completion_by_default_when_off_only_the" -> {
             resources.getString(R.string.schedule_notify_on_completion_by_default_when_off_only_the)
         }
+        "schedule.offline_machines_notice" -> {
+            val machines = message.args.getValue("machines") as String
+            resources.getString(R.string.schedule_offline_machines_notice, machines)
+        }
         "schedule.once_at" -> {
             val time = message.args.getValue("time") as String
             resources.getString(R.string.schedule_once_at, time)
@@ -3680,6 +3730,9 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "schedule.project" -> {
             resources.getString(R.string.schedule_project)
         }
+        "schedule.project_required" -> {
+            resources.getString(R.string.schedule_project_required)
+        }
         "schedule.quiet_runs" -> {
             val count = message.args.getValue("count") as Int
             val day = message.args.getValue("day") as String
@@ -3687,6 +3740,15 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         }
         "schedule.read_full_text" -> {
             resources.getString(R.string.schedule_read_full_text)
+        }
+        "schedule.read_only_active_run" -> {
+            resources.getString(R.string.schedule_read_only_active_run)
+        }
+        "schedule.read_only_busy" -> {
+            resources.getString(R.string.schedule_read_only_busy)
+        }
+        "schedule.read_only_unconfirmed" -> {
+            resources.getString(R.string.schedule_read_only_unconfirmed)
         }
         "schedule.reading_tasks" -> {
             resources.getString(R.string.schedule_reading_tasks)
@@ -3712,6 +3774,9 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         }
         "schedule.run_in" -> {
             resources.getString(R.string.schedule_run_in)
+        }
+        "schedule.run_in_progress_cannot_run" -> {
+            resources.getString(R.string.schedule_run_in_progress_cannot_run)
         }
         "schedule.run_once_now" -> {
             resources.getString(R.string.schedule_run_once_now)
@@ -3785,6 +3850,9 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "schedule.stopped" -> {
             resources.getString(R.string.schedule_stopped)
         }
+        "schedule.stopped_cannot_run" -> {
+            resources.getString(R.string.schedule_stopped_cannot_run)
+        }
         "schedule.stopped_count" -> {
             val count = message.args.getValue("count") as Int
             val total = message.args.getValue("total") as String
@@ -3808,6 +3876,12 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         }
         "schedule.take_action" -> {
             resources.getString(R.string.schedule_take_action)
+        }
+        "schedule.takeover_via_client" -> {
+            resources.getString(R.string.schedule_takeover_via_client)
+        }
+        "schedule.takeover_via_local" -> {
+            resources.getString(R.string.schedule_takeover_via_local)
         }
         "schedule.task_creation_permissions_changed" -> {
             resources.getString(R.string.schedule_task_creation_permissions_changed)
@@ -3958,6 +4032,10 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
             val time = message.args.getValue("time") as String
             resources.getString(R.string.schedule_workdays_at, time)
         }
+        "schedule.zone_time" -> {
+            val city = message.args.getValue("city") as String
+            resources.getString(R.string.schedule_zone_time, city)
+        }
         "security.a_security_operation_is_unfinished_continue_it_first" -> {
             resources.getString(R.string.security_a_security_operation_is_unfinished_continue_it_first)
         }
@@ -3979,6 +4057,12 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.abandon_unsigned_operation" -> {
             resources.getString(R.string.security_abandon_unsigned_operation)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.account_public_key_missing_pair_again_or_use_a" -> {
             resources.getString(R.string.security_account_public_key_missing_pair_again_or_use_a)
         }
@@ -4049,12 +4133,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
             val time = message.args.getValue("time") as String
             resources.getString(R.string.security_android_control_validity_advice, time)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.android_could_not_read_security_operation_state_before_exiting_value1" -> {
             val value1 = message.args.getValue("value1") as String
             resources.getString(R.string.security_android_could_not_read_security_operation_state_before_exiting_value1, value1)
@@ -4444,6 +4522,12 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.android_verify_original_security_operation" -> {
             resources.getString(R.string.security_android_verify_original_security_operation)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.android_view" -> {
             resources.getString(R.string.security_android_view)
         }
@@ -4510,12 +4594,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.compare_the_managing_client_s_4_patterns_if_they" -> {
             resources.getString(R.string.security_compare_the_managing_client_s_4_patterns_if_they)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.complete_recovery" -> {
             resources.getString(R.string.security_complete_recovery)
         }
@@ -4907,6 +4985,12 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.success_is_uncertain_connection_lost" -> {
             resources.getString(R.string.security_success_is_uncertain_connection_lost)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.take_over_management" -> {
             resources.getString(R.string.security_take_over_management)
         }
@@ -4973,12 +5057,6 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.the_other_device_refused_this_join_request" -> {
             resources.getString(R.string.security_the_other_device_refused_this_join_request)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.the_page_is_paused_return_to_the_foreground_to" -> {
             resources.getString(R.string.security_the_page_is_paused_return_to_the_foreground_to)
         }
@@ -5408,6 +5486,12 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "session.origin_removed" -> {
             resources.getString(R.string.session_origin_removed)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "session.origin_self" -> {
             resources.getString(R.string.session_origin_self)
         }
@@ -5482,12 +5566,6 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "session.skeleton" -> {
             resources.getString(R.string.session_skeleton)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "session.split" -> {
             resources.getString(R.string.session_split)
         }
@@ -5907,6 +5985,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val value = message.args.getValue("value") as String
             resources.getString(R.string.settings_can_clear, value)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "settings.can_free" -> {
             val value = message.args.getValue("value") as String
             resources.getString(R.string.settings_can_free, value)
@@ -5976,12 +6060,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.default_approval_mode" -> {
             resources.getString(R.string.settings_default_approval_mode)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "settings.default_reasoning_effort" -> {
             resources.getString(R.string.settings_default_reasoning_effort)
         }
@@ -6397,6 +6475,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "startup.opening" -> {
             resources.getString(R.string.startup_opening)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "startup.opening_remote_agent" -> {
             resources.getString(R.string.startup_opening_remote_agent)
         }
@@ -6468,12 +6552,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.disconnected" -> {
             resources.getString(R.string.terminal_disconnected)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "terminal.down" -> {
             resources.getString(R.string.terminal_down)
         }

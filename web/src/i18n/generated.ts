@@ -752,6 +752,32 @@ export interface MessageArgs {
   "schedule.after_each_turn": { count: number };
   "schedule.after_turn_ends": { [name: string]: never };
   "schedule.after_turn_replace": { frequency: string };
+  "schedule.android_agent_notification": { [name: string]: never };
+  "schedule.android_agent_notification_completion_notification": { [name: string]: never };
+  "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it": { [name: string]: never };
+  "schedule.android_cannot_request_notification": { [name: string]: never };
+  "schedule.android_choose_a_project": { [name: string]: never };
+  "schedule.android_choose_a_time_type": { [name: string]: never };
+  "schedule.android_computer_offline_tasks_cannot_be_edited": { [name: string]: never };
+  "schedule.android_connect_value1_to_edit_run_or_delete": { value1: string };
+  "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a": { value1: string };
+  "schedule.android_follow_conversation": { [name: string]: never };
+  "schedule.android_large_after_current_turn": { count: number; total: string };
+  "schedule.android_large_after_each_turn": { count: number; total: string };
+  "schedule.android_large_every_days": { count: number; total: string };
+  "schedule.android_large_every_hours": { count: number; total: string };
+  "schedule.android_large_every_minutes": { count: number; total: string };
+  "schedule.android_large_every_seconds": { count: number; total: string };
+  "schedule.android_large_runs_total": { count: number; total: string };
+  "schedule.android_new_result": { [name: string]: never };
+  "schedule.android_run_count_must_be_greater_than_0": { [name: string]: never };
+  "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": { [name: string]: never };
+  "schedule.android_saving": { [name: string]: never };
+  "schedule.android_task": { [name: string]: never };
+  "schedule.android_the_end_date_is_in_the_past": { [name: string]: never };
+  "schedule.android_this_task_cannot_be_renamed_separately": { [name: string]: never };
+  "schedule.android_unknown_time": { [name: string]: never };
+  "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": { [name: string]: never };
   "schedule.attention_once": { reason: string };
   "schedule.attention_resume": { reason: string };
   "schedule.attention_uncertain": { reason: string };
@@ -768,6 +794,8 @@ export interface MessageArgs {
   "schedule.created_by_the_agent_in_a_conversation": { [name: string]: never };
   "schedule.created_by_you": { [name: string]: never };
   "schedule.creating": { [name: string]: never };
+  "schedule.creation_summary": { kind: string; owner: string };
+  "schedule.creation_summary_at": { kind: string; owner: string; time: string };
   "schedule.daily": { [name: string]: never };
   "schedule.daily_at": { time: string };
   "schedule.date_and_time": { [name: string]: never };
@@ -786,6 +814,8 @@ export interface MessageArgs {
   "schedule.end_date": { [name: string]: never };
   "schedule.end_time": { [name: string]: never };
   "schedule.ended": { [name: string]: never };
+  "schedule.ended_cannot_run": { [name: string]: never };
+  "schedule.ended_count": { count: number };
   "schedule.every": { [name: string]: never };
   "schedule.every_days": { count: number };
   "schedule.every_hr": { count: number };
@@ -797,6 +827,7 @@ export interface MessageArgs {
   "schedule.execution_interrupted_the_task_stopped": { [name: string]: never };
   "schedule.execution_outcome_is_unconfirmed": { [name: string]: never };
   "schedule.frequency": { [name: string]: never };
+  "schedule.frequency_in_zone": { frequency: string; zone: string };
   "schedule.fri": { [name: string]: never };
   "schedule.has_not_run_yet": { [name: string]: never };
   "schedule.hong_kong_time": { [name: string]: never };
@@ -805,6 +836,12 @@ export interface MessageArgs {
   "schedule.in": { value: string };
   "schedule.in_conversation": { [name: string]: never };
   "schedule.interval_minutes": { [name: string]: never };
+  "schedule.ios_attention_once": { reason: string };
+  "schedule.ios_choose_a_valid_iana_time_zone": { [name: string]: never };
+  "schedule.ios_confirm_the_previous_change_s_result_first": { [name: string]: never };
+  "schedule.ios_enter_a_valid_interval": { [name: string]: never };
+  "schedule.ios_takeover_notice": { notice: string };
+  "schedule.ios_task_details": { [name: string]: never };
   "schedule.last_result": { result: string; time: string };
   "schedule.last_result_detail": { detail: string; result: string; time: string };
   "schedule.latest_summary": { summary: string; time: string };
@@ -817,6 +854,7 @@ export interface MessageArgs {
   "schedule.mark_all_as_read": { [name: string]: never };
   "schedule.mark_as_read": { [name: string]: never };
   "schedule.mark_as_unread": { [name: string]: never };
+  "schedule.message_required": { [name: string]: never };
   "schedule.messages_go_to_the_current_conversation_and_wait_for": { [name: string]: never };
   "schedule.messages_will_go_to_the_current_conversation_and_wait": { [name: string]: never };
   "schedule.missing_target": { reason: string };
@@ -842,6 +880,7 @@ export interface MessageArgs {
   "schedule.notified_you": { [name: string]: never };
   "schedule.notify_on_completion": { [name: string]: never };
   "schedule.notify_on_completion_by_default_when_off_only_the": { [name: string]: never };
+  "schedule.offline_machines_notice": { machines: string };
   "schedule.once_at": { time: string };
   "schedule.once_schedules": { [name: string]: never };
   "schedule.only_changes_this_task_it_still_runs_on_the": { [name: string]: never };
@@ -850,8 +889,12 @@ export interface MessageArgs {
   "schedule.paused_the_schedule_expired_in_the_meantime": { [name: string]: never };
   "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions": { [name: string]: never };
   "schedule.project": { [name: string]: never };
+  "schedule.project_required": { [name: string]: never };
   "schedule.quiet_runs": { count: number; day: string };
   "schedule.read_full_text": { [name: string]: never };
+  "schedule.read_only_active_run": { [name: string]: never };
+  "schedule.read_only_busy": { [name: string]: never };
+  "schedule.read_only_unconfirmed": { [name: string]: never };
   "schedule.reading_tasks": { [name: string]: never };
   "schedule.reason_returned_by_the_computer": { value: string };
   "schedule.rename_task": { [name: string]: never };
@@ -860,6 +903,7 @@ export interface MessageArgs {
   "schedule.retry_creation": { [name: string]: never };
   "schedule.retry_same_request": { [name: string]: never };
   "schedule.run_in": { [name: string]: never };
+  "schedule.run_in_progress_cannot_run": { [name: string]: never };
   "schedule.run_once_now": { [name: string]: never };
   "schedule.run_with_full_access": { [name: string]: never };
   "schedule.running": { [name: string]: never };
@@ -882,12 +926,15 @@ export interface MessageArgs {
   "schedule.skipped": { [name: string]: never };
   "schedule.starting": { [name: string]: never };
   "schedule.stopped": { [name: string]: never };
+  "schedule.stopped_cannot_run": { [name: string]: never };
   "schedule.stopped_count": { count: number; total: string };
   "schedule.stops_automatic_runs_existing_conversations_remain": { [name: string]: never };
   "schedule.strip_count": { count: number; state: string };
   "schedule.strip_single": { frequency: string; state: string };
   "schedule.sun": { [name: string]: never };
   "schedule.take_action": { [name: string]: never };
+  "schedule.takeover_via_client": { [name: string]: never };
+  "schedule.takeover_via_local": { [name: string]: never };
   "schedule.task_creation_permissions_changed": { [name: string]: never };
   "schedule.task_creation_permissions_changed_the_task_stopped": { [name: string]: never };
   "schedule.task_name": { [name: string]: never };
@@ -936,6 +983,7 @@ export interface MessageArgs {
   "schedule.what_should_the_agent_do": { [name: string]: never };
   "schedule.when": { [name: string]: never };
   "schedule.workdays_at": { time: string };
+  "schedule.zone_time": { city: string };
   "security.a_security_operation_is_unfinished_continue_it_first": { [name: string]: never };
   "security.a_security_operation_is_unfinished_continue_the_original_operation": { [name: string]: never };
   "security.abandon_this_succession_preparation": { [name: string]: never };
@@ -2694,6 +2742,74 @@ export const messages = {
     },
     "schedule.after_turn_ends": "After turn ends",
     "schedule.after_turn_replace": "{frequency}. Choose another frequency above to replace it.",
+    "schedule.android_agent_notification": "agent notification",
+    "schedule.android_agent_notification_completion_notification": "agent notification, completion notification",
+    "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it": "Cannot read the previous task list. Connect to read it again",
+    "schedule.android_cannot_request_notification": "Cannot request notification",
+    "schedule.android_choose_a_project": "Choose a project",
+    "schedule.android_choose_a_time_type": "Choose a time type",
+    "schedule.android_computer_offline_tasks_cannot_be_edited": "Computer offline. Tasks cannot be edited",
+    "schedule.android_connect_value1_to_edit_run_or_delete": "Connect {value1} to edit, run, or delete.",
+    "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a": "Currently “{value1}”. Finishing directly preserves the original rule; choose a time type above before changing it.",
+    "schedule.android_follow_conversation": "Follow conversation",
+    "schedule.android_large_after_current_turn": {
+      "forms": {
+        "one": "{total} sec after the current turn ends",
+        "other": "{total} sec after the current turn ends"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_after_each_turn": {
+      "forms": {
+        "one": "{total} sec after each turn ends",
+        "other": "{total} sec after each turn ends"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_days": {
+      "forms": {
+        "one": "Every {total} day",
+        "other": "Every {total} days"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_hours": {
+      "forms": {
+        "one": "Every {total} hour",
+        "other": "Every {total} hours"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_minutes": {
+      "forms": {
+        "one": "Every {total} minute",
+        "other": "Every {total} minutes"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_seconds": {
+      "forms": {
+        "one": "Every {total} second",
+        "other": "Every {total} seconds"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_runs_total": {
+      "forms": {
+        "one": "{total} run total",
+        "other": "{total} runs total"
+      },
+      "plural": "count"
+    },
+    "schedule.android_new_result": "New result",
+    "schedule.android_run_count_must_be_greater_than_0": "Run count must be greater than 0",
+    "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": "Run once now does not count toward automatic runs or the calendar day's limit. Deleting stops future scheduling; sent messages and opened conversations are kept.",
+    "schedule.android_saving": "Saving…",
+    "schedule.android_task": "Task",
+    "schedule.android_the_end_date_is_in_the_past": "The end date is in the past",
+    "schedule.android_this_task_cannot_be_renamed_separately": "This task cannot be renamed separately",
+    "schedule.android_unknown_time": "Unknown time",
+    "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": "Update remote-agent on this computer to manage scheduled tasks",
     "schedule.attention_once": "{reason}. Change the time to reschedule.",
     "schedule.attention_resume": "{reason}. Resuming or rescheduling starts at the next automatic time and does not resend the last message.",
     "schedule.attention_uncertain": "{reason}. Continuing may repeat the last message. Open the run records to verify first.",
@@ -2710,6 +2826,8 @@ export const messages = {
     "schedule.created_by_the_agent_in_a_conversation": "Created by the agent in a conversation",
     "schedule.created_by_you": "Created by you",
     "schedule.creating": "Creating…",
+    "schedule.creation_summary": "{kind} {owner}",
+    "schedule.creation_summary_at": "{kind} {owner} · {time}",
     "schedule.daily": "Daily",
     "schedule.daily_at": "Daily {time}",
     "schedule.date_and_time": "Date and time",
@@ -2728,6 +2846,14 @@ export const messages = {
     "schedule.end_date": "End date",
     "schedule.end_time": "End time",
     "schedule.ended": "Ended ",
+    "schedule.ended_cannot_run": "Ended tasks cannot run",
+    "schedule.ended_count": {
+      "forms": {
+        "one": "Ended {count}",
+        "other": "Ended {count}"
+      },
+      "plural": "count"
+    },
     "schedule.every": "Every",
     "schedule.every_days": {
       "forms": {
@@ -2763,6 +2889,7 @@ export const messages = {
     "schedule.execution_interrupted_the_task_stopped": "Execution interrupted. The task stopped",
     "schedule.execution_outcome_is_unconfirmed": "Execution outcome is unconfirmed",
     "schedule.frequency": "Frequency",
+    "schedule.frequency_in_zone": "{frequency} ({zone})",
     "schedule.fri": "Fri",
     "schedule.has_not_run_yet": "Has not run yet",
     "schedule.hong_kong_time": "Hong Kong time",
@@ -2771,6 +2898,12 @@ export const messages = {
     "schedule.in": "In “{value}”",
     "schedule.in_conversation": "In conversation",
     "schedule.interval_minutes": "Interval (minutes)",
+    "schedule.ios_attention_once": "{reason}. Run an extra time now, or change the time to reschedule.",
+    "schedule.ios_choose_a_valid_iana_time_zone": "Choose a valid IANA time zone",
+    "schedule.ios_confirm_the_previous_change_s_result_first": "Confirm the previous change’s result first",
+    "schedule.ios_enter_a_valid_interval": "Enter a valid interval",
+    "schedule.ios_takeover_notice": "{notice} Continuing takes over the task and runs it with the permissions shown.",
+    "schedule.ios_task_details": "Task details",
     "schedule.last_result": "{time} {result}",
     "schedule.last_result_detail": "{time} {result}: {detail}",
     "schedule.latest_summary": "Latest {time}: {summary}",
@@ -2789,6 +2922,7 @@ export const messages = {
     "schedule.mark_all_as_read": "Mark all as read",
     "schedule.mark_as_read": "Mark as read",
     "schedule.mark_as_unread": "Mark as unread",
+    "schedule.message_required": "Enter what the agent should do",
     "schedule.messages_go_to_the_current_conversation_and_wait_for": "Messages go to the current conversation and wait for the current turn to end.",
     "schedule.messages_will_go_to_the_current_conversation_and_wait": "Messages will go to the current conversation and wait for the running turn to end.",
     "schedule.missing_target": "Task stopped: {reason}. This task only sends to the original conversation and will fail again if resumed.",
@@ -2826,6 +2960,7 @@ export const messages = {
     "schedule.notified_you": "Notified you",
     "schedule.notify_on_completion": "Notify on completion",
     "schedule.notify_on_completion_by_default_when_off_only_the": " Notify on completion by default. When off, only the agent can send notifications.",
+    "schedule.offline_machines_notice": "{machines} not connected; showing previous state",
     "schedule.once_at": "{time}, once",
     "schedule.once_schedules": "Once",
     "schedule.only_changes_this_task_it_still_runs_on_the": "Only changes this task. It still runs on the original computer; existing conversations keep their settings.",
@@ -2834,6 +2969,7 @@ export const messages = {
     "schedule.paused_the_schedule_expired_in_the_meantime": "Paused: the schedule expired in the meantime",
     "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions": "Plan mode cannot create execution tasks. Choose other permissions first.",
     "schedule.project": "Project",
+    "schedule.project_required": "Choose a project first",
     "schedule.quiet_runs": {
       "forms": {
         "one": "{day} · {count} run, none notified you",
@@ -2842,6 +2978,9 @@ export const messages = {
       "plural": "count"
     },
     "schedule.read_full_text": "Read full text",
+    "schedule.read_only_active_run": "Running; execution settings cannot be edited until it finishes",
+    "schedule.read_only_busy": "Previous operation is still in progress",
+    "schedule.read_only_unconfirmed": "Previous operation result is unconfirmed",
     "schedule.reading_tasks": "Reading tasks…",
     "schedule.reason_returned_by_the_computer": "Reason returned by the computer: {value}",
     "schedule.rename_task": "Rename task",
@@ -2850,6 +2989,7 @@ export const messages = {
     "schedule.retry_creation": "Retry creation",
     "schedule.retry_same_request": "Retry same request",
     "schedule.run_in": "Run in",
+    "schedule.run_in_progress_cannot_run": "A run is already in progress or queued",
     "schedule.run_once_now": "Run once now",
     "schedule.run_with_full_access": "Run with full access?",
     "schedule.running": "Running",
@@ -2890,6 +3030,7 @@ export const messages = {
     "schedule.skipped": "Skipped",
     "schedule.starting": "Starting",
     "schedule.stopped": "Stopped",
+    "schedule.stopped_cannot_run": "Task stopped; resume or reschedule first",
     "schedule.stopped_count": {
       "forms": {
         "one": "{total} task stopped",
@@ -2908,6 +3049,8 @@ export const messages = {
     "schedule.strip_single": "Scheduled · {frequency}, {state}",
     "schedule.sun": "Sun",
     "schedule.take_action": "Take action",
+    "schedule.takeover_via_client": "Taken over via client",
+    "schedule.takeover_via_local": "Taken over via CLI",
     "schedule.task_creation_permissions_changed": "Task creation permissions changed",
     "schedule.task_creation_permissions_changed_the_task_stopped": "Task creation permissions changed. The task stopped",
     "schedule.task_name": "Task name",
@@ -2962,6 +3105,7 @@ export const messages = {
     "schedule.what_should_the_agent_do": "What should the agent do",
     "schedule.when": "When",
     "schedule.workdays_at": "Weekdays {time}",
+    "schedule.zone_time": "{city} time",
     "security.a_security_operation_is_unfinished_continue_it_first": "A security operation is unfinished. Continue it first.",
     "security.a_security_operation_is_unfinished_continue_the_original_operation": "A security operation is unfinished. Continue the original operation first.",
     "security.abandon_this_succession_preparation": "Abandon this succession preparation?",
@@ -4757,6 +4901,67 @@ export const messages = {
     },
     "schedule.after_turn_ends": "轮结束后",
     "schedule.after_turn_replace": "{frequency}。选择上方其他频率可替换。",
+    "schedule.android_agent_notification": "agent 通知",
+    "schedule.android_agent_notification_completion_notification": "agent 通知、完成后通知",
+    "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it": "上次的任务列表无法读取，联网后重新读取",
+    "schedule.android_cannot_request_notification": "无法请求通知",
+    "schedule.android_choose_a_project": "选项目",
+    "schedule.android_choose_a_time_type": "请选择时间类型",
+    "schedule.android_computer_offline_tasks_cannot_be_edited": "电脑不在线，连上后才能修改任务",
+    "schedule.android_connect_value1_to_edit_run_or_delete": "{value1} 连上后才能修改、运行或删除。",
+    "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a": "当前是「{value1}」。直接完成会保留原规则；选择上面的时间类型后再更改。",
+    "schedule.android_follow_conversation": "跟随对话",
+    "schedule.android_large_after_current_turn": {
+      "forms": {
+        "other": "当前轮结束 {total} 秒后"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_after_each_turn": {
+      "forms": {
+        "other": "每轮结束 {total} 秒后"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_days": {
+      "forms": {
+        "other": "每 {total} 天"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_hours": {
+      "forms": {
+        "other": "每 {total} 小时"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_minutes": {
+      "forms": {
+        "other": "每 {total} 分钟"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_every_seconds": {
+      "forms": {
+        "other": "每 {total} 秒"
+      },
+      "plural": "count"
+    },
+    "schedule.android_large_runs_total": {
+      "forms": {
+        "other": "共 {total} 次"
+      },
+      "plural": "count"
+    },
+    "schedule.android_new_result": "有新结果",
+    "schedule.android_run_count_must_be_greater_than_0": "运行次数必须是正整数",
+    "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or": "立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。",
+    "schedule.android_saving": "保存中…",
+    "schedule.android_task": "任务",
+    "schedule.android_the_end_date_is_in_the_past": "结束日期已经过去",
+    "schedule.android_this_task_cannot_be_renamed_separately": "当前任务不能单独改名",
+    "schedule.android_unknown_time": "时间未知",
+    "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
     "schedule.attention_once": "{reason}。可改时间重排。",
     "schedule.attention_resume": "{reason}。恢复或重新安排后从下一次自动时间开始，不重发上次消息。",
     "schedule.attention_uncertain": "{reason}。继续可能重复执行上次的消息，请先打开运行记录核实。",
@@ -4773,6 +4978,8 @@ export const messages = {
     "schedule.created_by_the_agent_in_a_conversation": "Agent 在对话里创建",
     "schedule.created_by_you": "你创建",
     "schedule.creating": "正在创建…",
+    "schedule.creation_summary": "{kind} {owner}",
+    "schedule.creation_summary_at": "{kind} {owner} · {time}",
     "schedule.daily": "每天",
     "schedule.daily_at": "每天 {time}",
     "schedule.date_and_time": "日期和时间",
@@ -4791,6 +4998,13 @@ export const messages = {
     "schedule.end_date": "截止日期",
     "schedule.end_time": "截止时间",
     "schedule.ended": "已结束 ",
+    "schedule.ended_cannot_run": "已结束的任务不能运行",
+    "schedule.ended_count": {
+      "forms": {
+        "other": "已结束 {count}"
+      },
+      "plural": "count"
+    },
     "schedule.every": "每隔",
     "schedule.every_days": {
       "forms": {
@@ -4822,6 +5036,7 @@ export const messages = {
     "schedule.execution_interrupted_the_task_stopped": "运行被中断，任务已停下",
     "schedule.execution_outcome_is_unconfirmed": "运行结果无法确认",
     "schedule.frequency": "频率",
+    "schedule.frequency_in_zone": "{frequency}（{zone}）",
     "schedule.fri": "五",
     "schedule.has_not_run_yet": "还没有运行",
     "schedule.hong_kong_time": "香港时间",
@@ -4830,6 +5045,12 @@ export const messages = {
     "schedule.in": "在「{value}」里",
     "schedule.in_conversation": "在对话里",
     "schedule.interval_minutes": "间隔（分钟）",
+    "schedule.ios_attention_once": "{reason}。可立即额外执行一次，或改时间重排。",
+    "schedule.ios_choose_a_valid_iana_time_zone": "请选择有效的 IANA 时区",
+    "schedule.ios_confirm_the_previous_change_s_result_first": "请先确认上一条修改的结果",
+    "schedule.ios_enter_a_valid_interval": "请输入有效的间隔",
+    "schedule.ios_takeover_notice": "{notice}继续会由你接管任务，按任务中显示的权限运行。",
+    "schedule.ios_task_details": "任务详情",
     "schedule.last_result": "{time} {result}",
     "schedule.last_result_detail": "{time} {result}：{detail}",
     "schedule.latest_summary": "最近一次 {time}：{summary}",
@@ -4847,6 +5068,7 @@ export const messages = {
     "schedule.mark_all_as_read": "全部标为已读",
     "schedule.mark_as_read": "标为已读",
     "schedule.mark_as_unread": "标为未读",
+    "schedule.message_required": "请输入任务内容",
     "schedule.messages_go_to_the_current_conversation_and_wait_for": "消息发到当前对话，等待当前轮结束。",
     "schedule.messages_will_go_to_the_current_conversation_and_wait": "消息会发到当前对话，等待正在运行的一轮结束。",
     "schedule.missing_target": "任务已停下：{reason}。这个任务只发到原来的对话，恢复后还会失败。",
@@ -4882,6 +5104,7 @@ export const messages = {
     "schedule.notified_you": "通知了你",
     "schedule.notify_on_completion": "完成后通知",
     "schedule.notify_on_completion_by_default_when_off_only_the": "完成后默认通知；关闭后仅由 agent 主动通知。",
+    "schedule.offline_machines_notice": "{machines} 未连接，显示上次状态",
     "schedule.once_at": "{time}，一次",
     "schedule.once_schedules": "一次",
     "schedule.only_changes_this_task_it_still_runs_on_the": "只修改这个任务。它仍在原来的电脑运行；已开出的对话保留原来的设置。",
@@ -4890,6 +5113,7 @@ export const messages = {
     "schedule.paused_the_schedule_expired_in_the_meantime": "已暂停：期间计划已到期",
     "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions": "计划模式不能创建执行任务，请先选择其他权限",
     "schedule.project": "项目",
+    "schedule.project_required": "请先选择一个项目",
     "schedule.quiet_runs": {
       "forms": {
         "other": "{day} · {count} 次，都没有通知"
@@ -4897,6 +5121,9 @@ export const messages = {
       "plural": "count"
     },
     "schedule.read_full_text": "看全文",
+    "schedule.read_only_active_run": "正在运行，结束前不能修改执行定义",
+    "schedule.read_only_busy": "正在处理上一次操作",
+    "schedule.read_only_unconfirmed": "上一次操作结果未确认",
     "schedule.reading_tasks": "正在读取任务…",
     "schedule.reason_returned_by_the_computer": "电脑返回的原因：{value}",
     "schedule.rename_task": "重命名任务",
@@ -4905,6 +5132,7 @@ export const messages = {
     "schedule.retry_creation": "重试创建",
     "schedule.retry_same_request": "重试同一请求",
     "schedule.run_in": "在哪运行",
+    "schedule.run_in_progress_cannot_run": "已有运行在进行或排队中",
     "schedule.run_once_now": "立即运行一次",
     "schedule.run_with_full_access": "以完全放行运行？",
     "schedule.running": "正在运行",
@@ -4942,6 +5170,7 @@ export const messages = {
     "schedule.skipped": "跳过",
     "schedule.starting": "正在启动",
     "schedule.stopped": "已停下",
+    "schedule.stopped_cannot_run": "任务已停下，请先恢复或重排",
     "schedule.stopped_count": {
       "forms": {
         "other": "{total} 个任务停下了"
@@ -4958,6 +5187,8 @@ export const messages = {
     "schedule.strip_single": "定时 · {frequency}，{state}",
     "schedule.sun": "日",
     "schedule.take_action": "去处理",
+    "schedule.takeover_via_client": "已由客户端接管（原对话）",
+    "schedule.takeover_via_local": "已由本机命令接管（原对话）",
     "schedule.task_creation_permissions_changed": "创建任务时的权限已改变",
     "schedule.task_creation_permissions_changed_the_task_stopped": "创建任务时的权限已改变，任务已停下",
     "schedule.task_name": "任务名",
@@ -5011,6 +5242,7 @@ export const messages = {
     "schedule.what_should_the_agent_do": "让 agent 做什么",
     "schedule.when": "什么时候",
     "schedule.workdays_at": "工作日 {time}",
+    "schedule.zone_time": "{city}时间",
     "security.a_security_operation_is_unfinished_continue_it_first": "还有未完成的安全操作，请先继续处理",
     "security.a_security_operation_is_unfinished_continue_the_original_operation": "有未完成的安全操作，请先继续原操作。",
     "security.abandon_this_succession_preparation": "放弃此接任准备？",

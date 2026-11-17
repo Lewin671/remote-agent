@@ -3865,6 +3865,110 @@ public enum L10n {
         let key = "schedule_after_turn_replace"
         return format(key, locale: locale, args: [frequency])
     }
+    public static func scheduleAndroidAgentNotification(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_agent_notification"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidAgentNotificationCompletionNotification(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_agent_notification_completion_notification"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidCannotReadThePreviousTaskListConnectToReadIt(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_cannot_read_the_previous_task_list_connect_to_read_it"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidCannotRequestNotification(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_cannot_request_notification"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidChooseAProject(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_choose_a_project"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidChooseATimeType(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_choose_a_time_type"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidComputerOfflineTasksCannotBeEdited(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_computer_offline_tasks_cannot_be_edited"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidConnectValue1ToEditRunOrDelete(value1: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_connect_value1_to_edit_run_or_delete"
+        return format(key, locale: locale, args: [value1])
+    }
+    public static func scheduleAndroidCurrentlyValue1FinishingDirectlyPreservesTheOriginalRuleChooseA(value1: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a"
+        return format(key, locale: locale, args: [value1])
+    }
+    public static func scheduleAndroidFollowConversation(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_follow_conversation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidLargeAfterCurrentTurn(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_after_current_turn"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidLargeAfterEachTurn(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_after_each_turn"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidLargeEveryDays(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_every_days"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidLargeEveryHours(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_every_hours"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidLargeEveryMinutes(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_every_minutes"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidLargeEverySeconds(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_every_seconds"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidLargeRunsTotal(count: Int, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_large_runs_total"
+        return format(key, locale: locale, args: [Int64(count), total])
+    }
+    public static func scheduleAndroidNewResult(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_new_result"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidRunCountMustBeGreaterThan0(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_run_count_must_be_greater_than_0"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidRunOnceNowDoesNotCountTowardAutomaticRunsOr(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_run_once_now_does_not_count_toward_automatic_runs_or"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidSaving(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_saving"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidTask(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_task"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidTheEndDateIsInThePast(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_the_end_date_is_in_the_past"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidThisTaskCannotBeRenamedSeparately(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_this_task_cannot_be_renamed_separately"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidUnknownTime(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_unknown_time"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleAndroidUpdateRemoteAgentOnThisComputerToManageScheduledTasks(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks"
+        return format(key, locale: locale, args: [])
+    }
     public static func scheduleAttentionOnce(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_attention_once"
         return format(key, locale: locale, args: [reason])
@@ -3928,6 +4032,14 @@ public enum L10n {
     public static func scheduleCreating(locale: String = MessageLocale.current) -> String {
         let key = "schedule_creating"
         return format(key, locale: locale, args: [])
+    }
+    public static func scheduleCreationSummary(kind: String, owner: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_creation_summary"
+        return format(key, locale: locale, args: [kind, owner])
+    }
+    public static func scheduleCreationSummaryAt(kind: String, owner: String, time: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_creation_summary_at"
+        return format(key, locale: locale, args: [kind, owner, time])
     }
     public static func scheduleDaily(locale: String = MessageLocale.current) -> String {
         let key = "schedule_daily"
@@ -4001,6 +4113,14 @@ public enum L10n {
         let key = "schedule_ended"
         return format(key, locale: locale, args: [])
     }
+    public static func scheduleEndedCannotRun(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ended_cannot_run"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleEndedCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ended_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
     public static func scheduleEvery(locale: String = MessageLocale.current) -> String {
         let key = "schedule_every"
         return format(key, locale: locale, args: [])
@@ -4044,6 +4164,10 @@ public enum L10n {
     public static func scheduleFrequency(locale: String = MessageLocale.current) -> String {
         let key = "schedule_frequency"
         return format(key, locale: locale, args: [])
+    }
+    public static func scheduleFrequencyInZone(frequency: String, zone: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_frequency_in_zone"
+        return format(key, locale: locale, args: [frequency, zone])
     }
     public static func scheduleFri(locale: String = MessageLocale.current) -> String {
         let key = "schedule_fri"
@@ -4393,6 +4517,10 @@ public enum L10n {
         let key = "schedule_mark_as_unread"
         return format(key, locale: locale, args: [])
     }
+    public static func scheduleMessageRequired(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_message_required"
+        return format(key, locale: locale, args: [])
+    }
     public static func scheduleMessagesGoToTheCurrentConversationAndWaitFor(locale: String = MessageLocale.current) -> String {
         let key = "schedule_messages_go_to_the_current_conversation_and_wait_for"
         return format(key, locale: locale, args: [])
@@ -4493,6 +4621,10 @@ public enum L10n {
         let key = "schedule_notify_on_completion_by_default_when_off_only_the"
         return format(key, locale: locale, args: [])
     }
+    public static func scheduleOfflineMachinesNotice(machines: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_offline_machines_notice"
+        return format(key, locale: locale, args: [machines])
+    }
     public static func scheduleOnceAt(time: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_once_at"
         return format(key, locale: locale, args: [time])
@@ -4525,12 +4657,28 @@ public enum L10n {
         let key = "schedule_project"
         return format(key, locale: locale, args: [])
     }
+    public static func scheduleProjectRequired(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_project_required"
+        return format(key, locale: locale, args: [])
+    }
     public static func scheduleQuietRuns(count: Int, day: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_quiet_runs"
         return format(key, locale: locale, args: [Int64(count), day])
     }
     public static func scheduleReadFullText(locale: String = MessageLocale.current) -> String {
         let key = "schedule_read_full_text"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleReadOnlyActiveRun(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_read_only_active_run"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleReadOnlyBusy(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_read_only_busy"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleReadOnlyUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_read_only_unconfirmed"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleReadingTasks(locale: String = MessageLocale.current) -> String {
@@ -4563,6 +4711,10 @@ public enum L10n {
     }
     public static func scheduleRunIn(locale: String = MessageLocale.current) -> String {
         let key = "schedule_run_in"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleRunInProgressCannotRun(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_run_in_progress_cannot_run"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleRunOnceNow(locale: String = MessageLocale.current) -> String {
@@ -4653,6 +4805,10 @@ public enum L10n {
         let key = "schedule_stopped"
         return format(key, locale: locale, args: [])
     }
+    public static func scheduleStoppedCannotRun(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_stopped_cannot_run"
+        return format(key, locale: locale, args: [])
+    }
     public static func scheduleStoppedCount(count: Int, total: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_stopped_count"
         return format(key, locale: locale, args: [Int64(count), total])
@@ -4675,6 +4831,14 @@ public enum L10n {
     }
     public static func scheduleTakeAction(locale: String = MessageLocale.current) -> String {
         let key = "schedule_take_action"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleTakeoverViaClient(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_takeover_via_client"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleTakeoverViaLocal(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_takeover_via_local"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleTaskCreationPermissionsChanged(locale: String = MessageLocale.current) -> String {
@@ -4868,6 +5032,10 @@ public enum L10n {
     public static func scheduleWorkdaysAt(time: String, locale: String = MessageLocale.current) -> String {
         let key = "schedule_workdays_at"
         return format(key, locale: locale, args: [time])
+    }
+    public static func scheduleZoneTime(city: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_zone_time"
+        return format(key, locale: locale, args: [city])
     }
     public static func securityASecurityOperationIsUnfinishedContinueItFirst(locale: String = MessageLocale.current) -> String {
         let key = "security_a_security_operation_is_unfinished_continue_it_first"
@@ -12097,6 +12265,110 @@ public enum L10nMessage {
         let key = "schedule_after_turn_replace"
         return LocalizedMessage(key: key, arguments: [.string(frequency)])
     }
+    public static func scheduleAndroidAgentNotification() -> LocalizedMessage {
+        let key = "schedule_android_agent_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidAgentNotificationCompletionNotification() -> LocalizedMessage {
+        let key = "schedule_android_agent_notification_completion_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidCannotReadThePreviousTaskListConnectToReadIt() -> LocalizedMessage {
+        let key = "schedule_android_cannot_read_the_previous_task_list_connect_to_read_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidCannotRequestNotification() -> LocalizedMessage {
+        let key = "schedule_android_cannot_request_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidChooseAProject() -> LocalizedMessage {
+        let key = "schedule_android_choose_a_project"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidChooseATimeType() -> LocalizedMessage {
+        let key = "schedule_android_choose_a_time_type"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidComputerOfflineTasksCannotBeEdited() -> LocalizedMessage {
+        let key = "schedule_android_computer_offline_tasks_cannot_be_edited"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidConnectValue1ToEditRunOrDelete(value1: String) -> LocalizedMessage {
+        let key = "schedule_android_connect_value1_to_edit_run_or_delete"
+        return LocalizedMessage(key: key, arguments: [.string(value1)])
+    }
+    public static func scheduleAndroidCurrentlyValue1FinishingDirectlyPreservesTheOriginalRuleChooseA(value1: String) -> LocalizedMessage {
+        let key = "schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a"
+        return LocalizedMessage(key: key, arguments: [.string(value1)])
+    }
+    public static func scheduleAndroidFollowConversation() -> LocalizedMessage {
+        let key = "schedule_android_follow_conversation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidLargeAfterCurrentTurn(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_after_current_turn"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidLargeAfterEachTurn(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_after_each_turn"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidLargeEveryDays(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_every_days"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidLargeEveryHours(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_every_hours"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidLargeEveryMinutes(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_every_minutes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidLargeEverySeconds(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_every_seconds"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidLargeRunsTotal(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_android_large_runs_total"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleAndroidNewResult() -> LocalizedMessage {
+        let key = "schedule_android_new_result"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidRunCountMustBeGreaterThan0() -> LocalizedMessage {
+        let key = "schedule_android_run_count_must_be_greater_than_0"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidRunOnceNowDoesNotCountTowardAutomaticRunsOr() -> LocalizedMessage {
+        let key = "schedule_android_run_once_now_does_not_count_toward_automatic_runs_or"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidSaving() -> LocalizedMessage {
+        let key = "schedule_android_saving"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidTask() -> LocalizedMessage {
+        let key = "schedule_android_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidTheEndDateIsInThePast() -> LocalizedMessage {
+        let key = "schedule_android_the_end_date_is_in_the_past"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidThisTaskCannotBeRenamedSeparately() -> LocalizedMessage {
+        let key = "schedule_android_this_task_cannot_be_renamed_separately"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidUnknownTime() -> LocalizedMessage {
+        let key = "schedule_android_unknown_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAndroidUpdateRemoteAgentOnThisComputerToManageScheduledTasks() -> LocalizedMessage {
+        let key = "schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func scheduleAttentionOnce(reason: String) -> LocalizedMessage {
         let key = "schedule_attention_once"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
@@ -12160,6 +12432,14 @@ public enum L10nMessage {
     public static func scheduleCreating() -> LocalizedMessage {
         let key = "schedule_creating"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCreationSummary(kind: String, owner: String) -> LocalizedMessage {
+        let key = "schedule_creation_summary"
+        return LocalizedMessage(key: key, arguments: [.string(kind), .string(owner)])
+    }
+    public static func scheduleCreationSummaryAt(kind: String, owner: String, time: String) -> LocalizedMessage {
+        let key = "schedule_creation_summary_at"
+        return LocalizedMessage(key: key, arguments: [.string(kind), .string(owner), .string(time)])
     }
     public static func scheduleDaily() -> LocalizedMessage {
         let key = "schedule_daily"
@@ -12233,6 +12513,14 @@ public enum L10nMessage {
         let key = "schedule_ended"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func scheduleEndedCannotRun() -> LocalizedMessage {
+        let key = "schedule_ended_cannot_run"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEndedCount(count: Int) -> LocalizedMessage {
+        let key = "schedule_ended_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
     public static func scheduleEvery() -> LocalizedMessage {
         let key = "schedule_every"
         return LocalizedMessage(key: key, arguments: [])
@@ -12276,6 +12564,10 @@ public enum L10nMessage {
     public static func scheduleFrequency() -> LocalizedMessage {
         let key = "schedule_frequency"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleFrequencyInZone(frequency: String, zone: String) -> LocalizedMessage {
+        let key = "schedule_frequency_in_zone"
+        return LocalizedMessage(key: key, arguments: [.string(frequency), .string(zone)])
     }
     public static func scheduleFri() -> LocalizedMessage {
         let key = "schedule_fri"
@@ -12625,6 +12917,10 @@ public enum L10nMessage {
         let key = "schedule_mark_as_unread"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func scheduleMessageRequired() -> LocalizedMessage {
+        let key = "schedule_message_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func scheduleMessagesGoToTheCurrentConversationAndWaitFor() -> LocalizedMessage {
         let key = "schedule_messages_go_to_the_current_conversation_and_wait_for"
         return LocalizedMessage(key: key, arguments: [])
@@ -12725,6 +13021,10 @@ public enum L10nMessage {
         let key = "schedule_notify_on_completion_by_default_when_off_only_the"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func scheduleOfflineMachinesNotice(machines: String) -> LocalizedMessage {
+        let key = "schedule_offline_machines_notice"
+        return LocalizedMessage(key: key, arguments: [.string(machines)])
+    }
     public static func scheduleOnceAt(time: String) -> LocalizedMessage {
         let key = "schedule_once_at"
         return LocalizedMessage(key: key, arguments: [.string(time)])
@@ -12757,12 +13057,28 @@ public enum L10nMessage {
         let key = "schedule_project"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func scheduleProjectRequired() -> LocalizedMessage {
+        let key = "schedule_project_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func scheduleQuietRuns(count: Int, day: String) -> LocalizedMessage {
         let key = "schedule_quiet_runs"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(day)])
     }
     public static func scheduleReadFullText() -> LocalizedMessage {
         let key = "schedule_read_full_text"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleReadOnlyActiveRun() -> LocalizedMessage {
+        let key = "schedule_read_only_active_run"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleReadOnlyBusy() -> LocalizedMessage {
+        let key = "schedule_read_only_busy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleReadOnlyUnconfirmed() -> LocalizedMessage {
+        let key = "schedule_read_only_unconfirmed"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleReadingTasks() -> LocalizedMessage {
@@ -12795,6 +13111,10 @@ public enum L10nMessage {
     }
     public static func scheduleRunIn() -> LocalizedMessage {
         let key = "schedule_run_in"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunInProgressCannotRun() -> LocalizedMessage {
+        let key = "schedule_run_in_progress_cannot_run"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleRunOnceNow() -> LocalizedMessage {
@@ -12885,6 +13205,10 @@ public enum L10nMessage {
         let key = "schedule_stopped"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func scheduleStoppedCannotRun() -> LocalizedMessage {
+        let key = "schedule_stopped_cannot_run"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func scheduleStoppedCount(count: Int, total: String) -> LocalizedMessage {
         let key = "schedule_stopped_count"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
@@ -12907,6 +13231,14 @@ public enum L10nMessage {
     }
     public static func scheduleTakeAction() -> LocalizedMessage {
         let key = "schedule_take_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTakeoverViaClient() -> LocalizedMessage {
+        let key = "schedule_takeover_via_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTakeoverViaLocal() -> LocalizedMessage {
+        let key = "schedule_takeover_via_local"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func scheduleTaskCreationPermissionsChanged() -> LocalizedMessage {
@@ -13100,6 +13432,10 @@ public enum L10nMessage {
     public static func scheduleWorkdaysAt(time: String) -> LocalizedMessage {
         let key = "schedule_workdays_at"
         return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func scheduleZoneTime(city: String) -> LocalizedMessage {
+        let key = "schedule_zone_time"
+        return LocalizedMessage(key: key, arguments: [.string(city)])
     }
     public static func securityASecurityOperationIsUnfinishedContinueItFirst() -> LocalizedMessage {
         let key = "security_a_security_operation_is_unfinished_continue_it_first"

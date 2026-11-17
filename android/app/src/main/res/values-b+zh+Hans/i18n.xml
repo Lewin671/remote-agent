@@ -1140,6 +1140,8 @@
     <string name="schedule_created_by_the_agent_in_a_conversation" formatted="false">"Agent 在对话里创建"</string>
     <string name="schedule_created_by_you" formatted="false">"你创建"</string>
     <string name="schedule_creating" formatted="false">"正在创建…"</string>
+    <string name="schedule_creation_summary">"%1$s %2$s"</string>
+    <string name="schedule_creation_summary_at">"%1$s %2$s · %3$s"</string>
     <string name="schedule_daily" formatted="false">"每天"</string>
     <string name="schedule_daily_at">"每天 %1$s"</string>
     <string name="schedule_date_and_time" formatted="false">"日期和时间"</string>
@@ -1158,6 +1160,10 @@
     <string name="schedule_end_date" formatted="false">"截止日期"</string>
     <string name="schedule_end_time" formatted="false">"截止时间"</string>
     <string name="schedule_ended" formatted="false">"已结束 "</string>
+    <string name="schedule_ended_cannot_run" formatted="false">"已结束的任务不能运行"</string>
+    <plurals name="schedule_ended_count">
+        <item quantity="other">"已结束 %1$d"</item>
+    </plurals>
     <string name="schedule_every" formatted="false">"每隔"</string>
     <plurals name="schedule_every_days">
         <item quantity="other">"每 %1$d 天"</item>
@@ -1177,6 +1183,7 @@
     <string name="schedule_execution_interrupted_the_task_stopped" formatted="false">"运行被中断，任务已停下"</string>
     <string name="schedule_execution_outcome_is_unconfirmed" formatted="false">"运行结果无法确认"</string>
     <string name="schedule_frequency" formatted="false">"频率"</string>
+    <string name="schedule_frequency_in_zone">"%1$s（%2$s）"</string>
     <string name="schedule_fri" formatted="false">"五"</string>
     <string name="schedule_has_not_run_yet" formatted="false">"还没有运行"</string>
     <string name="schedule_hong_kong_time" formatted="false">"香港时间"</string>
@@ -1185,6 +1192,12 @@
     <string name="schedule_in">"在「%1$s」里"</string>
     <string name="schedule_in_conversation" formatted="false">"在对话里"</string>
     <string name="schedule_interval_minutes" formatted="false">"间隔（分钟）"</string>
+    <string name="schedule_ios_attention_once">"%1$s。可立即额外执行一次，或改时间重排。"</string>
+    <string name="schedule_ios_choose_a_valid_iana_time_zone" formatted="false">"请选择有效的 IANA 时区"</string>
+    <string name="schedule_ios_confirm_the_previous_change_s_result_first" formatted="false">"请先确认上一条修改的结果"</string>
+    <string name="schedule_ios_enter_a_valid_interval" formatted="false">"请输入有效的间隔"</string>
+    <string name="schedule_ios_takeover_notice">"%1$s继续会由你接管任务，按任务中显示的权限运行。"</string>
+    <string name="schedule_ios_task_details" formatted="false">"任务详情"</string>
     <string name="schedule_last_result">"%2$s %1$s"</string>
     <string name="schedule_last_result_detail">"%3$s %2$s：%1$s"</string>
     <string name="schedule_latest_summary">"最近一次 %2$s：%1$s"</string>
@@ -1199,6 +1212,7 @@
     <string name="schedule_mark_all_as_read" formatted="false">"全部标为已读"</string>
     <string name="schedule_mark_as_read" formatted="false">"标为已读"</string>
     <string name="schedule_mark_as_unread" formatted="false">"标为未读"</string>
+    <string name="schedule_message_required" formatted="false">"请输入任务内容"</string>
     <string name="schedule_messages_go_to_the_current_conversation_and_wait_for" formatted="false">"消息发到当前对话，等待当前轮结束。"</string>
     <string name="schedule_messages_will_go_to_the_current_conversation_and_wait" formatted="false">"消息会发到当前对话，等待正在运行的一轮结束。"</string>
     <string name="schedule_missing_target">"任务已停下：%1$s。这个任务只发到原来的对话，恢复后还会失败。"</string>
@@ -1228,6 +1242,7 @@
     <string name="schedule_notified_you" formatted="false">"通知了你"</string>
     <string name="schedule_notify_on_completion" formatted="false">"完成后通知"</string>
     <string name="schedule_notify_on_completion_by_default_when_off_only_the" formatted="false">"完成后默认通知；关闭后仅由 agent 主动通知。"</string>
+    <string name="schedule_offline_machines_notice">"%1$s 未连接，显示上次状态"</string>
     <string name="schedule_once_at">"%1$s，一次"</string>
     <string name="schedule_once_schedules" formatted="false">"一次"</string>
     <string name="schedule_only_changes_this_task_it_still_runs_on_the" formatted="false">"只修改这个任务。它仍在原来的电脑运行；已开出的对话保留原来的设置。"</string>
@@ -1236,10 +1251,14 @@
     <string name="schedule_paused_the_schedule_expired_in_the_meantime" formatted="false">"已暂停：期间计划已到期"</string>
     <string name="schedule_plan_mode_cannot_create_execution_tasks_choose_other_permissions" formatted="false">"计划模式不能创建执行任务，请先选择其他权限"</string>
     <string name="schedule_project" formatted="false">"项目"</string>
+    <string name="schedule_project_required" formatted="false">"请先选择一个项目"</string>
     <plurals name="schedule_quiet_runs">
         <item quantity="other">"%2$s · %1$d 次，都没有通知"</item>
     </plurals>
     <string name="schedule_read_full_text" formatted="false">"看全文"</string>
+    <string name="schedule_read_only_active_run" formatted="false">"正在运行，结束前不能修改执行定义"</string>
+    <string name="schedule_read_only_busy" formatted="false">"正在处理上一次操作"</string>
+    <string name="schedule_read_only_unconfirmed" formatted="false">"上一次操作结果未确认"</string>
     <string name="schedule_reading_tasks" formatted="false">"正在读取任务…"</string>
     <string name="schedule_reason_returned_by_the_computer">"电脑返回的原因：%1$s"</string>
     <string name="schedule_rename_task" formatted="false">"重命名任务"</string>
@@ -1248,6 +1267,7 @@
     <string name="schedule_retry_creation" formatted="false">"重试创建"</string>
     <string name="schedule_retry_same_request" formatted="false">"重试同一请求"</string>
     <string name="schedule_run_in" formatted="false">"在哪运行"</string>
+    <string name="schedule_run_in_progress_cannot_run" formatted="false">"已有运行在进行或排队中"</string>
     <string name="schedule_run_once_now" formatted="false">"立即运行一次"</string>
     <string name="schedule_run_with_full_access" formatted="false">"以完全放行运行？"</string>
     <string name="schedule_running" formatted="false">"正在运行"</string>
@@ -1276,6 +1296,7 @@
     <string name="schedule_skipped" formatted="false">"跳过"</string>
     <string name="schedule_starting" formatted="false">"正在启动"</string>
     <string name="schedule_stopped" formatted="false">"已停下"</string>
+    <string name="schedule_stopped_cannot_run" formatted="false">"任务已停下，请先恢复或重排"</string>
     <plurals name="schedule_stopped_count">
         <item quantity="other">"%2$s 个任务停下了"</item>
     </plurals>
@@ -1286,6 +1307,8 @@
     <string name="schedule_strip_single">"定时 · %1$s，%2$s"</string>
     <string name="schedule_sun" formatted="false">"日"</string>
     <string name="schedule_take_action" formatted="false">"去处理"</string>
+    <string name="schedule_takeover_via_client" formatted="false">"已由客户端接管（原对话）"</string>
+    <string name="schedule_takeover_via_local" formatted="false">"已由本机命令接管（原对话）"</string>
     <string name="schedule_task_creation_permissions_changed" formatted="false">"创建任务时的权限已改变"</string>
     <string name="schedule_task_creation_permissions_changed_the_task_stopped" formatted="false">"创建任务时的权限已改变，任务已停下"</string>
     <string name="schedule_task_name" formatted="false">"任务名"</string>
@@ -1336,6 +1359,7 @@
     <string name="schedule_what_should_the_agent_do" formatted="false">"让 agent 做什么"</string>
     <string name="schedule_when" formatted="false">"什么时候"</string>
     <string name="schedule_workdays_at">"工作日 %1$s"</string>
+    <string name="schedule_zone_time">"%1$s时间"</string>
     <string name="security_a_security_operation_is_unfinished_continue_it_first" formatted="false">"还有未完成的安全操作，请先继续处理"</string>
     <string name="security_a_security_operation_is_unfinished_continue_the_original_operation" formatted="false">"有未完成的安全操作，请先继续原操作。"</string>
     <string name="security_abandon_this_succession_preparation" formatted="false">"放弃此接任准备？"</string>

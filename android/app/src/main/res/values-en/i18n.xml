@@ -1208,6 +1208,8 @@
     <string name="schedule_created_by_the_agent_in_a_conversation" formatted="false">"Created by the agent in a conversation"</string>
     <string name="schedule_created_by_you" formatted="false">"Created by you"</string>
     <string name="schedule_creating" formatted="false">"Creating…"</string>
+    <string name="schedule_creation_summary">"%1$s %2$s"</string>
+    <string name="schedule_creation_summary_at">"%1$s %2$s · %3$s"</string>
     <string name="schedule_daily" formatted="false">"Daily"</string>
     <string name="schedule_daily_at">"Daily %1$s"</string>
     <string name="schedule_date_and_time" formatted="false">"Date and time"</string>
@@ -1226,6 +1228,11 @@
     <string name="schedule_end_date" formatted="false">"End date"</string>
     <string name="schedule_end_time" formatted="false">"End time"</string>
     <string name="schedule_ended" formatted="false">"Ended "</string>
+    <string name="schedule_ended_cannot_run" formatted="false">"Ended tasks cannot run"</string>
+    <plurals name="schedule_ended_count">
+        <item quantity="one">"Ended %1$d"</item>
+        <item quantity="other">"Ended %1$d"</item>
+    </plurals>
     <string name="schedule_every" formatted="false">"Every"</string>
     <plurals name="schedule_every_days">
         <item quantity="one">"Every %1$d day"</item>
@@ -1249,6 +1256,7 @@
     <string name="schedule_execution_interrupted_the_task_stopped" formatted="false">"Execution interrupted. The task stopped"</string>
     <string name="schedule_execution_outcome_is_unconfirmed" formatted="false">"Execution outcome is unconfirmed"</string>
     <string name="schedule_frequency" formatted="false">"Frequency"</string>
+    <string name="schedule_frequency_in_zone">"%1$s (%2$s)"</string>
     <string name="schedule_fri" formatted="false">"Fri"</string>
     <string name="schedule_has_not_run_yet" formatted="false">"Has not run yet"</string>
     <string name="schedule_hong_kong_time" formatted="false">"Hong Kong time"</string>
@@ -1257,6 +1265,12 @@
     <string name="schedule_in">"In “%1$s”"</string>
     <string name="schedule_in_conversation" formatted="false">"In conversation"</string>
     <string name="schedule_interval_minutes" formatted="false">"Interval (minutes)"</string>
+    <string name="schedule_ios_attention_once">"%1$s. Run an extra time now, or change the time to reschedule."</string>
+    <string name="schedule_ios_choose_a_valid_iana_time_zone" formatted="false">"Choose a valid IANA time zone"</string>
+    <string name="schedule_ios_confirm_the_previous_change_s_result_first" formatted="false">"Confirm the previous change’s result first"</string>
+    <string name="schedule_ios_enter_a_valid_interval" formatted="false">"Enter a valid interval"</string>
+    <string name="schedule_ios_takeover_notice">"%1$s Continuing takes over the task and runs it with the permissions shown."</string>
+    <string name="schedule_ios_task_details" formatted="false">"Task details"</string>
     <string name="schedule_last_result">"%2$s %1$s"</string>
     <string name="schedule_last_result_detail">"%3$s %2$s: %1$s"</string>
     <string name="schedule_latest_summary">"Latest %2$s: %1$s"</string>
@@ -1272,6 +1286,7 @@
     <string name="schedule_mark_all_as_read" formatted="false">"Mark all as read"</string>
     <string name="schedule_mark_as_read" formatted="false">"Mark as read"</string>
     <string name="schedule_mark_as_unread" formatted="false">"Mark as unread"</string>
+    <string name="schedule_message_required" formatted="false">"Enter what the agent should do"</string>
     <string name="schedule_messages_go_to_the_current_conversation_and_wait_for" formatted="false">"Messages go to the current conversation and wait for the current turn to end."</string>
     <string name="schedule_messages_will_go_to_the_current_conversation_and_wait" formatted="false">"Messages will go to the current conversation and wait for the running turn to end."</string>
     <string name="schedule_missing_target">"Task stopped: %1$s. This task only sends to the original conversation and will fail again if resumed."</string>
@@ -1303,6 +1318,7 @@
     <string name="schedule_notified_you" formatted="false">"Notified you"</string>
     <string name="schedule_notify_on_completion" formatted="false">"Notify on completion"</string>
     <string name="schedule_notify_on_completion_by_default_when_off_only_the" formatted="false">" Notify on completion by default. When off, only the agent can send notifications."</string>
+    <string name="schedule_offline_machines_notice">"%1$s not connected; showing previous state"</string>
     <string name="schedule_once_at">"%1$s, once"</string>
     <string name="schedule_once_schedules" formatted="false">"Once"</string>
     <string name="schedule_only_changes_this_task_it_still_runs_on_the" formatted="false">"Only changes this task. It still runs on the original computer; existing conversations keep their settings."</string>
@@ -1311,11 +1327,15 @@
     <string name="schedule_paused_the_schedule_expired_in_the_meantime" formatted="false">"Paused: the schedule expired in the meantime"</string>
     <string name="schedule_plan_mode_cannot_create_execution_tasks_choose_other_permissions" formatted="false">"Plan mode cannot create execution tasks. Choose other permissions first."</string>
     <string name="schedule_project" formatted="false">"Project"</string>
+    <string name="schedule_project_required" formatted="false">"Choose a project first"</string>
     <plurals name="schedule_quiet_runs">
         <item quantity="one">"%2$s · %1$d run, none notified you"</item>
         <item quantity="other">"%2$s · %1$d runs, none notified you"</item>
     </plurals>
     <string name="schedule_read_full_text" formatted="false">"Read full text"</string>
+    <string name="schedule_read_only_active_run" formatted="false">"Running; execution settings cannot be edited until it finishes"</string>
+    <string name="schedule_read_only_busy" formatted="false">"Previous operation is still in progress"</string>
+    <string name="schedule_read_only_unconfirmed" formatted="false">"Previous operation result is unconfirmed"</string>
     <string name="schedule_reading_tasks" formatted="false">"Reading tasks…"</string>
     <string name="schedule_reason_returned_by_the_computer">"Reason returned by the computer: %1$s"</string>
     <string name="schedule_rename_task" formatted="false">"Rename task"</string>
@@ -1324,6 +1344,7 @@
     <string name="schedule_retry_creation" formatted="false">"Retry creation"</string>
     <string name="schedule_retry_same_request" formatted="false">"Retry same request"</string>
     <string name="schedule_run_in" formatted="false">"Run in"</string>
+    <string name="schedule_run_in_progress_cannot_run" formatted="false">"A run is already in progress or queued"</string>
     <string name="schedule_run_once_now" formatted="false">"Run once now"</string>
     <string name="schedule_run_with_full_access" formatted="false">"Run with full access?"</string>
     <string name="schedule_running" formatted="false">"Running"</string>
@@ -1355,6 +1376,7 @@
     <string name="schedule_skipped" formatted="false">"Skipped"</string>
     <string name="schedule_starting" formatted="false">"Starting"</string>
     <string name="schedule_stopped" formatted="false">"Stopped"</string>
+    <string name="schedule_stopped_cannot_run" formatted="false">"Task stopped; resume or reschedule first"</string>
     <plurals name="schedule_stopped_count">
         <item quantity="one">"%2$s task stopped"</item>
         <item quantity="other">"%2$s tasks stopped"</item>
@@ -1367,6 +1389,8 @@
     <string name="schedule_strip_single">"Scheduled · %1$s, %2$s"</string>
     <string name="schedule_sun" formatted="false">"Sun"</string>
     <string name="schedule_take_action" formatted="false">"Take action"</string>
+    <string name="schedule_takeover_via_client" formatted="false">"Taken over via client"</string>
+    <string name="schedule_takeover_via_local" formatted="false">"Taken over via CLI"</string>
     <string name="schedule_task_creation_permissions_changed" formatted="false">"Task creation permissions changed"</string>
     <string name="schedule_task_creation_permissions_changed_the_task_stopped" formatted="false">"Task creation permissions changed. The task stopped"</string>
     <string name="schedule_task_name" formatted="false">"Task name"</string>
@@ -1418,6 +1442,7 @@
     <string name="schedule_what_should_the_agent_do" formatted="false">"What should the agent do"</string>
     <string name="schedule_when" formatted="false">"When"</string>
     <string name="schedule_workdays_at">"Weekdays %1$s"</string>
+    <string name="schedule_zone_time">"%1$s time"</string>
     <string name="security_a_security_operation_is_unfinished_continue_it_first" formatted="false">"A security operation is unfinished. Continue it first."</string>
     <string name="security_a_security_operation_is_unfinished_continue_the_original_operation" formatted="false">"A security operation is unfinished. Continue the original operation first."</string>
     <string name="security_abandon_this_succession_preparation" formatted="false">"Abandon this succession preparation?"</string>

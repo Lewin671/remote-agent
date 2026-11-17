@@ -6,7 +6,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -20,7 +22,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -112,7 +116,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -126,7 +132,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -182,7 +190,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -196,7 +206,9 @@
     "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -224,7 +236,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -243,7 +257,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -304,7 +320,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -407,7 +425,9 @@
     "notes": "Android SchedulePresentation 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -497,7 +517,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -531,7 +553,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -565,7 +589,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -599,7 +625,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -633,7 +661,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -667,7 +697,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -701,7 +733,9 @@
       }
     },
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -771,7 +805,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -907,7 +943,9 @@
     "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -921,7 +959,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -949,7 +989,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1019,7 +1061,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1047,7 +1091,9 @@
     "notes": "Android ScheduleTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1075,7 +1121,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1103,7 +1151,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -1145,7 +1195,9 @@
     "notes": "Android Schedules 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -4686,6 +4738,8 @@
       }
     },
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -4770,6 +4824,8 @@
     "notes": "iOS ScheduleTiming.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -4798,6 +4854,8 @@
     "notes": "iOS ScheduleStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -4887,6 +4945,8 @@
     "notes": "iOS ScheduleTiming.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -5345,6 +5405,8 @@
       }
     },
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -5359,6 +5421,8 @@
     "notes": "iOS ScheduleDetailScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {
@@ -5592,6 +5656,319 @@
     "notes": "iOS NewScheduleScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.frequency_in_zone",
+    "zh-CN": "{frequency}（{zone}）",
+    "en": "{frequency} ({zone})",
+    "notes": "非本机时区的定时频率描述；frequency 为频率句，zone 为带「时间」后缀的时区名称。",
+    "params": {
+      "frequency": {
+        "type": "string",
+        "example": "Daily 08:00"
+      },
+      "zone": {
+        "type": "string",
+        "example": "Beijing time"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.zone_time",
+    "zh-CN": "{city}时间",
+    "en": "{city} time",
+    "notes": "非常用预置城市的 IANA 时区城市名后缀；city 为城市名。",
+    "params": {
+      "city": {
+        "type": "string",
+        "example": "Berlin"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.ended_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "已结束 {count}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Ended {count}",
+        "other": "Ended {count}"
+      }
+    },
+    "notes": "定时任务列表折叠区标题，显示已结束任务数量。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 3
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.offline_machines_notice",
+    "zh-CN": "{machines} 未连接，显示上次状态",
+    "en": "{machines} not connected; showing previous state",
+    "notes": "定时列表顶部离线电脑提示横幅；machines 为分隔后的电脑名称列表。",
+    "params": {
+      "machines": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.creation_summary",
+    "zh-CN": "{kind} {owner}",
+    "en": "{kind} {owner}",
+    "notes": "定时详情页底部创建方式与来源说明；kind 与 owner 均为完整短句。",
+    "params": {
+      "kind": {
+        "type": "string",
+        "example": "Each run opens a new conversation."
+      },
+      "owner": {
+        "type": "string",
+        "example": "Created by you"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.creation_summary_at",
+    "zh-CN": "{kind} {owner} · {time}",
+    "en": "{kind} {owner} · {time}",
+    "notes": "定时详情页底部创建方式、来源与创建时间说明。",
+    "params": {
+      "kind": {
+        "type": "string",
+        "example": "Each run opens a new conversation."
+      },
+      "owner": {
+        "type": "string",
+        "example": "Created by you"
+      },
+      "time": {
+        "type": "string",
+        "example": "Today 08:00"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.takeover_via_client",
+    "zh-CN": "已由客户端接管（原对话）",
+    "en": "Taken over via client",
+    "notes": "原由对话内模型委托创建、后被用户在客户端接管的任务来源标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.takeover_via_local",
+    "zh-CN": "已由本机命令接管（原对话）",
+    "en": "Taken over via CLI",
+    "notes": "原由对话内模型委托创建、后被用户在本机 CLI 接管的任务来源标签。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.read_only_active_run",
+    "zh-CN": "正在运行，结束前不能修改执行定义",
+    "en": "Running; execution settings cannot be edited until it finishes",
+    "notes": "任务正在执行时禁用修改触发或目标设置的提示原因。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.read_only_busy",
+    "zh-CN": "正在处理上一次操作",
+    "en": "Previous operation is still in progress",
+    "notes": "任务操作正在执行中时的禁用原因。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.read_only_unconfirmed",
+    "zh-CN": "上一次操作结果未确认",
+    "en": "Previous operation result is unconfirmed",
+    "notes": "上一次修改结果尚未确认时的禁用原因。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.run_in_progress_cannot_run",
+    "zh-CN": "已有运行在进行或排队中",
+    "en": "A run is already in progress or queued",
+    "notes": "立即运行一次按钮禁用时的原因说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.ended_cannot_run",
+    "zh-CN": "已结束的任务不能运行",
+    "en": "Ended tasks cannot run",
+    "notes": "已结束任务禁用立即运行时的原因说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.stopped_cannot_run",
+    "zh-CN": "任务已停下，请先恢复或重排",
+    "en": "Task stopped; resume or reschedule first",
+    "notes": "停下状态任务禁用立即运行时的原因说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.project_required",
+    "zh-CN": "请先选择一个项目",
+    "en": "Choose a project first",
+    "notes": "新建定时任务尚未选择项目时的禁用原因。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.message_required",
+    "zh-CN": "请输入任务内容",
+    "en": "Enter what the agent should do",
+    "notes": "新建或编辑定时任务尚未填写提示内容时的禁用原因。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
       "ios"
     ],
     "status": {

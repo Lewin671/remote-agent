@@ -1090,6 +1090,134 @@
 			<string>%1$lld sec after each turn ends</string>
 		</dict>
 	</dict>
+	<key>schedule_android_large_after_current_turn</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ sec after the current turn ends</string>
+			<key>other</key>
+			<string>%2$@ sec after the current turn ends</string>
+		</dict>
+	</dict>
+	<key>schedule_android_large_after_each_turn</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ sec after each turn ends</string>
+			<key>other</key>
+			<string>%2$@ sec after each turn ends</string>
+		</dict>
+	</dict>
+	<key>schedule_android_large_every_days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %2$@ day</string>
+			<key>other</key>
+			<string>Every %2$@ days</string>
+		</dict>
+	</dict>
+	<key>schedule_android_large_every_hours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %2$@ hour</string>
+			<key>other</key>
+			<string>Every %2$@ hours</string>
+		</dict>
+	</dict>
+	<key>schedule_android_large_every_minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %2$@ minute</string>
+			<key>other</key>
+			<string>Every %2$@ minutes</string>
+		</dict>
+	</dict>
+	<key>schedule_android_large_every_seconds</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %2$@ second</string>
+			<key>other</key>
+			<string>Every %2$@ seconds</string>
+		</dict>
+	</dict>
+	<key>schedule_android_large_runs_total</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ run total</string>
+			<key>other</key>
+			<string>%2$@ runs total</string>
+		</dict>
+	</dict>
+	<key>schedule_ended_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Ended %1$lld</string>
+			<key>other</key>
+			<string>Ended %1$lld</string>
+		</dict>
+	</dict>
 	<key>schedule_every_days</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
