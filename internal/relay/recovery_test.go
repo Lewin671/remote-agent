@@ -454,10 +454,7 @@ func TestRecoverySecurityFailureBlocksWakeNotNetworkChange(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("pure network change must not be blocked by GetSecurityStates failure")
 	}
-	time.Sleep(120 * time.Millisecond)
-	if secCalls.Load() <= beforeCalls {
-		t.Fatal("expected background security sync to keep polling after network change")
-	}
+	waitFor(t, "background security sync poll", func() bool { return secCalls.Load() > beforeCalls })
 
 	wakes <- struct{}{}
 	select {

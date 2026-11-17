@@ -46,7 +46,7 @@ func TestFullOrdinaryPoolLeavesInteractionsAndCoalescesDuplicate(t *testing.T) {
 	}
 	results := make(chan error, 10)
 	forward := func(i int) { _, err := e.client.Forward(ctx, s.MachineID, envs[i]); results <- err }
-	for i := range 9 {
+	for i := range 4 {
 		go forward(i)
 	}
 	for range 4 {
@@ -55,6 +55,11 @@ func TestFullOrdinaryPoolLeavesInteractionsAndCoalescesDuplicate(t *testing.T) {
 		case <-ctx.Done():
 			t.Fatal("execution slots did not fill")
 		}
+	}
+	// Submit the queued ordinary requests and duplicate only after the first
+	// four have left admission's per-peer frame queue (PeerEntries=8).
+	for i := 4; i < 9; i++ {
+		go forward(i)
 	}
 	go forward(0)
 	select {

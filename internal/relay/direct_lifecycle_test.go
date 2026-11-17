@@ -1136,7 +1136,7 @@ func replyReason(t *testing.T, clientEndpoint *deviceauth.Endpoint, rep *pb.Forw
 }
 
 func TestCombinedInflightAndEndpointWaiterLimitRespectsMaxPerKey(t *testing.T) {
-	ctx, cancel, ep, clientEndpoint, _, _, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	ctx, cancel, ep, clientEndpoint, _, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
 	defer cancel()
 
 	// Block scheduler slot for s-dual so owner + first batch of duplicates sit in a.inflight.
@@ -1183,12 +1183,16 @@ func TestCombinedInflightAndEndpointWaiterLimitRespectsMaxPerKey(t *testing.T) {
 	// Release blocker so owner enters Send (blocks on sendRelease) and registers e.running[key].
 	close(blockRelease)
 	// Wait until Send is actually running inside AcceptAuthenticated.
+	enteredSend := false
 	for time.Now().Before(deadline) {
-		ep.admission.mu.Lock()
-		// Wait until owner entered backend Send (execCount incremented by Send won't work since started was closed; sleep briefly after release).
-		ep.admission.mu.Unlock()
-		time.Sleep(80 * time.Millisecond)
-		break
+		if execCount.Load() >= 1 {
+			enteredSend = true
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	if !enteredSend {
+		t.Fatal("owner did not enter Send in time")
 	}
 
 	// Send 20 more duplicates one by one so none hit PeerEntries=8 in a.frames;
