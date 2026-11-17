@@ -3,7 +3,7 @@ import { t as message } from "../i18n";
 import { expect, it } from "vitest";
 const fs = "node:fs";
 const { readFileSync } = (await import(/* @vite-ignore */ fs)) as { readFileSync(path: string, enc: string): string };
-function design() { return new DOMParser().parseFromString(readFileSync("../docs/design/client-v62.html", "utf8"), "text/html"); }
+function design() { return new DOMParser().parseFromString(readFileSync("../docs/design/client-v63.html", "utf8"), "text/html"); }
 it("shows schedule inbox groups, fixed leading dots, two kinds of badges and the wide empty state", () => {
   const doc = design(), chapter = doc.querySelector("#schedules")!;
   const list = chapter.querySelector("#p-daily")!;
@@ -12,7 +12,7 @@ it("shows schedule inbox groups, fixed leading dots, two kinds of badges and the
   expect(list.querySelectorAll(".rc:not(.warn) .dotk:not(.o)").length).toBeGreaterThan(0);
   expect(list.querySelector(".sec")?.textContent).toContain(message("schedule.mark_all_as_read"));
   expect(chapter.querySelectorAll(".schedule-unread")).toHaveLength(0);
-  expect(chapter.querySelector("#schedule-wide-empty .main")?.textContent).toBe(message("home.ios_choose_task"));
+  expect(chapter.querySelector("#schedule-wide-empty .wempty > span:first-child")?.textContent).toBe(message("home.ios_choose_task"));
   expect(chapter.querySelector("#schedule-wide-empty .sel")).toBeNull();
   // A blue dot for new results only, orange numbers for what needs the user.
   const badges = chapter.querySelector("#schedule-badges + .hint + .screens")!;
