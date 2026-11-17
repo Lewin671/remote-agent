@@ -236,4 +236,63 @@ class HeadLeaseTest {
         assertArrayEquals(op.local, reopened.local)
         assertEquals(op.phase, reopened.phase)
     }
+
+    @Test
+    fun sealCommandMatchesCommandIdentityAndCachedLeaseValidRejectsTamperOrExpiry() {
+        val signer = SigningKey(ByteArray(32) { 21 })
+        val x = ByteArray(32) { 22 }
+        val machine = Authority.newMember(SigningKey(ByteArray(32) { 26 }), ByteArray(32) { 27 }, 1u)
+        val genesis =
+            Authority.genesis(
+                "0123456789abcdef0123456789abcdef",
+                ByteArray(32) { 25 },
+                Authority.newMember(signer, x, 2u),
+                ByteArray(32) { 23 },
+                ByteArray(32) { 24 },
+                signer,
+                10000,
+            )
+        val state = Authority.pair(genesis, machine, ByteArray(32) { 24 }, ByteArray(32) { 28 }, signer, 10000)
+        val lease = HeadLease.sign(state, signer, 10000)
+        val record =
+            DeviceSecurity.Record(
+                DeviceSecurity.pinOf(genesis),
+                listOf(genesis, state),
+                state.core.authorityID,
+                x,
+                floor = 10000uL,
+                lease = lease,
+            )
+        assertTrue(Authority.leaseValid(record, 20000L))
+        assertTrue(Authority.leaseValid(record, 20000L))
+        val badSig = lease.signature.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() }
+        val tamperedRecord =
+            DeviceSecurity.Record(
+                DeviceSecurity.pinOf(genesis),
+                listOf(genesis, state),
+                state.core.authorityID,
+                x,
+                floor = 10000uL,
+                lease = lease.copy(signature = badSig),
+            )
+        assertFalse(Authority.leaseValid(tamperedRecord, 20000L))
+        assertFalse(Authority.leaseValid(record, lease.notAfter.toLong()))
+
+        val sdk =
+            DeviceSecurityClient(
+                TestSecurityStore(record),
+                state.core.authorityID,
+                signer,
+                fetchStates = { error("unused") },
+                clock = { 20000L },
+            )
+        val plain = byteArrayOf(10, 20, 30)
+        val (env, binding) = sdk.sealCommand(machine.id, "", "request-1234567890", 50000uL, plain)
+        val (opened, openedPlain) = sdk.openOwnCommand(env)
+        assertArrayEquals(plain, openedPlain)
+        val expected = kotlinx.coroutines.runBlocking { sdk.commandIdentity(env) }
+        assertArrayEquals(expected.first, binding.first)
+        assertArrayEquals(expected.second, binding.second)
+        assertEquals(DeviceSecurity.Purpose.COMMAND, opened.purpose)
+    }
 }

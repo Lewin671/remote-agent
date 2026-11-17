@@ -54,9 +54,10 @@ type securityRefresh struct {
 }
 
 type securitySession struct {
-	directMu       sync.Mutex
-	directRevision uint64
-	directFresh    atomic.Pointer[directFreshness]
+	directMu            sync.Mutex
+	directRevision      uint64
+	directInvalidations atomic.Uint64
+	directFresh         atomic.Pointer[directFreshness]
 
 	syncMu        sync.Mutex
 	lifetime      context.Context
@@ -179,8 +180,7 @@ func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, see
 	if !errors.Is(err, deviceauth.ErrUnknown) {
 		return out, err
 	}
-	s.requestSync()
-	if err := s.syncOnce(ctx); err != nil {
+	if err := s.refreshWithin(ctx, 5*time.Second); err != nil {
 		return nil, err
 	}
 	return s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
@@ -324,6 +324,7 @@ func (s *securitySession) syncOnce(ctx context.Context) (result error) {
 			s.directFresh.Store(refreshed)
 		} else {
 			s.directFresh.Store(nil)
+			s.directInvalidations.Add(1)
 		}
 	}()
 	if s.beforeSync != nil {
@@ -561,7 +562,7 @@ func (s *securitySession) streamContext(parent context.Context, peerID string) (
 
 // directCurrent is independent of main WS state and publication. Failed or
 // incomplete sync pauses direct immediately; a stalled round expires at the
-// fixed 15-second start interval plus the 5-second whole-round budget.
+// fixed 12-second start interval plus the 5-second whole-round budget.
 type directFreshness struct {
 	head       deviceauth.Hash
 	until      uint64
@@ -572,9 +573,11 @@ func (s *securitySession) invalidateDirect() {
 	s.directMu.Lock()
 	s.directRevision++
 	s.directFresh.Store(nil)
+	s.directInvalidations.Add(1)
 	s.directMu.Unlock()
 }
 func (s *securitySession) directCurrent(self, peer deviceauth.Member, head deviceauth.Hash) bool {
+	inv := s.directInvalidations.Load()
 	fresh := s.directFresh.Load()
 	if fresh == nil || fresh.head != head || s.blocked.Load() || s.now() >= min(fresh.until, fresh.leaseUntil) {
 		return false
@@ -582,5 +585,6 @@ func (s *securitySession) directCurrent(self, peer deviceauth.Member, head devic
 	if s.endpoint.CheckPeer(self, peer, head, s.now()) != nil {
 		return false
 	}
-	return !s.blocked.Load() && s.directFresh.Load() == fresh && s.now() < min(fresh.until, fresh.leaseUntil)
+	after := s.directFresh.Load()
+	return !s.blocked.Load() && after != nil && after.head == head && s.directInvalidations.Load() == inv && s.now() < min(after.until, after.leaseUntil)
 }

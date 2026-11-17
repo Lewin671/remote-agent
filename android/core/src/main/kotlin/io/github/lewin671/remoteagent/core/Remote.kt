@@ -1548,13 +1548,14 @@ class Remote(
         val cpu = if (bulk) bulkCpuDispatcher else cpuDispatcher
 
         if (serverAhead || security.clockSkew) return localFailure("failed_precondition", "clock skew")
-        val record = security.record()
-        if (!withContext(cpu) { Authority.leaseValid(record, clock()) }) return localFailure("failed_precondition", "lease expired")
 
-        val authorized = withContext(cpu) {
-            security.seal(DeviceSecurity.Purpose.COMMAND, eff.machineId, eff.sessionId, eff.requestId, deadline = eff.deadlineMs.toULong(), plain = cmdBytes)
+        val (authorized, binding) = try {
+            withContext(cpu) {
+                security.sealCommand(eff.machineId, eff.sessionId, eff.requestId, deadline = eff.deadlineMs.toULong(), plain = cmdBytes)
+            }
+        } catch (e: LeaseExpiredException) {
+            return localFailure("failed_precondition", "lease expired")
         }
-        val binding = security.commandIdentity(authorized)
 
         suspend fun executeLeg(delivery: PathAttempt, tracking: DirectEngine.RouteTracker?, handedOffRef: () -> Boolean): Pair<Boolean, CommandOutcomeEvent> {
             fun baseOutcome(source: OutcomeSource, directRoute: Boolean = delivery.direct) =
@@ -2398,16 +2399,10 @@ class Remote(
         }
         val bulk = versioned.hasPutImageChunk() || versioned.hasGetSharedFileChunk()
         val cpu = if (bulk) bulkCpuDispatcher else cpuDispatcher
-        val authorized = try {
+        val routeHint = directHint(machineId, sessionId, versioned)
+        val (authorized, binding) = try {
             withContext(cpu) {
-                if (!Authority.leaseValid(security.record(), clock())) {
-                    throw CommandException(
-                        "failed_precondition",
-                        localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) },
-                    )
-                }
-                security.seal(
-                    DeviceSecurity.Purpose.COMMAND,
+                security.sealCommand(
                     machineId,
                     sessionId,
                     requestId,
@@ -2415,8 +2410,11 @@ class Remote(
                     plain = versioned.toByteArray(),
                 )
             }
-        } catch (e: CommandException) {
-            throw e
+        } catch (e: LeaseExpiredException) {
+            throw CommandException(
+                "failed_precondition",
+                localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) },
+            )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             throw CommandException(
@@ -2424,8 +2422,6 @@ class Remote(
                 UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText(),
             )
         }
-        val binding = withContext(cpu) { security.commandIdentity(authorized) }
-        val routeHint = directHint(machineId, sessionId, versioned)
         val interactive = isInteractiveCommand(versioned)
         var forceRelay = false
         var attempt = 0

@@ -109,7 +109,7 @@ type Relay struct {
 
 // New returns a relay for backend.
 func New(backend Backend) *Relay {
-	return &Relay{backend: backend, machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 15 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
+	return &Relay{backend: backend, machineRPCs: make(chan struct{}, maxConcurrentMachineRPCs), backlog: make(chan struct{}, 1), sentMeta: map[string]*pb.Session{}, owedNotify: map[string][]*pb.Event{}, Retry: time.Second, syncInterval: 5 * time.Second, securityInterval: 12 * time.Second, readyTimeout: 15 * time.Second, syncRetryBase: time.Second}
 }
 
 // Connected reports whether the relay currently has a stream to the server.

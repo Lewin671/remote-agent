@@ -31,11 +31,53 @@ object Authority {
         return remaining < DAY_MS && at - lease.issuedAt >= HALF_DAY_MS
     }
 
-    fun leaseValid(record: DeviceSecurity.Record, now: Long): Boolean = runCatching {
-        record.lease?.valid(record.head, maxOf(now.coerceAtLeast(1).toULong(), record.floor))
-            ?: throw DeviceSecurity.Failure("lease")
+    private class VerifiedLeaseKey(
+        val domain: ByteArray,
+        val head: ByteArray,
+        val stateIssuedAt: ULong,
+        val authorityEd: ByteArray,
+        val issuedAt: ULong,
+        val notAfter: ULong,
+        val signature: ByteArray,
+    )
+
+    @Volatile
+    private var verifiedLease: VerifiedLeaseKey? = null
+
+    fun leaseValid(record: DeviceSecurity.Record, now: Long): Boolean {
+        val lease = record.lease ?: return false
+        val at = maxOf(now.coerceAtLeast(1).toULong(), record.floor)
+        val cached = verifiedLease
+        val stateHash = DeviceSecurity.stateHash(record.head)
+        val auth = record.head.core.member(record.head.core.authorityID)
+        if (cached != null &&
+            auth != null &&
+            lease.issuedAt == cached.issuedAt &&
+            lease.notAfter == cached.notAfter &&
+            record.head.core.issuedAt == cached.stateIssuedAt &&
+            lease.domain.contentEquals(cached.domain) &&
+            lease.head.contentEquals(cached.head) &&
+            stateHash.contentEquals(cached.head) &&
+            record.head.core.domain.contentEquals(cached.domain) &&
+            auth.ed.contentEquals(cached.authorityEd) &&
+            lease.signature.contentEquals(cached.signature)
+        ) {
+            return lease.issuedAt <= at + DeviceSecurity.MAX_CLOCK_SKEW && at < lease.notAfter
+        }
+        val ok = runCatching { lease.valid(record.head, at) }.isSuccess
+        if (ok && auth != null) {
+            verifiedLease = VerifiedLeaseKey(
+                domain = lease.domain.copyOf(),
+                head = lease.head.copyOf(),
+                stateIssuedAt = record.head.core.issuedAt,
+                authorityEd = auth.ed.copyOf(),
+                issuedAt = lease.issuedAt,
+                notAfter = lease.notAfter,
+                signature = lease.signature.copyOf(),
+            )
+        }
+        return ok
     }
-        .isSuccess
 
     fun sorted(members: List<DeviceSecurity.Member>): List<DeviceSecurity.Member> =
         members.sortedBy {

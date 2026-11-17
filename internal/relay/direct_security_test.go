@@ -188,3 +188,55 @@ func TestDirectInstallAndLeaseGates(t *testing.T) {
 		t.Fatal("lease expiration extended by clock skew")
 	}
 }
+
+func TestDirectCurrentSurvivesConcurrentRenewalAndRejectsInvalidation(t *testing.T) {
+	c := &conn{}
+	initializeTestSecurityKeys(t, c)
+	s := c.security
+	self, peer, hash := directBinding(t, c)
+	s.client = ownershipSecurityClient{read: func(context.Context) (*connect.Response[pb.GetSecurityStatesResponse], error) {
+		return connect.NewResponse(&pb.GetSecurityStatesResponse{HeadEpoch: s.endpoint.HeadEpoch()}), nil
+	}}
+	baseNow := uint64(time.Now().UnixMilli())
+	var hook atomic.Value
+	s.clock = func() uint64 {
+		if fn, ok := hook.Load().(func()); ok && fn != nil {
+			fn()
+		}
+		return baseNow
+	}
+	if err := s.syncOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate syncOnce renewing directFresh with a new pointer while directCurrent is mid-check.
+	calls := 0
+	hook.Store(func() {
+		calls++
+		if calls == 2 {
+			hook.Store((func())(nil))
+			if err := s.syncOnce(context.Background()); err != nil {
+				t.Errorf("concurrent renewal failed: %v", err)
+			}
+		}
+	})
+	if !s.directCurrent(self, peer, hash) {
+		t.Fatal("routine freshness renewal caused directCurrent to return false")
+	}
+
+	// Simulate an invalidation followed by a re-sync while directCurrent is mid-check.
+	calls = 0
+	hook.Store(func() {
+		calls++
+		if calls == 2 {
+			hook.Store((func())(nil))
+			s.invalidateDirect()
+			if err := s.syncOnce(context.Background()); err != nil {
+				t.Errorf("re-sync after invalidation failed: %v", err)
+			}
+		}
+	})
+	if s.directCurrent(self, peer, hash) {
+		t.Fatal("concurrent invalidation was missed after re-sync")
+	}
+}

@@ -736,11 +736,14 @@ object DeviceSecurity {
     fun commitment(c: Formed): ByteArray {
         check(c.header.size <= MAX_HEADER && c.nonce.size == 12 && c.cipher.size in 16..MAX_CIPHER)
         parseHeader(c.header)
-        return digest(
+        return commitmentDigest(c)
+    }
+
+    private fun commitmentDigest(c: Formed): ByteArray =
+        digest(
             "ra3/ciphertext\u0000",
             Writer().lp(c.header).lp(c.nonce).lp(c.cipher).bytes(),
         )
-    }
 
     private fun originBytes(h: Header, hh: ByteArray, commit: ByteArray) =
         Writer()
@@ -799,7 +802,7 @@ object DeviceSecurity {
         )
         aes.updateAAD(hb)
         val c = Formed(hb, nonce, aes.doFinal(plain), ByteArray(0))
-        return c.copy(origin = ed.sign(originBytes(h, sha256(hb), commitment(c))))
+        return c.copy(origin = ed.sign(originBytes(h, sha256(hb), commitmentDigest(c))))
     }
 
     /**
@@ -816,7 +819,8 @@ object DeviceSecurity {
                 check(head.core.contentEpoch == h.contentEpoch, "stale")
             }
         }
-        val commit = commitment(w.formed)
+        check(w.formed.nonce.size == 12 && w.formed.cipher.size in 16..MAX_CIPHER)
+        val commit = commitmentDigest(w.formed)
         check(
             verifyEd25519(m.ed, originBytes(h, sha256(w.formed.header), commit), w.formed.origin),
             "untrusted",

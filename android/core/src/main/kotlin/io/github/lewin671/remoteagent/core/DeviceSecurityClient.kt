@@ -17,6 +17,8 @@ class RecoveryHistoryUnavailable(val header: DeviceSecurity.Header) : MessageExc
  * storage, signing key or complete content secret. Envelopes are sealed and opened locally; only
  * signed states come from the relay.
  */
+internal class LeaseExpiredException : Exception()
+
 class DeviceSecurityClient(
     private val store: DeviceSecurity.Storage,
     private val memberID: String,
@@ -230,13 +232,40 @@ class DeviceSecurityClient(
         deadline: ULong = 0uL,
         plain: ByteArray,
         seed: ByteArray? = null,
-    ): Envelope {
-        val old = read()
-        if (!old.member) throw DeviceSecurity.Failure("untrusted")
+    ): Envelope =
+        try {
+            sealCore(purpose, machine, session, request, seq, deadline, plain, seed).first
+        } catch (_: LeaseExpiredException) {
+            throw DeviceSecurity.Failure("lease")
+        }
+
+    /** Seals a command envelope and computes its request identity without reopening the ciphertext. */
+    internal fun sealCommand(
+        machine: String = "",
+        session: String = "",
+        request: String = "",
+        deadline: ULong = 0uL,
+        plain: ByteArray,
+    ): Pair<Envelope, Pair<ByteArray, ByteArray>> {
+        val (env, header) = sealCore(DeviceSecurity.Purpose.COMMAND, machine, session, request, 0uL, deadline, plain, null)
+        return env to DeviceSecurity.requestIdentity(header, plain)
+    }
+
+    private fun sealCore(
+        purpose: DeviceSecurity.Purpose,
+        machine: String,
+        session: String,
+        request: String,
+        seq: ULong,
+        deadline: ULong,
+        plain: ByteArray,
+        seed: ByteArray?,
+    ): Pair<Envelope, DeviceSecurity.Header> {
+        val r = read()
+        if (!r.member) throw DeviceSecurity.Failure("untrusted")
         // The old content key must stop producing every kind of new ciphertext.
         // Historical reads deliberately do not use this publication gate.
-        if (!Authority.leaseValid(old, clock())) throw DeviceSecurity.Failure("lease")
-        val r = old
+        if (!Authority.leaseValid(r, clock())) throw LeaseExpiredException()
         val h =
             DeviceSecurity.Header(
                 r.pin.account,
@@ -257,7 +286,7 @@ class DeviceSecurityClient(
         val key =
             contentKey(r, r.head.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
         val formed = DeviceSecurity.form(key, seed, h, plain, ed)
-        return DeviceSecurity.envelope(DeviceSecurity.Wire(formed))
+        return DeviceSecurity.envelope(DeviceSecurity.Wire(formed)) to h
     }
 
     private fun openKey(
