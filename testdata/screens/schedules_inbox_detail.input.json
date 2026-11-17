@@ -1,0 +1,236 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "scheduleLocalContext": {
+          "localTimezone": "UTC",
+          "tomorrowStartMs": "1791129600000",
+          "dayAfterTomorrowStartMs": "1791216000000"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "req-list-1",
+          "att-list-1",
+          "req-can-1",
+          "att-can-1",
+          "req-list-2",
+          "att-list-2"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "cacheBootstrapLoaded": {
+          "opId": "1"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1799999999000",
+          "trustedMachineIds": [
+            "m1"
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060040"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "Workstation",
+                "protocolVersion": 16,
+                "scheduleRevision": "1",
+                "capabilities": {
+                  "scheduledTasks": true
+                },
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK",
+                    "defaultModeSource": "DEFAULT_MODE_SOURCE_DAEMON_SETTINGS"
+                  }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-res",
+              "machineId": "m1",
+              "lastSeq": "2",
+              "updatedMs": "1791078000000",
+              "meta": {
+                "id": "s-res",
+                "cwd": "/Users/me/app",
+                "status": "SESSION_STATUS_IDLE",
+                "title": "Main repo",
+                "agent": "AGENT_CODEX"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "scheduleSeenLoaded": {
+          "machineId": "m1",
+          "found": true
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "commandOutcome": {
+          "requestId": "req-list-1",
+          "attemptId": "att-list-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "attemptBound": true,
+          "signed": true,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "schedule": {
+              "resultJson": "eyJ0YXNrcyI6W3siaWQiOiJ0MSIsInJldmlzaW9uIjoxLCJzdGF0dXMiOiJhY3RpdmUiLCJzb3VyY2UiOiJjbGllbnQiLCJjcmVhdGVkX2F0IjoiMjAyNi0xMC0wM1QwODowMDowMFoiLCJ1cGRhdGVkX2F0IjoiMjAyNi0xMC0wNFQwODowMTowMFoiLCJuZXh0X3J1bl9hdCI6IjIwMjYtMTAtMDVUMDg6MDA6MDBaIiwic3BlYyI6eyJ0aXRsZSI6IkRhaWx5IHN1bW1hcnkiLCJtZXNzYWdlIjoiU3VtbWFyaXplIGNoYW5nZXMiLCJ0cmlnZ2VyIjp7InR5cGUiOiJjYWxlbmRhciIsInRpbWUiOiIwODowMCIsInRpbWV6b25lIjoiVVRDIn0sInRhcmdldCI6eyJ0eXBlIjoicmVzdW1lX3Nlc3Npb24iLCJzZXNzaW9uIjoicy1yZXMifX0sInJ1bnMiOlt7ImlkIjoici1ub3RpZiIsInNlc3Npb25faWQiOiJzLXJlcyIsInN0YXJ0X3NlcSI6MSwiYWZ0ZXJfc2VxIjoxLCJzdGF0dXMiOiJjb21wbGV0ZWQiLCJub3RpZmllZCI6dHJ1ZSwiZmluYWxfc3VtbWFyeSI6IjIgUFJzIG1lcmdlZCIsImVuZGVkX2F0IjoiMjAyNi0xMC0wNFQwODowMTowMFoiLCJub3RpZmljYXRpb25fc2Vzc2lvbl9pZCI6InMtcmVzIiwibm90aWZpY2F0aW9uX3NlcSI6Miwibm90aWZpY2F0aW9uX3NvdXJjZSI6ImRhZW1vbiJ9LHsiaWQiOiJyLXEyIiwic2Vzc2lvbl9pZCI6InMtcmVzIiwic3RhcnRfc2VxIjoxLCJhZnRlcl9zZXEiOjEsInN0YXR1cyI6ImNvbXBsZXRlZCIsIm5vdGlmaWVkIjpmYWxzZSwiZmluYWxfc3VtbWFyeSI6Ik5vIGlzc3VlcyIsImVuZGVkX2F0IjoiMjAyNi0xMC0wM1QwOTowMDowMFoifSx7ImlkIjoici1xMSIsInNlc3Npb25faWQiOiJzLXJlcyIsInN0YXJ0X3NlcSI6MSwiYWZ0ZXJfc2VxIjoxLCJzdGF0dXMiOiJjb21wbGV0ZWQiLCJub3RpZmllZCI6ZmFsc2UsImZpbmFsX3N1bW1hcnkiOiJBbGwgZ3JlZW4iLCJlbmRlZF9hdCI6IjIwMjYtMTAtMDNUMDg6MDA6MDBaIn1dfSx7ImlkIjoidC1hdHQiLCJyZXZpc2lvbiI6Miwic3RhdHVzIjoiZmFpbGVkIiwicmVhc29uIjoiZXhlY3V0aW9uX2ZhaWxlZCIsInNvdXJjZSI6ImNsaWVudCIsImNyZWF0ZWRfYXQiOiIyMDI2LTEwLTAzVDA3OjAwOjAwWiIsInVwZGF0ZWRfYXQiOiIyMDI2LTEwLTA0VDA3OjAwOjAwWiIsInNwZWMiOnsidGl0bGUiOiJPbmUtc2hvdCBkZXBsb3kgY2hlY2siLCJtZXNzYWdlIjoiQ2hlY2sgZGVwbG95IiwidHJpZ2dlciI6eyJ0eXBlIjoiYXQiLCJhdCI6IjIwMjYtMTAtMDRUMDc6MDA6MDBaIn0sInRhcmdldCI6eyJ0eXBlIjoibmV3X3Nlc3Npb24iLCJjd2QiOiIvVXNlcnMvbWUvYXBwIiwiYWdlbnQiOiJjb2RleCIsIm1vZGUiOiJhc2sifX19XX0="
+            }
+          }
+        }
+      },
+      "views": [
+        {
+          "name": "schedules_1",
+          "screen": {
+            "schedules": {}
+          }
+        },
+        {
+          "name": "scheduleSessionStrip_2",
+          "screen": {
+            "scheduleSessionStrip": {
+              "sessionId": "s-res"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060080",
+        "scheduleDetailOpen": {
+          "machineId": "m1",
+          "taskId": "t1"
+        }
+      },
+      "views": [
+        {
+          "name": "schedules_3",
+          "screen": {
+            "schedules": {}
+          }
+        },
+        {
+          "name": "scheduleDetail_4",
+          "screen": {
+            "scheduleDetail": {
+              "machineId": "m1",
+              "taskId": "t1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060090",
+        "scheduleDetailToggleQuietGroup": {
+          "machineId": "m1",
+          "taskId": "t1",
+          "value": "quiet-2026-10-03"
+        }
+      },
+      "views": [
+        {
+          "name": "scheduleDetail_5",
+          "screen": {
+            "scheduleDetail": {
+              "machineId": "m1",
+              "taskId": "t1"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

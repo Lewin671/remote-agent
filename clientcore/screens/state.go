@@ -105,6 +105,8 @@ type State struct {
 
 	StandaloneProjectKey string
 	NewSessions          map[string]*NewSessionDraft
+
+	Schedules *ScheduleState
 }
 
 // NewState constructs an initialized State with empty lookup maps.
@@ -122,5 +124,6 @@ func NewState() *State {
 		MachineModels:            make(map[MachineAgentKey]*ModelsCacheEntry),
 		MachineSettings:          make(map[string]*SettingsCacheEntry),
 		NewSessions:              make(map[string]*NewSessionDraft),
+		Schedules:                NewScheduleState(),
 	}
 }

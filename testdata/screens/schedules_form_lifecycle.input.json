@@ -1,0 +1,283 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "scheduleLocalContext": {
+          "localTimezone": "UTC",
+          "tomorrowStartMs": "1791129600000",
+          "dayAfterTomorrowStartMs": "1791216000000"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": [
+          "req-list-1",
+          "att-list-1",
+          "req-mod-1",
+          "att-mod-1",
+          "req-set-1",
+          "att-set-1",
+          "req-crt-1",
+          "att-crt-1",
+          "att-crt-2",
+          "req-list-2",
+          "att-list-2"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "cacheBootstrapLoaded": {
+          "opId": "1"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "securitySnapshot": {
+          "opId": "3",
+          "isMember": true,
+          "selfDeviceId": "dev-1",
+          "authorityDeviceId": "dev-1",
+          "leaseEndMs": "1799999999000",
+          "trustedMachineIds": [
+            "m1"
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060040",
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060040"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060050",
+        "listsFetched": {
+          "opId": "4",
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "Workstation",
+                "protocolVersion": 16,
+                "scheduleRevision": "1",
+                "capabilities": {
+                  "scheduledTasks": true
+                },
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_PLAN",
+                    "defaultModeSource": "DEFAULT_MODE_SOURCE_DAEMON_SETTINGS"
+                  }
+                ]
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s1",
+              "machineId": "m1",
+              "lastSeq": "1",
+              "updatedMs": "1791078000000",
+              "meta": {
+                "id": "s1",
+                "cwd": "/Users/me/app",
+                "status": "SESSION_STATUS_EXITED",
+                "agent": "AGENT_CODEX"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060060",
+        "scheduleFormOpen": {
+          "mode": "SCHEDULE_FORM_MODE_CREATE_NEW",
+          "machineId": "m1",
+          "projectKey": "/Users/me/app"
+        }
+      },
+      "views": [
+        {
+          "name": "scheduleForm_1",
+          "screen": {
+            "scheduleForm": {}
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060070",
+        "scheduleFormSetMessage": {
+          "value": "Weekly audit. Run linters."
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060080",
+        "scheduleFormSelectModel": {
+          "mode": "APPROVAL_MODE_AUTO"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060090",
+        "scheduleFormUpdateTiming": {
+          "kind": "SCHEDULE_TIMING_KIND_WEEKLY",
+          "time": "09:30",
+          "zone": "Asia/Shanghai",
+          "replaceWeekdays": true,
+          "weekdays": [
+            1,
+            3
+          ],
+          "end": "SCHEDULE_TIMING_END_COUNT",
+          "count": "5",
+          "apply": true
+        }
+      },
+      "views": [
+        {
+          "name": "scheduleForm_2",
+          "screen": {
+            "scheduleForm": {}
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "scheduleFormSubmit": {}
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060110",
+        "commandOutcome": {
+          "requestId": "req-crt-1",
+          "attemptId": "att-crt-1",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "attemptBound": true,
+          "hashesMatch": false
+        }
+      },
+      "views": [
+        {
+          "name": "scheduleForm_3",
+          "screen": {
+            "scheduleForm": {}
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060120",
+        "scheduleRetryMutation": {
+          "formKey": "create:new"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060130",
+        "commandOutcome": {
+          "requestId": "req-crt-1",
+          "attemptId": "att-crt-2",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "attemptBound": true,
+          "hashesMatch": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "schedule": {
+              "resultJson": "eyJpZCI6InQtY3JlYXRlZCIsInJldmlzaW9uIjoxLCJzdGF0dXMiOiJhY3RpdmUiLCJzb3VyY2UiOiJjbGllbnQiLCJjcmVhdGVkX2F0IjoiMjAyNi0xMC0wNFQwMTo0MTowMFoiLCJ1cGRhdGVkX2F0IjoiMjAyNi0xMC0wNFQwMTo0MTowMFoiLCJuZXh0X3J1bl9hdCI6IjIwMjYtMTAtMDVUMDk6MzA6MDBaIiwic3BlYyI6eyJ0aXRsZSI6IldlZWtseSBhdWRpdCIsIm1lc3NhZ2UiOiJXZWVrbHkgYXVkaXQuIFJ1biBsaW50ZXJzLiIsInRyaWdnZXIiOnsidHlwZSI6ImNhbGVuZGFyIiwidGltZSI6IjA5OjMwIiwid2Vla2RheXMiOlsxLDNdLCJ0aW1lem9uZSI6IkFzaWEvU2hhbmdoYWkiLCJtYXhfcnVucyI6NX0sInRhcmdldCI6eyJ0eXBlIjoibmV3X3Nlc3Npb24iLCJjd2QiOiIvVXNlcnMvbWUvYXBwIiwiYWdlbnQiOiJjb2RleCIsIm1vZGUiOiJhdXRvIn19fQ=="
+            }
+          }
+        }
+      },
+      "views": [
+        {
+          "name": "scheduleForm_4",
+          "screen": {
+            "scheduleForm": {
+              "formKey": "create:new"
+            }
+          }
+        },
+        {
+          "name": "scheduleDetail_5",
+          "screen": {
+            "scheduleDetail": {
+              "machineId": "m1",
+              "taskId": "t-created"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -100,6 +100,9 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		if vm, ok, err := c.viewSettings(screen); ok || err != nil {
 			return vm, err
 		}
+		if vm, handled, err := c.viewSchedules(screen); handled {
+			return vm, err
+		}
 		return nil, errors.New("app: unsupported screen")
 	}
 }
@@ -112,14 +115,18 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 
 	consumed, syncRes := c.m.sync.HandleEvent(ev)
 	if consumed {
+		var hookEffects []*corev1.Effect
+		c.onSyncEventConsumed(ev, &hookEffects)
 		extra, extraDirty := c.processSyncStep(syncRes)
 		syncRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
-		effects := append(syncRes.Effects, extra...)
+		effects := append(syncRes.Effects, hookEffects...)
+		effects = append(effects, extra...)
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
 		effects = c.appendSettingsRender(effects, syncRes.Dirty)
 		effects = c.appendSessionRenderTarget(syncRes.Dirty, effects)
+		effects = c.m.mergeScheduleRender(effects)
 		return &corev1.EffectBatch{Effects: effects}
 	}
 
@@ -139,6 +146,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	}
 	effects = c.appendSettingsRender(effects, stepRes.Dirty)
 	effects = c.appendSessionRenderTarget(stepRes.Dirty, effects)
+	effects = c.m.mergeScheduleRender(effects)
 	return &corev1.EffectBatch{Effects: effects}
 }
 
@@ -152,6 +160,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 		c.processSessionSettled(sc, &effects, &dirty)
 		meta, hasMeta := c.m.pendingCmdMeta[sc.RequestID]
 		if hasMeta {
+			if isScheduleCmdKind(meta.kind) {
+				continue
+			}
 			delete(c.m.pendingCmdMeta, sc.RequestID)
 		} else if sc.SlotKey == "" {
 			continue
@@ -346,6 +357,8 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 		})
 		effects = append(effects, extraRes.Effects...)
 	}
+
+	c.processSchedulesSyncStep(res, &effects)
 
 	return effects, dirty
 }
@@ -749,6 +762,9 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 	default:
 		effects = append(effects, c.dispatchSettingsUI(ctx, ev)...)
 		effects = append(effects, c.dispatchSessionUI(ctx, ev)...)
+		if schedEffects, handled := c.dispatchSchedulesUI(ctx, ev); handled {
+			effects = append(effects, schedEffects...)
+		}
 	}
 
 	return effects

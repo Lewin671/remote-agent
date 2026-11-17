@@ -17,6 +17,10 @@ const (
 	cmdKindGetSettings
 	cmdKindListDirs
 	cmdKindCreateSession
+	cmdKindScheduleList
+	cmdKindScheduleCreate
+	cmdKindScheduleOperate
+	cmdKindScheduleUpdate
 )
 
 type cmdMeta struct {
@@ -24,24 +28,57 @@ type cmdMeta struct {
 	machineID  string
 	agent      v1.Agent
 	projectKey string
+	taskID     string
+	formKey    string
+	opName     string
+	revision   uint64
+}
+
+type scheduleDirty struct {
+	list   bool
+	detail bool
+	form   bool
+	strip  bool
+}
+
+type frozenSchedOp struct {
+	machineID string
+	cmd       *v1.Command
+	meta      cmdMeta
 }
 
 // Model holds the sync engine, screen state, and pending UI command metadata.
 type Model struct {
-	sync           *sync.Engine
-	state          *screens.State
-	pendingCmdMeta map[string]cmdMeta
-	settings       *screens.SettingsExtra
-	settingsDirty  settingsDirtyFlags
-	sessions       *sessionStore
+	sync                  *sync.Engine
+	state                 *screens.State
+	pendingCmdMeta        map[string]cmdMeta
+	settings              *screens.SettingsExtra
+	settingsDirty         settingsDirtyFlags
+	sessions              *sessionStore
+	schedActive           bool
+	schedDirty            scheduleDirty
+	nextScheduleCacheOpID uint64
+	frozenSchedOps        map[string]frozenSchedOp
 }
 
 func newModel() *Model {
-	return &Model{
+	m := &Model{
 		sync:           sync.NewEngine(),
 		state:          screens.NewState(),
 		pendingCmdMeta: make(map[string]cmdMeta),
+		frozenSchedOps: make(map[string]frozenSchedOp),
 	}
+	m.state.Schedules.SessionEvents = func(sid string) ([]*v1.Event, bool) {
+		if sid == "" {
+			return nil, false
+		}
+		var events []*v1.Event
+		if buf := m.sync.Buffer(sid); buf != nil {
+			events = buf.ShownEvents()
+		}
+		return events, m.sync.SessionEventsSettled(sid)
+	}
+	return m
 }
 
 func (m *Model) ensureDraft(key string) *screens.NewSessionDraft {
