@@ -810,6 +810,7 @@
 "queue_unrecognized" = "认不出输入框，已暂停";
 "queue_when_ready" = "就绪后发送";
 "quota_account" = " · 账户 %1$@";
+"quota_agy_waiting" = "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。";
 "quota_awaiting_update" = "等待更新";
 "quota_exhausted" = "%1$@ · %2$@额度已用尽，不会自动切换 CLI 或模型";
 "quota_exhausted_quota" = "已用尽";

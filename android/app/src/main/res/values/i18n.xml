@@ -918,6 +918,7 @@
     <string name="queue_unrecognized" formatted="false">"认不出输入框，已暂停"</string>
     <string name="queue_when_ready" formatted="false">"就绪后发送"</string>
     <string name="quota_account">" · 账户 %1$s"</string>
+    <string name="quota_agy_waiting" formatted="false">"尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。"</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" 可在本机 Claude Code 中查看 /usage。"</string>
     <string name="quota_awaiting_update" formatted="false">"等待更新"</string>
     <plurals name="quota_days">

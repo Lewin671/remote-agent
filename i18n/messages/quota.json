@@ -1017,5 +1017,78 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "quota.agy_waiting",
+    "zh-CN": "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。",
+    "en": "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.",
+    "notes": "账户额度页；三端及 Go 共用。Antigravity 尚无额度记录时的等待说明。无变量。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.agy_probe_timeout",
+    "zh-CN": "查询 Antigravity 额度超时。",
+    "en": "Timed out checking Antigravity quota.",
+    "notes": "账户额度页；Go daemon 探测 Antigravity /usage 超时原因。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.agy_probe_not_logged_in",
+    "zh-CN": "Antigravity 尚未登录，无法读取额度。",
+    "en": "Antigravity is not signed in, so quota cannot be read.",
+    "notes": "账户额度页；Go daemon 探测 Antigravity /usage 未登录原因。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.agy_probe_unsupported",
+    "zh-CN": "当前 Antigravity CLI 版本不支持 /usage 额度查询。",
+    "en": "This Antigravity CLI version does not support /usage quota lookup.",
+    "notes": "账户额度页；Go daemon 探测 Antigravity /usage 命令不存在原因。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.agy_probe_failed",
+    "zh-CN": "无法读取 Antigravity 额度，请检查 CLI 状态或网络连接。",
+    "en": "Could not read Antigravity quota. Check the CLI status and network connection.",
+    "notes": "账户额度页；Go daemon 探测 Antigravity /usage 通用失败原因。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

@@ -544,6 +544,79 @@
       },
       "zh-CN": "读不到这台电脑的状态"
     },
+    "quota.agy_probe_failed": {
+      "en": "Could not read Antigravity quota. Check the CLI status and network connection.",
+      "key": "quota.agy_probe_failed",
+      "notes": "账户额度页；Go daemon 探测 Antigravity /usage 通用失败原因。无变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "无法读取 Antigravity 额度，请检查 CLI 状态或网络连接。"
+    },
+    "quota.agy_probe_not_logged_in": {
+      "en": "Antigravity is not signed in, so quota cannot be read.",
+      "key": "quota.agy_probe_not_logged_in",
+      "notes": "账户额度页；Go daemon 探测 Antigravity /usage 未登录原因。无变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "Antigravity 尚未登录，无法读取额度。"
+    },
+    "quota.agy_probe_timeout": {
+      "en": "Timed out checking Antigravity quota.",
+      "key": "quota.agy_probe_timeout",
+      "notes": "账户额度页；Go daemon 探测 Antigravity /usage 超时原因。无变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "查询 Antigravity 额度超时。"
+    },
+    "quota.agy_probe_unsupported": {
+      "en": "This Antigravity CLI version does not support /usage quota lookup.",
+      "key": "quota.agy_probe_unsupported",
+      "notes": "账户额度页；Go daemon 探测 Antigravity /usage 命令不存在原因。无变量。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "当前 Antigravity CLI 版本不支持 /usage 额度查询。"
+    },
+    "quota.agy_waiting": {
+      "en": "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.",
+      "key": "quota.agy_waiting",
+      "notes": "账户额度页；三端及 Go 共用。Antigravity 尚无额度记录时的等待说明。无变量。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。"
+    },
     "quota.codex_waiting": {
       "en": "No Codex quota recorded on this computer in the last 8 days. Run Codex in any terminal, or have another agent call it, and this page updates within a minute.",
       "key": "quota.codex_waiting",

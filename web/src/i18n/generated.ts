@@ -686,6 +686,7 @@ export interface MessageArgs {
   "queue.unrecognized": { [name: string]: never };
   "queue.when_ready": { [name: string]: never };
   "quota.account": { value: string };
+  "quota.agy_waiting": { [name: string]: never };
   "quota.awaiting_update": { [name: string]: never };
   "quota.days": { count: number };
   "quota.exhausted": { name: string; window: string };
@@ -2585,6 +2586,7 @@ export const messages = {
     "queue.unrecognized": "Input field not recognized; paused",
     "queue.when_ready": "Send when ready",
     "quota.account": " · Account {value}",
+    "quota.agy_waiting": "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.",
     "quota.awaiting_update": "Awaiting update",
     "quota.days": {
       "forms": {
@@ -4737,6 +4739,7 @@ export const messages = {
     "queue.unrecognized": "认不出输入框，已暂停",
     "queue.when_ready": "就绪后发送",
     "quota.account": " · 账户 {value}",
+    "quota.agy_waiting": "尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。",
     "quota.awaiting_update": "等待更新",
     "quota.days": {
       "forms": {

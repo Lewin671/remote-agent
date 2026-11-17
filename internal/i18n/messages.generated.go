@@ -237,6 +237,26 @@ func MachineStatusUnavailable(locale string) string {
 	return render(locale, "machine_status.unavailable", map[string]any{})
 }
 
+func QuotaAgyProbeFailed(locale string) string {
+	return render(locale, "quota.agy_probe_failed", map[string]any{})
+}
+
+func QuotaAgyProbeNotLoggedIn(locale string) string {
+	return render(locale, "quota.agy_probe_not_logged_in", map[string]any{})
+}
+
+func QuotaAgyProbeTimeout(locale string) string {
+	return render(locale, "quota.agy_probe_timeout", map[string]any{})
+}
+
+func QuotaAgyProbeUnsupported(locale string) string {
+	return render(locale, "quota.agy_probe_unsupported", map[string]any{})
+}
+
+func QuotaAgyWaiting(locale string) string {
+	return render(locale, "quota.agy_waiting", map[string]any{})
+}
+
 func QuotaCodexWaiting(locale string) string {
 	return render(locale, "quota.codex_waiting", map[string]any{})
 }

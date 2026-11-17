@@ -810,6 +810,7 @@
 "queue_unrecognized" = "Input field not recognized; paused";
 "queue_when_ready" = "Send when ready";
 "quota_account" = " · Account %1$@";
+"quota_agy_waiting" = "No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer.";
 "quota_awaiting_update" = "Awaiting update";
 "quota_exhausted" = "%1$@ · %2$@ quota is exhausted. CLI and model will not switch automatically.";
 "quota_exhausted_quota" = "Exhausted";

@@ -3063,5 +3063,65 @@
     "path": "web/src/views/ScheduleConfig.tsx",
     "literal": "(); const [picked, setPicked] = useState",
     "reason": "Non-UI identifier, CSS class, protobuf case, internal invariant, or JSX TypeScript generic false positive."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy /usage unsupported",
+    "reason": "Internal sentinel error mapped to localized i18n quota.agy_probe_* message in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy not logged in",
+    "reason": "Internal sentinel error mapped to localized i18n quota.agy_probe_* message in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy /usage output exceeded 1 MiB",
+    "reason": "Internal sentinel error mapped to localized i18n quota.agy_probe_* message in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "decode agy usage json: %w",
+    "reason": "Internal probe parse error mapped to localized i18n quota.agy_probe_failed in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "SUCCESS",
+    "reason": "Protocol/JSON field constant in agy /usage output; never rendered to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy /usage status %q",
+    "reason": "Internal probe parse error mapped to localized i18n quota.agy_probe_failed in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "usage",
+    "reason": "Protocol/JSON command name constant in agy /usage output; never rendered to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy /usage returned no groups",
+    "reason": "Internal probe parse error mapped to localized i18n quota.agy_probe_failed in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy /usage returned no buckets",
+    "reason": "Internal probe parse error mapped to localized i18n quota.agy_probe_failed in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy binary not found: %w",
+    "reason": "Internal probe exec error mapped to localized i18n quota.agy_probe_failed in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "agy /usage returned empty output",
+    "reason": "Internal probe exec error mapped to localized i18n quota.agy_probe_failed in daemon; never rendered directly to UI."
+  },
+  {
+    "path": "internal/antigravity/usage.go",
+    "literal": "applyAuthResult:",
+    "reason": "Log line prefix matched inside agy CLI log when extracting email fingerprint; never rendered to UI."
   }
 ]

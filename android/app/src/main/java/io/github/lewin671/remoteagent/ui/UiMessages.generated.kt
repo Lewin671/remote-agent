@@ -2764,6 +2764,9 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
             val value = message.args.getValue("value") as String
             resources.getString(R.string.quota_account, value)
         }
+        "quota.agy_waiting" -> {
+            resources.getString(R.string.quota_agy_waiting)
+        }
         "quota.android_you_can_view_usage_in_claude_code_on_this_computer" -> {
             resources.getString(R.string.quota_android_you_can_view_usage_in_claude_code_on_this_computer)
         }
@@ -3062,17 +3065,17 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
             val total = message.args.getValue("total") as String
             resources.getQuantityString(R.plurals.schedule_android_large_every_seconds, count, count, total)
         }
-        "schedule.android_large_runs_total" -> {
-            val count = message.args.getValue("count") as Int
-            val total = message.args.getValue("total") as String
-            resources.getQuantityString(R.plurals.schedule_android_large_runs_total, count, count, total)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "schedule.android_large_runs_total" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_runs_total, count, count, total)
+        }
         "schedule.android_minutes" -> {
             resources.getString(R.string.schedule_android_minutes)
         }
@@ -3565,15 +3568,15 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.read_only_busy" -> {
             resources.getString(R.string.schedule_read_only_busy)
         }
-        "schedule.read_only_unconfirmed" -> {
-            resources.getString(R.string.schedule_read_only_unconfirmed)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "schedule.read_only_unconfirmed" -> {
+            resources.getString(R.string.schedule_read_only_unconfirmed)
+        }
         "schedule.reading_tasks" -> {
             resources.getString(R.string.schedule_reading_tasks)
         }
@@ -4046,15 +4049,15 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_no_computers_yet" -> {
             resources.getString(R.string.security_android_no_computers_yet)
         }
-        "security.android_no_device_has_joined_yet" -> {
-            resources.getString(R.string.security_android_no_device_has_joined_yet)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.android_no_device_has_joined_yet" -> {
+            resources.getString(R.string.security_android_no_device_has_joined_yet)
+        }
         "security.android_not_read_yet" -> {
             resources.getString(R.string.security_android_not_read_yet)
         }
@@ -4507,15 +4510,15 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.finish_the_current_security_operation_first" -> {
             resources.getString(R.string.security_finish_the_current_security_operation_first)
         }
-        "security.finish_the_original_security_operation_first" -> {
-            resources.getString(R.string.security_finish_the_original_security_operation_first)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.finish_the_original_security_operation_first" -> {
+            resources.getString(R.string.security_finish_the_original_security_operation_first)
+        }
         "security.generate_and_save_a_recovery_code_on_the_successor" -> {
             resources.getString(R.string.security_generate_and_save_a_recovery_code_on_the_successor)
         }
@@ -4968,17 +4971,17 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.use_when_the_managing_client_is_lost" -> {
             resources.getString(R.string.security_use_when_the_managing_client_is_lost)
         }
-        "security.used" -> {
-            val detail = message.args.getValue("detail") as String
-            val value = message.args.getValue("value") as String
-            resources.getString(R.string.security_used, detail, value)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.used" -> {
+            val detail = message.args.getValue("detail") as String
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_used, detail, value)
+        }
         "security.verify_and_continue" -> {
             resources.getString(R.string.security_verify_and_continue)
         }
@@ -5483,15 +5486,15 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.android_code_paths_commands_and_terminal" -> {
             resources.getString(R.string.settings_android_code_paths_commands_and_terminal)
         }
-        "settings.android_compare_these_4_patterns_on_the_new_device_and_confirm" -> {
-            resources.getString(R.string.settings_android_compare_these_4_patterns_on_the_new_device_and_confirm)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.android_compare_these_4_patterns_on_the_new_device_and_confirm" -> {
+            resources.getString(R.string.settings_android_compare_these_4_patterns_on_the_new_device_and_confirm)
+        }
         "settings.android_core_libraries_bsd_3_clause" -> {
             resources.getString(R.string.settings_android_core_libraries_bsd_3_clause)
         }
@@ -5964,15 +5967,15 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.the_browser_denied_notification_permission" -> {
             resources.getString(R.string.settings_the_browser_denied_notification_permission)
         }
-        "settings.the_device_may_have_been_removed_the_service_reset" -> {
-            resources.getString(R.string.settings_the_device_may_have_been_removed_the_service_reset)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.the_device_may_have_been_removed_the_service_reset" -> {
+            resources.getString(R.string.settings_the_device_may_have_been_removed_the_service_reset)
+        }
         "settings.the_new_device_has_not_finished_joining_if_it" -> {
             resources.getString(R.string.settings_the_new_device_has_not_finished_joining_if_it)
         }
@@ -6487,15 +6490,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "tools.background_agent" -> {
             resources.getString(R.string.tools_background_agent)
         }
-        "tools.background_returned" -> {
-            resources.getString(R.string.tools_background_returned)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "tools.background_returned" -> {
+            resources.getString(R.string.tools_background_returned)
+        }
         "tools.background_terminal" -> {
             resources.getString(R.string.tools_background_terminal)
         }

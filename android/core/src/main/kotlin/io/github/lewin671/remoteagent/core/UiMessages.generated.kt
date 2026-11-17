@@ -823,6 +823,7 @@ object UiMessages {
     fun queueUnrecognized(): UiMessage = UiMessage("queue.unrecognized", emptyMap())
     fun queueWhenReady(): UiMessage = UiMessage("queue.when_ready", emptyMap())
     fun quotaAccount(value: String): UiMessage = UiMessage("quota.account", mapOf("value" to value))
+    fun quotaAgyWaiting(): UiMessage = UiMessage("quota.agy_waiting", emptyMap())
     fun quotaAndroidYouCanViewUsageInClaudeCodeOnThisComputer(): UiMessage = UiMessage("quota.android_you_can_view_usage_in_claude_code_on_this_computer", emptyMap())
     fun quotaAwaitingUpdate(): UiMessage = UiMessage("quota.awaiting_update", emptyMap())
     fun quotaDays(count: Int): UiMessage = UiMessage("quota.days", mapOf("count" to count))

@@ -967,6 +967,7 @@
     <string name="queue_unrecognized" formatted="false">"Input field not recognized; paused"</string>
     <string name="queue_when_ready" formatted="false">"Send when ready"</string>
     <string name="quota_account">" · Account %1$s"</string>
+    <string name="quota_agy_waiting" formatted="false">"No quota received from Antigravity. Quota is checked automatically after Antigravity runs on this computer."</string>
     <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" You can view /usage in Claude Code on this computer."</string>
     <string name="quota_awaiting_update" formatted="false">"Awaiting update"</string>
     <plurals name="quota_days">
