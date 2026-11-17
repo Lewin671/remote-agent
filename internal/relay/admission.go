@@ -59,16 +59,18 @@ type pendingExecution struct {
 	active   int
 	waiters  int
 	legs     []*inflightLeg
-	stops    []func() bool
-	finished bool
+	stops     []func() bool
+	abandoned bool
+	finished  bool
 	body     []byte
 	err      error
 	retry    bool
 }
 
 type commandAdmission struct {
-	authenticate    func(deviceauth.Wire) (*deviceauth.Authenticated, error)
-	reserveWaiter   func(string) (func(), bool)
+	authenticate     func(deviceauth.Wire) (*deviceauth.Authenticated, error)
+	reserveWaiter    func(string) (func(), bool)
+	testBeforeFinish func(*pendingExecution)
 	endpoint        *endpoint
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -375,11 +377,21 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 }
 
+func (a *commandAdmission) abandonInflightLocked(pc *pendingExecution) {
+	pc.abandoned = true
+	if a.inflight[pc.key] == pc {
+		delete(a.inflight, pc.key)
+	}
+}
+
 func (a *commandAdmission) watchInflight(waiting context.Context, pc *pendingExecution) func() bool {
 	stop := context.AfterFunc(waiting, func() {
 		a.mu.Lock()
 		pc.active--
 		shouldCancel := pc.active == 0 && !pc.finished
+		if shouldCancel {
+			a.abandonInflightLocked(pc)
+		}
 		a.mu.Unlock()
 		if shouldCancel {
 			pc.cancel()
@@ -403,7 +415,7 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 			a.mu.Unlock()
 			return nil, nil, false
 		}
-		if pc := a.inflight[p.Key()]; pc != nil {
+		if pc := a.inflight[p.Key()]; pc != nil && !pc.abandoned {
 			if pc.payload != p.Payload() {
 				a.mu.Unlock()
 				a.result(route, p, nil, p.Conflict(), false)
@@ -423,13 +435,13 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 				return nil, nil, false
 			}
 			pc = a.inflight[p.Key()]
-			if pc == nil {
+			if pc == nil || pc.abandoned {
 				a.mu.Unlock()
 				releaseWaiter()
 				if a.existing(waiting, route, p) {
 					return nil, nil, false
 				}
-				// Prior owner exited pre-admission without recording in Endpoint; retry to claim or join.
+				// Prior owner aborted pre-admission (or exited) without durable state in Endpoint; retry to claim execution.
 				continue
 			}
 			if pc.payload != p.Payload() {
@@ -505,6 +517,9 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 }
 
 func (a *commandAdmission) finishInflight(pc *pendingExecution, body []byte, err error, raw, retry bool) {
+	if a.testBeforeFinish != nil {
+		a.testBeforeFinish(pc)
+	}
 	a.mu.Lock()
 	if pc.finished {
 		a.mu.Unlock()
@@ -706,6 +721,7 @@ func (a *commandAdmission) acceptOptionsForInflight(pc *pendingExecution) device
 		if liveDirect != nil {
 			return liveDirect, true
 		}
+		a.abandonInflightLocked(pc)
 		return nil, false
 	}
 	return options

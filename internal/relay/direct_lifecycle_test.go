@@ -1347,6 +1347,16 @@ func TestClaimInflightLockDropClaimsExecutionWhenPriorOwnerExitsPreAdmission(t *
 	<-blockEntered
 
 	sendEnv := sealCmd("req-lockdrop-11111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	wireSend, err := deviceauth.FromEnvelope(sendEnv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authSend, err := ep.security.endpoint.Authenticate(wireSend, nil, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendKey := authSend.Key()
+
 	var allowDirect atomic.Bool
 	allowDirect.Store(true)
 	directCh := make(chan *pb.ForwardReply, 1)
@@ -1357,13 +1367,14 @@ func TestClaimInflightLockDropClaimsExecutionWhenPriorOwnerExitsPreAdmission(t *
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		ep.admission.mu.Lock()
-		n := len(ep.admission.inflight)
+		_, has := ep.admission.inflight[sendKey]
 		ep.admission.mu.Unlock()
-		if n == 1 {
+		if has {
 			break
 		}
 		time.Sleep(2 * time.Millisecond)
 	}
+	_ = blockerEnv
 
 	// Hook ReserveWaiter so while the second leg unlocks a.mu, Direct closes pre-admission,
 	// deleting a.inflight[key] with no durable admission in deviceauth.Endpoint.
@@ -1401,5 +1412,161 @@ func TestClaimInflightLockDropClaimsExecutionWhenPriorOwnerExitsPreAdmission(t *
 	}
 	if got := execCount.Load(); got != 1 {
 		t.Fatalf("expected 1 execution after claiming dropped inflight key, got %d", got)
+	}
+}
+
+func TestClaimInflightJoinsDynamicPeerBindingFailedOwner(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, binding, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	close(sendRelease)
+
+	blockerEnv := sealCmd("req-blocker-dynbind-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	sendEnv := sealCmd("req-dynbind-pre-fin-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	wireSend, err := deviceauth.FromEnvelope(sendEnv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authSend, err := ep.security.endpoint.Authenticate(wireSend, nil, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendKey := authSend.Key()
+
+	var allowDirect atomic.Bool
+	allowDirect.Store(true)
+	ep.dispatchDirect(ctx, binding, 1, allowDirect.Load, sendEnv, func(*pb.ForwardReply) {})
+	for wDeadline := time.Now().Add(2 * time.Second); time.Now().Before(wDeadline); {
+		ep.admission.mu.Lock()
+		_, has := ep.admission.inflight[sendKey]
+		ep.admission.mu.Unlock()
+		if has {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	inReserve := make(chan struct{})
+	releaseReserve := make(chan struct{})
+	bindingFailedAtFinish := make(chan struct{})
+	releaseFinish := make(chan struct{})
+
+	origReserve := ep.admission.reserveWaiter
+	var hookedReserve atomic.Bool
+	ep.admission.reserveWaiter = func(key string) (func(), bool) {
+		if key == sendKey && hookedReserve.CompareAndSwap(false, true) {
+			close(inReserve)
+			<-releaseReserve
+		}
+		return origReserve(key)
+	}
+	var hookedFinish atomic.Bool
+	ep.admission.testBeforeFinish = func(pc *pendingExecution) {
+		if pc.key == sendKey && hookedFinish.CompareAndSwap(false, true) {
+			close(bindingFailedAtFinish)
+			<-releaseFinish
+		}
+	}
+
+	relayCh := make(chan *pb.ForwardReply, 1)
+	ep.dispatch(ctx, &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(rep *pb.ForwardReply) { relayCh <- rep })
+
+	<-inReserve
+	allowDirect.Store(false)
+	close(blockRelease)
+	<-bindingFailedAtFinish
+	// Resume ReserveWaiter BEFORE finishInflight removes pc from a.inflight.
+	close(releaseReserve)
+	time.Sleep(25 * time.Millisecond)
+	close(releaseFinish)
+
+	select {
+	case rep := <-relayCh:
+		assertExecutedSendReply(t, clientEndpoint, rep)
+	case <-time.After(3 * time.Second):
+		t.Fatal("healthy relay leg timed out")
+	}
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected 1 execution when direct failed DynamicPeerBinding pre-finishInflight, got %d", got)
+	}
+}
+
+func TestClaimInflightJoinsCancelledPreAdmissionOwner(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, _, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	close(sendRelease)
+
+	blockerEnv := sealCmd("req-blocker-cancelwin-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	sendEnv := sealCmd("req-cancelwin-pre-fin-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	wireSend, err := deviceauth.FromEnvelope(sendEnv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authSend, err := ep.security.endpoint.Authenticate(wireSend, nil, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sendKey := authSend.Key()
+
+	ownerCtx, cancelOwner := context.WithCancel(ctx)
+	defer cancelOwner()
+	ep.dispatch(ownerCtx, &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(*pb.ForwardReply) {})
+	for wDeadline := time.Now().Add(2 * time.Second); time.Now().Before(wDeadline); {
+		ep.admission.mu.Lock()
+		_, has := ep.admission.inflight[sendKey]
+		ep.admission.mu.Unlock()
+		if has {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	inReserve := make(chan struct{})
+	releaseReserve := make(chan struct{})
+	cancelReachedFinish := make(chan struct{})
+	releaseFinish := make(chan struct{})
+
+	origReserve := ep.admission.reserveWaiter
+	var hookedReserve atomic.Bool
+	ep.admission.reserveWaiter = func(key string) (func(), bool) {
+		if key == sendKey && hookedReserve.CompareAndSwap(false, true) {
+			close(inReserve)
+			<-releaseReserve
+		}
+		return origReserve(key)
+	}
+	var hookedFinish atomic.Bool
+	ep.admission.testBeforeFinish = func(pc *pendingExecution) {
+		if pc.key == sendKey && hookedFinish.CompareAndSwap(false, true) {
+			close(cancelReachedFinish)
+			<-releaseFinish
+		}
+	}
+
+	relayCh := make(chan *pb.ForwardReply, 1)
+	ep.dispatch(ctx, &pb.ForwardCall{CallId: 3, Command: sendEnv}, func(rep *pb.ForwardReply) { relayCh <- rep })
+
+	<-inReserve
+	cancelOwner()
+	<-cancelReachedFinish
+	// Resume ReserveWaiter after watchInflight cancelled waitCtx but BEFORE j.Reject -> finishInflight removes pc.
+	close(releaseReserve)
+	time.Sleep(25 * time.Millisecond)
+	close(releaseFinish)
+	close(blockRelease)
+
+	select {
+	case rep := <-relayCh:
+		assertExecutedSendReply(t, clientEndpoint, rep)
+	case <-time.After(3 * time.Second):
+		t.Fatal("healthy relay leg timed out")
+	}
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected 1 execution when prior owner cancelled pre-finishInflight, got %d", got)
 	}
 }
