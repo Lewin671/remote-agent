@@ -98,30 +98,6 @@ fun NewSessionBox(
     RefreshDraftUploads(images, remote, machine, blocked)
     val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }), videos = filesSupported(machine?.let { state.machines[it] }))
 
-    LaunchedEffect(remote, key) {
-        remote.coreHost.attachmentsSettledEvents.collect { settled ->
-            if (settled.projectKey != key) return@collect
-            val st = Starts.of(key)
-            val taken = st.taken
-            if (settled.consumed) {
-                images.detach(taken)
-                taken.forEach { it.release(abort = false) }
-                if (images.text.value.trim() == st.prompt) images.text.value = ""
-            } else {
-                taken.forEach { it.allowAbort(st.transferOwner) }
-            }
-            st.taken = emptyList()
-            st.frozen = false
-        }
-    }
-    LaunchedEffect(remote, key) {
-        remote.coreNavigation.collect { navEff ->
-            if (navEff.route == NavigateRoute.NAVIGATE_ROUTE_SESSION && navEff.projectKey == key && navEff.sessionId.isNotEmpty()) {
-                Outbox.rememberPrompt(navEff.sessionId, Starts.of(key).prompt)
-            }
-        }
-    }
-
     val uploadsReady =
         !images.restoring &&
             !images.readingFiles &&
@@ -626,4 +602,23 @@ object Starts {
     fun of(project: String): Start = byProject.getOrPut(project) { Start() }
 
     fun clear() = byProject.clear()
+}
+
+internal fun settleNewSessionStart(settled: io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect) {
+    val key = settled.projectKey
+    if (key.isEmpty()) return
+    val images = ImageDrafts.forProject(key)
+    val st = Starts.of(key)
+    val taken = st.taken
+    if (settled.consumed) {
+        images.detach(taken)
+        taken.forEach { it.release(abort = false) }
+        images.whenRestored {
+            if (images.text.value.trim() == st.prompt) images.text.value = ""
+        }
+    } else {
+        taken.forEach { it.allowAbort(st.transferOwner) }
+    }
+    st.taken = emptyList()
+    st.frozen = false
 }

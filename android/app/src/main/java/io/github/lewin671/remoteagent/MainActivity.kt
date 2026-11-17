@@ -225,10 +225,22 @@ class MainActivity : ComponentActivity() {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
             LaunchedEffect(remote) {
+                launch {
+                    remote.coreHost.attachmentsSettledEvents.collect { settled ->
+                        io.github.lewin671.remoteagent.ui.settleNewSessionStart(settled)
+                    }
+                }
                 remote.coreNavigation.collect { eff ->
                     when (eff.route) {
-                        io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_SESSION ->
+                        io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_SESSION -> {
+                            if (eff.projectKey.isNotEmpty() && eff.sessionId.isNotEmpty()) {
+                                io.github.lewin671.remoteagent.ui.Outbox.rememberPrompt(
+                                    eff.sessionId,
+                                    io.github.lewin671.remoteagent.ui.Starts.of(eff.projectKey).prompt,
+                                )
+                            }
                             actions.startedSession(eff.sessionId)
+                        }
                         io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_PROJECT ->
                             actions.projectNew(eff.projectKey)
                         io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_MACHINE_SETTINGS ->

@@ -43,4 +43,27 @@ class AccountMemoryTest {
         AccountMemory.clear()
         assertEmpty()
     }
+
+    @Test
+    fun settleNewSessionStartClearsDraftOutsideComposerLifetime() {
+        AccountMemory.use("https://a device-1")
+        val key = "/work/app"
+        val images = ImageDrafts.forProject(key)
+        images.text.value = "新建一条会话草稿"
+        val st = Starts.of(key)
+        st.prompt = "新建一条会话草稿"
+        st.frozen = true
+
+        settleNewSessionStart(
+            io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect.newBuilder()
+                .setProjectKey(key)
+                .setRequestId("req-1")
+                .setConsumed(true)
+                .build(),
+        )
+
+        assertEquals("", images.text.value)
+        assertFalse(st.frozen)
+        assertTrue(st.taken.isEmpty())
+    }
 }
