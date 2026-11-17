@@ -81,5 +81,126 @@ public interface ViewModelOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SessionDataView getSessionData();
 
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   * @return Whether the settings field is set.
+   */
+  boolean hasSettings();
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   * @return The settings.
+   */
+  io.github.lewin671.remoteagent.core.proto.SettingsViewModel getSettings();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   * @return Whether the machineStatus field is set.
+   */
+  boolean hasMachineStatus();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   * @return The machineStatus.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel getMachineStatus();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   * @return Whether the machineSettings field is set.
+   */
+  boolean hasMachineSettings();
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   * @return The machineSettings.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel getMachineSettings();
+
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   * @return Whether the quota field is set.
+   */
+  boolean hasQuota();
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   * @return The quota.
+   */
+  io.github.lewin671.remoteagent.core.proto.QuotaViewModel getQuota();
+
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   * @return Whether the devices field is set.
+   */
+  boolean hasDevices();
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   * @return The devices.
+   */
+  io.github.lewin671.remoteagent.core.proto.DevicesViewModel getDevices();
+
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   * @return Whether the clientDetail field is set.
+   */
+  boolean hasClientDetail();
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   * @return The clientDetail.
+   */
+  io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel getClientDetail();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   * @return Whether the session field is set.
+   */
+  boolean hasSession();
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   * @return The session.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionViewModel getSession();
+
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   * @return Whether the schedules field is set.
+   */
+  boolean hasSchedules();
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   * @return The schedules.
+   */
+  io.github.lewin671.remoteagent.core.proto.SchedulesViewModel getSchedules();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   * @return Whether the scheduleDetail field is set.
+   */
+  boolean hasScheduleDetail();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   * @return The scheduleDetail.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel getScheduleDetail();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   * @return Whether the scheduleForm field is set.
+   */
+  boolean hasScheduleForm();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   * @return The scheduleForm.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel getScheduleForm();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   * @return Whether the scheduleSessionStrip field is set.
+   */
+  boolean hasScheduleSessionStrip();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   * @return The scheduleSessionStrip.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel getScheduleSessionStrip();
+
   public io.github.lewin671.remoteagent.core.proto.ViewModel.ViewCase getViewCase();
 }

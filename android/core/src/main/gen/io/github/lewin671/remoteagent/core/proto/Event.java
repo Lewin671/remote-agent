@@ -70,6 +70,66 @@ public  final class Event extends
     NEW_SESSION_RETRY_SAVE_CONFIG(57),
     NEW_SESSION_SUBMIT(58),
     NEW_SESSION_ABANDON_START(59),
+    MACHINE_STATUS_WATCH(350),
+    MACHINE_STATUS_RETRY(351),
+    MACHINE_STATUS_TAB(352),
+    MACHINE_STATUS_SCRUB(353),
+    MACHINE_STATUS_CLEANUP(354),
+    MACHINE_STATUS_POLL_TICK(355),
+    MACHINE_SETTINGS_OPEN(360),
+    MACHINE_SETTINGS_SELECT_AGENT(361),
+    UPDATE_MACHINE_AGENT_DEFAULTS(362),
+    UPDATE_MACHINE_DAEMON_SETTINGS(363),
+    UPDATE_DIRECT_PREFERENCE(364),
+    MACHINE_DIRECT_STATUS(365),
+    UPDATE_CLIENT_NAME(370),
+    SET_NOTIFICATION_PREF(375),
+    SET_APPEARANCE_PREF(376),
+    CONN_CHECK_STATUS(377),
+    CLIENT_UPDATE_STATE(378),
+    CHECK_FOR_UPDATES(379),
+    SESSION_SUBMIT_COMMAND(200),
+    SESSION_ABANDON_COMMAND(201),
+    SESSION_OPEN(202),
+    SESSION_DISMISS_OUTGOING(203),
+    SESSION_RESTORE_OUTGOING(204),
+    SESSION_SET_QUESTION_INDEX(205),
+    SESSION_LOAD_EARLIER(206),
+    SCHEDULE_CACHE_LOADED(300),
+    SCHEDULE_SEEN_LOADED(301),
+    SCHEDULE_LOCAL_CONTEXT(302),
+    SCHEDULE_REFRESH(303),
+    SCHEDULE_SET_VISIBLE_SESSION(304),
+    SCHEDULE_LIST_OPEN(310),
+    SCHEDULE_SELECT_TASK(311),
+    SCHEDULE_TOGGLE_ENDED(312),
+    SCHEDULE_MARK_READ(313),
+    SCHEDULE_MARK_UNREAD(314),
+    SCHEDULE_DETAIL_OPEN(320),
+    SCHEDULE_DETAIL_HIDE(321),
+    SCHEDULE_DETAIL_CLOSE(322),
+    SCHEDULE_DETAIL_SHOW_LATEST_RESULT(323),
+    SCHEDULE_DETAIL_TOGGLE_QUIET_GROUP(324),
+    SCHEDULE_DETAIL_SHOW_ALL_RUNS(325),
+    SCHEDULE_DETAIL_OPEN_RUN(326),
+    SCHEDULE_OPERATE(330),
+    SCHEDULE_RENAME(331),
+    SCHEDULE_SET_NOTIFY(332),
+    SCHEDULE_UPDATE_MESSAGE(333),
+    SCHEDULE_ABANDON_MUTATION(334),
+    SCHEDULE_RETRY_MUTATION(335),
+    SCHEDULE_FORM_OPEN(338),
+    SCHEDULE_FORM_CLOSE(339),
+    SCHEDULE_FORM_SET_MESSAGE(340),
+    SCHEDULE_FORM_SET_TITLE(341),
+    SCHEDULE_FORM_SET_NOTIFY(342),
+    SCHEDULE_FORM_SELECT_PROJECT(343),
+    SCHEDULE_FORM_SELECT_MACHINE(344),
+    SCHEDULE_FORM_SELECT_AGENT(345),
+    SCHEDULE_FORM_SELECT_MODEL(346),
+    SCHEDULE_FORM_UPDATE_TIMING(347),
+    SCHEDULE_FORM_SUBMIT(348),
+    SCHEDULE_FORM_RETRY_MODELS(349),
     EVENT_NOT_SET(0);
     private final int value;
     private EventCase(int value) {
@@ -134,6 +194,66 @@ public  final class Event extends
         case 57: return NEW_SESSION_RETRY_SAVE_CONFIG;
         case 58: return NEW_SESSION_SUBMIT;
         case 59: return NEW_SESSION_ABANDON_START;
+        case 350: return MACHINE_STATUS_WATCH;
+        case 351: return MACHINE_STATUS_RETRY;
+        case 352: return MACHINE_STATUS_TAB;
+        case 353: return MACHINE_STATUS_SCRUB;
+        case 354: return MACHINE_STATUS_CLEANUP;
+        case 355: return MACHINE_STATUS_POLL_TICK;
+        case 360: return MACHINE_SETTINGS_OPEN;
+        case 361: return MACHINE_SETTINGS_SELECT_AGENT;
+        case 362: return UPDATE_MACHINE_AGENT_DEFAULTS;
+        case 363: return UPDATE_MACHINE_DAEMON_SETTINGS;
+        case 364: return UPDATE_DIRECT_PREFERENCE;
+        case 365: return MACHINE_DIRECT_STATUS;
+        case 370: return UPDATE_CLIENT_NAME;
+        case 375: return SET_NOTIFICATION_PREF;
+        case 376: return SET_APPEARANCE_PREF;
+        case 377: return CONN_CHECK_STATUS;
+        case 378: return CLIENT_UPDATE_STATE;
+        case 379: return CHECK_FOR_UPDATES;
+        case 200: return SESSION_SUBMIT_COMMAND;
+        case 201: return SESSION_ABANDON_COMMAND;
+        case 202: return SESSION_OPEN;
+        case 203: return SESSION_DISMISS_OUTGOING;
+        case 204: return SESSION_RESTORE_OUTGOING;
+        case 205: return SESSION_SET_QUESTION_INDEX;
+        case 206: return SESSION_LOAD_EARLIER;
+        case 300: return SCHEDULE_CACHE_LOADED;
+        case 301: return SCHEDULE_SEEN_LOADED;
+        case 302: return SCHEDULE_LOCAL_CONTEXT;
+        case 303: return SCHEDULE_REFRESH;
+        case 304: return SCHEDULE_SET_VISIBLE_SESSION;
+        case 310: return SCHEDULE_LIST_OPEN;
+        case 311: return SCHEDULE_SELECT_TASK;
+        case 312: return SCHEDULE_TOGGLE_ENDED;
+        case 313: return SCHEDULE_MARK_READ;
+        case 314: return SCHEDULE_MARK_UNREAD;
+        case 320: return SCHEDULE_DETAIL_OPEN;
+        case 321: return SCHEDULE_DETAIL_HIDE;
+        case 322: return SCHEDULE_DETAIL_CLOSE;
+        case 323: return SCHEDULE_DETAIL_SHOW_LATEST_RESULT;
+        case 324: return SCHEDULE_DETAIL_TOGGLE_QUIET_GROUP;
+        case 325: return SCHEDULE_DETAIL_SHOW_ALL_RUNS;
+        case 326: return SCHEDULE_DETAIL_OPEN_RUN;
+        case 330: return SCHEDULE_OPERATE;
+        case 331: return SCHEDULE_RENAME;
+        case 332: return SCHEDULE_SET_NOTIFY;
+        case 333: return SCHEDULE_UPDATE_MESSAGE;
+        case 334: return SCHEDULE_ABANDON_MUTATION;
+        case 335: return SCHEDULE_RETRY_MUTATION;
+        case 338: return SCHEDULE_FORM_OPEN;
+        case 339: return SCHEDULE_FORM_CLOSE;
+        case 340: return SCHEDULE_FORM_SET_MESSAGE;
+        case 341: return SCHEDULE_FORM_SET_TITLE;
+        case 342: return SCHEDULE_FORM_SET_NOTIFY;
+        case 343: return SCHEDULE_FORM_SELECT_PROJECT;
+        case 344: return SCHEDULE_FORM_SELECT_MACHINE;
+        case 345: return SCHEDULE_FORM_SELECT_AGENT;
+        case 346: return SCHEDULE_FORM_SELECT_MODEL;
+        case 347: return SCHEDULE_FORM_UPDATE_TIMING;
+        case 348: return SCHEDULE_FORM_SUBMIT;
+        case 349: return SCHEDULE_FORM_RETRY_MODELS;
         case 0: return EVENT_NOT_SET;
         default: return null;
       }
@@ -2698,6 +2818,3126 @@ public  final class Event extends
    */
   private void clearNewSessionAbandonStart() {
     if (eventCase_ == 59) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_WATCH_FIELD_NUMBER = 350;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatusWatch() {
+    return eventCase_ == 350;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent getMachineStatusWatch() {
+    if (eventCase_ == 350) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatusWatch(io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 350;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatusWatch(io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 350 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 350;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   */
+  private void clearMachineStatusWatch() {
+    if (eventCase_ == 350) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_RETRY_FIELD_NUMBER = 351;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatusRetry() {
+    return eventCase_ == 351;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent getMachineStatusRetry() {
+    if (eventCase_ == 351) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatusRetry(io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 351;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatusRetry(io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 351 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 351;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   */
+  private void clearMachineStatusRetry() {
+    if (eventCase_ == 351) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_TAB_FIELD_NUMBER = 352;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatusTab() {
+    return eventCase_ == 352;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent getMachineStatusTab() {
+    if (eventCase_ == 352) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatusTab(io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 352;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatusTab(io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 352 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 352;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   */
+  private void clearMachineStatusTab() {
+    if (eventCase_ == 352) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_SCRUB_FIELD_NUMBER = 353;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatusScrub() {
+    return eventCase_ == 353;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent getMachineStatusScrub() {
+    if (eventCase_ == 353) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatusScrub(io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 353;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatusScrub(io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 353 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 353;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   */
+  private void clearMachineStatusScrub() {
+    if (eventCase_ == 353) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_CLEANUP_FIELD_NUMBER = 354;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatusCleanup() {
+    return eventCase_ == 354;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent getMachineStatusCleanup() {
+    if (eventCase_ == 354) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatusCleanup(io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 354;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatusCleanup(io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 354 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 354;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   */
+  private void clearMachineStatusCleanup() {
+    if (eventCase_ == 354) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_POLL_TICK_FIELD_NUMBER = 355;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatusPollTick() {
+    return eventCase_ == 355;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent getMachineStatusPollTick() {
+    if (eventCase_ == 355) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatusPollTick(io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 355;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatusPollTick(io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 355 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 355;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   */
+  private void clearMachineStatusPollTick() {
+    if (eventCase_ == 355) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_SETTINGS_OPEN_FIELD_NUMBER = 360;
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineSettingsOpen() {
+    return eventCase_ == 360;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent getMachineSettingsOpen() {
+    if (eventCase_ == 360) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineSettingsOpen(io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 360;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineSettingsOpen(io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 360 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 360;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   */
+  private void clearMachineSettingsOpen() {
+    if (eventCase_ == 360) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_SETTINGS_SELECT_AGENT_FIELD_NUMBER = 361;
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineSettingsSelectAgent() {
+    return eventCase_ == 361;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent getMachineSettingsSelectAgent() {
+    if (eventCase_ == 361) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineSettingsSelectAgent(io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 361;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineSettingsSelectAgent(io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 361 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 361;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   */
+  private void clearMachineSettingsSelectAgent() {
+    if (eventCase_ == 361) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int UPDATE_MACHINE_AGENT_DEFAULTS_FIELD_NUMBER = 362;
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUpdateMachineAgentDefaults() {
+    return eventCase_ == 362;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent getUpdateMachineAgentDefaults() {
+    if (eventCase_ == 362) {
+       return (io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUpdateMachineAgentDefaults(io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 362;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUpdateMachineAgentDefaults(io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 362 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 362;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   */
+  private void clearUpdateMachineAgentDefaults() {
+    if (eventCase_ == 362) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int UPDATE_MACHINE_DAEMON_SETTINGS_FIELD_NUMBER = 363;
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUpdateMachineDaemonSettings() {
+    return eventCase_ == 363;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent getUpdateMachineDaemonSettings() {
+    if (eventCase_ == 363) {
+       return (io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUpdateMachineDaemonSettings(io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 363;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUpdateMachineDaemonSettings(io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 363 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 363;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   */
+  private void clearUpdateMachineDaemonSettings() {
+    if (eventCase_ == 363) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int UPDATE_DIRECT_PREFERENCE_FIELD_NUMBER = 364;
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUpdateDirectPreference() {
+    return eventCase_ == 364;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent getUpdateDirectPreference() {
+    if (eventCase_ == 364) {
+       return (io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUpdateDirectPreference(io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 364;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUpdateDirectPreference(io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 364 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 364;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   */
+  private void clearUpdateDirectPreference() {
+    if (eventCase_ == 364) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int MACHINE_DIRECT_STATUS_FIELD_NUMBER = 365;
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineDirectStatus() {
+    return eventCase_ == 365;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus() {
+    if (eventCase_ == 365) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 365;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 365 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 365;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   */
+  private void clearMachineDirectStatus() {
+    if (eventCase_ == 365) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int UPDATE_CLIENT_NAME_FIELD_NUMBER = 370;
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUpdateClientName() {
+    return eventCase_ == 370;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent getUpdateClientName() {
+    if (eventCase_ == 370) {
+       return (io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUpdateClientName(io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 370;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUpdateClientName(io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 370 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 370;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   */
+  private void clearUpdateClientName() {
+    if (eventCase_ == 370) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SET_NOTIFICATION_PREF_FIELD_NUMBER = 375;
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSetNotificationPref() {
+    return eventCase_ == 375;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent getSetNotificationPref() {
+    if (eventCase_ == 375) {
+       return (io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSetNotificationPref(io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 375;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSetNotificationPref(io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 375 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 375;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   */
+  private void clearSetNotificationPref() {
+    if (eventCase_ == 375) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SET_APPEARANCE_PREF_FIELD_NUMBER = 376;
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSetAppearancePref() {
+    return eventCase_ == 376;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent getSetAppearancePref() {
+    if (eventCase_ == 376) {
+       return (io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSetAppearancePref(io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 376;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSetAppearancePref(io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 376 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 376;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   */
+  private void clearSetAppearancePref() {
+    if (eventCase_ == 376) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int CONN_CHECK_STATUS_FIELD_NUMBER = 377;
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasConnCheckStatus() {
+    return eventCase_ == 377;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent getConnCheckStatus() {
+    if (eventCase_ == 377) {
+       return (io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConnCheckStatus(io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 377;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeConnCheckStatus(io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 377 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 377;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   */
+  private void clearConnCheckStatus() {
+    if (eventCase_ == 377) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int CLIENT_UPDATE_STATE_FIELD_NUMBER = 378;
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClientUpdateState() {
+    return eventCase_ == 378;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent getClientUpdateState() {
+    if (eventCase_ == 378) {
+       return (io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClientUpdateState(io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 378;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeClientUpdateState(io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 378 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 378;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   */
+  private void clearClientUpdateState() {
+    if (eventCase_ == 378) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int CHECK_FOR_UPDATES_FIELD_NUMBER = 379;
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCheckForUpdates() {
+    return eventCase_ == 379;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent getCheckForUpdates() {
+    if (eventCase_ == 379) {
+       return (io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCheckForUpdates(io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 379;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeCheckForUpdates(io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 379 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 379;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   */
+  private void clearCheckForUpdates() {
+    if (eventCase_ == 379) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_SUBMIT_COMMAND_FIELD_NUMBER = 200;
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionSubmitCommand() {
+    return eventCase_ == 200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction getSessionSubmitCommand() {
+    if (eventCase_ == 200) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionSubmitCommand(io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionSubmitCommand(io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 200 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   */
+  private void clearSessionSubmitCommand() {
+    if (eventCase_ == 200) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_ABANDON_COMMAND_FIELD_NUMBER = 201;
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionAbandonCommand() {
+    return eventCase_ == 201;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionSlotAction getSessionAbandonCommand() {
+    if (eventCase_ == 201) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionSlotAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionSlotAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionAbandonCommand(io.github.lewin671.remoteagent.core.proto.SessionSlotAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 201;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionAbandonCommand(io.github.lewin671.remoteagent.core.proto.SessionSlotAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 201 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionSlotAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionSlotAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionSlotAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 201;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   */
+  private void clearSessionAbandonCommand() {
+    if (eventCase_ == 201) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_OPEN_FIELD_NUMBER = 202;
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionOpen() {
+    return eventCase_ == 202;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionOpenAction getSessionOpen() {
+    if (eventCase_ == 202) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionOpenAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionOpenAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionOpen(io.github.lewin671.remoteagent.core.proto.SessionOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 202;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionOpen(io.github.lewin671.remoteagent.core.proto.SessionOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 202 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionOpenAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionOpenAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionOpenAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 202;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   */
+  private void clearSessionOpen() {
+    if (eventCase_ == 202) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_DISMISS_OUTGOING_FIELD_NUMBER = 203;
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionDismissOutgoing() {
+    return eventCase_ == 203;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionDismissOutgoing() {
+    if (eventCase_ == 203) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 203;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 203 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 203;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   */
+  private void clearSessionDismissOutgoing() {
+    if (eventCase_ == 203) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RESTORE_OUTGOING_FIELD_NUMBER = 204;
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRestoreOutgoing() {
+    return eventCase_ == 204;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionRestoreOutgoing() {
+    if (eventCase_ == 204) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 204;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 204 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 204;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   */
+  private void clearSessionRestoreOutgoing() {
+    if (eventCase_ == 204) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_SET_QUESTION_INDEX_FIELD_NUMBER = 205;
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionSetQuestionIndex() {
+    return eventCase_ == 205;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction getSessionSetQuestionIndex() {
+    if (eventCase_ == 205) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionSetQuestionIndex(io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 205;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionSetQuestionIndex(io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 205 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 205;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   */
+  private void clearSessionSetQuestionIndex() {
+    if (eventCase_ == 205) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_LOAD_EARLIER_FIELD_NUMBER = 206;
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionLoadEarlier() {
+    return eventCase_ == 206;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction getSessionLoadEarlier() {
+    if (eventCase_ == 206) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionLoadEarlier(io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 206;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionLoadEarlier(io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 206 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 206;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   */
+  private void clearSessionLoadEarlier() {
+    if (eventCase_ == 206) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_CACHE_LOADED_FIELD_NUMBER = 300;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleCacheLoaded() {
+    return eventCase_ == 300;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent getScheduleCacheLoaded() {
+    if (eventCase_ == 300) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleCacheLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 300;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleCacheLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 300 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 300;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   */
+  private void clearScheduleCacheLoaded() {
+    if (eventCase_ == 300) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SEEN_LOADED_FIELD_NUMBER = 301;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSeenLoaded() {
+    return eventCase_ == 301;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent getScheduleSeenLoaded() {
+    if (eventCase_ == 301) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSeenLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 301;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSeenLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 301 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 301;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   */
+  private void clearScheduleSeenLoaded() {
+    if (eventCase_ == 301) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_LOCAL_CONTEXT_FIELD_NUMBER = 302;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleLocalContext() {
+    return eventCase_ == 302;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent getScheduleLocalContext() {
+    if (eventCase_ == 302) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleLocalContext(io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 302;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleLocalContext(io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 302 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 302;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   */
+  private void clearScheduleLocalContext() {
+    if (eventCase_ == 302) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_REFRESH_FIELD_NUMBER = 303;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleRefresh() {
+    return eventCase_ == 303;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleStringAction getScheduleRefresh() {
+    if (eventCase_ == 303) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleRefresh(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 303;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleRefresh(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 303 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 303;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   */
+  private void clearScheduleRefresh() {
+    if (eventCase_ == 303) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SET_VISIBLE_SESSION_FIELD_NUMBER = 304;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSetVisibleSession() {
+    return eventCase_ == 304;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleStringAction getScheduleSetVisibleSession() {
+    if (eventCase_ == 304) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSetVisibleSession(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 304;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSetVisibleSession(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 304 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 304;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   */
+  private void clearScheduleSetVisibleSession() {
+    if (eventCase_ == 304) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_LIST_OPEN_FIELD_NUMBER = 310;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleListOpen() {
+    return eventCase_ == 310;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction getScheduleListOpen() {
+    if (eventCase_ == 310) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleListOpen(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 310;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleListOpen(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 310 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 310;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   */
+  private void clearScheduleListOpen() {
+    if (eventCase_ == 310) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SELECT_TASK_FIELD_NUMBER = 311;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSelectTask() {
+    return eventCase_ == 311;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleSelectTask() {
+    if (eventCase_ == 311) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSelectTask(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 311;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSelectTask(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 311 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 311;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   */
+  private void clearScheduleSelectTask() {
+    if (eventCase_ == 311) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_TOGGLE_ENDED_FIELD_NUMBER = 312;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleToggleEnded() {
+    return eventCase_ == 312;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction getScheduleToggleEnded() {
+    if (eventCase_ == 312) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleToggleEnded(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 312;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleToggleEnded(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 312 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 312;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   */
+  private void clearScheduleToggleEnded() {
+    if (eventCase_ == 312) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_MARK_READ_FIELD_NUMBER = 313;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleMarkRead() {
+    return eventCase_ == 313;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction getScheduleMarkRead() {
+    if (eventCase_ == 313) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleMarkRead(io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 313;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleMarkRead(io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 313 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 313;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   */
+  private void clearScheduleMarkRead() {
+    if (eventCase_ == 313) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_MARK_UNREAD_FIELD_NUMBER = 314;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleMarkUnread() {
+    return eventCase_ == 314;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleMarkUnread() {
+    if (eventCase_ == 314) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleMarkUnread(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 314;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleMarkUnread(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 314 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 314;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   */
+  private void clearScheduleMarkUnread() {
+    if (eventCase_ == 314) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_OPEN_FIELD_NUMBER = 320;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailOpen() {
+    return eventCase_ == 320;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailOpen() {
+    if (eventCase_ == 320) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailOpen(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 320;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailOpen(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 320 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 320;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   */
+  private void clearScheduleDetailOpen() {
+    if (eventCase_ == 320) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_HIDE_FIELD_NUMBER = 321;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailHide() {
+    return eventCase_ == 321;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailHide() {
+    if (eventCase_ == 321) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailHide(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 321;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailHide(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 321 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 321;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   */
+  private void clearScheduleDetailHide() {
+    if (eventCase_ == 321) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_CLOSE_FIELD_NUMBER = 322;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailClose() {
+    return eventCase_ == 322;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailClose() {
+    if (eventCase_ == 322) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailClose(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 322;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailClose(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 322 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 322;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   */
+  private void clearScheduleDetailClose() {
+    if (eventCase_ == 322) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_SHOW_LATEST_RESULT_FIELD_NUMBER = 323;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailShowLatestResult() {
+    return eventCase_ == 323;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailShowLatestResult() {
+    if (eventCase_ == 323) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailShowLatestResult(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 323;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailShowLatestResult(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 323 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 323;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   */
+  private void clearScheduleDetailShowLatestResult() {
+    if (eventCase_ == 323) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_TOGGLE_QUIET_GROUP_FIELD_NUMBER = 324;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailToggleQuietGroup() {
+    return eventCase_ == 324;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleDetailToggleQuietGroup() {
+    if (eventCase_ == 324) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailToggleQuietGroup(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 324;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailToggleQuietGroup(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 324 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 324;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   */
+  private void clearScheduleDetailToggleQuietGroup() {
+    if (eventCase_ == 324) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_SHOW_ALL_RUNS_FIELD_NUMBER = 325;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailShowAllRuns() {
+    return eventCase_ == 325;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleDetailShowAllRuns() {
+    if (eventCase_ == 325) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailShowAllRuns(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 325;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailShowAllRuns(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 325 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 325;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   */
+  private void clearScheduleDetailShowAllRuns() {
+    if (eventCase_ == 325) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_OPEN_RUN_FIELD_NUMBER = 326;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetailOpenRun() {
+    return eventCase_ == 326;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleDetailOpenRun() {
+    if (eventCase_ == 326) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetailOpenRun(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 326;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetailOpenRun(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 326 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 326;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   */
+  private void clearScheduleDetailOpenRun() {
+    if (eventCase_ == 326) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_OPERATE_FIELD_NUMBER = 330;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleOperate() {
+    return eventCase_ == 330;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction getScheduleOperate() {
+    if (eventCase_ == 330) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleOperate(io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 330;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleOperate(io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 330 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 330;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   */
+  private void clearScheduleOperate() {
+    if (eventCase_ == 330) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_RENAME_FIELD_NUMBER = 331;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleRename() {
+    return eventCase_ == 331;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleRename() {
+    if (eventCase_ == 331) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleRename(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 331;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleRename(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 331 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 331;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   */
+  private void clearScheduleRename() {
+    if (eventCase_ == 331) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SET_NOTIFY_FIELD_NUMBER = 332;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSetNotify() {
+    return eventCase_ == 332;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleSetNotify() {
+    if (eventCase_ == 332) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 332;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 332 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 332;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   */
+  private void clearScheduleSetNotify() {
+    if (eventCase_ == 332) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_UPDATE_MESSAGE_FIELD_NUMBER = 333;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleUpdateMessage() {
+    return eventCase_ == 333;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleUpdateMessage() {
+    if (eventCase_ == 333) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleUpdateMessage(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 333;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleUpdateMessage(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 333 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 333;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   */
+  private void clearScheduleUpdateMessage() {
+    if (eventCase_ == 333) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_ABANDON_MUTATION_FIELD_NUMBER = 334;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleAbandonMutation() {
+    return eventCase_ == 334;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef getScheduleAbandonMutation() {
+    if (eventCase_ == 334) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleAbandonMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 334;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleAbandonMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 334 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 334;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   */
+  private void clearScheduleAbandonMutation() {
+    if (eventCase_ == 334) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_RETRY_MUTATION_FIELD_NUMBER = 335;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleRetryMutation() {
+    return eventCase_ == 335;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef getScheduleRetryMutation() {
+    if (eventCase_ == 335) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleRetryMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 335;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleRetryMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 335 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 335;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   */
+  private void clearScheduleRetryMutation() {
+    if (eventCase_ == 335) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_OPEN_FIELD_NUMBER = 338;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormOpen() {
+    return eventCase_ == 338;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction getScheduleFormOpen() {
+    if (eventCase_ == 338) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormOpen(io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 338;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormOpen(io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 338 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 338;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   */
+  private void clearScheduleFormOpen() {
+    if (eventCase_ == 338) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_CLOSE_FIELD_NUMBER = 339;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormClose() {
+    return eventCase_ == 339;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormClose() {
+    if (eventCase_ == 339) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormClose(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 339;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormClose(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 339 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 339;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   */
+  private void clearScheduleFormClose() {
+    if (eventCase_ == 339) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SET_MESSAGE_FIELD_NUMBER = 340;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSetMessage() {
+    return eventCase_ == 340;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSetMessage() {
+    if (eventCase_ == 340) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSetMessage(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 340;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSetMessage(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 340 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 340;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   */
+  private void clearScheduleFormSetMessage() {
+    if (eventCase_ == 340) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SET_TITLE_FIELD_NUMBER = 341;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSetTitle() {
+    return eventCase_ == 341;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSetTitle() {
+    if (eventCase_ == 341) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSetTitle(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 341;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSetTitle(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 341 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 341;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   */
+  private void clearScheduleFormSetTitle() {
+    if (eventCase_ == 341) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SET_NOTIFY_FIELD_NUMBER = 342;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSetNotify() {
+    return eventCase_ == 342;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormSetNotify() {
+    if (eventCase_ == 342) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 342;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 342 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 342;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   */
+  private void clearScheduleFormSetNotify() {
+    if (eventCase_ == 342) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SELECT_PROJECT_FIELD_NUMBER = 343;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSelectProject() {
+    return eventCase_ == 343;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction getScheduleFormSelectProject() {
+    if (eventCase_ == 343) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSelectProject(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 343;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSelectProject(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 343 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 343;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   */
+  private void clearScheduleFormSelectProject() {
+    if (eventCase_ == 343) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SELECT_MACHINE_FIELD_NUMBER = 344;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSelectMachine() {
+    return eventCase_ == 344;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSelectMachine() {
+    if (eventCase_ == 344) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSelectMachine(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 344;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSelectMachine(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 344 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 344;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   */
+  private void clearScheduleFormSelectMachine() {
+    if (eventCase_ == 344) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SELECT_AGENT_FIELD_NUMBER = 345;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSelectAgent() {
+    return eventCase_ == 345;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction getScheduleFormSelectAgent() {
+    if (eventCase_ == 345) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSelectAgent(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 345;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSelectAgent(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 345 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 345;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   */
+  private void clearScheduleFormSelectAgent() {
+    if (eventCase_ == 345) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SELECT_MODEL_FIELD_NUMBER = 346;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSelectModel() {
+    return eventCase_ == 346;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction getScheduleFormSelectModel() {
+    if (eventCase_ == 346) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSelectModel(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 346;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSelectModel(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 346 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 346;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   */
+  private void clearScheduleFormSelectModel() {
+    if (eventCase_ == 346) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_UPDATE_TIMING_FIELD_NUMBER = 347;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormUpdateTiming() {
+    return eventCase_ == 347;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction getScheduleFormUpdateTiming() {
+    if (eventCase_ == 347) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormUpdateTiming(io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 347;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormUpdateTiming(io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 347 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 347;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   */
+  private void clearScheduleFormUpdateTiming() {
+    if (eventCase_ == 347) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_SUBMIT_FIELD_NUMBER = 348;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormSubmit() {
+    return eventCase_ == 348;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormSubmit() {
+    if (eventCase_ == 348) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormSubmit(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 348;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormSubmit(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 348 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 348;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   */
+  private void clearScheduleFormSubmit() {
+    if (eventCase_ == 348) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_RETRY_MODELS_FIELD_NUMBER = 349;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleFormRetryModels() {
+    return eventCase_ == 349;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormRetryModels() {
+    if (eventCase_ == 349) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleFormRetryModels(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 349;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleFormRetryModels(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 349 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 349;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   */
+  private void clearScheduleFormRetryModels() {
+    if (eventCase_ == 349) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -5383,6 +8623,2886 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatusWatch() {
+      return instance.hasMachineStatusWatch();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent getMachineStatusWatch() {
+      return instance.getMachineStatusWatch();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+     */
+    public Builder setMachineStatusWatch(io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent value) {
+      copyOnWrite();
+      instance.setMachineStatusWatch(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+     */
+    public Builder setMachineStatusWatch(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatusWatch(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+     */
+    public Builder mergeMachineStatusWatch(io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent value) {
+      copyOnWrite();
+      instance.mergeMachineStatusWatch(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+     */
+    public Builder clearMachineStatusWatch() {
+      copyOnWrite();
+      instance.clearMachineStatusWatch();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatusRetry() {
+      return instance.hasMachineStatusRetry();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent getMachineStatusRetry() {
+      return instance.getMachineStatusRetry();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+     */
+    public Builder setMachineStatusRetry(io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent value) {
+      copyOnWrite();
+      instance.setMachineStatusRetry(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+     */
+    public Builder setMachineStatusRetry(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatusRetry(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+     */
+    public Builder mergeMachineStatusRetry(io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent value) {
+      copyOnWrite();
+      instance.mergeMachineStatusRetry(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+     */
+    public Builder clearMachineStatusRetry() {
+      copyOnWrite();
+      instance.clearMachineStatusRetry();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatusTab() {
+      return instance.hasMachineStatusTab();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent getMachineStatusTab() {
+      return instance.getMachineStatusTab();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+     */
+    public Builder setMachineStatusTab(io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent value) {
+      copyOnWrite();
+      instance.setMachineStatusTab(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+     */
+    public Builder setMachineStatusTab(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatusTab(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+     */
+    public Builder mergeMachineStatusTab(io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent value) {
+      copyOnWrite();
+      instance.mergeMachineStatusTab(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+     */
+    public Builder clearMachineStatusTab() {
+      copyOnWrite();
+      instance.clearMachineStatusTab();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatusScrub() {
+      return instance.hasMachineStatusScrub();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent getMachineStatusScrub() {
+      return instance.getMachineStatusScrub();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+     */
+    public Builder setMachineStatusScrub(io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent value) {
+      copyOnWrite();
+      instance.setMachineStatusScrub(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+     */
+    public Builder setMachineStatusScrub(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatusScrub(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+     */
+    public Builder mergeMachineStatusScrub(io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent value) {
+      copyOnWrite();
+      instance.mergeMachineStatusScrub(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+     */
+    public Builder clearMachineStatusScrub() {
+      copyOnWrite();
+      instance.clearMachineStatusScrub();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatusCleanup() {
+      return instance.hasMachineStatusCleanup();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent getMachineStatusCleanup() {
+      return instance.getMachineStatusCleanup();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+     */
+    public Builder setMachineStatusCleanup(io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent value) {
+      copyOnWrite();
+      instance.setMachineStatusCleanup(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+     */
+    public Builder setMachineStatusCleanup(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatusCleanup(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+     */
+    public Builder mergeMachineStatusCleanup(io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent value) {
+      copyOnWrite();
+      instance.mergeMachineStatusCleanup(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+     */
+    public Builder clearMachineStatusCleanup() {
+      copyOnWrite();
+      instance.clearMachineStatusCleanup();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatusPollTick() {
+      return instance.hasMachineStatusPollTick();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent getMachineStatusPollTick() {
+      return instance.getMachineStatusPollTick();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+     */
+    public Builder setMachineStatusPollTick(io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent value) {
+      copyOnWrite();
+      instance.setMachineStatusPollTick(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+     */
+    public Builder setMachineStatusPollTick(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatusPollTick(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+     */
+    public Builder mergeMachineStatusPollTick(io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent value) {
+      copyOnWrite();
+      instance.mergeMachineStatusPollTick(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+     */
+    public Builder clearMachineStatusPollTick() {
+      copyOnWrite();
+      instance.clearMachineStatusPollTick();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineSettingsOpen() {
+      return instance.hasMachineSettingsOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent getMachineSettingsOpen() {
+      return instance.getMachineSettingsOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+     */
+    public Builder setMachineSettingsOpen(io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent value) {
+      copyOnWrite();
+      instance.setMachineSettingsOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+     */
+    public Builder setMachineSettingsOpen(
+        io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineSettingsOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+     */
+    public Builder mergeMachineSettingsOpen(io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent value) {
+      copyOnWrite();
+      instance.mergeMachineSettingsOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+     */
+    public Builder clearMachineSettingsOpen() {
+      copyOnWrite();
+      instance.clearMachineSettingsOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineSettingsSelectAgent() {
+      return instance.hasMachineSettingsSelectAgent();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent getMachineSettingsSelectAgent() {
+      return instance.getMachineSettingsSelectAgent();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+     */
+    public Builder setMachineSettingsSelectAgent(io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent value) {
+      copyOnWrite();
+      instance.setMachineSettingsSelectAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+     */
+    public Builder setMachineSettingsSelectAgent(
+        io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineSettingsSelectAgent(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+     */
+    public Builder mergeMachineSettingsSelectAgent(io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent value) {
+      copyOnWrite();
+      instance.mergeMachineSettingsSelectAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+     */
+    public Builder clearMachineSettingsSelectAgent() {
+      copyOnWrite();
+      instance.clearMachineSettingsSelectAgent();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUpdateMachineAgentDefaults() {
+      return instance.hasUpdateMachineAgentDefaults();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent getUpdateMachineAgentDefaults() {
+      return instance.getUpdateMachineAgentDefaults();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+     */
+    public Builder setUpdateMachineAgentDefaults(io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent value) {
+      copyOnWrite();
+      instance.setUpdateMachineAgentDefaults(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+     */
+    public Builder setUpdateMachineAgentDefaults(
+        io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUpdateMachineAgentDefaults(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+     */
+    public Builder mergeUpdateMachineAgentDefaults(io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent value) {
+      copyOnWrite();
+      instance.mergeUpdateMachineAgentDefaults(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+     */
+    public Builder clearUpdateMachineAgentDefaults() {
+      copyOnWrite();
+      instance.clearUpdateMachineAgentDefaults();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUpdateMachineDaemonSettings() {
+      return instance.hasUpdateMachineDaemonSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent getUpdateMachineDaemonSettings() {
+      return instance.getUpdateMachineDaemonSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+     */
+    public Builder setUpdateMachineDaemonSettings(io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent value) {
+      copyOnWrite();
+      instance.setUpdateMachineDaemonSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+     */
+    public Builder setUpdateMachineDaemonSettings(
+        io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUpdateMachineDaemonSettings(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+     */
+    public Builder mergeUpdateMachineDaemonSettings(io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent value) {
+      copyOnWrite();
+      instance.mergeUpdateMachineDaemonSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+     */
+    public Builder clearUpdateMachineDaemonSettings() {
+      copyOnWrite();
+      instance.clearUpdateMachineDaemonSettings();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUpdateDirectPreference() {
+      return instance.hasUpdateDirectPreference();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent getUpdateDirectPreference() {
+      return instance.getUpdateDirectPreference();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+     */
+    public Builder setUpdateDirectPreference(io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent value) {
+      copyOnWrite();
+      instance.setUpdateDirectPreference(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+     */
+    public Builder setUpdateDirectPreference(
+        io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUpdateDirectPreference(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+     */
+    public Builder mergeUpdateDirectPreference(io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent value) {
+      copyOnWrite();
+      instance.mergeUpdateDirectPreference(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+     */
+    public Builder clearUpdateDirectPreference() {
+      copyOnWrite();
+      instance.clearUpdateDirectPreference();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineDirectStatus() {
+      return instance.hasMachineDirectStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus() {
+      return instance.getMachineDirectStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+     */
+    public Builder setMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
+      copyOnWrite();
+      instance.setMachineDirectStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+     */
+    public Builder setMachineDirectStatus(
+        io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineDirectStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+     */
+    public Builder mergeMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
+      copyOnWrite();
+      instance.mergeMachineDirectStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+     */
+    public Builder clearMachineDirectStatus() {
+      copyOnWrite();
+      instance.clearMachineDirectStatus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUpdateClientName() {
+      return instance.hasUpdateClientName();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent getUpdateClientName() {
+      return instance.getUpdateClientName();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+     */
+    public Builder setUpdateClientName(io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent value) {
+      copyOnWrite();
+      instance.setUpdateClientName(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+     */
+    public Builder setUpdateClientName(
+        io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUpdateClientName(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+     */
+    public Builder mergeUpdateClientName(io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent value) {
+      copyOnWrite();
+      instance.mergeUpdateClientName(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+     */
+    public Builder clearUpdateClientName() {
+      copyOnWrite();
+      instance.clearUpdateClientName();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSetNotificationPref() {
+      return instance.hasSetNotificationPref();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent getSetNotificationPref() {
+      return instance.getSetNotificationPref();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+     */
+    public Builder setSetNotificationPref(io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent value) {
+      copyOnWrite();
+      instance.setSetNotificationPref(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+     */
+    public Builder setSetNotificationPref(
+        io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSetNotificationPref(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+     */
+    public Builder mergeSetNotificationPref(io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent value) {
+      copyOnWrite();
+      instance.mergeSetNotificationPref(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+     */
+    public Builder clearSetNotificationPref() {
+      copyOnWrite();
+      instance.clearSetNotificationPref();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSetAppearancePref() {
+      return instance.hasSetAppearancePref();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent getSetAppearancePref() {
+      return instance.getSetAppearancePref();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+     */
+    public Builder setSetAppearancePref(io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent value) {
+      copyOnWrite();
+      instance.setSetAppearancePref(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+     */
+    public Builder setSetAppearancePref(
+        io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSetAppearancePref(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+     */
+    public Builder mergeSetAppearancePref(io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent value) {
+      copyOnWrite();
+      instance.mergeSetAppearancePref(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+     */
+    public Builder clearSetAppearancePref() {
+      copyOnWrite();
+      instance.clearSetAppearancePref();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasConnCheckStatus() {
+      return instance.hasConnCheckStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent getConnCheckStatus() {
+      return instance.getConnCheckStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+     */
+    public Builder setConnCheckStatus(io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent value) {
+      copyOnWrite();
+      instance.setConnCheckStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+     */
+    public Builder setConnCheckStatus(
+        io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setConnCheckStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+     */
+    public Builder mergeConnCheckStatus(io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent value) {
+      copyOnWrite();
+      instance.mergeConnCheckStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+     */
+    public Builder clearConnCheckStatus() {
+      copyOnWrite();
+      instance.clearConnCheckStatus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClientUpdateState() {
+      return instance.hasClientUpdateState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent getClientUpdateState() {
+      return instance.getClientUpdateState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+     */
+    public Builder setClientUpdateState(io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent value) {
+      copyOnWrite();
+      instance.setClientUpdateState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+     */
+    public Builder setClientUpdateState(
+        io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClientUpdateState(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+     */
+    public Builder mergeClientUpdateState(io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent value) {
+      copyOnWrite();
+      instance.mergeClientUpdateState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+     */
+    public Builder clearClientUpdateState() {
+      copyOnWrite();
+      instance.clearClientUpdateState();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCheckForUpdates() {
+      return instance.hasCheckForUpdates();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent getCheckForUpdates() {
+      return instance.getCheckForUpdates();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+     */
+    public Builder setCheckForUpdates(io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent value) {
+      copyOnWrite();
+      instance.setCheckForUpdates(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+     */
+    public Builder setCheckForUpdates(
+        io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCheckForUpdates(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+     */
+    public Builder mergeCheckForUpdates(io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent value) {
+      copyOnWrite();
+      instance.mergeCheckForUpdates(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+     */
+    public Builder clearCheckForUpdates() {
+      copyOnWrite();
+      instance.clearCheckForUpdates();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionSubmitCommand() {
+      return instance.hasSessionSubmitCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction getSessionSubmitCommand() {
+      return instance.getSessionSubmitCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+     */
+    public Builder setSessionSubmitCommand(io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction value) {
+      copyOnWrite();
+      instance.setSessionSubmitCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+     */
+    public Builder setSessionSubmitCommand(
+        io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionSubmitCommand(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+     */
+    public Builder mergeSessionSubmitCommand(io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction value) {
+      copyOnWrite();
+      instance.mergeSessionSubmitCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+     */
+    public Builder clearSessionSubmitCommand() {
+      copyOnWrite();
+      instance.clearSessionSubmitCommand();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionAbandonCommand() {
+      return instance.hasSessionAbandonCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionSlotAction getSessionAbandonCommand() {
+      return instance.getSessionAbandonCommand();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+     */
+    public Builder setSessionAbandonCommand(io.github.lewin671.remoteagent.core.proto.SessionSlotAction value) {
+      copyOnWrite();
+      instance.setSessionAbandonCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+     */
+    public Builder setSessionAbandonCommand(
+        io.github.lewin671.remoteagent.core.proto.SessionSlotAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionAbandonCommand(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+     */
+    public Builder mergeSessionAbandonCommand(io.github.lewin671.remoteagent.core.proto.SessionSlotAction value) {
+      copyOnWrite();
+      instance.mergeSessionAbandonCommand(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+     */
+    public Builder clearSessionAbandonCommand() {
+      copyOnWrite();
+      instance.clearSessionAbandonCommand();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionOpen() {
+      return instance.hasSessionOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionOpenAction getSessionOpen() {
+      return instance.getSessionOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+     */
+    public Builder setSessionOpen(io.github.lewin671.remoteagent.core.proto.SessionOpenAction value) {
+      copyOnWrite();
+      instance.setSessionOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+     */
+    public Builder setSessionOpen(
+        io.github.lewin671.remoteagent.core.proto.SessionOpenAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+     */
+    public Builder mergeSessionOpen(io.github.lewin671.remoteagent.core.proto.SessionOpenAction value) {
+      copyOnWrite();
+      instance.mergeSessionOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+     */
+    public Builder clearSessionOpen() {
+      copyOnWrite();
+      instance.clearSessionOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionDismissOutgoing() {
+      return instance.hasSessionDismissOutgoing();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionDismissOutgoing() {
+      return instance.getSessionDismissOutgoing();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+     */
+    public Builder setSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+      copyOnWrite();
+      instance.setSessionDismissOutgoing(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+     */
+    public Builder setSessionDismissOutgoing(
+        io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionDismissOutgoing(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+     */
+    public Builder mergeSessionDismissOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+      copyOnWrite();
+      instance.mergeSessionDismissOutgoing(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+     */
+    public Builder clearSessionDismissOutgoing() {
+      copyOnWrite();
+      instance.clearSessionDismissOutgoing();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRestoreOutgoing() {
+      return instance.hasSessionRestoreOutgoing();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionRestoreOutgoing() {
+      return instance.getSessionRestoreOutgoing();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+     */
+    public Builder setSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+      copyOnWrite();
+      instance.setSessionRestoreOutgoing(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+     */
+    public Builder setSessionRestoreOutgoing(
+        io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRestoreOutgoing(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+     */
+    public Builder mergeSessionRestoreOutgoing(io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction value) {
+      copyOnWrite();
+      instance.mergeSessionRestoreOutgoing(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+     */
+    public Builder clearSessionRestoreOutgoing() {
+      copyOnWrite();
+      instance.clearSessionRestoreOutgoing();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionSetQuestionIndex() {
+      return instance.hasSessionSetQuestionIndex();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction getSessionSetQuestionIndex() {
+      return instance.getSessionSetQuestionIndex();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+     */
+    public Builder setSessionSetQuestionIndex(io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction value) {
+      copyOnWrite();
+      instance.setSessionSetQuestionIndex(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+     */
+    public Builder setSessionSetQuestionIndex(
+        io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionSetQuestionIndex(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+     */
+    public Builder mergeSessionSetQuestionIndex(io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction value) {
+      copyOnWrite();
+      instance.mergeSessionSetQuestionIndex(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+     */
+    public Builder clearSessionSetQuestionIndex() {
+      copyOnWrite();
+      instance.clearSessionSetQuestionIndex();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionLoadEarlier() {
+      return instance.hasSessionLoadEarlier();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction getSessionLoadEarlier() {
+      return instance.getSessionLoadEarlier();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+     */
+    public Builder setSessionLoadEarlier(io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction value) {
+      copyOnWrite();
+      instance.setSessionLoadEarlier(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+     */
+    public Builder setSessionLoadEarlier(
+        io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionLoadEarlier(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+     */
+    public Builder mergeSessionLoadEarlier(io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction value) {
+      copyOnWrite();
+      instance.mergeSessionLoadEarlier(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+     */
+    public Builder clearSessionLoadEarlier() {
+      copyOnWrite();
+      instance.clearSessionLoadEarlier();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleCacheLoaded() {
+      return instance.hasScheduleCacheLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent getScheduleCacheLoaded() {
+      return instance.getScheduleCacheLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+     */
+    public Builder setScheduleCacheLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent value) {
+      copyOnWrite();
+      instance.setScheduleCacheLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+     */
+    public Builder setScheduleCacheLoaded(
+        io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleCacheLoaded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+     */
+    public Builder mergeScheduleCacheLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent value) {
+      copyOnWrite();
+      instance.mergeScheduleCacheLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+     */
+    public Builder clearScheduleCacheLoaded() {
+      copyOnWrite();
+      instance.clearScheduleCacheLoaded();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSeenLoaded() {
+      return instance.hasScheduleSeenLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent getScheduleSeenLoaded() {
+      return instance.getScheduleSeenLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+     */
+    public Builder setScheduleSeenLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent value) {
+      copyOnWrite();
+      instance.setScheduleSeenLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+     */
+    public Builder setScheduleSeenLoaded(
+        io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSeenLoaded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+     */
+    public Builder mergeScheduleSeenLoaded(io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent value) {
+      copyOnWrite();
+      instance.mergeScheduleSeenLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+     */
+    public Builder clearScheduleSeenLoaded() {
+      copyOnWrite();
+      instance.clearScheduleSeenLoaded();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleLocalContext() {
+      return instance.hasScheduleLocalContext();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent getScheduleLocalContext() {
+      return instance.getScheduleLocalContext();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+     */
+    public Builder setScheduleLocalContext(io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent value) {
+      copyOnWrite();
+      instance.setScheduleLocalContext(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+     */
+    public Builder setScheduleLocalContext(
+        io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleLocalContext(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+     */
+    public Builder mergeScheduleLocalContext(io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent value) {
+      copyOnWrite();
+      instance.mergeScheduleLocalContext(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+     */
+    public Builder clearScheduleLocalContext() {
+      copyOnWrite();
+      instance.clearScheduleLocalContext();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleRefresh() {
+      return instance.hasScheduleRefresh();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleStringAction getScheduleRefresh() {
+      return instance.getScheduleRefresh();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+     */
+    public Builder setScheduleRefresh(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+      copyOnWrite();
+      instance.setScheduleRefresh(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+     */
+    public Builder setScheduleRefresh(
+        io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleRefresh(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+     */
+    public Builder mergeScheduleRefresh(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleRefresh(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+     */
+    public Builder clearScheduleRefresh() {
+      copyOnWrite();
+      instance.clearScheduleRefresh();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSetVisibleSession() {
+      return instance.hasScheduleSetVisibleSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleStringAction getScheduleSetVisibleSession() {
+      return instance.getScheduleSetVisibleSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+     */
+    public Builder setScheduleSetVisibleSession(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+      copyOnWrite();
+      instance.setScheduleSetVisibleSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+     */
+    public Builder setScheduleSetVisibleSession(
+        io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSetVisibleSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+     */
+    public Builder mergeScheduleSetVisibleSession(io.github.lewin671.remoteagent.core.proto.ScheduleStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleSetVisibleSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+     */
+    public Builder clearScheduleSetVisibleSession() {
+      copyOnWrite();
+      instance.clearScheduleSetVisibleSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleListOpen() {
+      return instance.hasScheduleListOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction getScheduleListOpen() {
+      return instance.getScheduleListOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+     */
+    public Builder setScheduleListOpen(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleListOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+     */
+    public Builder setScheduleListOpen(
+        io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleListOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+     */
+    public Builder mergeScheduleListOpen(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleListOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+     */
+    public Builder clearScheduleListOpen() {
+      copyOnWrite();
+      instance.clearScheduleListOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSelectTask() {
+      return instance.hasScheduleSelectTask();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleSelectTask() {
+      return instance.getScheduleSelectTask();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+     */
+    public Builder setScheduleSelectTask(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.setScheduleSelectTask(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+     */
+    public Builder setScheduleSelectTask(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSelectTask(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+     */
+    public Builder mergeScheduleSelectTask(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.mergeScheduleSelectTask(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+     */
+    public Builder clearScheduleSelectTask() {
+      copyOnWrite();
+      instance.clearScheduleSelectTask();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleToggleEnded() {
+      return instance.hasScheduleToggleEnded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction getScheduleToggleEnded() {
+      return instance.getScheduleToggleEnded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+     */
+    public Builder setScheduleToggleEnded(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleToggleEnded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+     */
+    public Builder setScheduleToggleEnded(
+        io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleToggleEnded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+     */
+    public Builder mergeScheduleToggleEnded(io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleToggleEnded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+     */
+    public Builder clearScheduleToggleEnded() {
+      copyOnWrite();
+      instance.clearScheduleToggleEnded();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleMarkRead() {
+      return instance.hasScheduleMarkRead();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction getScheduleMarkRead() {
+      return instance.getScheduleMarkRead();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+     */
+    public Builder setScheduleMarkRead(io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction value) {
+      copyOnWrite();
+      instance.setScheduleMarkRead(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+     */
+    public Builder setScheduleMarkRead(
+        io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleMarkRead(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+     */
+    public Builder mergeScheduleMarkRead(io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction value) {
+      copyOnWrite();
+      instance.mergeScheduleMarkRead(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+     */
+    public Builder clearScheduleMarkRead() {
+      copyOnWrite();
+      instance.clearScheduleMarkRead();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleMarkUnread() {
+      return instance.hasScheduleMarkUnread();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleMarkUnread() {
+      return instance.getScheduleMarkUnread();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+     */
+    public Builder setScheduleMarkUnread(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleMarkUnread(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+     */
+    public Builder setScheduleMarkUnread(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleMarkUnread(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+     */
+    public Builder mergeScheduleMarkUnread(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleMarkUnread(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+     */
+    public Builder clearScheduleMarkUnread() {
+      copyOnWrite();
+      instance.clearScheduleMarkUnread();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailOpen() {
+      return instance.hasScheduleDetailOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailOpen() {
+      return instance.getScheduleDetailOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+     */
+    public Builder setScheduleDetailOpen(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.setScheduleDetailOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+     */
+    public Builder setScheduleDetailOpen(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+     */
+    public Builder mergeScheduleDetailOpen(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+     */
+    public Builder clearScheduleDetailOpen() {
+      copyOnWrite();
+      instance.clearScheduleDetailOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailHide() {
+      return instance.hasScheduleDetailHide();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailHide() {
+      return instance.getScheduleDetailHide();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+     */
+    public Builder setScheduleDetailHide(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.setScheduleDetailHide(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+     */
+    public Builder setScheduleDetailHide(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailHide(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+     */
+    public Builder mergeScheduleDetailHide(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailHide(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+     */
+    public Builder clearScheduleDetailHide() {
+      copyOnWrite();
+      instance.clearScheduleDetailHide();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailClose() {
+      return instance.hasScheduleDetailClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailClose() {
+      return instance.getScheduleDetailClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+     */
+    public Builder setScheduleDetailClose(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.setScheduleDetailClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+     */
+    public Builder setScheduleDetailClose(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+     */
+    public Builder mergeScheduleDetailClose(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+     */
+    public Builder clearScheduleDetailClose() {
+      copyOnWrite();
+      instance.clearScheduleDetailClose();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailShowLatestResult() {
+      return instance.hasScheduleDetailShowLatestResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailShowLatestResult() {
+      return instance.getScheduleDetailShowLatestResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+     */
+    public Builder setScheduleDetailShowLatestResult(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.setScheduleDetailShowLatestResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+     */
+    public Builder setScheduleDetailShowLatestResult(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailShowLatestResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+     */
+    public Builder mergeScheduleDetailShowLatestResult(io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailShowLatestResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+     */
+    public Builder clearScheduleDetailShowLatestResult() {
+      copyOnWrite();
+      instance.clearScheduleDetailShowLatestResult();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailToggleQuietGroup() {
+      return instance.hasScheduleDetailToggleQuietGroup();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleDetailToggleQuietGroup() {
+      return instance.getScheduleDetailToggleQuietGroup();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+     */
+    public Builder setScheduleDetailToggleQuietGroup(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.setScheduleDetailToggleQuietGroup(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+     */
+    public Builder setScheduleDetailToggleQuietGroup(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailToggleQuietGroup(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+     */
+    public Builder mergeScheduleDetailToggleQuietGroup(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailToggleQuietGroup(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+     */
+    public Builder clearScheduleDetailToggleQuietGroup() {
+      copyOnWrite();
+      instance.clearScheduleDetailToggleQuietGroup();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailShowAllRuns() {
+      return instance.hasScheduleDetailShowAllRuns();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleDetailShowAllRuns() {
+      return instance.getScheduleDetailShowAllRuns();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+     */
+    public Builder setScheduleDetailShowAllRuns(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleDetailShowAllRuns(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+     */
+    public Builder setScheduleDetailShowAllRuns(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailShowAllRuns(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+     */
+    public Builder mergeScheduleDetailShowAllRuns(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailShowAllRuns(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+     */
+    public Builder clearScheduleDetailShowAllRuns() {
+      copyOnWrite();
+      instance.clearScheduleDetailShowAllRuns();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetailOpenRun() {
+      return instance.hasScheduleDetailOpenRun();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleDetailOpenRun() {
+      return instance.getScheduleDetailOpenRun();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+     */
+    public Builder setScheduleDetailOpenRun(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.setScheduleDetailOpenRun(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+     */
+    public Builder setScheduleDetailOpenRun(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetailOpenRun(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+     */
+    public Builder mergeScheduleDetailOpenRun(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleDetailOpenRun(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+     */
+    public Builder clearScheduleDetailOpenRun() {
+      copyOnWrite();
+      instance.clearScheduleDetailOpenRun();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleOperate() {
+      return instance.hasScheduleOperate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction getScheduleOperate() {
+      return instance.getScheduleOperate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+     */
+    public Builder setScheduleOperate(io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction value) {
+      copyOnWrite();
+      instance.setScheduleOperate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+     */
+    public Builder setScheduleOperate(
+        io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleOperate(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+     */
+    public Builder mergeScheduleOperate(io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction value) {
+      copyOnWrite();
+      instance.mergeScheduleOperate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+     */
+    public Builder clearScheduleOperate() {
+      copyOnWrite();
+      instance.clearScheduleOperate();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleRename() {
+      return instance.hasScheduleRename();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleRename() {
+      return instance.getScheduleRename();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+     */
+    public Builder setScheduleRename(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.setScheduleRename(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+     */
+    public Builder setScheduleRename(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleRename(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+     */
+    public Builder mergeScheduleRename(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleRename(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+     */
+    public Builder clearScheduleRename() {
+      copyOnWrite();
+      instance.clearScheduleRename();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSetNotify() {
+      return instance.hasScheduleSetNotify();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleSetNotify() {
+      return instance.getScheduleSetNotify();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+     */
+    public Builder setScheduleSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleSetNotify(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+     */
+    public Builder setScheduleSetNotify(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSetNotify(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+     */
+    public Builder mergeScheduleSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleSetNotify(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+     */
+    public Builder clearScheduleSetNotify() {
+      copyOnWrite();
+      instance.clearScheduleSetNotify();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleUpdateMessage() {
+      return instance.hasScheduleUpdateMessage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleUpdateMessage() {
+      return instance.getScheduleUpdateMessage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+     */
+    public Builder setScheduleUpdateMessage(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.setScheduleUpdateMessage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+     */
+    public Builder setScheduleUpdateMessage(
+        io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleUpdateMessage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+     */
+    public Builder mergeScheduleUpdateMessage(io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleUpdateMessage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+     */
+    public Builder clearScheduleUpdateMessage() {
+      copyOnWrite();
+      instance.clearScheduleUpdateMessage();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleAbandonMutation() {
+      return instance.hasScheduleAbandonMutation();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef getScheduleAbandonMutation() {
+      return instance.getScheduleAbandonMutation();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+     */
+    public Builder setScheduleAbandonMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+      copyOnWrite();
+      instance.setScheduleAbandonMutation(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+     */
+    public Builder setScheduleAbandonMutation(
+        io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleAbandonMutation(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+     */
+    public Builder mergeScheduleAbandonMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+      copyOnWrite();
+      instance.mergeScheduleAbandonMutation(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+     */
+    public Builder clearScheduleAbandonMutation() {
+      copyOnWrite();
+      instance.clearScheduleAbandonMutation();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleRetryMutation() {
+      return instance.hasScheduleRetryMutation();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef getScheduleRetryMutation() {
+      return instance.getScheduleRetryMutation();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+     */
+    public Builder setScheduleRetryMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+      copyOnWrite();
+      instance.setScheduleRetryMutation(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+     */
+    public Builder setScheduleRetryMutation(
+        io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleRetryMutation(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+     */
+    public Builder mergeScheduleRetryMutation(io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef value) {
+      copyOnWrite();
+      instance.mergeScheduleRetryMutation(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+     */
+    public Builder clearScheduleRetryMutation() {
+      copyOnWrite();
+      instance.clearScheduleRetryMutation();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormOpen() {
+      return instance.hasScheduleFormOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction getScheduleFormOpen() {
+      return instance.getScheduleFormOpen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+     */
+    public Builder setScheduleFormOpen(io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction value) {
+      copyOnWrite();
+      instance.setScheduleFormOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+     */
+    public Builder setScheduleFormOpen(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormOpen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+     */
+    public Builder mergeScheduleFormOpen(io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormOpen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+     */
+    public Builder clearScheduleFormOpen() {
+      copyOnWrite();
+      instance.clearScheduleFormOpen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormClose() {
+      return instance.hasScheduleFormClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormClose() {
+      return instance.getScheduleFormClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+     */
+    public Builder setScheduleFormClose(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleFormClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+     */
+    public Builder setScheduleFormClose(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+     */
+    public Builder mergeScheduleFormClose(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+     */
+    public Builder clearScheduleFormClose() {
+      copyOnWrite();
+      instance.clearScheduleFormClose();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSetMessage() {
+      return instance.hasScheduleFormSetMessage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSetMessage() {
+      return instance.getScheduleFormSetMessage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+     */
+    public Builder setScheduleFormSetMessage(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSetMessage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+     */
+    public Builder setScheduleFormSetMessage(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSetMessage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+     */
+    public Builder mergeScheduleFormSetMessage(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSetMessage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+     */
+    public Builder clearScheduleFormSetMessage() {
+      copyOnWrite();
+      instance.clearScheduleFormSetMessage();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSetTitle() {
+      return instance.hasScheduleFormSetTitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSetTitle() {
+      return instance.getScheduleFormSetTitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+     */
+    public Builder setScheduleFormSetTitle(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSetTitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+     */
+    public Builder setScheduleFormSetTitle(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSetTitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+     */
+    public Builder mergeScheduleFormSetTitle(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSetTitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+     */
+    public Builder clearScheduleFormSetTitle() {
+      copyOnWrite();
+      instance.clearScheduleFormSetTitle();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSetNotify() {
+      return instance.hasScheduleFormSetNotify();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormSetNotify() {
+      return instance.getScheduleFormSetNotify();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+     */
+    public Builder setScheduleFormSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSetNotify(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+     */
+    public Builder setScheduleFormSetNotify(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSetNotify(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+     */
+    public Builder mergeScheduleFormSetNotify(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSetNotify(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+     */
+    public Builder clearScheduleFormSetNotify() {
+      copyOnWrite();
+      instance.clearScheduleFormSetNotify();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSelectProject() {
+      return instance.hasScheduleFormSelectProject();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction getScheduleFormSelectProject() {
+      return instance.getScheduleFormSelectProject();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+     */
+    public Builder setScheduleFormSelectProject(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSelectProject(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+     */
+    public Builder setScheduleFormSelectProject(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSelectProject(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+     */
+    public Builder mergeScheduleFormSelectProject(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSelectProject(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+     */
+    public Builder clearScheduleFormSelectProject() {
+      copyOnWrite();
+      instance.clearScheduleFormSelectProject();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSelectMachine() {
+      return instance.hasScheduleFormSelectMachine();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSelectMachine() {
+      return instance.getScheduleFormSelectMachine();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+     */
+    public Builder setScheduleFormSelectMachine(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSelectMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+     */
+    public Builder setScheduleFormSelectMachine(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSelectMachine(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+     */
+    public Builder mergeScheduleFormSelectMachine(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSelectMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+     */
+    public Builder clearScheduleFormSelectMachine() {
+      copyOnWrite();
+      instance.clearScheduleFormSelectMachine();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSelectAgent() {
+      return instance.hasScheduleFormSelectAgent();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction getScheduleFormSelectAgent() {
+      return instance.getScheduleFormSelectAgent();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+     */
+    public Builder setScheduleFormSelectAgent(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSelectAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+     */
+    public Builder setScheduleFormSelectAgent(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSelectAgent(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+     */
+    public Builder mergeScheduleFormSelectAgent(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSelectAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+     */
+    public Builder clearScheduleFormSelectAgent() {
+      copyOnWrite();
+      instance.clearScheduleFormSelectAgent();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSelectModel() {
+      return instance.hasScheduleFormSelectModel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction getScheduleFormSelectModel() {
+      return instance.getScheduleFormSelectModel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+     */
+    public Builder setScheduleFormSelectModel(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSelectModel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+     */
+    public Builder setScheduleFormSelectModel(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSelectModel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+     */
+    public Builder mergeScheduleFormSelectModel(io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSelectModel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+     */
+    public Builder clearScheduleFormSelectModel() {
+      copyOnWrite();
+      instance.clearScheduleFormSelectModel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormUpdateTiming() {
+      return instance.hasScheduleFormUpdateTiming();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction getScheduleFormUpdateTiming() {
+      return instance.getScheduleFormUpdateTiming();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+     */
+    public Builder setScheduleFormUpdateTiming(io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction value) {
+      copyOnWrite();
+      instance.setScheduleFormUpdateTiming(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+     */
+    public Builder setScheduleFormUpdateTiming(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormUpdateTiming(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+     */
+    public Builder mergeScheduleFormUpdateTiming(io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormUpdateTiming(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+     */
+    public Builder clearScheduleFormUpdateTiming() {
+      copyOnWrite();
+      instance.clearScheduleFormUpdateTiming();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormSubmit() {
+      return instance.hasScheduleFormSubmit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormSubmit() {
+      return instance.getScheduleFormSubmit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+     */
+    public Builder setScheduleFormSubmit(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+      copyOnWrite();
+      instance.setScheduleFormSubmit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+     */
+    public Builder setScheduleFormSubmit(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormSubmit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+     */
+    public Builder mergeScheduleFormSubmit(io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormSubmit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+     */
+    public Builder clearScheduleFormSubmit() {
+      copyOnWrite();
+      instance.clearScheduleFormSubmit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleFormRetryModels() {
+      return instance.hasScheduleFormRetryModels();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormRetryModels() {
+      return instance.getScheduleFormRetryModels();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+     */
+    public Builder setScheduleFormRetryModels(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.setScheduleFormRetryModels(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+     */
+    public Builder setScheduleFormRetryModels(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleFormRetryModels(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+     */
+    public Builder mergeScheduleFormRetryModels(io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction value) {
+      copyOnWrite();
+      instance.mergeScheduleFormRetryModels(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+     */
+    public Builder clearScheduleFormRetryModels() {
+      copyOnWrite();
+      instance.clearScheduleFormRetryModels();
+      return this;
+    }
+
+    /**
      * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
      * @return The nowMs.
      */
@@ -5670,15 +11790,85 @@ public  final class Event extends
             "monoMs_",
             "randomIds_",
             "unitFloats_",
+            io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionSlotAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionOpenAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.class,
+            io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent.class,
+            io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.class,
+            io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent.class,
           };
           java.lang.String info =
-              "\u00005\u0001\u0000\u0001e5\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
-              "\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b" +
-              "<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012" +
-              "<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000" +
-              "\u0019<\u0000\u001a<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000(<\u0000" +
-              ")<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u00003<\u00004<\u0000" +
-              "5<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c\u0002d\u021ae#";
+              "\u0000q\u0001\u0000\u0001\u017bq\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
+              "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
+              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
+              "\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000" +
+              "\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u0000" +
+              "3<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c" +
+              "\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cb<\u0000\u00cc<\u0000" +
+              "\u00cd<\u0000\u00ce<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130" +
+              "<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000" +
+              "\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a" +
+              "<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000" +
+              "\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159" +
+              "<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000" +
+              "\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a" +
+              "<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000" +
+              "\u0179<\u0000\u017a<\u0000\u017b<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

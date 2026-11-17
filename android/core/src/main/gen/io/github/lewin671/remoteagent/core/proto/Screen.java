@@ -24,6 +24,17 @@ public  final class Screen extends
     NEW_SESSION(3),
     SYNC_STATE(4),
     SESSION_DATA(5),
+    SETTINGS(30),
+    MACHINE_STATUS(31),
+    MACHINE_SETTINGS(32),
+    QUOTA(33),
+    DEVICES(34),
+    CLIENT_DETAIL(35),
+    SESSION(10),
+    SCHEDULES(20),
+    SCHEDULE_DETAIL(21),
+    SCHEDULE_FORM(22),
+    SCHEDULE_SESSION_STRIP(23),
     SCREEN_NOT_SET(0);
     private final int value;
     private ScreenCase(int value) {
@@ -44,6 +55,17 @@ public  final class Screen extends
         case 3: return NEW_SESSION;
         case 4: return SYNC_STATE;
         case 5: return SESSION_DATA;
+        case 30: return SETTINGS;
+        case 31: return MACHINE_STATUS;
+        case 32: return MACHINE_SETTINGS;
+        case 33: return QUOTA;
+        case 34: return DEVICES;
+        case 35: return CLIENT_DETAIL;
+        case 10: return SESSION;
+        case 20: return SCHEDULES;
+        case 21: return SCHEDULE_DETAIL;
+        case 22: return SCHEDULE_FORM;
+        case 23: return SCHEDULE_SESSION_STRIP;
         case 0: return SCREEN_NOT_SET;
         default: return null;
       }
@@ -360,6 +382,578 @@ public  final class Screen extends
    */
   private void clearSessionData() {
     if (screenCase_ == 5) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int SETTINGS_FIELD_NUMBER = 30;
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSettings() {
+    return screenCase_ == 30;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest getSettings() {
+    if (screenCase_ == 30) {
+       return (io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSettings(io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSettings(io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 30 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   */
+  private void clearSettings() {
+    if (screenCase_ == 30) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_FIELD_NUMBER = 31;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatus() {
+    return screenCase_ == 31;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest getMachineStatus() {
+    if (screenCase_ == 31) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 31;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 31 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 31;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  private void clearMachineStatus() {
+    if (screenCase_ == 31) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int MACHINE_SETTINGS_FIELD_NUMBER = 32;
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineSettings() {
+    return screenCase_ == 32;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest getMachineSettings() {
+    if (screenCase_ == 32) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 32;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 32 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 32;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  private void clearMachineSettings() {
+    if (screenCase_ == 32) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int QUOTA_FIELD_NUMBER = 33;
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.Override
+  public boolean hasQuota() {
+    return screenCase_ == 33;
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest getQuota() {
+    if (screenCase_ == 33) {
+       return (io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setQuota(io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 33;
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeQuota(io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 33 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 33;
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   */
+  private void clearQuota() {
+    if (screenCase_ == 33) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int DEVICES_FIELD_NUMBER = 34;
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDevices() {
+    return screenCase_ == 34;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest getDevices() {
+    if (screenCase_ == 34) {
+       return (io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDevices(io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 34;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDevices(io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 34 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 34;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   */
+  private void clearDevices() {
+    if (screenCase_ == 34) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int CLIENT_DETAIL_FIELD_NUMBER = 35;
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClientDetail() {
+    return screenCase_ == 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest getClientDetail() {
+    if (screenCase_ == 35) {
+       return (io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 35 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  private void clearClientDetail() {
+    if (screenCase_ == 35) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int SESSION_FIELD_NUMBER = 10;
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSession() {
+    return screenCase_ == 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionScreenRequest getSession() {
+    if (screenCase_ == 10) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSession(io.github.lewin671.remoteagent.core.proto.SessionScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSession(io.github.lewin671.remoteagent.core.proto.SessionScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 10 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.SessionScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.SessionScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   */
+  private void clearSession() {
+    if (screenCase_ == 10) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int SCHEDULES_FIELD_NUMBER = 20;
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSchedules() {
+    return screenCase_ == 20;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest getSchedules() {
+    if (screenCase_ == 20) {
+       return (io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 20;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 20 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 20;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   */
+  private void clearSchedules() {
+    if (screenCase_ == 20) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_FIELD_NUMBER = 21;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetail() {
+    return screenCase_ == 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest getScheduleDetail() {
+    if (screenCase_ == 21) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 21 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  private void clearScheduleDetail() {
+    if (screenCase_ == 21) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_FIELD_NUMBER = 22;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleForm() {
+    return screenCase_ == 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest getScheduleForm() {
+    if (screenCase_ == 22) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 22 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  private void clearScheduleForm() {
+    if (screenCase_ == 22) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SESSION_STRIP_FIELD_NUMBER = 23;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSessionStrip() {
+    return screenCase_ == 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest getScheduleSessionStrip() {
+    if (screenCase_ == 23) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 23 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  private void clearScheduleSessionStrip() {
+    if (screenCase_ == 23) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -762,6 +1356,534 @@ public  final class Screen extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSettings() {
+      return instance.hasSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest getSettings() {
+      return instance.getSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder setSettings(io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest value) {
+      copyOnWrite();
+      instance.setSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder setSettings(
+        io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSettings(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder mergeSettings(io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest value) {
+      copyOnWrite();
+      instance.mergeSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder clearSettings() {
+      copyOnWrite();
+      instance.clearSettings();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatus() {
+      return instance.hasMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest getMachineStatus() {
+      return instance.getMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder setMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest value) {
+      copyOnWrite();
+      instance.setMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder setMachineStatus(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder mergeMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest value) {
+      copyOnWrite();
+      instance.mergeMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder clearMachineStatus() {
+      copyOnWrite();
+      instance.clearMachineStatus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineSettings() {
+      return instance.hasMachineSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest getMachineSettings() {
+      return instance.getMachineSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder setMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest value) {
+      copyOnWrite();
+      instance.setMachineSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder setMachineSettings(
+        io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineSettings(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder mergeMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest value) {
+      copyOnWrite();
+      instance.mergeMachineSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder clearMachineSettings() {
+      copyOnWrite();
+      instance.clearMachineSettings();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+     */
+    @java.lang.Override
+    public boolean hasQuota() {
+      return instance.hasQuota();
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest getQuota() {
+      return instance.getQuota();
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder setQuota(io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest value) {
+      copyOnWrite();
+      instance.setQuota(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder setQuota(
+        io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setQuota(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder mergeQuota(io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest value) {
+      copyOnWrite();
+      instance.mergeQuota(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder clearQuota() {
+      copyOnWrite();
+      instance.clearQuota();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDevices() {
+      return instance.hasDevices();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest getDevices() {
+      return instance.getDevices();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder setDevices(io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest value) {
+      copyOnWrite();
+      instance.setDevices(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder setDevices(
+        io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDevices(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder mergeDevices(io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest value) {
+      copyOnWrite();
+      instance.mergeDevices(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder clearDevices() {
+      copyOnWrite();
+      instance.clearDevices();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClientDetail() {
+      return instance.hasClientDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest getClientDetail() {
+      return instance.getClientDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder setClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest value) {
+      copyOnWrite();
+      instance.setClientDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder setClientDetail(
+        io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClientDetail(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder mergeClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest value) {
+      copyOnWrite();
+      instance.mergeClientDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder clearClientDetail() {
+      copyOnWrite();
+      instance.clearClientDetail();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSession() {
+      return instance.hasSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionScreenRequest getSession() {
+      return instance.getSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+     */
+    public Builder setSession(io.github.lewin671.remoteagent.core.proto.SessionScreenRequest value) {
+      copyOnWrite();
+      instance.setSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+     */
+    public Builder setSession(
+        io.github.lewin671.remoteagent.core.proto.SessionScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+     */
+    public Builder mergeSession(io.github.lewin671.remoteagent.core.proto.SessionScreenRequest value) {
+      copyOnWrite();
+      instance.mergeSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+     */
+    public Builder clearSession() {
+      copyOnWrite();
+      instance.clearSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSchedules() {
+      return instance.hasSchedules();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest getSchedules() {
+      return instance.getSchedules();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder setSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest value) {
+      copyOnWrite();
+      instance.setSchedules(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder setSchedules(
+        io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSchedules(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder mergeSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest value) {
+      copyOnWrite();
+      instance.mergeSchedules(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder clearSchedules() {
+      copyOnWrite();
+      instance.clearSchedules();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetail() {
+      return instance.hasScheduleDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest getScheduleDetail() {
+      return instance.getScheduleDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder setScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest value) {
+      copyOnWrite();
+      instance.setScheduleDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder setScheduleDetail(
+        io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetail(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder mergeScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest value) {
+      copyOnWrite();
+      instance.mergeScheduleDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder clearScheduleDetail() {
+      copyOnWrite();
+      instance.clearScheduleDetail();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleForm() {
+      return instance.hasScheduleForm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest getScheduleForm() {
+      return instance.getScheduleForm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder setScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest value) {
+      copyOnWrite();
+      instance.setScheduleForm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder setScheduleForm(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleForm(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder mergeScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest value) {
+      copyOnWrite();
+      instance.mergeScheduleForm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder clearScheduleForm() {
+      copyOnWrite();
+      instance.clearScheduleForm();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSessionStrip() {
+      return instance.hasScheduleSessionStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest getScheduleSessionStrip() {
+      return instance.getScheduleSessionStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder setScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest value) {
+      copyOnWrite();
+      instance.setScheduleSessionStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder setScheduleSessionStrip(
+        io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSessionStrip(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder mergeScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest value) {
+      copyOnWrite();
+      instance.mergeScheduleSessionStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder clearScheduleSessionStrip() {
+      copyOnWrite();
+      instance.clearScheduleSessionStrip();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Screen)
   }
   @java.lang.Override
@@ -785,10 +1907,22 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.NewSessionScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.SyncStateScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.SessionScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0005\u0001\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001<\u0000\u0002<" +
-              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000";
+              "\u0000\u0010\u0001\u0000\u0001#\u0010\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
+              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

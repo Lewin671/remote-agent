@@ -36,6 +36,19 @@ public  final class Effect extends
     NAVIGATE(15),
     ATTACHMENTS_SETTLED(16),
     REQUEST_ENTROPY(17),
+    SCHEDULE_MACHINE_POLL(70),
+    DIRECT_PREFERENCE(71),
+    RENAME_CLIENT(72),
+    CHECK_UPDATES(73),
+    PERSIST_CLIENT_PREFS(74),
+    PREPARE_CLEANUP_SESSION(75),
+    SESSION_RESTORE_COMPOSER(40),
+    SCHEDULE_READ_CACHE(60),
+    SCHEDULE_DELETE_CACHE(61),
+    SCHEDULE_LOAD_SEEN(62),
+    SCHEDULE_SAVE_SEEN(63),
+    SCHEDULE_DISMISS_NOTIFICATIONS(64),
+    SCHEDULE_NAVIGATE(65),
     EFFECT_NOT_SET(0);
     private final int value;
     private EffectCase(int value) {
@@ -68,6 +81,19 @@ public  final class Effect extends
         case 15: return NAVIGATE;
         case 16: return ATTACHMENTS_SETTLED;
         case 17: return REQUEST_ENTROPY;
+        case 70: return SCHEDULE_MACHINE_POLL;
+        case 71: return DIRECT_PREFERENCE;
+        case 72: return RENAME_CLIENT;
+        case 73: return CHECK_UPDATES;
+        case 74: return PERSIST_CLIENT_PREFS;
+        case 75: return PREPARE_CLEANUP_SESSION;
+        case 40: return SESSION_RESTORE_COMPOSER;
+        case 60: return SCHEDULE_READ_CACHE;
+        case 61: return SCHEDULE_DELETE_CACHE;
+        case 62: return SCHEDULE_LOAD_SEEN;
+        case 63: return SCHEDULE_SAVE_SEEN;
+        case 64: return SCHEDULE_DISMISS_NOTIFICATIONS;
+        case 65: return SCHEDULE_NAVIGATE;
         case 0: return EFFECT_NOT_SET;
         default: return null;
       }
@@ -968,6 +994,682 @@ public  final class Effect extends
    */
   private void clearRequestEntropy() {
     if (effectCase_ == 17) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_MACHINE_POLL_FIELD_NUMBER = 70;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleMachinePoll() {
+    return effectCase_ == 70;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect getScheduleMachinePoll() {
+    if (effectCase_ == 70) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleMachinePoll(io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 70;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleMachinePoll(io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 70 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 70;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   */
+  private void clearScheduleMachinePoll() {
+    if (effectCase_ == 70) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PREFERENCE_FIELD_NUMBER = 71;
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPreference() {
+    return effectCase_ == 71;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect getDirectPreference() {
+    if (effectCase_ == 71) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPreference(io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 71;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPreference(io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 71 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 71;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   */
+  private void clearDirectPreference() {
+    if (effectCase_ == 71) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int RENAME_CLIENT_FIELD_NUMBER = 72;
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRenameClient() {
+    return effectCase_ == 72;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RenameClientEffect getRenameClient() {
+    if (effectCase_ == 72) {
+       return (io.github.lewin671.remoteagent.core.proto.RenameClientEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RenameClientEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRenameClient(io.github.lewin671.remoteagent.core.proto.RenameClientEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 72;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRenameClient(io.github.lewin671.remoteagent.core.proto.RenameClientEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 72 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.RenameClientEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.RenameClientEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.RenameClientEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 72;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   */
+  private void clearRenameClient() {
+    if (effectCase_ == 72) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int CHECK_UPDATES_FIELD_NUMBER = 73;
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCheckUpdates() {
+    return effectCase_ == 73;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect getCheckUpdates() {
+    if (effectCase_ == 73) {
+       return (io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCheckUpdates(io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 73;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeCheckUpdates(io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 73 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 73;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   */
+  private void clearCheckUpdates() {
+    if (effectCase_ == 73) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int PERSIST_CLIENT_PREFS_FIELD_NUMBER = 74;
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPersistClientPrefs() {
+    return effectCase_ == 74;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect getPersistClientPrefs() {
+    if (effectCase_ == 74) {
+       return (io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPersistClientPrefs(io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 74;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePersistClientPrefs(io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 74 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 74;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   */
+  private void clearPersistClientPrefs() {
+    if (effectCase_ == 74) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int PREPARE_CLEANUP_SESSION_FIELD_NUMBER = 75;
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPrepareCleanupSession() {
+    return effectCase_ == 75;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect getPrepareCleanupSession() {
+    if (effectCase_ == 75) {
+       return (io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPrepareCleanupSession(io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 75;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergePrepareCleanupSession(io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 75 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 75;
+  }
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   */
+  private void clearPrepareCleanupSession() {
+    if (effectCase_ == 75) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SESSION_RESTORE_COMPOSER_FIELD_NUMBER = 40;
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRestoreComposer() {
+    return effectCase_ == 40;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect getSessionRestoreComposer() {
+    if (effectCase_ == 40) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRestoreComposer(io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 40;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRestoreComposer(io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 40 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 40;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   */
+  private void clearSessionRestoreComposer() {
+    if (effectCase_ == 40) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_READ_CACHE_FIELD_NUMBER = 60;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleReadCache() {
+    return effectCase_ == 60;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect getScheduleReadCache() {
+    if (effectCase_ == 60) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleReadCache(io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 60;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleReadCache(io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 60 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 60;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   */
+  private void clearScheduleReadCache() {
+    if (effectCase_ == 60) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DELETE_CACHE_FIELD_NUMBER = 61;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDeleteCache() {
+    return effectCase_ == 61;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect getScheduleDeleteCache() {
+    if (effectCase_ == 61) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDeleteCache(io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 61;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDeleteCache(io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 61 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 61;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   */
+  private void clearScheduleDeleteCache() {
+    if (effectCase_ == 61) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_LOAD_SEEN_FIELD_NUMBER = 62;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleLoadSeen() {
+    return effectCase_ == 62;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect getScheduleLoadSeen() {
+    if (effectCase_ == 62) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleLoadSeen(io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 62;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleLoadSeen(io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 62 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 62;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   */
+  private void clearScheduleLoadSeen() {
+    if (effectCase_ == 62) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SAVE_SEEN_FIELD_NUMBER = 63;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSaveSeen() {
+    return effectCase_ == 63;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect getScheduleSaveSeen() {
+    if (effectCase_ == 63) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSaveSeen(io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 63;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSaveSeen(io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 63 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 63;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   */
+  private void clearScheduleSaveSeen() {
+    if (effectCase_ == 63) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DISMISS_NOTIFICATIONS_FIELD_NUMBER = 64;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDismissNotifications() {
+    return effectCase_ == 64;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect getScheduleDismissNotifications() {
+    if (effectCase_ == 64) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDismissNotifications(io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 64;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDismissNotifications(io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 64 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 64;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   */
+  private void clearScheduleDismissNotifications() {
+    if (effectCase_ == 64) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_NAVIGATE_FIELD_NUMBER = 65;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleNavigate() {
+    return effectCase_ == 65;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect getScheduleNavigate() {
+    if (effectCase_ == 65) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleNavigate(io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 65;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleNavigate(io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 65 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 65;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   */
+  private void clearScheduleNavigate() {
+    if (effectCase_ == 65) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -1898,6 +2600,630 @@ public  final class Effect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleMachinePoll() {
+      return instance.hasScheduleMachinePoll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect getScheduleMachinePoll() {
+      return instance.getScheduleMachinePoll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+     */
+    public Builder setScheduleMachinePoll(io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect value) {
+      copyOnWrite();
+      instance.setScheduleMachinePoll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+     */
+    public Builder setScheduleMachinePoll(
+        io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleMachinePoll(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+     */
+    public Builder mergeScheduleMachinePoll(io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleMachinePoll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+     */
+    public Builder clearScheduleMachinePoll() {
+      copyOnWrite();
+      instance.clearScheduleMachinePoll();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPreference() {
+      return instance.hasDirectPreference();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect getDirectPreference() {
+      return instance.getDirectPreference();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+     */
+    public Builder setDirectPreference(io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect value) {
+      copyOnWrite();
+      instance.setDirectPreference(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+     */
+    public Builder setDirectPreference(
+        io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPreference(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+     */
+    public Builder mergeDirectPreference(io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPreference(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+     */
+    public Builder clearDirectPreference() {
+      copyOnWrite();
+      instance.clearDirectPreference();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRenameClient() {
+      return instance.hasRenameClient();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RenameClientEffect getRenameClient() {
+      return instance.getRenameClient();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+     */
+    public Builder setRenameClient(io.github.lewin671.remoteagent.core.proto.RenameClientEffect value) {
+      copyOnWrite();
+      instance.setRenameClient(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+     */
+    public Builder setRenameClient(
+        io.github.lewin671.remoteagent.core.proto.RenameClientEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRenameClient(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+     */
+    public Builder mergeRenameClient(io.github.lewin671.remoteagent.core.proto.RenameClientEffect value) {
+      copyOnWrite();
+      instance.mergeRenameClient(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+     */
+    public Builder clearRenameClient() {
+      copyOnWrite();
+      instance.clearRenameClient();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCheckUpdates() {
+      return instance.hasCheckUpdates();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect getCheckUpdates() {
+      return instance.getCheckUpdates();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+     */
+    public Builder setCheckUpdates(io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect value) {
+      copyOnWrite();
+      instance.setCheckUpdates(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+     */
+    public Builder setCheckUpdates(
+        io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCheckUpdates(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+     */
+    public Builder mergeCheckUpdates(io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect value) {
+      copyOnWrite();
+      instance.mergeCheckUpdates(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+     */
+    public Builder clearCheckUpdates() {
+      copyOnWrite();
+      instance.clearCheckUpdates();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPersistClientPrefs() {
+      return instance.hasPersistClientPrefs();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect getPersistClientPrefs() {
+      return instance.getPersistClientPrefs();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+     */
+    public Builder setPersistClientPrefs(io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect value) {
+      copyOnWrite();
+      instance.setPersistClientPrefs(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+     */
+    public Builder setPersistClientPrefs(
+        io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPersistClientPrefs(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+     */
+    public Builder mergePersistClientPrefs(io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect value) {
+      copyOnWrite();
+      instance.mergePersistClientPrefs(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+     */
+    public Builder clearPersistClientPrefs() {
+      copyOnWrite();
+      instance.clearPersistClientPrefs();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPrepareCleanupSession() {
+      return instance.hasPrepareCleanupSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect getPrepareCleanupSession() {
+      return instance.getPrepareCleanupSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+     */
+    public Builder setPrepareCleanupSession(io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect value) {
+      copyOnWrite();
+      instance.setPrepareCleanupSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+     */
+    public Builder setPrepareCleanupSession(
+        io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPrepareCleanupSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+     */
+    public Builder mergePrepareCleanupSession(io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect value) {
+      copyOnWrite();
+      instance.mergePrepareCleanupSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+     */
+    public Builder clearPrepareCleanupSession() {
+      copyOnWrite();
+      instance.clearPrepareCleanupSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRestoreComposer() {
+      return instance.hasSessionRestoreComposer();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect getSessionRestoreComposer() {
+      return instance.getSessionRestoreComposer();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+     */
+    public Builder setSessionRestoreComposer(io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect value) {
+      copyOnWrite();
+      instance.setSessionRestoreComposer(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+     */
+    public Builder setSessionRestoreComposer(
+        io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRestoreComposer(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+     */
+    public Builder mergeSessionRestoreComposer(io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect value) {
+      copyOnWrite();
+      instance.mergeSessionRestoreComposer(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+     */
+    public Builder clearSessionRestoreComposer() {
+      copyOnWrite();
+      instance.clearSessionRestoreComposer();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleReadCache() {
+      return instance.hasScheduleReadCache();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect getScheduleReadCache() {
+      return instance.getScheduleReadCache();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+     */
+    public Builder setScheduleReadCache(io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect value) {
+      copyOnWrite();
+      instance.setScheduleReadCache(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+     */
+    public Builder setScheduleReadCache(
+        io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleReadCache(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+     */
+    public Builder mergeScheduleReadCache(io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleReadCache(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+     */
+    public Builder clearScheduleReadCache() {
+      copyOnWrite();
+      instance.clearScheduleReadCache();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDeleteCache() {
+      return instance.hasScheduleDeleteCache();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect getScheduleDeleteCache() {
+      return instance.getScheduleDeleteCache();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+     */
+    public Builder setScheduleDeleteCache(io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect value) {
+      copyOnWrite();
+      instance.setScheduleDeleteCache(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+     */
+    public Builder setScheduleDeleteCache(
+        io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDeleteCache(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+     */
+    public Builder mergeScheduleDeleteCache(io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleDeleteCache(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+     */
+    public Builder clearScheduleDeleteCache() {
+      copyOnWrite();
+      instance.clearScheduleDeleteCache();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleLoadSeen() {
+      return instance.hasScheduleLoadSeen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect getScheduleLoadSeen() {
+      return instance.getScheduleLoadSeen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+     */
+    public Builder setScheduleLoadSeen(io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect value) {
+      copyOnWrite();
+      instance.setScheduleLoadSeen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+     */
+    public Builder setScheduleLoadSeen(
+        io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleLoadSeen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+     */
+    public Builder mergeScheduleLoadSeen(io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleLoadSeen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+     */
+    public Builder clearScheduleLoadSeen() {
+      copyOnWrite();
+      instance.clearScheduleLoadSeen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSaveSeen() {
+      return instance.hasScheduleSaveSeen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect getScheduleSaveSeen() {
+      return instance.getScheduleSaveSeen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+     */
+    public Builder setScheduleSaveSeen(io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect value) {
+      copyOnWrite();
+      instance.setScheduleSaveSeen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+     */
+    public Builder setScheduleSaveSeen(
+        io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSaveSeen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+     */
+    public Builder mergeScheduleSaveSeen(io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleSaveSeen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+     */
+    public Builder clearScheduleSaveSeen() {
+      copyOnWrite();
+      instance.clearScheduleSaveSeen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDismissNotifications() {
+      return instance.hasScheduleDismissNotifications();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect getScheduleDismissNotifications() {
+      return instance.getScheduleDismissNotifications();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+     */
+    public Builder setScheduleDismissNotifications(io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect value) {
+      copyOnWrite();
+      instance.setScheduleDismissNotifications(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+     */
+    public Builder setScheduleDismissNotifications(
+        io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDismissNotifications(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+     */
+    public Builder mergeScheduleDismissNotifications(io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleDismissNotifications(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+     */
+    public Builder clearScheduleDismissNotifications() {
+      copyOnWrite();
+      instance.clearScheduleDismissNotifications();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleNavigate() {
+      return instance.hasScheduleNavigate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect getScheduleNavigate() {
+      return instance.getScheduleNavigate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+     */
+    public Builder setScheduleNavigate(io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect value) {
+      copyOnWrite();
+      instance.setScheduleNavigate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+     */
+    public Builder setScheduleNavigate(
+        io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleNavigate(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+     */
+    public Builder mergeScheduleNavigate(io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect value) {
+      copyOnWrite();
+      instance.mergeScheduleNavigate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+     */
+    public Builder clearScheduleNavigate() {
+      copyOnWrite();
+      instance.clearScheduleNavigate();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Effect)
   }
   @java.lang.Override
@@ -1933,12 +3259,26 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.NavigateEffect.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect.class,
             io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect.class,
+            io.github.lewin671.remoteagent.core.proto.RenameClientEffect.class,
+            io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect.class,
+            io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.class,
+            io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.class,
           };
           java.lang.String info =
-              "\u0000\u0011\u0001\u0000\u0001\u0011\u0011\u0000\u0000\u0000\u0001<\u0000\u0002<" +
-              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
-              "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
-              "<\u0000\u0011<\u0000";
+              "\u0000\u001e\u0001\u0000\u0001K\u001e\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000" +
+              "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
+              "<\u0000(<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H" +
+              "<\u0000I<\u0000J<\u0000K<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

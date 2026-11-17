@@ -24,6 +24,17 @@ public  final class ViewModel extends
     NEW_SESSION(3),
     SYNC_STATE(4),
     SESSION_DATA(5),
+    SETTINGS(30),
+    MACHINE_STATUS(31),
+    MACHINE_SETTINGS(32),
+    QUOTA(33),
+    DEVICES(34),
+    CLIENT_DETAIL(35),
+    SESSION(10),
+    SCHEDULES(20),
+    SCHEDULE_DETAIL(21),
+    SCHEDULE_FORM(22),
+    SCHEDULE_SESSION_STRIP(23),
     VIEW_NOT_SET(0);
     private final int value;
     private ViewCase(int value) {
@@ -44,6 +55,17 @@ public  final class ViewModel extends
         case 3: return NEW_SESSION;
         case 4: return SYNC_STATE;
         case 5: return SESSION_DATA;
+        case 30: return SETTINGS;
+        case 31: return MACHINE_STATUS;
+        case 32: return MACHINE_SETTINGS;
+        case 33: return QUOTA;
+        case 34: return DEVICES;
+        case 35: return CLIENT_DETAIL;
+        case 10: return SESSION;
+        case 20: return SCHEDULES;
+        case 21: return SCHEDULE_DETAIL;
+        case 22: return SCHEDULE_FORM;
+        case 23: return SCHEDULE_SESSION_STRIP;
         case 0: return VIEW_NOT_SET;
         default: return null;
       }
@@ -360,6 +382,578 @@ public  final class ViewModel extends
    */
   private void clearSessionData() {
     if (viewCase_ == 5) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int SETTINGS_FIELD_NUMBER = 30;
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSettings() {
+    return viewCase_ == 30;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SettingsViewModel getSettings() {
+    if (viewCase_ == 30) {
+       return (io.github.lewin671.remoteagent.core.proto.SettingsViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SettingsViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSettings(io.github.lewin671.remoteagent.core.proto.SettingsViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSettings(io.github.lewin671.remoteagent.core.proto.SettingsViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 30 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.SettingsViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.SettingsViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.SettingsViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 30;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+   */
+  private void clearSettings() {
+    if (viewCase_ == 30) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int MACHINE_STATUS_FIELD_NUMBER = 31;
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineStatus() {
+    return viewCase_ == 31;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel getMachineStatus() {
+    if (viewCase_ == 31) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 31;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 31 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 31;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+   */
+  private void clearMachineStatus() {
+    if (viewCase_ == 31) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int MACHINE_SETTINGS_FIELD_NUMBER = 32;
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMachineSettings() {
+    return viewCase_ == 32;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel getMachineSettings() {
+    if (viewCase_ == 32) {
+       return (io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 32;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 32 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 32;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+   */
+  private void clearMachineSettings() {
+    if (viewCase_ == 32) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int QUOTA_FIELD_NUMBER = 33;
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.Override
+  public boolean hasQuota() {
+    return viewCase_ == 33;
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.QuotaViewModel getQuota() {
+    if (viewCase_ == 33) {
+       return (io.github.lewin671.remoteagent.core.proto.QuotaViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.QuotaViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setQuota(io.github.lewin671.remoteagent.core.proto.QuotaViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 33;
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeQuota(io.github.lewin671.remoteagent.core.proto.QuotaViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 33 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.QuotaViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.QuotaViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.QuotaViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 33;
+  }
+  /**
+   * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+   */
+  private void clearQuota() {
+    if (viewCase_ == 33) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int DEVICES_FIELD_NUMBER = 34;
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDevices() {
+    return viewCase_ == 34;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DevicesViewModel getDevices() {
+    if (viewCase_ == 34) {
+       return (io.github.lewin671.remoteagent.core.proto.DevicesViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DevicesViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDevices(io.github.lewin671.remoteagent.core.proto.DevicesViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 34;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDevices(io.github.lewin671.remoteagent.core.proto.DevicesViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 34 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.DevicesViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.DevicesViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.DevicesViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 34;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+   */
+  private void clearDevices() {
+    if (viewCase_ == 34) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int CLIENT_DETAIL_FIELD_NUMBER = 35;
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClientDetail() {
+    return viewCase_ == 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel getClientDetail() {
+    if (viewCase_ == 35) {
+       return (io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 35 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 35;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+   */
+  private void clearClientDetail() {
+    if (viewCase_ == 35) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int SESSION_FIELD_NUMBER = 10;
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSession() {
+    return viewCase_ == 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionViewModel getSession() {
+    if (viewCase_ == 10) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSession(io.github.lewin671.remoteagent.core.proto.SessionViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSession(io.github.lewin671.remoteagent.core.proto.SessionViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 10 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.SessionViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+   */
+  private void clearSession() {
+    if (viewCase_ == 10) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int SCHEDULES_FIELD_NUMBER = 20;
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSchedules() {
+    return viewCase_ == 20;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SchedulesViewModel getSchedules() {
+    if (viewCase_ == 20) {
+       return (io.github.lewin671.remoteagent.core.proto.SchedulesViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 20;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 20 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.SchedulesViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 20;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+   */
+  private void clearSchedules() {
+    if (viewCase_ == 20) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_DETAIL_FIELD_NUMBER = 21;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleDetail() {
+    return viewCase_ == 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel getScheduleDetail() {
+    if (viewCase_ == 21) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 21 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 21;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   */
+  private void clearScheduleDetail() {
+    if (viewCase_ == 21) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_FORM_FIELD_NUMBER = 22;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleForm() {
+    return viewCase_ == 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel getScheduleForm() {
+    if (viewCase_ == 22) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 22 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 22;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+   */
+  private void clearScheduleForm() {
+    if (viewCase_ == 22) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int SCHEDULE_SESSION_STRIP_FIELD_NUMBER = 23;
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScheduleSessionStrip() {
+    return viewCase_ == 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel getScheduleSessionStrip() {
+    if (viewCase_ == 23) {
+       return (io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 23 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 23;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   */
+  private void clearScheduleSessionStrip() {
+    if (viewCase_ == 23) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -762,6 +1356,534 @@ public  final class ViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSettings() {
+      return instance.hasSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SettingsViewModel getSettings() {
+      return instance.getSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder setSettings(io.github.lewin671.remoteagent.core.proto.SettingsViewModel value) {
+      copyOnWrite();
+      instance.setSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder setSettings(
+        io.github.lewin671.remoteagent.core.proto.SettingsViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSettings(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder mergeSettings(io.github.lewin671.remoteagent.core.proto.SettingsViewModel value) {
+      copyOnWrite();
+      instance.mergeSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SettingsViewModel settings = 30 [json_name = "settings"];</code>
+     */
+    public Builder clearSettings() {
+      copyOnWrite();
+      instance.clearSettings();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineStatus() {
+      return instance.hasMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel getMachineStatus() {
+      return instance.getMachineStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder setMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel value) {
+      copyOnWrite();
+      instance.setMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder setMachineStatus(
+        io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineStatus(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder mergeMachineStatus(io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel value) {
+      copyOnWrite();
+      instance.mergeMachineStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineStatusViewModel machine_status = 31 [json_name = "machineStatus"];</code>
+     */
+    public Builder clearMachineStatus() {
+      copyOnWrite();
+      instance.clearMachineStatus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMachineSettings() {
+      return instance.hasMachineSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel getMachineSettings() {
+      return instance.getMachineSettings();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder setMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel value) {
+      copyOnWrite();
+      instance.setMachineSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder setMachineSettings(
+        io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMachineSettings(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder mergeMachineSettings(io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel value) {
+      copyOnWrite();
+      instance.mergeMachineSettings(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineSettingsViewModel machine_settings = 32 [json_name = "machineSettings"];</code>
+     */
+    public Builder clearMachineSettings() {
+      copyOnWrite();
+      instance.clearMachineSettings();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+     */
+    @java.lang.Override
+    public boolean hasQuota() {
+      return instance.hasQuota();
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.QuotaViewModel getQuota() {
+      return instance.getQuota();
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder setQuota(io.github.lewin671.remoteagent.core.proto.QuotaViewModel value) {
+      copyOnWrite();
+      instance.setQuota(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder setQuota(
+        io.github.lewin671.remoteagent.core.proto.QuotaViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setQuota(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder mergeQuota(io.github.lewin671.remoteagent.core.proto.QuotaViewModel value) {
+      copyOnWrite();
+      instance.mergeQuota(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.QuotaViewModel quota = 33 [json_name = "quota"];</code>
+     */
+    public Builder clearQuota() {
+      copyOnWrite();
+      instance.clearQuota();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDevices() {
+      return instance.hasDevices();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DevicesViewModel getDevices() {
+      return instance.getDevices();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder setDevices(io.github.lewin671.remoteagent.core.proto.DevicesViewModel value) {
+      copyOnWrite();
+      instance.setDevices(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder setDevices(
+        io.github.lewin671.remoteagent.core.proto.DevicesViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDevices(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder mergeDevices(io.github.lewin671.remoteagent.core.proto.DevicesViewModel value) {
+      copyOnWrite();
+      instance.mergeDevices(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DevicesViewModel devices = 34 [json_name = "devices"];</code>
+     */
+    public Builder clearDevices() {
+      copyOnWrite();
+      instance.clearDevices();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClientDetail() {
+      return instance.hasClientDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel getClientDetail() {
+      return instance.getClientDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder setClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel value) {
+      copyOnWrite();
+      instance.setClientDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder setClientDetail(
+        io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClientDetail(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder mergeClientDetail(io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel value) {
+      copyOnWrite();
+      instance.mergeClientDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ClientDetailViewModel client_detail = 35 [json_name = "clientDetail"];</code>
+     */
+    public Builder clearClientDetail() {
+      copyOnWrite();
+      instance.clearClientDetail();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSession() {
+      return instance.hasSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionViewModel getSession() {
+      return instance.getSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+     */
+    public Builder setSession(io.github.lewin671.remoteagent.core.proto.SessionViewModel value) {
+      copyOnWrite();
+      instance.setSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+     */
+    public Builder setSession(
+        io.github.lewin671.remoteagent.core.proto.SessionViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+     */
+    public Builder mergeSession(io.github.lewin671.remoteagent.core.proto.SessionViewModel value) {
+      copyOnWrite();
+      instance.mergeSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
+     */
+    public Builder clearSession() {
+      copyOnWrite();
+      instance.clearSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSchedules() {
+      return instance.hasSchedules();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SchedulesViewModel getSchedules() {
+      return instance.getSchedules();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder setSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesViewModel value) {
+      copyOnWrite();
+      instance.setSchedules(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder setSchedules(
+        io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSchedules(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder mergeSchedules(io.github.lewin671.remoteagent.core.proto.SchedulesViewModel value) {
+      copyOnWrite();
+      instance.mergeSchedules(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SchedulesViewModel schedules = 20 [json_name = "schedules"];</code>
+     */
+    public Builder clearSchedules() {
+      copyOnWrite();
+      instance.clearSchedules();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleDetail() {
+      return instance.hasScheduleDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel getScheduleDetail() {
+      return instance.getScheduleDetail();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder setScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel value) {
+      copyOnWrite();
+      instance.setScheduleDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder setScheduleDetail(
+        io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleDetail(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder mergeScheduleDetail(io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel value) {
+      copyOnWrite();
+      instance.mergeScheduleDetail(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleDetailViewModel schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+     */
+    public Builder clearScheduleDetail() {
+      copyOnWrite();
+      instance.clearScheduleDetail();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleForm() {
+      return instance.hasScheduleForm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel getScheduleForm() {
+      return instance.getScheduleForm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder setScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel value) {
+      copyOnWrite();
+      instance.setScheduleForm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder setScheduleForm(
+        io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleForm(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder mergeScheduleForm(io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel value) {
+      copyOnWrite();
+      instance.mergeScheduleForm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleFormViewModel schedule_form = 22 [json_name = "scheduleForm"];</code>
+     */
+    public Builder clearScheduleForm() {
+      copyOnWrite();
+      instance.clearScheduleForm();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScheduleSessionStrip() {
+      return instance.hasScheduleSessionStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel getScheduleSessionStrip() {
+      return instance.getScheduleSessionStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder setScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel value) {
+      copyOnWrite();
+      instance.setScheduleSessionStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder setScheduleSessionStrip(
+        io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScheduleSessionStrip(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder mergeScheduleSessionStrip(io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel value) {
+      copyOnWrite();
+      instance.mergeScheduleSessionStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ScheduleSessionStripViewModel schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+     */
+    public Builder clearScheduleSessionStrip() {
+      copyOnWrite();
+      instance.clearScheduleSessionStrip();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ViewModel)
   }
   @java.lang.Override
@@ -785,10 +1907,22 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.NewSessionViewModel.class,
             io.github.lewin671.remoteagent.core.proto.SyncStateView.class,
             io.github.lewin671.remoteagent.core.proto.SessionDataView.class,
+            io.github.lewin671.remoteagent.core.proto.SessionViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.SchedulesViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleDetailViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleFormViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.SettingsViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.MachineStatusViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.QuotaViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.DevicesViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.class,
           };
           java.lang.String info =
-              "\u0000\u0005\u0001\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001<\u0000\u0002<" +
-              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000";
+              "\u0000\u0010\u0001\u0000\u0001#\u0010\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
+              "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

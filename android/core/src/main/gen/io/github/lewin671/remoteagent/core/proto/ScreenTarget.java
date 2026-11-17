@@ -43,6 +43,50 @@ public enum ScreenTarget
    * <code>SCREEN_TARGET_SESSION_DATA = 5;</code>
    */
   SCREEN_TARGET_SESSION_DATA(5),
+  /**
+   * <code>SCREEN_TARGET_SETTINGS = 30;</code>
+   */
+  SCREEN_TARGET_SETTINGS(30),
+  /**
+   * <code>SCREEN_TARGET_MACHINE_STATUS = 31;</code>
+   */
+  SCREEN_TARGET_MACHINE_STATUS(31),
+  /**
+   * <code>SCREEN_TARGET_MACHINE_SETTINGS = 32;</code>
+   */
+  SCREEN_TARGET_MACHINE_SETTINGS(32),
+  /**
+   * <code>SCREEN_TARGET_QUOTA = 33;</code>
+   */
+  SCREEN_TARGET_QUOTA(33),
+  /**
+   * <code>SCREEN_TARGET_DEVICES = 34;</code>
+   */
+  SCREEN_TARGET_DEVICES(34),
+  /**
+   * <code>SCREEN_TARGET_CLIENT_DETAIL = 35;</code>
+   */
+  SCREEN_TARGET_CLIENT_DETAIL(35),
+  /**
+   * <code>SCREEN_TARGET_SESSION = 10;</code>
+   */
+  SCREEN_TARGET_SESSION(10),
+  /**
+   * <code>SCREEN_TARGET_SCHEDULES = 20;</code>
+   */
+  SCREEN_TARGET_SCHEDULES(20),
+  /**
+   * <code>SCREEN_TARGET_SCHEDULE_DETAIL = 21;</code>
+   */
+  SCREEN_TARGET_SCHEDULE_DETAIL(21),
+  /**
+   * <code>SCREEN_TARGET_SCHEDULE_FORM = 22;</code>
+   */
+  SCREEN_TARGET_SCHEDULE_FORM(22),
+  /**
+   * <code>SCREEN_TARGET_SCHEDULE_SESSION_STRIP = 23;</code>
+   */
+  SCREEN_TARGET_SCHEDULE_SESSION_STRIP(23),
   UNRECOGNIZED(-1),
   ;
 
@@ -78,6 +122,50 @@ public enum ScreenTarget
    * <code>SCREEN_TARGET_SESSION_DATA = 5;</code>
    */
   public static final int SCREEN_TARGET_SESSION_DATA_VALUE = 5;
+  /**
+   * <code>SCREEN_TARGET_SETTINGS = 30;</code>
+   */
+  public static final int SCREEN_TARGET_SETTINGS_VALUE = 30;
+  /**
+   * <code>SCREEN_TARGET_MACHINE_STATUS = 31;</code>
+   */
+  public static final int SCREEN_TARGET_MACHINE_STATUS_VALUE = 31;
+  /**
+   * <code>SCREEN_TARGET_MACHINE_SETTINGS = 32;</code>
+   */
+  public static final int SCREEN_TARGET_MACHINE_SETTINGS_VALUE = 32;
+  /**
+   * <code>SCREEN_TARGET_QUOTA = 33;</code>
+   */
+  public static final int SCREEN_TARGET_QUOTA_VALUE = 33;
+  /**
+   * <code>SCREEN_TARGET_DEVICES = 34;</code>
+   */
+  public static final int SCREEN_TARGET_DEVICES_VALUE = 34;
+  /**
+   * <code>SCREEN_TARGET_CLIENT_DETAIL = 35;</code>
+   */
+  public static final int SCREEN_TARGET_CLIENT_DETAIL_VALUE = 35;
+  /**
+   * <code>SCREEN_TARGET_SESSION = 10;</code>
+   */
+  public static final int SCREEN_TARGET_SESSION_VALUE = 10;
+  /**
+   * <code>SCREEN_TARGET_SCHEDULES = 20;</code>
+   */
+  public static final int SCREEN_TARGET_SCHEDULES_VALUE = 20;
+  /**
+   * <code>SCREEN_TARGET_SCHEDULE_DETAIL = 21;</code>
+   */
+  public static final int SCREEN_TARGET_SCHEDULE_DETAIL_VALUE = 21;
+  /**
+   * <code>SCREEN_TARGET_SCHEDULE_FORM = 22;</code>
+   */
+  public static final int SCREEN_TARGET_SCHEDULE_FORM_VALUE = 22;
+  /**
+   * <code>SCREEN_TARGET_SCHEDULE_SESSION_STRIP = 23;</code>
+   */
+  public static final int SCREEN_TARGET_SCHEDULE_SESSION_STRIP_VALUE = 23;
 
 
   @java.lang.Override
@@ -107,6 +195,17 @@ public enum ScreenTarget
       case 3: return SCREEN_TARGET_NEW_SESSION;
       case 4: return SCREEN_TARGET_SYNC_STATE;
       case 5: return SCREEN_TARGET_SESSION_DATA;
+      case 30: return SCREEN_TARGET_SETTINGS;
+      case 31: return SCREEN_TARGET_MACHINE_STATUS;
+      case 32: return SCREEN_TARGET_MACHINE_SETTINGS;
+      case 33: return SCREEN_TARGET_QUOTA;
+      case 34: return SCREEN_TARGET_DEVICES;
+      case 35: return SCREEN_TARGET_CLIENT_DETAIL;
+      case 10: return SCREEN_TARGET_SESSION;
+      case 20: return SCREEN_TARGET_SCHEDULES;
+      case 21: return SCREEN_TARGET_SCHEDULE_DETAIL;
+      case 22: return SCREEN_TARGET_SCHEDULE_FORM;
+      case 23: return SCREEN_TARGET_SCHEDULE_SESSION_STRIP;
       default: return null;
     }
   }

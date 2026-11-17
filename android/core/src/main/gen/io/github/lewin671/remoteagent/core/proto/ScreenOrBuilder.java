@@ -81,5 +81,126 @@ public interface ScreenOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SessionDataScreenRequest getSessionData();
 
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   * @return Whether the settings field is set.
+   */
+  boolean hasSettings();
+  /**
+   * <code>.remoteagent.core.v1.SettingsScreenRequest settings = 30 [json_name = "settings"];</code>
+   * @return The settings.
+   */
+  io.github.lewin671.remoteagent.core.proto.SettingsScreenRequest getSettings();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   * @return Whether the machineStatus field is set.
+   */
+  boolean hasMachineStatus();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScreenRequest machine_status = 31 [json_name = "machineStatus"];</code>
+   * @return The machineStatus.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusScreenRequest getMachineStatus();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   * @return Whether the machineSettings field is set.
+   */
+  boolean hasMachineSettings();
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsScreenRequest machine_settings = 32 [json_name = "machineSettings"];</code>
+   * @return The machineSettings.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineSettingsScreenRequest getMachineSettings();
+
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   * @return Whether the quota field is set.
+   */
+  boolean hasQuota();
+  /**
+   * <code>.remoteagent.core.v1.QuotaScreenRequest quota = 33 [json_name = "quota"];</code>
+   * @return The quota.
+   */
+  io.github.lewin671.remoteagent.core.proto.QuotaScreenRequest getQuota();
+
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   * @return Whether the devices field is set.
+   */
+  boolean hasDevices();
+  /**
+   * <code>.remoteagent.core.v1.DevicesScreenRequest devices = 34 [json_name = "devices"];</code>
+   * @return The devices.
+   */
+  io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest getDevices();
+
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   * @return Whether the clientDetail field is set.
+   */
+  boolean hasClientDetail();
+  /**
+   * <code>.remoteagent.core.v1.ClientDetailScreenRequest client_detail = 35 [json_name = "clientDetail"];</code>
+   * @return The clientDetail.
+   */
+  io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest getClientDetail();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   * @return Whether the session field is set.
+   */
+  boolean hasSession();
+  /**
+   * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
+   * @return The session.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionScreenRequest getSession();
+
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   * @return Whether the schedules field is set.
+   */
+  boolean hasSchedules();
+  /**
+   * <code>.remoteagent.core.v1.SchedulesScreenRequest schedules = 20 [json_name = "schedules"];</code>
+   * @return The schedules.
+   */
+  io.github.lewin671.remoteagent.core.proto.SchedulesScreenRequest getSchedules();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   * @return Whether the scheduleDetail field is set.
+   */
+  boolean hasScheduleDetail();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDetailScreenRequest schedule_detail = 21 [json_name = "scheduleDetail"];</code>
+   * @return The scheduleDetail.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleDetailScreenRequest getScheduleDetail();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   * @return Whether the scheduleForm field is set.
+   */
+  boolean hasScheduleForm();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormScreenRequest schedule_form = 22 [json_name = "scheduleForm"];</code>
+   * @return The scheduleForm.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormScreenRequest getScheduleForm();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   * @return Whether the scheduleSessionStrip field is set.
+   */
+  boolean hasScheduleSessionStrip();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSessionStripScreenRequest schedule_session_strip = 23 [json_name = "scheduleSessionStrip"];</code>
+   * @return The scheduleSessionStrip.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripScreenRequest getScheduleSessionStrip();
+
   public io.github.lewin671.remoteagent.core.proto.Screen.ScreenCase getScreenCase();
 }

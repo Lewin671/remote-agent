@@ -197,5 +197,148 @@ public interface EffectOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect getRequestEntropy();
 
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   * @return Whether the scheduleMachinePoll field is set.
+   */
+  boolean hasScheduleMachinePoll();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
+   * @return The scheduleMachinePoll.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleMachinePollEffect getScheduleMachinePoll();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   * @return Whether the directPreference field is set.
+   */
+  boolean hasDirectPreference();
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferenceEffect direct_preference = 71 [json_name = "directPreference"];</code>
+   * @return The directPreference.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPreferenceEffect getDirectPreference();
+
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   * @return Whether the renameClient field is set.
+   */
+  boolean hasRenameClient();
+  /**
+   * <code>.remoteagent.core.v1.RenameClientEffect rename_client = 72 [json_name = "renameClient"];</code>
+   * @return The renameClient.
+   */
+  io.github.lewin671.remoteagent.core.proto.RenameClientEffect getRenameClient();
+
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   * @return Whether the checkUpdates field is set.
+   */
+  boolean hasCheckUpdates();
+  /**
+   * <code>.remoteagent.core.v1.CheckUpdatesEffect check_updates = 73 [json_name = "checkUpdates"];</code>
+   * @return The checkUpdates.
+   */
+  io.github.lewin671.remoteagent.core.proto.CheckUpdatesEffect getCheckUpdates();
+
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   * @return Whether the persistClientPrefs field is set.
+   */
+  boolean hasPersistClientPrefs();
+  /**
+   * <code>.remoteagent.core.v1.PersistClientPrefsEffect persist_client_prefs = 74 [json_name = "persistClientPrefs"];</code>
+   * @return The persistClientPrefs.
+   */
+  io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect getPersistClientPrefs();
+
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   * @return Whether the prepareCleanupSession field is set.
+   */
+  boolean hasPrepareCleanupSession();
+  /**
+   * <code>.remoteagent.core.v1.PrepareCleanupSessionEffect prepare_cleanup_session = 75 [json_name = "prepareCleanupSession"];</code>
+   * @return The prepareCleanupSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect getPrepareCleanupSession();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   * @return Whether the sessionRestoreComposer field is set.
+   */
+  boolean hasSessionRestoreComposer();
+  /**
+   * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
+   * @return The sessionRestoreComposer.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect getSessionRestoreComposer();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   * @return Whether the scheduleReadCache field is set.
+   */
+  boolean hasScheduleReadCache();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
+   * @return The scheduleReadCache.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect getScheduleReadCache();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   * @return Whether the scheduleDeleteCache field is set.
+   */
+  boolean hasScheduleDeleteCache();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDeleteCacheEffect schedule_delete_cache = 61 [json_name = "scheduleDeleteCache"];</code>
+   * @return The scheduleDeleteCache.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect getScheduleDeleteCache();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   * @return Whether the scheduleLoadSeen field is set.
+   */
+  boolean hasScheduleLoadSeen();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLoadSeenEffect schedule_load_seen = 62 [json_name = "scheduleLoadSeen"];</code>
+   * @return The scheduleLoadSeen.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect getScheduleLoadSeen();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   * @return Whether the scheduleSaveSeen field is set.
+   */
+  boolean hasScheduleSaveSeen();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSaveSeenEffect schedule_save_seen = 63 [json_name = "scheduleSaveSeen"];</code>
+   * @return The scheduleSaveSeen.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleSaveSeenEffect getScheduleSaveSeen();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   * @return Whether the scheduleDismissNotifications field is set.
+   */
+  boolean hasScheduleDismissNotifications();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64 [json_name = "scheduleDismissNotifications"];</code>
+   * @return The scheduleDismissNotifications.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleDismissNotificationsEffect getScheduleDismissNotifications();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   * @return Whether the scheduleNavigate field is set.
+   */
+  boolean hasScheduleNavigate();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleNavigateEffect schedule_navigate = 65 [json_name = "scheduleNavigate"];</code>
+   * @return The scheduleNavigate.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect getScheduleNavigate();
+
   public io.github.lewin671.remoteagent.core.proto.Effect.EffectCase getEffectCase();
 }

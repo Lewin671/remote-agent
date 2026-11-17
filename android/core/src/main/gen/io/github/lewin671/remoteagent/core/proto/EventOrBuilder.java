@@ -550,6 +550,666 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.NewSessionProjectAction getNewSessionAbandonStart();
 
   /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   * @return Whether the machineStatusWatch field is set.
+   */
+  boolean hasMachineStatusWatch();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusWatchEvent machine_status_watch = 350 [json_name = "machineStatusWatch"];</code>
+   * @return The machineStatusWatch.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusWatchEvent getMachineStatusWatch();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   * @return Whether the machineStatusRetry field is set.
+   */
+  boolean hasMachineStatusRetry();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusRetryEvent machine_status_retry = 351 [json_name = "machineStatusRetry"];</code>
+   * @return The machineStatusRetry.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusRetryEvent getMachineStatusRetry();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   * @return Whether the machineStatusTab field is set.
+   */
+  boolean hasMachineStatusTab();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusTabEvent machine_status_tab = 352 [json_name = "machineStatusTab"];</code>
+   * @return The machineStatusTab.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusTabEvent getMachineStatusTab();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   * @return Whether the machineStatusScrub field is set.
+   */
+  boolean hasMachineStatusScrub();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusScrubEvent machine_status_scrub = 353 [json_name = "machineStatusScrub"];</code>
+   * @return The machineStatusScrub.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusScrubEvent getMachineStatusScrub();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   * @return Whether the machineStatusCleanup field is set.
+   */
+  boolean hasMachineStatusCleanup();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusCleanupEvent machine_status_cleanup = 354 [json_name = "machineStatusCleanup"];</code>
+   * @return The machineStatusCleanup.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusCleanupEvent getMachineStatusCleanup();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   * @return Whether the machineStatusPollTick field is set.
+   */
+  boolean hasMachineStatusPollTick();
+  /**
+   * <code>.remoteagent.core.v1.MachineStatusPollTickEvent machine_status_poll_tick = 355 [json_name = "machineStatusPollTick"];</code>
+   * @return The machineStatusPollTick.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineStatusPollTickEvent getMachineStatusPollTick();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   * @return Whether the machineSettingsOpen field is set.
+   */
+  boolean hasMachineSettingsOpen();
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsOpenEvent machine_settings_open = 360 [json_name = "machineSettingsOpen"];</code>
+   * @return The machineSettingsOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineSettingsOpenEvent getMachineSettingsOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   * @return Whether the machineSettingsSelectAgent field is set.
+   */
+  boolean hasMachineSettingsSelectAgent();
+  /**
+   * <code>.remoteagent.core.v1.MachineSettingsSelectAgentEvent machine_settings_select_agent = 361 [json_name = "machineSettingsSelectAgent"];</code>
+   * @return The machineSettingsSelectAgent.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineSettingsSelectAgentEvent getMachineSettingsSelectAgent();
+
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   * @return Whether the updateMachineAgentDefaults field is set.
+   */
+  boolean hasUpdateMachineAgentDefaults();
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362 [json_name = "updateMachineAgentDefaults"];</code>
+   * @return The updateMachineAgentDefaults.
+   */
+  io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent getUpdateMachineAgentDefaults();
+
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   * @return Whether the updateMachineDaemonSettings field is set.
+   */
+  boolean hasUpdateMachineDaemonSettings();
+  /**
+   * <code>.remoteagent.core.v1.UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363 [json_name = "updateMachineDaemonSettings"];</code>
+   * @return The updateMachineDaemonSettings.
+   */
+  io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent getUpdateMachineDaemonSettings();
+
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   * @return Whether the updateDirectPreference field is set.
+   */
+  boolean hasUpdateDirectPreference();
+  /**
+   * <code>.remoteagent.core.v1.UpdateDirectPreferenceEvent update_direct_preference = 364 [json_name = "updateDirectPreference"];</code>
+   * @return The updateDirectPreference.
+   */
+  io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent getUpdateDirectPreference();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   * @return Whether the machineDirectStatus field is set.
+   */
+  boolean hasMachineDirectStatus();
+  /**
+   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
+   * @return The machineDirectStatus.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus();
+
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   * @return Whether the updateClientName field is set.
+   */
+  boolean hasUpdateClientName();
+  /**
+   * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
+   * @return The updateClientName.
+   */
+  io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent getUpdateClientName();
+
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   * @return Whether the setNotificationPref field is set.
+   */
+  boolean hasSetNotificationPref();
+  /**
+   * <code>.remoteagent.core.v1.SetNotificationPrefEvent set_notification_pref = 375 [json_name = "setNotificationPref"];</code>
+   * @return The setNotificationPref.
+   */
+  io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent getSetNotificationPref();
+
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   * @return Whether the setAppearancePref field is set.
+   */
+  boolean hasSetAppearancePref();
+  /**
+   * <code>.remoteagent.core.v1.SetAppearancePrefEvent set_appearance_pref = 376 [json_name = "setAppearancePref"];</code>
+   * @return The setAppearancePref.
+   */
+  io.github.lewin671.remoteagent.core.proto.SetAppearancePrefEvent getSetAppearancePref();
+
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   * @return Whether the connCheckStatus field is set.
+   */
+  boolean hasConnCheckStatus();
+  /**
+   * <code>.remoteagent.core.v1.ConnCheckStatusEvent conn_check_status = 377 [json_name = "connCheckStatus"];</code>
+   * @return The connCheckStatus.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnCheckStatusEvent getConnCheckStatus();
+
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   * @return Whether the clientUpdateState field is set.
+   */
+  boolean hasClientUpdateState();
+  /**
+   * <code>.remoteagent.core.v1.ClientUpdateStateEvent client_update_state = 378 [json_name = "clientUpdateState"];</code>
+   * @return The clientUpdateState.
+   */
+  io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent getClientUpdateState();
+
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   * @return Whether the checkForUpdates field is set.
+   */
+  boolean hasCheckForUpdates();
+  /**
+   * <code>.remoteagent.core.v1.CheckForUpdatesEvent check_for_updates = 379 [json_name = "checkForUpdates"];</code>
+   * @return The checkForUpdates.
+   */
+  io.github.lewin671.remoteagent.core.proto.CheckForUpdatesEvent getCheckForUpdates();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   * @return Whether the sessionSubmitCommand field is set.
+   */
+  boolean hasSessionSubmitCommand();
+  /**
+   * <code>.remoteagent.core.v1.SessionSubmitCommandAction session_submit_command = 200 [json_name = "sessionSubmitCommand"];</code>
+   * @return The sessionSubmitCommand.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionSubmitCommandAction getSessionSubmitCommand();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   * @return Whether the sessionAbandonCommand field is set.
+   */
+  boolean hasSessionAbandonCommand();
+  /**
+   * <code>.remoteagent.core.v1.SessionSlotAction session_abandon_command = 201 [json_name = "sessionAbandonCommand"];</code>
+   * @return The sessionAbandonCommand.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionSlotAction getSessionAbandonCommand();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   * @return Whether the sessionOpen field is set.
+   */
+  boolean hasSessionOpen();
+  /**
+   * <code>.remoteagent.core.v1.SessionOpenAction session_open = 202 [json_name = "sessionOpen"];</code>
+   * @return The sessionOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionOpenAction getSessionOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   * @return Whether the sessionDismissOutgoing field is set.
+   */
+  boolean hasSessionDismissOutgoing();
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_dismiss_outgoing = 203 [json_name = "sessionDismissOutgoing"];</code>
+   * @return The sessionDismissOutgoing.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionDismissOutgoing();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   * @return Whether the sessionRestoreOutgoing field is set.
+   */
+  boolean hasSessionRestoreOutgoing();
+  /**
+   * <code>.remoteagent.core.v1.SessionOutgoingAction session_restore_outgoing = 204 [json_name = "sessionRestoreOutgoing"];</code>
+   * @return The sessionRestoreOutgoing.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionOutgoingAction getSessionRestoreOutgoing();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   * @return Whether the sessionSetQuestionIndex field is set.
+   */
+  boolean hasSessionSetQuestionIndex();
+  /**
+   * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
+   * @return The sessionSetQuestionIndex.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionQuestionStepAction getSessionSetQuestionIndex();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   * @return Whether the sessionLoadEarlier field is set.
+   */
+  boolean hasSessionLoadEarlier();
+  /**
+   * <code>.remoteagent.core.v1.SessionRefreshHistoryAction session_load_earlier = 206 [json_name = "sessionLoadEarlier"];</code>
+   * @return The sessionLoadEarlier.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionRefreshHistoryAction getSessionLoadEarlier();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   * @return Whether the scheduleCacheLoaded field is set.
+   */
+  boolean hasScheduleCacheLoaded();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
+   * @return The scheduleCacheLoaded.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent getScheduleCacheLoaded();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   * @return Whether the scheduleSeenLoaded field is set.
+   */
+  boolean hasScheduleSeenLoaded();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleSeenLoadedEvent schedule_seen_loaded = 301 [json_name = "scheduleSeenLoaded"];</code>
+   * @return The scheduleSeenLoaded.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent getScheduleSeenLoaded();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   * @return Whether the scheduleLocalContext field is set.
+   */
+  boolean hasScheduleLocalContext();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleLocalContextEvent schedule_local_context = 302 [json_name = "scheduleLocalContext"];</code>
+   * @return The scheduleLocalContext.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent getScheduleLocalContext();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   * @return Whether the scheduleRefresh field is set.
+   */
+  boolean hasScheduleRefresh();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_refresh = 303 [json_name = "scheduleRefresh"];</code>
+   * @return The scheduleRefresh.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleStringAction getScheduleRefresh();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   * @return Whether the scheduleSetVisibleSession field is set.
+   */
+  boolean hasScheduleSetVisibleSession();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleStringAction schedule_set_visible_session = 304 [json_name = "scheduleSetVisibleSession"];</code>
+   * @return The scheduleSetVisibleSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleStringAction getScheduleSetVisibleSession();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   * @return Whether the scheduleListOpen field is set.
+   */
+  boolean hasScheduleListOpen();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_list_open = 310 [json_name = "scheduleListOpen"];</code>
+   * @return The scheduleListOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction getScheduleListOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   * @return Whether the scheduleSelectTask field is set.
+   */
+  boolean hasScheduleSelectTask();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_select_task = 311 [json_name = "scheduleSelectTask"];</code>
+   * @return The scheduleSelectTask.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleSelectTask();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   * @return Whether the scheduleToggleEnded field is set.
+   */
+  boolean hasScheduleToggleEnded();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleBoolAction schedule_toggle_ended = 312 [json_name = "scheduleToggleEnded"];</code>
+   * @return The scheduleToggleEnded.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleBoolAction getScheduleToggleEnded();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   * @return Whether the scheduleMarkRead field is set.
+   */
+  boolean hasScheduleMarkRead();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMarkReadAction schedule_mark_read = 313 [json_name = "scheduleMarkRead"];</code>
+   * @return The scheduleMarkRead.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleMarkReadAction getScheduleMarkRead();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   * @return Whether the scheduleMarkUnread field is set.
+   */
+  boolean hasScheduleMarkUnread();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_mark_unread = 314 [json_name = "scheduleMarkUnread"];</code>
+   * @return The scheduleMarkUnread.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleMarkUnread();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   * @return Whether the scheduleDetailOpen field is set.
+   */
+  boolean hasScheduleDetailOpen();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_open = 320 [json_name = "scheduleDetailOpen"];</code>
+   * @return The scheduleDetailOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   * @return Whether the scheduleDetailHide field is set.
+   */
+  boolean hasScheduleDetailHide();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_hide = 321 [json_name = "scheduleDetailHide"];</code>
+   * @return The scheduleDetailHide.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailHide();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   * @return Whether the scheduleDetailClose field is set.
+   */
+  boolean hasScheduleDetailClose();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_close = 322 [json_name = "scheduleDetailClose"];</code>
+   * @return The scheduleDetailClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailClose();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   * @return Whether the scheduleDetailShowLatestResult field is set.
+   */
+  boolean hasScheduleDetailShowLatestResult();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskRef schedule_detail_show_latest_result = 323 [json_name = "scheduleDetailShowLatestResult"];</code>
+   * @return The scheduleDetailShowLatestResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskRef getScheduleDetailShowLatestResult();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   * @return Whether the scheduleDetailToggleQuietGroup field is set.
+   */
+  boolean hasScheduleDetailToggleQuietGroup();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_toggle_quiet_group = 324 [json_name = "scheduleDetailToggleQuietGroup"];</code>
+   * @return The scheduleDetailToggleQuietGroup.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleDetailToggleQuietGroup();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   * @return Whether the scheduleDetailShowAllRuns field is set.
+   */
+  boolean hasScheduleDetailShowAllRuns();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_detail_show_all_runs = 325 [json_name = "scheduleDetailShowAllRuns"];</code>
+   * @return The scheduleDetailShowAllRuns.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleDetailShowAllRuns();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   * @return Whether the scheduleDetailOpenRun field is set.
+   */
+  boolean hasScheduleDetailOpenRun();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_detail_open_run = 326 [json_name = "scheduleDetailOpenRun"];</code>
+   * @return The scheduleDetailOpenRun.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleDetailOpenRun();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   * @return Whether the scheduleOperate field is set.
+   */
+  boolean hasScheduleOperate();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleOperateAction schedule_operate = 330 [json_name = "scheduleOperate"];</code>
+   * @return The scheduleOperate.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleOperateAction getScheduleOperate();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   * @return Whether the scheduleRename field is set.
+   */
+  boolean hasScheduleRename();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_rename = 331 [json_name = "scheduleRename"];</code>
+   * @return The scheduleRename.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleRename();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   * @return Whether the scheduleSetNotify field is set.
+   */
+  boolean hasScheduleSetNotify();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskBoolAction schedule_set_notify = 332 [json_name = "scheduleSetNotify"];</code>
+   * @return The scheduleSetNotify.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskBoolAction getScheduleSetNotify();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   * @return Whether the scheduleUpdateMessage field is set.
+   */
+  boolean hasScheduleUpdateMessage();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleTaskStringAction schedule_update_message = 333 [json_name = "scheduleUpdateMessage"];</code>
+   * @return The scheduleUpdateMessage.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleTaskStringAction getScheduleUpdateMessage();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   * @return Whether the scheduleAbandonMutation field is set.
+   */
+  boolean hasScheduleAbandonMutation();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_abandon_mutation = 334 [json_name = "scheduleAbandonMutation"];</code>
+   * @return The scheduleAbandonMutation.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef getScheduleAbandonMutation();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   * @return Whether the scheduleRetryMutation field is set.
+   */
+  boolean hasScheduleRetryMutation();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleMutationRef schedule_retry_mutation = 335 [json_name = "scheduleRetryMutation"];</code>
+   * @return The scheduleRetryMutation.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleMutationRef getScheduleRetryMutation();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   * @return Whether the scheduleFormOpen field is set.
+   */
+  boolean hasScheduleFormOpen();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormOpenAction schedule_form_open = 338 [json_name = "scheduleFormOpen"];</code>
+   * @return The scheduleFormOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormOpenAction getScheduleFormOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   * @return Whether the scheduleFormClose field is set.
+   */
+  boolean hasScheduleFormClose();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_close = 339 [json_name = "scheduleFormClose"];</code>
+   * @return The scheduleFormClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormClose();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   * @return Whether the scheduleFormSetMessage field is set.
+   */
+  boolean hasScheduleFormSetMessage();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_message = 340 [json_name = "scheduleFormSetMessage"];</code>
+   * @return The scheduleFormSetMessage.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSetMessage();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   * @return Whether the scheduleFormSetTitle field is set.
+   */
+  boolean hasScheduleFormSetTitle();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_set_title = 341 [json_name = "scheduleFormSetTitle"];</code>
+   * @return The scheduleFormSetTitle.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSetTitle();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   * @return Whether the scheduleFormSetNotify field is set.
+   */
+  boolean hasScheduleFormSetNotify();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_set_notify = 342 [json_name = "scheduleFormSetNotify"];</code>
+   * @return The scheduleFormSetNotify.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormSetNotify();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   * @return Whether the scheduleFormSelectProject field is set.
+   */
+  boolean hasScheduleFormSelectProject();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectProjectAction schedule_form_select_project = 343 [json_name = "scheduleFormSelectProject"];</code>
+   * @return The scheduleFormSelectProject.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectProjectAction getScheduleFormSelectProject();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   * @return Whether the scheduleFormSelectMachine field is set.
+   */
+  boolean hasScheduleFormSelectMachine();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_select_machine = 344 [json_name = "scheduleFormSelectMachine"];</code>
+   * @return The scheduleFormSelectMachine.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormSelectMachine();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   * @return Whether the scheduleFormSelectAgent field is set.
+   */
+  boolean hasScheduleFormSelectAgent();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectAgentAction schedule_form_select_agent = 345 [json_name = "scheduleFormSelectAgent"];</code>
+   * @return The scheduleFormSelectAgent.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectAgentAction getScheduleFormSelectAgent();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   * @return Whether the scheduleFormSelectModel field is set.
+   */
+  boolean hasScheduleFormSelectModel();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormSelectModelAction schedule_form_select_model = 346 [json_name = "scheduleFormSelectModel"];</code>
+   * @return The scheduleFormSelectModel.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormSelectModelAction getScheduleFormSelectModel();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   * @return Whether the scheduleFormUpdateTiming field is set.
+   */
+  boolean hasScheduleFormUpdateTiming();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormUpdateTimingAction schedule_form_update_timing = 347 [json_name = "scheduleFormUpdateTiming"];</code>
+   * @return The scheduleFormUpdateTiming.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction getScheduleFormUpdateTiming();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   * @return Whether the scheduleFormSubmit field is set.
+   */
+  boolean hasScheduleFormSubmit();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormBoolAction schedule_form_submit = 348 [json_name = "scheduleFormSubmit"];</code>
+   * @return The scheduleFormSubmit.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormBoolAction getScheduleFormSubmit();
+
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   * @return Whether the scheduleFormRetryModels field is set.
+   */
+  boolean hasScheduleFormRetryModels();
+  /**
+   * <code>.remoteagent.core.v1.ScheduleFormStringAction schedule_form_retry_models = 349 [json_name = "scheduleFormRetryModels"];</code>
+   * @return The scheduleFormRetryModels.
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormRetryModels();
+
+  /**
    * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */
