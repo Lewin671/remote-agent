@@ -286,6 +286,97 @@
       "views": [
         { "name": "afterExecuted", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
       ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060295",
+        "entropyProvided": {
+          "randomIds": [
+            "pref-extra-1", "pref-extra-2",
+            "req-models-2", "att-models-2",
+            "req-extra-1", "req-extra-2"
+          ],
+          "unitFloats": [0.5, 0.5]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060300",
+        "streamFrame": {
+          "legId": "1",
+          "accountPrefsUpdated": {
+            "revision": "1",
+            "prefs": {
+              "schema": 1,
+              "settings": [
+                {
+                  "path": "/Users/me/Code/app",
+                  "machineId": "m-on",
+                  "agent": "AGENT_CODEX",
+                  "agents": [
+                    { "agent": "AGENT_UNSPECIFIED", "model": "gpt-5.4", "effort": "high" }
+                  ]
+                },
+                {
+                  "path": "/Users/me/Code/pref",
+                  "machineId": "m-on",
+                  "agent": "AGENT_CLAUDE",
+                  "agents": [
+                    { "agent": "AGENT_CLAUDE", "model": "claude-sonnet-5-5" }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060310",
+        "newSessionOpen": { "projectKey": "/Users/me/Code/app" }
+      },
+      "views": [
+        { "name": "reopenWithSavedPrefs", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060320",
+        "newSessionOpen": { "projectKey": "/Users/me/Code/pref" }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060330",
+        "commandOutcome": {
+          "requestId": "pref-extra-1",
+          "attemptId": "pref-extra-2",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "ok",
+          "result": {
+            "outcome": "executed",
+            "reason": "ok",
+            "resultAvailable": true,
+            "listModels": {
+              "defaultModel": "claude-opus-5-5",
+              "models": [
+                { "slug": "claude-opus-5-5", "displayName": "Opus 5.5" },
+                { "slug": "claude-sonnet-5-5", "displayName": "Sonnet 5.5" }
+              ]
+            }
+          }
+        }
+      },
+      "views": [
+        { "name": "openOtherProjectWithSavedPrefs", "screen": { "newSession": { "projectKey": "/Users/me/Code/pref" } } }
+      ]
     }
   ]
 }

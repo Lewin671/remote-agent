@@ -50,6 +50,9 @@ type NewSessionDraft struct {
 	ProjectKey           string
 	Config               lists.StartConfig
 	ConfigInitialized    bool
+	ConfigChosen         bool
+	MachineChosen        bool
+	ResetOnNextOpen      bool
 	AgentOverride        v1.Agent
 	Prompt               string
 	AttachmentCount      int32

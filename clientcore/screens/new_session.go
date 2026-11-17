@@ -105,11 +105,13 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 
 	var pickMachine string
 	var pickAgent v1.Agent
-	if draft != nil && draft.ConfigInitialized {
+	if draft != nil && (draft.ConfigChosen || draft.MachineChosen || draft.ConfigInitialized) {
 		pickMachine = draft.Config.MachineID
-		pickAgent = draft.Config.Agent
-	} else if draft != nil && draft.AgentOverride != v1.Agent_AGENT_UNSPECIFIED {
+	}
+	if draft != nil && draft.AgentOverride != v1.Agent_AGENT_UNSPECIFIED {
 		pickAgent = draft.AgentOverride
+	} else if draft != nil && draft.ConfigChosen {
+		pickAgent = draft.Config.Agent
 	}
 
 	res := lists.ResolveProjectStart(&st.World, key, pickMachine, pickAgent, nil, false)
@@ -118,6 +120,8 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		cfg.MachineID = pickMachine
 		cfg.Cwd = key
 		cfg.Agent = lists.EffectiveAgent(pickAgent)
+	} else {
+		cfg.Agent = lists.EffectiveAgent(cfg.Agent)
 	}
 	if draft != nil && draft.ConfigInitialized {
 		cfg.Model = draft.Config.Model
@@ -138,7 +142,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	installedAgents := lists.MachineAgents(mMeta)
 	agentCap := lists.AgentInfo(cfg.Agent)
 
-	modelsEntry := st.MachineModels[MachineAgentKey{MachineID: cfg.MachineID, Agent: cfg.Agent}]
+	modelsEntry := st.MachineModels[MachineAgentKey{MachineID: cfg.MachineID, Agent: lists.EffectiveAgent(cfg.Agent)}]
 	settingsEntry := st.MachineSettings[cfg.MachineID]
 	var modelsResp *v1.ListModelsResponse
 	var hasModels, modelsLoading bool

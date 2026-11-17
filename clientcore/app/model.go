@@ -72,14 +72,25 @@ func (m *Model) findMachine(id string) *lists.Machine {
 func (m *Model) resolveDraftConfig(key string, d *screens.NewSessionDraft) lists.ProjectStartResult {
 	var pickMachine string
 	var pickAgent v1.Agent
-	if d != nil && d.ConfigInitialized {
+	if d != nil && (d.ConfigChosen || d.MachineChosen) {
 		pickMachine = d.Config.MachineID
+	}
+	if d != nil && d.ConfigChosen {
 		pickAgent = d.AgentOverride
+		if pickAgent == v1.Agent_AGENT_UNSPECIFIED {
+			pickAgent = d.Config.Agent
+		}
 	}
 	res := lists.ResolveProjectStart(&m.state.World, key, pickMachine, pickAgent, nil, false)
-	if d != nil && !d.ConfigInitialized && res.Found {
-		d.Config = res.Config
-		d.ConfigInitialized = true
+	if d != nil && res.Found {
+		res.Config.Agent = lists.EffectiveAgent(res.Config.Agent)
+		if !d.ConfigInitialized || (!d.ConfigChosen && d.Prompt == "" && d.AttachmentCount == 0 && !d.Busy && !d.Frozen) {
+			d.Config = res.Config
+			d.ConfigInitialized = true
+		}
+	}
+	if d != nil && d.ConfigInitialized {
+		d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
 	}
 	return res
 }

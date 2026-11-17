@@ -242,6 +242,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.Prompt = ""
 				d.AttachmentCount = 0
 				d.AttachmentsMoved = false
+				d.ResetOnNextOpen = true
 
 				effects = append(effects, &corev1.Effect{
 					Effect: &corev1.Effect_AttachmentsSettled{
@@ -436,9 +437,27 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			c.m.sync.SyncToState(st)
 			if forNewTask {
 				d := c.m.ensureDraft(k.ProjectAdd.Path)
-				d.Config.MachineID = machID
-				d.Config.Cwd = k.ProjectAdd.Path
-				d.ConfigInitialized = true
+				d.MachineChosen = machID != ""
+				d.ConfigChosen = false
+				d.ResetOnNextOpen = false
+				d.AgentOverride = v1.Agent_AGENT_UNSPECIFIED
+				res := lists.ResolveProjectStart(&st.World, k.ProjectAdd.Path, machID, 0, nil, false)
+				if res.Found {
+					d.Config = res.Config
+					d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
+					d.ConfigInitialized = true
+				} else {
+					d.Config = lists.StartConfig{
+						MachineID: machID,
+						Cwd:       k.ProjectAdd.Path,
+						Agent:     lists.EffectiveAgent(0),
+					}
+					d.ConfigInitialized = machID != ""
+				}
+				c.m.syncDraftAutoSupport(k.ProjectAdd.Path, res)
+				if d.Config.MachineID != "" {
+					c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
+				}
 				effects = append(effects, &corev1.Effect{
 					Effect: &corev1.Effect_Navigate{
 						Navigate: &corev1.NavigateEffect{
@@ -509,6 +528,13 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			key := c.m.activeNewSessionKey(k.NewSessionOpen.ProjectKey)
 			if key != "" {
 				d := c.m.ensureDraft(key)
+				if d.ResetOnNextOpen && !d.Busy && !d.Frozen && d.Prompt == "" && d.AttachmentCount == 0 {
+					d.ConfigChosen = false
+					d.MachineChosen = false
+					d.AgentOverride = v1.Agent_AGENT_UNSPECIFIED
+					d.ConfigInitialized = false
+					d.ResetOnNextOpen = false
+				}
 				psr := c.m.resolveDraftConfig(key, d)
 				c.m.syncDraftAutoSupport(key, psr)
 				if d.Config.MachineID != "" {
@@ -540,7 +566,11 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					agents = lists.MachineAgents(mac.Meta)
 				}
 				d.Config = lists.SwitchMachine(d.Config, k.NewSessionSelectMachine.MachineId, agents)
+				d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
 				d.ConfigInitialized = true
+				d.ConfigChosen = true
+				d.MachineChosen = true
+				d.ResetOnNextOpen = false
 				d.AgentOverride = d.Config.Agent
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, true)
@@ -557,7 +587,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				d.AgentOverride = lists.EffectiveAgent(k.NewSessionSelectAgent.Agent)
 				psr := lists.ResolveProjectStart(&st.World, key, d.Config.MachineID, d.AgentOverride, nil, false)
 				d.Config = lists.SwitchAgent(psr.Config, &d.Config, d.AgentOverride)
+				d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
 				d.ConfigInitialized = true
+				d.ConfigChosen = true
+				d.ResetOnNextOpen = false
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
@@ -571,6 +604,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			key := c.m.activeNewSessionKey("")
 			if d := c.m.ensureDraft(key); d != nil {
 				act := k.NewSessionSelectModel
+				d.Config.Agent = lists.EffectiveAgent(d.Config.Agent)
 				d.Config.Model = act.Model
 				if act.Effort != "" || act.Model != "" {
 					d.Config.Effort = act.Effort
@@ -582,6 +616,8 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					d.Config.Mode = *act.Mode
 				}
 				d.ConfigInitialized = true
+				d.ConfigChosen = true
+				d.ResetOnNextOpen = false
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
 				c.m.sync.SyncToState(st)

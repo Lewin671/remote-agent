@@ -106,15 +106,28 @@ func wantedAgent(from *inheritance, pick v1.Agent, saved *v1.ProjectSettings) v1
 func agentSet(from *inheritance, agent v1.Agent, saved *v1.ProjectSettings) *v1.AgentSettings {
 	want := EffectiveAgent(agent)
 	if saved != nil {
+		var fallback *v1.AgentSettings
 		for _, s := range saved.Agents {
-			if s != nil && EffectiveAgent(s.Agent) == want {
+			if s == nil {
+				continue
+			}
+			if s.Agent == want {
 				out := s.Clone()
 				out.Mode = v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 				return out
 			}
+			if fallback == nil && EffectiveAgent(s.Agent) == want {
+				fallback = s
+			}
+		}
+		if fallback != nil {
+			out := fallback.Clone()
+			out.Agent = want
+			out.Mode = v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+			return out
 		}
 	}
-	out := &v1.AgentSettings{Agent: agent}
+	out := &v1.AgentSettings{Agent: want}
 	if last := from.first(func(s *Session) bool {
 		return SessionAgent(s) == want
 	}); last != nil && last.Info != nil {
@@ -128,23 +141,25 @@ func configFromAgentSettings(machineID, cwd string, s *v1.AgentSettings) StartCo
 	if s == nil {
 		return StartConfig{MachineID: machineID, Cwd: cwd, Agent: DefaultAgent}
 	}
+	eff := EffectiveAgent(s.Agent)
 	return StartConfig{
 		MachineID:       machineID,
 		Cwd:             cwd,
-		Agent:           s.Agent,
+		Agent:           eff,
 		Model:           s.Model,
 		Effort:          s.Effort,
-		StandardContext: AgentInfo(s.Agent).StandardContextOption && s.StandardContext,
+		StandardContext: AgentInfo(eff).StandardContextOption && s.StandardContext,
 	}
 }
 
 func settingsFromConfig(c StartConfig) *v1.AgentSettings {
+	eff := EffectiveAgent(c.Agent)
 	return &v1.AgentSettings{
-		Agent:           c.Agent,
+		Agent:           eff,
 		Model:           c.Model,
 		Effort:          c.Effort,
 		Mode:            v1.ApprovalMode_APPROVAL_MODE_UNSPECIFIED,
-		StandardContext: AgentInfo(c.Agent).StandardContextOption && c.StandardContext,
+		StandardContext: AgentInfo(eff).StandardContextOption && c.StandardContext,
 	}
 }
 
@@ -252,6 +267,12 @@ func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent
 
 // PlanStartSettings computes the FullPrefsOp to save when starting a session, or nil if unchanged.
 func PlanStartSettings(used StartConfig, proj *StartConfig, saved *v1.ProjectSettings) *FullPrefsOp {
+	used.Agent = EffectiveAgent(used.Agent)
+	if proj != nil {
+		p := *proj
+		p.Agent = EffectiveAgent(p.Agent)
+		proj = &p
+	}
 	if saved != nil && saved.Agent == used.Agent {
 		for _, a := range saved.Agents {
 			if a != nil && a.Agent == used.Agent {

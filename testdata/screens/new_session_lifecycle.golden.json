@@ -1019,6 +1019,343 @@
           }
         }
       }
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "reopenWithSavedPrefs": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/app",
+            "projectName": {
+              "literal": "app"
+            },
+            "shortPath": "~/Code/app",
+            "hasProjects": true,
+            "settled": true,
+            "config": {
+              "machineId": "m-on",
+              "agent": "AGENT_CODEX",
+              "model": "gpt-5.4",
+              "effort": "high"
+            },
+            "machineName": "Workstation",
+            "machineSelectable": true,
+            "agentName": "Codex",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true,
+                "selected": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
+                "installed": true
+              }
+            ],
+            "modelLabel": {
+              "literal": "GPT-5.4"
+            },
+            "effortLabel": "high",
+            "defaultMode": {
+              "label": {
+                "key": "modes.default_agent",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine_cli",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "Workstation"
+                },
+                {
+                  "name": "project",
+                  "strValue": "app"
+                },
+                {
+                  "name": "cli",
+                  "strValue": "Codex"
+                }
+              ]
+            },
+            "disabledReason": {
+              "key": "new_session.first_message"
+            },
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default_named",
+                "args": [
+                  {
+                    "name": "model",
+                    "strValue": "GPT-5.4"
+                  }
+                ]
+              },
+              "models": [
+                {
+                  "slug": "gpt-5.4",
+                  "displayName": "GPT-5.4",
+                  "checked": true,
+                  "supportsAuto": true
+                }
+              ],
+              "effortChoices": [
+                "medium",
+                "high"
+              ],
+              "selectedEffort": "high",
+              "effortTitle": {
+                "key": "models.effort"
+              },
+              "panelEnabled": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "selected": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Codex"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "pref-extra-1",
+              "attemptId": "pref-extra-2",
+              "machineId": "m-on",
+              "deadlineMs": "1791078120320",
+              "commandBytes": "qgECCAKgBhA=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "openOtherProjectWithSavedPrefs": {
+          "newSession": {
+            "projectKey": "/Users/me/Code/pref",
+            "projectName": {
+              "literal": "pref"
+            },
+            "shortPath": "~/Code/pref",
+            "hasProjects": true,
+            "settled": true,
+            "config": {
+              "machineId": "m-on",
+              "agent": "AGENT_CLAUDE",
+              "model": "claude-sonnet-5-5"
+            },
+            "machineName": "Workstation",
+            "machineSelectable": true,
+            "agentName": "Claude Code",
+            "availableAgents": [
+              {
+                "agent": "AGENT_CODEX",
+                "displayName": "Codex",
+                "installed": true
+              },
+              {
+                "agent": "AGENT_CLAUDE",
+                "displayName": "Claude Code",
+                "installed": true,
+                "selected": true
+              }
+            ],
+            "modelLabel": {
+              "literal": "Sonnet 5.5"
+            },
+            "defaultMode": {
+              "label": {
+                "key": "modes.default_agent",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Claude Code"
+                  }
+                ]
+              }
+            },
+            "locationText": {
+              "key": "new_session.location_machine_cli",
+              "args": [
+                {
+                  "name": "machine",
+                  "strValue": "Workstation"
+                },
+                {
+                  "name": "project",
+                  "strValue": "pref"
+                },
+                {
+                  "name": "cli",
+                  "strValue": "Claude Code"
+                }
+              ]
+            },
+            "disabledReason": {
+              "key": "new_session.first_message"
+            },
+            "modelPanel": {
+              "defaultModelLabel": {
+                "key": "models.default_named",
+                "args": [
+                  {
+                    "name": "model",
+                    "strValue": "Opus 5.5"
+                  }
+                ]
+              },
+              "models": [
+                {
+                  "slug": "claude-opus-5-5",
+                  "displayName": "Opus 5.5",
+                  "supportsAuto": true
+                },
+                {
+                  "slug": "claude-sonnet-5-5",
+                  "displayName": "Sonnet 5.5",
+                  "checked": true,
+                  "supportsAuto": true
+                }
+              ],
+              "supportsContextWindow": true,
+              "contextNote": {
+                "key": "models.extended_window"
+              },
+              "panelEnabled": true,
+              "machineChoices": [
+                {
+                  "machineId": "m-off",
+                  "name": "OldMac",
+                  "note": {
+                    "key": "common.offline"
+                  }
+                },
+                {
+                  "machineId": "m-on",
+                  "name": "Workstation",
+                  "online": true,
+                  "selected": true,
+                  "note": {
+                    "join": [
+                      {
+                        "key": "common.online"
+                      },
+                      {
+                        "key": "new_session.reading_cli",
+                        "args": [
+                          {
+                            "name": "agent",
+                            "strValue": "Claude Code"
+                          }
+                        ]
+                      }
+                    ],
+                    "separatorKey": "common.note_separator"
+                  }
+                }
+              ],
+              "canSelectAutoMode": true
+            },
+            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+          }
+        }
+      }
     }
   ]
 }
