@@ -2,70 +2,48 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { localeStore, t as message } from "../i18n";
 import type { DirectStatus } from "../transport/direct-engine";
-import { directView, relayNotSlower } from "./direct-status";
+import { directView } from "./direct-status";
 
-const base: DirectStatus = { state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, warming: false, compared: false };
+const base: DirectStatus = { state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {} };
 const make = (over: Partial<DirectStatus>): DirectStatus => ({ ...base, ...over });
 
 beforeEach(() => localeStore.overrideForTesting("zh-CN"));
 afterEach(() => localeStore.overrideForTesting(undefined));
 
 describe("directView", () => {
-  it("is a green dot and says 正在用直连; one purpose says which, both say nothing", () => {
+  it("is a green dot and says 正在用直连; one purpose says which or why the other fell back, both write nothing", () => {
     const both = directView(make({ state: "connected", file: "direct", read: "direct" }));
     expect([both.kind, both.mark, both.word, both.sub, both.summary]).toEqual(["direct", "online", "正在用直连", undefined, "正在用直连"]);
+
     const file = directView(make({ state: "connected", file: "direct" }));
     expect([file.sub, file.summary]).toEqual(["用于文件", "正在用直连 · 用于文件"]);
-    expect(directView(make({ state: "connected", read: "direct" })).sub).toBe("用于加载");
-    // Direct in use wins over a warm-up that is still running.
-    expect(directView(make({ state: "connected", read: "direct", warming: true })).kind).toBe("direct");
+
+    const read = directView(make({ state: "connected", read: "direct" }));
+    expect([read.sub, read.summary]).toEqual(["用于加载", "正在用直连 · 用于加载"]);
+
+    expect(directView(make({ state: "connected", read: "direct", fileSlow: true })).sub).toBe("文件暂时用中继");
+    expect(directView(make({ state: "connected", file: "direct", readSlow: true })).sub).toBe("加载暂时用中继");
   });
 
-  it("spins while connected and measuring, in the first seconds", () => {
-    const v = directView(make({ state: "connected", warming: true }));
-    expect([v.kind, v.mark, v.word, v.sub, v.summary]).toEqual(["measuring", "run", "直连已连上，正在测速", undefined, "直连已连上，正在测速"]);
-  });
+  it("is a gray dot saying 正在用中继 and 直连较慢，暂时改用中继 when both fell back or neither is on direct", () => {
+    const slowBoth = directView(make({ state: "connected", readSlow: true, fileSlow: true }));
+    expect([slowBoth.kind, slowBoth.mark, slowBoth.word, slowBoth.sub, slowBoth.summary]).toEqual([
+      "relay", "off", "正在用中继", "直连较慢，暂时改用中继", "正在用中继 · 直连较慢，暂时改用中继",
+    ]);
 
-  it("is a gray dot saying 正在用中继 once measured and not worth switching, and says which of the two reasons", () => {
-    const v = directView(make({ state: "connected", compared: true }));
-    expect([v.kind, v.mark, v.word, v.summary]).toEqual(["relay", "off", "正在用中继", "正在用中继 · 直连没有明显更快"]);
-    expect(v.sub).toBe("直连没有明显更快");
-    // Measured on both paths and the relay is not slower: the relay is faster.
-    const faster = directView(make({ state: "connected", compared: true, fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 200, relay: 180 } }));
-    expect(faster.sub).toBe("中继更快");
-    // Equal counts as not slower.
-    expect(directView(make({ state: "connected", compared: true, fileMiBps: { direct: 4, relay: 4 } })).sub).toBe("中继更快");
-  });
+    const onlyOneFallback = directView(make({ state: "connected", fileSlow: true }));
+    expect([onlyOneFallback.kind, onlyOneFallback.sub]).toEqual(["relay", "直连较慢，暂时改用中继"]);
 
-  it("says no clear win while direct is ahead only slightly, or only one path was measured", () => {
-    for (const over of [
-      { fileMiBps: { direct: 6, relay: 4 } },
-      { readMs: { direct: 160, relay: 175 } },
-      { fileMiBps: { relay: 9 } },
-      { fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 12, relay: 180 } },
-      {},
-    ] satisfies Partial<DirectStatus>[])
-      expect(directView(make({ state: "connected", compared: true, ...over })).sub).toBe("直连没有明显更快");
-  });
+    const noFallback = directView(make({ state: "connected" }));
+    expect([noFallback.kind, noFallback.word, noFallback.sub, noFallback.summary]).toEqual([
+      "relay", "正在用中继", undefined, "正在用中继",
+    ]);
 
-  it("claims nothing about the comparison until one was completed: retained numbers do not drive the headline", () => {
-    // Connected, but the live window holds too few samples (aged out, or the warm-up was cut short):
-    // the numbers stay in the rows, the headline says only which path is in use.
-    const retained = make({ state: "connected", readMs: { direct: 13, relay: 335 } });
-    const v = directView(retained);
-    expect([v.kind, v.word, v.sub, v.summary]).toEqual(["relay", "正在用中继", undefined, "正在用中继"]);
-    expect(v.speeds.map((x) => x.value)).toContain("直连 13 · 中继 335 ms");
-    expect(directView({ ...retained, fileMiBps: { direct: 3, relay: 4 } }).sub).toBeUndefined();
-    // A warm-up that is running, or waiting out its stability period, is measuring, whatever is retained.
-    expect(directView({ ...retained, warming: true }).kind).toBe("measuring");
-    expect(directView({ ...retained, warming: true }).summary).toBe("直连已连上，正在测速");
-    // Not connected never speaks of a comparison, even with numbers kept from an earlier path.
+    // Not connected never shows slow-fallback wording.
     for (const over of [{ state: "connecting" }, { state: "none" }, { state: "none", reason: "failed" }] as const) {
-      const w = directView(make({ ...over, compared: true, readMs: { direct: 13, relay: 335 } }));
-      expect(w.summary ?? "").not.toContain("没有明显更快");
+      const w = directView(make({ ...over, readSlow: true, fileSlow: true, readMs: { direct: 13, relay: 335 } }));
+      expect(w.summary ?? "").not.toContain("直连较慢");
     }
-    expect(directView(make({ state: "none", reason: "failed", readMs: { direct: 13, relay: 335 } })).sub).toBe("直连不可用：没连上，稍后会自动再试");
-    expect(directView(make({ state: "connecting", readMs: { direct: 13, relay: 335 } })).word).toBe("正在建立直连…");
   });
 
   it("spins while setting up", () => {
@@ -89,7 +67,15 @@ describe("directView", () => {
   });
 
   it("never draws the hollow ring: no state uses the idle mark", () => {
-    const states: Partial<DirectStatus>[] = [{ state: "connected" }, { state: "connected", warming: true }, { state: "connected", file: "direct" }, { state: "connecting" }, { state: "none" }, { state: "none", reason: "failed" }, { state: "unsupported" }];
+    const states: Partial<DirectStatus>[] = [
+      { state: "connected", file: "direct", read: "direct" },
+      { state: "connected", readSlow: true, fileSlow: true },
+      { state: "connected", file: "direct" },
+      { state: "connecting" },
+      { state: "none" },
+      { state: "none", reason: "failed" },
+      { state: "unsupported" },
+    ];
     for (const over of states) expect(directView(make(over)).mark).not.toBe("idle");
   });
 
@@ -99,8 +85,8 @@ describe("directView", () => {
     expect(v.summary).toBe("Using relay · Direct unavailable: The two networks can't reach each other directly");
     expect(v.speeds[0].value).toBe("Relay 4.1 MiB/s");
     expect(directView(make({ state: "connected", file: "direct" })).summary).toBe("Using direct · Used for files");
-    expect(directView(make({ state: "connected", warming: true })).word).toBe("Direct connected, measuring speed");
-    expect(directView(make({ state: "connected", compared: true })).sub).toBe("Direct isn't clearly faster");
+    expect(directView(make({ state: "connected", read: "direct", fileSlow: true })).sub).toBe("Files using relay for now");
+    expect(directView(make({ state: "connected", readSlow: true, fileSlow: true })).sub).toBe("Direct is slow; using relay for now");
     expect(directView(make({ state: "connecting" })).word).toBe("Setting up direct…");
   });
 
@@ -138,26 +124,7 @@ describe("speeds", () => {
     expect(speeds({ readMs: {} }).map((r) => r[0])).not.toContain("响应时间");
   });
 
-  it("says honestly that files are compared on the next transfer, only when connected and not measured", () => {
-    expect(speeds({})).toEqual([["文件传输", "下次传输时比较"]]);
-    expect(speeds({ fileMiBps: { relay: 4.1 } })).toEqual([["文件传输", "中继 4.1 MiB/s"]]);
-    expect(directView(make({ state: "connecting" })).speeds).toEqual([]);
-    localeStore.overrideForTesting("en");
-    expect(speeds({})).toEqual([["File transfer", "Compared on the next transfer"]]);
-    expect(speeds({ readMs: { direct: 48, relay: 175 } })).toContainEqual(["Response time", "Direct 48 · Relay 175 ms"]);
-  });
-
   it("comes from the same message source as everything else", () => {
     expect(message("transport.file_speed_both", { direct: "1", relay: "2" })).toBe("直连 1 · 中继 2 MiB/s");
-  });
-});
-
-describe("relayNotSlower", () => {
-  it("needs a purpose measured on both paths", () => {
-    expect(relayNotSlower({ fileMiBps: {}, readMs: {} })).toBe(false);
-    expect(relayNotSlower({ fileMiBps: { relay: 4 }, readMs: { direct: 1 } })).toBe(false);
-    expect(relayNotSlower({ fileMiBps: { direct: 4, relay: 4 }, readMs: {} })).toBe(true);
-    expect(relayNotSlower({ fileMiBps: {}, readMs: { direct: 200, relay: 180 } })).toBe(true);
-    expect(relayNotSlower({ fileMiBps: { direct: 5, relay: 4 }, readMs: { direct: 200, relay: 180 } })).toBe(false);
   });
 });

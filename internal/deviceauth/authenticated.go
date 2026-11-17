@@ -38,6 +38,15 @@ func (e *Endpoint) Authenticate(w Wire, seed []byte, now uint64) (*Authenticated
 func (a *Authenticated) Header() Header { return a.header }
 func (a *Authenticated) Body() []byte   { return bytes.Clone(a.body) }
 func (a *Authenticated) Size() int      { return len(a.body) }
+func (a *Authenticated) Key() string    { return a.key }
+func (a *Authenticated) Payload() Hash  { return a.payload }
+
+// Conflict binds an identity-conflict outcome to the authenticated key and payload.
+func (a *Authenticated) Conflict() error {
+	var key Hash
+	copy(key[:], a.key)
+	return &EntryDecision{Outcome: "conflict", Reason: "identity_conflict", ConflictKind: "identity", Key: key, Payload: a.payload, cause: ErrIdentityConflict}
+}
 
 // Decision binds a transient scheduling failure to the authenticated request.
 // No terminal refusal is invented: the same authorization may still execute.

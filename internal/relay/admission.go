@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync"
@@ -42,25 +43,42 @@ type callResult struct {
 	raw    bool
 	entry  string
 }
+type pendingExecution struct {
+	key      string
+	payload  deviceauth.Hash
+	raw      bool
+	done     chan struct{}
+	cancel   context.CancelFunc
+	active   int
+	waiters  int
+	stops    []func() bool
+	finished bool
+	body     []byte
+	err      error
+	retry    bool
+}
+
 type commandAdmission struct {
-	authenticate  func(deviceauth.Wire) (*deviceauth.Authenticated, error)
-	endpoint      *endpoint
-	ctx           context.Context
-	cancel        context.CancelFunc
-	workers       sync.WaitGroup
-	mu            sync.Mutex
-	frames        transport.FairQueue[*authFrame]
-	results       transport.FairQueue[*callResult]
-	wake, replies chan struct{}
-	syncing       map[string]bool
-	scheduler     *transport.Scheduler
-	closed        bool
+	authenticate    func(deviceauth.Wire) (*deviceauth.Authenticated, error)
+	endpoint        *endpoint
+	ctx             context.Context
+	cancel          context.CancelFunc
+	workers         sync.WaitGroup
+	mu              sync.Mutex
+	frames          transport.FairQueue[*authFrame]
+	results         transport.FairQueue[*callResult]
+	wake, replies   chan struct{}
+	syncing         map[string]bool
+	inflight        map[string]*pendingExecution
+	inflightWaiters int
+	scheduler       *transport.Scheduler
+	closed          bool
 }
 
 func (c *endpoint) admissionOwner() *commandAdmission {
 	c.admissionOnce.Do(func() {
 		ctx, cancel := context.WithCancel(c.link.Context())
-		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, scheduler: transport.NewScheduler(c.link)}
+		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, inflight: map[string]*pendingExecution{}, scheduler: transport.NewScheduler(c.link)}
 		a.frames = transport.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
 		a.results = transport.FairQueue[*callResult]{Entries: 64, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 4 << 20}
 		a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {
@@ -222,6 +240,20 @@ func (a *commandAdmission) existing(waiting context.Context, route *callRoute, p
 	return true
 }
 
+func isInteractiveCommand(cmd *pb.Command) bool {
+	switch cmd.Kind.(type) {
+	case *pb.Command_Send,
+		*pb.Command_Interrupt,
+		*pb.Command_ResolveApproval,
+		*pb.Command_AnswerQuestion,
+		*pb.Command_AnswerPlan,
+		*pb.Command_CancelInput,
+		*pb.Command_ResumeInput:
+		return true
+	}
+	return false
+}
+
 func classifyCommand(cmd *pb.Command) (transport.Class, bool) {
 	switch cmd.Kind.(type) {
 	case *pb.Command_ResolveApproval:
@@ -296,13 +328,21 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	class, approval := classifyCommand(cmd)
 	if route.binding != nil {
 		bulk := cmd.GetPutImageChunk() != nil || cmd.GetGetSharedFileChunk() != nil
-		allowed := route.directUse == 2 && bulk || route.directUse == 1 && deviceauth.IsReadOnlyCommand(cmd) && !bulk
+		allowed := route.directUse == 2 && bulk || route.directUse == 1 && (deviceauth.IsReadOnlyCommand(cmd) || isInteractiveCommand(cmd)) && !bulk
 		if !allowed {
 			a.result(route, p, nil, p.Decision("path_unavailable", deviceauth.ErrUntrusted), false)
 			return
 		}
 	}
 	raw := cmd.GetGetSharedFileChunk() != nil
+	pc, waitCtx, owned := a.claimInflight(waiting, route, p, raw)
+	if !owned {
+		return
+	}
+	if a.existing(waiting, route, p) {
+		a.finishInflight(pc, nil, nil, raw, true)
+		return
+	}
 	j := &transport.Job{Class: class, Peer: h.Sender, Session: h.Session, Resources: commandResources(h, cmd), Bytes: p.Size(), Deadline: time.UnixMilli(int64(h.Deadline)), Approval: approval, Snapshot: cmd.GetGetLiveSnapshot() != nil, Priority: controlPriority(cmd)}
 	queuedAt := time.Now()
 	observe := func(acquired bool, at time.Time) {
@@ -312,19 +352,140 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 	j.Reject = func() {
 		observe(false, time.Now())
-		a.result(route, p, nil, p.Decision("busy", deviceauth.ErrCapacity), raw)
+		err := p.Decision("busy", deviceauth.ErrCapacity)
+		a.finishInflight(pc, nil, err, raw, false)
+		a.result(route, p, nil, err, raw)
 	}
 	j.Run = func(ctx context.Context, execution *transport.Execution) {
 		observe(true, execution.GrantedAt())
-		a.execute(ctx, waiting, route, p, raw, execution)
+		a.execute(ctx, waiting, route, p, raw, execution, pc)
 	}
-	if !a.scheduler.Submit(waiting, j) {
+	if !a.scheduler.Submit(waitCtx, j) {
 		j.Reject()
 	}
 }
-func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRoute, p *deviceauth.Authenticated, raw bool, execution *transport.Execution) {
+
+func (a *commandAdmission) watchInflight(waiting context.Context, pc *pendingExecution) func() bool {
+	stop := context.AfterFunc(waiting, func() {
+		a.mu.Lock()
+		pc.active--
+		shouldCancel := pc.active == 0 && !pc.finished
+		a.mu.Unlock()
+		if shouldCancel {
+			pc.cancel()
+		}
+	})
+	a.mu.Lock()
+	if pc.finished {
+		a.mu.Unlock()
+		stop()
+		return func() bool { return false }
+	}
+	pc.stops = append(pc.stops, stop)
+	a.mu.Unlock()
+	return stop
+}
+
+func (a *commandAdmission) claimInflight(waiting context.Context, route *callRoute, p *deviceauth.Authenticated, raw bool) (*pendingExecution, context.Context, bool) {
+	a.mu.Lock()
+	if a.closed || waiting.Err() != nil {
+		a.mu.Unlock()
+		return nil, nil, false
+	}
+	if pc := a.inflight[p.Key()]; pc != nil {
+		if pc.payload != p.Payload() {
+			a.mu.Unlock()
+			a.result(route, p, nil, p.Conflict(), false)
+			return nil, nil, false
+		}
+		if pc.waiters >= deviceauth.MaxWaitersPerKey || a.inflightWaiters >= deviceauth.MaxWaiters {
+			a.mu.Unlock()
+			a.result(route, p, nil, p.Decision("busy", deviceauth.ErrOutcomeUnknown), raw)
+			return nil, nil, false
+		}
+		pc.waiters++
+		a.inflightWaiters++
+		pc.active++
+		a.mu.Unlock()
+		stop := a.watchInflight(waiting, pc)
+		timeout := min(max(time.Until(time.UnixMilli(int64(p.Header().Deadline))), 0), 30*time.Second)
+		if !a.endpoint.link.Run(func(context.Context) {
+			defer func() {
+				stop()
+				a.mu.Lock()
+				pc.waiters--
+				a.inflightWaiters--
+				a.mu.Unlock()
+			}()
+			timer := time.NewTimer(timeout)
+			defer timer.Stop()
+			select {
+			case <-pc.done:
+				if pc.retry {
+					if !a.existing(waiting, route, p) {
+						a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+					}
+					return
+				}
+				a.result(route, p, bytes.Clone(pc.body), pc.err, pc.raw)
+			case <-waiting.Done():
+				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+			case <-timer.C:
+				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+			}
+		}) {
+			stop()
+			a.mu.Lock()
+			pc.waiters--
+			a.inflightWaiters--
+			a.mu.Unlock()
+		}
+		return nil, nil, false
+	}
+	waitCtx, cancel := context.WithCancel(a.ctx)
+	pc := &pendingExecution{
+		key:     p.Key(),
+		payload: p.Payload(),
+		raw:     raw,
+		done:    make(chan struct{}),
+		cancel:  cancel,
+		active:  1,
+	}
+	a.inflight[pc.key] = pc
+	a.mu.Unlock()
+	a.watchInflight(waiting, pc)
+	return pc, waitCtx, true
+}
+
+func (a *commandAdmission) finishInflight(pc *pendingExecution, body []byte, err error, raw, retry bool) {
+	a.mu.Lock()
+	if pc.finished {
+		a.mu.Unlock()
+		return
+	}
+	pc.finished = true
+	pc.body = bytes.Clone(body)
+	pc.err = err
+	pc.raw = raw
+	pc.retry = retry
+	if a.inflight[pc.key] == pc {
+		delete(a.inflight, pc.key)
+	}
+	stops := pc.stops
+	pc.stops = nil
+	close(pc.done)
+	a.mu.Unlock()
+	for _, stop := range stops {
+		stop()
+	}
+	pc.cancel()
+}
+
+func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRoute, p *deviceauth.Authenticated, raw bool, execution *transport.Execution, pc *pendingExecution) {
 	if ctx.Err() != nil {
-		a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+		err := p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown)
+		a.finishInflight(pc, nil, err, raw, false)
+		a.result(route, p, nil, err, raw)
 		return
 	}
 	ctx, work := contextio.Track(ctx)
@@ -386,24 +547,30 @@ func (a *commandAdmission) execute(ctx, waiting context.Context, route *callRout
 	case <-ctx.Done():
 		markUnknown()
 		execution.Quarantine()
-		a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+		err := p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown)
+		a.finishInflight(pc, nil, err, raw, false)
+		a.result(route, p, nil, err, raw)
 		<-done // Keep the original slot and resource quarantine until real exit.
 		return
 	case <-work.Violated():
 		markUnknown()
 		execution.Quarantine()
 		cancel()
-		a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+		err := p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown)
+		a.finishInflight(pc, nil, err, raw, false)
+		a.result(route, p, nil, err, raw)
 		<-done
 		return
 	}
 	if errors.Is(r.err, deviceauth.ErrRunning) {
 		execution.Finish()
+		a.finishInflight(pc, nil, nil, raw, true)
 		if !a.existing(waiting, route, p) {
 			a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
 		}
 		return
 	}
+	a.finishInflight(pc, r.body, r.err, raw, false)
 	a.result(route, p, r.body, r.err, raw)
 }
 

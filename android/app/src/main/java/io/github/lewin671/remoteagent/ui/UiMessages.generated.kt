@@ -6624,6 +6624,12 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.direct" -> {
             resources.getString(R.string.transport_direct)
         }
+        "transport.direct_slow" -> {
+            resources.getString(R.string.transport_direct_slow)
+        }
+        "transport.file_fallback" -> {
+            resources.getString(R.string.transport_file_fallback)
+        }
         "transport.file_speed_both" -> {
             val direct = message.args.getValue("direct") as String
             val relay = message.args.getValue("relay") as String
@@ -6646,8 +6652,8 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.group" -> {
             resources.getString(R.string.transport_group)
         }
-        "transport.not_clearly_faster" -> {
-            resources.getString(R.string.transport_not_clearly_faster)
+        "transport.read_fallback" -> {
+            resources.getString(R.string.transport_read_fallback)
         }
         "transport.read_latency_both" -> {
             val direct = message.args.getValue("direct") as String
@@ -6674,9 +6680,6 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.reason_peer_unsupported" -> {
             resources.getString(R.string.transport_reason_peer_unsupported)
         }
-        "transport.relay_faster" -> {
-            resources.getString(R.string.transport_relay_faster)
-        }
         "transport.speed_file" -> {
             resources.getString(R.string.transport_speed_file)
         }
@@ -6688,9 +6691,6 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         }
         "transport.status_direct" -> {
             resources.getString(R.string.transport_status_direct)
-        }
-        "transport.status_measuring" -> {
-            resources.getString(R.string.transport_status_measuring)
         }
         "transport.status_relay" -> {
             resources.getString(R.string.transport_status_relay)

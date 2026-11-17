@@ -6,7 +6,6 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
-import { DirectEngine } from "../transport/direct-engine";
 import { localeStore, t as message } from "../i18n";
 import type { DirectStatus } from "../transport/direct-engine";
 import { setDirect } from "../test/direct-state";
@@ -41,7 +40,7 @@ function open(id = "mac", query = ""): DemoRemote {
   return r;
 }
 const notify = (r: DemoRemote) => act(() => (r.direct as unknown as { notify(): void }).notify());
-const status = (over: Partial<DirectStatus>): DirectStatus => ({ state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, warming: false, compared: false, ...over });
+const status = (over: Partial<DirectStatus>): DirectStatus => ({ state: "none", file: "relay", read: "relay", fileMiBps: {}, readMs: {}, ...over });
 function show(r: DemoRemote, over: Partial<DirectStatus>) {
   vi.spyOn(r.direct, "status").mockReturnValue(status(over));
   notify(r);
@@ -66,14 +65,14 @@ describe("the group's frame", () => {
     const r = open();
     show(r, { state: "none" });
     expect(footer()).toBe(message("transport.footer"));
-    expect(footer()).toBe("直连只用于加载和文件，发消息和审批始终经中继。");
+    expect(footer()).toBe("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。");
     show(r, { state: "connected", file: "direct", fileMiBps: { direct: 6.3 } });
-    expect(footer()).toBe("直连只用于加载和文件，发消息和审批始终经中继。");
+    expect(footer()).toBe("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。");
   });
 });
 
 describe("the status row", () => {
-  it("draws a green dot and 正在用直连; one purpose is named on the second line, both write nothing", () => {
+  it("draws a green dot and 正在用直连; one purpose or fallback is named on the second line, both write nothing", () => {
     const r = open();
     show(r, { state: "connected", file: "direct", read: "direct" });
     const row = statusRow()!;
@@ -85,26 +84,17 @@ describe("the status row", () => {
     expect(statusRow()!.querySelector("small")!.textContent).toBe("用于加载");
     show(r, { state: "connected", file: "direct" });
     expect(statusRow()!.querySelector("small")!.textContent).toBe("用于文件");
+    show(r, { state: "connected", read: "direct", fileSlow: true });
+    expect(statusRow()!.querySelector("small")!.textContent).toBe("文件暂时用中继");
   });
 
-  it("draws an ink spinner and 直连已连上，正在测速 in the first seconds, with nothing under it", () => {
+  it("draws a gray dot, never a ring, for 正在用中继 with the slow-fallback reason", () => {
     const r = open();
-    show(r, { state: "connected", warming: true, readMs: { relay: 217 } });
-    expect(statusRow()!.querySelector("i.mark")!.className).toContain("run");
-    expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("直连已连上，正在测速");
-    expect(statusRow()!.querySelector("small")).toBeNull();
-    expect(speedRows()).toEqual([["文件传输", "下次传输时比较"], ["响应时间", "中继 217 ms"]]);
-  });
-
-  it("draws a gray dot, never a ring, for 正在用中继 with the reason it is in use", () => {
-    const r = open();
-    show(r, { state: "connected", compared: true, readMs: { direct: 160, relay: 175 } });
+    show(r, { state: "connected", readSlow: true, fileSlow: true, fileMiBps: { direct: 2, relay: 4 }, readMs: { direct: 220, relay: 40 } });
     const cls = statusRow()!.querySelector("i.mark")!.className;
     expect(cls).toContain("off"); expect(cls).not.toContain("idle");
     expect(statusRow()!.querySelector(".dx-text")!.textContent).toContain("正在用中继");
-    expect(statusRow()!.querySelector("small")!.textContent).toBe("直连没有明显更快");
-    show(r, { state: "connected", compared: true, fileMiBps: { direct: 3, relay: 4 }, readMs: { direct: 220, relay: 180 } });
-    expect(statusRow()!.querySelector("small")!.textContent).toBe("中继更快");
+    expect(statusRow()!.querySelector("small")!.textContent).toBe("直连较慢，暂时改用中继");
   });
 
   it("draws an ink spinner while setting up, with nothing under it", () => {
@@ -161,17 +151,6 @@ describe("speed rows", () => {
     const row = group().querySelector(".row.speed")!;
     expect(row.children.length).toBe(2);
     expect((row.lastElementChild as HTMLElement).className).toBe("v");
-  });
-});
-
-describe("opening the group", () => {
-  it("asks for fresh numbers once, for this computer", () => {
-    const refresh = vi.spyOn(DirectEngine.prototype, "refresh");
-    const r = open();
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(refresh).toHaveBeenCalledWith("mac");
-    show(r, { state: "connected" }); notify(r);
-    expect(refresh).toHaveBeenCalledTimes(1);   // re-rendering is not opening
   });
 });
 
@@ -266,7 +245,7 @@ describe("in English", () => {
     show(r, { state: "connected", file: "direct", read: "direct", fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { direct: 12, relay: 180 } });
     expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("Using direct");
     expect(speedRows()).toEqual([["File transfer", "Direct 6.3 · Relay 4.1 MiB/s"], ["Response time", "Direct 12 · Relay 180 ms"]]);
-    expect(footer()).toBe("Direct is used only for loading and files; messages and approvals always go through the relay.");
+    expect(footer()).toBe("Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.");
   });
 });
 
@@ -277,9 +256,8 @@ describe("the demo's ?direct= states, which the design review looks at", () => {
     ["direct", "正在用直连", undefined, 2],
     ["file", "正在用直连", "用于文件", 2],
     ["read", "正在用直连", "用于加载", 2],
-    ["measuring", "直连已连上，正在测速", undefined, 2],
-    ["relay", "正在用中继", "直连没有明显更快", 2],
-    ["relay-faster", "正在用中继", "中继更快", 2],
+    ["file-fallback", "正在用直连", "文件暂时用中继", 2],
+    ["relay", "正在用中继", "直连较慢，暂时改用中继", 2],
     ["trying", "正在建立直连…", undefined, 0],
     ["none", "正在用中继", undefined, 0],
     ["peer_unsupported", "正在用中继", "直连不可用：电脑上的版本太旧，更新后可用", 0],
@@ -291,7 +269,7 @@ describe("the demo's ?direct= states, which the design review looks at", () => {
     expect([word(), sub(), speedRows().length]).toEqual([w, s, rows]);
   });
 
-  it("direct=off has the switch off and no rows; turning it on sets up, measures for a moment, then is direct", () => {
+  it("direct=off has the switch off and no rows; turning it on sets up then goes direct", () => {
     vi.useFakeTimers();
     try {
       open("mac", "direct=off");
@@ -300,8 +278,6 @@ describe("the demo's ?direct= states, which the design review looks at", () => {
       act(() => sw().click());
       expect(word()).toBe("正在建立直连…");
       act(() => { vi.advanceTimersByTime(2700); });
-      expect(word()).toBe("直连已连上，正在测速");
-      act(() => { vi.advanceTimersByTime(2000); });
       expect(word()).toBe("正在用直连");
     } finally { vi.useRealTimers(); }
   });

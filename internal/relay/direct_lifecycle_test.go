@@ -672,3 +672,162 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 		})
 	}
 }
+
+type dualSendLocal struct {
+	remoteagentv1connect.LocalServiceHandler
+	started chan struct{}
+	release chan struct{}
+	calls   *atomic.Int32
+}
+
+type dualSendBackendWithLocal struct {
+	publishBackend
+	local *dualSendLocal
+}
+
+func (b dualSendBackendWithLocal) SessionIDs() []string { return []string{"s-dual"} }
+func (b dualSendBackendWithLocal) Local() remoteagentv1connect.LocalServiceHandler {
+	return b.local
+}
+
+func (l *dualSendLocal) Send(ctx context.Context, _ *connect.Request[pb.SendRequest]) (*connect.Response[pb.SendResponse], error) {
+	if l.calls.Add(1) == 1 {
+		close(l.started)
+	}
+	select {
+	case <-l.release:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	return connect.NewResponse(&pb.SendResponse{QueuePosition: 1}), nil
+}
+
+func TestDirectDualSentInteractiveDeduplicatesAndSharesResult(t *testing.T) {
+	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var execCount atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+	r := New(dualSendBackendWithLocal{
+		local: &dualSendLocal{started: started, release: release, calls: &execCount},
+	})
+
+	c := &conn{r: r}
+	keys := initializeTestSecurityKeys(t, c)
+	pin, head, selfID := c.security.endpoint.Snapshot()
+	c.acct.Security = &SecurityConfig{XPrivate: keys.x}
+	hash, err := head.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := c.security.now()
+	c.security.directFresh.Store(&directFreshness{
+		head:       hash,
+		until:      now + 60000,
+		leaseUntil: c.security.endpoint.LeaseExpiration(),
+	})
+
+	link := transport.NewLink(ctx)
+	defer link.Close()
+	ep := &endpoint{r: r, acct: c.acct, security: c.security, lifetime: link.Context(), link: link, sessionKey: c.sessionKey}
+	ep.admissionOwner()
+	defer ep.admission.close()
+
+	clientID := head.Core.AuthorityID
+	lease, err := deviceauth.BuildLease(head, keys.phone, head.Core.IssuedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientEndpoint, err := deviceauth.InitEndpoint("", pin, keys.states, make([]*deviceauth.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientEndpoint.Close()
+
+	var nonce [16]byte
+	_, _ = rand.Read(nonce[:])
+	reqNow := uint64(time.Now().UnixMilli())
+	cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}}
+	plain, err := proto.Marshal(cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Session: "s-dual", Deadline: reqNow + 5000}
+	sealed, err := clientEndpoint.Prepare(h, nil, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, err := sealed.Envelope()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	selfMember, _ := head.Core.Member(selfID)
+	peerMember, _ := head.Core.Member(clientID)
+	binding := deviceauth.PeerBinding{Self: selfMember, Peer: peerMember, Head: hash}
+
+	relayCh := make(chan *pb.ForwardReply, 1)
+	directCh := make(chan *pb.ForwardReply, 1)
+
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, AttemptId: "relay-leg", Command: env}, func(rep *pb.ForwardReply) {
+		relayCh <- rep
+	})
+	go ep.dispatchDirect(ctx, binding, 1, func() bool { return true }, env, func(rep *pb.ForwardReply) {
+		directCh <- rep
+	})
+
+	select {
+	case <-started:
+	case rep := <-relayCh:
+		t.Fatalf("relay replied before Send started: %+v", rep)
+	case rep := <-directCh:
+		t.Fatalf("direct replied before Send started: %+v", rep)
+	case <-ctx.Done():
+		t.Fatal("command never started executing")
+	}
+	// Give the second arrival time to authenticate and attach to the in-flight execution.
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+
+	var relayReply, directReply *pb.ForwardReply
+	select {
+	case relayReply = <-relayCh:
+	case <-ctx.Done():
+		t.Fatal("relay waiter did not receive reply")
+	}
+	select {
+	case directReply = <-directCh:
+	case <-ctx.Done():
+		t.Fatal("direct waiter did not receive reply")
+	}
+
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected interactive command to execute once across dual legs, executed %d times", got)
+	}
+	for name, rep := range map[string]*pb.ForwardReply{"relay": relayReply, "direct": directReply} {
+		if rep.Result == nil {
+			t.Fatalf("%s waiter received empty result: %+v", name, rep)
+		}
+		wire, err := deviceauth.FromEnvelope(rep.Result)
+		if err != nil {
+			t.Fatalf("%s invalid envelope: %v", name, err)
+		}
+		got, body, err := clientEndpoint.Open(wire, nil, true, uint64(time.Now().UnixMilli()))
+		if err != nil {
+			t.Fatalf("%s open failed: %v", name, err)
+		}
+		body, err = deviceauth.Unpack(got, body)
+		if err != nil {
+			t.Fatalf("%s unpack failed: %v", name, err)
+		}
+		res := &pb.CommandResult{}
+		if err := proto.Unmarshal(body, res); err != nil {
+			t.Fatalf("%s unmarshal failed: %v", name, err)
+		}
+		if res.Outcome != "executed" || res.GetSend() == nil || res.GetSend().QueuePosition != 1 {
+			t.Fatalf("%s unexpected command result: %+v", name, res)
+		}
+	}
+}

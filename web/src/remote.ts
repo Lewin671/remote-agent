@@ -1,5 +1,5 @@
 import { DirectEngine } from "./transport/direct-engine";
-import type { RouteHint, RouteName } from "./transport/direct-routing";
+import type { RouteHint } from "./transport/direct-routing";
 import { watchSecurityInstall } from "./device-security-store";
 import { peerFrameBody } from "./transport/peer-frame";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
@@ -296,6 +296,21 @@ export function readOnlyCommand(cmd: CommandKind): boolean {
   return !!cmd && (["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getImageUploadStatus", "getSharedFileChunk"].includes(cmd.case ?? "") ||
 
     cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""));
+}
+
+export function isInteractiveCommand(cmd: CommandKind): boolean {
+  switch (cmd?.case) {
+    case "send":
+    case "interrupt":
+    case "resolveApproval":
+    case "answerQuestion":
+    case "answerPlan":
+    case "cancelInput":
+    case "resumeInput":
+      return true;
+    default:
+      return false;
+  }
 }
 
 /** Largest piece of an image upload: each is sealed into one command,
@@ -1244,7 +1259,6 @@ export class Remote {
       () => this.roundBudget(),
     );
     this.direct = new DirectEngine(account, async () => { await this.checkNetworkSecurity(); await this.security.verifiedRecord(); }, () => { if (!this.closed) this.changed(); });
-    this.direct.probe = (id, path) => this.probeRead(id, path);
     this.security.onSync = (record, started) => { void this.direct.synced(record, started); };
     this.security.onSyncFailed = () => this.direct.invalidate();
     const pairing = createClient(PairingService, createConnectTransport({
@@ -1992,11 +2006,13 @@ export class Remote {
     if (!active) {
       clearTimeout(this.retryTimer); this.retryTimer = undefined;
       this.retireCandidate();
+      this.direct.setForeground(false);
     }
     if (active) {
       this.networkGeneration++;
       this.touchAfterWake();
       this.retireCandidate();
+      this.direct.setForeground(true);
       // Security.sync persists Touch before reading the remote state.
       this.reconnectNow(true);
       this.watchLiveness();
@@ -3541,13 +3557,18 @@ export class Remote {
     let recoveryUntil: number | undefined;
     let attempted = false;
     const routeHint = this.directHint(machineId, cmd);
+    const interactive = isInteractiveCommand(cmd);
     let forceRelay = false;
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
       const tracking = routeHint ? this.direct.track(machineId, routeHint) : undefined;
       const delivery = this.deviceLink.delivery(call, routeHint && !forceRelay ? handoff => this.direct.attempt(machineId, routeHint, handoff) : undefined);
+      const dualDirect = !forceRelay && interactive && this.direct.ready(machineId, { kind: "read" })
+        ? this.deviceLink.delivery(call, handoff => this.direct.attemptInteractive(machineId, handoff))
+        : undefined;
       const routeStarted = performance.now();
       const attemptId = delivery.attemptId;
+      let directLegFailed = false;
       try {
         if (attempted && Date.now() >= deadline + (call.uncertain ? RESULT_RETENTION_MS : 0))
           throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
@@ -3559,38 +3580,77 @@ export class Remote {
         // was not executed. Only an authenticated daemon result is final.
         await delivery.prepare();
         const envelope = await authorize();
-        const res = await this.recovery.follow(attemptSignal => delivery.send(machineId, envelope, attemptSignal), signal);
-        let msg: CommandResult;
-        try {
-          msg = (
-            await this.openSecureMessage(
-              res.result,
-              {
-                kind: PayloadKind.COMMAND_RESULT,
-                machineId,
-                sessionId: sid,
-                requestId,
-              },
-              CommandResultSchema,
-            )
-          ).msg;
-        } catch {
-          throw new CommandError(
-            "unknown_outcome",
-            l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
-        }
-        const binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), prepared.plain);
-        const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===attemptId && (delivery.direct || res.outcome===msg.outcome && res.reason===msg.reason) && (msg.outcome==="conflict" || msg.conflictKind==="");
-        const category = verifiedOutcome(msg,binding.key,binding.payload,delivery.direct ? msg.outcome : res.outcome,delivery.direct ? msg.reason : res.reason,false);
-        if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
+        const verifyResult = async (res: { result?: Envelope; attemptId: string; outcome: string; reason: string }, directRoute: boolean, legAttemptId: string) => {
+          let msg: CommandResult;
+          try {
+            msg = (
+              await this.openSecureMessage(
+                res.result,
+                {
+                  kind: PayloadKind.COMMAND_RESULT,
+                  machineId,
+                  sessionId: sid,
+                  requestId,
+                },
+                CommandResultSchema,
+              )
+            ).msg;
+          } catch {
+            throw new CommandError(
+              "unknown_outcome",
+              l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), false, false, "unknown");
+          }
+          const binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), prepared.plain);
+          const verified = equal(msg.requestKeyHash,binding.key) && equal(msg.payloadHash,binding.payload) && res.attemptId===legAttemptId && (directRoute || res.outcome===msg.outcome && res.reason===msg.reason) && (msg.outcome==="conflict" || msg.conflictKind==="");
+          const category = verifiedOutcome(msg,binding.key,binding.payload,directRoute ? msg.outcome : res.outcome,directRoute ? msg.reason : res.reason,false);
+          if (!verified || category==="unknown") throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),true,false,"unknown");
 
-        if (category === "executed" && !msg.resultAvailable || category === "conflict" && msg.conflictKind === "identity") {
-          void this.refresh();
-          if (sid) void this.refreshLiveSnapshot(sid);
-          throw new CommandError(msg.errorCode, l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"), true, false, category, msg.conflictKind, msg.resultAvailable);
+          if (category === "executed" && !msg.resultAvailable || category === "conflict" && msg.conflictKind === "identity") {
+            void this.refresh();
+            if (sid) void this.refreshLiveSnapshot(sid);
+            return { error: new CommandError(msg.errorCode, l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"), true, false, category, msg.conflictKind, msg.resultAvailable) };
+          }
+          if (category !== "executed" || msg.errorCode)
+            return { error: new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd), category, msg.conflictKind, msg.resultAvailable) };
+          return { res, msg };
+        };
+
+        let res: { result?: Envelope; attemptId: string; outcome: string; reason: string };
+        let msg: CommandResult;
+        if (dualDirect?.direct) {
+          type Verified = { res?: { result?: Envelope; attemptId: string; outcome: string; reason: string }; msg?: CommandResult; error?: CommandError };
+          const winner = await this.deviceLink.router.dual<Verified>(
+            async legSignal => {
+              try {
+                await dualDirect.prepare();
+                const r = await dualDirect.send(machineId, envelope, legSignal);
+                const v = await verifyResult(r, true, dualDirect.attemptId);
+                return { trusted: true, value: v };
+              } catch (err) {
+                directLegFailed = true;
+                return { trusted: false, error: err };
+              }
+            },
+            async legSignal => {
+              try {
+                const r = await this.recovery.follow(attemptSignal => delivery.send(machineId, envelope, attemptSignal), legSignal);
+                const v = await verifyResult(r, false, attemptId);
+                return { trusted: true, value: v };
+              } catch (err) {
+                return { trusted: false, error: err };
+              }
+            },
+            signal,
+          );
+          if (winner.error) throw winner.error;
+          res = winner.res!;
+          msg = winner.msg!;
+        } else {
+          res = await this.recovery.follow(attemptSignal => delivery.send(machineId, envelope, attemptSignal), signal);
+          const v = await verifyResult(res, delivery.direct, attemptId);
+          if (v.error) throw v.error;
+          msg = v.msg!;
         }
-        if (category !== "executed" || msg.errorCode)
-          throw new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd), category, msg.conflictKind, msg.resultAvailable);
         if (cmd?.case === "schedule" && cmd.value.operation === "list" && res.result && this.machines.has(machineId) && this.supportsSchedules(machineId)) {
           await this.keepScheduleSnapshot(machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId });
         }
@@ -3599,6 +3659,7 @@ export class Remote {
         if (cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload") this.directTransfers.delete(`${machineId}/${cmd.value.transferId}`);
         return msg;
       } catch (e) {
+        if (directLegFailed) forceRelay = true;
         if (delivery.direct && routeHint) {
           forceRelay = true; tracking?.failed();
           signal?.throwIfAborted();
@@ -3669,34 +3730,6 @@ export class Remote {
         throw e;
       }
     }
-  }
-
-  /** One warm-up sample of the read path (docs/transport.md 「升级与热备」): an
-   * authorized read-only status request of its own, on the path asked for,
-   * timed like a user's read. It is a request of its own, so it never changes
-   * a user's request, result or deadline; its count, rate and alternation are
-   * bounded by the routing that asks. A failed direct sample demotes direct,
-   * a failed relay one is only a missing sample. */
-  private async probeRead(machineId: string, path: RouteName): Promise<void> {
-    if (this.closed) return;
-    const slot = newSlot(), hint = { kind: "read" } as const, tracking = this.direct.track(machineId, hint), direct = path === "direct";
-    const cmd: CommandKind = { case: "getMachineStatus", value: {} };
-    const plain = toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }));
-    try {
-      await this.deviceLink.call(slot, async call => {
-        const started = performance.now();
-        const delivery = this.deviceLink.delivery(call, direct ? handoff => this.direct.attempt(machineId, hint, handoff, true) : undefined);
-        if (delivery.direct !== direct) return;
-        await this.checkNetworkSecurity(); await delivery.prepare();
-        const context = { kind: PayloadKind.COMMAND, machineId, sessionId: "", requestId: slot.requestId, deadlineMs: BigInt(slot.deadline), sender: this.account.deviceId } as const;
-        const envelope = await this.sealSecureMessage(context, CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION }), undefined, plain);
-        const response = await delivery.send(machineId, envelope);
-        const opened = await this.openSecureMessage(response.result, { kind: PayloadKind.COMMAND_RESULT, machineId, sessionId: "", requestId: slot.requestId }, CommandResultSchema);
-        const identity = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), plain), msg = opened.msg;
-        const bound = equal(msg.requestKeyHash, identity.key) && equal(msg.payloadHash, identity.payload) && response.attemptId === delivery.attemptId && (direct || response.outcome === msg.outcome && response.reason === msg.reason);
-        if (bound && !msg.errorCode && verifiedOutcome(msg, identity.key, identity.payload, direct ? msg.outcome : response.outcome, direct ? msg.reason : response.reason, false) === "executed") tracking.observe(direct, 0, performance.now() - started);
-      });
-    } catch { if (direct) tracking.failed(); }
   }
 
   /** Sends a chat message. A retry passes the first attempt's slot, so

@@ -6,7 +6,6 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
-import { DirectEngine } from "../transport/direct-engine";
 import { setDirect } from "../test/direct-state";
 import { ConnCheck, median } from "./ConnCheck";
 
@@ -97,29 +96,34 @@ describe("direct path summary lines", () => {
     open("", (r) => {
       quiet(r); setDirect(r.direct, "mac", "connected");
       const route = r.direct.routing("mac");
-      route.filePath = "direct";
+      route.fail({ kind: "read" });
       route.observe({ kind: "bulk", file: "f" }, "relay", 4 << 20, 1000);
       route.observe({ kind: "bulk", file: "f" }, "direct", 8 << 20, 500);
     });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用直连 · 用于文件"]);
+    expect(lines()["MacBook"]).toEqual(["正在用直连 · 加载暂时用中继"]);
     expect(host.textContent).not.toContain("MiB/s");
     expect(footer()).not.toMatch(/速度取自|实际传输/);
   });
 
-  // A finished comparison: 8 live samples on both paths, direct not clearly ahead.
-  const compared = (r: DemoRemote) => { const route = r.direct.routing("mac"); for (let i = 0; i < 8; i++) { route.observe({ kind: "read" }, "relay", 0, 175); route.observe({ kind: "read" }, "direct", 0, 160); } };
+  const fallbackBoth = (r: DemoRemote) => {
+    const route = r.direct.routing("mac");
+    for (let i = 0; i < 8; i++) route.observe({ kind: "read" }, "direct", 0, 200);
+    for (let i = 0; i < 4; i++) route.observe({ kind: "read" }, "relay", 0, 40);
+    route.observe({ kind: "bulk", file: "f" }, "relay", 8 << 20, 1000);
+    route.observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 1000);
+  };
 
-  it("says 正在用中继 and why while both purposes are on the relay, once the comparison is done", async () => {
-    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); compared(r); });
+  it("says 正在用中继 · 直连较慢，暂时改用中继 when both purposes fell back", async () => {
+    open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); fallbackBoth(r); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连没有明显更快"]);
+    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连较慢，暂时改用中继"]);
   });
 
-  it("does not say direct is not clearly faster when nothing was compared: the check warms up, so it says it is measuring", async () => {
+  it("starts on direct right after connecting, with no measuring state", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["直连已连上，正在测速"]);
+    expect(lines()["MacBook"]).toEqual(["正在用直连"]);
   });
 
   it("draws no second dot: the one on the right of the row is the latency's", async () => {
@@ -160,20 +164,11 @@ describe("direct path summary lines", () => {
     } finally { localeStore.overrideForTesting(undefined); }
   });
 
-  it("asks for fresh numbers once per reachable computer when the sheet opens", async () => {
-    const refresh = vi.spyOn(DirectEngine.prototype, "refresh");
-    const r = open("", quiet);
-    await settle();
-    const reachable = [...r.machines.keys()].filter((id) => r.peer(id).reachable);
-    expect(reachable.length).toBeGreaterThan(0);
-    expect(refresh.mock.calls.map((c) => c[0]).sort()).toEqual(reachable.sort());
-  });
-
   it("updates when the engine reports a change", async () => {
     const r = open("", (x) => { quiet(x); setDirect(x.direct, "mac", "connecting"); });
     await settle();
     expect(lines()["MacBook"]).toEqual(["正在建立直连…"]);
-    act(() => { setDirect(r.direct, "mac", "connected"); compared(r); (r.direct as unknown as { notify(): void }).notify(); });
-    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连没有明显更快"]);
+    act(() => { setDirect(r.direct, "mac", "connected"); fallbackBoth(r); (r.direct as unknown as { notify(): void }).notify(); });
+    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连较慢，暂时改用中继"]);
   });
 });

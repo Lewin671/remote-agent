@@ -25,15 +25,15 @@ import type { DirectEngine, DirectStatus } from "../transport/direct-engine";
 import { RoundDiag, type PcDiag, type RoundData, type StatsLike } from "../transport/direct-diag";
 
 type Scenario = Omit<DirectStatus, "fileMiBps" | "readMs"> & { off?: boolean };
-const relay = { file: "relay", read: "relay", warming: false, compared: false } as const;
+const relay = { file: "relay", read: "relay" } as const;
 
 function scenario(name: string): Scenario {
   switch (name) {
-    case "direct": return { state: "connected", file: "direct", read: "direct", warming: false, compared: true };
-    case "file": return { state: "connected", file: "direct", read: "relay", warming: false, compared: true };
-    case "read": return { state: "connected", file: "relay", read: "direct", warming: false, compared: true };
-    case "measuring": return { state: "connected", ...relay, warming: true };
-    case "relay": case "relay-faster": return { state: "connected", ...relay, compared: true };
+    case "direct": return { state: "connected", file: "direct", read: "direct" };
+    case "file": return { state: "connected", file: "direct", read: "relay" };
+    case "read": return { state: "connected", file: "relay", read: "direct" };
+    case "file-fallback": return { state: "connected", file: "relay", read: "direct", fileSlow: true };
+    case "relay": return { state: "connected", ...relay, readSlow: true, fileSlow: true };
     case "trying": return { state: "connecting", ...relay };
     case "peer_unsupported": case "no_response": case "no_traversal": case "failed": return { state: "none", reason: name, ...relay };
     case "off": return { state: "none", reason: "disabled", ...relay, off: true };
@@ -51,9 +51,8 @@ function measured(name: string, speeds: string | null): Pick<DirectStatus, "file
     case "direct": return { fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { direct: 48, relay: 175 } };
     case "file": return { fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { relay: 175 } };
     case "read": return { fileMiBps: {}, readMs: { direct: 48, relay: 175 } };
-    case "measuring": return { fileMiBps: {}, readMs: { relay: 217 } };
-    case "relay": return { fileMiBps: {}, readMs: { direct: 160, relay: 175 } };
-    case "relay-faster": return { fileMiBps: { direct: 3.2, relay: 4.1 }, readMs: { direct: 220, relay: 180 } };
+    case "file-fallback": return { fileMiBps: { direct: 2.1, relay: 4.1 }, readMs: { direct: 48, relay: 175 } };
+    case "relay": return { fileMiBps: { direct: 2.1, relay: 4.1 }, readMs: { direct: 320, relay: 175 } };
     default: return { fileMiBps: {}, readMs: {} };
   }
 }
@@ -167,7 +166,6 @@ export function seedDirect(engine: DirectEngine, opts: URLSearchParams) {
     // Turned on: setting up, measuring for a moment, then the state the page was opened with
     // (from off, that is direct).
     const final = base.off ? scenario("direct") : base, finalName = base.off ? "direct" : name;
-    if (turnedOn && age < 4600 && final.state === "connected") return { ...scenario("measuring"), ...measured("measuring", speeds) };
     return { ...final, ...measured(finalName, speeds) };
   };
   // 「重新尝试」 in the sheet: for three seconds the computer is being tried again.

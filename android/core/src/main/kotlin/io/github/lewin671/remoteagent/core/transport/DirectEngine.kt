@@ -109,6 +109,7 @@ internal class DirectEngine(
     private var freshUntil = 0L
     private var syncRevision = 0L
     private var lifetime = 0L
+    private var foreground = true
     private val routingOwners = HashMap<String, Any>()
     private val peers = HashMap<String, PeerEntry>()
     private val sessions = HashMap<String, PeerEntry>()
@@ -128,13 +129,6 @@ internal class DirectEngine(
     private val retryAfter = HashMap<String, Long>()
     private val failReasons = HashMap<String, DirectFailReason>()
 
-    /** Sends one authorized background read on the given path and returns when it
-     * ends; the owner of the keys (Remote) provides it. Without it no warm-up
-     * sample is taken. */
-    @Volatile var probe: (suspend (id: String, path: RouteName) -> Unit)? = null
-    private val pumpRunning = java.util.concurrent.atomic.AtomicBoolean(false)
-    private val warmShown = HashMap<String, Boolean>()
-
     private fun notifyChanged() {
         runCatching { changed() }
     }
@@ -149,6 +143,7 @@ internal class DirectEngine(
         // Persistence must succeed before reporting a changed preference.
         preferenceStore.setEnabled(account.server, account.deviceId, id, enabled)
         val toClose: List<DirectSession>
+        val shouldDiscover: Boolean
         synchronized(stateLock) {
             preferences[id] = enabled
             retryAfter.remove(id)
@@ -158,11 +153,85 @@ internal class DirectEngine(
             routingOwners[id] = Any()
             toClose = sessions.values.filter { it.id == id }.onEach { it.live = false }.map { it.session }
             peers.remove(id)
-            routingLocked(id).fail()
+            routingLocked(id).reset()
+            shouldDiscover = enabled && foreground
         }
         for (s in toClose) s.close()
         notifyChanged()
-        if (enabled) scope.launch { discover() }
+        if (shouldDiscover) scope.launch { discover() }
+    }
+
+    fun setForeground(active: Boolean) {
+        val timerToCancel: Job?
+        val canDiscoverNow: Boolean
+        val shouldAuthorize: Boolean
+        synchronized(stateLock) {
+            if (foreground == active) return
+            foreground = active
+            if (!active) {
+                timerToCancel = discoverTimer
+                discoverTimer = null
+                canDiscoverNow = false
+                shouldAuthorize = false
+            } else {
+                timerToCancel = null
+                retryAfter.clear()
+                if (leg != null && discoverTimer == null) {
+                    startDiscoverTimerLocked()
+                }
+                canDiscoverNow = currentLocked()
+                shouldAuthorize = !canDiscoverNow && leg != null
+            }
+        }
+        if (!active) {
+            timerToCancel?.cancel()
+            closePeers()
+        } else if (canDiscoverNow) {
+            scope.launch { discover() }
+        } else if (shouldAuthorize) {
+            scope.launch { runCatching { authorize() }; discover() }
+        }
+    }
+
+    private fun closePeers(clearFreshness: Boolean = false) {
+        val toClose: List<DirectSession>
+        val allRoutes: List<DirectRouting>
+        val toFailPending: List<PendingRequest>
+        synchronized(stateLock) {
+            if (clearFreshness) {
+                syncRevision++
+                freshUntil = 0L
+            }
+            lifetime++
+            routingOwners.clear()
+            retryAfter.clear()
+            retry.clear()
+            toClose = sessions.values.onEach { it.live = false }.map { it.session }
+            peers.clear()
+            sessions.clear()
+            allRoutes = routes.values.toList()
+            toFailPending = pending.values.toList()
+            pending.clear()
+        }
+        for (s in toClose) s.close()
+        for (r in allRoutes) r.reset()
+        for (p in toFailPending) p.response.completeExceptionally(PathChanged())
+        notifyChanged()
+    }
+
+    private fun startDiscoverTimerLocked() {
+        lateinit var job: Job
+        job = scope.launch {
+            while (isActive) {
+                delay(1000)
+                val shouldInvalidate = synchronized(stateLock) {
+                    if (discoverTimer !== job) return@launch
+                    !currentLocked() && peers.isNotEmpty()
+                }
+                if (shouldInvalidate) invalidate() else discover()
+            }
+        }
+        discoverTimer = job
     }
 
     fun install(r: DeviceSecurity.Record) {
@@ -174,29 +243,7 @@ internal class DirectEngine(
         if (shouldInvalidate) invalidate()
     }
 
-    fun invalidate() {
-        val toClose: List<DirectSession>
-        val allRoutes: List<DirectRouting>
-        val toFailPending: List<PendingRequest>
-        synchronized(stateLock) {
-            syncRevision++
-            lifetime++
-            routingOwners.clear()
-            retryAfter.clear()
-            retry.clear()
-            freshUntil = 0L
-            toClose = sessions.values.onEach { it.live = false }.map { it.session }
-            peers.clear()
-            sessions.clear()
-            allRoutes = routes.values.toList()
-            toFailPending = pending.values.toList()
-            pending.clear()
-        }
-        for (s in toClose) s.close()
-        for (r in allRoutes) r.fail()
-        for (p in toFailPending) p.response.completeExceptionally(PathChanged())
-        notifyChanged()
-    }
+    fun invalidate() = closePeers(clearFreshness = true)
 
     suspend fun synced(r: DeviceSecurity.Record, started: Long) {
         val revision = synchronized(stateLock) { ++syncRevision }
@@ -222,6 +269,7 @@ internal class DirectEngine(
                     routingOwners.clear()
                     retryAfter.clear()
                     retry.clear()
+                    for (r in routes.values) r.reset()
                     val list = sessions.values.onEach { it.live = false }.map { it.session }
                     peers.clear()
                     sessions.clear()
@@ -248,21 +296,11 @@ internal class DirectEngine(
         val toDiscover: List<DirectSession>
         synchronized(stateLock) {
             leg = stream
+            if (!foreground) return
             // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
             retryAfter.clear()
             if (discoverTimer == null) {
-                lateinit var job: Job
-                job = scope.launch {
-                    while (isActive) {
-                        delay(1000)
-                        val shouldInvalidate = synchronized(stateLock) {
-                            if (discoverTimer !== job) return@launch
-                            !currentLocked() && peers.isNotEmpty()
-                        }
-                        if (shouldInvalidate) invalidate() else discover()
-                    }
-                }
-                discoverTimer = job
+                startDiscoverTimerLocked()
             }
             toDiscover = sessions.values.map { it.session }
         }
@@ -277,6 +315,7 @@ internal class DirectEngine(
     }
 
     private fun currentLocked(): Boolean {
+        if (!foreground) return false
         val r = record ?: return false
         return r.member && self != null && codec != null && clock() < freshUntil
     }
@@ -408,7 +447,7 @@ internal class DirectEngine(
                             p.paths[use] = path
                             if (p.readyAt == null) p.readyAt = clock()
                             failReasons.remove(id)
-                            if (use == 1) routingLocked(id).arm()
+                            routingLocked(id).reset(read = use == 1, bulk = use == 2)
                             true
                         }
                     }
@@ -436,10 +475,10 @@ internal class DirectEngine(
                             shouldNotify = true
                             if (use != null && p.session.active && p.session.established) {
                                 if (p.redialAt == null) p.redialAt = clock() + roundDelay(id, p)
-                                routingLocked(id).fail()
+                                routingLocked(id).hardFail(read = use == 1, bulk = use == 2)
                             }
                             if (p.paths.values.none { it.ready }) {
-                                routingLocked(id).fail()
+                                routingLocked(id).hardFail()
                                 if (peers[id] === p) peers.remove(id)
                                 retryAfter[id] = clock() + roundDelay(id, p)
                                 p.live = false
@@ -467,7 +506,7 @@ internal class DirectEngine(
 
     private fun selectLocked(peer: PeerEntry) {
         if (peers[peer.id] === peer) return
-        if (peer.id in peers) routingLocked(peer.id).fail()
+        if (peer.id in peers) routingLocked(peer.id).hardFail()
         routingOwners[peer.id] = Any()
         peers[peer.id] = peer
     }
@@ -713,69 +752,7 @@ internal class DirectEngine(
         }
     }
 
-    private fun routingLocked(id: String): DirectRouting = routes.getOrPut(id) { DirectRouting(monotonic, ::kick) }
-
-    /** A screen that shows the numbers (the 「连接」 group, the connection check)
-     * was opened: when direct is connected and the live window is too thin to
-     * decide, one warm-up, with the same bounds and merged with a running one. */
-    fun refresh(id: String) {
-        val route = synchronized(stateLock) {
-            if (readyLocked(id, RouteHint.Read)) routingLocked(id) else null
-        } ?: return
-        if (route.sparse()) route.arm()
-    }
-
-    /** Schedules the pump; never blocks, never takes the engine lock. */
-    private fun kick() {
-        if (!pumpRunning.compareAndSet(false, true)) return
-        scope.launch { pump() }
-    }
-
-    /** Drives the warm-up of every computer: one step every 250 ms while any is
-     * open. The numbers (alternation, in-flight, per-path count, rate) are the
-     * routing's; this only asks it, and only while the read path is ready. */
-    private suspend fun pump() {
-        try {
-            while (kotlin.coroutines.coroutineContext.isActive) {
-                var more = false
-                val routesNow = synchronized(stateLock) { routes.entries.map { it.key to it.value } }
-                for ((id, route) in routesNow) {
-                    val warming = route.warming()
-                    if (route.pending()) more = true
-                    val ready = synchronized(stateLock) { readyLocked(id, RouteHint.Read) }
-                    if (warming && ready) {
-                        val path = route.nextProbe()
-                        val fn = probe
-                        if (path != null) {
-                            scope.launch {
-                                try {
-                                    fn?.invoke(id, path)
-                                } catch (e: kotlinx.coroutines.CancellationException) {
-                                    throw e
-                                } catch (_: Exception) {
-                                } finally {
-                                    route.probeDone(path)
-                                    notifyChanged()
-                                }
-                            }
-                        }
-                    }
-                    val shown = route.warming()
-                    val changedShown = synchronized(stateLock) {
-                        (warmShown[id] != shown).also { warmShown[id] = shown }
-                    }
-                    if (changedShown) notifyChanged()
-                }
-                if (!more) break
-                delay(ReadRule.WARMUP_MIN_GAP_MS)
-            }
-        } finally {
-            pumpRunning.set(false)
-            // A trigger that landed between the last check and the flag reset.
-            val again = synchronized(stateLock) { routes.values.toList() }.any { it.pending() }
-            if (again && scope.isActive) kick()
-        }
-    }
+    private fun routingLocked(id: String): DirectRouting = routes.getOrPut(id) { DirectRouting(monotonic) }
 
     fun routing(id: String): DirectRouting = synchronized(stateLock) { routingLocked(id) }
 
@@ -800,22 +777,39 @@ internal class DirectEngine(
         return hint !is RouteHint.Bulk || clock() < p.downloadUntil
     }
 
-    /** `probe` takes a warm-up sample on the direct path whatever the routing
-     * prefers; the routing already bounded it. */
-    fun attempt(id: String, hint: RouteHint, handoff: () -> Unit, probe: Boolean = false, attemptId: String = newRequestId()): PathAttempt? {
+    fun attempt(id: String, hint: RouteHint, handoff: () -> Unit, attemptId: String = newRequestId()): PathAttempt? {
         val chosen = synchronized(stateLock) {
-            if (probe) {
-                if (hint !is RouteHint.Read || !readyLocked(id, hint)) return@synchronized null
-            } else {
-                if (routingLocked(id).choose(hint, readyLocked(id, hint)) != RouteName.DIRECT) return@synchronized null
-            }
+            if (routingLocked(id).choose(hint, readyLocked(id, hint)) != RouteName.DIRECT) return@synchronized null
             val p = peers[id] ?: return@synchronized null
             val use = if (hint is RouteHint.Read) 1 else 2
             val path = p.paths[use] ?: return@synchronized null
             Triple(p, use, path)
         } ?: return null
+        return buildAttempt(id, hint, chosen.first, chosen.second, chosen.third, handoff, attemptId)
+    }
 
-        val (peer, use, path) = chosen
+    /** Returns a direct attempt on the read/control channel for dual-sent interactive
+     * commands whenever direct is ready (no 1-in-8 sampling, no read-RTT recording). */
+    fun attemptInteractive(id: String, handoff: () -> Unit, attemptId: String = newRequestId()): PathAttempt? {
+        val hint = RouteHint.Read
+        val chosen = synchronized(stateLock) {
+            if (!readyLocked(id, hint)) return@synchronized null
+            val p = peers[id] ?: return@synchronized null
+            val path = p.paths[1] ?: return@synchronized null
+            Triple(p, 1, path)
+        } ?: return null
+        return buildAttempt(id, hint, chosen.first, chosen.second, chosen.third, handoff, attemptId)
+    }
+
+    private fun buildAttempt(
+        id: String,
+        hint: RouteHint,
+        peer: PeerEntry,
+        use: Int,
+        path: DirectChannel,
+        handoff: () -> Unit,
+        attemptId: String,
+    ): PathAttempt {
         val resolvedAttemptId = attemptId
         val tracking = track(id, hint)
         fun isCurrent(): Boolean = synchronized(stateLock) {
@@ -847,8 +841,8 @@ internal class DirectEngine(
                     }
                     return ForwardResponse.newBuilder().setResult(env).setAttemptId(attemptId).build()
                 } catch (e: Exception) {
-                    tracking.failed()
                     if (e is kotlinx.coroutines.CancellationException && e !is kotlinx.coroutines.TimeoutCancellationException) throw e
+                    tracking.failed()
                     throw PathChanged()
                 } finally {
                     synchronized(stateLock) {
@@ -885,12 +879,13 @@ internal class DirectEngine(
         val live = p != null && validLocked(p) && p.session.active
         val connected = live && p!!.paths.values.any { it.ready }
         val readReady = readyLocked(id, RouteHint.Read)
+        val fileReady = connected && p!!.paths[2]?.ready == true
         val readDirect = connected && readReady && m.readDirect
-        val fileDirect = connected && p!!.paths[2]?.ready == true && m.fileDirect
-        val warming = readReady && m.warming
+        val fileDirect = fileReady && m.fileDirect
+        val readSlow = connected && readReady && m.readSlow
+        val fileSlow = fileReady && m.fileSlow
         val stage = when {
             connected && (readDirect || fileDirect) -> DirectStage.DIRECT_ACTIVE
-            connected && warming -> DirectStage.MEASURING
             connected -> DirectStage.CONNECTED_RELAY
             live -> DirectStage.TRYING
             else -> DirectStage.UNCONNECTED
@@ -901,7 +896,8 @@ internal class DirectEngine(
             stage = stage,
             readDirect = readDirect,
             fileDirect = fileDirect,
-            relayNotSlower = m.relayNotSlower,
+            readSlow = readSlow,
+            fileSlow = fileSlow,
             reason = if (stage == DirectStage.UNCONNECTED) failReasons[id] else null,
             bulkDirectMibPerSec = m.bulkDirectMibPerSec,
             bulkRelayMibPerSec = m.bulkRelayMibPerSec,

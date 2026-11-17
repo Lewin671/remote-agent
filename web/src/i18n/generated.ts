@@ -1655,13 +1655,15 @@ export interface MessageArgs {
   "transport.diag_verdict_signal_offline": { [name: string]: never };
   "transport.diag_verdict_unknown": { [name: string]: never };
   "transport.direct": { [name: string]: never };
+  "transport.direct_slow": { [name: string]: never };
+  "transport.file_fallback": { [name: string]: never };
   "transport.file_speed_both": { direct: string; relay: string };
   "transport.file_speed_direct": { direct: string };
   "transport.file_speed_pending": { [name: string]: never };
   "transport.file_speed_relay": { relay: string };
   "transport.footer": { [name: string]: never };
   "transport.group": { [name: string]: never };
-  "transport.not_clearly_faster": { [name: string]: never };
+  "transport.read_fallback": { [name: string]: never };
   "transport.read_latency_both": { direct: string; relay: string };
   "transport.read_latency_direct": { direct: string };
   "transport.read_latency_relay": { relay: string };
@@ -1669,12 +1671,10 @@ export interface MessageArgs {
   "transport.reason_no_response": { [name: string]: never };
   "transport.reason_no_traversal": { [name: string]: never };
   "transport.reason_peer_unsupported": { [name: string]: never };
-  "transport.relay_faster": { [name: string]: never };
   "transport.speed_file": { [name: string]: never };
   "transport.speed_read": { [name: string]: never };
   "transport.status_connecting": { [name: string]: never };
   "transport.status_direct": { [name: string]: never };
-  "transport.status_measuring": { [name: string]: never };
   "transport.status_relay": { [name: string]: never };
   "transport.status_unsupported": { [name: string]: never };
   "transport.summary_off": { [name: string]: never };
@@ -3873,13 +3873,15 @@ export const messages = {
     "transport.diag_verdict_signal_offline": "The handshake didn't arrive: the computer is offline",
     "transport.diag_verdict_unknown": "Couldn't connect; the cause is unknown",
     "transport.direct": "Direct connection",
+    "transport.direct_slow": "Direct is slow; using relay for now",
+    "transport.file_fallback": "Files using relay for now",
     "transport.file_speed_both": "Direct {direct} · Relay {relay} MiB/s",
     "transport.file_speed_direct": "Direct {direct} MiB/s",
     "transport.file_speed_pending": "Compared on the next transfer",
     "transport.file_speed_relay": "Relay {relay} MiB/s",
-    "transport.footer": "Direct is used only for loading and files; messages and approvals always go through the relay.",
+    "transport.footer": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
     "transport.group": "Connection",
-    "transport.not_clearly_faster": "Direct isn't clearly faster",
+    "transport.read_fallback": "Loading using relay for now",
     "transport.read_latency_both": "Direct {direct} · Relay {relay} ms",
     "transport.read_latency_direct": "Direct {direct} ms",
     "transport.read_latency_relay": "Relay {relay} ms",
@@ -3887,12 +3889,10 @@ export const messages = {
     "transport.reason_no_response": "The computer didn't answer; direct may be turned off there",
     "transport.reason_no_traversal": "The two networks can't reach each other directly",
     "transport.reason_peer_unsupported": "The computer's version is too old; update it to use direct",
-    "transport.relay_faster": "Relay is faster",
     "transport.speed_file": "File transfer",
     "transport.speed_read": "Response time",
     "transport.status_connecting": "Setting up direct…",
     "transport.status_direct": "Using direct",
-    "transport.status_measuring": "Direct connected, measuring speed",
     "transport.status_relay": "Using relay",
     "transport.status_unsupported": "This browser doesn't support direct connections",
     "transport.summary_off": "Direct is off",
@@ -5996,13 +5996,15 @@ export const messages = {
     "transport.diag_verdict_signal_offline": "握手消息没送到：电脑当前不在线",
     "transport.diag_verdict_unknown": "没连上，原因不明",
     "transport.direct": "直连",
+    "transport.direct_slow": "直连较慢，暂时改用中继",
+    "transport.file_fallback": "文件暂时用中继",
     "transport.file_speed_both": "直连 {direct} · 中继 {relay} MiB/s",
     "transport.file_speed_direct": "直连 {direct} MiB/s",
     "transport.file_speed_pending": "下次传输时比较",
     "transport.file_speed_relay": "中继 {relay} MiB/s",
-    "transport.footer": "直连只用于加载和文件，发消息和审批始终经中继。",
+    "transport.footer": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。",
     "transport.group": "连接",
-    "transport.not_clearly_faster": "直连没有明显更快",
+    "transport.read_fallback": "加载暂时用中继",
     "transport.read_latency_both": "直连 {direct} · 中继 {relay} ms",
     "transport.read_latency_direct": "直连 {direct} ms",
     "transport.read_latency_relay": "中继 {relay} ms",
@@ -6010,12 +6012,10 @@ export const messages = {
     "transport.reason_no_response": "电脑没有回应，可能在电脑上关了直连",
     "transport.reason_no_traversal": "两边的网络不能直接连通",
     "transport.reason_peer_unsupported": "电脑上的版本太旧，更新后可用",
-    "transport.relay_faster": "中继更快",
     "transport.speed_file": "文件传输",
     "transport.speed_read": "响应时间",
     "transport.status_connecting": "正在建立直连…",
     "transport.status_direct": "正在用直连",
-    "transport.status_measuring": "直连已连上，正在测速",
     "transport.status_relay": "正在用中继",
     "transport.status_unsupported": "这个浏览器不支持直连",
     "transport.summary_off": "直连已关闭",

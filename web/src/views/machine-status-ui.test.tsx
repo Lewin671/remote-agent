@@ -642,7 +642,6 @@ describe("direct path on the machine status page", () => {
   it("only tells the numbers: nothing about transport, however the direct path is", async () => {
     const r = demo("ms-full");
     setDirect(r.direct, "mac", "connected");
-    r.direct.routing("mac").filePath = "direct";
     r.direct.routing("mac").observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 500);
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();

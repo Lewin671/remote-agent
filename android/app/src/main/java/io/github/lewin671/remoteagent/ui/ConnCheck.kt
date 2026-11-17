@@ -45,7 +45,6 @@ fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
         { remote.state.value.machines.values.filter { it.pathState.reachable }.map { it.id } },
         { remote.pingServer() }, { remote.pingMachine(it) },
         { remote.reconnectNow() },
-        refreshDirect = { remote.refreshDirect(it) },
         onProbeStatus = { s, ms, err -> remote.coreHost.reportConnCheckStatus(s, ms, err) },
     )
 }
@@ -60,8 +59,6 @@ internal fun ConnCheckSheet(
     pingMachine: suspend (String) -> Long,
     reconnectNow: () -> Unit,
     clock: () -> Long = System::currentTimeMillis,
-    /** Opening the check warms the direct numbers once when a computer's window is thin. */
-    refreshDirect: (String) -> Unit = {},
     onProbeStatus: (io.github.lewin671.remoteagent.core.proto.ConnProbeState, Int, String) -> Unit = { _, _, _ -> },
 ) {
     val copy = uiText()
@@ -87,7 +84,6 @@ internal fun ConnCheckSheet(
         busy = true
         onProbeStatus(io.github.lewin671.remoteagent.core.proto.ConnProbeState.CONN_PROBE_STATE_CHECKING, 0, "")
         val online = onlineMachines()
-        online.forEach { refreshDirect(it) }
         server = Ping.Wait
         machines.clear()
         online.forEach { machines[it] = Ping.Wait }

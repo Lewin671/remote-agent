@@ -51,7 +51,6 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
     return () => clearTimeout(timer);
   }, [turnedOn]);
 
-  useEffect(() => { remote.direct.refresh(id); }, [remote, id]);
   const status = remote.direct.status(id);
   let view: DirectView = directView(status);
   // Just turned on, nothing reported yet: "trying" is what is happening.

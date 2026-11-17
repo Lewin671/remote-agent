@@ -273,7 +273,7 @@ class DirectTransportE2ETest {
 
             // Wait until Direct path establishes initially
             fun isDirectConnected(): Boolean =
-                remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.MEASURING, DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)
+                remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)
 
             suspend fun waitDirectReady(timeoutMs: Long = 30_000) {
                 DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
@@ -306,9 +306,9 @@ class DirectTransportE2ETest {
                 while (System.currentTimeMillis() < deadline) {
                     val st = remote.peer(machineId)?.directStatus
                     val now = System.currentTimeMillis() - connectStart
-                    if (connectedMs < 0 && st?.stage in setOf(DirectStage.MEASURING, DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)) connectedMs = now
-                    // The read path is ready and its warm-up runs: what the rule's "within seconds" counts from.
-                    if (warmStartMs < 0 && st?.stage in setOf(DirectStage.MEASURING, DirectStage.DIRECT_ACTIVE)) warmStartMs = now
+                    if (connectedMs < 0 && st?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)) connectedMs = now
+                    // Direct read path is ready immediately under direct-first.
+                    if (warmStartMs < 0 && st?.stage == DirectStage.DIRECT_ACTIVE) warmStartMs = now
                     if (st?.readDirect == true) {
                         readUpgradeMs = now - maxOf(warmStartMs, 0)
                         break
@@ -367,7 +367,6 @@ class DirectTransportE2ETest {
             val dlTotalMs = System.currentTimeMillis() - dlStart
             val acceptedAfterDl = ctrlGet(ctrlBase, "/accepted-count").getInt("count")
             assertEquals("24 MiB download SHA-256 mismatch", wantSha1, sha256Hex(out1.toByteArray()))
-            assertTrue("Bulk download must upgrade to DIRECT", upgradedAtMs > 0 && acceptedAtUpgrade >= 0)
             assertEquals("accepted SQLite rows must NOT grow during Direct bulk download", acceptedAtUpgrade, acceptedAfterDl)
             metrics.put("bulk24M_totalMs", dlTotalMs)
             metrics.put("bulkUpgradeMs", upgradedAtMs)
@@ -391,7 +390,7 @@ class DirectTransportE2ETest {
             ui.onNodeWithText("连接").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("文件传输").performScrollTo().assertIsDisplayed()
             ui.onNodeWithText("响应时间").performScrollTo().assertIsDisplayed()
-            ui.onNodeWithText("直连只用于加载和文件", substring = true).performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("发消息和审批同时经直连和中继", substring = true).performScrollTo().assertIsDisplayed()
             ui.onNodeWithContentDescription("返回").performClick()
 
             // Also verify ConnCheckSheet

@@ -56,7 +56,7 @@ test("a delayed snapshot cannot overwrite a newer capability decision",()=>{
 });
 
 test("a healthy read PC cannot make a closed bulk PC display as direct",()=>{
- const {engine,peer}=readyEngine();engine.routing("machine").filePath="direct";
+ const {engine,peer}=readyEngine();
  peer.paths.set(1,{ready:true});peer.paths.set(2,{ready:false});expect(engine.filePath("machine")).toBe("relay");
 });
 
@@ -73,7 +73,7 @@ test("retired session expiry preserves the current peer, backoff and measured ro
  let clock=0;const route=new DirectRouting(()=>clock);state.routes.set(id,route);
  for(let i=0;i<100;i++){clock=i*60;route.observe({kind:"read"},"relay",0,150);route.observe({kind:"read"},"direct",0,20);}
  for(let i=0;i<2;i++){route.observe({kind:"bulk",file:"file"},"relay",4<<20,100);route.observe({kind:"bulk",file:"file"},"direct",4<<20,90);}
- const snapshot=JSON.stringify(route,(_key,value)=>value instanceof Map?[...value]:value),failure=vi.spyOn(route,"fail");
+ const snapshot=JSON.stringify(route,(_key,value)=>value instanceof Map?[...value]:value),failure=vi.spyOn(route,"hardFail");
  state.retryAfter.set(id,123);const backoff=[...state.retryAfter];
  try {
   vi.setSystemTime(old.session.retainUntil+1);await vi.advanceTimersByTimeAsync(25);
@@ -136,20 +136,21 @@ test.describe("status snapshot",()=>{
   const {engine}=readyEngine();stub();Object.assign(engine,{peers:new Map()});
   expect(engine.status("machine").state).toBe("none");expect(engine.status("machine").reason).toBeUndefined();
  });
- test("a live session without a ready path is connecting; a ready path is connected",()=>{
+ test("a live session without a ready path is connecting; a ready path is connected and direct-first",()=>{
   const {engine,peer}=readyEngine();stub();peer.paths.clear();
   expect(engine.status("machine").state).toBe("connecting");
   peer.paths.set(2,{ready:true});peer.paths.set(1,{ready:true});
-  expect(engine.status("machine")).toMatchObject({state:"connected",file:"relay",read:"relay"});
+  expect(engine.status("machine")).toMatchObject({state:"connected",file:"direct",read:"direct"});
  });
- test("per-purpose paths follow what routing really uses",()=>{
+ test("per-purpose paths become relay when slow fallback triggers or when the PC closes",()=>{
   const {engine,peer}=readyEngine();stub();peer.paths.set(1,{ready:true});
-  route(engine).filePath="direct";
-  expect(engine.status("machine")).toMatchObject({state:"connected",file:"direct",read:"relay"});
-  // Reads go direct only after routing has promoted them and the read path is ready.
-  Object.assign(route(engine),{readPreferred:"direct"});
-  expect(engine.status("machine").read).toBe("direct");
-  peer.paths.set(1,{ready:false});expect(engine.status("machine").read).toBe("relay");
+  expect(engine.status("machine")).toMatchObject({state:"connected",file:"direct",read:"direct"});
+  route(engine).fail({kind:"bulk",file:"f"});
+  expect(engine.status("machine")).toMatchObject({state:"connected",file:"relay",read:"direct",fileSlow:true});
+  route(engine).fail({kind:"read"});
+  expect(engine.status("machine")).toMatchObject({state:"connected",file:"relay",read:"relay",readSlow:true,fileSlow:true});
+  peer.paths.set(1,{ready:false});
+  expect(engine.status("machine").read).toBe("relay");
  });
  test("numbers are present only when measured, and never as zero",()=>{
   const {engine}=readyEngine();stub();
@@ -178,70 +179,6 @@ test.describe("status snapshot",()=>{
    expect(engine.status(id).reason).toBeUndefined();
   } finally {engine.close();vi.useRealTimers();}
  });
-});
-
-test("the engine's warm-up asks the owner for samples within the bound: 10 per path, one in flight per path, 4 a second, 5 seconds, only while the read PC is ready", async () => {
- vi.useFakeTimers();
- try {
-  const { engine, peer } = readyEngine(); peer.paths.set(1, { ready: true });
-  const calls: { at: number; path: string }[] = []; let inflight = { relay: 0, direct: 0 }, most = 0;
-  engine.probe = async (_id, path) => {
-   calls.push({ at: performance.now(), path }); inflight[path]++; most = Math.max(most, inflight[path]);
-   await new Promise(r => setTimeout(r, path === "direct" ? 40 : 170)); inflight[path]--;
-  };
-  const start = performance.now();
-  engine.routing("machine").arm();
-  for (let i = 0; i < 50; i++) engine.routing("machine").arm(); // a burst of triggers is one warm-up
-  await vi.advanceTimersByTimeAsync(20_000);
-  const per = (p: string) => calls.filter(c => c.path === p).length;
-  expect([per("direct"), per("relay")]).toEqual([10, 10]);
-  expect(most).toBe(1);
-  expect(Math.max(...calls.map(c => c.at)) - start).toBeLessThanOrEqual(5000);
-  for (const c of calls) expect(calls.filter(d => d.at >= c.at && d.at < c.at + 1000).length).toBeLessThanOrEqual(4);
-  expect(engine.status("machine").warming).toBe(false);
-  // Read PC not ready: nothing is asked.
-  const before = calls.length; peer.paths.set(1, { ready: false });
-  engine.routing("machine").arm(); await vi.advanceTimersByTimeAsync(8000);
-  expect(calls.length).toBe(before);
- } finally { vi.useRealTimers(); }
-});
-test("status says warming only while connected and measuring, and not for a computer with no read PC", async () => {
- vi.useFakeTimers(); vi.stubGlobal("RTCPeerConnection", class {});
- try {
-  const { engine, peer } = readyEngine(); peer.paths.set(1, { ready: true });
-  engine.probe = async () => undefined;
-  expect(engine.status("machine").warming).toBe(false);
-  engine.routing("machine").arm(); expect(engine.status("machine").warming).toBe(true);
-  await vi.advanceTimersByTimeAsync(6000); expect(engine.status("machine").warming).toBe(false);
-  peer.paths.set(1, { ready: false }); engine.routing("machine").arm(); expect(engine.status("machine").warming).toBe(false);
- } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
-});
-
-test("opening a screen with numbers triggers at most one bounded warm-up, and only when direct is connected and the window is thin", async () => {
- vi.useFakeTimers();
- try {
-  const { engine, peer } = readyEngine(); peer.paths.set(1, { ready: true }); Object.assign(engine, { freshUntil: Date.now() + 1e9 });
-  const calls: { at: number; path: string }[] = [];
-  engine.probe = async (_id, path) => { calls.push({ at: performance.now(), path }); await new Promise(r => setTimeout(r, 30)); };
-  const start = performance.now();
-  for (let i = 0; i < 40; i++) engine.refresh("machine");   // many mounts at once: one warm-up
-  await vi.advanceTimersByTimeAsync(15_000);
-  const per = (p: string) => calls.filter(c => c.path === p).length;
-  expect([per("direct"), per("relay")]).toEqual([10, 10]);
-  expect(Math.max(...calls.map(c => c.at)) - start).toBeLessThanOrEqual(5000);
-  for (const c of calls) expect(calls.filter(d => d.at >= c.at && d.at < c.at + 1000).length).toBeLessThanOrEqual(4);
-  // Direct not connected: nothing.
-  const before = calls.length; peer.paths.set(1, { ready: false });
-  engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before);
-  // A live window that already has 8 samples per path needs no warm-up.
-  peer.paths.set(1, { ready: true }); const route = engine.routing("machine");
-  for (let i = 0; i < 8; i++) { route.observe({ kind: "read" }, "relay", 0, 175); route.observe({ kind: "read" }, "direct", 0, 160); }
-  expect(route.sparse()).toBe(false);
-  engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before);
-  // Once the window has aged out, opening again warms again, bounded the same way.
-  await vi.advanceTimersByTimeAsync(61_000); expect(route.sparse()).toBe(true);
-  engine.refresh("machine"); await vi.advanceTimersByTimeAsync(8000); expect(calls.length).toBe(before + 20); expect(engine.ready("machine", { kind: "read" })).toBe(true);
- } finally { vi.useRealTimers(); }
 });
 
 type Round = { session: DirectSession; paths: Map<number, DirectChannel> };
@@ -306,35 +243,54 @@ test("one end of a round that had a ready path counts once however many of its p
   expect(state.retryAfter.get(id)! - Date.now()).toBe(500); expect(state.failureCount.get(id)).toBe(1);
  } finally { engine.close(); vi.useRealTimers(); }
 });
-test("a read PC that comes up after the fallback's warm-up window opened is still measured in a whole window", async () => {
- const { engine, state, id, round } = await rounds(); vi.stubGlobal("RTCPeerConnection", class {});
- try {
-  const hint = { kind: "read" } as const, route = engine.routing(id), calls = { relay: 0, direct: 0 };
-  engine.probe = async (_id, path) => { calls[path]++; route.observe(hint, path, 0, path === "direct" ? 13 : 335); };
-  const p = round(); p.session.options.chosen(); Object.assign(p.session, { established: true });
-  route.fail();                                                  // the path dropped: a re-measure is armed for 5 s later
-  await vi.advanceTimersByTimeAsync(7000);                       // the new PC is ready two seconds into that window
-  p.session.options.ready(1, { ready: true, close: vi.fn() } as unknown as DirectChannel);
-  expect(engine.status(id)).toMatchObject({ state: "connected", warming: true, compared: false });
-  await vi.advanceTimersByTimeAsync(20_000);
-  // A whole window: 5 s at 4 a second (the last slot falls on its closing edge), not the 3 s that were left of the old one.
-  expect(calls.direct).toBe(10); expect(calls.relay).toBeGreaterThanOrEqual(9);
-  expect(engine.status(id)).toMatchObject({ state: "connected", read: "direct", warming: false, compared: true });
-  void state;
- } finally { engine.close(); vi.useRealTimers(); vi.unstubAllGlobals(); }
+test("background closes all direct peers and foreground restores discovery", async () => {
+ const { engine, peer } = readyEngine();
+ Object.assign(engine, { sessions: new Map([["s1", peer]]) });
+ const discover = vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+ peer.paths.set(1, { ready: true });
+ expect(engine.ready("machine", { kind: "read" })).toBe(true);
+
+ engine.setForeground(false);
+ expect(peer.session.close).toHaveBeenCalledOnce();
+ expect(engine.ready("machine", { kind: "read" })).toBe(false);
+ expect(engine.ready("machine", { kind: "bulk", file: "f" })).toBe(false);
+
+ engine.setForeground(true);
+ expect(discover).toHaveBeenCalledTimes(1);
 });
-test("connected but not yet compared is measuring while a warm-up is waiting or running, and plain relay once it ended without enough samples", async () => {
- const { engine, id, round } = await rounds(); vi.stubGlobal("RTCPeerConnection", class {});
- try {
-  engine.probe = async () => undefined;                           // a window in which no sample is ever recorded
-  const p = round(); p.session.options.chosen(); Object.assign(p.session, { established: true }); engine.routing(id).fail();
-  p.session.options.ready(1, { ready: true, close: vi.fn() } as unknown as DirectChannel);
-  expect(engine.status(id)).toMatchObject({ state: "connected", read: "relay", warming: true, compared: false });   // waiting out the stability period
-  await vi.advanceTimersByTimeAsync(5100);
-  expect(engine.status(id).warming).toBe(true);                                                          // and running
-  await vi.advanceTimersByTimeAsync(11_000);
-  expect(engine.status(id)).toMatchObject({ state: "connected", read: "relay", warming: false, compared: false });
- } finally { engine.close(); vi.useRealTimers(); vi.unstubAllGlobals(); }
+
+test("attemptInteractive returns a direct attempt only when use=1 is ready", () => {
+ const { engine, peer } = readyEngine();
+ expect(engine.attemptInteractive("machine", async () => {})).toBeUndefined();
+ peer.paths.set(1, { ready: true });
+ const route = engine.routing("machine");
+ route.fail({ kind: "read" }); // even when read fell back to relay, interactive dual-send still uses ready direct PC!
+ expect(engine.attemptInteractive("machine", async () => {})).toBeDefined();
+ engine.setForeground(false);
+ expect(engine.attemptInteractive("machine", async () => {})).toBeUndefined();
+});
+
+test("Router.dual picks first trusted result and ignores late arrivals", async () => {
+ const { Router } = await import("./router");
+ const router = new Router({ status: () => ({ ready: true, reachable: true, relayRequired: false, authorized: true, unlinked: false }), attempt: vi.fn(), openStream: vi.fn() } as never);
+ let resolveRelay!: (r: { trusted: true; value: string }) => void;
+ let resolveDirect!: (r: { trusted: true; value: string }) => void;
+ const relaySignal = { aborted: false };
+
+ const promise = router.dual<string>(
+  () => new Promise((r) => { resolveDirect = r; }),
+  (signal) => new Promise((r) => {
+   signal.addEventListener("abort", () => { relaySignal.aborted = true; });
+   resolveRelay = r;
+  }),
+ );
+
+ resolveDirect({ trusted: true, value: "from-direct" });
+ expect(await promise).toBe("from-direct");
+ expect(relaySignal.aborted).toBe(true);
+ // Resolving the slower leg late cannot change or reject the settled promise.
+ resolveRelay({ trusted: true, value: "late-relay" });
+ expect(await promise).toBe("from-direct");
 });
 
 test("「重新尝试」 starts one discovery at once, only when no round runs and the switch is on, and not twice within two seconds",()=>{

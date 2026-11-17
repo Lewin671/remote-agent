@@ -6,9 +6,8 @@ import type { DirectEngine, DirectStatus } from "../transport/direct-engine";
 // the computer's settings page and the connection check never disagree: the
 // settings page draws the whole of it, the connection check one line of it.
 // The status says only the result, which path is in use now; the graphic is a
-// green dot (direct), an ink ring that turns (setting up, or measuring in the
-// first seconds) or a gray dot (relay). Never a hollow ring: it reads as a
-// radio button that does nothing when pressed.
+// green dot (direct), an ink ring that turns (setting up) or a gray dot (relay).
+// Never a hollow ring: it reads as a radio button that does nothing when pressed.
 
 // One decimal below 100, whole numbers from there; 99.96 is already 100.
 const mibps = (n: number) => (Math.round(n * 10) / 10 >= 100 ? String(Math.round(n)) : n.toFixed(1));
@@ -16,7 +15,7 @@ const ms = (n: number) => String(Math.round(n));
 
 type Purpose = "file" | "read";
 
-export type DirectKind = "direct" | "measuring" | "relay" | "trying" | "off" | "unsupported";
+export type DirectKind = "direct" | "relay" | "trying" | "off" | "unsupported";
 
 export interface DirectView {
   kind: DirectKind;
@@ -28,7 +27,7 @@ export interface DirectView {
   sub?: string;
   /** The one line the connection check puts under a computer's name. */
   summary?: string;
-  /** Measured speeds only, one per purpose; a file not yet measured says it is compared on the next transfer. */
+  /** Measured speeds only, one per purpose. */
   speeds: { key: Purpose; name: string; value: string }[];
 }
 
@@ -40,14 +39,6 @@ function reason(r: NonNullable<DirectStatus["reason"]>): string | undefined {
     case "failed": return l10n.t("transport.reason_failed");
     case "disabled": return undefined;
   }
-}
-
-/** Whether the relay measured no slower than the direct path: at least one
- * purpose was measured on both paths, and on none of them is direct ahead. */
-export function relayNotSlower(s: Pick<DirectStatus, "fileMiBps" | "readMs">): boolean {
-  const { direct: fd, relay: fr } = s.fileMiBps, { direct: rd, relay: rr } = s.readMs;
-  const file = fd !== undefined && fr !== undefined, read = rd !== undefined && rr !== undefined;
-  return (file || read) && (!file || fr! >= fd!) && (!read || rr! <= rd!);
 }
 
 function speeds(s: DirectStatus): DirectView["speeds"] {
@@ -74,19 +65,20 @@ export function directView(s: DirectStatus): DirectView {
     const file = s.file === "direct", read = s.read === "direct";
     if (file || read) {
       const word = l10n.t("transport.status_direct");
-      // Both purposes direct say nothing more; one says which.
-      const sub = file && read ? undefined : file ? l10n.t("transport.use_file") : l10n.t("transport.use_read");
+      // Both purposes direct say nothing more; one slow fallback or single purpose says which.
+      const sub = file && read
+        ? undefined
+        : read && s.fileSlow
+          ? l10n.t("transport.file_fallback")
+          : file && s.readSlow
+            ? l10n.t("transport.read_fallback")
+            : file
+              ? l10n.t("transport.use_file")
+              : l10n.t("transport.use_read");
       return { kind: "direct", mark: "online", word, sub, summary: line(word, sub), speeds: shown };
     }
-    if (s.warming) {
-      const word = l10n.t("transport.status_measuring");
-      return { kind: "measuring", mark: "run", word, summary: word, speeds: shown };
-    }
     const word = l10n.t("transport.status_relay");
-    // Only a finished comparison says how the paths compare. Without live samples on both
-    // (the window aged out, or the warm-up was cut short) nothing is claimed: the numbers
-    // shown may be older than that, and the headline must not be driven by them.
-    const sub = !s.compared ? undefined : relayNotSlower(s) ? l10n.t("transport.relay_faster") : l10n.t("transport.not_clearly_faster");
+    const sub = s.readSlow || s.fileSlow ? l10n.t("transport.direct_slow") : undefined;
     return { kind: "relay", mark: "off", word, sub, summary: line(word, sub), speeds: shown };
   }
   if (s.state === "connecting") {
@@ -110,7 +102,7 @@ export function directTrying(): DirectView {
  * latency, then that a computer's is measured through the relay, then (once,
  * not on every computer's line) that this browser cannot do it. */
 export function connFooter(engine: DirectEngine, ids: string[]): string {
-  const unsupported = ids.some((id) => directView(engine.status(id)).kind === "unsupported");
+  const unsupported = ids.some(id => directView(engine.status(id)).kind === "unsupported");
   const sentences = [l10n.t("connection.latency_is_one_round_trip_the_server_row_measures"), ...(unsupported ? [l10n.t("transport.conn_footer_unsupported")] : [])];
   // Chinese sentences end in a full stop and need no space between them.
   return sentences.join(l10n.localeStore.snapshot().startsWith("zh") ? "" : " ");

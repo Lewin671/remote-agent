@@ -8203,6 +8203,14 @@ public enum L10n {
         let key = "transport_direct"
         return format(key, locale: locale, args: [])
     }
+    public static func transportDirectSlow(locale: String = MessageLocale.current) -> String {
+        let key = "transport_direct_slow"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportFileFallback(locale: String = MessageLocale.current) -> String {
+        let key = "transport_file_fallback"
+        return format(key, locale: locale, args: [])
+    }
     public static func transportFileSpeedBoth(direct: String, relay: String, locale: String = MessageLocale.current) -> String {
         let key = "transport_file_speed_both"
         return format(key, locale: locale, args: [direct, relay])
@@ -8229,6 +8237,10 @@ public enum L10n {
     }
     public static func transportNotClearlyFaster(locale: String = MessageLocale.current) -> String {
         let key = "transport_not_clearly_faster"
+        return format(key, locale: locale, args: [])
+    }
+    public static func transportReadFallback(locale: String = MessageLocale.current) -> String {
+        let key = "transport_read_fallback"
         return format(key, locale: locale, args: [])
     }
     public static func transportReadLatencyBoth(direct: String, relay: String, locale: String = MessageLocale.current) -> String {
@@ -16495,6 +16507,14 @@ public enum L10nMessage {
         let key = "transport_direct"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func transportDirectSlow() -> LocalizedMessage {
+        let key = "transport_direct_slow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportFileFallback() -> LocalizedMessage {
+        let key = "transport_file_fallback"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func transportFileSpeedBoth(direct: String, relay: String) -> LocalizedMessage {
         let key = "transport_file_speed_both"
         return LocalizedMessage(key: key, arguments: [.string(direct), .string(relay)])
@@ -16521,6 +16541,10 @@ public enum L10nMessage {
     }
     public static func transportNotClearlyFaster() -> LocalizedMessage {
         let key = "transport_not_clearly_faster"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func transportReadFallback() -> LocalizedMessage {
+        let key = "transport_read_fallback"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func transportReadLatencyBoth(direct: String, relay: String) -> LocalizedMessage {

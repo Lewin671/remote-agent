@@ -1949,13 +1949,16 @@
 "tools_tool" = "Tool";
 "tools_waiting_sync" = "Waiting to sync";
 "transport_direct" = "Direct connection";
+"transport_direct_slow" = "Direct is slow; using relay for now";
+"transport_file_fallback" = "Files using relay for now";
 "transport_file_speed_both" = "Direct %1$@ · Relay %2$@ MiB/s";
 "transport_file_speed_direct" = "Direct %1$@ MiB/s";
 "transport_file_speed_pending" = "Compared on the next transfer";
 "transport_file_speed_relay" = "Relay %1$@ MiB/s";
-"transport_footer" = "Direct is used only for loading and files; messages and approvals always go through the relay.";
+"transport_footer" = "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.";
 "transport_group" = "Connection";
 "transport_not_clearly_faster" = "Direct isn't clearly faster";
+"transport_read_fallback" = "Loading using relay for now";
 "transport_read_latency_both" = "Direct %1$@ · Relay %2$@ ms";
 "transport_read_latency_direct" = "Direct %1$@ ms";
 "transport_read_latency_relay" = "Relay %1$@ ms";

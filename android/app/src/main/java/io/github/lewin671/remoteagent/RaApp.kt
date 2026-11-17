@@ -151,6 +151,7 @@ class RaApp : Application() {
                         loadAccount()
                         io.github.lewin671.remoteagent.update.Updater.check(this@RaApp)
                         _remote.value?.let { r ->
+                            r.foregroundChanged(true)
                             r.start()
                             r.renewLeaseIfNeeded()
                             Push.register(this@RaApp, r)
@@ -160,7 +161,10 @@ class RaApp : Application() {
                     override fun onStop(owner: LifecycleOwner) {
                         foreground = false
                         Push.stop()
-                        _remote.value?.stop()
+                        _remote.value?.let { r ->
+                            r.foregroundChanged(false)
+                            r.stop()
+                        }
                         // Clearing waits for an in-flight security read; keep it off the main thread.
                         scope.launch(Dispatchers.IO) { vault.clearSecurityCache() }
                     }

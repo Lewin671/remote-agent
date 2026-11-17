@@ -775,59 +775,44 @@ class DirectTransportTest {
     }
 
     @Test
-    fun directRoutingReadAndBulkUpgradeFallbackHysteresis() {
+    fun directRoutingReadAndBulkFallbackHysteresis() {
         var now = 10_000L
         val routing = DirectRouting(now = { now })
         val readHint = RouteHint.Read
 
-        repeat(100) {
-            now += 10
-            routing.observe(readHint, RouteName.RELAY, 0, 50.0)
-            routing.observe(readHint, RouteName.DIRECT, 0, 5.0)
-        }
-        assertEquals(RouteName.RELAY, routing.choose(readHint, ready = true))
-
-        now += 5_000L
-        routing.observe(readHint, RouteName.RELAY, 0, 50.0)
-        routing.observe(readHint, RouteName.DIRECT, 0, 5.0)
-        assertEquals(RouteName.DIRECT, routing.choose(readHint, ready = true))
-
+        // Ready => direct preferred immediately, with 1-in-8 relay control sample.
+        assertEquals(RouteName.DIRECT, routing.readPath())
         var relayCount = 0
         repeat(16) {
             if (routing.choose(readHint, ready = true) == RouteName.RELAY) relayCount++
         }
         assertEquals(2, relayCount)
 
-        now += 5_000L
-        routing.observe(readHint, RouteName.RELAY, 0, 10.0)
-        routing.observe(readHint, RouteName.DIRECT, 0, 80.0)
-        now += 5_000L
-        routing.observe(readHint, RouteName.RELAY, 0, 10.0)
-        routing.observe(readHint, RouteName.DIRECT, 0, 80.0)
-        now += 5_000L
-        routing.observe(readHint, RouteName.RELAY, 0, 10.0)
-        routing.observe(readHint, RouteName.DIRECT, 0, 80.0)
+        // Direct slower than 1.5x relay + 20ms with >=8 direct and >=4 relay in 30s -> fallback.
+        repeat(8) {
+            now += 100L
+            routing.observe(readHint, RouteName.DIRECT, 0, 80.0)
+        }
+        repeat(4) {
+            now += 100L
+            routing.observe(readHint, RouteName.RELAY, 0, 10.0)
+        }
+        assertEquals(RouteName.RELAY, routing.readPath())
         assertEquals(RouteName.RELAY, routing.choose(readHint, ready = true))
         routing.fail(readHint)
         now += 1_000L
         assertEquals(RouteName.RELAY, routing.choose(readHint, ready = true))
 
+        // Bulk also starts on direct with 1-in-8 relay sampling and does not flicker on 1/8 sample.
         val bulk = RouteHint.Bulk(file = "s1/f1")
-        now += 10_000L
-        assertEquals(RouteName.RELAY, routing.choose(bulk, ready = true))
-        routing.observe(bulk, RouteName.RELAY, 4 shl 20, 400.0)
-        assertEquals(RouteName.DIRECT, routing.choose(bulk, ready = true))
-        routing.observe(bulk, RouteName.DIRECT, 4 shl 20, 100.0)
-        assertEquals(RouteName.RELAY, routing.filePath)
-        assertEquals(RouteName.RELAY, routing.choose(bulk, ready = true))
-        routing.observe(bulk, RouteName.RELAY, 4 shl 20, 400.0)
-        assertEquals(RouteName.DIRECT, routing.choose(bulk, ready = true))
-        routing.observe(bulk, RouteName.DIRECT, 4 shl 20, 100.0)
         assertEquals(RouteName.DIRECT, routing.filePath)
-        assertEquals(RouteName.DIRECT, routing.choose(bulk, ready = true))
-        // 1-in-8 Relay sample after upgrade must not flicker filePath back to RELAY.
+        routing.observe(bulk, RouteName.DIRECT, 4 shl 20, 100.0)
         routing.observe(bulk, RouteName.RELAY, 768 shl 10, 150.0)
         assertEquals(RouteName.DIRECT, routing.filePath)
+        // Only when direct rate < 70% of relay rate does bulk fall back.
+        routing.observe(RouteHint.Bulk("s1/f2"), RouteName.RELAY, 8 shl 20, 1000.0)
+        routing.observe(RouteHint.Bulk("s1/f2"), RouteName.DIRECT, 2 shl 20, 1000.0)
+        assertEquals(RouteName.RELAY, routing.filePath)
     }
 
     @Test
@@ -960,26 +945,9 @@ class DirectTransportTest {
                 }
                 assertFalse(remote.peer(daemonAccount.deviceId).relayRequired)
 
-                // Drive read-only sampling across >5s and >=100 samples without triggering >3s single-second liveness wake jump.
+                // Ready direct path is preferred immediately without any warm-up loop.
                 val readHint = RouteHint.Read
                 val routing = remote.direct.routing(daemonAccount.deviceId)
-                repeat(50) {
-                    mono += 25L
-                    routing.observe(readHint, RouteName.RELAY, 0, 150.0)
-                    routing.observe(readHint, RouteName.DIRECT, 0, 15.0)
-                }
-                delay(1_100)
-                repeat(25) {
-                    mono += 80L
-                    routing.observe(readHint, RouteName.RELAY, 0, 150.0)
-                    routing.observe(readHint, RouteName.DIRECT, 0, 15.0)
-                }
-                delay(1_100)
-                repeat(25) {
-                    mono += 80L
-                    routing.observe(readHint, RouteName.RELAY, 0, 150.0)
-                    routing.observe(readHint, RouteName.DIRECT, 0, 15.0)
-                }
                 assertEquals(RouteName.DIRECT, routing.choose(readHint, ready = true))
 
                 val directBefore = daemon.directCommands.size
@@ -987,8 +955,8 @@ class DirectTransportTest {
                 assertTrue(daemon.directCommands.size > directBefore)
                 assertTrue(daemon.directCommands.last().hasGetLiveSnapshot())
 
-                // Bulk download: 2 rounds of 4 MiB relay + 4 MiB direct (32 x 512 KiB) -> upgrades filePath to DIRECT, then 4 more direct chunks.
-                for (i in 0 until 36) {
+                // Bulk download uses direct immediately (7/8 direct, 1/8 relay control sample).
+                for (i in 0 until 16) {
                     try {
                         val dl = remote.getSharedFileChunk("s-direct", "f1", (i.toLong() shl 19))
                         assertEquals(512 shl 10, dl.data.size())
@@ -998,27 +966,27 @@ class DirectTransportTest {
                 }
                 val directDl = daemon.directCommands.count { it.hasGetSharedFileChunk() }
                 val relayDl = daemon.relayCommands.count { it.hasGetSharedFileChunk() }
-                assertTrue("expected download chunks on direct (directDl=$directDl, relayDl=$relayDl, ready=${remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "s-direct/f1"))}, filePath=${remote.filePath(daemonAccount.deviceId)})", directDl >= 16)
+                assertTrue("expected download chunks on direct (directDl=$directDl, relayDl=$relayDl, ready=${remote.direct.ready(daemonAccount.deviceId, RouteHint.Bulk(file = "s-direct/f1"))}, filePath=${remote.filePath(daemonAccount.deviceId)})", directDl >= 10)
                 assertEquals(RouteName.DIRECT, remote.filePath(daemonAccount.deviceId))
 
-                // Upload: 2 rounds of 4 MiB relay + 4 MiB direct (32 x 512 KiB) -> upgrades to direct, then disconnect direct mid-chunk -> getImageUploadStatus on relay before retry.
+                // Upload also uses direct immediately, then dropping direct falls back to getImageUploadStatus on relay before retry.
                 val ch = remote.uploadChannel(daemonAccount.deviceId)
                 val upChunk = ByteArray(512 shl 10)
                 ch.begin("up-1", ImageFormat.IMAGE_FORMAT_PNG, 20L shl 20, sha256(ByteArray(4)))
-                for (i in 0 until 34) {
+                for (i in 0 until 10) {
                     try {
                         ch.put("up-1", i.toLong() shl 19, upChunk)
                     } catch (t: Throwable) {
                         throw AssertionError("put chunk $i failed (relay=${daemon.relayCommands.size}, direct=${daemon.directCommands.size}): ${t.message}", t)
                     }
                 }
-                assertTrue("expected upload chunks on direct after 2 rounds", daemon.directCommands.count { it.hasPutImageChunk() } >= 16)
+                assertTrue("expected upload chunks on direct immediately", daemon.directCommands.count { it.hasPutImageChunk() } >= 6)
 
                 val relayBefore = daemon.relayCommands.size
                 daemon.onDropDirect = { bridge.phonePcs.toList().forEach { it.dropAllChannels() } }
                 daemon.dropDirectOnNextPut = true
                 try {
-                    ch.put("up-1", 34L shl 19, upChunk)
+                    ch.put("up-1", 10L shl 19, upChunk)
                 } catch (t: Throwable) {
                     throw AssertionError("fallback put chunk failed (relay=${daemon.relayCommands.size}, direct=${daemon.directCommands.size}): ${t.message}", t)
                 }
@@ -1036,10 +1004,9 @@ class DirectTransportTest {
     }
 
     /** A long-lived app whose direct path drops must get a new one within the
-     * designed backoff (5 s, then the next 1 s discovery tick), warm it up again,
-     * and never stay on the relay for good. Real clock: the backoff is real time. */
+     * designed backoff (1 s, then 2 s) and immediately prefer direct again. */
     @Test
-    fun directIsReestablishedAfterAPathDropAndWarmsUpAgain() = runBlocking {
+    fun directIsReestablishedAfterAPathDropAndPrefersDirectImmediately() = runBlocking {
         val server = TestServer()
         val http = Api.defaultHttp()
         try {
@@ -1064,17 +1031,13 @@ class DirectTransportTest {
                 withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
                 remote.syncSecurity()
                 withTimeout(10_000) { while (!remote.direct.ready(id, RouteHint.Read) || !remote.direct.ready(id, RouteHint.Bulk(file = "s/f"))) delay(20) }
-                // The warm-up probes start by themselves, both paths, without any user request.
-                awaitCondition("warm-up probes on both paths without a user request", 10_000) {
-                    daemon.directCommands.any { it.hasGetMachineStatus() } && daemon.relayCommands.any { it.hasGetMachineStatus() }
-                }
+                assertEquals(RouteName.DIRECT, remote.direct.routing(id).readPath())
+                assertEquals(RouteName.DIRECT, remote.direct.routing(id).filePath)
                 val before = bridge.phonePcs.size
-                val probesBefore = daemon.directCommands.count { it.hasGetMachineStatus() }
 
                 // The path drops (the network under it changed); the main socket stays up.
                 bridge.phonePcs.toList().forEach { it.dropAllChannels() }
                 awaitCondition("the dropped path stops being ready", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
-                assertEquals(RouteName.RELAY, remote.direct.routing(id).readPath())
                 val droppedAt = System.nanoTime()
 
                 // Full-jitter backoff (docs/transport.md §4), here at its ceiling: 1 s for the first
@@ -1085,6 +1048,7 @@ class DirectTransportTest {
                 val backMs = (System.nanoTime() - droppedAt) / 1_000_000
                 assertTrue("re-established after ${backMs}ms, expected within the first 1 s step (+ a tick and the handshake)", backMs in 900..4_000)
                 assertTrue("a new peer connection was made", bridge.phonePcs.size > before)
+                assertEquals(RouteName.DIRECT, remote.direct.routing(id).readPath())
 
                 // A second drop soon after is the second failure: the ceiling doubles to 2 s.
                 awaitCondition("the re-established path is ready to drop again", 10_000) { remote.direct.ready(id, RouteHint.Read) }
@@ -1098,11 +1062,75 @@ class DirectTransportTest {
                 val backAgainMs = (System.nanoTime() - droppedAgain) / 1_000_000
                 assertTrue("second failure waits up to 2 s, took ${backAgainMs}ms", backAgainMs in 1_900..5_500)
                 assertTrue("a new peer connection again", bridge.phonePcs.size > second)
-                // It measures again after the stability wait, on both paths.
-                awaitCondition("the new path is warmed up again", 20_000) {
-                    daemon.directCommands.count { it.hasGetMachineStatus() } > probesBefore
-                }
+                assertEquals(RouteName.DIRECT, remote.direct.routing(id).readPath())
                 assertTrue(remote.directEnabled(id))
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun routerDualPicksFirstTrustedResultAndIgnoresLateArrival() = runBlocking {
+        val router = Router(
+            object : Path {
+                override fun status(machineId: String) = PeerState(ready = true, reachable = true, authorized = true, unlinked = false, relayRequired = false)
+                override fun attempt(handoff: () -> Unit): PathAttempt = throw UnsupportedOperationException()
+                override fun openStream(address: String, listener: FrameListener): FrameStream = throw UnsupportedOperationException()
+            },
+        )
+        val releaseRelay = CompletableDeferred<DualLegResult<String>>()
+        val got = router.dual(
+            primary = { DualLegResult.Trusted("from-direct") },
+            fallback = { releaseRelay.await() },
+        )
+        assertEquals("from-direct", got)
+        releaseRelay.complete(DualLegResult.Trusted("late-relay"))
+        assertEquals("from-direct", got)
+    }
+
+    @Test
+    fun backgroundDisablesDirectAndForegroundRestoresIt() = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 9 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("direct ready in foreground", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read)
+                }
+
+                remote.foregroundChanged(false)
+                awaitCondition("background closes direct", 3_000) {
+                    !remote.direct.ready(id, RouteHint.Read)
+                }
+                assertNull(remote.direct.attemptInteractive(id, {}))
+
+                remote.foregroundChanged(true)
+                awaitCondition("foreground restores direct", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read)
+                }
             } finally {
                 remote.close()
                 daemon.close()

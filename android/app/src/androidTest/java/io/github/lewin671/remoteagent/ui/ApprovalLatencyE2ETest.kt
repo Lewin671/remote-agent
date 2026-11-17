@@ -317,7 +317,7 @@ class ApprovalLatencyE2ETest {
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 150).put("resetCount", true))
             val connectStart = System.currentTimeMillis()
             remote.setDirectEnabled(machineId, true)
-            ui.waitUntil(60_000) { remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.MEASURING, DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE) }
+            ui.waitUntil(60_000) { remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE) }
             delay(700)
             ui.waitUntil(30_000) { remote.peer(machineId)?.directStatus?.readDirect == true }
             val chunkSize = 768 * 1024

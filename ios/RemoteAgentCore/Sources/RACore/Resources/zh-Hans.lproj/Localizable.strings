@@ -1949,13 +1949,16 @@
 "tools_tool" = "工具";
 "tools_waiting_sync" = "等待同步";
 "transport_direct" = "直连";
+"transport_direct_slow" = "直连较慢，暂时改用中继";
+"transport_file_fallback" = "文件暂时用中继";
 "transport_file_speed_both" = "直连 %1$@ · 中继 %2$@ MiB/s";
 "transport_file_speed_direct" = "直连 %1$@ MiB/s";
 "transport_file_speed_pending" = "下次传输时比较";
 "transport_file_speed_relay" = "中继 %1$@ MiB/s";
-"transport_footer" = "直连只用于加载和文件，发消息和审批始终经中继。";
+"transport_footer" = "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。";
 "transport_group" = "连接";
 "transport_not_clearly_faster" = "直连没有明显更快";
+"transport_read_fallback" = "加载暂时用中继";
 "transport_read_latency_both" = "直连 %1$@ · 中继 %2$@ ms";
 "transport_read_latency_direct" = "直连 %1$@ ms";
 "transport_read_latency_relay" = "中继 %1$@ ms";

@@ -92,9 +92,6 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
     if (mine === run.current) setBusy(false);
   }, [remote]);
   useEffect(() => {
-    for (const m of remote.machines.values()) if (remote.peer(m.id).reachable) remote.direct.refresh(m.id);
-  }, [remote]);
-  useEffect(() => {
     void check();
     return () => void run.current++;
   }, [check]);

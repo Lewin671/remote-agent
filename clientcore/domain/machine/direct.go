@@ -81,26 +81,23 @@ func BuildConnectionGroup(online bool, prefEnabled bool, report *corev1.DirectRo
 
 	case corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED:
 		view.FooterText = text.Msg(text.KeyTransportFooter)
-		if report.Warming {
-			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_MEASURING
-			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
-			view.StatusText = text.Msg(text.KeyTransportStatusMeasuring)
-			return view
-		}
-		if report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT {
+		readDirect := report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
+		fileDirect := report.FileRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
+		if readDirect || fileDirect {
 			view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT
 			view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_LIVE
 			view.StatusText = text.Msg(text.KeyTransportStatusDirect)
+			if readDirect && !fileDirect && report.FileRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY {
+				view.DetailText = text.Msg(text.KeyTransportFileFallback)
+			} else if fileDirect && !readDirect && report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY {
+				view.DetailText = text.Msg(text.KeyTransportReadFallback)
+			}
 			return view
 		}
 		view.Stage = corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_RELAY
 		view.Tone = corev1.ConnectionGroupTone_CONNECTION_GROUP_TONE_MUTED
 		view.StatusText = text.Msg(text.KeyTransportStatusRelay)
-		if report.Compared {
-			view.DetailText = text.Msg(text.KeyTransportRelayFaster)
-		} else {
-			view.DetailText = text.Msg(text.KeyTransportNotClearlyFaster)
-		}
+		view.DetailText = text.Msg(text.KeyTransportDirectSlow)
 
 	default:
 		view.FooterText = text.Msg(text.KeyTransportFooter)
