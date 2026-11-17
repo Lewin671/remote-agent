@@ -117,7 +117,7 @@ class DirectTransportUiTest {
             ui.onNodeWithText("直连 6.3 · 中继 4.1 MiB/s").assertIsDisplayed()
             ui.onNodeWithText("响应时间").assertIsDisplayed()
             ui.onNodeWithText("直连 12 · 中继 180 ms").assertIsDisplayed()
-            ui.onNodeWithText("直连只用于加载和文件，发消息和审批始终经中继。").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。").performScrollTo().assertIsDisplayed()
 
             ui.onNodeWithText("直连").performScrollTo().performClick()
             ui.waitUntil(3000) { !remote.directEnabled(machineId) }
