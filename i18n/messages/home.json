@@ -253,6 +253,22 @@
     }
   },
   {
+    "key": "home.computer_runs_cli",
+    "zh-CN": "电脑运行 CLI，客户端操作会话。",
+    "en": "Run the CLI on your computer and control sessions from a client.",
+    "notes": "首页无电脑时的说明段落。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "home.connection_check",
     "zh-CN": "连接检测",
     "en": "Check connection",

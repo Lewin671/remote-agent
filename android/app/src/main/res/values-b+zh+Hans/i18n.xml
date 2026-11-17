@@ -282,10 +282,13 @@
     <string name="errors_android_upload_connection_interrupted_retry" formatted="false">"上传连接中断，请重试"</string>
     <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s；上一次的结果仍不确定，能力恢复后可重试同一请求"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
+    <string name="errors_cannot_sign_with_the_current_security_state_the_operation" formatted="false">"无法用当前安全状态签名，操作尚未发出；请重试"</string>
     <string name="errors_client_out_of_date" formatted="false">"这个客户端版本较旧，请更新后再试"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
+    <string name="errors_current_membership_could_not_be_verified" formatted="false">"无法核实当前成员"</string>
+    <string name="errors_device_directory_state_changed" formatted="false">"设备目录状态已变化"</string>
     <string name="errors_device_information_could_not_be_verified" formatted="false">"无法核实设备信息"</string>
     <string name="errors_device_information_is_changing_retry" formatted="false">"设备信息正在变化，请重试"</string>
     <string name="errors_device_registration_is_unfinished_retry_it_first" formatted="false">"还有未完成的设备注册，请先重试"</string>
@@ -296,6 +299,7 @@
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"历史记录未能继续加载，请重试"</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
+    <string name="errors_invalid_ciphertext_current_state_checkpoint_mismatch" formatted="false">"密文无效：当前状态 checkpoint 不匹配"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
     <string name="errors_invalid_current_request_snapshot" formatted="false">"当前请求快照无效"</string>
     <string name="errors_invalid_pairing_approval_signature" formatted="false">"配对批准签名无效"</string>
@@ -304,9 +308,11 @@
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"它可能已经被删除，或者属于一台被移除的电脑。"</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"成员链冲突，安全操作已停止；请核对设备后明确重新加入"</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>
+    <string name="errors_network_changed_reconnecting" formatted="false">"网络已变化，正在重连"</string>
     <string name="errors_not_connected" formatted="false">"连不上服务器"</string>
     <string name="errors_other_clients_kept_changing_the_project_list_changes_could" formatted="false">"项目列表一直在被别的客户端修改，没能保存"</string>
     <string name="errors_pending_requests_on_the_computer_could_not_be_verified" formatted="false">"无法核实电脑上的待处理请求，请重试或在电脑终端处理"</string>
+    <string name="errors_project_preferences_format_is_not_supported" formatted="false">"项目偏好格式不受支持"</string>
     <string name="errors_push_backlog_reconnecting" formatted="false">"推送积压，正在重连"</string>
     <string name="errors_queued_records_could_not_be_restored_you_can_still" formatted="false">"待发记录没能恢复，仍可输入和发送，下次重试"</string>
     <string name="errors_queued_records_could_not_be_saved_locally_messages_will" formatted="false">"待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果"</string>
@@ -318,8 +324,10 @@
     <string name="errors_security_body_type_or_direction_mismatch" formatted="false">"安全正文类型或方向不匹配"</string>
     <string name="errors_security_envelope_missing" formatted="false">"缺少安全信封"</string>
     <string name="errors_server_returned">"服务器返回 %1$s"</string>
+    <string name="errors_session_key_envelope_missing" formatted="false">"缺少会话密钥信封"</string>
     <string name="errors_setup_request_preserved">"%1$s。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。"</string>
     <string name="errors_signing_in" formatted="false">"登录"</string>
+    <string name="errors_syncing_device_state" formatted="false">"同步设备状态"</string>
     <string name="errors_terminal_connection_canceled" formatted="false">"终端连接已取消"</string>
     <string name="errors_terminal_connection_closed" formatted="false">"终端连接已关闭"</string>
     <string name="errors_terminal_connection_dropped" formatted="false">"终端连接断开"</string>
@@ -334,12 +342,14 @@
     <string name="errors_the_computer_is_still_verifying_attachments_retry_shortly" formatted="false">"电脑仍在校验附件，请稍后重试"</string>
     <string name="errors_the_computer_s_reply_could_not_be_verified_command" formatted="false">"电脑的回复未通过验证，不确定指令是否执行"</string>
     <string name="errors_the_current_request_could_not_be_verified_again" formatted="false">"无法重新核实当前请求"</string>
+    <string name="errors_the_device_directory_response_is_out_of_date" formatted="false">"设备目录响应已过时"</string>
     <string name="errors_the_draft_could_not_be_restored_you_can_still" formatted="false">"草稿没能恢复，仍可输入和发送，下次打开或编辑时重试"</string>
     <string name="errors_the_draft_could_not_be_saved_locally_keep_the" formatted="false">"草稿没能保存到本机，关闭页面前请保留原图和文字"</string>
     <string name="errors_the_draft_could_not_be_saved_the_original_message" formatted="false">"草稿没能保存，原消息的本机副本仍保留"</string>
     <string name="errors_the_event_s_position_was_changed" formatted="false">"事件的位置被改动"</string>
     <string name="errors_the_plan_display_changed_review_it_again" formatted="false">"计划画面已变化，请重新核对"</string>
     <string name="errors_the_previous_operation_s_outcome_is_still_unknown_reload" formatted="false">"上次操作的结果仍未知，请重新读取任务核实后再操作"</string>
+    <string name="errors_the_previous_request_s_outcome_is_still_unknown_cannot" formatted="false">"之前请求的结果仍未知，当前无法重新登录"</string>
     <string name="errors_the_recovery_object_was_updated_concurrently_retrying_on_the" formatted="false">"恢复对象同时更新，将在下次同步重试"</string>
     <string name="errors_the_relay_did_not_provide_a_verifiable_execution_result" formatted="false">"未收到可验证的执行结果，请重试同一请求"</string>
     <string name="errors_the_request_on_the_computer_changed_review_it_again" formatted="false">"电脑上的请求已变化，请重新核对"</string>
@@ -359,6 +369,7 @@
     <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"这个网页版本较旧，请刷新或更新后再试"</string>
     <string name="errors_this_request_can_no_longer_be_acted_on" formatted="false">"当前请求已不可操作"</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"当前请求尚未由电脑核实，请等待同步"</string>
+    <string name="errors_timed_out_reconnecting">"%1$s超时，正在重连"</string>
     <string name="errors_update_remote_agent_on_this_computer_to_use_scheduled" formatted="false">"需要更新这台电脑上的 remote-agent 才能使用定时任务。"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"上传没有进展"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current" formatted="false">"等待所属电脑更新当前状态"</string>
@@ -381,6 +392,7 @@
     </plurals>
     <string name="home_choose_scope" formatted="false">"看哪个项目"</string>
     <string name="home_clear_filter" formatted="false">"清空筛选"</string>
+    <string name="home_computer_runs_cli" formatted="false">"电脑运行 CLI，客户端操作会话。"</string>
     <string name="home_connection_check" formatted="false">"连接检测"</string>
     <string name="home_connection_label">"%1$s，连接检测"</string>
     <string name="home_earlier_failed_retry">"没能读取更早的会话：%1$s · 点这里重试"</string>
@@ -689,6 +701,7 @@
     <string name="models_effort_default" formatted="false">"推理强度 · 默认"</string>
     <string name="models_extended_window" formatted="false">"1M"</string>
     <string name="models_fixed_effort">"推理强度固定为 %1$s"</string>
+    <string name="models_load_failed_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
     <string name="models_load_failed_reason">"没能读取模型列表，会用 %1$s 自己的默认模型：%2$s"</string>
     <string name="models_reading_machine">"读取 %1$s 的设置…"</string>
     <string name="models_standard_only" formatted="false">"标准 200k · 这个模型只有标准窗口"</string>
@@ -751,8 +764,11 @@
     <string name="new_session_cli_fallback">"%3$s 没有 %2$s，这次用 %1$s"</string>
     <string name="new_session_cli_label">"CLI：%1$s"</string>
     <string name="new_session_cli_picker_label" formatted="false">"CLI"</string>
+    <string name="new_session_config_fallback" formatted="false">"所选模型或推理强度在这台电脑上不可用，这次用电脑的默认值"</string>
     <string name="new_session_default_model" formatted="false">"默认模型"</string>
+    <string name="new_session_disconnected" formatted="false">"和服务器断线了"</string>
     <string name="new_session_draft_kept" formatted="false">"草稿已保留，请选择在线电脑；不自动换电脑或 CLI。"</string>
+    <string name="new_session_each_cli_has_its_own_settings_choose_the_cli" formatted="false">"每个 CLI 各存一套，新建时用哪个在句子里选。"</string>
     <string name="new_session_expired_start" formatted="false">"不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求"</string>
     <string name="new_session_expired_start_prompt">"不确定「%1$s」有没有启动，它已过期，不会再重发。请先看看进行中的会话"</string>
     <string name="new_session_first_message" formatted="false">"新会话的第一句话"</string>
@@ -772,6 +788,8 @@
     <string name="new_session_model_list_default">"没能读取模型列表，会用 %1$s 自己的默认模型"</string>
     <string name="new_session_model_no_auto">"这个模型没有自动模式，而 %1$s 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认"</string>
     <string name="new_session_offline_draft">"%1$s 已离线，任务尚未开始"</string>
+    <string name="new_session_offline_last_seen">"%1$s在线，现在不能新建"</string>
+    <string name="new_session_offline_no_start" formatted="false">"现在不能新建"</string>
     <string name="new_session_offline_no_start_named">"%1$s 不在线，现在不能新建"</string>
     <string name="new_session_offline_with_draft">"%1$s 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。"</string>
     <string name="new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" formatted="false">"只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
@@ -782,6 +800,7 @@
     <string name="new_session_project_session_label">"%1$s · 新会话"</string>
     <string name="new_session_prompt" formatted="false">"要做什么"</string>
     <string name="new_session_reading_cli">"正在读取 %1$s 上次的设置…"</string>
+    <string name="new_session_reading_models" formatted="false">"正在读取模型列表…"</string>
     <string name="new_session_reading_previous" formatted="false">"正在读取这个项目上次的设置…"</string>
     <string name="new_session_reading_settings" formatted="false">"读取设置…"</string>
     <string name="new_session_removed_blocked" formatted="false">"这个项目已从列表移除，先重新添加"</string>
@@ -794,6 +813,7 @@
     <string name="new_session_starting_on">"正在 %1$s 上启动…"</string>
     <string name="new_session_task_settings" formatted="false">"任务设置"</string>
     <string name="new_session_this_model_has_no_auto_mode" formatted="false">"当前模型没有自动模式"</string>
+    <string name="new_session_unconfirmed_start" formatted="false">"上次的启动结果还没有确认"</string>
     <string name="new_session_unexpected_reply" formatted="false">"意外的回复"</string>
     <string name="new_session_unknown_start_retry" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_use_machine">"改用 %1$s"</string>

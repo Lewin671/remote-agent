@@ -304,6 +304,27 @@
     }
   },
   {
+    "key": "models.load_failed_default",
+    "zh-CN": "没能读取模型列表，会用 {agent} 自己的默认模型",
+    "en": "Could not load models. Using {agent}’s own default model",
+    "notes": "新任务模型列表失败横幅；agent 为 CLI 品牌 空间：短标签/列表行保持紧凑，正文可多行。 变量：agent，来自当前界面数据；示例只供翻译。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Codex"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "models.standard_only",
     "zh-CN": "标准 200k · 这个模型只有标准窗口",
     "en": "Standard 200k · This model only supports the standard window",

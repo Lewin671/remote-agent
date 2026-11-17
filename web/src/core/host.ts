@@ -6,22 +6,37 @@ import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
   CommandOutcomeEventSchema,
+  DirNavigateActionSchema,
+  DirPickerCloseActionSchema,
+  DirPickerOpenActionSchema,
   EffectBatchSchema,
   EntropyProvidedSchema,
   EventSchema,
   FetchSessionActionSchema,
+  HomeLoadMoreEndedActionSchema,
+  HomeRetryLoadActionSchema,
   HomeScreenRequestSchema,
+  HomeSelectSessionActionSchema,
+  HomeSetFilterActionSchema,
+  HomeSetScopeActionSchema,
   LocalCalendarSchema,
   MachineRouteStatusEventSchema,
   MonthStartSchema,
   NavigateRoute,
   NetworkChangedEventSchema,
+  NewSessionOpenActionSchema,
+  NewSessionProjectActionSchema,
   NewSessionScreenRequestSchema,
+  NewSessionSelectAgentActionSchema,
+  NewSessionSelectMachineActionSchema,
+  NewSessionSelectModelActionSchema,
   NewSessionSetPromptActionSchema,
   NewSessionSubmitActionSchema,
   OutcomeSource,
+  ProjectAddActionSchema,
   ProjectKeyActionSchema,
   ProjectScreenRequestSchema,
+  ProjectSetSearchActionSchema,
   RetrySessionEventsActionSchema,
   ScreenSchema,
   ScreenTarget,
@@ -31,6 +46,9 @@ import {
   SessionScheduleHintSchema,
   SessionScheduleHintsEventSchema,
   SessionWatchEventSchema,
+  StreamClosedEventSchema,
+  StreamFrameEventSchema,
+  StreamReadyEventSchema,
   SyncLifecycleActionSchema,
   SyncLifecycleKind,
   TimerFiredEventSchema,
@@ -53,6 +71,7 @@ import {
   type StreamFrameEvent,
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
+import type { Agent } from "../gen/remoteagent/v1/event_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
 import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
 import type { NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
@@ -289,50 +308,14 @@ export class CoreHost {
         ensureSession: (sid) => this.ensureSession(sid),
         retrySession: (sid) => this.retrySession(sid),
         retryEvents: (sid) => this.retryEvents(sid),
-        pushRouteStatus: (machineId, directReady) => {
-          this.dispatch(
-            create(EventSchema, {
-              event: {
-                case: "machineRouteStatus",
-                value: create(MachineRouteStatusEventSchema, { machineId, directReady }),
-              },
-            }),
-          );
-        },
-        pushScheduleHints: (hints) => {
-          this.dispatch(
-            create(EventSchema, {
-              event: {
-                case: "sessionScheduleHints",
-                value: create(SessionScheduleHintsEventSchema, {
-                  hints: hints.map((h) => create(SessionScheduleHintSchema, h)),
-                }),
-              },
-            }),
-          );
-        },
-        pushSessionPin: (sessionId, pinned) => {
-          this.dispatch(
-            create(EventSchema, {
-              event: { case: "sessionPin", value: create(SessionPinEventSchema, { sessionId, pinned }) },
-            }),
-          );
-        },
-        changeProjectPref: (kind, path) => {
-          if (kind === "pin" || kind === "unpin") {
-            this.dispatch(
-              create(EventSchema, {
-                event: { case: "projectTogglePin", value: create(ProjectKeyActionSchema, { projectKey: path }) },
-              }),
-            );
-          } else {
-            this.dispatch(
-              create(EventSchema, {
-                event: { case: "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) },
-              }),
-            );
-          }
-        },
+        pushRouteStatus: (machineId, directReady) =>
+          this.emit({ case: "machineRouteStatus", value: create(MachineRouteStatusEventSchema, { machineId, directReady }) }),
+        pushScheduleHints: (hints) =>
+          this.emit({ case: "sessionScheduleHints", value: create(SessionScheduleHintsEventSchema, { hints: hints.map((h) => create(SessionScheduleHintSchema, h)) }) }),
+        pushSessionPin: (sessionId, pinned) =>
+          this.emit({ case: "sessionPin", value: create(SessionPinEventSchema, { sessionId, pinned }) }),
+        changeProjectPref: (kind, path) =>
+          this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
         dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
       });
     }
@@ -344,6 +327,10 @@ export class CoreHost {
         unitFloats: randomFloats(INITIAL_ENTROPY_COUNT),
       }),
     );
+  }
+
+  private emit(event: Event["event"], onProcessed?: () => void) {
+    this.dispatch(create(EventSchema, { event }), onProcessed);
   }
 
   setNavigator(go?: Go) {
@@ -364,32 +351,22 @@ export class CoreHost {
     this.started = true;
     clearInterval(this.clockTimer);
     this.clockTimer = setInterval(() => {
-      if (!this.closed && this.started) {
-        this.dispatch(create(EventSchema, { event: { case: "clockUpdated", value: localCalendar() } }));
-      }
+      if (!this.closed && this.started) this.emit({ case: "clockUpdated", value: localCalendar() });
     }, CLOCK_TICK_MS);
-    const available = this.remote ? this.remote.network : (typeof navigator === "undefined" || navigator.onLine !== false);
-    this.dispatch(create(EventSchema, { event: { case: "clockUpdated", value: localCalendar() } }));
-    this.dispatch(
-      create(EventSchema, {
-        event: {
-          case: "syncLifecycle",
-          value: create(SyncLifecycleActionSchema, {
-            kind: SyncLifecycleKind.START,
-            homeScopeToken: readStoredScope(),
-            scopeHmacKey: this.explicitScopeHmacKey ?? new Uint8Array(),
-          }),
-        },
+    const available = this.remote ? this.remote.network : typeof navigator === "undefined" || navigator.onLine !== false;
+    this.emit({ case: "clockUpdated", value: localCalendar() });
+    this.emit({
+      case: "syncLifecycle",
+      value: create(SyncLifecycleActionSchema, {
+        kind: SyncLifecycleKind.START,
+        homeScopeToken: readStoredScope(),
+        scopeHmacKey: this.explicitScopeHmacKey ?? new Uint8Array(),
       }),
-    );
-    this.dispatch(
-      create(EventSchema, {
-        event: {
-          case: "networkChanged",
-          value: create(NetworkChangedEventSchema, { available, signature: String(available) }),
-        },
-      }),
-    );
+    });
+    this.emit({
+      case: "networkChanged",
+      value: create(NetworkChangedEventSchema, { available, signature: String(available) }),
+    });
   }
 
   stop() {
@@ -398,85 +375,42 @@ export class CoreHost {
     this.clearTimers();
     clearInterval(this.clockTimer);
     this.clockTimer = undefined;
-    if (!this.closed) {
-      this.dispatch(
-        create(EventSchema, {
-          event: {
-            case: "syncLifecycle",
-            value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.STOP }),
-          },
-        }),
-      );
-    }
+    if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.STOP }) });
   }
 
   setForeground(active: boolean) {
     if (this.closed) return;
-    if (active) {
-      this.dispatch(create(EventSchema, { event: { case: "clockUpdated", value: localCalendar() } }));
-    }
-    this.dispatch(
-      create(EventSchema, {
-        event: {
-          case: "syncLifecycle",
-          value: create(SyncLifecycleActionSchema, {
-            kind: active ? SyncLifecycleKind.FOREGROUND : SyncLifecycleKind.BACKGROUND,
-          }),
-        },
-      }),
-    );
+    if (active) this.emit({ case: "clockUpdated", value: localCalendar() });
+    this.emit({
+      case: "syncLifecycle",
+      value: create(SyncLifecycleActionSchema, { kind: active ? SyncLifecycleKind.FOREGROUND : SyncLifecycleKind.BACKGROUND }),
+    });
   }
 
   setNetwork(available: boolean, signature?: string) {
     if (this.closed) return;
-    this.dispatch(
-      create(EventSchema, {
-        event: {
-          case: "networkChanged",
-          value: create(NetworkChangedEventSchema, {
-            available,
-            signature: signature ?? String(available),
-          }),
-        },
-      }),
-    );
+    this.emit({ case: "networkChanged", value: create(NetworkChangedEventSchema, { available, signature: signature ?? String(available) }) });
   }
 
   reconnectNow() {
-    if (this.closed) return;
-    this.dispatch(
-      create(EventSchema, {
-        event: {
-          case: "syncLifecycle",
-          value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.RECONNECT_NOW }),
-        },
-      }),
-    );
+    if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.RECONNECT_NOW }) });
   }
 
   retryLogin() {
-    if (this.closed) return;
-    this.dispatch(
-      create(EventSchema, {
-        event: {
-          case: "syncLifecycle",
-          value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.RETRY_LOGIN }),
-        },
-      }),
-    );
+    if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.RETRY_LOGIN }) });
   }
 
   loadMoreSessions(): Promise<boolean> {
-    this.dispatch(create(EventSchema, { event: { case: "homeLoadMoreEnded", value: { step: 50 } } }));
+    this.emit({ case: "homeLoadMoreEnded", value: create(HomeLoadMoreEndedActionSchema, { step: 50 }) });
     return Promise.resolve(true);
   }
 
   async loadAllSessions(): Promise<void> {
-    this.dispatch(create(EventSchema, { event: { case: "homeLoadMoreEnded", value: { step: 100 } } }));
+    this.emit({ case: "homeLoadMoreEnded", value: create(HomeLoadMoreEndedActionSchema, { step: 100 }) });
   }
 
   retryList() {
-    this.dispatch(create(EventSchema, { event: { case: "homeRetryLoad", value: {} } }));
+    this.emit({ case: "homeRetryLoad", value: create(HomeRetryLoadActionSchema) });
   }
 
   retryPrefs() {
@@ -484,16 +418,11 @@ export class CoreHost {
       this.dispatch(this.lastProjectPrefEvent);
       return;
     }
-    this.dispatch(create(EventSchema, { event: { case: "homeRetryLoad", value: {} } }));
+    this.emit({ case: "homeRetryLoad", value: create(HomeRetryLoadActionSchema) });
   }
 
   ensureSession(sessionId: string): Promise<void> {
-    if (!sessionId) return Promise.resolve();
-    this.dispatch(
-      create(EventSchema, {
-        event: { case: "fetchSession", value: create(FetchSessionActionSchema, { sessionId }) },
-      }),
-    );
+    if (sessionId) this.emit({ case: "fetchSession", value: create(FetchSessionActionSchema, { sessionId }) });
     return Promise.resolve();
   }
 
@@ -504,13 +433,38 @@ export class CoreHost {
   }
 
   retryEvents(sessionId: string) {
-    if (!sessionId) return;
-    this.dispatch(
-      create(EventSchema, {
-        event: { case: "retrySessionEvents", value: create(RetrySessionEventsActionSchema, { sessionId }) },
-      }),
-    );
+    if (sessionId) this.emit({ case: "retrySessionEvents", value: create(RetrySessionEventsActionSchema, { sessionId }) });
   }
+
+  // --- Screen Intents ---
+
+  homeSetScope = (scopeKey: string) => this.emit({ case: "homeSetScope", value: create(HomeSetScopeActionSchema, { scopeKey }) });
+  homeSetFilter = (query: string) => this.emit({ case: "homeSetFilter", value: create(HomeSetFilterActionSchema, { query }) });
+  homeLoadMoreEnded = (step = 30) => this.emit({ case: "homeLoadMoreEnded", value: create(HomeLoadMoreEndedActionSchema, { step }) });
+  homeRetryLoad = () => this.emit({ case: "homeRetryLoad", value: create(HomeRetryLoadActionSchema) });
+  homeSelectSession = (sessionId: string) => this.emit({ case: "homeSelectSession", value: create(HomeSelectSessionActionSchema, { sessionId }) });
+
+  projectSetSearch = (query: string) => this.emit({ case: "projectSetSearch", value: create(ProjectSetSearchActionSchema, { query }) });
+  projectTogglePin = (projectKey: string) => this.emit({ case: "projectTogglePin", value: create(ProjectKeyActionSchema, { projectKey }) });
+  projectToggleHide = (projectKey: string) => this.emit({ case: "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey }) });
+  projectOpenDirPicker = (forNewTask: boolean, machineId = "", path = "") =>
+    this.emit({ case: "projectOpenDirPicker", value: create(DirPickerOpenActionSchema, { forNewTask, machineId, path }) });
+  projectDirNavigate = (machineId: string, path: string) =>
+    this.emit({ case: "projectDirNavigate", value: create(DirNavigateActionSchema, { machineId, path }) });
+  projectCloseDirPicker = () => this.emit({ case: "projectCloseDirPicker", value: create(DirPickerCloseActionSchema) });
+  projectAdd = (path: string) => this.emit({ case: "projectAdd", value: create(ProjectAddActionSchema, { path }) });
+
+  newSessionOpen = (projectKey: string) => this.emit({ case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey }) });
+  newSessionSelectMachine = (machineId: string) => this.emit({ case: "newSessionSelectMachine", value: create(NewSessionSelectMachineActionSchema, { machineId }) });
+  newSessionSelectAgent = (agent: Agent) => this.emit({ case: "newSessionSelectAgent", value: create(NewSessionSelectAgentActionSchema, { agent }) });
+  newSessionSelectModel = (model: string, effort: string, standardContext?: boolean) =>
+    this.emit({ case: "newSessionSelectModel", value: create(NewSessionSelectModelActionSchema, { model, effort, ...(standardContext !== undefined ? { standardContext } : {}) }) });
+  newSessionRetryModels = (projectKey: string) => this.emit({ case: "newSessionRetryModels", value: create(NewSessionProjectActionSchema, { projectKey }) });
+  newSessionRetrySaveConfig = (projectKey: string) => this.emit({ case: "newSessionRetrySaveConfig", value: create(NewSessionProjectActionSchema, { projectKey }) });
+  newSessionSetPrompt = (prompt: string, attachmentCount = 0, attachmentsMoved = false) =>
+    this.emit({ case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt, attachmentCount, attachmentsMoved }) });
+  newSessionSubmit = (projectKey: string) => this.emit({ case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey }) });
+  newSessionAbandonStart = (projectKey: string) => this.emit({ case: "newSessionAbandonStart", value: create(NewSessionProjectActionSchema, { projectKey }) });
 
   watchSession(sessionId: string) {
     if (!sessionId) return;
@@ -521,19 +475,11 @@ export class CoreHost {
         const oldSid = this.watchedSessionId;
         this.watchedSessionId = "";
         this.sessionDataCache = undefined;
-        this.dispatch(
-          create(EventSchema, {
-            event: { case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId: oldSid, watched: false }) },
-          }),
-        );
+        this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId: oldSid, watched: false }) });
       }
       this.watchedSessionId = sessionId;
       this.sessionDataCache = undefined;
-      this.dispatch(
-        create(EventSchema, {
-          event: { case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) },
-        }),
-      );
+      this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) });
     }
   }
 
@@ -547,11 +493,7 @@ export class CoreHost {
     if (this.watchedSessionId === sessionId) {
       this.watchedSessionId = "";
       this.sessionDataCache = undefined;
-      this.dispatch(
-        create(EventSchema, {
-          event: { case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: false }) },
-        }),
-      );
+      this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: false }) });
     }
   }
 
@@ -744,22 +686,12 @@ export class CoreHost {
         const tk = timerKey(kind, key);
         const prev = this.timers.get(tk);
         if (prev) clearTimeout(prev.handle);
-        const ms = Math.max(0, Number(delayMs));
         const handle = setTimeout(() => {
           const cur = this.timers.get(tk);
           if (!cur || cur.id !== timerId) return;
           this.timers.delete(tk);
-          if (!this.closed) {
-            this.dispatch(
-              create(EventSchema, {
-                event: {
-                  case: "timerFired",
-                  value: create(TimerFiredEventSchema, { timerId, kind, key }),
-                },
-              }),
-            );
-          }
-        }, ms);
+          if (!this.closed) this.emit({ case: "timerFired", value: create(TimerFiredEventSchema, { timerId, kind, key }) });
+        }, Math.max(0, Number(delayMs)));
         this.timers.set(tk, { id: timerId, handle });
         break;
       }
@@ -775,27 +707,14 @@ export class CoreHost {
         break;
       }
 
-      case "openStream": {
-        const { legId, token } = val.value;
-        this.executor?.openStreamLeg(legId, token, {
-          onReady: (id, serverTimeMs) => {
-            if (this.closed) return;
-            this.dispatch(create(EventSchema, { event: { case: "streamReady", value: { legId: id, serverTimeMs } } }));
-          },
-          onFrame: (id, frame, onProcessed) => {
-            if (this.closed) {
-              onProcessed?.();
-              return;
-            }
-            this.dispatch(create(EventSchema, { event: { case: "streamFrame", value: { legId: id, frame } } }), onProcessed);
-          },
-          onClosed: (id, info) => {
-            if (this.closed) return;
-            this.dispatch(create(EventSchema, { event: { case: "streamClosed", value: { legId: id, ...info } } }));
-          },
+      case "openStream":
+        this.executor?.openStreamLeg(val.value.legId, val.value.token, {
+          onReady: (id, serverTimeMs) => !this.closed && this.emit({ case: "streamReady", value: create(StreamReadyEventSchema, { legId: id, serverTimeMs }) }),
+          onFrame: (id, frame, onProcessed) =>
+            this.closed ? onProcessed?.() : this.emit({ case: "streamFrame", value: create(StreamFrameEventSchema, { legId: id, frame }) }, onProcessed),
+          onClosed: (id, info) => !this.closed && this.emit({ case: "streamClosed", value: create(StreamClosedEventSchema, { legId: id, ...info }) }),
         });
         break;
-      }
 
       case "closeStream":
         this.executor?.closeStreamLeg(val.value.legId);
@@ -804,21 +723,8 @@ export class CoreHost {
       case "ensureToken": {
         const { opId, forceLogin, timeoutMs } = val.value;
         void this.executor?.ensureToken(opId, forceLogin, timeoutMs).then(
-          (res) => {
-            if (!this.closed) this.dispatch(create(EventSchema, { event: { case: "tokenResult", value: res } }));
-          },
-          (err) => {
-            if (!this.closed) {
-              this.dispatch(
-                create(EventSchema, {
-                  event: {
-                    case: "tokenResult",
-                    value: create(TokenResultEventSchema, { opId, error: errorMessage(err) }),
-                  },
-                }),
-              );
-            }
-          },
+          (value) => !this.closed && this.emit({ case: "tokenResult", value }),
+          (err) => !this.closed && this.emit({ case: "tokenResult", value: create(TokenResultEventSchema, { opId, error: errorMessage(err) }) }),
         );
         break;
       }
@@ -830,27 +736,8 @@ export class CoreHost {
       case "syncSecurity": {
         const { opId, networkGeneration, touch } = val.value;
         void this.executor?.syncSecurity(opId, networkGeneration, touch).then(
-          (snap) => {
-            if (!this.closed) {
-              this.dispatch(create(EventSchema, { event: { case: "securitySnapshot", value: snap } }));
-            }
-          },
-          (err) => {
-            if (!this.closed) {
-              this.dispatch(
-                create(EventSchema, {
-                  event: {
-                    case: "securitySnapshot",
-                    value: create(SecuritySnapshotEventSchema, {
-                      opId,
-                      networkGeneration,
-                      error: errorMessage(err),
-                    }),
-                  },
-                }),
-              );
-            }
-          },
+          (value) => !this.closed && this.emit({ case: "securitySnapshot", value }),
+          (err) => !this.closed && this.emit({ case: "securitySnapshot", value: create(SecuritySnapshotEventSchema, { opId, networkGeneration, error: errorMessage(err) }) }),
         );
         break;
       }
@@ -862,50 +749,16 @@ export class CoreHost {
           void this.cacheWriteQueue
             .then(() => this.executor?.readBootstrapCache(opId))
             .then(
-              (res) => {
-                if (!this.closed && res) {
-                  this.dispatch(create(EventSchema, { event: { case: "cacheBootstrapLoaded", value: res } }));
-                }
-              },
-              (err) => {
-                if (!this.closed) {
-                  this.dispatch(
-                    create(EventSchema, {
-                      event: {
-                        case: "cacheBootstrapLoaded",
-                        value: create(CacheBootstrapLoadedEventSchema, { opId, error: errorMessage(err) }),
-                      },
-                    }),
-                  );
-                }
-              },
+              (value) => !this.closed && value && this.emit({ case: "cacheBootstrapLoaded", value }),
+              (err) => !this.closed && this.emit({ case: "cacheBootstrapLoaded", value: create(CacheBootstrapLoadedEventSchema, { opId, error: errorMessage(err) }) }),
             );
         } else if (kind.case === "events") {
           const { opId, sessionId, newest, afterSeq, limit } = kind.value;
           void this.cacheWriteQueue
             .then(() => this.executor?.readEventsCache(opId, sessionId, newest, afterSeq, limit))
             .then(
-              (res) => {
-                if (!this.closed && res) {
-                  this.dispatch(create(EventSchema, { event: { case: "cacheEventsLoaded", value: res } }));
-                }
-              },
-              (err) => {
-                if (!this.closed) {
-                  this.dispatch(
-                    create(EventSchema, {
-                      event: {
-                        case: "cacheEventsLoaded",
-                        value: create(CacheEventsLoadedEventSchema, {
-                          opId,
-                          sessionId,
-                          error: errorMessage(err),
-                        }),
-                      },
-                    }),
-                  );
-                }
-              },
+              (value) => !this.closed && value && this.emit({ case: "cacheEventsLoaded", value }),
+              (err) => !this.closed && this.emit({ case: "cacheEventsLoaded", value: create(CacheEventsLoadedEventSchema, { opId, sessionId, error: errorMessage(err) }) }),
             );
         }
         break;
@@ -916,74 +769,49 @@ export class CoreHost {
         const prepared = this.executor?.prepareCacheWrite
           ? this.executor.prepareCacheWrite(writeEff)
           : () => this.executor?.writeCache(writeEff);
-        if (prepared) {
-          this.cacheWriteQueue = this.cacheWriteQueue.then(() => prepared()).catch(() => undefined);
-        }
+        if (prepared) this.cacheWriteQueue = this.cacheWriteQueue.then(() => prepared()).catch(() => undefined);
         break;
       }
 
       case "cacheDelete": {
         const delEff = val.value;
-        this.cacheWriteQueue = this.cacheWriteQueue
-          .then(() => this.executor?.deleteCache(delEff))
-          .catch(() => undefined);
+        this.cacheWriteQueue = this.cacheWriteQueue.then(() => this.executor?.deleteCache(delEff)).catch(() => undefined);
         break;
       }
 
       case "rpc":
-        void this.executor?.executeRpc(val.value).then(
-          (ev) => {
-            if (!this.closed) this.dispatch(ev);
-          },
-          () => undefined,
-        );
+        void this.executor?.executeRpc(val.value).then((ev) => !this.closed && this.dispatch(ev), () => undefined);
         break;
 
       case "dispatchCommand": {
         const cmdEff = val.value;
         void this.executor?.executeCommandAttempt(cmdEff).then(
-          (res) => {
-            if (!this.closed) {
-              this.dispatch(create(EventSchema, { event: { case: "commandOutcome", value: res } }));
-            }
-          },
+          (value) => !this.closed && this.emit({ case: "commandOutcome", value }),
           (err) => {
-            if (!this.closed) {
-              const cmdErr = err as { code?: string; fromDaemon?: boolean; outcome?: string; message?: string };
-              const daemonOutcome = cmdErr?.fromDaemon
-                ? create(CommandOutcomeEventSchema, {
-                    requestId: cmdEff.requestId,
-                    attemptId: cmdEff.attemptId,
-                    source: OutcomeSource.DAEMON,
-                    signed: true,
-                    hashesMatch: true,
-                    attemptBound: true,
-                    outerMatchesInner: true,
-                    outerOutcome: cmdErr.outcome || "executed",
-                    outerReason: cmdErr.code || "",
-                    result: create(CommandResultSchema, {
-                      outcome: cmdErr.outcome || "executed",
-                      errorCode: cmdErr.code || "",
-                      errorMessage: cmdErr.message || "",
-                    }),
-                  })
-                : create(CommandOutcomeEventSchema, {
-                    requestId: cmdEff.requestId,
-                    attemptId: cmdEff.attemptId,
-                    source: OutcomeSource.LOCAL,
-                    notForwarded: cmdErr?.outcome !== "unknown",
-                    transportCode: cmdErr?.code || "failed_precondition",
-                    transportDetail: errorMessage(err),
-                  });
-              this.dispatch(
-                create(EventSchema, {
-                  event: {
-                    case: "commandOutcome",
-                    value: daemonOutcome,
-                  },
-                }),
-              );
-            }
+            if (this.closed) return;
+            const c = err as { code?: string; fromDaemon?: boolean; outcome?: string; message?: string };
+            const value = c?.fromDaemon
+              ? create(CommandOutcomeEventSchema, {
+                  requestId: cmdEff.requestId,
+                  attemptId: cmdEff.attemptId,
+                  source: OutcomeSource.DAEMON,
+                  signed: true,
+                  hashesMatch: true,
+                  attemptBound: true,
+                  outerMatchesInner: true,
+                  outerOutcome: c.outcome || "executed",
+                  outerReason: c.code || "",
+                  result: create(CommandResultSchema, { outcome: c.outcome || "executed", errorCode: c.code || "", errorMessage: c.message || "" }),
+                })
+              : create(CommandOutcomeEventSchema, {
+                  requestId: cmdEff.requestId,
+                  attemptId: cmdEff.attemptId,
+                  source: OutcomeSource.LOCAL,
+                  notForwarded: c?.outcome !== "unknown",
+                  transportCode: c?.code || "failed_precondition",
+                  transportDetail: errorMessage(err),
+                });
+            this.emit({ case: "commandOutcome", value });
           },
         );
         break;
