@@ -1357,3 +1357,55 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 		t.Fatalf("expected DeviceRemovedId stream frame to emit SyncSecurityEffect with non-zero OpId")
 	}
 }
+
+func TestBackgroundAndStopClearDirectReady(t *testing.T) {
+	e := NewEngine()
+	startAndConnect(t, e, 1_000)
+	m := &MachineEntry{ID: "m-1", Online: false}
+	e.machines["m-1"] = m
+	e.HandleEvent(&corev1.Event{
+		NowMs: 1_100,
+		Event: &corev1.Event_MachineRouteStatus{
+			MachineRouteStatus: &corev1.MachineRouteStatusEvent{
+				MachineId:   "m-1",
+				DirectReady: true,
+			},
+		},
+	})
+	if !e.directReady["m-1"] || !e.machineReachable(m) {
+		t.Fatalf("expected m-1 directReady and reachable before background/stop")
+	}
+
+	e.HandleEvent(&corev1.Event{
+		NowMs: 1_200,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{
+				Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND,
+			},
+		},
+	})
+	if e.directReady["m-1"] || e.machineReachable(m) {
+		t.Fatalf("expected BACKGROUND to clear directReady for offline machine, got directReady=%v reachable=%v", e.directReady["m-1"], e.machineReachable(m))
+	}
+
+	e.HandleEvent(&corev1.Event{
+		NowMs: 1_300,
+		Event: &corev1.Event_MachineRouteStatus{
+			MachineRouteStatus: &corev1.MachineRouteStatusEvent{
+				MachineId:   "m-1",
+				DirectReady: true,
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: 1_400,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{
+				Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP,
+			},
+		},
+	})
+	if e.directReady["m-1"] || e.machineReachable(m) {
+		t.Fatalf("expected STOP to clear directReady for offline machine, got directReady=%v reachable=%v", e.directReady["m-1"], e.machineReachable(m))
+	}
+}

@@ -127,6 +127,7 @@ class Remote(
     private val securityPushSeq = AtomicLong(1L)
     private val devicesPushSeq = AtomicLong(1L)
     @Volatile private var running = false
+    @Volatile private var closed = false
     @Volatile private var serverAhead = false
 
     private val streamMutex = Mutex()
@@ -223,7 +224,7 @@ class Remote(
         rtcFactory = rtcFactory,
         preferenceStore = directPrefs,
         authorize = { security.sync(5_000L); Unit },
-        changed = { scope.launch { if (running) onDirectChanged() } },
+        changed = { if (!closed) scope.launch { if (!closed) onDirectChanged() } },
         clock = clock,
         monotonic = monotonic,
         stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
@@ -231,11 +232,15 @@ class Remote(
         jitter = directJitter ?: { java.util.concurrent.ThreadLocalRandom.current().nextDouble() },
     )
 
+    @Synchronized
     private fun onDirectChanged() {
+        if (closed) return
         val syncState = coreHost.syncStateView.value
+        val seen = HashSet<String>(syncState.machinesList.size)
         val updatedPeers = LinkedHashMap<String, PeerState>()
         for (m in syncState.machinesList) {
             val id = m.machineId
+            seen.add(id)
             val ready = direct.ready(id, RouteHint.Read)
             if (lastDirectReady.put(id, ready) != ready) {
                 coreHost.notifyMachineRouteStatus(id, ready)
@@ -250,6 +255,12 @@ class Remote(
                 fileDirect = direct.filePath(id) == RouteName.DIRECT,
                 directStatus = direct.directStatus(id),
             )
+        }
+        val stale = lastDirectReady.keys.filter { it !in seen }
+        for (id in stale) {
+            if (lastDirectReady.remove(id) == true) {
+                coreHost.notifyMachineRouteStatus(id, false)
+            }
         }
         _directPeers.value = updatedPeers
         publishDirectReports(syncState.machinesList.map { it.machineId })
@@ -1673,6 +1684,7 @@ class Remote(
     fun start() {
         running = true
         direct.setForeground(true)
+        onDirectChanged()
         if (!authorityJob.isActive) authorityJob = SupervisorJob(scope.coroutineContext[Job])
         val token = homeScopeStore?.readToken().orEmpty()
         val hmacKey = Keys.deriveKey(account.localKey, "home-scope")
@@ -1683,15 +1695,16 @@ class Remote(
     fun stop() {
         running = false
         authorityJob.cancel()
-        lastDirectReady.clear()
         direct.detachAll()
         direct.setForeground(false)
+        onDirectChanged()
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)
         scope.launch { closeStreamLeg(0L) }
     }
 
     fun foregroundChanged(foreground: Boolean) {
         direct.setForeground(foreground)
+        onDirectChanged()
         coreHost.syncLifecycle(
             if (foreground) SyncLifecycleKind.SYNC_LIFECYCLE_KIND_FOREGROUND
             else SyncLifecycleKind.SYNC_LIFECYCLE_KIND_BACKGROUND,
@@ -1745,6 +1758,7 @@ class Remote(
     }
 
     fun close() {
+        closed = true
         running = false
         cleanup(
             { direct.close() },

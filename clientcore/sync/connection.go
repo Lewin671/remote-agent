@@ -78,7 +78,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.pageOpID = 0
 		e.devicesOpID = 0
 		e.prefsLoadOpID = 0
+		clear(e.directReady)
 		clear(e.sessionByIDOps)
+		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
 		ctx.Dirty.MarkAll()
 
@@ -91,6 +93,10 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND:
 		e.foreground = false
+		if len(e.directReady) > 0 {
+			clear(e.directReady)
+			ctx.Dirty.MarkAll()
+		}
 		e.updateLivePollers(ctx)
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_RECONNECT_NOW:

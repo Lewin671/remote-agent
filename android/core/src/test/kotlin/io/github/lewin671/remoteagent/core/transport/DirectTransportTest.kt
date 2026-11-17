@@ -1789,4 +1789,54 @@ class DirectTransportTest {
             server.close()
         }
     }
+
+    @Test
+    fun stopAndBackgroundClearDirectReadyAndDirectPeers(): Unit = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 16 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("direct ready in Remote and clientcore", 10_000) {
+                    remote.direct.ready(id, RouteHint.Read) &&
+                        remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == id }?.directReady == true &&
+                        remote.peer(id)?.directStatus?.stage == DirectStage.DIRECT_ACTIVE
+                }
+
+                // Direct stop() sets running=false before direct.setForeground(false), which previously skipped onDirectChanged().
+                remote.stop()
+                delay(150)
+                val coreMachine = remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == id }
+                assertFalse("machine must not stay directReady in clientcore after stop", coreMachine?.directReady == true)
+                assertNotEquals(
+                    "peer must not stay DIRECT_ACTIVE after stop",
+                    DirectStage.DIRECT_ACTIVE,
+                    remote.peer(id)?.directStatus?.stage,
+                )
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
 }
