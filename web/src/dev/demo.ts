@@ -31,8 +31,9 @@
 //   ?demo&conncheck=1#/settings            opens the connection check sheet at once
 
 import { localeStore, t, type Locale } from "../i18n";
+import { agentOf, derive, type Derived } from "../model";
 import { seedDirect } from "./direct-demo";
-import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { create, fromBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import {
   Agent,
@@ -72,17 +73,53 @@ import {
 import {
   CommandError,
   Remote,
+  RequestSlot,
   type CommandKind,
   type History,
-  type RequestSlot,
+  type MachineView,
   type SessionView,
+  type StreamLegCallbacks,
   type TermConn,
 } from "../remote";
-import { applyOp, emptyPrefs, type PrefsSnapshot } from "../prefs";
+import { getCoreHost } from "../core/host";
+import {
+  AccountPrefsFetchedEventSchema,
+  AccountPrefsPutResultEventSchema,
+  CacheBootstrapLoadedEventSchema,
+  CacheEventsLoadedEventSchema,
+  CommandOutcomeEventSchema,
+  DevicesFetchedEventSchema,
+  EventSchema as CoreEventSchema,
+  EventsAppendedFrameSchema,
+  EventsPageFetchedEventSchema,
+  ListsFetchedEventSchema,
+  OutcomeSource,
+  PlainAccountPrefsSchema,
+  PlainDeviceSchema,
+  PlainEventSchema,
+  PlainMachineSchema,
+  PlainSessionSchema,
+  SecuritySnapshotEventSchema,
+  SessionByIdFetchedEventSchema,
+  TokenResultEventSchema,
+  type CacheBootstrapLoadedEvent,
+  type CacheDeleteEffect,
+  type CacheEventsLoadedEvent,
+  type CacheWriteEffect,
+  type CommandOutcomeEvent,
+  type DispatchCommandEffect,
+  type Event as CoreEvent,
+  type RpcEffect,
+  type SecuritySnapshotEvent,
+  type TokenResultEvent,
+} from "../gen/remoteagent/core/v1/app_pb";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import {
+  AgentSettingsSchema,
   DefaultModeSource,
   DeviceMetaSchema,
+  ProjectPrefSchema,
+  ProjectSettingsSchema,
   QuotaState,
   type ProjectPrefs,
   ProjectPrefsSchema,
@@ -1476,17 +1513,529 @@ const longCommand = [
 
 export class DemoRemote extends Remote {
   // These views are locally authored samples, with no relay or account data.
-  override currentDerived(_sid: string, d: import("../model").Derived) {
+  private demoDerived = new Map<string, { events: Event[]; length: number; agent: Agent; value: Derived }>();
+  override historicalDerived(sid: string): Derived {
+    const evs = this.events(sid);
+    const agent = agentOf(this.sessions.get(sid));
+    const hit = this.demoDerived.get(sid);
+    if (hit && hit.events === evs && hit.length === evs.length && hit.agent === agent) return hit.value;
+    const value = derive(evs, agent);
+    this.demoDerived.set(sid, { events: evs, length: evs.length, agent, value });
+    return value;
+  }
+  override currentDerived(_sid: string, d: Derived) {
     return d;
   }
   override async refreshLiveSnapshot(_sid: string): Promise<void> {}
   override demoFlag(name: string): boolean {
     return this.opts.has(name);
   }
+  private demoMachines = new Map<string, MachineView>();
+  private demoSessions = new Map<string, SessionView>();
+  private demoDevices = new Map<string, import("../devices").DeviceInfo>();
+  private demoStream?: { legId: bigint; callbacks: StreamLegCallbacks; ready: boolean };
+  private demoSeedSynced = false;
+  private demoSyncing = false;
+  private demoBootConsumed = false;
+  private syncBootOpId = 0n;
+  private syncTokenOpId = 0n;
+  private syncSecOpId = 0n;
+  private demoSecurityPushSeq = 0n;
+  private syncRpcQueue: RpcEffect[] = [];
   private evs = new Map<string, Event[]>();
   private attempts = new Map<string, number>();
   // UI tests keep the demo behavior but skip simulated network latency.
   private pause = sleep;
+
+  /** Syncs the current demo fixtures into Core so Home/Project/NewSession/SyncStateView update. */
+  syncDemoToCore() {
+    if (!globalThis.__remoteAgentCore) return;
+    const host = getCoreHost(this);
+    const conn = this.opts.get("conn");
+    const removed = conn === "removed";
+    const failList = this.opts.get("list") === "fail" && !this.demoListRetried;
+    const networkAvailable = conn !== "nonetwork";
+    this.network = networkAvailable;
+    if (!this.demoSeedSynced) {
+      this.demoSeedSynced = true;
+      this.syncBootOpId = 0n;
+      this.syncTokenOpId = 0n;
+      this.syncSecOpId = 0n;
+      this.syncRpcQueue = [];
+      this.demoSyncing = true;
+      try {
+        host.start();
+        this.demoBootConsumed = true;
+        host.dispatch(
+          create(CoreEventSchema, {
+            event: {
+              case: "cacheBootstrapLoaded",
+              value: create(CacheBootstrapLoadedEventSchema, {
+                opId: this.syncBootOpId,
+                machines: this.buildPlainMachines(),
+                sessions: this.buildPlainSessions(),
+                prefs: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }),
+                homeScopeToken: (() => {
+                  try { return localStorage.getItem("ra-scope") || "all"; } catch { return "all"; }
+                })(),
+                scopeHmacKey: new Uint8Array(32),
+              }),
+            },
+          }),
+        );
+        host.dispatch(
+          create(CoreEventSchema, {
+            event: {
+              case: "securitySnapshot",
+              value: create(SecuritySnapshotEventSchema, {
+                opId: this.syncSecOpId,
+                pushSeq: this.syncSecOpId === 0n ? ++this.demoSecurityPushSeq : 0n,
+                isMember: !removed,
+                selfDeviceId: ME,
+                authorityDeviceId: this.authorityDeviceId || ANDROID,
+                trustedMachineIds: [...this.demoMachines.keys()],
+                trustedClientIds: [ME, ANDROID, BROWSER].filter((id) => !this.removedDemoDevices.has(id)),
+                archiveMachineIds: [...this.demoMachines.keys()],
+                headEpoch: 1n,
+                recoveryPending: this.security.recoveryPending,
+                recoveryReadyMs: this.security.recoveryReadyMs,
+              }),
+            },
+          }),
+        );
+        host.dispatch(
+          create(CoreEventSchema, {
+            event: {
+              case: "tokenResult",
+              value: create(TokenResultEventSchema, {
+                opId: this.syncTokenOpId,
+                token: conn === "fail" || removed ? "" : "demo-token",
+                expiresMs: BigInt(Date.now() + 30 * 86_400_000),
+                removed,
+                errorCode: conn === "fail" ? "invalid_argument" : "",
+                error: conn === "fail" ? "证书无效" : "",
+              }),
+            },
+          }),
+        );
+        while (this.syncRpcQueue.length > 0) {
+          const eff = this.syncRpcQueue.shift()!;
+          host.dispatch(this.resolveDemoRpc(eff, failList));
+        }
+      } finally {
+        this.demoSyncing = false;
+        this.syncRpcQueue = [];
+      }
+      this.changed();
+      return;
+    }
+    if (this.demoStream?.ready && !removed && conn !== "fail") {
+      const legId = this.demoStream.legId;
+      const curView = host.viewSyncState();
+      const wantedMachines = this.buildPlainMachines();
+      const wantedIds = new Set(wantedMachines.map((m) => m.machineId));
+      for (const prev of curView.machines) {
+        if (!wantedIds.has(prev.machineId)) {
+          host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "machineRemovedId", value: prev.machineId } } } }));
+        }
+      }
+      for (const m of wantedMachines) {
+        host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "machineUpdated", value: m } } } }));
+      }
+      for (const s of this.buildPlainSessions()) {
+        host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "sessionUpdated", value: s } } } }));
+      }
+      for (const d of this.buildPlainDevices()) {
+        host.dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame: { case: "deviceUpdated", value: d } } } }));
+      }
+      host.dispatch(
+        create(CoreEventSchema, {
+          event: {
+            case: "streamFrame",
+            value: { legId, frame: { case: "accountPrefsUpdated", value: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }) } },
+          },
+        }),
+      );
+    }
+    this.changed();
+  }
+
+  private demoListRetried = false;
+
+  private buildPlainMachines() {
+    return [...this.demoMachines.values()].map((m) =>
+      create(PlainMachineSchema, {
+        machineId: m.id,
+        online: m.online,
+        lastSeenMs: m.lastSeenMs,
+        meta: m.meta,
+        metaRev: m.metaRev,
+      }),
+    );
+  }
+
+  private buildPlainSessions() {
+    return [...this.demoSessions.values()].map((s) =>
+      create(PlainSessionSchema, {
+        sessionId: s.id,
+        machineId: s.machineId,
+        lastSeq: s.lastSeq,
+        updatedMs: s.updatedMs,
+        listedEndedMs: s.endedMs,
+        meta: s.info,
+        metaRev: s.metaRev,
+        checkpoint: s.checkpoint,
+      }),
+    );
+  }
+
+  private buildPlainDevices() {
+    return [...this.demoDevices.values()].map((d) =>
+      create(PlainDeviceSchema, {
+        deviceId: d.id,
+        kind: d.kind,
+        createdMs: d.createdMs,
+        lastSeenMs: d.lastSeenMs,
+        meta: d.meta,
+        metaRev: d.metaRev,
+      }),
+    );
+  }
+
+  override ensureToken(opId: bigint): Promise<TokenResultEvent> {
+    if (this.demoSyncing) {
+      this.syncTokenOpId = opId;
+      return new Promise(() => {});
+    }
+    const conn = this.opts.get("conn");
+    const removed = conn === "removed";
+    return Promise.resolve(
+      create(TokenResultEventSchema, {
+        opId,
+        token: conn === "fail" || removed ? "" : "demo-token",
+        expiresMs: BigInt(Date.now() + 30 * 86_400_000),
+        removed,
+        errorCode: conn === "fail" ? "invalid_argument" : "",
+        error: conn === "fail" ? "证书无效" : "",
+      }),
+    );
+  }
+
+  override syncSecurity(opId: bigint, networkGeneration: bigint): Promise<SecuritySnapshotEvent> {
+    if (this.demoSyncing) {
+      this.syncSecOpId = opId;
+      return new Promise(() => {});
+    }
+    const removed = this.opts.get("conn") === "removed";
+    return Promise.resolve(
+      create(SecuritySnapshotEventSchema, {
+        opId,
+        isMember: !removed,
+        selfDeviceId: ME,
+        authorityDeviceId: this.authorityDeviceId || ANDROID,
+        trustedMachineIds: [...this.demoMachines.keys()],
+        trustedClientIds: [ME, ANDROID, BROWSER].filter((id) => !this.removedDemoDevices.has(id)),
+        archiveMachineIds: [...this.demoMachines.keys()],
+        headEpoch: 1n,
+        recoveryPending: this.security.recoveryPending,
+        recoveryReadyMs: this.security.recoveryReadyMs,
+        networkGeneration,
+      }),
+    );
+  }
+
+  override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {
+    this.demoStream = { legId, callbacks, ready: false };
+    const conn = this.opts.get("conn");
+    if (conn === "connecting") return;
+    if (conn === "reconnecting" || conn === "noserver" || conn === "nonetwork" || conn === "fail" || conn === "removed") {
+      callbacks.onClosed(legId, { policyViolation: false, errorCode: "unavailable", error: "连接超时", unresolvedHost: false });
+      return;
+    }
+    this.demoStream.ready = true;
+    callbacks.onReady(legId, BigInt(Date.now()));
+  }
+
+  override closeStreamLeg(legId: bigint) {
+    if (this.demoStream?.legId === legId) this.demoStream = undefined;
+  }
+
+  override readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
+    if (this.demoSyncing || this.demoBootConsumed) {
+      this.syncBootOpId = opId;
+      this.demoBootConsumed = false;
+      return new Promise(() => {});
+    }
+    return Promise.resolve(
+      create(CacheBootstrapLoadedEventSchema, {
+        opId,
+        machines: this.buildPlainMachines(),
+        sessions: this.buildPlainSessions(),
+        prefs: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }),
+        homeScopeToken: (() => {
+          try { return localStorage.getItem("ra-scope") || "all"; } catch { return "all"; }
+        })(),
+        scopeHmacKey: new Uint8Array(32),
+      }),
+    );
+  }
+
+  override readEventsCache(opId: bigint, sessionId: string): Promise<CacheEventsLoadedEvent> {
+    return Promise.resolve(create(CacheEventsLoadedEventSchema, { opId, sessionId }));
+  }
+
+  override async writeCache(_eff: CacheWriteEffect) {}
+  override async deleteCache(_eff: CacheDeleteEffect) {}
+
+  private resolveDemoRpc(eff: RpcEffect, failList: boolean): CoreEvent {
+    const opId = eff.opId;
+    switch (eff.kind.case) {
+      case "fetchLists":
+        return create(CoreEventSchema, {
+          event: {
+            case: "listsFetched",
+            value: failList
+              ? create(ListsFetchedEventSchema, { opId, error: "连接超时" })
+              : create(ListsFetchedEventSchema, {
+                  opId,
+                  machines: this.buildPlainMachines(),
+                  sessions: this.buildPlainSessions(),
+                  devices: this.buildPlainDevices(),
+                }),
+          },
+        });
+      case "getAccountPrefs":
+        return create(CoreEventSchema, {
+          event: {
+            case: "accountPrefsFetched",
+            value: create(AccountPrefsFetchedEventSchema, {
+              opId,
+              prefs: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }),
+            }),
+          },
+        });
+      default:
+        return create(CoreEventSchema, {});
+    }
+  }
+
+  override async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
+    if (this.demoSyncing) {
+      this.syncRpcQueue.push(eff);
+      return new Promise(() => {});
+    }
+    const opId = eff.opId;
+    switch (eff.kind.case) {
+      case "fetchLists": {
+        const fail = this.opts.get("list") === "fail" && !this.demoListRetried;
+        return create(CoreEventSchema, {
+          event: {
+            case: "listsFetched",
+            value: fail
+              ? create(ListsFetchedEventSchema, { opId, error: "连接超时" })
+              : create(ListsFetchedEventSchema, {
+                  opId,
+                  machines: this.buildPlainMachines(),
+                  sessions: this.buildPlainSessions(),
+                  devices: this.buildPlainDevices(),
+                }),
+          },
+        });
+      }
+      case "fetchSessionById": {
+        const sid = eff.kind.value.sessionId;
+        const s = this.demoSessions.get(sid);
+        return create(CoreEventSchema, {
+          event: {
+            case: "sessionByIdFetched",
+            value: create(SessionByIdFetchedEventSchema, {
+              opId,
+              session: s
+                ? create(PlainSessionSchema, {
+                    sessionId: s.id,
+                    machineId: s.machineId,
+                    lastSeq: s.lastSeq,
+                    updatedMs: s.updatedMs,
+                    listedEndedMs: s.endedMs,
+                    meta: s.info,
+                    metaRev: s.metaRev,
+                    checkpoint: s.checkpoint,
+                  })
+                : undefined,
+              error: s ? "" : "未找到对话",
+            }),
+          },
+        });
+      }
+      case "getEvents": {
+        const { sessionId, afterSeq, limit } = eff.kind.value;
+        if (sessionId === "s-hist") {
+          return create(CoreEventSchema, {
+            event: {
+              case: "eventsPageFetched",
+              value: create(EventsPageFetchedEventSchema, { opId, sessionId, error: "连接超时" }),
+            },
+          });
+        }
+        const all = this.evs.get(sessionId) ?? [];
+        const slice = all.filter((e) => e.seq > afterSeq).slice(0, limit || 500);
+        const more = slice.length > 0 && slice.at(-1)!.seq < (all.at(-1)?.seq ?? 0n);
+        return create(CoreEventSchema, {
+          event: {
+            case: "eventsPageFetched",
+            value: create(EventsPageFetchedEventSchema, {
+              opId,
+              sessionId,
+              events: slice.map((e) =>
+                create(PlainEventSchema, {
+                  seq: e.seq,
+                  event: e,
+                  verified: true,
+                  retired: sessionId === "s-ended",
+                  broken: sessionId === "s-ended",
+                }),
+              ),
+              more,
+            }),
+          },
+        });
+      }
+      case "getAccountPrefs":
+        return create(CoreEventSchema, {
+          event: {
+            case: "accountPrefsFetched",
+            value: create(AccountPrefsFetchedEventSchema, {
+              opId,
+              prefs: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }),
+            }),
+          },
+        });
+      case "putAccountPrefs": {
+        const { expectedRevision, nextPrefs } = eff.kind.value;
+        await this.pause(200);
+        if (this.opts.get("prefs") === "fail") {
+          return create(CoreEventSchema, {
+            event: {
+              case: "accountPrefsPutResult",
+              value: create(AccountPrefsPutResultEventSchema, { opId, error: "服务器没有响应" }),
+            },
+          });
+        }
+        if (expectedRevision !== this.stored.revision) {
+          return create(CoreEventSchema, {
+            event: {
+              case: "accountPrefsPutResult",
+              value: create(AccountPrefsPutResultEventSchema, {
+                opId,
+                applied: false,
+                current: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }),
+              }),
+            },
+          });
+        }
+        this.stored = { revision: expectedRevision + 1n, prefs: nextPrefs ?? this.stored.prefs };
+        return create(CoreEventSchema, {
+          event: {
+            case: "accountPrefsPutResult",
+            value: create(AccountPrefsPutResultEventSchema, {
+              opId,
+              applied: true,
+              current: create(PlainAccountPrefsSchema, { revision: this.stored.revision, prefs: this.stored.prefs }),
+            }),
+          },
+        });
+      }
+      case "fetchDevices":
+        return create(CoreEventSchema, {
+          event: {
+            case: "devicesFetched",
+            value: create(DevicesFetchedEventSchema, { opId, devices: this.buildPlainDevices() }),
+          },
+        });
+      default:
+        return create(CoreEventSchema, {
+          event: { case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId }) },
+        });
+    }
+  }
+
+  override async executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent> {
+    try {
+      const cmd = fromBinary(CommandSchema, eff.commandBytes).kind;
+      const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000, undefined, false) : undefined;
+      const result = eff.sessionId
+        ? await this.command(eff.sessionId, cmd, slot)
+        : await this.machineCommand(eff.machineId, cmd, slot);
+      const outcome = result.outcome || "executed";
+      const reason = result.reason || "completed";
+      const norm = create(CommandResultSchema, {
+        outcome,
+        reason,
+        conflictKind: result.conflictKind,
+        resultAvailable:
+          result.resultAvailable ||
+          (result.kind.case !== undefined &&
+            (outcome === "executed" ||
+              (outcome === "conflict" && result.conflictKind === "business"))),
+        errorCode: result.errorCode,
+        errorMessage: result.errorMessage,
+        kind: result.kind,
+      });
+      return create(CommandOutcomeEventSchema, {
+        requestId: eff.requestId,
+        attemptId: eff.attemptId,
+        source: OutcomeSource.DAEMON,
+        signed: true,
+        hashesMatch: true,
+        attemptBound: true,
+        outerMatchesInner: true,
+        outerOutcome: outcome,
+        outerReason: reason,
+        result: norm,
+      });
+    } catch (e) {
+      if (e instanceof CommandError) {
+        if (e.fromDaemon) {
+          return create(CommandOutcomeEventSchema, {
+            requestId: eff.requestId,
+            attemptId: eff.attemptId,
+            source: OutcomeSource.DAEMON,
+            signed: true,
+            hashesMatch: true,
+            attemptBound: true,
+            outerMatchesInner: true,
+            outerOutcome: e.outcome,
+            outerReason: e.code,
+            result: create(CommandResultSchema, {
+              outcome: e.outcome,
+              reason: e.code || "error",
+              conflictKind: e.conflictKind,
+              resultAvailable: e.resultAvailable,
+              errorCode: e.code,
+              errorMessage: e.message,
+            }),
+          });
+        }
+        return create(CommandOutcomeEventSchema, {
+          requestId: eff.requestId,
+          attemptId: eff.attemptId,
+          source: OutcomeSource.SERVER,
+          notForwarded: e.outcome === "not_sent",
+          attemptBound: true,
+          transportCode: e.code,
+          transportDetail: e.message,
+        });
+      }
+      return create(CommandOutcomeEventSchema, {
+        requestId: eff.requestId,
+        attemptId: eff.attemptId,
+        source: OutcomeSource.TRANSPORT,
+        notForwarded: true,
+        transportCode: "unknown",
+        transportDetail: String(e),
+      });
+    }
+  }
 
   static create(q: URLSearchParams, pause = sleep): DemoRemote {
     const r = new DemoRemote(
@@ -1566,7 +2115,8 @@ export class DemoRemote extends Remote {
       50_000,
       Math.max(0, Number(q.get("history")) || 0),
     );
-    if (history)
+    if (history) {
+      r.demoSessions.get("s-run")!.lastSeq = BigInt(history);
       r.evs.set(
         "s-run",
         Array.from({ length: history }, (_, i) =>
@@ -1584,6 +2134,7 @@ export class DemoRemote extends Remote {
           }),
         ),
       );
+    }
     const turns = Math.min(2_000, Math.max(0, Number(q.get("backfill")) || 0));
     if (turns) {
       const all: Event[] = [];
@@ -1600,7 +2151,7 @@ export class DemoRemote extends Remote {
       const delay = Math.min(5000, Math.max(0, Number(q.get("history-delay")) || 0));
       const prefix = q.has("history-prefix");
       const shown = delay ? [] : tail;
-      r.sessions.get("s-run")!.lastSeq = BigInt(all.length);
+      r.demoSessions.get("s-run")!.lastSeq = BigInt(all.length);
       const start = () => {
         if (delay) setTimeout(() => {
           r.backfill.get("s-run")!.shown = prefix ? all.slice(0, keep) : tail;
@@ -1621,17 +2172,19 @@ export class DemoRemote extends Remote {
     }
     if (q.has("scheduled-final")) r.seedSchedules();
     if (q.has("shared-files")) r.seedSharedFiles();
-    if (q.has("one-machine")) for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
+    if (q.has("one-machine")) for (const id of [...r.demoMachines.keys()]) if (id !== "mac") r.demoMachines.delete(id);
+    void r.loadDevices();
+    r.syncDemoToCore();
     return r;
   }
 
   private seedSharedFiles() {
-    const mac = this.machines.get("mac");
+    const mac = this.demoMachines.get("mac");
     if (mac?.meta?.capabilities) {
       mac.meta.capabilities.sharedFiles = true;
       mac.meta.capabilities.sharedFileChunkBytes = 786432;
     }
-    const mini = this.machines.get("mini");
+    const mini = this.demoMachines.get("mini");
     if (mini) {
       mini.meta ??= create(MachineMetaSchema, { hostname: "Mac mini", capabilities: {} });
       mini.meta.capabilities ??= create(MachineMetaSchema, { capabilities: {} }).capabilities!;
@@ -1665,7 +2218,7 @@ export class DemoRemote extends Remote {
         mode: ApprovalMode.ASK,
         createdAt: timestampFromMs(Date.now() - 15 * min),
       });
-      this.sessions.set(id, {
+      this.demoSessions.set(id, {
         id,
         machineId,
         info,
@@ -1802,14 +2355,14 @@ export class DemoRemote extends Remote {
   }
 
   private seedSchedules() {
-    const f = structuredClone(scheduledFixture), machine = this.machines.get("mac")!;
+    const f = structuredClone(scheduledFixture), machine = this.demoMachines.get("mac")!;
     machine.meta!.hostname = f.machineName;
     machine.meta!.capabilities = { ...machine.meta!.capabilities!, scheduledTasks: true };
-    this.machines.clear(); this.machines.set("mac", machine);
-    const view = this.sessions.get("s-idle")!;
+    this.demoMachines.clear(); this.demoMachines.set("mac", machine);
+    const view = this.demoSessions.get("s-idle")!;
     view.id = f.session; view.machineId = "mac";
     view.info = create(SessionSchema, { id:f.session, title:f.sessionTitle, cwd:"/example/project", agent:Agent.CLAUDE, status:SessionStatus.IDLE, mode:ApprovalMode.AUTO });
-    this.sessions.clear(); this.sessions.set(f.session, view);
+    this.demoSessions.clear(); this.demoSessions.set(f.session, view);
     this.evs.clear();
     this.evs.set(f.session, [create(EventSchema, {seq:1n,sessionId:f.session,kind:{case:"userMessage",value:{text:"检查 PR 的回复。"}}}),create(EventSchema, {seq:2n,sessionId:f.session,kind:{case:"agentMessage",value:{text:"有变化时会通知你。"}}})]);
     const tasks = f.tasks as ScheduleTask[];
@@ -1876,7 +2429,7 @@ export class DemoRemote extends Remote {
     this.handoffCandidates = async () => [{ id: ANDROID, recoveryEd: hash }];
     this.handoffAuthority = async (id) => { await work(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); };
     this.removeDevice = async id => { await work(); this.removedDemoDevices.add(id); await this.loadDevices(); };
-    this.deleteMachineRecords = async id => { await work(); this.machines.delete(id); this.changed(); };
+    this.deleteMachineRecords = async id => { await work(); this.demoMachines.delete(id); this.syncDemoToCore(); };
     Object.defineProperty(this, "startPairing", { configurable: true, value: async (_web: string, _replaces: string) => {
       await work(); let compared = false;
       return { code: "12345678", expires: BigInt(Date.now() + 5 * min), url: "https://app.example.com/#/pair?code=12345678",
@@ -1892,7 +2445,7 @@ export class DemoRemote extends Remote {
   /** Every machine but the VPS can report its status; ?ms picks how it is (machine-status-demo.ts). */
   private seedMachineStatus() {
     this.status = new DemoStatus(this.opts);
-    for (const [id, m] of this.machines) {
+    for (const [id, m] of this.demoMachines) {
       if (id === "vps" || !m.meta) continue;
       m.meta.capabilities ??= create(MachineMetaSchema, { capabilities: {} }).capabilities!;
       m.meta.capabilities.machineStatus = true;
@@ -1917,7 +2470,7 @@ export class DemoRemote extends Remote {
       online: boolean,
       meta: MessageInitShape<typeof MachineMetaSchema> = {},
     ) =>
-      this.machines.set(id, {
+      this.demoMachines.set(id, {
         id,
         online,
         lastSeenMs: BigInt(online ? now : now - 2 * 60 * min),
@@ -2078,7 +2631,7 @@ export class DemoRemote extends Remote {
           info.cwd =
             "/Users/me/Code/remote-agent-with-a-very-long-project-name";
       }
-      this.sessions.set(id, {
+      this.demoSessions.set(id, {
         id,
         machineId: f.machine,
         info,
@@ -2118,7 +2671,7 @@ export class DemoRemote extends Remote {
           effort: "medium",
           createdAt: timestampFromMs(now - (i + 1) * min),
         });
-        this.sessions.set(id, {
+        this.demoSessions.set(id, {
           id,
           machineId: "mac",
           info,
@@ -2130,7 +2683,7 @@ export class DemoRemote extends Remote {
         this.evs.set(id, []);
       }
     if (this.opts.has("long"))
-      for (const m of this.machines.values())
+      for (const m of this.demoMachines.values())
         if (m.meta) m.meta.hostname += "-with-a-very-long-machine-name";
     void this.drawPreviews();
     const out = (
@@ -2166,24 +2719,27 @@ export class DemoRemote extends Remote {
         state: "failed",
         error: "failed_precondition",
       });
-    this.stored.prefs = applyOp(this.stored.prefs, {
-      id: "seed-settings",
-      kind: "settings",
-      path: "/Users/me/Code/foo",
-      at: now,
-      settings: {
-        agent: Agent.CODEX,
-        machineId: "mac",
-        sets: [
-          {
-            agent: Agent.CODEX,
-            model: "gpt-6-astra",
-            effort: "medium",
-            mode: ApprovalMode.ASK,
-            standardContext: false,
-          },
-        ],
-      },
+    this.stored.prefs = create(ProjectPrefsSchema, {
+      schema: 1,
+      pinned: [...this.stored.prefs.pinned],
+      hidden: [...this.stored.prefs.hidden],
+      settings: [
+        create(ProjectSettingsSchema, {
+          path: "/Users/me/Code/foo",
+          machineId: "mac",
+          agent: Agent.CODEX,
+          updatedMs: BigInt(now),
+          agents: [
+            create(AgentSettingsSchema, {
+              agent: Agent.CODEX,
+              model: "gpt-6-astra",
+              effort: "medium",
+              mode: ApprovalMode.ASK,
+              standardContext: false,
+            }),
+          ],
+        }),
+      ],
     });
     out("s-ask", "q-ask", "跑一下测试", "sent");
     out("s-popup", "q-popup", "看下这些脚本是做什么的", "sent");
@@ -2282,60 +2838,27 @@ export class DemoRemote extends Remote {
   override get connStartedAt(): number | undefined { return this.demoAttempt?.startedAt; }
 
   override reconnectNow() {
-    this.conn = "connecting";
+    this.opts.set("conn", "connecting");
     this.demoAttempt = { startedAt: Date.now() };
-    this.changed();
+    this.syncDemoToCore();
   }
 
   override start() {
+    super.start();
     const c = this.opts.get("conn");
-    this.listed = this.opts.get("list") !== "fail";
-    if (!this.listed) this.listError = "连接超时";
-    if (c === "connecting") this.conn = "connecting";
-    else if (c === "reconnecting")
-      Object.assign(this, { conn: "offline", everOnline: true });
-    else if (c === "removed")
-      Object.assign(this, { conn: "offline", removed: true });
-    else if (c === "nonetwork")
-      Object.assign(this, {
-        conn: "offline",
-        everOnline: true,
-        network: false,
-      });
-    else if (c === "noserver")
-      Object.assign(this, {
-        conn: "offline",
-        everOnline: true,
-        begun: true,
-        waited: true,
-        failures: 3,
-        connError: "连接超时",
-      });
-    else if (c === "fail")
-      Object.assign(this, {
-        conn: "offline",
-        begun: true,
-        waited: true,
-        failures: 3,
-        connError: "证书无效",
-      });
-    else Object.assign(this, { conn: "online", everOnline: true });
     this.demoAttempt = c === "connecting" || c === "reconnecting" ? { startedAt: Date.now() } : undefined;
-    if (this.conn !== "online") this.lostAt = Date.now() - 70_000;
-    this.changed();
     void this.loadDevices();
-    void this.loadPrefs();
+    this.syncDemoToCore();
   }
 
-  override stop() {}
+  override stop() {
+    super.stop();
+  }
 
   override retryList() {
-    this.listError = "";
-    this.changed();
-    setTimeout(() => {
-      this.listed = true;
-      this.changed();
-    }, 800);
+    this.demoListRetried = true;
+    super.retryList();
+    this.syncDemoToCore();
   }
 
   // ?backfill: the newest events show first, the older ones join above later.
@@ -2370,24 +2893,68 @@ export class DemoRemote extends Remote {
 
   private push(sid: string, kind: EventKind) {
     const list = this.events(sid);
-    list.push(
-      create(EventSchema, {
-        seq: BigInt(list.length + 1),
-        sessionId: sid,
-        time: timestampFromMs(Date.now()),
-        kind,
-      }),
-    );
+    const ev = create(EventSchema, {
+      seq: BigInt(list.length + 1),
+      sessionId: sid,
+      time: timestampFromMs(Date.now()),
+      kind,
+    });
+    list.push(ev);
     if (kind?.case === "userMessage" && kind.value?.requestId)
       this.recorded(sid, [kind.value.requestId]);
-    const s = this.sessions.get(sid);
-    if (s) s.updatedMs = BigInt(Date.now());
+    const s = this.demoSessions.get(sid);
+    if (s) {
+      s.lastSeq = BigInt(list.length);
+      s.updatedMs = BigInt(Date.now());
+    }
+    if (this.demoStream) {
+      this.demoStream.callbacks.onFrame(this.demoStream.legId, {
+        case: "eventsAppended",
+        value: create(EventsAppendedFrameSchema, {
+          sessionId: sid,
+          events: [create(PlainEventSchema, { seq: ev.seq, event: ev, verified: true })],
+        }),
+      });
+      if (s) {
+        this.demoStream.callbacks.onFrame(this.demoStream.legId, {
+          case: "sessionUpdated",
+          value: create(PlainSessionSchema, {
+            sessionId: s.id,
+            machineId: s.machineId,
+            lastSeq: s.lastSeq,
+            updatedMs: s.updatedMs,
+            listedEndedMs: s.endedMs,
+            meta: s.info,
+            metaRev: s.metaRev,
+            checkpoint: s.checkpoint,
+          }),
+        });
+      }
+    }
     this.changed();
   }
 
   private patch(sid: string, p: Partial<Session>) {
-    const s = this.sessions.get(sid);
-    if (s?.info) s.info = { ...s.info, ...p };
+    const s = this.demoSessions.get(sid);
+    if (s?.info) {
+      s.info = { ...s.info, ...p };
+      s.metaRev++;
+      if (this.demoStream) {
+        this.demoStream.callbacks.onFrame(this.demoStream.legId, {
+          case: "sessionUpdated",
+          value: create(PlainSessionSchema, {
+            sessionId: s.id,
+            machineId: s.machineId,
+            lastSeq: s.lastSeq,
+            updatedMs: s.updatedMs,
+            listedEndedMs: s.endedMs,
+            meta: s.info,
+            metaRev: s.metaRev,
+            checkpoint: s.checkpoint,
+          }),
+        });
+      }
+    }
     this.changed();
   }
 
@@ -2575,7 +3142,7 @@ export class DemoRemote extends Remote {
           endedMs: 0n,
         };
         setTimeout(() => {
-          this.sessions.set(id, view);
+          this.demoSessions.set(id, view);
           const list = this.events(id);
           for (const e of history)
             list.push(
@@ -2649,6 +3216,7 @@ export class DemoRemote extends Remote {
   override async machineCommand(
     machineId: string,
     kind: CommandKind,
+    _slot?: RequestSlot,
   ): Promise<CommandResult> {
     await this.pause(500);
     const cmd = create(CommandSchema, { kind }).kind;
@@ -2747,7 +3315,7 @@ export class DemoRemote extends Remote {
           endedMs: 0n,
         };
         setTimeout(() => {
-          this.sessions.set(id, view);
+          this.demoSessions.set(id, view);
           if (v.prompt)
             this.push(id, {
               case: "inputState",
@@ -2921,18 +3489,18 @@ export class DemoRemote extends Remote {
   ]);
 
   override async loadDevices() {
-    this.devices.clear();
-    for (const m of this.machines.values())
-      this.devices.set(m.id, {
+    this.demoDevices.clear();
+    for (const m of this.demoMachines.values())
+      this.demoDevices.set(m.id, {
         id: m.id,
         kind: DeviceKind.MACHINE,
-        createdMs: 0n,
+        createdMs: BigInt(now - 86_400_000),
         metaRev: 0n,
         lastSeenMs: 0n,
       });
     for (const id of [ME, ANDROID, BROWSER]) {
       const m = this.metas.get(id);
-      this.devices.set(id, {
+      this.demoDevices.set(id, {
         id,
         kind: DeviceKind.CLIENT,
         createdMs: BigInt(
@@ -2946,10 +3514,10 @@ export class DemoRemote extends Remote {
             : BigInt(Date.now() - (id === ME ? 0 : 86_400_000)),
       });
     }
-    for (const id of this.removedDemoDevices) this.devices.delete(id);
-    if (this.opts.get("role") === "machine" && this.devices.get(ME)) this.devices.get(ME)!.kind = DeviceKind.MACHINE;
+    for (const id of this.removedDemoDevices) this.demoDevices.delete(id);
+    if (this.opts.get("role") === "machine" && this.demoDevices.get(ME)) this.demoDevices.get(ME)!.kind = DeviceKind.MACHINE;
     this.devicesStatus = "ready";
-    this.changed();
+    this.syncDemoToCore();
   }
 
   override async renameDevice(id: string, name: string) {
@@ -2963,45 +3531,18 @@ export class DemoRemote extends Remote {
     await this.loadDevices();
   }
 
-  private stored: PrefsSnapshot = {
+  private stored: { revision: bigint; prefs: ProjectPrefs } = {
     revision: 1n,
-    prefs: [
-      ["pin", "/Users/me/Code/foo"],
-      ["hide", "/Users/me/Code/demo"],
-      ["hide", "/Users/me/work/experiments"],
-      ["hide", "/Users/me/Code/old-site"],
-    ].reduce(
-      (p, [kind, path], i) =>
-        applyOp(p, {
-          id: "seed" + i,
-          kind: kind as "pin",
-          path,
-          at: now - 86_400_000,
-        }),
-      emptyPrefs(),
-    ),
+    prefs: create(ProjectPrefsSchema, {
+      schema: 1,
+      pinned: [create(ProjectPrefSchema, { path: "/Users/me/Code/foo", sinceMs: BigInt(now - 86_400_000) })],
+      hidden: [
+        create(ProjectPrefSchema, { path: "/Users/me/Code/demo", sinceMs: BigInt(now - 86_400_000) }),
+        create(ProjectPrefSchema, { path: "/Users/me/work/experiments", sinceMs: BigInt(now - 86_400_000) }),
+        create(ProjectPrefSchema, { path: "/Users/me/Code/old-site", sinceMs: BigInt(now - 86_400_000) }),
+      ],
+    }),
   };
-
-  protected override prefsStore = {
-    get: async () => {
-      await this.pause(300);
-      return this.stored;
-    },
-    put: async (expected: bigint, next: ProjectPrefs) => {
-      await this.pause(700);
-      if (this.opts.get("prefs") === "fail")
-        throw new CommandError("unavailable", "服务器没有响应");
-      if (expected !== this.stored.revision)
-        return { applied: false, current: this.stored };
-      this.stored = { revision: expected + 1n, prefs: next };
-      return { applied: true, current: this.stored };
-    },
-  };
-
-  override async loadPrefs() {
-    this.prefs = { ...this.prefs, status: "ready", snap: this.stored };
-    this.changed();
-  }
 
   override async pushKey(): Promise<string> {
     throw new CommandError("unavailable", "服务器没有响应");

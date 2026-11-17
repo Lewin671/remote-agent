@@ -4,17 +4,27 @@
 // sheet in its place. A wide window has no such page: the main area is the
 // new task.
 
+import { create } from "@bufbuild/protobuf";
 import { useEffect, useState } from "react";
-import { projectName } from "../model";
+import { useCoreHost, useProjectView, type Go } from "../core/host";
+import { EventSchema, ProjectKeyActionSchema } from "../gen/remoteagent/core/v1/app_pb";
 import type { Remote } from "../remote";
-import { useRemote } from "../ui";
-import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
+import { NewBox, NewFlow } from "./NewSession";
 import { RemovedNotice } from "./Projects";
 
-export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey: string; go: Go; onBack: () => void }) {
-  useRemote(remote);
-  const ns = useNewSession(remote, pkey, go);
-  const name = ns.p?.name ?? projectName(pkey);
+export function ProjectPage({
+  remote,
+  pkey,
+  go,
+  onBack,
+}: {
+  remote: Remote;
+  pkey: string;
+  go: Go;
+  onBack: () => void;
+}) {
+  const host = useCoreHost(remote, go);
+  const vm = useProjectView(host, pkey, false);
   const [settings] = useState(() => remote.demoFlag("project-settings"));
   const [picking, setPicking] = useState(false);
   // Opened from 新任务 or a project just picked: the keyboard is up.
@@ -22,16 +32,35 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
   useEffect(() => {
     if (remote.focusProject === pkey) remote.focusProject = "";
   }, [remote, pkey]);
+
+  const hiddenNotice = vm.detail?.hiddenNotice;
+  const notice = hiddenNotice?.active ? (
+    <RemovedNotice
+      notice={hiddenNotice}
+      onReadd={() =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "projectToggleHide",
+              value: create(ProjectKeyActionSchema, { projectKey: pkey }),
+            },
+          }),
+        )
+      }
+    />
+  ) : undefined;
+
   return (
     <div className="page rise">
       <NewBox
-        ns={ns}
-        name={name}
+        remote={remote}
+        projectKey={pkey}
+        go={go}
         autoFocus={focus}
         settings={settings}
         onClose={onBack}
         onPickProject={() => setPicking(true)}
-        notice={<RemovedNotice remote={remote} pkey={pkey} />}
+        notice={notice}
       />
       {picking && (
         <NewFlow

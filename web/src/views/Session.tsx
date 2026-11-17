@@ -110,7 +110,7 @@ import {
   useRemote,
 } from "../ui";
 import { useDerived } from "./actions";
-import { Attempt } from "../attempt";
+import { Attempt } from "../remote";
 import {
   elsewhereLabel,
   originLabel,

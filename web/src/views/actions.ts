@@ -3,14 +3,15 @@ import { isSkeleton } from "../skeleton";
 // last attempt, so "重试" repeats the same command and the daemon answers
 // it once.
 
-import { useEffect, useRef, useState } from "react";
-import { SessionStatus, type ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
+import { useRef, useState } from "react";
+import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { type Derived } from "../model";
-import { stillUnknown } from "../attempt";
+import { getCoreHost, useSessionData } from "../core/host";
 import {
   errorText,
   newSlot,
+  stillUnknown,
   type AnswerState,
   type CommandKind,
   type Remote,
@@ -20,31 +21,9 @@ import { approvalTruncated } from "../approval-display";
 import { useRemote } from "../ui";
 
 export function useDerived(remote: Remote, sid: string): Derived {
-  useEffect(() => remote.retainHistory(sid), [remote, sid]);
-  const historical = remote.historicalDerived(sid);
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const update = () => {
-      const session = remote.sessions.get(sid);
-      const eligible = !document.hidden &&
-        !!session && !session.endedMs && session.info?.status !== SessionStatus.EXITED &&
-        remote.peer(session.machineId).available;
-      if (!eligible) { clearInterval(timer); timer = undefined; }
-      else if (timer === undefined) {
-        timer = setInterval(() => void remote.refreshLiveSnapshot(sid), 5000);
-        void remote.refreshLiveSnapshot(sid);
-      }
-    };
-    const unsubscribe = remote.subscribe(update);
-    document.addEventListener("visibilitychange", update);
-    update();
-    return () => {
-      clearInterval(timer);
-      unsubscribe();
-      document.removeEventListener("visibilitychange", update);
-    };
-  }, [remote, sid]);
-  return remote.currentDerived(sid, historical); // eslint-disable-line react-hooks/exhaustive-deps
+  useRemote(remote);
+  useSessionData(getCoreHost(remote), sid);
+  return remote.currentDerived(sid, remote.historicalDerived(sid));
 }
 
 /** Runs one kind of command, remembering the slot of the last attempt so

@@ -1,5 +1,6 @@
 import { rich } from "../i18n/rich";
 import * as l10n from "../i18n";
+import { getCoreHost } from "../core/host";
 import { ScheduleRevisionError } from "../remote";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
@@ -67,14 +68,14 @@ import {
   type ScheduleTrigger,
   type ScheduleTarget,
 } from "../schedules";
+import { NewFlow } from "./NewSession";
+import type { Go } from "../core/host";
 import {
-  ConfigSheet,
-  NewFlow,
-  NewProjectSheet,
-  useNewSession,
+  ScheduleConfigSheet as ConfigSheet,
+  MachineDirSheet as NewProjectSheet,
+  useScheduleSessionConfig as useNewSession,
   useMachineInfo,
-  type Go,
-} from "./NewSession";
+} from "./ScheduleConfig";
 import { ScheduleText, ScheduleTextarea, ScheduleMessageEditor } from "./ScheduleText";
 import { Markdown } from "../markdown";
 
@@ -602,11 +603,12 @@ function ScheduleResult({ remote, run, unread, now, open }: { remote: Remote; ru
   const sid = run.session_id;
   useEffect(() => {
     if (!sid) return;
-    let cancelled = false, release: (() => void) | undefined;
+    let cancelled = false;
+    const host = getCoreHost(remote);
     void remote.ensureSession(sid).then(() => {
-      if (!cancelled) release = remote.retainHistory(sid);
+      if (!cancelled) host.watchSession(sid);
     }).catch(() => undefined);
-    return () => { cancelled = true; release?.(); };
+    return () => { cancelled = true; host.unwatchSession(sid); };
   }, [remote, sid]);
   const history = sid ? remote.history(sid) : undefined;
   const full = sid && history?.loaded && !history.error && !history.broken && !history.backfilling ? finalRunText(remote.events(sid), run.id) : "";
@@ -1186,7 +1188,6 @@ function TaskTargetEditor({
       {config && (
         <ConfigSheet
           ns={ns}
-          scheduled
           lockMachine
           onClose={() => setConfig(false)}
         />
@@ -1580,7 +1581,7 @@ function ScheduleCreateConfig({
   const layers = (
     <>
       {config && (
-        <ConfigSheet ns={ns} scheduled onClose={() => setConfig(false)} />
+        <ConfigSheet ns={ns} onClose={() => setConfig(false)} />
       )}
       {full && (
         <Alert

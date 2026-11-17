@@ -18,8 +18,7 @@ import {
 } from "../machine-status-view";
 import type { Remote } from "../remote";
 import { NavBar, useRemote } from "../ui";
-import { NewProjectSheet } from "./NewSession";
-import { addProject } from "./Projects";
+import { addProject, MachineDirSheet as NewProjectSheet } from "./ScheduleConfig";
 import { Roll, flipBox, useFlipList, useMachineStatus, usePageVisible, useReducedMotion } from "./machine-status-hooks";
 
 type Go = (route: string) => void;

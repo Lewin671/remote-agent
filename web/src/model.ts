@@ -2,7 +2,6 @@ import * as l10n from "./i18n";
 import * as i18n from "./i18n";
 import { t } from "./i18n";
 import { isSkeleton } from "./skeleton";
-import { approvalDisplay } from "./approval-display";
 import { agentInfo, agentName, DEFAULT_AGENT, isKnownAgent } from "./agents";
 // View models derived from the decrypted state: projects, session states
 // by priority, what is docked above the input, how a sent message is
@@ -68,24 +67,6 @@ export const createdMs = (s: SessionLike) =>
   s.info?.createdAt ? timestampMs(s.info.createdAt) : 0;
 export const endedMs = (s: SessionLike) =>
   s.info?.endedAt ? timestampMs(s.info.endedAt) : createdMs(s);
-export const attentionMs = (s: SessionLike) =>
-  s.info?.attentionSince ? timestampMs(s.info.attentionSince) : createdMs(s);
-export const compareLive = (a: SessionLike, b: SessionLike) =>
-  createdMs(b) - createdMs(a) || byID(a, b);
-export const compareEnded = (a: SessionLike, b: SessionLike) =>
-  endedMs(b) - endedMs(a) || byID(a, b);
-export function compareAttention(
-  a: SessionLike,
-  b: SessionLike,
-  machines: ReadonlyMap<string, MachineLike>,
-): number {
-  return (
-    statePriority.indexOf(stateOf(a, machines.get(a.machineId)).kind) -
-      statePriority.indexOf(stateOf(b, machines.get(b.machineId)).kind) ||
-    attentionMs(a) - attentionMs(b) ||
-    byID(a, b)
-  );
-}
 
 // --- agents ---
 
@@ -134,7 +115,7 @@ export function projectName(key: string): string {
   return key.split("/").filter(Boolean).pop() || t("projects.unknown");
 }
 
-export const compareProjects = (
+const compareProjects = (
   a: Pick<Project, "key" | "hasLive" | "latestCreatedMs">,
   b: Pick<Project, "key" | "hasLive" | "latestCreatedMs">,
 ) =>
@@ -261,18 +242,6 @@ export type StateKind =
   | "running"
   | "idle";
 
-export const statePriority: StateKind[] = [
-  "ended",
-  "offline",
-  "approval",
-  "question",
-  "plan",
-  "popup",
-  "starting",
-  "running",
-  "idle",
-];
-
 export interface State {
   kind: StateKind;
   tone: Tone;
@@ -353,7 +322,7 @@ export function forkBlocked(
   return s.info?.title || s.info?.preview ? "" : i18n.t("session.fork_after_message");
 }
 
-export function needsAttention(s: SessionLike, machine?: MachineLike): boolean {
+function needsAttention(s: SessionLike, machine?: MachineLike): boolean {
   return stateOf(s, machine).tone === "wait";
 }
 
@@ -367,33 +336,7 @@ export function titleOf(s: SessionLike): string {
   return `${projectName(projectKey(s))}${start ? " · " + hhmm(start) : ""}`;
 }
 
-/** One-line preview for a list row, by state. */
-export function previewOf(
-  s: SessionLike,
-  st: State,
-  pending?: { approval?: ApprovalRequested; question?: QuestionAsked },
-): string {
-  switch (st.kind) {
-    case "approval":
-      if (!pending?.approval) return st.text;
-      return pending.approval.command
-        ? t("list_state.request_command", { command: oneLine(approvalDisplay(pending.approval.command)) })
-        : t("list_state.request_permission", { tool: approvalDisplay(pending.approval.toolName) });
-    case "question":
-      return pending?.question?.questions[0]?.text || st.text;
-    case "plan":
-      return t("list_state.plan");
-    case "popup":
-      return popupTitle(s.info?.statusDetail ?? "") || st.text;
-  }
-  const p = plain(s.info?.preview || "");
-  if (p) return p;
-  return s.info?.title ? st.text : t("list_state.no_message");
-}
-
-/** Strip table delimiters before flattening Markdown into a preview. Rows
- * without outer pipes are tables only beside their separator/header. */
-export function tablePreview(text: string): string {
+function tablePreview(text: string): string {
   const lines = text.split("\n");
   const cells = (line: string) => line.trim().replace(/^\|/, "").replace(/(?<!\\)\|$/, "").split(/(?<!\\)\|/).map(c => c.trim());
   const separator = (line: string) => line.includes("|") && cells(line).every(c => /^:?-{3,}:?$/.test(c));
@@ -429,7 +372,7 @@ function oneLine(s: string): string {
 }
 
 /** Short time, like the mockup: 刚刚, 3 分钟前, 9:12, 昨天, 9月27日. */
-export function when(ms: number | bigint, now = Date.now()): string {
+function when(ms: number | bigint, now = Date.now()): string {
   const time = Number(ms);
   if (!time) return "";
   const d = now - time;
@@ -454,40 +397,6 @@ export function ago(ms: number | bigint, now = Date.now()): string {
   )
     return t("time.hours_ago", { count: Math.floor(d / 3_600_000) });
   return when(time, now);
-}
-
-/** Whole calendar days from a time to now, by local midnight. */
-function daysAgo(ms: number, now: number): number {
-  const day = (t: number) => {
-    const d = new Date(t);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-  };
-  return Math.round((day(now) - day(ms)) / 86_400_000);
-}
-
-/** The date group an ended session is listed under on the home timeline. */
-export function dayGroup(ms: number, now = Date.now()): string {
-  const n = daysAgo(ms, now);
-  if (n <= 0) return t("time.today");
-  if (n === 1) return t("time.yesterday");
-  if (n < 7) return t("time.last_week");
-  const d = new Date(ms);
-  return d.getFullYear() === new Date(now).getFullYear()
-    ? t("time.month_group", { month: d.getMonth() + 1 })
-    : t("time.year_month_group", { year: d.getFullYear(), month: d.getMonth() + 1 });
-}
-
-/** When a session ended, in the terms of its date group: the time under
- * 今天 and 昨天, the weekday under 近 7 天, the date under a month. */
-export function endedTime(ms: number, now = Date.now()): string {
-  if (!ms) return "";
-  const n = daysAgo(ms, now);
-  if (n <= 1) return hhmm(ms);
-  const d = new Date(ms);
-  return n < 7
-    ? t("time.weekday", { day: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][d.getDay()] })
-    : t("time.month_day", { month: d.getMonth() + 1, day: d.getDate() });
 }
 
 export function hhmm(ms: number): string {
@@ -538,17 +447,6 @@ export function duration(ms: number): string {
 /** Home folders as ~. */
 export function shortPath(p: string): string {
   return p.replace(/^\/Users\/[^/]+/, "~").replace(/^\/home\/[^/]+/, "~");
-}
-
-/** A folder's path as the picker writes it, piece by piece: ~ / Code / foo.
- * A path outside the home folder keeps its leading slash on the first piece
- * (/srv / www), so it does not read as one below the home folder; the root
- * is "/". */
-export function pathCrumbs(p: string): string[] {
-  const parts = shortPath(p).split("/").filter(Boolean);
-  if (parts[0] === "~") return parts;
-  if (parts.length === 0) return ["/"];
-  return ["/" + parts[0], ...parts.slice(1)];
 }
 
 /** macOS reaches /tmp, /var and /etc through /private; either spelling
@@ -613,20 +511,6 @@ export function shortenPath(path: string, cwd: string, home = ""): string {
   const hm = h || /^\/(?:Users|home)\/[^/:]+/.exec(p)?.[0] || "";
   const inHome = under(p, hm);
   return inHome === undefined ? path : "~" + inHome;
-}
-
-/** A path that does not fit keeps its end: …/ai-bot/remote-agent. */
-export function tailPath(p: string, max = 28): string {
-  const s = shortPath(p);
-  if (s.length <= max) return s;
-  const parts = s.split("/");
-  let out = parts.pop() || "";
-  while (
-    parts.length &&
-    out.length + parts[parts.length - 1].length + 1 <= max - 2
-  )
-    out = parts.pop() + "/" + out;
-  return "…/" + out;
 }
 
 // Popup details are adapter diagnostics or native CLI text, never UI copy.
@@ -739,16 +623,6 @@ export function findModel<M extends { slug: string }>(
   );
 }
 
-/** The standard context window, which a Claude Code session can be held to. */
-export const STANDARD_WINDOW = 200_000n;
-
-/** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; empty when unknown. */
-export function contextText(tokens: bigint | undefined): string {
-  const n = Number(tokens ?? 0n);
-  if (n <= 0) return "";
-  return i18n.t("models.context_size", { size: n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k` });
-}
-
 /** The name to show for a model: its display name from the machine's
  * list; the ID as is while the list has not come; and for a Codex model
  * missing from the list (the machine's default may be one Codex hides
@@ -768,7 +642,7 @@ export function modelLabel<M extends { slug: string; displayName: string }>(
 
 /** Whether the model a CLI reports (id) is the one chosen by slug or
  * alias. */
-export function modelIs(id: string, slug: string): boolean {
+function modelIs(id: string, slug: string): boolean {
   return (
     !!id &&
     !!slug &&
@@ -794,94 +668,6 @@ export interface NewConfig {
   mode: ApprovalMode; // UNSPECIFIED: the machine's default
   standardContext?: boolean; // Claude Code: the standard context window instead of 1M
   from?: SessionLike; // the session copied, if any
-}
-
-/** A project's latest session supplies its initial settings: the machine
- * and the CLI. Each CLI's model and effort come from the project's latest
- * session on that CLI (agent: which CLI to answer for; the latest
- * session's by default), the machine's defaults if it has none. The
- * approval mode is never inherited: a new task starts with the machine's
- * default. An offline machine stays selected until the user picks another
- * for this start. */
-export function inheritConfig(
-  p: Project<SessionLike> | undefined,
-  machines: Map<string, MachineLike>,
-  cwd = p?.key ?? "",
-  agent?: Agent,
-): NewConfig | undefined {
-  // In the order of the listing, live sessions before ended ones: the
-  // listing is fetched in that order, so the pages held always include
-  // the session inherited from.
-  const order = p
-    ? [
-        ...p.sessions.filter((s) => !exited(s)).sort(compareLive),
-        ...p.sessions.filter(exited).sort(compareEnded),
-      ]
-    : [];
-  const latest = order[0];
-  if (!p || !latest) return undefined;
-  const a = agent ?? agentOf(latest);
-  const from = order.find((s) => agentOf(s) === a);
-  void machines;
-  return {
-    machineId: latest.machineId,
-    cwd,
-    agent: a,
-    model: from?.info?.model ?? "",
-    effort: from?.info?.effort ?? "",
-    mode: ApprovalMode.UNSPECIFIED,
-    from,
-  };
-}
-
-/** The new session's configuration on another machine: its CLI if the
- * machine has it, else one it has; the model and mode are that machine's
- * defaults again. */
-export function switchMachine(cfg: NewConfig, m: MachineLike): NewConfig {
-  const agents = machineAgents(m);
-  return {
-    ...cfg,
-    machineId: m.id,
-    agent: agents.includes(cfg.agent) ? cfg.agent : agents[0],
-    model: "",
-    effort: "",
-    mode: ApprovalMode.UNSPECIFIED,
-  };
-}
-
-/** What keeps a session from starting in AUTO with this CLI and model:
- * "account" when no model of the account has the auto mode, "model" when
- * only this one lacks it, "" when nothing does. */
-export function autoIssueKind(
-  agent: Agent,
-  model: string,
-  mode: ApprovalMode,
-  models?: ModelInfo[],
-): "" | "model" | "account" {
-  if (
-    !agentInfo(agent).autoMayBeUnavailable ||
-    mode !== ApprovalMode.AUTO ||
-    !autoUnavailable(models, model)
-  )
-    return "";
-  return allAutoUnavailable(models) ? "account" : "model";
-}
-
-/** Why a session cannot start with this CLI, model and mode, or "". This
- * is the wording for a scheduled task, whose mode is chosen with it; a new
- * task has no mode of its own and words it in the new task page. */
-export function newConfigIssue(
-  agent: Agent,
-  model: string,
-  mode: ApprovalMode,
-  models?: ModelInfo[],
-): string {
-  const kind = autoIssueKind(agent, model, mode, models);
-  return kind === "account"
-    ? i18n.t("modes.account_no_auto")
-    : kind === "model"
-      ? i18n.t("modes.model_no_auto")
-      : "";
 }
 
 /** The mode a CLI gives a session started without one on a machine, as the
@@ -1455,21 +1241,6 @@ function visible(e: Event, d: Derived): boolean {
  * event is then its start, not its end. */
 export function isBackground(t: ToolCall): boolean {
   return t.background !== ToolBackground.UNSPECIFIED;
-}
-
-/** Why a call is in the background, and what that means. */
-export function backgroundNote(b: ToolBackground): string {
-  switch (b) {
-    case ToolBackground.REQUESTED:
-      return i18n.t("tools.background_agent");
-    case ToolBackground.TIMED_OUT:
-      return i18n.t("tools.background_timeout");
-    case ToolBackground.BY_USER:
-      return i18n.t("tools.background_terminal");
-    case ToolBackground.STILL_RUNNING:
-      return i18n.t("tools.background_turn");
-  }
-  return i18n.t("tools.background_returned");
 }
 
 export function toolOk(t: ToolCall): boolean {

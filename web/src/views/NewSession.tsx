@@ -1,563 +1,165 @@
-import * as l10n from "../i18n";
 import { t } from "../i18n";
 // Starting sessions. There is one way: type in a project's new-session
-// box and send. Project settings persist in the sealed account prefs.
+// box and send. Everything about config inheritance, model defaults,
+// notices, and start attempt lifecycle lives in clientcore.
 
+import { create } from "@bufbuild/protobuf";
+import { Fragment, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { isDiskFull } from "../machine-status";
-import { DiskFullCard } from "./DiskFullCard";
-import { useKeyboardDismiss } from "../keyboard";
-import { useEffect, useRef, useState, type ReactNode, type ComponentProps } from "react";
-import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
-import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
-import { AGENTS, agentInfo, defaultsFor } from "../agents";
 import {
-  agentName,
-  agentOf,
-  exited,
-  ago,
-  findModel,
-  STANDARD_WINDOW,
-  allAutoUnavailable,
-  autoUnavailable,
-  modelLabel,
-  inheritConfig,
-  machineAgents,
-  autoIssueKind,
-  newConfigIssue,
-  switchMachine,
-  machineName,
-  modeName,
-  defaultModeOf,
-  modeLabel,
-  projectName,
-  pathCrumbs,
-  projects,
-  shortPath,
-  type MachineLike,
-  type NewConfig,
-} from "../model";
-import { Attempt } from "../attempt";
-import type { CreateSessionRequest } from "../gen/remoteagent/v1/local_pb";
-import { errorText, type MachineView, type Remote } from "../remote";
-
-type CreateReq = Omit<CreateSessionRequest, "$typeName" | "args" | "env">;
-type StartPayload = { machineId: string; req: CreateReq };
-
-/** A project's start. It belongs to the account, not to the page that
- * sent it (Android's `Starts`, iOS's `NewSessionDraft`): the page may be
- * left and opened again while the request is on its way or its outcome
- * unknown, and the wide home shows one project after another in one box. */
-class Start {
-  readonly attempt = new Attempt<StartPayload>();
-  images: { item: import("../attach").TrayItem; key: string; prepared?: import("../attach").Prepared }[] = [];
-  /** Its request is on its way. Nothing else is started in the project
-   * meanwhile, whichever page is open. */
-  running = false;
-  /** What was chosen on the page the pending request was sent from. A page
-   * opened later goes on from there. */
-  page?: { local?: Local; picked?: Picked; latched?: Latched };
-  /** What the requests that started a session were sent with. It went with
-   * them, on every page that held it; what a page chose meanwhile, for the
-   * session after, is another choice and stays. */
-  readonly spent = new WeakSet<Local | Picked | Latched>();
-  /** How many sessions it has started. */
-  count = 0;
-}
-const starts = new WeakMap<Remote, Map<string, Start>>();
-/** One start per project: an unknown start in one project must never be
- * what another project's box sends. */
-function startOf(remote: Remote, key: string): Start {
-  let all = starts.get(remote);
-  if (!all) starts.set(remote, (all = new Map()));
-  let start = all.get(key);
-  if (!start) all.set(key, (start = new Start()));
-  return start;
-}
-import { anchorOf, Avatar, Banner, PathText, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
-import { isHidden } from "../prefs";
-import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
-import { NewTaskModelPanel, NewTaskTools, newTaskModel } from "./NewTaskModels";
-import { ComposerPicker, keepComposerFocus, type ComposerAnchor } from "./ComposerPicker";
-import { useAutoGrow } from "./Composer";
+  useCoreHost,
+  useNewSessionView,
+  useProjectView,
+  type Go,
+  type StartTraySnapshot,
+} from "../core/host";
+import { renderText } from "../core/text";
+import {
+  DirNavigateActionSchema,
+  DirPickerOpenActionSchema,
+  EventSchema,
+  NewSessionOpenActionSchema,
+  NewSessionProjectActionSchema,
+  NewSessionSelectAgentActionSchema,
+  NewSessionSelectMachineActionSchema,
+  NewSessionSelectModelActionSchema,
+  NewSessionSetPromptActionSchema,
+  NewSessionSubmitActionSchema,
+  ProjectAddActionSchema,
+  ProjectKeyActionSchema,
+  ProjectSetSearchActionSchema,
+} from "../gen/remoteagent/core/v1/app_pb";
+import {
+  NoticeActionKind,
+  NoticeKind,
+  NoticeSeverity,
+  type NewSessionNoticeView,
+  type NewSessionViewModel,
+} from "../gen/remoteagent/core/v1/new_session_view_pb";
+import { Agent } from "../gen/remoteagent/v1/event_pb";
+import { ArrowUp, Check, ChevronDown, ChevronRight, X } from "../icons";
+import { useKeyboardDismiss } from "../keyboard";
+import type { Remote } from "../remote";
+import {
+  anchorOf,
+  Avatar,
+  Banner,
+  sendKeys,
+  Sheet,
+  StateMark,
+  usePointerFine,
+  useRemote,
+} from "../ui";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
-import { ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, X } from "../icons";
+import { useAutoGrow } from "./Composer";
+import { ComposerPicker, keepComposerFocus } from "./ComposerPicker";
+import { DiskFullCard } from "./DiskFullCard";
+import { NewTaskModelPanel, NewTaskTools } from "./NewTaskModels";
+import { DirPickerSheet, ProjectItem, ProjectList } from "./Projects";
 
-/** Navigate to a route; with replace the current history entry is swapped, so back skips it. */
-export type Go = (route: string, replace?: boolean) => void;
+export type { Go };
 
-/** The machine's defaults for new sessions of a CLI. */
-function defaultsOf(st: DaemonSettings | undefined, agent: Agent): { model: string; effort: string; mode: ApprovalMode } {
-  return defaultsFor(st, agent);
+type PickLayer = "" | "machine" | "model";
+
+function noticeBannerKind(sev: NoticeSeverity): "" | "warn" | "err" {
+  switch (sev) {
+    case NoticeSeverity.WARN:
+      return "warn";
+    case NoticeSeverity.ERROR:
+      return "err";
+    default:
+      return "";
+  }
 }
 
-/** A machine's model list and settings, for showing what defaults mean.
- * What was read before shows at once and is read again behind it, so
- * coming back to a machine or a CLI does not blink through 读取设置…. */
-export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) {
-  const key = machineId + "/" + agent;
-  const [got, setGot] = useState<{ key: string; models?: ListModelsResponse; settings?: DaemonSettings; error: string; done: boolean }>();
-  const [attempt, setAttempt] = useState(0);
-  const online = remote.peer(machineId).reachable ?? false;
-  useEffect(() => {
-    let alive = true;
-    setGot((g) => (g?.key === key ? { ...g, error: "", done: false } : g));
-    if (!machineId || !online) return;
-    Promise.allSettled([remote.listModels(machineId, agent, true), remote.settings(machineId)]).then(([m, s]) => {
-      if (!alive) return;
-      setGot({
-        key,
-        models: m.status === "fulfilled" ? m.value : undefined,
-        settings: s.status === "fulfilled" ? s.value : undefined,
-        error: m.status === "fulfilled" ? "" : errorText(m.reason),
-        done: true,
-      });
-    });
-    return () => {
-      alive = false;
-    };
-  }, [remote, machineId, agent, online, attempt]);
-  // Another machine's or CLI's answer is never shown for this one.
-  const mine = got?.key === key ? got : undefined;
-  const models = mine?.models ?? remote.cachedModels(machineId, agent);
-  const settings = mine?.settings ?? remote.cachedSettings(machineId);
-  const loading = !!machineId && online && !mine?.done && !models;
-  return { models, settings, error: mine?.error ?? "", loading, retry: () => setAttempt((a) => a + 1) };
+function noticeActionLabel(n: NewSessionNoticeView): string | undefined {
+  switch (n.action) {
+    case NoticeActionKind.RETRY_START:
+    case NoticeActionKind.RETRY_READ_SETTINGS:
+      return t("common.retry");
+    case NoticeActionKind.ABANDON_START:
+      return t("new_session.abandon_start");
+    case NoticeActionKind.CHANGE_MACHINE:
+      return t("new_session.change_machine");
+    case NoticeActionKind.CHANGE_MODEL:
+      return t("new_session.change_model");
+    case NoticeActionKind.OPEN_MACHINE_SETTINGS:
+      return t("new_session.change_defaults");
+    case NoticeActionKind.RETRY_SAVE_CONFIG:
+      return t("new_session.retry_save");
+    case NoticeActionKind.READD_PROJECT:
+      return t("projects.add_again");
+    default:
+      return undefined;
+  }
 }
 
-/** What the configuration says, part by part: the machine, the CLI, the
- * model and effort, and the mode (a scheduled task's). */
-export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>) {
-  const def = defaultsOf(info.settings, cfg.agent);
-  const slug = cfg.model || def.model || info.models?.defaultModel || "";
-  const model = findModel(info.models?.models, slug);
-  const effort = cfg.effort || (cfg.model ? model?.defaultEffort : def.effort || model?.defaultEffort) || "";
-  const unset = info.loading ? t("new_session.reading_settings") : t("new_session.default_model");
-  const label = slug ? modelLabel(info.models?.models, slug, cfg.agent) : unset;
-  const modelText = slug ? `${label}${effort ? " · " + effort : ""}` : unset;
-  // Claude Code only: the window new sessions get, 1M unless the project
-  // asks for the standard one or the model has no larger one.
-  const max = model?.contextWindow ?? 0n;
-  const fixedWindow = max > 0n && max <= STANDARD_WINDOW;
-  const window = !agentInfo(cfg.agent).standardContextOption ? 0n : cfg.standardContext || fixedWindow ? STANDARD_WINDOW : max || 1_000_000n;
-  return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, label, slug, window, fixedWindow, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
-}
-
-/** The configuration in one line: machine, CLI, model and effort, mode. */
-export function describe(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>): string {
-  const p = describeParts(cfg, m, info);
-  return [p.machine, p.agent, p.model, p.mode].join(" · ");
-}
-
-function freshConfig(remote: Remote, key: string, machineId?: string): NewConfig {
-  const online = [...remote.machines.values()].filter((m) => remote.peer(m.id).reachable);
-  const id = machineId ?? online[0]?.id ?? [...remote.machines.keys()][0] ?? "";
-  return { machineId: id, cwd: key, agent: machineAgents(remote.machines.get(id))[0], model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
-}
-
-/** The CLIs a new session can use on a machine, Codex first. */
-function agentsOf(m: MachineLike | undefined): Agent[] {
-  const have = machineAgents(m);
-  return AGENTS.map((a) => a.agent).filter((a) => have.includes(a));
-}
-
-type AgentSet = { agent: Agent; model: string; effort: string; mode: ApprovalMode; standardContext: boolean };
-
-function setOf(c: NewConfig): AgentSet {
-  return { agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: agentInfo(c.agent).standardContextOption && !!c.standardContext };
-}
-
-/** The mode a start with cfg will run in: the one chosen (a scheduled task's), else the CLI's
- * effective default the machine reports, or that it follows the CLI's
- * own settings when nobody could read them. */
-function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
-  const dm = defaultModeOf(m, cfg.agent);
-  return cfg.mode ? modeName(cfg.mode) : dm.known && dm.mode ? modeName(dm.mode) : t("new_session.follow_cli");
-}
-
-/** What the user chose on this page and the stored settings do not say
- * (yet): another machine, edited sets. once: the machine is for this
- * start only and nothing of it is saved. */
-type Local = { key: string; machineId?: string; once: boolean; sets: Partial<Record<Agent, AgentSet>> };
-/** The CLI picked next to the box. */
-type Picked = { key: string; agent: Agent };
-/** The launch settings a draft was begun with. */
-type Latched = { key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> };
-
-/** The configuration and the create call of a new session in project key.
- * The project's settings name the machine and keep one set of model and
- * effort per CLI; which CLI a start uses is picked next to the box, the
- * project remembering the last one used. A new task has no approval mode:
- * what is stored or was inherited is not read, none is stored, and the
- * request says none, so the machine's default applies. A scheduled task
- * that shares this hook holds its own mode in this page only. */
-export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?: string) {
-  // Recomputed on every render: which session is latest changes with any
-  // session's activity, not only when sessions come or go.
-  const p = projects([...remote.sessions.values()].filter(s => !fixedMachine || s.machineId === fixedMachine), remote.machines.values(), remote.projectPrefs().settings.filter(s => !fixedMachine || s.machineId === fixedMachine)).find((x) => x.key === key);
-  const saved = remote.projectPrefs().settings.find((s) => s.path === key && (!fixedMachine || s.machineId === fixedMachine));
-  const start = startOf(remote, key);
-  const current = start.attempt;
-  const draftKey = "new:" + key;
-  const text = remote.drafts.get(draftKey) ?? current.payload?.req.prompt ?? "";
-  const setText = (value: string) => {
-    remote.drafts.set(draftKey, value);
-    remote.touch();
-  };
-  // What a page chose is for one draft, of this project: once a session
-  // has started with it, it is no longer held.
-  const own = <T extends Local | Picked | Latched>(x: T | undefined) => (x?.key === key && !start.spent.has(x) ? x : undefined);
-  // A request that is on its way, or whose outcome is unknown, was sent
-  // with choices of its own. A page that has none goes on from them.
-  const sentWith = !fixedMachine && current.payload ? start.page : undefined;
-  const [localState, setLocal] = useState<Local>();
-  const local = own(localState) ?? sentWith?.local;
-  // The CLI picked next to the box, for this draft.
-  const [pickedState, setPicked] = useState<Picked>();
-  const pick = own(pickedState) ?? sentWith?.picked;
-  const picked = pick?.agent;
-  // Once a draft is begun its launch settings hold: later activity (a
-  // newer session in the project, a machine coming or going) does not
-  // change where or how the draft will start. Only the user's own choice
-  // does.
-  const [latched, setLatched] = useState<Latched>();
-  const held = own(latched) ?? sentWith?.latched;
-  // They are this page's own from then on: they stay when that start ends
-  // without a session, or is given up.
-  const adopt = () => {
-    if (!sentWith) return;
-    if (!own(localState) && sentWith.local) setLocal(sentWith.local);
-    if (!own(pickedState) && sentWith.picked) setPicked(sentWith.picked);
-    if (!own(latched) && sentWith.latched) setLatched(sentWith.latched);
-  };
-  useEffect(adopt);
-  // While that request is pending and the user has chosen nothing else,
-  // the page shows the request's own configuration and nothing derived
-  // again: sessions and machines come and go meanwhile, and a retry is
-  // that request, on its machine, with its images.
-  const pinned = sentWith && local === sentWith.local && picked === sentWith.picked?.agent ? current.payload : undefined;
-  const inherit = (a?: Agent) => inheritConfig(p, remote.machines, key, a);
-  const first = inherit();
-  // Where it starts without a choice made on this page.
-  // A project none of whose sessions are held starts on a machine that
-  // has it, as its summary says, rather than on any machine.
-  const known = p?.machines.find((id) => remote.peer(id).reachable) ?? p?.machines[0];
-  const baseMachine = fixedMachine || remote.draftMachines.get(key) || held?.machineId || saved?.machineId || first?.machineId || freshConfig(remote, key, known).machineId;
-  const machineId = fixedMachine ?? pinned?.machineId ?? local?.machineId ?? baseMachine;
-  const machine = remote.machines.get(machineId);
-  const agents = agentsOf(machine);
-  const remembered = saved?.agent ? agentInfo(saved.agent).agent : undefined;
-  const wanted = picked ?? held?.agent ?? remembered ?? first?.agent ?? agents[0];
-  // A CLI the machine lacks is not started: the one it has is, and the
-  // box says so. What the project remembers stays.
-  const agent = pinned ? pinned.req.agent : agents.includes(wanted) ? wanted : agents[0];
-  const missing = agent !== wanted && machine?.meta ? wanted : undefined;
-  // What a CLI starts with, where no set is stored for it, is how the
-  // project's latest session on it ran. Sessions come a page at a time:
-  // while the project has ended sessions not fetched and none of this CLI
-  // is held, that session may be among them. Pages are fetched until it
-  // is here or the project's are all here, and no session starts before,
-  // so that it is not started with a machine's defaults.
-  const heldEnded = p?.sessions.filter(exited).length ?? 0;
-  /** Whether what CLI a would inherit is still to be fetched. */
-  const unreadFor = (a: Agent) =>
-    !!p && remote.sessionsOpen && p.ended > heldEnded && !local?.sets[a] && !saved?.agents.some((x) => x.agent === a) &&
-    // One held past the pages fetched (kept from before a reconnect, or fetched by its ID) may not be the latest.
-    !p.sessions.some((s) => agentOf(s) === a && !remote.pastPages(s));
-  const unread = unreadFor(agent);
-  // The CLI whose set the settings sheet shows is read likewise: changing
-  // one of its settings stores the whole set.
-  const [watch, setWatch] = useState<Agent>();
-  useEffect(() => {
-    if (unread || (watch !== undefined && unreadFor(watch))) void remote.loadMoreSessions();
-  });
-  /** What a session of CLI a starts with: the set chosen on this page,
-   * the stored one, else the project's latest session on that CLI. base:
-   * as the project has it, leaving out this page's choices. */
-  const configFor = (a: Agent, base = false): NewConfig => {
-    const at = { machineId: base ? baseMachine : machineId, cwd: key, agent: a };
-    if (!base && pinned?.req.agent === a) return { ...at, model: pinned.req.model, effort: pinned.req.effort, mode: pinned.req.mode, standardContext: pinned.req.standardContext };
-    if (remote.draftMachines.get(key) === at.machineId && at.machineId !== (saved?.machineId || first?.machineId))
-      return { ...at, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
-    const heldConfig = !base && held?.machineId === at.machineId && held?.by[a];
-    if (heldConfig && !local?.sets[a] && !local?.machineId) return { ...heldConfig, ...at };
-    const set = (!base && local?.sets[a]) || saved?.agents.find((x) => x.agent === a);
-    // A stored set's mode is not read: a new task starts in the machine's default mode.
-    if (set) return { ...at, model: set.model, effort: set.effort, mode: !base && local?.sets[a] ? set.mode : ApprovalMode.UNSPECIFIED, standardContext: set.standardContext };
-    // Another machine has its own models and defaults.
-    if (!base && local?.machineId) return { ...at, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
-    // A draft begun before this CLI's sessions were fetched held nothing for it.
-    const h = held?.by[a] ?? inherit(a);
-    return { ...at, model: h?.model ?? "", effort: h?.effort ?? "", mode: ApprovalMode.UNSPECIFIED, from: h?.from };
-  };
-  const configured = configFor(agent);
-  const info = useMachineInfo(remote, configured.machineId, configured.agent);
-  const model = findModel(info.models?.models, configured.model || defaultsOf(info.settings, agent).model || info.models?.defaultModel || "");
-  const unavailable = !pinned && !!info.models && ((!!configured.model && !model) || (!!configured.effort && !!model && !model.efforts.includes(configured.effort)));
-  const cfg = unavailable ? { ...configured, model: "", effort: "" } : configured;
-  const configFallback = unavailable ? t("new_session.config_fallback") : "";
-  // The request may have been sent from another page: this one is told
-  // when it ends through the Remote, like the page that sent it.
-  const busy = start.running;
-  const [error, setError] = useState("");
-  // The start failed because the computer's disk is full: it gets a card of its own.
-  const [diskFull, setDiskFull] = useState(false);
-  const [configError, setConfigError] = useState("");
-  // The project's settings do not keep an approval mode: a scheduled task's choice lives in this page only.
-  const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }, keepExisting = false) =>
-    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: settings.sets ? { ...settings, sets: settings.sets.map((x) => ({ ...x, mode: ApprovalMode.UNSPECIFIED })) } : settings, keepExisting }).then((ok) => setConfigError(ok ? "" : t("new_session.save_failed")));
-  // Settings not stored yet begin with where and on which CLI it starts now.
-  const whole = () => (saved ? {} : { machineId: baseMachine, agent });
-  /** Changes one CLI's set, or the machine: config is configFor of a CLI
-   * with the change. Another machine clears every CLI's set, its models
-   * and defaults being its own. once: only for this start, nothing saved. */
-  const setCfg = (config: NewConfig, once = false) => {
-    if (config.machineId !== machineId) {
-      remote.draftMachines.delete(key);
-      const sets = Object.fromEntries(AGENTS.map((e) => [e.agent, setOf({ ...config, agent: e.agent })])) as Record<Agent, AgentSet>;
-      setLocal({ key, machineId: config.machineId, once, sets });
-      if (!once) void save({ ...whole(), machineId: config.machineId, sets: Object.values(sets) });
-      return;
-    }
-    const set = setOf(config);
-    setLocal({ key, machineId: local?.machineId, once: !!local?.once, sets: { ...local?.sets, [config.agent]: set } });
-    if (!local?.once) void save({ ...whole(), sets: [set] });
-  };
-  const setAgent = (a: Agent) => {
-    latch();
-    setPicked({ key, agent: a });
-  };
-  // A failure shown for one project is not the next one's.
-  useEffect(() => { setError(""); setDiskFull(false); setConfigError(""); }, [key]);
-
-  // What a start would send. While one's outcome is unknown, only what the
-  // user changed counts: the message as sent (trimmed), and the settings
-  // only if they chose others, cfg being that request's own until then.
-  const payloadFor = (prompt: string): StartPayload => ({
-    machineId: cfg.machineId,
-    req: {
-      cwd: cfg.cwd,
-      prompt: prompt.trim(),
-      model: cfg.model,
-      effort: cfg.effort,
-      // Unspecified: the machine resolves its own default. Only a request
-      // already sent keeps the mode it went with.
-      mode: cfg.mode,
-      agent: cfg.agent,
-      standardContext: agentInfo(cfg.agent).standardContextOption && !!cfg.standardContext,
-      // The images are part of what is started: other images, another start.
-      imageIds: tray.imageIds(),
-      fileIds: tray.fileIds(),
-    },
-  });
-  /** Whether sending prompt now would be a different start from the one
-   * whose outcome is unknown. */
-  const changes = (prompt: string): boolean => {
-    const pending = current.payload;
-    if (!pending) return false;
-    // Renewing an upload changes only its transport ID, never the unknown request.
-    const wanted = payloadFor(prompt);
-    wanted.req.imageIds = pending.req.imageIds;
-    wanted.req.fileIds = pending.req.fileIds;
-    return JSON.stringify(wanted) !== JSON.stringify(pending) || start.images.length !== tray.items.length ||
-      start.images.some((im, i) => im.key !== tray.items[i].key || im.prepared !== tray.items[i].prepared);
-  };
-  // Images for the first message go to the chosen machine; a new machine
-  // gets them again (the tray keeps them prepared).
-  const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(remote, machine));
-  const [, redraw] = useState(0);
-  const create = async (prompt: string, terminal = false) => {
-    // One request at a time, whichever page sent the one on its way.
-    if (start.running) return false;
-    // A different start gives up the unknown one; the same start, however
-    // it was typed, is retried as the same request.
-    if (changes(prompt)) abandon();
-    // While an earlier attempt's outcome is unknown, only it is retried.
-    const retry = current.frozen;
-    const sent = current.next(payloadFor(prompt));
-    if (!retry) { start.page = { local, picked: pick, latched: held }; start.images = tray.items.map((i) => ({ item: i, key: i.key, prepared: i.prepared })); }
-    const { payload, slot } = sent;
-    const taken = start.images.map((i) => i.item);
-    const open = fromHere(go);
-    start.running = true;
-    remote.touch();
-    setError("");
-    setDiskFull(false);
-    try {
-      const res = await remote.machineCommand(payload.machineId, { case: "createSession", value: payload.req }, slot);
-      // Only this request's own answer settles it.
-      current.settle(undefined, sent);
-      if (res.kind.case !== "createSession" || !res.kind.value.session) throw new Error(t("new_session.unexpected_reply"));
-      const sid = res.kind.value.session.id;
-      if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
-      remote.created.add(sid);
-      if (!remote.sessions.has(sid)) remote.openingSessions.set(sid, {
-        id: sid, machineId: payload.machineId, info: res.kind.value.session,
-        metaRev: 0n, lastSeq: 0n, updatedMs: BigInt(Date.now()), endedMs: 0n,
-      });
-      if (!terminal) {
-        tray.detach(taken);
-        // A different message typed while this request was pending belongs
-        // to the next session, even if its page has since been left.
-        if (remote.drafts.get(draftKey)?.trim() === payload.req.prompt) remote.drafts.delete(draftKey);
-      }
-      if (terminal) remote.termFirst.add(sid);
-      remote.draftMachines.delete(key);
-      // The first session establishes the project's settings, and each
-      // CLI's first one its set; later starts only move the remembered
-      // CLI. A machine picked for one start is not what gets stored.
-      const used = payload.req.agent;
-      const asStored = configFor(used, true);
-      if (!saved) void save({ machineId: asStored.machineId, agent: missing ? undefined : used, sets: [setOf(local?.once ? asStored : cfg)] }, true);
-      else {
-        const patch: { agent?: Agent; sets?: AgentSet[] } = {};
-        if (!missing && remembered !== used) patch.agent = used;
-        if (!saved.agents.some((x) => x.agent === used)) patch.sets = [setOf(local?.once ? asStored : cfg)];
-        if (patch.agent !== undefined || patch.sets) void save(patch, true);
-      }
-      // The draft went with it, on every page that shows this project.
-      for (const x of Object.values(start.page ?? {})) if (x) start.spent.add(x);
-      start.count++;
-      // The session takes the new-task page's place in the history: back goes to where the page was opened from.
-      open("s/" + sid, true);
-      return true;
-    } catch (e) {
-      current.settle(e, sent);
-      setError(errorText(e));
-      setDiskFull(isDiskFull(e));
-      return false;
-    } finally {
-      if (!current.frozen) start.images = [];
-      start.running = false;
-      remote.touch();
-      redraw((n) => n + 1);
-    }
-  };
-  // A project removed from the list (here or on another client) keeps its
-  // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? t("new_session.removed_blocked") : remote.listed && !remote.peer(machine?.id).reachable ? t("new_session.machine_offline", { name: machineName(machine) }) : !remote.peer(cfg.machineId).ready ? t("new_session.disconnected") : unread ? t("new_session.reading_previous") : (configured.model || configured.effort) && info.loading ? t("new_session.reading_models") : "";
-  // Giving up an unknown start: the user checked, or changed what to send.
-  const abandon = () => {
-    adopt();
-    current.abandon();
-    start.images = [];
-    setError("");
-    setDiskFull(false);
-    redraw((n) => n + 1);
-  };
-  /** Holds the launch settings as they are now, once a draft begins. */
-  const hold = () => setLatched({ key, machineId, agent: wanted, by: Object.fromEntries(AGENTS.map((e) => [e.agent, unreadFor(e.agent) ? undefined : configFor(e.agent)])) as Record<Agent, NewConfig | undefined> });
-  // A draft begun while its CLI's settings were still being fetched is
-  // held as soon as they are here.
-  // The draft that began so: the one for the project's next session.
-  const draft = `${start.count}:${key}`;
-  const [begun, setBegun] = useState<string>();
-  const latch = () => {
-    if (held) return;
-    if (unread) setBegun(draft);
-    else hold();
-  };
-  useEffect(() => {
-    if (begun === draft && !unread && !held) hold();
-    // What the draft's CLI inherits was left open when the draft began:
-    // once known, it is held like the rest. A pending request names its
-    // own CLI's settings, so this is only ever another CLI's, picked since.
-    else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
-  });
-  const dm = defaultModeOf(machine, cfg.agent);
-  const modeText = modeTextOf(cfg, machine);
-  const parts = describeParts(cfg, machine, info);
-  // The machine is named only where there is more than one to mean.
-  // The model only once one is known: a CLI with none chosen yet says nothing of it.
-  // The model's placeholder is written too, so the capsule is never empty.
-  const currentModel = newTaskModel(cfg, info);
-  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label, effort: (currentModel.model?.efforts.length ?? 0) > 1 ? currentModel.effort || t("models.default") : "" };
-  return {
-    remote,
-    go,
-    frozen: current.frozen,
-    expired: current.expired,
-    abandon,
-    changes,
-    p,
-    cfg,
-    setCfg,
-    configFor,
-    agents,
-    setAgent,
-    missing,
-    configFallback,
-    latch,
-    unreadFor,
-    setWatch,
-    // The CLI's last settings are still being fetched: no session starts before.
-    reading: unread && remote.conn === "online",
-    issue: newConfigIssue(cfg.agent, parts.slug, cfg.mode || dm.mode, info.models?.models),
-    // The same, told apart for a new task, whose mode is the machine's default.
-    issueKind: autoIssueKind(cfg.agent, parts.slug, cfg.mode || dm.mode, info.models?.models),
-    parts,
-    tray,
-    attachWhy: attachBlocked(remote, machine),
-    machine,
-    info,
-    summary,
-    modeText,
-    create,
-    busy,
-    diskFull: diskFull && !!error,
-    error: error || (current.frozen && !busy ? t("new_session.unconfirmed_start") : ""),
-    text,
-    setText,
-    key,
-    configError,
-    blocked,
-  };
-}
-
-export type NewSession = ReturnType<typeof useNewSession>;
-
-/** 新任务 (design-system §6 新任务): a sentence of where and with which
- * CLI, 「在 [项目] 用 [CLI]」, the capsules opening what they pick (the CLI
- * one only where the machine has more than one); the task under it; and
- * a row of ＋ and the summary of the settings, which opens the project's
- * settings. On a phone it is the whole-page sheet, its close at the top
- * left and send at the top right; on a wide window it is the main area,
- * the summary and send under the task. */
-export function NewBox({
-  ns,
-  name,
+/** Pure ViewModel renderer for the new-session composer; used by NewBox and golden UI tests. */
+export function NewBoxView({
+  vm,
+  remote,
   autoFocus,
   variant = "sheet",
   fixed,
   onPickProject,
   onClose,
   notice,
-  settings = false,
+  initialConfigOpen = false,
   onDraft,
+  onSelectMachine,
+  onSelectAgent,
+  onSelectModel,
+  onRetryModels,
+  onRetrySaveConfig,
+  onSetPrompt,
+  onSubmit,
+  onRetryDiskFull,
+  onAbandonStart,
+  onOpenMachineSettings,
+  onOpenDiskUsage,
+  onReaddProject,
+  onRegisterTray,
 }: {
-  ns: NewSession;
-  name: string;
+  vm: NewSessionViewModel;
+  remote?: Remote;
   autoFocus?: boolean;
   variant?: "sheet" | "start";
-  /** The project is set by the scope: the sentence names it as words. */
   fixed?: boolean;
   onPickProject?: () => void;
   onClose?: () => void;
-  /** A banner of the project's own, above the sentence. */
   notice?: ReactNode;
-  /** Opened with the project's settings showing. */
-  settings?: boolean;
+  initialConfigOpen?: boolean;
   onDraft?: () => void;
+  onSelectMachine: (machineId: string) => void;
+  onSelectAgent: (agent: Agent) => void;
+  onSelectModel: (model: string, effort: string, standardContext?: boolean) => void;
+  onRetryModels: () => void;
+  onRetrySaveConfig: () => void;
+  onSetPrompt: (prompt: string, attachmentCount: number, attachmentsMoved: boolean) => void;
+  onSubmit: () => void;
+  onRetryDiskFull?: () => void;
+  onAbandonStart: () => void;
+  onOpenMachineSettings: (machineId: string) => void;
+  onOpenDiskUsage: (machineId: string) => void;
+  onReaddProject: () => void;
+  onRegisterTray?: (projectKey: string, getter: () => StartTraySnapshot) => () => void;
 }) {
-  const { text, setText } = ns;
-  const [config, setConfig] = useState<"" | "main" | Pick>(settings ? "main" : "");
+  const [config, setConfig] = useState<PickLayer>(initialConfigOpen ? "model" : "");
   const [choosing, setChoosing] = useState(false);
+  const [toast, setToast] = useState("");
   const afterKeyboard = useKeyboardDismiss();
   const cliRef = useRef<HTMLButtonElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const boundaryRef = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+
   const phone = variant === "sheet";
-  const target = ns.key + "/" + ns.cfg.machineId + "/" + ns.cfg.agent;
+  const machineId = vm.config?.machineId ?? "";
+  const agent = vm.config?.agent ?? Agent.CODEX;
+  const projectKey = vm.projectKey;
+  const projectName = renderText(vm.projectName) || t("projects.unknown");
+
+  const target = `${projectKey}/${machineId}/${agent}`;
   const previousTarget = useRef(target);
   useEffect(() => {
     if (!phone || previousTarget.current === target) return;
@@ -565,52 +167,125 @@ export function NewBox({
     setChoosing(false);
     setConfig("");
   }, [target, phone]);
-  const toggleModels = () => {
-    if (phone) setChoosing(false);
-    setConfig((c) => phone && (c === "main" || c === "model") ? "" : "main");
-  };
-  const input = useRef<HTMLTextAreaElement>(null);
-  useAutoGrow(input, text, 240);
+
+  useAutoGrow(input, vm.prompt, 240);
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
-  const cannot = ns.busy || !!ns.blocked || !!ns.issue;
-  const submit = async () => {
-    const prompt = text;
-    // An unknown start that expired is not sent again, nor replaced by the
-    // same start under a new request. Chosen images must all be on the
-    // machine first, and there is no session without a first message: the
-    // send button is disabled for these, but 重试 comes here too.
-    if (cannot || (ns.expired && !ns.changes(prompt))) return;
-    ns.tray.refreshExpired();
-    if (ns.tray.items.length ? !ns.tray.ready() : !prompt.trim()) return;
-    // Retrying an unknown start sends it as it was.
-    await ns.create(prompt.trim());
-  };
-  const keys = sendKeys(usePointerFine());
-  const tray = ns.tray;
-  tray.onAdd = () => {
-    ns.latch();
-    onDraft?.();
-  };
-  const images = tray.items.length;
-  const disabled = cannot || (ns.expired && !ns.changes(text)) || (images ? !tray.ready() : !text.trim());
-  const [toast, setToast] = useState("");
-  const drop = useDropPaste(tray, ns.attachWhy, setToast);
-  // The machine changed under chosen images: they are uploaded again.
-  const lastMachine = useRef(ns.cfg.machineId);
-  const [moved, setMoved] = useState("");
+
+  // Attachment tray stays in the Web shell (M6); only its count/move flags sync to Core.
+  const machineObj = remote?.machines.get(machineId);
+  const tray = remote
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks
+      useTray(remote, "new:" + projectKey, machineId, maxImages(remote, machineObj))
+    : undefined;
+  const attachWhy = remote ? attachBlocked(remote, machineObj) : "";
+  const drop = remote && tray
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks
+      useDropPaste(tray, attachWhy, setToast)
+    : { over: false, props: {} };
+
+  if (tray) {
+    tray.onAdd = () => onDraft?.();
+  }
+
+  const trayCount = tray?.items.length ?? 0;
+  const lastTrayCount = useRef(trayCount);
+  const lastMachine = useRef(machineId);
   useEffect(() => {
-    if (lastMachine.current !== ns.cfg.machineId && images) setMoved(machineName(ns.machine));
-    lastMachine.current = ns.cfg.machineId;
-  }, [ns.cfg.machineId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const trayView = (
+    const moved = lastMachine.current !== machineId && trayCount > 0;
+    const countChanged = lastTrayCount.current !== trayCount;
+    lastMachine.current = machineId;
+    lastTrayCount.current = trayCount;
+    if (moved || countChanged) {
+      onSetPrompt(vm.prompt, trayCount, moved);
+    }
+  }, [machineId, trayCount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!onRegisterTray || !tray || !projectKey) return;
+    return onRegisterTray(projectKey, () => ({
+      tray,
+      imageIds: tray.imageIds(),
+      fileIds: tray.fileIds(),
+      items: [...tray.items],
+    }));
+  }, [onRegisterTray, tray, projectKey]);
+
+  // Track frozen attempt inputs so editing prompt/config/attachments before retry abandons the stale request.
+  const frozenSigRef = useRef<string | undefined>(undefined);
+  const currentSig = JSON.stringify({
+    prompt: vm.prompt.trim(),
+    machineId,
+    agent,
+    model: vm.config?.model ?? "",
+    effort: vm.config?.effort ?? "",
+    standardContext: !!vm.config?.standardContext,
+    tray: tray?.items.map((i) => `${i.key}:${i.prepared ?? ""}`) ?? [],
+  });
+  useEffect(() => {
+    if (!vm.busy && !vm.frozen) {
+      frozenSigRef.current = undefined;
+    } else if (frozenSigRef.current === undefined) {
+      frozenSigRef.current = currentSig;
+    }
+  }, [vm.busy, vm.frozen, currentSig]);
+  const changedSinceFrozen =
+    vm.frozen && frozenSigRef.current !== undefined && frozenSigRef.current !== currentSig;
+
+  const submit = () => {
+    if (changedSinceFrozen) {
+      frozenSigRef.current = currentSig;
+      onAbandonStart();
+    } else if (!vm.canStart || !vm.settled) {
+      return;
+    }
+    if (tray) {
+      tray.refreshExpired();
+      if (tray.items.length ? !tray.ready() : !vm.prompt.trim()) return;
+    } else if (!vm.prompt.trim()) {
+      return;
+    }
+    onSubmit();
+  };
+
+  const disabled =
+    vm.busy ||
+    !vm.settled ||
+    (!changedSinceFrozen && !vm.canStart) ||
+    (tray ? (trayCount ? !tray.ready() : !vm.prompt.trim()) : !vm.prompt.trim());
+
+  const openModelPanel = () => {
+    if (phone) setChoosing(false);
+    setConfig((c) => {
+      const next = phone && c === "model" ? "" : "model";
+      if (
+        next === "model" &&
+        (vm.modelPanel?.modelsError ||
+          (!vm.modelPanel?.modelsLoading && (vm.modelPanel?.models.length ?? 0) === 0))
+      ) {
+        onRetryModels();
+      }
+      return next;
+    });
+  };
+
+  const keys = sendKeys(usePointerFine());
+
+  const trayView = remote && tray && (
     <TrayView
       tray={tray}
-      remote={ns.remote}
+      remote={remote}
       note={
         <>
-          {moved && tray.busy() && <Banner>{t("new_session.attachments_moved", { name: moved })}</Banner>}
+          {vm.notices.some((n) => n.kind === NoticeKind.ATTACHMENTS_MOVED) &&
+            tray.busy() && (
+              <Banner>
+                {renderText(
+                  vm.notices.find((n) => n.kind === NoticeKind.ATTACHMENTS_MOVED)!.text,
+                )}
+              </Banner>
+            )}
           {toast && (
             <Banner action={t("common.got_it")} onAction={() => setToast("")}>
               {toast}
@@ -620,136 +295,289 @@ export function NewBox({
       }
     />
   );
+
   const field = (
     <textarea
       ref={input}
-      className={"ask" + (text ? " typed" : "")}
+      className={"ask" + (vm.prompt ? " typed" : "")}
       rows={1}
-      value={text}
+      value={vm.prompt}
       placeholder={t("new_session.prompt")}
       onChange={(e) => {
-        // A draft begun holds its project and launch settings.
-        if (!text && e.target.value) {
-          ns.latch();
-          onDraft?.();
+        const val = e.target.value;
+        if (!vm.prompt && val) onDraft?.();
+        if (remote && projectKey) {
+          remote.drafts.set("new:" + projectKey, val);
+          remote.touch();
         }
-        setText(e.target.value);
+        onSetPrompt(val, trayCount, false);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
           e.preventDefault();
-          void submit();
+          submit();
         }
       }}
       aria-label={t("new_session.first_message")}
     />
   );
-  const { frozen } = ns;
-  // Before the lists are in, no computer is known to be off.
-  const offline = ns.remote.listed && !ns.remote.peer(ns.machine?.id).reachable;
-  const error =
-    ns.error &&
-    (frozen ? (
-      <Banner kind="warn" action={t("new_session.abandon_start")} onAction={ns.abandon}>
-        {ns.expired ? t("new_session.expired_start") : t("new_session.start_unknown", { reason: ns.error })}
-      </Banner>
-    ) : ns.diskFull ? (
-      <DiskFullCard onUsage={() => ns.go("machine-status/" + encodeURIComponent(ns.cfg.machineId))} onRetry={() => void submit()} />
-    ) : (
-      <Banner kind={ns.frozen ? "warn" : "err"} action={t("common.retry")} onAction={() => void submit()}>
-        {ns.frozen ? t("new_session.start_unknown", { reason: ns.error }) : t("new_session.start_failed", { reason: ns.error })}
-      </Banner>
-    ));
-  const notes = (
-    <>
-      {offline && ns.machine && (
-        <Banner kind={text ? "warn" : ""} action={t("new_session.change_machine")} onAction={() => setConfig("machine")}>
-          {text ? t("new_session.offline_with_draft", { name: machineName(ns.machine) }) : t("new_session.machine_offline", { name: machineName(ns.machine) })}
-        </Banner>
-      )}
-      {ns.reading && !offline && <Banner>{t("new_session.reading_previous")}</Banner>}
-      {ns.missing !== undefined && !offline && (
-        <Banner action={t("new_session.change_machine")} onAction={() => setConfig("machine")}>
-          {t("new_session.cli_fallback", { name: machineName(ns.machine), missing: agentName(ns.missing), agent: agentName(ns.cfg.agent) })}
-        </Banner>
-      )}
-      {ns.configFallback && <Banner>{ns.configFallback}</Banner>}
-      {ns.issueKind === "model" && (
-        <div style={{ display: "contents" }} data-composer-picker={phone ? "model" : undefined} onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}>
-          <Banner kind="warn" action={t("new_session.change_model")} onAction={() => { setChoosing(false); setConfig("model"); }}>
-            {t("new_session.model_no_auto", { name: machineName(ns.machine) })}
-          </Banner>
-        </div>
-      )}
-      {ns.issueKind === "account" && (
-        <Banner kind="warn" action={t("new_session.change_defaults")} onAction={() => ns.go("m/" + ns.cfg.machineId)}>
-          {t("new_session.account_no_auto", { name: machineName(ns.machine) })}
-        </Banner>
-      )}
-      {ns.configError && <Banner kind="warn" action={t("new_session.retry_save")} onAction={() => ns.setCfg(ns.cfg)}>{ns.configError}</Banner>}
-    </>
+
+  const busyNotice = vm.notices.find((n) => n.kind === NoticeKind.STARTING);
+  const inlineNotices = vm.notices.filter(
+    (n) =>
+      n.kind !== NoticeKind.STARTING &&
+      n.kind !== NoticeKind.ATTACHMENTS_MOVED &&
+      !(n.kind === NoticeKind.PROJECT_REMOVED && notice),
   );
-  const banners = (notice || error || notes) && (
+
+  const renderNotice = (n: NewSessionNoticeView, idx: number) => {
+    if (n.kind === NoticeKind.OFFLINE_DRAFT_CHOICES && n.hasDraftChoices) {
+      return (
+        <div key={`n-${n.kind}-${idx}`} className="offline-draft">
+          <Banner
+            kind={noticeBannerKind(n.severity)}
+            action={vm.machineSelectable ? t("new_session.change_machine") : undefined}
+            onAction={vm.machineSelectable ? () => setConfig("machine") : undefined}
+          >
+            <b>{renderText(n.draftTitle) || renderText(n.text)}</b>
+            {n.draftSubtitle && <div>{renderText(n.draftSubtitle)}</div>}
+          </Banner>
+          {n.draftChoices.length > 0 ? (
+            <div className="list">
+              {n.draftChoices.map((c) => (
+                <button
+                  key={c.machineId}
+                  type="button"
+                  className="mi"
+                  onClick={() => onSelectMachine(c.machineId)}
+                >
+                  <div className="mt">
+                    <b>{renderText(c.title)}</b>
+                    {c.note && <div className="md">{renderText(c.note)}</div>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            n.draftNoneText && (
+              <Banner
+                kind={noticeBannerKind(n.severity)}
+                action={vm.machineSelectable ? t("new_session.change_machine") : undefined}
+                onAction={vm.machineSelectable ? () => setConfig("machine") : undefined}
+              >
+                {renderText(n.draftNoneText)}
+              </Banner>
+            )
+          )}
+        </div>
+      );
+    }
+    if (n.kind === NoticeKind.DISK_FULL) {
+      return (
+        <DiskFullCard
+          key={`disk-${idx}`}
+          onUsage={() => onOpenDiskUsage(n.targetMachineId || machineId)}
+          onRetry={onRetryDiskFull ?? submit}
+        />
+      );
+    }
+    const label = noticeActionLabel(n);
+    const runAction = () => {
+      switch (n.action) {
+        case NoticeActionKind.RETRY_START:
+          submit();
+          break;
+        case NoticeActionKind.ABANDON_START:
+          onAbandonStart();
+          break;
+        case NoticeActionKind.CHANGE_MACHINE:
+          setConfig("machine");
+          break;
+        case NoticeActionKind.CHANGE_MODEL:
+          setChoosing(false);
+          setConfig("model");
+          onRetryModels();
+          break;
+        case NoticeActionKind.OPEN_MACHINE_SETTINGS:
+          onOpenMachineSettings(n.targetMachineId || machineId);
+          break;
+        case NoticeActionKind.RETRY_SAVE_CONFIG:
+          onRetrySaveConfig();
+          break;
+        case NoticeActionKind.READD_PROJECT:
+          onReaddProject();
+          break;
+        case NoticeActionKind.RETRY_READ_SETTINGS:
+          onRetryModels();
+          break;
+      }
+    };
+    const banner = (
+      <Banner
+        key={`n-${n.kind}-${idx}`}
+        kind={noticeBannerKind(n.severity)}
+        action={label}
+        onAction={label ? runAction : undefined}
+      >
+        {renderText(n.text)}
+      </Banner>
+    );
+    if (n.kind === NoticeKind.AUTO_UNAVAILABLE && n.action === NoticeActionKind.CHANGE_MODEL) {
+      return (
+        <div
+          key={`n-${n.kind}-${idx}`}
+          style={{ display: "contents" }}
+          data-composer-picker={phone ? "model" : undefined}
+          onPointerDown={phone ? keepComposerFocus : undefined}
+          onMouseDown={phone ? keepComposerFocus : undefined}
+        >
+          {banner}
+        </div>
+      );
+    }
+    return banner;
+  };
+
+  const banners = (notice || inlineNotices.length > 0) && (
     <div className="nt-banners">
       {notice}
-      {error}
-      {notes}
+      {inlineNotices.map(renderNotice)}
     </div>
   );
+
   const send = (
-    <button className={"snd" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label={t("new_session.start")}>
+    <button
+      className={"snd" + (disabled ? " off" : "")}
+      disabled={disabled}
+      onClick={submit}
+      aria-label={t("new_session.start")}
+    >
       <ArrowUp />
     </button>
   );
-  // The draft stays when the CLI is switched.
-  const many = ns.agents.length > 1;
+
+  const many = vm.availableAgents.length > 1;
   const cli = many && (
-    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={t("new_session.cli_label", { agent: agentName(ns.cfg.agent) })} aria-expanded={choosing}
+    <button
+      ref={cliRef}
+      className="tok cli"
+      disabled={vm.busy}
+      aria-haspopup="dialog"
+      aria-label={t("new_session.cli_label", { agent: vm.agentName })}
+      aria-expanded={choosing}
       data-composer-picker={phone ? "cli" : undefined}
-      onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}
-      onClick={() => { if (phone) setConfig(""); setChoosing((v) => phone ? !v : true); }}>
-      <AgentMark agent={ns.cfg.agent} named />
-      <span className="cli-name">{agentName(ns.cfg.agent)}</span>
+      onPointerDown={phone ? keepComposerFocus : undefined}
+      onMouseDown={phone ? keepComposerFocus : undefined}
+      onClick={() => {
+        if (phone) setConfig("");
+        setChoosing((v) => (phone ? !v : true));
+      }}
+    >
+      <AgentMark agent={agent} named />
+      <span className="cli-name">{vm.agentName}</span>
       <ChevronDown />
     </button>
   );
-  const mach = ns.summary.machine && (
-    <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={t("new_session.machine_label", { name: ns.summary.machine })} onClick={() => afterKeyboard(() => setConfig("machine"))}>
-      <span>{ns.summary.machine}</span>
+
+  const mach = vm.machineSelectable && vm.machineName && (
+    <button
+      className="tok m"
+      disabled={vm.busy}
+      aria-haspopup="dialog"
+      aria-label={t("new_session.machine_label", { name: vm.machineName })}
+      onClick={() => afterKeyboard(() => setConfig("machine"))}
+    >
+      <span>{vm.machineName}</span>
       <ChevronDown />
     </button>
   );
+
   const proj =
     fixed || !onPickProject ? (
-      <b>{name}</b>
+      <b>{projectName}</b>
     ) : (
-      <button className="tok p" onClick={() => afterKeyboard(onPickProject)} aria-label={t("new_session.project_label", { name })}>
-        <Avatar name={name} size="sm" />
-        <span>{name}</span>
+      <button
+        className="tok p"
+        onClick={() => afterKeyboard(onPickProject)}
+        aria-label={t("new_session.project_label", { name: projectName })}
+      >
+        <Avatar name={projectName} size="sm" />
+        <span>{projectName}</span>
         <ChevronDown />
       </button>
     );
-  const locationText = ns.summary.machine
-    ? many ? t("new_session.location_machine_cli", { machine: "{machine}", project: "{project}", cli: "{cli}" }) : t("new_session.location_machine", { machine: "{machine}", project: "{project}" })
-    : many ? t("new_session.location_cli", { project: "{project}", cli: "{cli}" }) : t("new_session.location", { project: "{project}" });
+
+  const locationTemplate = vm.machineSelectable
+    ? many
+      ? t("new_session.location_machine_cli", {
+          machine: "{machine}",
+          project: "{project}",
+          cli: "{cli}",
+        })
+      : t("new_session.location_machine", { machine: "{machine}", project: "{project}" })
+    : many
+      ? t("new_session.location_cli", { project: "{project}", cli: "{cli}" })
+      : t("new_session.location", { project: "{project}" });
   const slots: Record<string, ReactNode> = { machine: mach, project: proj, cli };
-  const sentence = <div className="sent">{locationText.split(/(?<=\})/).filter(Boolean).map((part, i) => {
-    const pieces = part.split(/\{(machine|project|cli)\}/);
-    return <span className="g" key={i}>{pieces.map((piece, j) => j % 2 ? slots[piece] : piece)}</span>;
-  })}</div>;
-  const busyNote = ns.busy && <div className="nt-note">{t("new_session.starting_on", { name: machineName(ns.machine) })}</div>;
-  const summary = <ConfigSummary summary={ns.summary} bare={many} onClick={toggleModels}
-    data-composer-picker={phone ? "model" : undefined} aria-expanded={config === "main" || config === "model"}
-    onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined} />;
-  const attach = <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />;
+  const sentence = (
+    <div className="sent">
+      {locationTemplate
+        .split(/(?<=\})/)
+        .filter(Boolean)
+        .map((part, i) => {
+          const pieces = part.split(/\{(machine|project|cli)\}/);
+          return (
+            <span className="g" key={i}>
+              {pieces.map((piece, j) => (
+                <Fragment key={j}>{j % 2 ? slots[piece] : piece}</Fragment>
+              ))}
+            </span>
+          );
+        })}
+    </div>
+  );
+
+  const busyNote = busyNotice && <div className="nt-note">{renderText(busyNotice.text)}</div>;
+  const effortChoicesCount = vm.modelPanel?.effortChoices.length ?? 0;
+  const summaryEffort =
+    effortChoicesCount > 1
+      ? vm.config?.effort
+        ? vm.effortLabel
+        : t("models.default")
+      : "";
+  const summary = (
+    <ConfigSummary
+      summary={{
+        agent: vm.agentName,
+        model: renderText(vm.modelLabel) || t("models.default"),
+        effort: summaryEffort,
+      }}
+      bare={many}
+      onClick={openModelPanel}
+      data-composer-picker={phone ? "model" : undefined}
+      aria-expanded={config === "model"}
+      onPointerDown={phone ? keepComposerFocus : undefined}
+      onMouseDown={phone ? keepComposerFocus : undefined}
+    />
+  );
+
+  const attach = remote && tray && (
+    <AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />
+  );
+
   const body =
     variant === "sheet" ? (
-      <div ref={boundaryRef} className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={t("new_session.project_session_label", { name })}>
+      <div
+        ref={boundaryRef}
+        className={"ntask" + (drop.over ? " drop" : "")}
+        {...drop.props}
+        role="group"
+        aria-label={t("new_session.project_session_label", { name: projectName })}
+      >
         <header className="nt-hd">
           <button className="fbtn" aria-label={t("common.close")} onClick={onClose}>
             <X />
           </button>
-          {/* On a phone the title says where: the project, and under it the machine. */}
           <div className="nt-where">
             {proj}
             {mach}
@@ -760,22 +588,28 @@ export function NewBox({
           {banners}
           {busyNote}
         </div>
-        {/* The same box as a session's and the wide page's, above the keyboard. */}
         <div className="pbox" ref={composerRef}>
           {field}
           {trayView}
           <div className="acc">
             {attach}
-            <NewTaskTools>{cli}{summary}</NewTaskTools>
+            <NewTaskTools>
+              {cli}
+              {summary}
+            </NewTaskTools>
             {send}
           </div>
         </div>
       </div>
     ) : (
-      <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={t("new_session.project_session_label", { name })}>
+      <div
+        className={"wstart" + (drop.over ? " drop" : "")}
+        {...drop.props}
+        role="group"
+        aria-label={t("new_session.project_session_label", { name: projectName })}
+      >
         {banners}
         {sentence}
-        {/* In a wide window the task is written in a box of its own: on the bare page nothing showed where to type. */}
         <div className="wbox">
           {field}
           {trayView}
@@ -789,484 +623,489 @@ export function NewBox({
         {busyNote}
       </div>
     );
+
   const cliChoices = (
     <div className="list" role="menu">
-      {ns.agents.map((a) => (
+      {vm.availableAgents.map((a) => (
         <button
-          key={a}
+          key={a.agent}
           className="mi"
           role="menuitemradio"
-          aria-checked={a === ns.cfg.agent}
+          aria-checked={a.selected}
           onClick={() => {
             setChoosing(false);
-            if (a !== ns.cfg.agent) ns.setAgent(a);
+            if (!a.selected) onSelectAgent(a.agent);
           }}
         >
-          <span className="mt"><AgentMark agent={a} named />{agentName(a)}</span>
-          {a === ns.cfg.agent && <span className="ck"><Check /></span>}
+          <span className="mt">
+            <AgentMark agent={a.agent} named />
+            {a.displayName}
+          </span>
+          {a.selected && (
+            <span className="ck">
+              <Check />
+            </span>
+          )}
         </button>
       ))}
     </div>
   );
+
+  const machineChoices = vm.modelPanel?.machineChoices ?? [];
+  const machineSheet = config === "machine" && (
+    <Sheet
+      onClose={() => setConfig("")}
+      title={t("common.machine")}
+      action={{ label: t("common.done"), onClick: () => setConfig("") }}
+      anchor={anchorOf(".wstart .sent .tok.m")}
+      className="with-head"
+    >
+      <div className="list">
+        {machineChoices.map((m) => (
+          <button
+            key={m.machineId}
+            className={"mi" + (m.online ? "" : " dis")}
+            disabled={!m.online}
+            onClick={() => {
+              onSelectMachine(m.machineId);
+              setConfig("");
+            }}
+          >
+            <StateMark kind={m.online ? "online" : "off"} />
+            <div className="mt">
+              {m.selected || !m.online ? (
+                m.name
+              ) : (
+                <b>{t("new_session.use_machine", { name: m.name })}</b>
+              )}
+              {m.note && <div className="md">{renderText(m.note)}</div>}
+            </div>
+            {m.selected && (
+              <span className="ck">
+                <Check />
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </Sheet>
+  );
+
+  const modelPanel = vm.modelPanel && (
+    <NewTaskModelPanel
+      key={`${machineId}/${agent}`}
+      panel={vm.modelPanel}
+      selectedModel={vm.config?.model ?? ""}
+      configEffort={vm.config?.effort ?? ""}
+      settled={vm.settled}
+      onSelectModel={onSelectModel}
+      onRetryModels={onRetryModels}
+      onClose={() => setConfig("")}
+    />
+  );
+
+  const modelLayer =
+    config === "model" &&
+    modelPanel &&
+    (phone ? (
+      <ComposerPicker
+        anchor={composerRef}
+        boundary={boundaryRef}
+        title={t("models.title")}
+        onClose={() => setConfig("")}
+      >
+        {modelPanel}
+      </ComposerPicker>
+    ) : (
+      <Sheet
+        onClose={() => setConfig("")}
+        anchor={anchorOf(".wstart .acc .project-summary")}
+        className="with-head new-task-model-sheet"
+      >
+        {modelPanel}
+      </Sheet>
+    ));
+
   return (
     <>
       {body}
-      {choosing && (phone ? (
-        <ComposerPicker anchor={cliRef} boundary={boundaryRef} onClose={() => setChoosing(false)}>{cliChoices}</ComposerPicker>
-      ) : (
-        <Sheet onClose={() => setChoosing(false)} title={t("new_session.choose_cli")} anchor={cliRef}>{cliChoices}</Sheet>
-      ))}
-      {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")}
-        composer={phone && config !== "machine" ? { anchor: composerRef, boundary: boundaryRef } : undefined} />}
+      {choosing &&
+        (phone ? (
+          <ComposerPicker
+            anchor={cliRef}
+            boundary={boundaryRef}
+            onClose={() => setChoosing(false)}
+          >
+            {cliChoices}
+          </ComposerPicker>
+        ) : (
+          <Sheet onClose={() => setChoosing(false)} title={t("new_session.choose_cli")} anchor={cliRef}>
+            {cliChoices}
+          </Sheet>
+        ))}
+      {machineSheet}
+      {modelLayer}
     </>
   );
 }
 
-/** The pages of the settings; 审批模式 is a scheduled task's only. */
-type Pick = "" | "machine" | "model" | "mode";
-
-/** 项目设置: the machine (where the account has more than one), and the
- * model of the CLI picked next to the box; a new task has no approval mode
- * of its own. Another CLI's set is reached by picking that CLI there. With
- * one machine the model is all there is, so its page opens at once.
- * scheduled: a scheduled task's settings, which keep the project block,
- * the 权限 row and the project's actions. */
-export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false, lockMachine = false, composer }: { composer?: ComposerAnchor; ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
-  const taskEditing = scheduled && lockMachine;
-  const { remote, p, machine } = ns;
-  // A new task picks its machine in the sentence, next to the project: its settings are the model's page and nothing else.
-  const lone = !scheduled;
-  const start = asked || (lone ? "model" : "");
-  const [pick, setPick] = useState<Pick>(start);
-  const [removing, setRemoving] = useState(false);
-  const [allModels, setAllModels] = useState(false);
-  // Opened right at one setting: done with it is done with the sheet.
-  const back2 = () => (start ? onClose() : setPick(""));
-  // The CLI was picked next to the box: the sheet is that CLI's settings and no other's.
-  const agent = ns.cfg.agent;
-  const cfg = ns.configFor(agent);
-  const info = ns.info;
-  const parts = describeParts(cfg, machine, info);
-  // How this CLI last ran in the project may be on a page of sessions not
-  // fetched yet. Until it is here its set is not shown as if known, nor
-  // changed: a change stores the whole set.
-  const open = ns.unreadFor(agent);
-  const { setWatch } = ns;
-  useEffect(() => {
-    setWatch(agent);
-    return () => setWatch(undefined);
-  }, [agent, setWatch]);
-  const set = (patch: Partial<NewConfig>) => {
-    if (!open) ns.setCfg({ ...cfg, ...patch });
-  };
-  const def = defaultsOf(info.settings, cfg.agent);
-  useEffect(() => {
-    if (pick === "model") info.retry();
-  }, [pick]); // Refresh the native CLI list each time the model page opens.
-  if (!scheduled && pick === "model") {
-    const panel = <NewTaskModelPanel key={cfg.machineId + "/" + cfg.agent} cfg={cfg} info={info} pending={open}
-      enabled={!open} onChange={value => set(value)} onClose={onClose} />;
-    return composer ? <ComposerPicker {...composer} title={t("models.title")} onClose={onClose}>{panel}</ComposerPicker> :
-      <Sheet onClose={onClose} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head new-task-model-sheet">{panel}</Sheet>;
-  }
-  // Machines this project has used; a new project can use any.
-  const choices: MachineView[] = (p && remote.peer(machine?.id).reachable ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
-  let body;
-  if (pick === "machine")
-    body = (
-      <div className="list">
-        {choices.map((m) => (
-          <button
-            key={m.id}
-            className={"mi" + (remote.peer(m.id).reachable ? "" : " dis")}
-            disabled={!remote.peer(m.id).reachable}
-            onClick={() => {
-              ns.setCfg(switchMachine(cfg, m), !remote.peer(machine?.id).reachable);
-              back2();
-            }}
-          >
-            <StateMark kind={remote.peer(m.id).reachable ? "online" : "off"} />
-            <div className="mt">
-              {m.id === cfg.machineId || !remote.peer(m.id).reachable ? machineName(m) : <b>{t("new_session.use_machine", { name: machineName(m) })}</b>}
-              {!remote.peer(m.id).reachable ? (
-                <div className="md">{m.lastSeenMs ? t("new_session.offline_last_seen", { time: ago(m.lastSeenMs) }) : t("new_session.offline_no_start")}</div>
-              ) : (
-                <div className="md">
-                  {m.id !== cfg.machineId && !machineAgents(m).includes(ns.cfg.agent)
-                    ? t("new_session.installed_fallback", { agents: machineAgents(m).map(agentName).join(t("common.list_separator")), missing: agentName(ns.cfg.agent), agent: agentName(switchMachine(cfg, m).agent) })
-                    : t("new_session.installed", { agents: machineAgents(m).map(agentName).join(t("common.list_separator")) })}
-                </div>
-              )}
-            </div>
-            {m.id === cfg.machineId && <span className="ck"><Check /></span>}
-          </button>
-        ))}
-      </div>
-    );
-  else if (pick === "model") {
-    const chosen = findModel(info.models?.models, cfg.model || def.model || info.models?.defaultModel || "");
-    // A long list shows three and the picked model, as the session sheet
-    // does, so 推理强度 below it stays in sight.
-    const list = info.models?.models ?? [];
-    const picked = cfg.model ? findModel(list, cfg.model) : undefined;
-    const few = allModels || list.length <= 5;
-    const shown = few ? list : [...list.slice(0, 3), ...(picked && !list.slice(0, 3).includes(picked) ? [picked] : [])];
-    body = (
-      <>
-        {info.error && (
-          <Banner kind="warn" action={l10n.t("common.retry")} onAction={info.retry}>
-            {l10n.t("new_session.model_list_default", { name: agentName(cfg.agent) })}</Banner>
-        )}
-        {!info.models && !info.error && <div className="hint top">{l10n.t("models.android_reading_machine", { name: machineName(machine) })}</div>}
-        <div className="list">
-          <button className="mi" onClick={() => set({ model: "", effort: "" })}>
-            <div className="mt">
-              {l10n.t("new_session.default_model")}<div className="md">{l10n.t("new_session.machine_project_defaults", { name: machineName(machine) })}</div>
-            </div>
-            {!cfg.model && <span className="ck"><Check /></span>}
-          </button>
-          {shown.map((m) => (
-            <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
-              <div className="mt">
-                {m.displayName || m.slug}
-                {m.efforts.length === 1 && <div className="md">{l10n.t("new_session.fixed_effort", { effort: m.efforts[0] })}</div>}
-              </div>
-              {m === picked && <span className="ck"><Check /></span>}
-            </button>
-          ))}
-          {!few && (
-            <button className="mi link-row" onClick={() => setAllModels(true)}>
-              <span className="mt">{l10n.t("models.all")}</span>
-              <ChevronRight className="chev" />
-            </button>
-          )}
-        </div>
-        {chosen && chosen.efforts.length > 0 && (
-          <>
-            <div className="fl">{l10n.t("models.effort")}</div>
-            <Segmented
-              className="full wrap"
-              label={l10n.t("models.effort")}
-              value={cfg.effort || (cfg.model ? chosen.defaultEffort : def.effort || chosen.defaultEffort)}
-              onChange={(e) => set({ effort: e })}
-              options={chosen.efforts.map((e) => ({ value: e, label: e }))}
-            />
-          </>
-        )}
-        {agentInfo(cfg.agent).standardContextOption && !scheduled && (
-          <>
-            <div className="fl">{l10n.t("models.context_window")}</div>
-            {parts.fixedWindow ? (
-              <div className="hint top">{l10n.t("models.standard_only")}</div>
-            ) : (
-              <Segmented
-                className="full"
-                label={l10n.t("models.context_window")}
-                value={cfg.standardContext ? "std" : "1m"}
-                onChange={(v) => set({ standardContext: v === "std" })}
-                options={[
-                  { value: "1m", label: "1M" },
-                  { value: "std", label: l10n.t("models.standard_window") },
-                ]}
-              />
-            )}
-          </>
-        )}
-      </>
-    );
-  } else if (pick === "mode") {
-    // A model without the auto mode (Claude Code's Haiku 4.5, or all
-    // Antigravity models) cannot start with it; the CLI's own list says
-    // which those are.
-    const chosen = cfg.model || def.model || info.models?.defaultModel || "";
-    const allNoAuto = agentInfo(cfg.agent).autoMayBeUnavailable && allAutoUnavailable(info.models?.models);
-    const noAuto = allNoAuto || (agentInfo(cfg.agent).autoMayBeUnavailable && autoUnavailable(info.models?.models, chosen));
-    body = (
-      <div className="list">
-        {[
-          { mode: ApprovalMode.UNSPECIFIED, name: l10n.t("models.default"), desc: l10n.t("new_session.follow_s_configuration", { value: String(agentName(cfg.agent)) }) },
-          { mode: ApprovalMode.ASK, name: l10n.t("modes.ask"), desc: l10n.t("modes.ask_desc") },
-          noAuto
-            ? { mode: ApprovalMode.AUTO, name: l10n.t("modes.auto"), desc: allNoAuto ? l10n.t("modes.account_unsupported") : l10n.t("new_session.this_model_has_no_auto_mode"), off: true }
-            : { mode: ApprovalMode.AUTO, name: l10n.t("modes.auto"), desc: l10n.t("modes.auto_desc", { agent: String(agentName(cfg.agent)) }) },
-          { mode: ApprovalMode.FULL_ACCESS, name: l10n.t("modes.full_access"), desc: l10n.t("modes.skip_all"), danger: true },
-        ].map((m: { mode: ApprovalMode; name: string; desc: string; danger?: boolean; off?: boolean }) => (
-          <button
-            key={m.mode}
-            className={"mi" + (m.danger ? " danger" : "")}
-            disabled={m.off}
-            onClick={() => {
-              set({ mode: m.mode });
-              back2();
-            }}
-          >
-            <div className="mt">
-              {m.name}
-              <div className="md">{m.desc}</div>
-            </div>
-            {m.mode === cfg.mode && <span className="ck"><Check /></span>}
-          </button>
-        ))}
-      </div>
-    );
-  }
-  const titles: Record<Pick, string> = { "": taskEditing ? l10n.t("new_session.task_settings") : l10n.t("projects.android_settings"), machine: t("common.machine"), model: t("models.title"), mode: taskEditing ? l10n.t("new_session.permissions") : l10n.t("modes.title") };
-  const many = ns.agents.length > 1;
-  if (open && pick && pick !== "machine") body = <div className="hint top">{t("new_session.reading_previous")}</div>;
-  const content = (
-    <>
-      {body ?? (
-        <>
-          {scheduled && (
-            <div className="list">
-              <div className="mi pid">
-                <Avatar name={projectName(cfg.cwd)} size="sm" />
-                <div className="mt">
-                  {projectName(cfg.cwd)}
-                  <div className="md mono"><PathText path={shortPath(cfg.cwd)} /></div>
-                </div>
-              </div>
-            </div>
-          )}
-          {scheduled && (
-            <>
-              <div className="fl">{l10n.t("list_state.ios_new_session")}</div>
-              <div className="list">
-                <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
-                  <span className="mt">{l10n.t("common.machine")}</span>
-                  <span className="mv">
-                    <StateMark kind={remote.peer(machine?.id).reachable || !remote.listed ? "online" : "off"} />
-                    {machineName(machine)}
-                  </span>
-                  <ChevronRight className="chev" />
-                </button>
-              </div>
-            </>
-          )}
-          {many && <div className="fl">{agentName(agent)}</div>}
-          {open ? (
-            <div className="hint top">{l10n.t("new_session.reading_previous")}</div>
-          ) : (
-            <div className="list">
-              <button className="mi" onClick={() => setPick("model")}>
-                <span className="mt">{l10n.t("models.title")}</span>
-                <span className="mv">{info.loading ? l10n.t("models.android_reading_machine", { name: String(machineName(machine)) }) : parts.model}</span>
-                <ChevronRight className="chev" />
-              </button>
-              {scheduled && (
-                <button className="mi" onClick={() => setPick("mode")}>
-                  <span className="mt">{taskEditing ? l10n.t("new_session.permissions") : l10n.t("approval.title")}</span>
-                  <span className={"mv" + ((cfg.mode || defaultModeOf(machine, cfg.agent).mode) === ApprovalMode.FULL_ACCESS ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
-                  <ChevronRight className="chev" />
-                </button>
-              )}
-            </div>
-          )}
-          {info.error && (
-            <Banner kind="warn" action={l10n.t("common.retry")} onAction={info.retry}>
-              {l10n.t("new_session.model_list_default", { name: agentName(cfg.agent) })}</Banner>
-          )}
-          {scheduled && <div className="hint">{taskEditing ? l10n.t("new_session.only_changes_this_task_existing_conversations_keep_their_settings") : <>{many ? l10n.t("new_session.each_cli_has_its_own_settings_choose_the_cli") : ""}{l10n.t("new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced")}</>}</div>}
-          {scheduled && !taskEditing && (
-            <div className="list">
-              <button className="mi link-row" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>
-                <span className="mt">{pinAction(remote, cfg.cwd).label}</span>
-              </button>
-              <button className="mi danger" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>
-                <span className="mt">{l10n.t("projects.remove_action")}</span>
-              </button>
-            </div>
-          )}
-          {scheduled && !taskEditing && removing && (
-            <RemoveProjectAlert
-              remote={remote}
-              path={cfg.cwd}
-              onCancel={() => setRemoving(false)}
-              onDone={() => {
-                onClose();
-                ns.go("");
-              }}
-            />
-          )}
-        </>
-      )}
-    </>
-  );
-  return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: t("common.done"), onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">{content}</Sheet>
-  );
-}
-
-/** Folder browser on a machine: breadcrumb, parent, subfolders. */
-export function DirBrowser({
+/** Connected new-session box backed by CoreHost. */
+export function NewBox({
   remote,
-  machineId,
-  start,
-  head,
-  label,
-  onPick,
+  projectKey,
+  go,
+  autoFocus,
+  variant = "sheet",
+  fixed,
+  onPickProject,
+  onClose,
+  notice,
+  settings = false,
+  onDraft,
 }: {
   remote: Remote;
-  machineId: string;
-  start: string;
-  head?: ReactNode;
-  label: (name: string) => string;
-  onPick: (path: string) => void;
+  projectKey: string;
+  go: Go;
+  autoFocus?: boolean;
+  variant?: "sheet" | "start";
+  fixed?: boolean;
+  onPickProject?: () => void;
+  onClose?: () => void;
+  notice?: ReactNode;
+  settings?: boolean;
+  onDraft?: () => void;
 }) {
-  const [dir, setDir] = useState<ListDirectoriesResponse>();
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState("");
-  const open = async (path: string) => {
-    setError("");
-    setLoading(path);
-    try {
-      const r = await remote.machineCommand(machineId, { case: "listDirectories", value: { path } });
-      if (r.kind.case === "listDirectories") setDir(r.kind.value);
-    } catch (e) {
-      setError(errorText(e));
-    } finally {
-      setLoading("");
-    }
-  };
+  useRemote(remote);
+  const host = useCoreHost(remote, go);
+  const vm = useNewSessionView(host, projectKey);
+  const activeKey = vm.projectKey || projectKey;
+
   useEffect(() => {
-    setDir(undefined);
-    void open(start);
-  }, [machineId]); // eslint-disable-line react-hooks/exhaustive-deps
-  // The list fades into the sheet at an edge that more of it lies past (design-system §4 材质).
-  const listRef = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ up: false, down: false });
-  const measure = () => {
-    const el = listRef.current;
-    if (!el) return;
-    const up = el.scrollTop > 0;
-    const down = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
-    setEdges((e) => (e.up === up && e.down === down ? e : { up, down }));
-  };
-  useEffect(measure, [dir, loading]);
-  const parts = dir ? pathCrumbs(dir.path) : [];
-  const name = parts[parts.length - 1] || "/";
+    host.dispatch(
+      create(EventSchema, {
+        event: {
+          case: "newSessionOpen",
+          value: create(NewSessionOpenActionSchema, { projectKey }),
+        },
+      }),
+    );
+  }, [host, projectKey]);
+
+  useEffect(() => {
+    if (!vm.settled && activeKey && remote.moreSessions) {
+      void remote.loadMoreSessions();
+    }
+  }, [vm.settled, activeKey, remote, remote.moreSessions]);
+
+  // Restore any persisted browser draft for this project if Core's draft is still empty.
+  useEffect(() => {
+    if (!projectKey || vm.busy || vm.frozen) return;
+    const saved = remote.drafts.get("new:" + projectKey);
+    if (saved && vm.prompt === "") {
+      host.dispatch(
+        create(EventSchema, {
+          event: {
+            case: "newSessionSetPrompt",
+            value: create(NewSessionSetPromptActionSchema, {
+              prompt: saved,
+              attachmentCount: 0,
+              attachmentsMoved: false,
+            }),
+          },
+        }),
+      );
+    }
+  }, [host, remote, projectKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <>
-      {head}
-      <div className="crumb">
-        {dir ? (
-          <>
-            {parts.slice(0, -1).join(" / ")}
-            {parts.length > 1 && " / "}
-            <b>{name}</b>
-          </>
-        ) : (
-          "…"
-        )}
-      </div>
-      {error && (
-        <Banner kind="err" action={t("common.retry")} onAction={() => void open(loading || dir?.path || start)}>
-          {t("projects.directory_failed", { reason: error })}
-        </Banner>
-      )}
-      <div className={"list dirs" + (edges.up ? " fade-top" : "") + (edges.down ? " fade-bottom" : "")} ref={listRef} onScroll={measure}>
-        {dir?.parent && (
-          <button className="mi" disabled={!!loading} onClick={() => void open(dir.parent)}>
-            <ChevronLeft className="lead" />
-            <div className="mt">{t("projects.parent_directory")}</div>
-          </button>
-        )}
-        {dir?.dirs.map((d) => (
-          <button key={d} className="mi" disabled={!!loading} onClick={() => void open(dir.path.replace(/\/$/, "") + "/" + d)}>
-            <div className="mt">{d}</div>
-            <ChevronRight className="chev" />
-          </button>
-        ))}
-        {dir && dir.dirs.length === 0 && <div className="mi note">{t("projects.no_subdirectories")}</div>}
-        {!dir && !error && <div className="mi note">{t("projects.reading_directory")}</div>}
-      </div>
-      <div className="btns sheet-foot">
-        <button className="btn pri" disabled={!dir || !!loading} onClick={() => dir && onPick(dir.path)}>
-          {label(name)}
-        </button>
-      </div>
-    </>
+    <NewBoxView
+      key={activeKey}
+      vm={vm}
+      remote={remote}
+      autoFocus={autoFocus}
+      variant={variant}
+      fixed={fixed}
+      onPickProject={onPickProject}
+      onClose={onClose}
+      notice={notice}
+      initialConfigOpen={settings}
+      onDraft={onDraft}
+      onSelectMachine={(machineId) =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionSelectMachine",
+              value: create(NewSessionSelectMachineActionSchema, { machineId }),
+            },
+          }),
+        )
+      }
+      onSelectAgent={(agent) =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionSelectAgent",
+              value: create(NewSessionSelectAgentActionSchema, { agent }),
+            },
+          }),
+        )
+      }
+      onSelectModel={(model, effort, standardContext) =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionSelectModel",
+              value: create(NewSessionSelectModelActionSchema, {
+                model,
+                effort,
+                ...(standardContext !== undefined ? { standardContext } : {}),
+              }),
+            },
+          }),
+        )
+      }
+      onRetryModels={() =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionRetryModels",
+              value: create(NewSessionProjectActionSchema, { projectKey: activeKey }),
+            },
+          }),
+        )
+      }
+      onRetrySaveConfig={() =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionRetrySaveConfig",
+              value: create(NewSessionProjectActionSchema, { projectKey: activeKey }),
+            },
+          }),
+        )
+      }
+      onSetPrompt={(prompt, attachmentCount, attachmentsMoved) =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionSetPrompt",
+              value: create(NewSessionSetPromptActionSchema, {
+                prompt,
+                attachmentCount,
+                attachmentsMoved,
+              }),
+            },
+          }),
+        )
+      }
+      onSubmit={() =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionSubmit",
+              value: create(NewSessionSubmitActionSchema, { projectKey: activeKey }),
+            },
+          }),
+        )
+      }
+      onRetryDiskFull={() => {
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionSubmit",
+              value: create(NewSessionSubmitActionSchema, { projectKey: activeKey }),
+            },
+          }),
+        );
+      }}
+      onAbandonStart={() =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "newSessionAbandonStart",
+              value: create(NewSessionProjectActionSchema, { projectKey: activeKey }),
+            },
+          }),
+        )
+      }
+      onOpenMachineSettings={(machineId) => go("m/" + machineId)}
+      onOpenDiskUsage={(machineId) => go("machine-status/" + encodeURIComponent(machineId))}
+      onReaddProject={() =>
+        host.dispatch(
+          create(EventSchema, {
+            event: {
+              case: "projectToggleHide",
+              value: create(ProjectKeyActionSchema, { projectKey: activeKey }),
+            },
+          }),
+        )
+      }
+      onRegisterTray={(k, getter) => host.registerTray(k, getter)}
+    />
   );
 }
 
-/** 选项目: the project list, each row ending in ›, 新项目… at the end. */
-export function ProjectPicker({ remote, onPick, onNew, onClose, title = t("projects.choose") }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
+/** 选项目: the project list rendered from Core's ProjectListingView, 新项目… at the end. */
+export function ProjectPicker({
+  remote,
+  onPick,
+  onNew,
+  onClose,
+  title = t("projects.choose"),
+}: {
+  remote: Remote;
+  onPick: (key: string) => void;
+  onNew: () => void;
+  onClose: () => void;
+  title?: string;
+}) {
+  const host = useCoreHost(remote);
+  const manage = useProjectView(host, "", true).manage;
   return (
-    <Sheet onClose={onClose} title={title} action={{ label: t("common.cancel"), onClick: onClose }} anchor={anchorOf(".wstart .sent .tok.p")}>
-      <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
+    <Sheet
+      onClose={onClose}
+      title={title}
+      action={{ label: t("common.cancel"), onClick: onClose }}
+      anchor={anchorOf(".wstart .sent .tok.p")}
+    >
+      {manage?.listing && (
+        <ProjectList
+          listing={manage.listing}
+          onSearch={(query) =>
+            host.dispatch(
+              create(EventSchema, {
+                event: {
+                  case: "projectSetSearch",
+                  value: create(ProjectSetSearchActionSchema, { query }),
+                },
+              }),
+            )
+          }
+          onNew={onNew}
+          item={(p) => (
+            <ProjectItem
+              key={p.key}
+              p={p}
+              onClick={() => onPick(p.key)}
+              end={<ChevronRight className="chev" />}
+            />
+          )}
+        />
+      )}
     </Sheet>
   );
 }
 
-/** A new project: a machine, then a folder on it. */
-export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine }: { remote: Remote; onBack?: () => void; onDone: (machineId: string, path: string) => void; onClose: () => void; fixedMachine?: string }) {
-  const machines = [...remote.machines.values()].filter(m => !fixedMachine || m.id === fixedMachine).sort((a, b) => Number(remote.peer(b.id).reachable) - Number(remote.peer(a.id).reachable) || machineName(a).localeCompare(machineName(b)));
-  const [machineId, setMachineId] = useState(machines.find((m) => remote.peer(m.id).reachable)?.id ?? "");
-  const m = remote.machines.get(machineId);
-  return (
-    <Sheet onClose={onClose} title={fixedMachine ? t("projects.choose_directory") : t("projects.new_choose_directory")} back={onBack}>
-      {remote.machines.size > 1 && <Segmented
-        className="full machines"
-        label={t("common.machine")}
-        value={machineId || undefined}
-        onChange={setMachineId}
-        options={machines.map((x) => ({
-          value: x.id,
-          disabled: !remote.peer(x.id).reachable || !!fixedMachine,
-          label: (
-            <>
-              <StateMark kind={remote.peer(x.id).reachable ? "online" : "off"} />
-              {machineName(x)}
-            </>
-          ),
-        }))}
-      />}
-      {!machineId ? (
-        <div className="hint">{t("projects.no_online_computers")}</div>
-      ) : (
-        <DirBrowser key={machineId} remote={remote} machineId={machineId} start={m?.meta?.home ?? ""} label={(name) => t("projects.use_directory", { name })} onPick={(path) => onDone(machineId, path)} />
-      )}
-    </Sheet>
-  );
-}
-
-/** The ＋ flow: pick a project, or make a new one; then its page with the
- * box focused. */
-export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remote; go: Go; onClose: () => void; onPicked?: (key: string) => void; start?: "new" }) {
-  const listed = projects(remote.sessions.values(), remote.machines.values(), remote.projectPrefs().settings);
-  const pick = listed.length > 0 && !start;
+/** The ＋ flow: pick a project, or add a folder via Core's DirPickerView; then open its new-session box. */
+export function NewFlow({
+  remote,
+  go,
+  onClose,
+  onPicked,
+  start,
+}: {
+  remote: Remote;
+  go: Go;
+  onClose: () => void;
+  onPicked?: (key: string) => void;
+  start?: "new";
+}) {
+  const host = useCoreHost(remote, go);
+  const manage = useProjectView(host, "", true).manage;
+  const hasProjects = (manage?.projectCount ?? 0) > 0;
+  const pick = hasProjects && !start;
   const [step, setStep] = useState<"project" | "new">(pick ? "project" : "new");
+
+  useEffect(() => {
+    if (step !== "new") return;
+    host.dispatch(
+      create(EventSchema, {
+        event: {
+          case: "projectOpenDirPicker",
+          value: create(DirPickerOpenActionSchema, { forNewTask: true }),
+        },
+      }),
+    );
+    return () => {
+      host.dispatch(
+        create(EventSchema, { event: { case: "projectCloseDirPicker", value: {} } }),
+      );
+    };
+  }, [host, step]);
+
   const open = (key: string) => {
     onClose();
-    if (onPicked) return onPicked(key);
+    if (onPicked) {
+      onPicked(key);
+      return;
+    }
     remote.focusProject = key;
     go("p/" + encodeURIComponent(key));
   };
-  if (step === "new")
+
+  if (step === "new" && manage?.dirPicker) {
     return (
-      <NewProjectSheet
-        remote={remote}
+      <DirPickerSheet
+        picker={manage.dirPicker}
         onBack={pick ? () => setStep("project") : undefined}
         onClose={onClose}
-        onDone={(machineId, path) => {
-          addProject(remote, machineId, path);
+        onNavigate={(machineId, path) =>
+          host.dispatch(
+            create(EventSchema, {
+              event: {
+                case: "projectDirNavigate",
+                value: create(DirNavigateActionSchema, { machineId, path }),
+              },
+            }),
+          )
+        }
+        onConfirm={(path) => {
+          if (manage.dirPicker?.machineId) {
+            remote.draftMachines.set(path, manage.dirPicker.machineId);
+          }
+          host.dispatch(
+            create(EventSchema, {
+              event: {
+                case: "projectAdd",
+                value: create(ProjectAddActionSchema, { path }),
+              },
+            }),
+          );
           open(path);
         }}
       />
     );
-  return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} />;
+  }
+  return (
+    <ProjectPicker
+      remote={remote}
+      onPick={open}
+      onNew={() => setStep("new")}
+      onClose={onClose}
+    />
+  );
 }
 
-/** What the new-session settings say: the machine is named in the
- * sentence (where the account has more than one), the CLI and the model in
- * the summary. */
-export type Summary = { agent: string; machine: string; model: string; effort: string };
-
 /** The model can shorten; the CLI prefix and effective effort stay whole. */
-export function ConfigSummary({ summary, bare, ...button }: { summary: { agent: string; model: string; effort?: string }; bare?: boolean } & ComponentProps<"button">) {
+export function ConfigSummary({
+  summary,
+  bare,
+  ...button
+}: {
+  summary: { agent: string; model: string; effort?: string };
+  bare?: boolean;
+} & ComponentProps<"button">) {
   const { agent, model, effort } = summary;
   return (
-    <button className="tok project-summary" aria-label={effort ? t("models.summary_effort_label", { model, effort }) : t("models.summary_label", { model })} {...button}>
+    <button
+      className="tok project-summary"
+      aria-label={
+        effort
+          ? t("models.summary_effort_label", { model, effort })
+          : t("models.summary_label", { model })
+      }
+      {...button}
+    >
       {!bare && <span className="fx">{agent} · </span>}
       <span className="mdl">{model}</span>
       {effort && <span className="effort"> · {effort}</span>}
