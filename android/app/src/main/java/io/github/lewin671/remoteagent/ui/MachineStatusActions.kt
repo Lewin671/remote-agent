@@ -116,6 +116,16 @@ object CleanupDraft {
     fun clear() { pending = null }
 }
 
+/** Appends a cleanup prompt to existing draft text without duplicating it. */
+internal fun cleanupDraftText(existing: String, prompt: String): String {
+    val trimmed = existing.trimEnd()
+    return when {
+        trimmed.isEmpty() -> prompt
+        trimmed == prompt || trimmed.endsWith("\n\n$prompt") -> trimmed
+        else -> "$trimmed\n\n$prompt"
+    }
+}
+
 /**
  * Readies the draft of 让 Agent 帮我清理 (ui-spec B4): the computer chosen, the project the computer used last, the
  * words in the box after what was already there. Nothing is sent. The project's key, or null (the prompt is held for the

@@ -421,5 +421,11 @@ internal fun seedCoreForTest(
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_PROJECT,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_NEW_SESSION,
         io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SETTINGS,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_DEVICES,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_MACHINE_STATUS,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_QUOTA,
+        io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL,
     )) coreHost.refreshScreenOnWorker(t)
 }

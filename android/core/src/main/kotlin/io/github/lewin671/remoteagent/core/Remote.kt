@@ -243,6 +243,7 @@ class Remote(
 
     private val _directPeers = MutableStateFlow<Map<String, PeerState>>(emptyMap())
     private val lastDirectReady = ConcurrentHashMap<String, Boolean>()
+    private val lastDirectReports = ConcurrentHashMap<String, DirectRouteReport>()
 
     internal val direct: DirectEngine = DirectEngine(
         account = account,
@@ -278,7 +279,19 @@ class Remote(
             )
         }
         _directPeers.value = updatedPeers
+        publishDirectReports(syncState.machinesList.map { it.machineId })
     }
+
+    private fun publishDirectReports(machineIds: List<String>) {
+        for (id in machineIds) {
+            val report = direct.directStatus(id).toRouteReport()
+            if (lastDirectReports.put(id, report) != report) {
+                coreHost.reportMachineDirectStatus(id, report)
+            }
+        }
+    }
+
+    fun directStatusReport(machineId: String): DirectRouteReport = direct.directStatus(machineId).toRouteReport()
 
     internal val deviceLink = DeviceLink(RelayPath(
         api = api,
@@ -356,6 +369,12 @@ class Remote(
     val homeView: StateFlow<HomeViewModel> get() = coreHost.homeView
     val projectView: StateFlow<ProjectViewModel> get() = coreHost.projectView
     val newSessionView: StateFlow<NewSessionViewModel> get() = coreHost.newSessionView
+    val settingsView: StateFlow<SettingsViewModel> get() = coreHost.settingsView
+    val machineStatusView: StateFlow<MachineStatusViewModel> get() = coreHost.machineStatusView
+    val machineSettingsView: StateFlow<MachineSettingsViewModel> get() = coreHost.machineSettingsView
+    val quotaView: StateFlow<QuotaViewModel> get() = coreHost.quotaView
+    val devicesView: StateFlow<DevicesViewModel> get() = coreHost.devicesView
+    val clientDetailView: StateFlow<ClientDetailViewModel> get() = coreHost.clientDetailView
     val coreNavigation: SharedFlow<NavigateEffect> get() = coreHost.navigationEvents
 
     // --- Transitional Step 3/4 view & schedule projection ---
@@ -376,9 +395,16 @@ class Remote(
     }
 
     init {
+        coreHost.onDirectPreference = { eff ->
+            direct.setEnabled(eff.machineId, eff.enabled)
+            val report = direct.directStatus(eff.machineId).toRouteReport()
+            lastDirectReports[eff.machineId] = report
+            coreHost.reportMachineDirectStatus(eff.machineId, report)
+        }
         coreHost.onRender = { targets ->
             if (io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE in targets) {
                 updateProjectedStateNow()
+                publishDirectReports(coreHost.syncStateView.value.machinesList.map { it.machineId })
             }
         }
         scope.launch {

@@ -3,6 +3,9 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
+import io.github.lewin671.remoteagent.core.transport.DirectFailReason
+import io.github.lewin671.remoteagent.core.transport.DirectStage
+import io.github.lewin671.remoteagent.core.transport.DirectStatus
 import io.github.lewin671.remoteagent.corebind.Core
 import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Agent
@@ -14,6 +17,7 @@ import java.security.SecureRandom
 import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 
 const val CORE_ENDED_PAGE = 30
 private const val CALENDAR_MONTH_HISTORY = 35
@@ -85,6 +89,7 @@ class CoreHost(
     private var coalescingRenders = false
 
     private val timers = HashMap<Long, Job>()
+    private val machinePollTimers = HashMap<String, Job>()
 
     private class SessionWatcher(
         val flow: MutableStateFlow<SessionDataView> = MutableStateFlow(SessionDataView.getDefaultInstance()),
@@ -106,6 +111,11 @@ class CoreHost(
     var onSaveHomeScope: (SaveHomeScopeEffect) -> Unit = {}
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onAttachmentsSettled: (AttachmentsSettledEffect) -> Unit = {}
+    var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
+    var onRenameClient: (RenameClientEffect) -> Unit = {}
+    var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
+    var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
+    var onPrepareCleanupSession: (PrepareCleanupSessionEffect) -> Unit = {}
     var onRender: (List<ScreenTarget>) -> Unit = {}
 
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
@@ -113,6 +123,11 @@ class CoreHost(
     private var projectManage: Boolean = true
     private var projectEndedLimit: Int = CORE_ENDED_PAGE
     private var newSessionProjectKey: String = ""
+    private var machineStatusId: String = ""
+    private var machineSettingsId: String = ""
+    private var quotaMachineId: String = ""
+    private var quotaFilterAgent: Agent = Agent.AGENT_UNSPECIFIED
+    private var clientDetailId: String = ""
     private var testOverrideViews = false
 
     private val _homeView = MutableStateFlow(HomeViewModel.getDefaultInstance())
@@ -127,11 +142,35 @@ class CoreHost(
     private val _syncStateView = MutableStateFlow(SyncStateView.getDefaultInstance())
     val syncStateView: StateFlow<SyncStateView> = _syncStateView.asStateFlow()
 
+    private val _settingsView = MutableStateFlow(SettingsViewModel.getDefaultInstance())
+    val settingsView: StateFlow<SettingsViewModel> = _settingsView.asStateFlow()
+
+    private val _machineStatusView = MutableStateFlow(MachineStatusViewModel.getDefaultInstance())
+    val machineStatusView: StateFlow<MachineStatusViewModel> = _machineStatusView.asStateFlow()
+
+    private val _machineSettingsView = MutableStateFlow(MachineSettingsViewModel.getDefaultInstance())
+    val machineSettingsView: StateFlow<MachineSettingsViewModel> = _machineSettingsView.asStateFlow()
+
+    private val _quotaView = MutableStateFlow(QuotaViewModel.getDefaultInstance())
+    val quotaView: StateFlow<QuotaViewModel> = _quotaView.asStateFlow()
+
+    private val _devicesView = MutableStateFlow(DevicesViewModel.getDefaultInstance())
+    val devicesView: StateFlow<DevicesViewModel> = _devicesView.asStateFlow()
+
+    private val _clientDetailView = MutableStateFlow(ClientDetailViewModel.getDefaultInstance())
+    val clientDetailView: StateFlow<ClientDetailViewModel> = _clientDetailView.asStateFlow()
+
     private val _navigationEvents = MutableSharedFlow<NavigateEffect>(extraBufferCapacity = 16)
     val navigationEvents: SharedFlow<NavigateEffect> = _navigationEvents.asSharedFlow()
 
     private val _attachmentsSettledEvents = MutableSharedFlow<AttachmentsSettledEffect>(extraBufferCapacity = 16)
     val attachmentsSettledEvents: SharedFlow<AttachmentsSettledEffect> = _attachmentsSettledEvents.asSharedFlow()
+
+    private val _renameClientEvents = MutableSharedFlow<RenameClientEffect>(extraBufferCapacity = 8)
+    val renameClientEvents: SharedFlow<RenameClientEffect> = _renameClientEvents.asSharedFlow()
+
+    private val _prepareCleanupEvents = MutableSharedFlow<PrepareCleanupSessionEffect>(extraBufferCapacity = 8)
+    val prepareCleanupEvents: SharedFlow<PrepareCleanupSessionEffect> = _prepareCleanupEvents.asSharedFlow()
 
     init {
         if (!closed.get()) {
@@ -277,6 +316,18 @@ class CoreHost(
                 _attachmentsSettledEvents.tryEmit(effect.attachmentsSettled)
                 onAttachmentsSettled(effect.attachmentsSettled)
             }
+            Effect.EffectCase.SCHEDULE_MACHINE_POLL -> scheduleMachinePoll(effect.scheduleMachinePoll)
+            Effect.EffectCase.DIRECT_PREFERENCE -> onDirectPreference(effect.directPreference)
+            Effect.EffectCase.RENAME_CLIENT -> {
+                _renameClientEvents.tryEmit(effect.renameClient)
+                onRenameClient(effect.renameClient)
+            }
+            Effect.EffectCase.CHECK_UPDATES -> onCheckUpdates(effect.checkUpdates)
+            Effect.EffectCase.PERSIST_CLIENT_PREFS -> onPersistClientPrefs(effect.persistClientPrefs)
+            Effect.EffectCase.PREPARE_CLEANUP_SESSION -> {
+                _prepareCleanupEvents.tryEmit(effect.prepareCleanupSession)
+                onPrepareCleanupSession(effect.prepareCleanupSession)
+            }
             Effect.EffectCase.REQUEST_ENTROPY -> {
                 val req = effect.requestEntropy
                 val ids = maxOf(req.minIds, INITIAL_ENTROPY_IDS / 2)
@@ -330,6 +381,41 @@ class CoreHost(
         }
     }
 
+    private fun scheduleMachinePoll(eff: ScheduleMachinePollEffect) {
+        val id = eff.machineId
+        if (eff.cancel || id.isEmpty()) {
+            synchronized(machinePollTimers) {
+                machinePollTimers.remove(id)?.cancel()
+            }
+            return
+        }
+        val gen = eff.generation
+        val delayMs = eff.delayMs.coerceAtLeast(0L)
+        lateinit var job: Job
+        job = scope.launch {
+            if (delayMs > 0L) delay(delayMs)
+            if (!isActive || closed.get()) return@launch
+            dispatchAction {
+                val active = synchronized(machinePollTimers) {
+                    (machinePollTimers[id] === job).also { if (it) machinePollTimers.remove(id) }
+                }
+                if (active) {
+                    sendOnWorker {
+                        setMachineStatusPollTick(
+                            MachineStatusPollTickEvent.newBuilder()
+                                .setMachineId(id)
+                                .setGeneration(gen),
+                        )
+                    }
+                }
+            }
+        }
+        synchronized(machinePollTimers) {
+            machinePollTimers.remove(id)?.cancel()
+            machinePollTimers[id] = job
+        }
+    }
+
     fun refreshScreenOnWorker(target: ScreenTarget) {
         if (closed.get() || testOverrideViews) return
         if (target == ScreenTarget.SCREEN_TARGET_SESSION_DATA) {
@@ -355,6 +441,34 @@ class CoreHost(
                 ).build()
             ScreenTarget.SCREEN_TARGET_SYNC_STATE ->
                 Screen.newBuilder().setSyncState(SyncStateScreenRequest.getDefaultInstance()).build()
+            ScreenTarget.SCREEN_TARGET_SETTINGS ->
+                Screen.newBuilder().setSettings(SettingsScreenRequest.getDefaultInstance()).build()
+            ScreenTarget.SCREEN_TARGET_MACHINE_STATUS -> {
+                if (machineStatusId.isEmpty()) return
+                Screen.newBuilder().setMachineStatus(
+                    MachineStatusScreenRequest.newBuilder().setMachineId(machineStatusId),
+                ).build()
+            }
+            ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS -> {
+                if (machineSettingsId.isEmpty()) return
+                Screen.newBuilder().setMachineSettings(
+                    MachineSettingsScreenRequest.newBuilder().setMachineId(machineSettingsId),
+                ).build()
+            }
+            ScreenTarget.SCREEN_TARGET_QUOTA ->
+                Screen.newBuilder().setQuota(
+                    QuotaScreenRequest.newBuilder()
+                        .setMachineId(quotaMachineId)
+                        .setFilterAgent(quotaFilterAgent),
+                ).build()
+            ScreenTarget.SCREEN_TARGET_DEVICES ->
+                Screen.newBuilder().setDevices(DevicesScreenRequest.getDefaultInstance()).build()
+            ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL -> {
+                if (clientDetailId.isEmpty()) return
+                Screen.newBuilder().setClientDetail(
+                    ClientDetailScreenRequest.newBuilder().setDeviceId(clientDetailId),
+                ).build()
+            }
             else -> return
         }
         val vm = viewOnWorker(screen) ?: return
@@ -363,6 +477,12 @@ class CoreHost(
             ViewModel.ViewCase.PROJECT -> _projectView.value = vm.project
             ViewModel.ViewCase.NEW_SESSION -> _newSessionView.value = vm.newSession
             ViewModel.ViewCase.SYNC_STATE -> _syncStateView.value = vm.syncState
+            ViewModel.ViewCase.SETTINGS -> _settingsView.value = vm.settings
+            ViewModel.ViewCase.MACHINE_STATUS -> _machineStatusView.value = vm.machineStatus
+            ViewModel.ViewCase.MACHINE_SETTINGS -> _machineSettingsView.value = vm.machineSettings
+            ViewModel.ViewCase.QUOTA -> _quotaView.value = vm.quota
+            ViewModel.ViewCase.DEVICES -> _devicesView.value = vm.devices
+            ViewModel.ViewCase.CLIENT_DETAIL -> _clientDetailView.value = vm.clientDetail
             else -> {}
         }
     }
@@ -575,6 +695,170 @@ class CoreHost(
     fun abandonNewSessionStart(projectKey: String = "") =
         send { setNewSessionAbandonStart(NewSessionProjectAction.newBuilder().setProjectKey(projectKey)) }
 
+    // --- Machine status, quota, machine settings, client & app settings actions ---
+
+    fun openSettings() = dispatchAction {
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_SETTINGS)
+    }
+
+    fun openDevices() = dispatchAction {
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_DEVICES)
+    }
+
+    fun openClientDetail(deviceId: String) = dispatchAction {
+        clientDetailId = deviceId
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_CLIENT_DETAIL)
+    }
+
+    fun renameClient(deviceId: String, name: String) =
+        send { setUpdateClientName(UpdateClientNameEvent.newBuilder().setDeviceId(deviceId).setName(name)) }
+
+    fun openQuota(machineId: String = "", filterAgent: Agent = Agent.AGENT_UNSPECIFIED) = dispatchAction {
+        quotaMachineId = machineId
+        quotaFilterAgent = filterAgent
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_QUOTA)
+    }
+
+    fun watchMachineStatus(machineId: String, visible: Boolean, mode: MachinePollMode) = dispatchAction {
+        if (visible && mode == MachinePollMode.MACHINE_POLL_MODE_LIVE && machineId.isNotEmpty()) {
+            machineStatusId = machineId
+        }
+        sendOnWorker {
+            setMachineStatusWatch(
+                MachineStatusWatchEvent.newBuilder()
+                    .setMachineId(machineId)
+                    .setVisible(visible)
+                    .setMode(mode),
+            )
+        }
+        if (visible && mode == MachinePollMode.MACHINE_POLL_MODE_LIVE && machineId.isNotEmpty()) {
+            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_MACHINE_STATUS)
+        }
+    }
+
+    fun retryMachineStatus(machineId: String) =
+        send { setMachineStatusRetry(MachineStatusRetryEvent.newBuilder().setMachineId(machineId)) }
+
+    fun selectMachineStatusTab(machineId: String, tab: MachineUsageTab) =
+        send { setMachineStatusTab(MachineStatusTabEvent.newBuilder().setMachineId(machineId).setTab(tab)) }
+
+    fun scrubMachineStatus(machineId: String, kind: MachineChartKind, pointIndex: Int = 0, clear: Boolean = false) = send {
+        setMachineStatusScrub(
+            MachineStatusScrubEvent.newBuilder()
+                .setMachineId(machineId)
+                .setKind(kind)
+                .setPointIndex(pointIndex)
+                .setClear(clear),
+        )
+    }
+
+    fun prepareCleanupSession(machineId: String) =
+        send { setMachineStatusCleanup(MachineStatusCleanupEvent.newBuilder().setMachineId(machineId)) }
+
+    fun openMachineSettings(machineId: String) = dispatchAction {
+        machineSettingsId = machineId
+        sendOnWorker { setMachineSettingsOpen(MachineSettingsOpenEvent.newBuilder().setMachineId(machineId)) }
+        refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_MACHINE_SETTINGS)
+    }
+
+    fun selectMachineSettingsAgent(machineId: String, agent: Agent) = send {
+        setMachineSettingsSelectAgent(
+            MachineSettingsSelectAgentEvent.newBuilder()
+                .setMachineId(machineId)
+                .setAgent(agent),
+        )
+    }
+
+    fun updateMachineAgentDefaults(
+        machineId: String,
+        agent: Agent,
+        model: String? = null,
+        effort: String? = null,
+        mode: ApprovalMode? = null,
+    ) = send {
+        val b = UpdateMachineAgentDefaultsEvent.newBuilder()
+            .setMachineId(machineId)
+            .setAgent(agent)
+        model?.let { b.setModel(it) }
+        effort?.let { b.setEffort(it) }
+        mode?.let { b.setMode(it) }
+        setUpdateMachineAgentDefaults(b)
+    }
+
+    fun updateMachineDaemonSettings(
+        machineId: String,
+        approvalTimeoutSeconds: Int? = null,
+        idleCloseMinutes: Int? = null,
+        imageUploadQuotaBytes: Long? = null,
+        cleanImages: Boolean = false,
+    ) = send {
+        val b = UpdateMachineDaemonSettingsEvent.newBuilder().setMachineId(machineId)
+        approvalTimeoutSeconds?.let { b.setApprovalTimeoutSeconds(it) }
+        idleCloseMinutes?.let { b.setIdleCloseMinutes(it) }
+        imageUploadQuotaBytes?.let { b.setImageUploadQuotaBytes(it) }
+        if (cleanImages) b.setCleanImages(true)
+        setUpdateMachineDaemonSettings(b)
+    }
+
+    fun updateDirectPreference(machineId: String, enabled: Boolean) = send {
+        setUpdateDirectPreference(
+            UpdateDirectPreferenceEvent.newBuilder()
+                .setMachineId(machineId)
+                .setEnabled(enabled),
+        )
+    }
+
+    fun reportMachineDirectStatus(machineId: String, report: DirectRouteReport) = send {
+        setMachineDirectStatus(
+            MachineDirectStatusEvent.newBuilder()
+                .setMachineId(machineId)
+                .setReport(report),
+        )
+    }
+
+    fun reportNotificationPrefs(
+        supported: Boolean? = null,
+        permission: NotificationPermissionState? = null,
+        pushState: PushRegistrationState? = null,
+        notifyAttention: Boolean? = null,
+        notifyTurnEnded: Boolean? = null,
+        notifyScheduled: Boolean? = null,
+        showContent: Boolean? = null,
+        errorDetail: String? = null,
+    ) = send {
+        val b = SetNotificationPrefEvent.newBuilder()
+        supported?.let { b.setSupported(it) }
+        permission?.let { b.setPermission(it) }
+        pushState?.let { b.setPushState(it) }
+        notifyAttention?.let { b.setNotifyAttention(it) }
+        notifyTurnEnded?.let { b.setNotifyTurnEnded(it) }
+        notifyScheduled?.let { b.setNotifyScheduled(it) }
+        showContent?.let { b.setShowContent(it) }
+        errorDetail?.let { b.setErrorDetail(it) }
+        setSetNotificationPref(b)
+    }
+
+    fun setAppearancePref(theme: ThemePreference) = send {
+        setSetAppearancePref(SetAppearancePrefEvent.newBuilder().setTheme(theme))
+    }
+
+    fun reportConnCheckStatus(serverState: ConnProbeState, latencyMs: Int = 0, lastFailure: String = "") = send {
+        setConnCheckStatus(
+            ConnCheckStatusEvent.newBuilder()
+                .setServerState(serverState)
+                .setLatencyMs(latencyMs)
+                .setLastFailure(lastFailure),
+        )
+    }
+
+    fun reportClientUpdateState(event: ClientUpdateStateEvent) = send {
+        setClientUpdateState(event)
+    }
+
+    fun checkForUpdates() = send {
+        setCheckForUpdates(CheckForUpdatesEvent.getDefaultInstance())
+    }
+
     fun tickClock(nowMs: Long = clock()) =
         send { setClockUpdated(buildLocalCalendar(nowMs, zone())) }
 
@@ -583,12 +867,24 @@ class CoreHost(
         project: ProjectViewModel? = null,
         newSession: NewSessionViewModel? = null,
         syncState: SyncStateView? = null,
+        settings: SettingsViewModel? = null,
+        machineStatus: MachineStatusViewModel? = null,
+        machineSettings: MachineSettingsViewModel? = null,
+        quota: QuotaViewModel? = null,
+        devices: DevicesViewModel? = null,
+        clientDetail: ClientDetailViewModel? = null,
     ) {
         testOverrideViews = true
         home?.let { _homeView.value = it }
         project?.let { _projectView.value = it }
         newSession?.let { _newSessionView.value = it }
         syncState?.let { _syncStateView.value = it }
+        settings?.let { _settingsView.value = it }
+        machineStatus?.let { _machineStatusView.value = it }
+        machineSettings?.let { _machineSettingsView.value = it }
+        quota?.let { _quotaView.value = it }
+        devices?.let { _devicesView.value = it }
+        clientDetail?.let { _clientDetailView.value = it }
     }
 
     private inline fun dispatchAction(crossinline block: () -> Unit) {
@@ -604,9 +900,69 @@ class CoreHost(
                 timers.values.forEach { it.cancel() }
                 timers.clear()
             }
+            synchronized(machinePollTimers) {
+                machinePollTimers.values.forEach { it.cancel() }
+                machinePollTimers.clear()
+            }
             mailbox.close()
             if (ownsScope) scope.cancel()
             synchronized(coreLock) { core.close() }
         }
     }
+}
+
+fun DirectStatus.toRouteReport(): DirectRouteReport {
+    val s = this
+    return DirectRouteReport.newBuilder().apply {
+        enabled = s.enabled
+        capable = s.supported
+        state = when {
+            !s.supported -> DirectRouteState.DIRECT_ROUTE_STATE_UNSUPPORTED
+            !s.enabled || s.stage == DirectStage.OFF -> DirectRouteState.DIRECT_ROUTE_STATE_NONE
+            s.stage == DirectStage.TRYING -> DirectRouteState.DIRECT_ROUTE_STATE_CONNECTING
+            s.stage == DirectStage.MEASURING || s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE ->
+                DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED
+            s.reason == DirectFailReason.PEER_UNSUPPORTED -> DirectRouteState.DIRECT_ROUTE_STATE_UNSUPPORTED
+            else -> DirectRouteState.DIRECT_ROUTE_STATE_NONE
+        }
+        setReason(
+            when {
+                !s.enabled || s.stage == DirectStage.OFF -> DirectRouteReason.DIRECT_ROUTE_REASON_DISABLED
+                s.reason == DirectFailReason.PEER_UNSUPPORTED -> DirectRouteReason.DIRECT_ROUTE_REASON_PEER_UNSUPPORTED
+                s.reason == DirectFailReason.NO_RESPONSE -> DirectRouteReason.DIRECT_ROUTE_REASON_NO_RESPONSE
+                s.reason == DirectFailReason.NO_TRAVERSAL -> DirectRouteReason.DIRECT_ROUTE_REASON_NO_TRAVERSAL
+                s.reason == DirectFailReason.FAILED -> DirectRouteReason.DIRECT_ROUTE_REASON_FAILED
+                else -> DirectRouteReason.DIRECT_ROUTE_REASON_UNSPECIFIED
+            },
+        )
+        fileRoute = if (s.fileDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
+        readRoute = if (s.readDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
+        warming = s.stage == DirectStage.MEASURING
+        compared = s.relayNotSlower
+        s.bulkDirectMibPerSec?.let {
+            hasDirectFileMibps = true
+            directFileMibps = it
+        }
+        s.bulkRelayMibPerSec?.let {
+            hasRelayFileMibps = true
+            relayFileMibps = it
+        }
+        s.readDirectMs?.let {
+            hasDirectReadMs = true
+            directReadMs = it.roundToInt()
+        }
+        s.readRelayMs?.let {
+            hasRelayReadMs = true
+            relayReadMs = it.roundToInt()
+        }
+        val activeMs = when {
+            s.readDirect -> s.readDirectMs
+            s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE || s.stage == DirectStage.MEASURING -> s.readRelayMs
+            else -> null
+        }
+        activeMs?.let {
+            hasActiveRttMs = true
+            activeRttMs = it.roundToInt()
+        }
+    }.build()
 }

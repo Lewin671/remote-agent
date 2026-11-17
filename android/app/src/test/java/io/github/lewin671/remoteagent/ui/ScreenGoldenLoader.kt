@@ -1,52 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.proto.AlwaysAllowKind
-import io.github.lewin671.remoteagent.core.proto.AttentionCardView
-import io.github.lewin671.remoteagent.core.proto.AttentionRowView
-import io.github.lewin671.remoteagent.core.proto.AutoIssueKind
-import io.github.lewin671.remoteagent.core.proto.ConnState
-import io.github.lewin671.remoteagent.core.proto.ConnectionStatusView
-import io.github.lewin671.remoteagent.core.proto.DefaultModeInfo
-import io.github.lewin671.remoteagent.core.proto.DirCrumbView
-import io.github.lewin671.remoteagent.core.proto.DirEntryView
-import io.github.lewin671.remoteagent.core.proto.DirPickerMachineView
-import io.github.lewin671.remoteagent.core.proto.DirPickerView
-import io.github.lewin671.remoteagent.core.proto.EndedGroupKind
-import io.github.lewin671.remoteagent.core.proto.EndedGroupView
-import io.github.lewin671.remoteagent.core.proto.EndedRowView
-import io.github.lewin671.remoteagent.core.proto.HeadlineKind
-import io.github.lewin671.remoteagent.core.proto.HiddenProjectNoticeView
-import io.github.lewin671.remoteagent.core.proto.HomeEmptyKind
-import io.github.lewin671.remoteagent.core.proto.HomeEmptyView
-import io.github.lewin671.remoteagent.core.proto.HomeHeadlineView
-import io.github.lewin671.remoteagent.core.proto.HomeViewModel
-import io.github.lewin671.remoteagent.core.proto.MachineChoiceView
-import io.github.lewin671.remoteagent.core.proto.ManageProjectsView
-import io.github.lewin671.remoteagent.core.proto.ModelOptionView
-import io.github.lewin671.remoteagent.core.proto.NewSessionConfig
-import io.github.lewin671.remoteagent.core.proto.NewSessionModelPanelView
-import io.github.lewin671.remoteagent.core.proto.NewSessionNoticeView
-import io.github.lewin671.remoteagent.core.proto.NewSessionViewModel
-import io.github.lewin671.remoteagent.core.proto.NoticeActionKind
-import io.github.lewin671.remoteagent.core.proto.NoticeKind
-import io.github.lewin671.remoteagent.core.proto.NoticeSeverity
-import io.github.lewin671.remoteagent.core.proto.OfflineMachineChoiceView
-import io.github.lewin671.remoteagent.core.proto.ProjectDetailView
-import io.github.lewin671.remoteagent.core.proto.ProjectListingView
-import io.github.lewin671.remoteagent.core.proto.ProjectRowView
-import io.github.lewin671.remoteagent.core.proto.ProjectViewKind
-import io.github.lewin671.remoteagent.core.proto.ProjectViewModel
-import io.github.lewin671.remoteagent.core.proto.ScopeRowView
-import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
-import io.github.lewin671.remoteagent.core.proto.SessionRowView
-import io.github.lewin671.remoteagent.core.proto.SessionTone
-import io.github.lewin671.remoteagent.core.proto.TailKind
-import io.github.lewin671.remoteagent.core.proto.TailRowView
-import io.github.lewin671.remoteagent.core.proto.Text
-import io.github.lewin671.remoteagent.core.proto.TextArg
-import io.github.lewin671.remoteagent.core.proto.TimestampArg
-import io.github.lewin671.remoteagent.core.proto.TimestampStyle
-import io.github.lewin671.remoteagent.core.proto.AgentOptionView
+import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import kotlinx.serialization.json.Json
@@ -99,6 +53,36 @@ object ScreenGoldenLoader {
     fun newSessionView(scenario: String, viewName: String): NewSessionViewModel {
         val v = namedViews(scenario).getValue(viewName)
         return parseNewSession(v["newSession"]!!.jsonObject)
+    }
+
+    fun machineStatusView(scenario: String, viewName: String): MachineStatusViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseMachineStatus(v["machineStatus"]!!.jsonObject)
+    }
+
+    fun quotaView(scenario: String, viewName: String): QuotaViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseQuota(v["quota"]!!.jsonObject)
+    }
+
+    fun settingsView(scenario: String, viewName: String): SettingsViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseSettings(v["settings"]!!.jsonObject)
+    }
+
+    fun machineSettingsView(scenario: String, viewName: String): MachineSettingsViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseMachineSettings(v["machineSettings"]!!.jsonObject)
+    }
+
+    fun devicesView(scenario: String, viewName: String): DevicesViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseDevices(v["devices"]!!.jsonObject)
+    }
+
+    fun clientDetailView(scenario: String, viewName: String): ClientDetailViewModel {
+        val v = namedViews(scenario).getValue(viewName)
+        return parseClientDetail(v["clientDetail"]!!.jsonObject)
     }
 
     private fun JsonObject.str(k: String): String = (this[k]?.jsonPrimitive)?.contentOrNull.orEmpty()
@@ -527,5 +511,556 @@ object ScreenGoldenLoader {
         }
         setProjectRemoved(o.bool("projectRemoved"))
         setAutoIssue(o.enum("autoIssue", AutoIssueKind.AUTO_ISSUE_KIND_UNSPECIFIED))
+    }.build()
+
+    private fun parseRing(o: JsonObject): MachineRingView = MachineRingView.newBuilder().apply {
+        setKind(o.enum("kind", MachineRingKind.MACHINE_RING_KIND_UNSPECIFIED))
+        o.obj("label")?.let { setLabel(parseText(it)) }
+        setHasValue(o.bool("hasValue"))
+        setFraction(o.f64("fraction"))
+        o.obj("valueText")?.let { setValueText(parseText(it)) }
+        setTone(o.enum("tone", MachineRingTone.MACHINE_RING_TONE_UNSPECIFIED))
+        o.obj("a11yLabel")?.let { setA11YLabel(parseText(it)) }
+    }.build()
+
+    private fun parseChart(o: JsonObject): MachineChartView = MachineChartView.newBuilder().apply {
+        setVisible(o.bool("visible"))
+        o.arr("points").forEach { e ->
+            val p = e.jsonObject
+            addPoints(
+                MachineChartPoint.newBuilder()
+                    .setTimeMs(p.i64("timeMs"))
+                    .setValue(p.f64("value")),
+            )
+        }
+        setWindowStartMs(o.i64("windowStartMs"))
+        setWindowEndMs(o.i64("windowEndMs"))
+        setGapThresholdMs(o.i64("gapThresholdMs"))
+        setCeiling(o.f64("ceiling"))
+        setHasScrub(o.bool("hasScrub"))
+        setScrubIndex(o.i32("scrubIndex"))
+        o.obj("scrubValue")?.let { setScrubValue(parseText(it)) }
+        o.obj("scrubAge")?.let { setScrubAge(parseText(it)) }
+        o.obj("a11ySummary")?.let { setA11YSummary(parseText(it)) }
+        setCanStepPrev(o.bool("canStepPrev"))
+        setCanStepNext(o.bool("canStepNext"))
+    }.build()
+
+    private fun parseMachineStatus(o: JsonObject): MachineStatusViewModel = MachineStatusViewModel.newBuilder().apply {
+        setMachineId(o.str("machineId"))
+        setMachineName(o.str("machineName"))
+        setFound(o.bool("found"))
+        setSupported(o.bool("supported"))
+        setOnline(o.bool("online"))
+        setPollState(o.enum("pollState", MachinePollState.MACHINE_POLL_STATE_UNSPECIFIED))
+        setDim(o.bool("dim"))
+        setStatusDot(o.enum("statusDot", MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED))
+        o.obj("statusBadge")?.let { setStatusBadge(parseText(it)) }
+        setShowRetry(o.bool("showRetry"))
+        o.obj("unavailableTitle")?.let { setUnavailableTitle(parseText(it)) }
+        o.arr("rings").forEach { addRings(parseRing(it.jsonObject)) }
+        o.obj("cpu")?.let { c ->
+            setCpu(
+                MachineCpuSection.newBuilder()
+                    .setHasValue(c.bool("hasValue"))
+                    .setHeadline(c.str("headline"))
+                    .apply {
+                        c.obj("detail")?.let { setDetail(parseText(it)) }
+                        c.obj("detail2")?.let { setDetail2(parseText(it)) }
+                        c.obj("a11yLabel")?.let { setA11YLabel(parseText(it)) }
+                        c.obj("chart")?.let { setChart(parseChart(it)) }
+                    },
+            )
+        }
+        o.obj("memory")?.let { m ->
+            setMemory(
+                MachineMemorySection.newBuilder()
+                    .setHasValue(m.bool("hasValue"))
+                    .setPressure(m.enum("pressure", MachinePressureTone.MACHINE_PRESSURE_TONE_UNSPECIFIED))
+                    .setHasPressurePosition(m.bool("hasPressurePosition"))
+                    .setPressurePosition(m.f64("pressurePosition"))
+                    .apply {
+                        m.obj("headline")?.let { setHeadline(parseText(it)) }
+                        m.obj("caption")?.let { setCaption(parseText(it)) }
+                        m.obj("pressureText")?.let { setPressureText(parseText(it)) }
+                        m.obj("totalText")?.let { setTotalText(parseText(it)) }
+                        m.obj("swapText")?.let { setSwapText(parseText(it)) }
+                        m.obj("a11yLabel")?.let { setA11YLabel(parseText(it)) }
+                        m.obj("chart")?.let { setChart(parseChart(it)) }
+                    },
+            )
+        }
+        o.obj("disk")?.let { d ->
+            setDisk(
+                MachineDiskSection.newBuilder()
+                    .setHasValue(d.bool("hasValue"))
+                    .setState(d.enum("state", DiskPressureState.DISK_PRESSURE_STATE_UNSPECIFIED))
+                    .setHasUsedFraction(d.bool("hasUsedFraction"))
+                    .setUsedFraction(d.f64("usedFraction"))
+                    .setShowActions(d.bool("showActions"))
+                    .apply {
+                        d.obj("headline")?.let { setHeadline(parseText(it)) }
+                        d.obj("caption")?.let { setCaption(parseText(it)) }
+                        d.obj("stateBadge")?.let { setStateBadge(parseText(it)) }
+                        d.obj("detail")?.let { setDetail(parseText(it)) }
+                        d.obj("detail2")?.let { setDetail2(parseText(it)) }
+                        d.obj("cleanupActionLabel")?.let { setCleanupActionLabel(parseText(it)) }
+                        d.obj("agentUsageLabel")?.let { setAgentUsageLabel(parseText(it)) }
+                        d.obj("agentUsageValue")?.let { setAgentUsageValue(parseText(it)) }
+                        d.obj("a11yLabel")?.let { setA11YLabel(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("topUsage")?.let { t ->
+            setTopUsage(
+                MachineTopUsageSection.newBuilder()
+                    .setSelectedTab(t.enum("selectedTab", MachineUsageTab.MACHINE_USAGE_TAB_UNSPECIFIED))
+                    .apply {
+                        t.arr("rows").forEach { e ->
+                            val r = e.jsonObject
+                            addRows(
+                                MachineUsageRow.newBuilder()
+                                    .setId(r.str("id"))
+                                    .setCpuPercent(r.f64("cpuPercent"))
+                                    .setMemoryBytes(r.i64("memoryBytes"))
+                                    .setAgent(r.enum("agent", Agent.AGENT_UNSPECIFIED))
+                                    .setSessionId(r.str("sessionId"))
+                                    .apply {
+                                        r.obj("title")?.let { setTitle(parseText(it)) }
+                                        r.obj("secondary")?.let { setSecondary(parseText(it)) }
+                                    },
+                            )
+                        }
+                        t.obj("emptyText")?.let { setEmptyText(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("uptimeText")?.let { setUptimeText(parseText(it)) }
+        o.obj("batteryText")?.let { setBatteryText(parseText(it)) }
+    }.build()
+
+    private fun parseQuotaBanner(o: JsonObject): QuotaBannerView = QuotaBannerView.newBuilder().apply {
+        setSeverity(o.enum("severity", QuotaBannerSeverity.QUOTA_BANNER_SEVERITY_UNSPECIFIED))
+        o.obj("message")?.let { setMessage(parseText(it)) }
+        setMachineId(o.str("machineId"))
+        setAgent(o.enum("agent", Agent.AGENT_UNSPECIFIED))
+        setWindowName(o.str("windowName"))
+    }.build()
+
+    private fun parseQuotaRow(o: JsonObject): QuotaRowView = QuotaRowView.newBuilder().apply {
+        setWindowName(o.str("windowName"))
+        o.obj("label")?.let { setLabel(parseText(it)) }
+        o.obj("poolName")?.let { setPoolName(parseText(it)) }
+        setHasPercent(o.bool("hasPercent"))
+        setUsedPercent(o.i32("usedPercent"))
+        setRemainingPercent(o.i32("remainingPercent"))
+        setExhausted(o.bool("exhausted"))
+        setPastReset(o.bool("pastReset"))
+        setStale(o.bool("stale"))
+        setTone(o.enum("tone", QuotaTone.QUOTA_TONE_UNSPECIFIED))
+        o.obj("remainingText")?.let { setRemainingText(parseText(it)) }
+        o.obj("resetText")?.let { setResetText(parseText(it)) }
+        o.obj("resetClockText")?.let { setResetClockText(parseText(it)) }
+        o.obj("footnote")?.let { setFootnote(parseText(it)) }
+    }.build()
+
+    private fun parseQuotaSection(o: JsonObject): QuotaCliSection = QuotaCliSection.newBuilder().apply {
+        setAgent(o.enum("agent", Agent.AGENT_UNSPECIFIED))
+        setAgentName(o.str("agentName"))
+        setState(o.enum("state", QuotaSectionState.QUOTA_SECTION_STATE_UNSPECIFIED))
+        setUnsupported(o.bool("unsupported"))
+        o.arr("accounts").forEach { ae ->
+            val a = ae.jsonObject
+            addAccounts(
+                QuotaAccountGroupView.newBuilder()
+                    .setAccount(a.str("account"))
+                    .setPlan(a.str("plan"))
+                    .setState(a.enum("state", QuotaSectionState.QUOTA_SECTION_STATE_UNSPECIFIED))
+                    .setLastRecord(a.bool("lastRecord"))
+                    .apply {
+                        a.obj("statusText")?.let { setStatusText(parseText(it)) }
+                        a.obj("freshnessText")?.let { setFreshnessText(parseText(it)) }
+                        a.obj("errorText")?.let { setErrorText(parseText(it)) }
+                        a.arr("groups").forEach { we ->
+                            val w = we.jsonObject
+                            addGroups(
+                                QuotaWindowGroupView.newBuilder()
+                                    .apply {
+                                        w.obj("groupLabel")?.let { setGroupLabel(parseText(it)) }
+                                        w.arr("rows").forEach { addRows(parseQuotaRow(it.jsonObject)) }
+                                    },
+                            )
+                        }
+                    },
+            )
+        }
+        o.obj("emptyOrErrorText")?.let { setEmptyOrErrorText(parseText(it)) }
+        o.obj("usageHint")?.let { setUsageHint(parseText(it)) }
+        o.obj("summaryRow")?.let { setSummaryRow(parseQuotaRow(it)) }
+    }.build()
+
+    private fun parseQuota(o: JsonObject): QuotaViewModel = QuotaViewModel.newBuilder().apply {
+        setMachineId(o.str("machineId"))
+        setMachineName(o.str("machineName"))
+        setFound(o.bool("found"))
+        setReachable(o.bool("reachable"))
+        setUnlinked(o.bool("unlinked"))
+        setMember(o.bool("member"))
+        setHasAgentsReported(o.bool("hasAgentsReported"))
+        o.obj("offlineNotice")?.let { setOfflineNotice(parseText(it)) }
+        o.obj("banner")?.let { setBanner(parseQuotaBanner(it)) }
+        o.arr("sections").forEach { addSections(parseQuotaSection(it.jsonObject)) }
+        o.obj("footerNote")?.let { setFooterNote(parseText(it)) }
+        o.obj("emptyText")?.let { setEmptyText(parseText(it)) }
+    }.build()
+
+    private fun parseClientRow(o: JsonObject): ClientRowView = ClientRowView.newBuilder().apply {
+        setDeviceId(o.str("deviceId"))
+        setDisplayName(o.str("displayName"))
+        setDescription(o.str("description"))
+        setShortId(o.str("shortId"))
+        setIsSelf(o.bool("isSelf"))
+        setIsAuthority(o.bool("isAuthority"))
+        setMember(o.bool("member"))
+        setPairingIncomplete(o.bool("pairingIncomplete"))
+        o.obj("roleLabel")?.let { setRoleLabel(parseText(it)) }
+        o.obj("lastUsedText")?.let { setLastUsedText(parseText(it)) }
+    }.build()
+
+    private fun parseSettings(o: JsonObject): SettingsViewModel = SettingsViewModel.newBuilder().apply {
+        setOnline(o.bool("online"))
+        setClockSkewed(o.bool("clockSkewed"))
+        setUnlinked(o.bool("unlinked"))
+        setHasAccount(o.bool("hasAccount"))
+        setIsManager(o.bool("isManager"))
+        setAuthorityName(o.str("authorityName"))
+        setRecoveryPending(o.bool("recoveryPending"))
+        setRecoveryReadyMs(o.i64("recoveryReadyMs"))
+        o.obj("recoveryBannerText")?.let { setRecoveryBannerText(parseText(it)) }
+        o.obj("unlinkedBannerText")?.let { setUnlinkedBannerText(parseText(it)) }
+        o.obj("clockSkewBannerText")?.let { setClockSkewBannerText(parseText(it)) }
+        o.arr("machines").forEach { me ->
+            val m = me.jsonObject
+            addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId(m.str("machineId"))
+                    .setName(m.str("name"))
+                    .setOnline(m.bool("online"))
+                    .setMember(m.bool("member"))
+                    .setProtocolMismatch(m.i32("protocolMismatch"))
+                    .setLastSeenMs(m.i64("lastSeenMs"))
+                    .apply {
+                        m.obj("statusText")?.let { setStatusText(parseText(it)) }
+                        m.arr("quotaSummaries").forEach { addQuotaSummaries(parseQuotaSection(it.jsonObject)) }
+                    },
+            )
+        }
+        setCanAddDevice(o.bool("canAddDevice"))
+        o.obj("addDeviceHint")?.let { setAddDeviceHint(parseText(it)) }
+        o.obj("emptyMachinesText")?.let { setEmptyMachinesText(parseText(it)) }
+        o.arr("recentClients").forEach { addRecentClients(parseClientRow(it.jsonObject)) }
+        setHasMoreClients(o.bool("hasMoreClients"))
+        setTotalDevicesCount(o.i32("totalDevicesCount"))
+        o.obj("security")?.let { s ->
+            setSecurity(
+                SecuritySummaryView.newBuilder()
+                    .setIsManager(s.bool("isManager"))
+                    .setUnlinked(s.bool("unlinked"))
+                    .setAuthorityDeviceId(s.str("authorityDeviceId"))
+                    .setAuthorityName(s.str("authorityName"))
+                    .setRecoveryPending(s.bool("recoveryPending"))
+                    .setRecoveryReadyMs(s.i64("recoveryReadyMs"))
+                    .apply {
+                        s.obj("summaryText")?.let { setSummaryText(parseText(it)) }
+                        s.obj("recoveryNotice")?.let { setRecoveryNotice(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("notifications")?.let { n ->
+            setNotifications(
+                NotificationsView.newBuilder()
+                    .setSupported(n.bool("supported"))
+                    .setPermission(n.enum("permission", NotificationPermissionState.NOTIFICATION_PERMISSION_STATE_UNSPECIFIED))
+                    .setPushState(n.enum("pushState", PushRegistrationState.PUSH_REGISTRATION_STATE_UNSPECIFIED))
+                    .setNotifyAttention(n.bool("notifyAttention"))
+                    .setNotifyTurnEnded(n.bool("notifyTurnEnded"))
+                    .setNotifyScheduled(n.bool("notifyScheduled"))
+                    .setShowContent(n.bool("showContent"))
+                    .setErrorDetail(n.str("errorDetail"))
+                    .apply {
+                        n.obj("statusText")?.let { setStatusText(parseText(it)) }
+                        n.obj("hintText")?.let { setHintText(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("appearance")?.let { a ->
+            setAppearance(
+                AppearanceView.newBuilder()
+                    .setTheme(a.enum("theme", ThemePreference.THEME_PREFERENCE_UNSPECIFIED))
+                    .apply { a.obj("label")?.let { setLabel(parseText(it)) } },
+            )
+        }
+        o.obj("update")?.let { u ->
+            setUpdate(
+                ClientUpdateView.newBuilder()
+                    .setCurrentVersion(u.str("currentVersion"))
+                    .setProtocolVersion(u.i32("protocolVersion"))
+                    .setChannel(u.str("channel"))
+                    .setChecking(u.bool("checking"))
+                    .setHasUpdate(u.bool("hasUpdate"))
+                    .setAvailableVersion(u.str("availableVersion"))
+                    .setDownloadedVersion(u.str("downloadedVersion"))
+                    .setDownloadProgressPercent(u.i32("downloadProgressPercent"))
+                    .setProtocolChanged(u.bool("protocolChanged"))
+                    .apply {
+                        u.obj("statusText")?.let { setStatusText(parseText(it)) }
+                        u.obj("errorText")?.let { setErrorText(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("connCheck")?.let { c ->
+            setConnCheck(
+                ConnCheckSummaryView.newBuilder()
+                    .setServerState(c.enum("serverState", ConnProbeState.CONN_PROBE_STATE_UNSPECIFIED))
+                    .setLatencyMs(c.i32("latencyMs"))
+                    .apply {
+                        c.obj("statusWord")?.let { setStatusWord(parseText(it)) }
+                        c.obj("summaryText")?.let { setSummaryText(parseText(it)) }
+                        c.obj("lastFailureText")?.let { setLastFailureText(parseText(it)) }
+                    },
+            )
+        }
+        o.arr("diskReminders").forEach { de ->
+            val d = de.jsonObject
+            addDiskReminders(
+                DiskReminderView.newBuilder()
+                    .setMachineId(d.str("machineId"))
+                    .setMachineName(d.str("machineName"))
+                    .setCritical(d.bool("critical"))
+                    .setAvailableBytes(d.i64("availableBytes"))
+                    .apply {
+                        d.obj("title")?.let { setTitle(parseText(it)) }
+                        d.obj("detail")?.let { setDetail(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("quotaBanner")?.let { setQuotaBanner(parseQuotaBanner(it)) }
+        setCanExitAccount(o.bool("canExitAccount"))
+        setExitNeedsTransfer(o.bool("exitNeedsTransfer"))
+    }.build()
+
+    private fun parseConnectionGroup(o: JsonObject): ConnectionGroupView = ConnectionGroupView.newBuilder().apply {
+        setToggleVisible(o.bool("toggleVisible"))
+        setToggleEnabled(o.bool("toggleEnabled"))
+        setToggleChecked(o.bool("toggleChecked"))
+        setStage(o.enum("stage", ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSPECIFIED))
+        setTone(o.enum("tone", ConnectionGroupTone.CONNECTION_GROUP_TONE_UNSPECIFIED))
+        o.obj("statusText")?.let { setStatusText(parseText(it)) }
+        o.obj("metricText")?.let { setMetricText(parseText(it)) }
+        o.obj("detailText")?.let { setDetailText(parseText(it)) }
+        o.obj("fileSpeedText")?.let { setFileSpeedText(parseText(it)) }
+        o.obj("readLatencyText")?.let { setReadLatencyText(parseText(it)) }
+        o.obj("footerText")?.let { setFooterText(parseText(it)) }
+        setShowDiagnosticsEntry(o.bool("showDiagnosticsEntry"))
+    }.build()
+
+    private fun parseMachineSettings(o: JsonObject): MachineSettingsViewModel = MachineSettingsViewModel.newBuilder().apply {
+        setMachineId(o.str("machineId"))
+        setName(o.str("name"))
+        setFound(o.bool("found"))
+        setMember(o.bool("member"))
+        setOnline(o.bool("online"))
+        setUnlinked(o.bool("unlinked"))
+        setProtocolMismatch(o.i32("protocolMismatch"))
+        setEditable(o.bool("editable"))
+        o.obj("offlineOrMismatchBanner")?.let { setOfflineOrMismatchBanner(parseText(it)) }
+        o.obj("removedBanner")?.let { setRemovedBanner(parseText(it)) }
+        setShowStatusEntry(o.bool("showStatusEntry"))
+        o.arr("statusRings").forEach { addStatusRings(parseRing(it.jsonObject)) }
+        o.arr("quotaRows").forEach { addQuotaRows(parseQuotaSection(it.jsonObject)) }
+        o.obj("connection")?.let { setConnection(parseConnectionGroup(it)) }
+        o.arr("cliVersions").forEach { ce ->
+            val c = ce.jsonObject
+            addCliVersions(
+                CliVersionView.newBuilder()
+                    .setAgent(c.enum("agent", Agent.AGENT_UNSPECIFIED))
+                    .setName(c.str("name"))
+                    .setVersion(c.str("version"))
+                    .setVerified(c.bool("verified"))
+                    .apply { c.obj("unverifiedLabel")?.let { setUnverifiedLabel(parseText(it)) } },
+            )
+        }
+        setHasUnverifiedCli(o.bool("hasUnverifiedCli"))
+        setSettingsLoading(o.bool("settingsLoading"))
+        o.obj("settingsError")?.let { setSettingsError(parseText(it)) }
+        setSavePending(o.bool("savePending"))
+        setSaveUnknown(o.bool("saveUnknown"))
+        o.obj("saveError")?.let { setSaveError(parseText(it)) }
+        o.arr("availableAgents").forEach { addAvailableAgents(Agent.valueOf(it.jsonPrimitive.content)) }
+        setSelectedAgent(o.enum("selectedAgent", Agent.AGENT_UNSPECIFIED))
+        o.obj("agentDefaults")?.let { ad ->
+            setAgentDefaults(
+                MachineAgentDefaultsView.newBuilder()
+                    .setAgent(ad.enum("agent", Agent.AGENT_UNSPECIFIED))
+                    .setAgentName(ad.str("agentName"))
+                    .setSelectedModel(ad.str("selectedModel"))
+                    .setSelectedEffort(ad.str("selectedEffort"))
+                    .setSelectedMode(ad.enum("selectedMode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+                    .apply {
+                        ad.obj("selectedModelLabel")?.let { setSelectedModelLabel(parseText(it)) }
+                        ad.arr("modelChoices").forEach { me ->
+                            val m = me.jsonObject
+                            addModelChoices(
+                                ModelChoiceView.newBuilder()
+                                    .setId(m.str("id"))
+                                    .setDesc(m.str("desc"))
+                                    .setSelected(m.bool("selected"))
+                                    .setIsDefault(m.bool("isDefault"))
+                                    .apply { m.obj("label")?.let { setLabel(parseText(it)) } },
+                            )
+                        }
+                        ad.arr("effortChoices").forEach { ee ->
+                            val e = ee.jsonObject
+                            addEffortChoices(
+                                EffortChoiceView.newBuilder()
+                                    .setId(e.str("id"))
+                                    .setSelected(e.bool("selected"))
+                                    .setIsDefault(e.bool("isDefault"))
+                                    .apply { e.obj("label")?.let { setLabel(parseText(it)) } },
+                            )
+                        }
+                        ad.arr("modeChoices").forEach { me ->
+                            val m = me.jsonObject
+                            addModeChoices(
+                                ModeChoiceView.newBuilder()
+                                    .setMode(m.enum("mode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+                                    .setSelected(m.bool("selected"))
+                                    .setDisabled(m.bool("disabled"))
+                                    .apply {
+                                        m.obj("label")?.let { setLabel(parseText(it)) }
+                                        m.obj("disabledReason")?.let { setDisabledReason(parseText(it)) }
+                                    },
+                            )
+                        }
+                    },
+            )
+        }
+        o.arr("approvalTimeoutChoices").forEach { te ->
+            val t = te.jsonObject
+            addApprovalTimeoutChoices(
+                TimeoutChoiceView.newBuilder()
+                    .setSeconds(t.i32("seconds"))
+                    .setSelected(t.bool("selected"))
+                    .apply { t.obj("label")?.let { setLabel(parseText(it)) } },
+            )
+        }
+        setSelectedApprovalTimeoutSeconds(o.i32("selectedApprovalTimeoutSeconds"))
+        o.arr("idleCloseChoices").forEach { ie ->
+            val i = ie.jsonObject
+            addIdleCloseChoices(
+                IdleCloseChoiceView.newBuilder()
+                    .setMinutes(i.i32("minutes"))
+                    .setSelected(i.bool("selected"))
+                    .apply { i.obj("label")?.let { setLabel(parseText(it)) } },
+            )
+        }
+        setSelectedIdleCloseMinutes(o.i32("selectedIdleCloseMinutes"))
+        o.obj("attachmentStorage")?.let { s ->
+            setAttachmentStorage(
+                AttachmentStorageView.newBuilder()
+                    .setLoaded(s.bool("loaded"))
+                    .setSelectedQuotaBytes(s.i64("selectedQuotaBytes"))
+                    .setShowEmergencyReserve(s.bool("showEmergencyReserve"))
+                    .setCanClear(s.bool("canClear"))
+                    .setCleaning(s.bool("cleaning"))
+                    .apply {
+                        s.obj("uploadedText")?.let { setUploadedText(parseText(it)) }
+                        s.obj("uploadedDetail")?.let { setUploadedDetail(parseText(it)) }
+                        s.arr("quotaChoices").forEach { qe ->
+                            val q = qe.jsonObject
+                            addQuotaChoices(
+                                QuotaSizeChoiceView.newBuilder()
+                                    .setBytes(q.i64("bytes"))
+                                    .setSelected(q.bool("selected"))
+                                    .apply { q.obj("label")?.let { setLabel(parseText(it)) } },
+                            )
+                        }
+                        s.obj("previewCacheText")?.let { setPreviewCacheText(parseText(it)) }
+                        s.obj("emergencyReserveText")?.let { setEmergencyReserveText(parseText(it)) }
+                        s.obj("clearButtonLabel")?.let { setClearButtonLabel(parseText(it)) }
+                        s.obj("footerText")?.let { setFooterText(parseText(it)) }
+                    },
+            )
+        }
+        o.arr("projects").forEach { pe ->
+            val p = pe.jsonObject
+            addProjects(
+                MachineProjectView.newBuilder()
+                    .setProjectKey(p.str("projectKey"))
+                    .setName(p.str("name"))
+                    .setPath(p.str("path"))
+                    .apply { p.obj("lastActiveText")?.let { setLastActiveText(parseText(it)) } },
+            )
+        }
+        o.obj("management")?.let { mg ->
+            setManagement(
+                MachineManagementActionsView.newBuilder()
+                    .setCanRejoin(mg.bool("canRejoin"))
+                    .setCanDeleteRecords(mg.bool("canDeleteRecords"))
+                    .setCanRemove(mg.bool("canRemove"))
+                    .setIsAuthorityDevice(mg.bool("isAuthorityDevice"))
+                    .apply { mg.obj("explanationText")?.let { setExplanationText(parseText(it)) } },
+            )
+        }
+    }.build()
+
+    private fun parseDevices(o: JsonObject): DevicesViewModel = DevicesViewModel.newBuilder().apply {
+        setIsManager(o.bool("isManager"))
+        setOnline(o.bool("online"))
+        setUnlinked(o.bool("unlinked"))
+        setAuthorityDeviceId(o.str("authorityDeviceId"))
+        setAuthorityName(o.str("authorityName"))
+        setCanAddDevice(o.bool("canAddDevice"))
+        o.obj("addDeviceHint")?.let { setAddDeviceHint(parseText(it)) }
+        o.arr("computers").forEach { me ->
+            val m = me.jsonObject
+            addComputers(
+                MachineListCardView.newBuilder()
+                    .setMachineId(m.str("machineId"))
+                    .setName(m.str("name"))
+                    .setOnline(m.bool("online"))
+                    .setMember(m.bool("member"))
+                    .setProtocolMismatch(m.i32("protocolMismatch"))
+                    .setLastSeenMs(m.i64("lastSeenMs"))
+                    .apply { m.obj("statusText")?.let { setStatusText(parseText(it)) } },
+            )
+        }
+        o.arr("clients").forEach { addClients(parseClientRow(it.jsonObject)) }
+        o.arr("unfinishedPairings").forEach { addUnfinishedPairings(parseClientRow(it.jsonObject)) }
+        o.obj("errorText")?.let { setErrorText(parseText(it)) }
+    }.build()
+
+    private fun parseClientDetail(o: JsonObject): ClientDetailViewModel = ClientDetailViewModel.newBuilder().apply {
+        setDeviceId(o.str("deviceId"))
+        setFound(o.bool("found"))
+        setIsSelf(o.bool("isSelf"))
+        setIsAuthority(o.bool("isAuthority"))
+        setMember(o.bool("member"))
+        setDisplayName(o.str("displayName"))
+        setCustomName(o.str("customName"))
+        setDefaultName(o.str("defaultName"))
+        setDescription(o.str("description"))
+        setShortId(o.str("shortId"))
+        setCanRename(o.bool("canRename"))
+        setMaxNameLength(o.i32("maxNameLength"))
+        setCanRestoreDefault(o.bool("canRestoreDefault"))
+        setRenameSaving(o.bool("renameSaving"))
+        setShowExitAction(o.bool("showExitAction"))
+        setCanRemove(o.bool("canRemove"))
+        o.obj("roleLabel")?.let { setRoleLabel(parseText(it)) }
+        o.obj("lastUsedText")?.let { setLastUsedText(parseText(it)) }
+        o.obj("addedText")?.let { setAddedText(parseText(it)) }
+        o.obj("renameError")?.let { setRenameError(parseText(it)) }
+        o.obj("managementHint")?.let { setManagementHint(parseText(it)) }
     }.build()
 }

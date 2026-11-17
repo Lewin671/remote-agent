@@ -405,6 +405,7 @@ class RaApp : Application() {
         r.homeScopeStore = io.github.lewin671.remoteagent.ui.HomeScopes.storeAdapter(this@RaApp)
         r.uiMessageResolver = { msg -> io.github.lewin671.remoteagent.ui.sessionText(msg) }
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
+        io.github.lewin671.remoteagent.ui.SettingsExecutor.attach(this@RaApp, r)
         attachNetwork(r)
         Push.open()
         _remote.value = r
@@ -507,6 +508,7 @@ class RaApp : Application() {
                 Push.close()
                 pendingStore.invalidate()
                 AccountMemory.clear()
+                io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
                 io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
                 getSystemService(NotificationManager::class.java).cancelAll()
                 leaving?.let { Push.unregister(it) }

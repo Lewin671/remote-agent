@@ -559,7 +559,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
         remote.coreHost.selectNewSessionMachine(machine)
         CleanupDraft.take(machine)?.let {
             val draft = ImageDrafts.forProject(path).text
-            draft.value = io.github.lewin671.remoteagent.core.cleanupDraft(draft.value, it)
+            draft.value = cleanupDraftText(draft.value, it)
         }
     }
     val view by remote.newSessionView.collectAsState()

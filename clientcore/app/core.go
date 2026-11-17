@@ -196,6 +196,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				}
 			}
 			dirty.Add(false, false, true)
+			if c.m.settings != nil && c.m.settings.Active {
+				c.m.settingsDirty.MachineSettings = true
+			}
 
 		case cmdKindGetSettings:
 			se := c.m.state.MachineSettings[meta.machineID]
@@ -218,6 +221,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			}
 			effects = append(effects, c.onGetSettingsSettled(sc, meta)...)
 			dirty.Add(false, false, true)
+			if c.m.settings != nil && c.m.settings.Active {
+				c.m.settingsDirty.MachineSettings = true
+			}
 
 		case cmdKindListDirs:
 			dp := &c.m.state.DirPicker

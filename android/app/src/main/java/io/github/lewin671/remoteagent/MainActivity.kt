@@ -230,6 +230,23 @@ class MainActivity : ComponentActivity() {
                         io.github.lewin671.remoteagent.ui.settleNewSessionStart(settled)
                     }
                 }
+                launch {
+                    remote.coreHost.prepareCleanupEvents.collect { eff ->
+                        val key = eff.prompt.takeIf { it.isNotEmpty() }?.let { io.github.lewin671.remoteagent.core.uiMessage(it) }
+                            ?: io.github.lewin671.remoteagent.core.UiMessages.machineStatusCleanupPrompt()
+                        val prompt = io.github.lewin671.remoteagent.ui.sessionText(key)
+                        if (eff.needsDirectoryPicker) {
+                            io.github.lewin671.remoteagent.ui.CleanupDraft.hold(eff.machineId, prompt)
+                            actions.newProject()
+                        } else {
+                            val draft = io.github.lewin671.remoteagent.ui.ImageDrafts.forProject(eff.projectKey).text
+                            draft.value = io.github.lewin671.remoteagent.ui.cleanupDraftText(draft.value, prompt)
+                            remote.coreHost.openNewSession(eff.projectKey)
+                            remote.coreHost.selectNewSessionMachine(eff.machineId)
+                            actions.projectNew(eff.projectKey)
+                        }
+                    }
+                }
                 remote.coreNavigation.collect { eff ->
                     when (eff.route) {
                         io.github.lewin671.remoteagent.core.proto.NavigateRoute.NAVIGATE_ROUTE_SESSION -> {
@@ -384,13 +401,7 @@ class MainActivity : ComponentActivity() {
             device = { go("device/$it") },
             machineStatus = { go("machine/$it", single = true) },
             deviceStorage = { go("device/$it?storage=1") },
-            cleanup = { machine ->
-                val state = remote.state.value
-                val prompt = io.github.lewin671.remoteagent.ui.sessionText(UiMessages.machineStatusCleanupPrompt())
-                val project = io.github.lewin671.remoteagent.ui.prepareCleanupDraft(state, machine, prompt, remote.coreHost)
-                // A computer without a project yet: the folder chooser, and the next new session on it gets the words.
-                if (project != null) go("project/${routeArg(project)}?focus=1") else go("newproject")
-            },
+            cleanup = { machine -> remote.coreHost.prepareCleanupSession(machine) },
             pair = { go("pair") },
             rejoin = { go("pair?replace=$it") },
             recovery = { go("recovery") },

@@ -585,7 +585,15 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		}
 		id := a.MachineSettingsOpen.MachineId
 		me := extra.EnsureMachine(id)
-		c.m.maybeFetchMachineConfig(ctx, id, me.SelectedAgent)
+		fetchAgent := me.SelectedAgent
+		if fetchAgent == v1.Agent_AGENT_UNSPECIFIED {
+			if mac := c.m.findMachine(id); mac != nil {
+				if agents := lists.MachineAgents(mac.Meta); len(agents) > 0 {
+					fetchAgent = agents[0]
+				}
+			}
+		}
+		c.m.maybeFetchMachineConfig(ctx, id, fetchAgent)
 		if se := c.m.state.MachineSettings[id]; se == nil || (!se.Loading && !se.Loaded) {
 			c.submitGetSettings(ctx, id)
 		}
