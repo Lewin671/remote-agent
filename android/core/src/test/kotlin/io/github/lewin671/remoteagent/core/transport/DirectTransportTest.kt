@@ -518,10 +518,41 @@ private class DirectBridgeDaemon(
         emitControl(14L, 2L, snap.toByteArray())
     }
 
+    fun sealRelayExecuted(reqEnv: Envelope, attemptId: String): io.github.lewin671.remoteagent.proto.ForwardResponse {
+        val (h, pt) = open(reqEnv)
+        val cmd = Command.parseFrom(pt)
+        val res = handleCommand(cmd)
+        val binding = DeviceSecurity.requestIdentity(DeviceSecurity.parseHeader(reqEnv.securityHeader.toByteArray()), pt)
+        val proof = res.toBuilder()
+            .setRequestKeyHash(ByteString.copyFrom(binding.first))
+            .setPayloadHash(ByteString.copyFrom(binding.second))
+            .setOutcome("executed")
+            .setReason("completed")
+            .setResultAvailable(true)
+            .build()
+        val rEnv = seal(
+            Header.newBuilder()
+                .setKind(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT)
+                .setMachineId(machine.deviceId)
+                .setSessionId(h.sessionId)
+                .setRequestId(h.requestId)
+                .setSender(machine.deviceId)
+                .build(),
+            proof.toByteArray(),
+        )
+        return io.github.lewin671.remoteagent.proto.ForwardResponse.newBuilder()
+            .setResult(rEnv)
+            .setOutcome("executed")
+            .setReason("completed")
+            .setAttemptId(attemptId)
+            .build()
+    }
+
     private fun handleCommand(cmd: Command): CommandResult {
         onCommand(cmd)
         val b = CommandResult.newBuilder()
         when (cmd.kindCase) {
+            Command.KindCase.SEND -> b.setSend(io.github.lewin671.remoteagent.proto.SendResponse.newBuilder().setQueuePosition(1).build())
             Command.KindCase.GET_LIVE_SNAPSHOT -> b.setLiveSnapshot(LiveSnapshot.newBuilder().setSession(Session.newBuilder().setId(sid).build()).build())
             Command.KindCase.GET_SHARED_FILE_CHUNK -> {
                 val data = ByteArray(chunkSizeBytes) { (cmd.getSharedFileChunk.offset.toInt() + it).toByte() }
@@ -1459,5 +1490,171 @@ class DirectTransportTest {
         assertTrue("tickJob must detect CLOSED DataChannel after confirm", closedCalled.get())
         assertTrue(dc.aborted)
         dc.close()
+    }
+
+    @Test
+    fun remoteDualSendDispatchesIdenticalEnvelopeAndTakesFastDirectWinner(): Unit = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 12 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            val execCount = AtomicInteger(0)
+            daemon.onCommand = { execCount.incrementAndGet() }
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+
+                val relayEnvelopes = CopyOnWriteArrayList<ByteArray>()
+                val relayCancelled = CompletableDeferred<Unit>()
+                val relayBlocked = CompletableDeferred<Unit>()
+
+                val origPath = remote.deviceLink.router.path
+                remote.deviceLink = Link(
+                    object : Path {
+                        override fun status(machineId: String) = origPath.status(machineId)
+                        override fun attempt(handoff: () -> Unit): PathAttempt = object : PathAttempt {
+                            override val attemptId = "relay-slow-leg"
+                            override suspend fun prepare(prior: Boolean) {}
+                            override suspend fun send(machineId: String, command: Envelope): io.github.lewin671.remoteagent.proto.ForwardResponse {
+                                relayEnvelopes += command.toByteArray()
+                                try {
+                                    relayBlocked.await()
+                                } catch (c: kotlinx.coroutines.CancellationException) {
+                                    relayCancelled.complete(Unit)
+                                    throw c
+                                }
+                                error("unreachable")
+                            }
+                            override fun refusal(error: com.connectrpc.ConnectException): PathRefusal? = null
+                            override suspend fun refreshAuth(prior: Boolean) {}
+                        }
+                        override fun openStream(address: String, listener: FrameListener) = origPath.openStream(address, listener)
+                    },
+                )
+
+                val cmd = Command.newBuilder()
+                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setSend(io.github.lewin671.remoteagent.proto.SendRequest.newBuilder().setSessionId("s1").setText("dual-remote-send").build())
+                    .build()
+                val eff = io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect.newBuilder()
+                    .setRequestId("req-remote-dual-fast-1")
+                    .setAttemptId("att-remote-1")
+                    .setMachineId(id)
+                    .setSessionId("s1")
+                    .setDeadlineMs(System.currentTimeMillis() + 5_000L)
+                    .setCommandBytes(cmd.toByteString())
+                    .build()
+
+                val outcome = withTimeout(2_000) { remote.dispatchSingleCommand(eff) }
+                assertEquals("executed", outcome.outerOutcome)
+                assertEquals(io.github.lewin671.remoteagent.core.proto.OutcomeSource.OUTCOME_SOURCE_DAEMON, outcome.source)
+                assertFalse(outcome.notForwarded)
+                assertEquals(1, outcome.result.send.queuePosition)
+                assertEquals(1, execCount.get())
+                assertEquals(1, daemon.directCommands.count { it.hasSend() && it.send.text == "dual-remote-send" })
+                assertEquals(1, relayEnvelopes.size)
+                val relayCmdEnv = Envelope.parseFrom(relayEnvelopes[0])
+                val relayReqId = DeviceSecurity.parseHeader(relayCmdEnv.securityHeader.toByteArray()).request
+                assertEquals("req-remote-dual-fast-1", relayReqId)
+                withTimeout(1_000) { relayCancelled.await() }
+                relayBlocked.complete(Unit)
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun remoteDualSendFallsBackToRelayAfterDirectPostHandoffDrop(): Unit = runBlocking {
+        val server = TestServer()
+        val http = Api.defaultHttp()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 13 }, server.url, http, server.setupToken)
+            val daemonAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, http, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, http, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.onDropDirect = {
+                bridge.phonePcs.toList().forEach { it.dropAllChannels() }
+            }
+            daemon.dropDirectOnNextPut = true
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = http,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+
+                val origPath = remote.deviceLink.router.path
+                remote.deviceLink = Link(
+                    object : Path {
+                        override fun status(machineId: String) = origPath.status(machineId)
+                        override fun attempt(handoff: () -> Unit): PathAttempt = object : PathAttempt {
+                            override val attemptId = "relay-fallback-ok"
+                            override suspend fun prepare(prior: Boolean) {}
+                            override suspend fun send(machineId: String, command: Envelope): io.github.lewin671.remoteagent.proto.ForwardResponse {
+                                handoff()
+                                delay(40)
+                                return daemon.sealRelayExecuted(command, attemptId)
+                            }
+                            override fun refusal(error: com.connectrpc.ConnectException): PathRefusal? = null
+                            override suspend fun refreshAuth(prior: Boolean) {}
+                        }
+                        override fun openStream(address: String, listener: FrameListener) = origPath.openStream(address, listener)
+                    },
+                )
+                val cmd = Command.newBuilder()
+                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setSend(io.github.lewin671.remoteagent.proto.SendRequest.newBuilder().setSessionId("s1").setText("dual-fallback-ok").build())
+                    .build()
+                val eff = io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect.newBuilder()
+                    .setRequestId("req-remote-dual-fallback-1")
+                    .setAttemptId("att-remote-2")
+                    .setMachineId(id)
+                    .setSessionId("s1")
+                    .setDeadlineMs(System.currentTimeMillis() + 5_000L)
+                    .setCommandBytes(cmd.toByteString())
+                    .build()
+
+                val outcome = withTimeout(5_000) { remote.dispatchSingleCommand(eff) }
+                assertEquals("executed", outcome.outerOutcome)
+                assertEquals(1, outcome.result.send.queuePosition)
+                assertFalse(outcome.notForwarded)
+                assertEquals(io.github.lewin671.remoteagent.core.proto.OutcomeSource.OUTCOME_SOURCE_DAEMON, outcome.source)
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
     }
 }

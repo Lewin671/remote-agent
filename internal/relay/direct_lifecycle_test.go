@@ -1259,3 +1259,80 @@ func TestClaimInflightWaitersWakeOnAdmissionCloseAndNoLeakOnLinkShutdown(t *test
 		t.Fatalf("expected a.inflight empty after close, got %d entries", leaked)
 	}
 }
+
+func TestDirectCoalescedInflightPayloadConflict(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, binding, execCount, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	close(sendRelease)
+
+	blockerEnv := sealCmd("req-blocker-conflict-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	reqID := "req-conflict-11111111"
+	envA := sealCmd(reqID, &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "first"}}})
+	envB := sealCmd(reqID, &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "second"}}})
+
+	ownerCh := make(chan *pb.ForwardReply, 1)
+	conflictCh := make(chan *pb.ForwardReply, 1)
+	ep.dispatch(ctx, &pb.ForwardCall{CallId: 2, Command: envA}, func(rep *pb.ForwardReply) { ownerCh <- rep })
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		n := len(ep.admission.inflight)
+		ep.admission.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	var allowDirect atomic.Bool
+	allowDirect.Store(true)
+	ep.dispatchDirect(ctx, binding, 1, allowDirect.Load, envB, func(rep *pb.ForwardReply) { conflictCh <- rep })
+
+	select {
+	case rep := <-conflictCh:
+		if rep.Result == nil {
+			t.Fatalf("expected signed conflict envelope, got empty result: %+v", rep)
+		}
+		wire, err := deviceauth.FromEnvelope(rep.Result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, body, err := clientEndpoint.Open(wire, nil, true, uint64(time.Now().UnixMilli()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err = deviceauth.Unpack(got, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res := &pb.CommandResult{}
+		if err := proto.Unmarshal(body, res); err != nil {
+			t.Fatal(err)
+		}
+		if res.Outcome != "conflict" || res.ConflictKind != "identity" {
+			t.Fatalf("expected outcome=conflict conflict_kind=identity, got outcome=%q kind=%q", res.Outcome, res.ConflictKind)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for direct inflight payload conflict reply")
+	}
+
+	close(blockRelease)
+	select {
+	case rep := <-ownerCh:
+		assertExecutedSendReply(t, clientEndpoint, rep)
+	case <-time.After(2 * time.Second):
+		t.Fatal("owner command did not finish after conflict rejection")
+	}
+	if got := execCount.Load(); got != 1 {
+		t.Fatalf("expected 1 execution, got %d", got)
+	}
+	ep.admission.mu.Lock()
+	remaining := len(ep.admission.inflight)
+	ep.admission.mu.Unlock()
+	if remaining != 0 {
+		t.Fatalf("expected empty inflight after owner completed, got %d", remaining)
+	}
+}
