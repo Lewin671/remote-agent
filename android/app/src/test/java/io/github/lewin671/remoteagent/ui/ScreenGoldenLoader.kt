@@ -372,6 +372,8 @@ object ScreenGoldenLoader {
                     d.obj("name")?.let { setName(parseText(it)) }
                     setShortPath(d.str("shortPath"))
                     d.obj("subtitle")?.let { setSubtitle(parseText(it)) }
+                    d.arr("machineIds").forEach { addMachineIds(it.jsonPrimitive.content) }
+                    d.arr("machineNames").forEach { addMachineNames(it.jsonPrimitive.content) }
                     setAnyOnline(d.bool("anyOnline"))
                     setActiveCount8(d.i32("activeCount"))
                     setEndedTotal(d.i32("endedTotal"))
@@ -382,9 +384,22 @@ object ScreenGoldenLoader {
                     d.obj("emptyNote")?.let { setEmptyNote(parseText(it)) }
                     setIsHidden(d.bool("isHidden"))
                     setIsPinned(d.bool("isPinned"))
+                    d.obj("hiddenNotice")?.let { hn ->
+                        setHiddenNotice(
+                            HiddenProjectNoticeView.newBuilder()
+                                .setActive(hn.bool("active"))
+                                .setText(parseText(hn.obj("text")))
+                                .setActionEnabled(hn.bool("actionEnabled"))
+                                .setBusy(hn.bool("busy"))
+                                .setError(parseText(hn.obj("error"))),
+                        )
+                    }
+                    setSavingSettings(d.bool("savingSettings"))
+                    d.obj("settingsError")?.let { setSettingsError(parseText(it)) }
                     setCanStart(d.bool("canStart"))
                     setCanPin(d.bool("canPin"))
                     setCanRemove(d.bool("canRemove"))
+                    d.obj("saveStatus")?.let { setSaveStatus(parseText(it)) }
                     setHasMoreEnded(d.bool("hasMoreEnded"))
                 },
             )
@@ -398,6 +413,7 @@ object ScreenGoldenLoader {
             .setAgent(o.enum("agent", Agent.AGENT_UNSPECIFIED))
             .setModel(o.str("model"))
             .setEffort(o.str("effort"))
+            .setMode(o.enum("mode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
             .setStandardContext(o.bool("standardContext"))
             .build()
     }

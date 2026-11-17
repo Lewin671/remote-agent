@@ -112,9 +112,10 @@ fun CoreProjectList(
 
 /** Asks before a project leaves the list: there is no undo, only adding it again. */
 @Composable
-fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, projectName: String = "", onConfirm: () -> Unit) {
+    val label = projectName.ifEmpty { uiText(listProjectName(key)) }
     Confirm(
-        uiText(UiMessages.projectsRemoveTitle(name = uiText(listProjectName(key)))),
+        uiText(UiMessages.projectsRemoveTitle(name = label)),
         uiText(UiMessages.projectsRemoveExplanation()),
         uiText(UiMessages.commonRemove()),
         danger = true,
@@ -135,7 +136,7 @@ fun ManageProjectsScreen() {
     val manage = projectView.manage
     val p = pal
     var menu by remember { mutableStateOf<ProjectRowView?>(null) }
-    var removing by remember { mutableStateOf<String?>(null) }
+    var removing by remember { mutableStateOf<ProjectRowView?>(null) }
     var adding by remember { mutableStateOf(false) }
 
     PageScaffold(uiText(UiMessages.homeManageProjects())) {
@@ -194,16 +195,16 @@ fun ManageProjectsScreen() {
                 ),
                 listOf(
                     SheetAction(uiText(UiMessages.projectsRemoveAction()), danger = true, enabled = manage.canEdit) {
-                        removing = pr.key
+                        removing = pr
                     },
                 ),
             ),
             onDismiss = { menu = null },
         )
     }
-    removing?.let { key ->
-        RemoveProjectConfirm(key, onDismiss = { removing = null }) {
-            remote.coreHost.toggleProjectHide(key)
+    removing?.let { pr ->
+        RemoveProjectConfirm(pr.key, onDismiss = { removing = null }, projectName = uiText(pr.name)) {
+            remote.coreHost.toggleProjectHide(pr.key)
         }
     }
     if (adding) Sheet({ remote.coreHost.closeDirPicker(); adding = false }, scroll = false) {

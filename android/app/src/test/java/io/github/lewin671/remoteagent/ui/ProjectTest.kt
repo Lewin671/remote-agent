@@ -193,4 +193,26 @@ class ProjectTest {
         ui.onNodeWithText("Approval · Approval").assertIsDisplayed()
         ui.onNodeWithText("UNUSED_SUMMARY", substring = true).assertDoesNotExist()
     }
+
+    @Test
+    fun projectDetailGoldenPopulatesHiddenNoticeAndMachineIds() {
+        val detail = ScreenGoldenLoader.projectView("project_manage_detail", "detailInitial").detail
+        assertTrue(detail.machineIdsList.isNotEmpty())
+        assertTrue(detail.machineNamesList.isNotEmpty())
+        assertTrue(detail.hiddenNotice.text.key.isNotEmpty())
+        assertTrue(detail.hiddenNotice.actionEnabled)
+    }
+
+    @Test
+    fun removeProjectConfirmUsesCoreProjectNameDirectly() {
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    RemoveProjectConfirm(key = "/work/raw-key", onDismiss = {}, projectName = "Core Display Name") {}
+                }
+            }
+        }
+        ui.onNodeWithText("Core Display Name", substring = true).assertIsDisplayed()
+        ui.onNodeWithText("raw-key", substring = true).assertDoesNotExist()
+    }
 }
