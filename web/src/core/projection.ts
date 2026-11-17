@@ -1,7 +1,10 @@
 // Minimal loader and wrapper for the Go WASM core (built by scripts/core/build.sh web).
-// Not wired into application views yet; see docs / phase 2 integration.
 
 export interface CoreWasmApi {
+  readonly new: () => number;
+  dispatch(handle: number, eventBytes?: Uint8Array): CoreWasmResult;
+  view(handle: number, screenBytes?: Uint8Array): CoreWasmResult;
+  close(handle: number): void;
   newProjection(agent: number): number;
   projectionReset(handle: number, agent: number): void;
   projectionAppend(handle: number, batchBytes?: Uint8Array): CoreWasmResult;
@@ -83,6 +86,40 @@ export class WasmProjection {
   }
 }
 
+export class WasmAppCore {
+  private readonly api: CoreWasmApi;
+  private readonly handle: number;
+  private closed = false;
+
+  constructor(api: CoreWasmApi) {
+    this.api = api;
+    this.handle = api.new();
+  }
+
+  dispatch(eventBytes?: Uint8Array): Uint8Array {
+    this.assertAlive();
+    return unwrap(this.api.dispatch(this.handle, eventBytes));
+  }
+
+  view(screenBytes?: Uint8Array): Uint8Array {
+    this.assertAlive();
+    return unwrap(this.api.view(this.handle, screenBytes));
+  }
+
+  close(): void {
+    if (!this.closed) {
+      this.closed = true;
+      this.api.close(this.handle);
+    }
+  }
+
+  private assertAlive(): void {
+    if (this.closed) {
+      throw new Error("WasmAppCore already closed");
+    }
+  }
+}
+
 export class RemoteAgentCore {
   private readonly api: CoreWasmApi;
 
@@ -136,6 +173,10 @@ export class RemoteAgentCore {
     void go.run(instantiated.instance);
     const api = globalThis.__remoteAgentCore ?? (await ready);
     return new RemoteAgentCore(api);
+  }
+
+  newAppCore(): WasmAppCore {
+    return new WasmAppCore(this.api);
   }
 
   newProjection(agent = 0): WasmProjection {
