@@ -209,7 +209,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 					dp.CurrentPath = lr.Path
 				}
 				dp.ParentPath = lr.Parent
-				dp.Dirs = dirEntriesFromPaths(lr.Dirs, lr.Parent)
+				dp.Dirs = dirEntriesFromNames(lr.Dirs, dp.CurrentPath)
 				dp.Error = ""
 				dp.ErrorText = nil
 			} else {

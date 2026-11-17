@@ -200,20 +200,15 @@ func (m *Model) decodeScopeIfReady() {
 	}
 }
 
-func dirEntriesFromPaths(dirs []string, parent string) []*corev1.DirEntryView {
-	out := make([]*corev1.DirEntryView, 0, len(dirs))
-	for _, full := range dirs {
-		if full == "" {
+// dirEntriesFromNames turns the folder names of one listed directory into
+// entries whose paths are absolute, as the daemon requires for the next listing.
+func dirEntriesFromNames(names []string, dir string) []*corev1.DirEntryView {
+	out := make([]*corev1.DirEntryView, 0, len(names))
+	for _, name := range names {
+		if name == "" {
 			continue
 		}
-		name := path.Base(full)
-		if name == "." || name == "/" {
-			name = full
-		}
-		out = append(out, &corev1.DirEntryView{
-			Name: name,
-			Path: full,
-		})
+		out = append(out, &corev1.DirEntryView{Name: name, Path: path.Join(dir, name)})
 	}
 	return out
 }

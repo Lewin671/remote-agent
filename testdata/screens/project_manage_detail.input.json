@@ -180,7 +180,7 @@
             "listDirectories": {
               "path": "/Users/me/Code",
               "parent": "/Users/me",
-              "dirs": ["/Users/me/Code/alpha", "/Users/me/Code/delta"]
+              "dirs": ["alpha", "delta"]
             }
           }
         }
