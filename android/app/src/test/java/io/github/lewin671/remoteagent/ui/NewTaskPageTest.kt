@@ -115,6 +115,12 @@ class NewTaskPageTest {
                 }
             }
         }
+        ui.waitUntil(5000) {
+            ui.mainClock.advanceTimeByFrame()
+            ui.waitForIdle()
+            !ImageDrafts.forProject(path).restoring
+        }
+        ui.waitForIdle()
     }
 
     @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); Starts.clear() }

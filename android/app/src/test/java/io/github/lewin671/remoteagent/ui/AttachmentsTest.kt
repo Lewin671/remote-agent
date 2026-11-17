@@ -303,17 +303,18 @@ class AttachmentsTest {
         thread.execute { held.await() }
         val d = ImageDraft("session:s", files, saves, kotlinx.coroutines.CoroutineScope(saves))
         val heard = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val twoHeard = java.util.concurrent.CountDownLatch(2)
         // The save has not run: the images are in the draft but not on disk, so their copy elsewhere must stay.
         val (a, b) = img("a") to img("b")
         d.attach(listOf(a, b), 6)
-        d.whenKept(listOf("a", "b")) { heard += "both" }
-        d.whenKept(listOf("a")) { heard += "a" }
+        d.whenKept(listOf("a", "b")) { heard += "both"; twoHeard.countDown() }
+        d.whenKept(listOf("a")) { heard += "a"; twoHeard.countDown() }
         assertTrue(heard.isEmpty())
         // Removed: nothing of it is left to keep.
         d.remove(a)
         assertEquals(listOf("a"), heard.toList())
         held.countDown()
-        for (i in 0 until 2000) if (heard.size < 2) Thread.sleep(1)
+        assertTrue(twoHeard.await(5, java.util.concurrent.TimeUnit.SECONDS))
         assertEquals(listOf("a", "both"), heard.toList())
         assertTrue(files.get("session:s", "b.img") != null)
         // Already there: said at once.
