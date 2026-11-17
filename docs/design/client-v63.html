@@ -2249,17 +2249,19 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 }
 .sx-direct .win .path-pop .p1 { font-size: 14px; }
 
-/* 人话排障单（手机 .sheet 与宽屏居中对话框 .wdlg） */
+/* 人话排障单（手机 .sheet 与宽屏居中对话框 .wdlg：状态由行首图形表达，行尾状态词一律 ink2 不染绿） */
 .sx-direct .sheet .hd .hsp, .sx-direct .sheet .hd .ta { width: 48px; flex: none; }
 .sx-direct .sheet .hd .ta { justify-content: flex-end; }
 .sx-direct .verdict { padding: 2px 20px 12px; }
 .sx-direct .verdict h4 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.015em; line-height: 1.3; color: var(--ink); text-wrap: balance; }
 .sx-direct .verdict p { margin: 5px 0 0; font-size: 14px; color: var(--ink2); line-height: 1.45; }
-.sx-direct .chk-tag { font-size: 14px; font-weight: 600; color: var(--ink2); flex: none; }
-.sx-direct .chk-tag.ok { color: var(--green); }
+.sx-direct .chk-tag { font-size: 15px; font-weight: 400; color: var(--ink2); flex: none; padding-top: 1px; }
+.sx-direct .why-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.sx-direct .why-btn .spin { width: 14px; height: 14px; border-width: 1.6px; margin: 0; border-color: currentColor; border-right-color: transparent; }
 .sx-direct .sheet .why-btn { margin: 14px 16px 0; height: 48px; border-radius: 12px; width: calc(100% - 32px); flex: none; }
 .sx-direct .why-copy { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 4px; font-size: 15px; font-weight: 500; color: var(--blue); }
 .sx-direct .why-copy.done { color: var(--ink2); }
+.sx-direct .why-copy.err { color: var(--red); }
 .sx-direct .sheet .why-gf { padding: 4px 20px 0; margin: 0; font-size: 13px; color: var(--ink2); line-height: 1.45; }
 
 /* 卡片内的排障单静态壳与剪贴板纯文本示意 */
@@ -2272,8 +2274,8 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-direct .shbox .verdict h4 { font-size: 17px; }
 .sx-direct .shbox .why-btn { margin: 12px 0 0; width: 100%; height: 44px; border-radius: 12px; flex: none; }
 .sx-direct .shbox .why-gf { padding: 4px 4px 0; font-size: 12.5px; color: var(--ink2); line-height: 1.45; }
-.sx-direct .clip-card { width: 420px; max-width: 100%; background: var(--paper); border-radius: 24px; padding: 16px 18px; box-shadow: inset 0 0 0 .5px var(--sep); }
-.sx-direct .clip-card pre { margin: 8px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--gbg); color: var(--ink2); font: 12px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sx-direct .clip-card { width: 492px; max-width: 100%; background: var(--paper); border-radius: 24px; padding: 16px 18px; box-shadow: inset 0 0 0 .5px var(--sep); }
+.sx-direct .clip-card pre { margin: 8px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--gbg); color: var(--ink2); font: 11.5px/1.52 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* 宽屏设置与居中排障对话框（外 18 / 内组 14 / 按钮 8 同心） */
 .sx-direct .win { font-size: 13px; }
@@ -2324,15 +2326,15 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 <p class="hint">v63 将直连界面更新为「<b>顶栏轻气泡 + 设置 5 状态 + 人话排障单</b>」：① 在用户真正感知快慢的<b>会话顶栏</b>（手机副标题、宽屏工具栏状态区），直连生效时追加 12px <code>zap</code>（iOS 为 <code>bolt.horizontal</code>）与「直连」二字，点开 2 行轻气泡看当前毫秒数并说明「发消息和审批始终经中继」，走中继时不加标记；② 电脑设置页<b>「连接」组收敛为 5 种状态</b>，彻底删掉「文件传输 / 响应时间 直连 X · 中继 Y」双路跑分对比，只在状态行右侧写当前生效路径的响应时间，且<b>只在直连未连通时才出现最后一行「为什么没连上 ›」</b>；③ 点开「为什么没连上」是无术语的半屏<b>人话排障单</b>（宽屏为居中对话框），ICE / DTLS / 候选对与收发包计数从主界面移除，只保留在「复制诊断给支持」的纯文本里（不含任何具体 IP 地址、端口或对话内容）。传输规则见 <a href="../transport.md#7-界面规则">transport.md §7</a>。</p>
 
 <table class="spec">
-  <tr><th>#</th><th>「连接」组的 5 种状态</th><th>图形</th><th>状态行文字与行尾 RTT</th><th>第二行（13 号 <code>ink2</code>）</th><th>排障入口行</th></tr>
-  <tr><td>1</td><td><b>正在用直连</b></td><td>绿点</td><td>正在用直连 · <code>14 ms</code></td><td>两种用途都走直连时不写；仅一种走直连时写「用于加载」或「用于文件」</td><td>不显示</td></tr>
-  <tr><td>2</td><td><b>正在建立 / 测速热身</b></td><td>墨色转圈</td><td>正在建立直连… / 直连已连上，正在测速</td><td>—</td><td>不显示</td></tr>
-  <tr><td>3</td><td><b>自动留在中继（中继已够快）</b></td><td>浅灰实心点</td><td>正在用中继 · <code>34 ms</code></td><td>当前网络下中继同样顺畅，已自动选用（或「当前网络下中继响应更快，已自动选用」；样本不足不写）</td><td>不显示</td></tr>
-  <tr><td>4</td><td><b>直连未连通（自动走中继）</b></td><td>浅灰实心点</td><td>正在用中继 · <code>168 ms</code></td><td>人话原因（两边的网络隔开了，不能直接连通 / 电脑没有回应… / 版本太旧… / 没连上，稍后会自动再试）</td><td><code>为什么没连上 ›</code></td></tr>
-  <tr><td>5</td><td><b>已关闭 / 不支持</b></td><td>关（不支持置灰）</td><td>本机关闭或电脑离线时不显示状态行；不支持或电脑端关闭时写浅灰点 + 原因</td><td>电脑端策略关闭时写「在电脑设置或管理端开启后可用」</td><td>不显示</td></tr>
+  <tr><th>#</th><th>「连接」组的 5 种状态</th><th>触发条件</th><th>退出条件</th><th>状态行（行首图形 + 主文字 + 行尾 RTT）</th><th>第二行（13 号 <code>ink2</code>）与排障入口</th></tr>
+  <tr><td>1</td><td><b>正在用直连</b></td><td>电脑在线、两端均允许，且加载或文件至少一路走直连</td><td>回落中继 → 3/4；关开关 → 5a；离线 → 5b</td><td>绿点 + 正在用直连 · <code>14 ms</code>（样本 &lt;3 省略毫秒）</td><td>双路直连不写；仅一路写「用于加载」或「用于文件」；无排障入口</td></tr>
+  <tr><td>2</td><td><b>正在建立 / 测速热身</b></td><td>刚开开关、进前台或网络变化发起协商；或刚连通 ≤5s 热身</td><td>选用直连 → 1；中继够快 → 3；10s 未通 → 4</td><td>墨色转圈 + 正在建立直连… / 直连已连上，正在测速</td><td>无第二行；无排障入口</td></tr>
+  <tr><td>3</td><td><b>自动留在中继（够快或并发让位）</b></td><td>直连已通但中继差距在防抖阈值内或更快；或在线电脑超出本机 4 台并发直连上限而空闲让位</td><td>直连显著更快或进入该电脑会话获得直连槽 → 1/2；断开 → 4</td><td>浅灰实心点 + 正在用中继 · <code>34 ms</code></td><td>「当前网络下中继同样顺畅 / 响应更快，已自动选用」或「同时直连的电脑已达上限，进入这台电脑的会话时自动切换」；无排障入口</td></tr>
+  <tr><td>4</td><td><b>直连未连通（自动走中继）</b></td><td>电脑在线、两端允许，但 10s 预算内协商未通或被拒</td><td>自动/手动重试连通 → 2 → 1/3；关开关 → 5a；离线 → 5b</td><td>浅灰实心点 + 正在用中继 · <code>168 ms</code></td><td>人话原因（网络隔开 / 限制探测 / 电脑未回应 / 版本太旧 / 稍后再试）+ <b>唯一露出 <code>为什么没连上 ›</code></b></td></tr>
+  <tr><td>5</td><td><b>已关闭 / 离线 / 功能不可用</b></td><td>5a 本机手动关；5b 电脑离线；5c 电脑本机或 DirectPolicy 关闭；5d 浏览器无 WebRTC；5e 原生 App 当前版本未支持直连</td><td>开开关、电脑上线、策略重开或升级支持后 → 2</td><td>5a/5b 收起状态行（离线不挂过期 RTT）；5c–5e 开关 40% 置灰 + 浅灰点说明</td><td>5c 区分电脑本机开启或管理端重开；5d/5e 写「已全部经中继连接，不影响正常使用」；无排障入口</td></tr>
 </table>
 
-<h3 class="sub" id="direct-session">手机 · 会话顶栏直连标记与轻气泡</h3>
+<h3 class="sub" id="direct-session">手机 · 会话顶栏直连标记、轻气泡与中途回落过渡</h3>
 <div class="screens">
   <div>
     <div class="phone" id="direct-session-open">
@@ -2342,13 +2344,13 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
         <div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div>
         <div class="ttl">
           <b>修复登录超时</b>
-          <span class="tap">运行中 · 询问 · <span class="dtag"><svg class="ic" width="12" height="12"><use href="#lu-zap"/></svg>直连</span></span>
+          <span class="tap" role="button" aria-label="直连已生效，点按查看连接详情" aria-expanded="true">运行中 · 询问 · <span class="dtag"><svg class="ic" width="12" height="12"><use href="#lu-zap"/></svg>直连</span></span>
         </div>
         <div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div>
       </div>
       <div class="vseg glass"><span class="on">聊天</span><span>终端</span></div>
       <div class="path-pop" role="dialog" aria-label="直连状态">
-        <div class="p1"><i class="dotk g"></i><span>直连 MacBook · 14 ms</span></div>
+        <div class="p1"><i class="dotk g" aria-hidden="true"></i><span>直连 MacBook · 14 ms</span></div>
         <div class="p2">加载记录与收发文件直接连电脑；发消息和审批始终经中继。</div>
         <div class="pfoot"><span>连接稳定</span><a href="#machine-detail">连接设置<svg class="ic" width="14" height="14"><use href="#lu-chevron-right"/></svg></a></div>
       </div>
@@ -2360,7 +2362,36 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       <div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div>
       <div class="homebar"></div>
     </div>
-    <p class="cap"><b>直连生效 · 点开顶栏轻气泡。</b>交互/读取走直连时，会话顶栏状态行末尾加上 12px <code>zap</code>（iOS 为 <code>bolt.horizontal</code>）+「直连」二字（图形加文字，不用彩色药丸）。点一下副标题浮出圆角 18 的无遮罩轻气泡：第一行报出电脑名与当前 RTT（<code>14 ms</code>），第二行讲清职责边界，右下「连接设置 ›」直达该电脑的「连接」组，点外部即收。</p>
+    <p class="cap"><b>直连生效 · 点开顶栏轻气泡。</b>交互/读取走直连时，会话顶栏状态行末尾加上 12px <code>zap</code>（iOS 为 <code>bolt.horizontal</code>）+「直连」二字（触区 ≥44×44，读屏「直连已生效，点按查看连接详情」）。点一下浮出圆角 18 的无遮罩轻气泡：第一行报出电脑名与当前 RTT（样本未满 3 个时不写毫秒），右下「连接设置 ›」直达该电脑的「连接」组。</p>
+  </div>
+
+  <div>
+    <div class="phone" id="direct-session-fallback">
+      <div class="sb"><span>9:41</span><i></i></div>
+      <div class="edge t tall"></div><div class="edge b"></div>
+      <div class="tbar">
+        <div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div>
+        <div class="ttl">
+          <b>修复登录超时</b>
+          <span>运行中 · 询问</span>
+        </div>
+        <div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div>
+      </div>
+      <div class="vseg glass"><span class="on">聊天</span><span>终端</span></div>
+      <div class="path-pop" role="dialog" aria-label="连接状态">
+        <div class="p1"><i class="dotk off" aria-hidden="true"></i><span>经中继连接 MacBook · 168 ms</span></div>
+        <div class="p2">当前所有操作都经中继连接电脑，不影响正常使用。</div>
+        <div class="pfoot"><span>已切回中继</span><a href="#machine-detail">连接设置<svg class="ic" width="14" height="14"><use href="#lu-chevron-right"/></svg></a></div>
+      </div>
+      <div class="scroll chat" style="padding-top:242px">
+        <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
+        <div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>读取 auth/login.go · 运行 go test ./auth/...</code></div>
+        <div class="ai">定位到 <code>auth/login.go:58</code> 在高并发重试时没有归还连接槽，正在跑压力测试确认。</div>
+      </div>
+      <div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><b>气泡打开期间退回中继 · 就地平滑切换。</b>若用户正点开气泡阅读时网络切换使直连回落到中继，<b>不强行关掉气泡</b>：顶栏的 <code>⚡ 直连</code> 160 ms 淡出，气泡内部 200 ms 交叉淡入为浅灰点「经中继连接 MacBook · 168 ms」与「已切回中继」，右侧「连接设置 ›」仍可直达查看原因；重新切上直连时同样就地淡入恢复。</p>
   </div>
 
   <div>
@@ -2384,12 +2415,12 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       <div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div>
       <div class="homebar"></div>
     </div>
-    <p class="cap"><b>走中继时 · 顶栏零打扰。</b>无论直连是自动留在中继、未连通还是已关闭，中继本来就能完成 100% 操作，会话副标题保持原本的「运行中 · 询问」，不挂灰标或警告图标；路径切换只用 200 ms 淡入淡出，不弹提示条。</p>
+    <p class="cap"><b>常态走中继时 · 顶栏零打扰。</b>无论直连是自动留在中继、未连通、已关闭还是应用版本暂未支持直连，中继本来就能完成 100% 操作，会话副标题保持原本的「运行中 · 询问」，不挂灰标或警告图标，也不弹提示条。</p>
   </div>
 </div>
 
-<h3 class="sub" id="direct-states">手机 · 设置 › 电脑 › 「连接」组（收敛后共 5 种状态）</h3>
-<p class="hint">现在「连接」组<b>一共只有 5 种状态</b>（见上表及下面 5 张状态卡）：① 正在用直连、② 正在建立 / 测速热身、③ 自动留在中继（中继已够快）、④ 直连未连通（自动走中继）、⑤ 已关闭 / 不支持。旧设计里的双路跑分对比行已全部移除，只在状态行右侧报出当前正在走的那条路的响应时间；常态下只有 2 行，仅第 4 种（直连未连通）才露出第 3 行「为什么没连上 ›」。</p>
+<h3 class="sub" id="direct-states">手机 · 设置 › 电脑 › 「连接」组（收敛后共 5 种状态 + 全子场景）</h3>
+<p class="hint">现在「连接」组<b>一共只有 5 种状态</b>（每台电脑各自独立）：① 正在用直连、② 正在建立 / 测速热身、③ 自动留在中继（中继够快或多电脑并发让位）、④ 直连未连通（自动走中继）、⑤ 已关闭 / 电脑离线 / 功能不可用。旧设计里的双路跑分对比行已全部移除，只在状态行右侧报出当前正在走的那条路的响应时间；常态下只有 2 行，仅第 4 种（直连未连通）才露出第 3 行「为什么没连上 ›」。</p>
 <div class="stg" id="direct-states-grid">
   <div class="st">
     <div class="st-h"><span class="st-tag">状态 1 / 5</span>正在用直连</div>
@@ -2399,12 +2430,12 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span><span class="v">14 ms</span></div>
     </div>
     <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
-    <div class="gl" style="padding-top:14px">连接（仅单一用途走直连时）</div>
+    <div class="gl" style="padding-top:14px">连接（仅单一用途走直连 / 样本未满 3 个）</div>
     <div class="grp">
       <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
       <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连<small>用于加载</small></span><span class="v">18 ms</span></div>
     </div>
-    <div class="st-c">绿点 + 当前直连响应时间（最近 60 秒中位数）。两种用途都走直连时不写第二行；只有一种走直连时写「用于加载」或「用于文件」。已连通时不显示排障入口。</div>
+    <div class="st-c">绿点 + 当前直连响应时间（最近 60 秒中位数，未满 3 个样本时不显示毫秒数）。两种用途都走直连时不写第二行；只有一种走直连时写「用于加载」或「用于文件」。已连通时不显示排障入口。</div>
   </div>
 
   <div class="st">
@@ -2424,19 +2455,23 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
   </div>
 
   <div class="st">
-    <div class="st-h"><span class="st-tag">状态 3 / 5</span>自动留在中继 · 中继已够快</div>
+    <div class="st-h"><span class="st-tag">状态 3 / 5</span>自动留在中继 · 够快或并发让位</div>
     <div class="gl">连接（差距小，防抖留在中继）</div>
     <div class="grp">
       <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
       <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>当前网络下中继同样顺畅，已自动选用</small></span><span class="v">34 ms</span></div>
     </div>
-    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
-    <div class="gl" style="padding-top:14px">连接（中继实测更快）</div>
+    <div class="gl" style="padding-top:12px">连接（中继实测更快）</div>
     <div class="grp">
       <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
       <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>当前网络下中继响应更快，已自动选用</small></span><span class="v">28 ms</span></div>
     </div>
-    <div class="st-c">直连实际已通，只是比较后中继同样顺畅或更快；用正向表述代替旧版绕口的「直连没有明显更快」，不并列双路跑分，也不出排障入口。</div>
+    <div class="gl" style="padding-top:12px">连接（12+ 台电脑 · 本机 4 槽已满让位）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>同时直连的电脑已达上限，进入这台电脑的会话时自动切换</small></span><span class="v">92 ms</span></div>
+    </div>
+    <div class="st-c">中继同样顺畅、更快，或多电脑超出本机 4 台并发直连槽而空闲让位，都属正常自动调度，不出现排障入口。</div>
   </div>
 
   <div class="st">
@@ -2448,31 +2483,42 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       <a class="mi" href="#direct-diag"><span class="n">为什么没连上</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
     </div>
     <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
-    <div class="st-c">只有直连真的没建立时，组末才出现第 3 行「为什么没连上 ›」。第二行直接写人话原因（网络隔开 / 电脑没有回应，可能在电脑上关了直连 / 电脑上的版本太旧，更新后可用 / 没连上，稍后会自动再试），去掉「直连不可用：」前缀；后台自动重试，不用橙色。</div>
+    <div class="gl" style="padding-top:12px">连接（对端 daemon 版本过旧）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>电脑上的版本太旧，更新后可用</small></span><span class="v">115 ms</span></div>
+      <a class="mi" href="#direct-diag"><span class="n">为什么没连上</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+    </div>
+    <div class="st-c">只有直连真的没建成时，组末才出现第 3 行「为什么没连上 ›」。第二行直接写人话原因（网络隔开 / 限制探测 / 电脑未回应 / 版本太旧 / 稍后再试），后台自动重试，不用橙色。</div>
   </div>
 
-  <div class="st">
-    <div class="st-h"><span class="st-tag">状态 5 / 5</span>已关闭 / 不支持</div>
-    <div class="gl">连接（本机关闭，或电脑当前离线）</div>
+  <div class="st" id="direct-state-5-cases">
+    <div class="st-h"><span class="st-tag">状态 5 / 5</span>已关闭 / 电脑离线 / 功能不可用</div>
+    <div class="gl">连接（本机关闭；电脑离线时也收起实时行）</div>
     <div class="grp">
       <div class="mi"><span class="n">直连</span><span class="sw off"></span></div>
     </div>
-    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
-    <div class="gl" style="padding-top:14px">连接（浏览器不支持 / 电脑端已关闭）</div>
+    <div class="gl" style="padding-top:12px">电脑策略已关（管理端可重开；普通端只读）</div>
     <div class="grp">
       <div class="mi"><span class="n">直连</span><span class="sw off dis"></span></div>
-      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">这个浏览器不支持直连</span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">电脑策略已关闭直连<small>由管理端或电脑本机开启后可用</small></span></div>
+      <div class="mi act"><span class="n">重新允许这台电脑直连</span></div>
+    </div>
+    <div class="gl" style="padding-top:12px">原生 App 暂不支持（如 1e 前 iOS）/ 浏览器无 WebRTC</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw off dis"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">当前应用版本暂不支持直连<small>更新应用后可用；当前已全部经中继连接</small></span></div>
     </div>
     <div class="grp" style="margin-top:8px">
       <div class="mi"><span class="n">直连</span><span class="sw off dis"></span></div>
-      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">电脑上已关闭直连<small>在电脑设置或管理端开启后可用</small></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">这个浏览器不支持直连<small>已全部经中继连接，不影响正常使用</small></span></div>
     </div>
-    <div class="st-c">本机关闭（或电脑离线）时状态行收起，只剩开关与说明；浏览器/设备不支持 WebRTC 或电脑策略关闭直连时，开关 40% 置灰并说明限制来源。</div>
+    <div class="st-c">电脑离线时页顶已有离线提示条，「连接」组保留本机开关偏好但不挂过期 RTT；<code>DirectPolicy</code> 远程关闭时仅管理端可见蓝字「重新允许这台电脑直连」，电脑本机 <code>direct_enabled=false</code> 时写「电脑上已关闭直连 · 在这台电脑上开启后可用」。</div>
   </div>
 </div>
 
-<h3 class="sub" id="direct-diag">手机 · 「为什么没连上」半屏人话排障单与支持纯文本</h3>
-<p class="hint">点状态 4 的「为什么没连上 ›」从底部升起半屏排障单（支持第 4 节跟手下拉关闭）：主界面用三行人话自检回答「电脑有没有掉线、为什么直通不了、会不会自动重试」，给一个主按钮「重新尝试」和一行蓝字「复制诊断给支持」。原本满屏的 IPv4/IPv6 候选分类、ICE 状态、加密握手、数据通道和收发包计数从界面上彻底删掉，<b>只保留在剪贴板纯文本里供支持人员排查，且始终不含具体地址、端口或对话内容</b>。</p>
+<h3 class="sub" id="direct-diag">手机 · 「为什么没连上」半屏人话排障单、重试与复制反馈、完整剪贴板纯文本</h3>
+<p class="hint">点状态 4 的「为什么没连上 ›」从底部升起半屏排障单（支持第 4 节跟手下拉关闭）：三行自检统一用<b>行首圆点（绿点 / 浅灰点 / 墨色转圈）表达状态，行尾状态词一律用 <code>ink2</code>（400），遵守第 2 节不给「正常」「已开启」上绿色</b>。主界面完全移除 IPv4/IPv6 候选分类、ICE 状态、加密握手、数据通道和收发包计数，<b>完整 3 轮双通道计数只写进剪贴板纯文本，且零具体 IP 地址、零端口、零对话内容</b>。</p>
 <div class="screens" style="align-items:flex-start">
   <div>
     <div class="phone" id="direct-why-phone">
@@ -2502,9 +2548,9 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
           <p>常见于蜂窝移动网、公司防火墙或开启了隔离的访客 Wi-Fi。当前所有操作都已自动走中继，不影响正常使用。</p>
         </div>
         <div class="grp">
-          <div class="mi"><span class="n">电脑在线并响应</span><span class="chk-tag ok">正常</span></div>
-          <div class="mi"><span class="n">局域网或公网直通<small>两边都在运营商共享网关后，未能直通</small></span><span class="chk-tag">未通</span></div>
-          <div class="mi"><span class="n">后台自动重试<small>切换 Wi-Fi 或网络变化时会自动再试</small></span><span class="chk-tag">已开启</span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">电脑在线并响应</span><span class="chk-tag">正常</span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk off" aria-hidden="true"></i></span><span class="n">局域网或公网直通<small>两边都在运营商共享网关后，未能直通</small></span><span class="chk-tag">未通</span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">后台自动重试<small>切换 Wi-Fi 或网络变化时会自动再试</small></span><span class="chk-tag">已开启</span></div>
         </div>
         <button class="cb why-btn">重新尝试</button>
         <div class="why-copy"><svg class="ic" width="15" height="15"><use href="#lu-copy"/></svg>复制诊断给支持</div>
@@ -2512,70 +2558,123 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       </div>
       <div class="homebar"></div>
     </div>
-    <p class="cap"><b>网络隔开（最常见）。</b>全屏唯一一个墨色主按钮是「重新尝试」（两次至少隔 2 秒，不重置退避；正在建立时 40% 置灰）；下方「复制诊断给支持」点后 1.5 秒内变为「已复制 ✓」。</p>
+    <p class="cap"><b>网络隔开（常态可重试）。</b>三行自检由行首绿点 / 浅灰点表达状态，行尾「正常 / 未通 / 已开启」统一用 <code>ink2</code>（不染绿）。全屏唯一墨色主按钮是「重新尝试」，下方是蓝字「复制诊断给支持」。</p>
   </div>
 
   <div class="st" id="direct-why-cases">
-    <div class="st-h">另一类常见原因 · 电脑未回应 + 已复制反馈</div>
+    <div class="st-h">重试进行中 + 复制成功 · 以及冷却期 + 复制失败</div>
     <div class="shbox">
+      <div class="shh"><b>为什么没连上</b><span class="ta">完成</span></div>
+      <div class="verdict" role="status">
+        <h4>两边的网络隔开了，不能直接连通</h4>
+        <p>正在重新检查局域网与公网直通路径。当前所有操作都已自动走中继。</p>
+      </div>
+      <div class="grp">
+        <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">电脑在线并响应</span><span class="chk-tag">正常</span></div>
+        <div class="mi dx"><span class="mk"><i class="spin" aria-hidden="true"></i></span><span class="n">局域网或公网直通<small>正在收集候选并交换直连探测…</small></span><span class="chk-tag">正在检查…</span></div>
+        <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">后台自动重试</span><span class="chk-tag">已开启</span></div>
+      </div>
+      <button class="cb why-btn dis"><i class="spin" aria-hidden="true"></i>正在尝试…</button>
+      <div class="why-copy done" role="status"><svg class="ic" width="15" height="15"><use href="#lu-check"/></svg>已复制</div>
+      <p class="why-gf">复制成功：显示 1.5 秒 <code>ink2</code>「已复制」后淡回蓝字。</p>
+    </div>
+
+    <div class="shbox" style="margin-top:12px">
       <div class="shh"><b>为什么没连上</b><span class="ta">完成</span></div>
       <div class="verdict" role="status">
         <h4>电脑没有回应直连握手，可能在电脑上关了直连</h4>
         <p>电脑本身在线，但没有答复直连请求。当前所有操作都已自动走中继，不影响正常使用。</p>
       </div>
       <div class="grp">
-        <div class="mi"><span class="n">电脑在线并响应<small>电脑未答复直连握手，检查电脑是否关了直连</small></span><span class="chk-tag">未响应</span></div>
-        <div class="mi"><span class="n">局域网或公网直通</span><span class="chk-tag">未开始</span></div>
-        <div class="mi"><span class="n">后台自动重试<small>电脑开启直连或重连后会自动恢复</small></span><span class="chk-tag">已开启</span></div>
+        <div class="mi dx"><span class="mk"><i class="dotk off" aria-hidden="true"></i></span><span class="n">电脑在线并响应<small>电脑未答复直连握手，检查电脑是否关了直连</small></span><span class="chk-tag">未响应</span></div>
+        <div class="mi dx"><span class="mk"><i class="dotk off" aria-hidden="true"></i></span><span class="n">局域网或公网直通</span><span class="chk-tag">未开始</span></div>
+        <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">后台自动重试<small>电脑开启直连或重连后会自动恢复</small></span><span class="chk-tag">已开启</span></div>
       </div>
       <button class="cb why-btn dis">重新尝试</button>
-      <div class="why-copy done"><svg class="ic" width="15" height="15"><use href="#lu-check"/></svg>已复制</div>
-      <p class="why-gf">复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。</p>
+      <div class="why-copy err" role="alert">没能复制，请检查剪贴板权限</div>
+      <p class="why-gf">刚试完 2 秒冷却期内「重新尝试」40% 置灰；复制失败显示 2.5 秒红字。</p>
     </div>
-    <div class="st-c">正在重试或刚点完 2 秒冷却期内，「重新尝试」40% 置灰；点「复制诊断给支持」后短暂显示「已复制 ✓」。其他结论（版本太旧、所在网络限制探测、中继限速稍后再试）按同一张 3 行卡片归类呈现。</div>
   </div>
 
   <div class="clip-card" id="direct-clipboard-spec">
-    <div class="st-h">「复制诊断给支持」剪贴板纯文本示意（界面不展示）</div>
+    <div class="st-h">「复制诊断给支持」剪贴板纯文本完整示例（3 轮双通道不省略 · 零地址零端口）</div>
     <pre>直连诊断
+版本：remote-agent iOS 0.63.0 (协议 10)
+系统：iPhone OS 19.0
+电脑：VPS-dev
+生成时刻：2026-11-16T18:20:04Z
 结论：两边的网络隔开了，不能直接连通
-浏览器：Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X)
 
-第 1 次 · 刚刚 · 没连上 · 9.9 秒
+第 1 次 · 12 秒前 · 没连上 · 耗时 9.9 秒 · 结束原因: ice_timeout
   加载 · 停在: 连通检查
-    本机地址
-      IPv4: 本机网卡 ×1（私网） · 公网映射 ×1（运营商共享）
-      IPv6: 没有
-      已隐藏的地址: ×1
-      收集地址: 进行中 0.0 秒 → 已完成 0.4 秒
-    电脑地址
-      IPv4: 本机网卡 ×1（私网） · 公网映射 ×1（运营商共享）
-      IPv6: 没有
-    连通检查
-      IPv4 → IPv4: 失败 2 · 发出 24 · 收到 0
-      ICE 状态: 进行中 0.5 秒 → 失败 8.9 秒
-      加密握手: —
-      数据通道: —
+    本机地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 没有; mDNS 已隐藏 ×1; STUN 错误: 无
+    收集阶段: 进行中 0.0s → 已完成 0.4s
+    电脑地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 没有; mDNS 已隐藏 ×0
+    候选对检查: IPv4→IPv4 失败 2 / 进行中 0 / 成功 0（发出 24, 收到 0, RTT —）
+    状态时间线: ICE 进行中 0.5s → 失败 8.9s | DTLS 未开始 | SCTP 未开始 | 数据通道 未打开
+    拒收信令: 0
   文件 · 停在: 连通检查
-    （同上保留最近 3 轮双通道分类计数，零具体 IP 地址与端口）</pre>
-    <div class="st-c">工程计数（最近 3 轮、加载与文件两条通道、候选地址类型与范围、mDNS 隐藏个数、STUN 错误码、ICE/DTLS/通道耗时与收发计数）全部留在剪贴板纯文本中，地址在入内存前只取分类即丢弃，绝不暴露具体 IP 或端口。</div>
+    本机地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 没有; mDNS 已隐藏 ×1; STUN 错误: 无
+    收集阶段: 进行中 0.0s → 已完成 0.4s
+    电脑地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 没有; mDNS 已隐藏 ×0
+    候选对检查: IPv4→IPv4 失败 2 / 进行中 0 / 成功 0（发出 24, 收到 0, RTT —）
+    状态时间线: ICE 进行中 0.5s → 失败 9.0s | DTLS 未开始 | SCTP 未开始 | 数据通道 未打开
+    拒收信令: 0
+
+第 2 次 · 48 秒前 · 没连上 · 耗时 10.0 秒 · 结束原因: budget_deadline
+  加载 · 停在: 连通检查
+    本机地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 链路本地 ×1; mDNS 已隐藏 ×1; STUN 错误: 无
+    收集阶段: 进行中 0.0s → 已完成 0.6s
+    电脑地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 没有; mDNS 已隐藏 ×0
+    候选对检查: IPv4→IPv4 失败 1 / 进行中 1 / 成功 0（发出 18, 收到 0, RTT —）
+    状态时间线: ICE 进行中 0.6s → 中断 10.0s | DTLS 未开始 | SCTP 未开始 | 数据通道 未打开
+    拒收信令: 0
+  文件 · 停在: 连通检查
+    本机地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 链路本地 ×1; mDNS 已隐藏 ×1; STUN 错误: 无
+    收集阶段: 进行中 0.0s → 已完成 0.6s
+    电脑地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 没有; mDNS 已隐藏 ×0
+    候选对检查: IPv4→IPv4 失败 1 / 进行中 1 / 成功 0（发出 18, 收到 0, RTT —）
+    状态时间线: ICE 进行中 0.6s → 中断 10.0s | DTLS 未开始 | SCTP 未开始 | 数据通道 未打开
+    拒收信令: 0
+
+第 3 次 · 4 分钟前（Wi-Fi 切换前）· 已连上后断开 · 持续 184.2 秒 · 结束原因: network_changed
+  加载 · 最终: 已关闭
+    本机地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（公网）; IPv6 全球单播 ×1; mDNS 已隐藏 ×1; STUN 错误: 无
+    收集阶段: 进行中 0.0s → 已完成 0.3s
+    电脑地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 全球单播 ×1; mDNS 已隐藏 ×0
+    候选对检查: IPv6→IPv6 成功 1 / 失败 0（发出 16, 收到 16, RTT 14 ms）; IPv4→IPv4 失败 1（发出 6, 收到 0, RTT —）
+    状态时间线: ICE 进行中 0.3s → 已连通 0.4s | DTLS 已连通 0.5s | SCTP 已连通 0.5s | 数据通道 已打开 0.6s → 关闭 184.2s
+    拒收信令: 0
+  文件 · 最终: 已关闭
+    本机地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（公网）; IPv6 全球单播 ×1; mDNS 已隐藏 ×1; STUN 错误: 无
+    收集阶段: 进行中 0.0s → 已完成 0.3s
+    电脑地址: IPv4 网卡 ×1（私网）, 公网映射 ×1（运营商共享）; IPv6 全球单播 ×1; mDNS 已隐藏 ×0
+    候选对检查: IPv6→IPv6 成功 1 / 失败 0（发出 14, 收到 14, RTT 15 ms）; IPv4→IPv4 失败 1（发出 6, 收到 0, RTT —）
+    状态时间线: ICE 进行中 0.3s → 已连通 0.4s | DTLS 已连通 0.5s | SCTP 已连通 0.5s | 数据通道 已打开 0.6s → 关闭 184.2s
+    拒收信令: 0</pre>
+    <div class="st-c">以上即剪贴板完整真实输出格式：保留最近 3 轮、每轮完整展开 <code>加载</code> 与 <code>文件</code> 两条通道，能一眼看出「切蜂窝网前 IPv6 直通 14 ms，切蜂窝网后双方都在运营商共享网关下 24 包 0 回」，且全文不含任何 IP 地址、端口号、SDP 原文、ICE ufrag/pwd、指纹或会话内容。</div>
   </div>
 </div>
 
-<h3 class="sub" id="direct-edge">边界 · 英文与 200% 字号</h3>
+<h3 class="sub" id="direct-edge">边界 · 多台电脑独立状态、超长名称、英文与 200% 字号</h3>
 <div class="stg">
   <div class="st">
-    <div class="st-h">English · Direct &amp; Unreachable</div>
+    <div class="st-h">English · Direct, Unreachable &amp; Unsupported</div>
     <div class="gl">Connection (Direct)</div>
     <div class="grp">
       <div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div>
       <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">Using direct</span><span class="v">14 ms</span></div>
     </div>
-    <div class="gl" style="padding-top:14px">Connection (Isolated networks)</div>
+    <div class="gl" style="padding-top:12px">Connection (Isolated networks)</div>
     <div class="grp">
       <div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div>
       <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Using relay<small>The two networks are isolated and can't reach each other directly</small></span><span class="v">168 ms</span></div>
       <a class="mi" href="#direct-diag"><span class="n">Why direct didn't connect</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+    </div>
+    <div class="gl" style="padding-top:12px">Connection (App version unsupported)</div>
+    <div class="grp">
+      <div class="mi"><span class="n">Direct connection</span><span class="sw off dis"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Direct isn't supported in this app version<small>Update the app to use direct; everything is currently routed via relay</small></span></div>
     </div>
     <div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div>
   </div>
@@ -2597,19 +2696,20 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
   </div>
 
   <div class="st cc" id="direct-conncheck">
-    <div class="st-h">连接检测 · 电脑行的直连摘要</div>
+    <div class="st-h">连接检测 · 多台电脑独立状态与 4 槽并发上限</div>
     <div class="grp">
       <div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div>
-      <div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div>
       <div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
       <div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div>
+      <div class="mi"><span class="n">prod-gpu-workstation-us-west-04<small>正在用直连 · 用于加载</small></span><span class="v"><i class="dotk g"></i>118 ms</span></div>
       <div class="mi"><span class="n">Studio<small>正在用中继 · 当前网络下中继同样顺畅，已自动选用</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div>
       <div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div>
-      <div class="mi"><span class="n">Lab<small>直连已关闭</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div>
+      <div class="mi"><span class="n">build-runner-arm64-09<small>正在用中继 · 同时直连的电脑已达上限</small></span><span class="v"><i class="dotk g"></i>104 ms</span></div>
+      <div class="mi"><span class="n">Lab<small>电脑策略已关闭直连</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div>
       <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
     </div>
-    <div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div>
-    <div class="st-c">在线电脑名下一行 13 号 <code>ink2</code> 摘要与「连接」组同词（去掉「直连不可用：」前缀）；离线电脑不写摘要。整页见<a href="#conncheck">连接检测</a>。</div>
+    <div class="gf">延时是一次往返的时间。若当前浏览器或应用版本暂不支持直连，不在每台电脑下重复报错，只在此处末尾补一句「当前应用版本暂不支持直连，已全部经中继连接。」</div>
+    <div class="st-c">多台电脑各自独立展示状态词（长机器名自然折行），本机超过 4 台并发直连上限时其余在线电脑显示「同时直连的电脑已达上限」，离线电脑不写直连摘要。</div>
   </div>
 </div>
 
@@ -2635,13 +2735,13 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <div class="main">
       <div class="tool">
         <b>修复登录超时</b>
-        <span class="st"><i class="spin"></i>运行中 · 询问 · <span class="dchip open"><svg class="ic" width="12" height="12"><use href="#lu-zap"/></svg>直连</span></span>
+        <span class="st"><i class="spin"></i>运行中 · 询问 · <span class="dchip open" role="button" tabindex="0" aria-expanded="true" aria-label="直连已生效，点按查看连接详情"><svg class="ic" width="12" height="12"><use href="#lu-zap"/></svg>直连</span></span>
         <span class="sp"></span>
         <div class="seg"><span class="on">聊天</span><span>终端</span><span>并排</span></div>
         <span class="ib"><svg class="ic" width="18" height="18"><use href="#lu-ellipsis"/></svg></span>
       </div>
       <div class="path-pop" role="dialog" aria-label="直连状态">
-        <div class="p1"><i class="dotk g"></i><span>直连 MacBook · 14 ms</span></div>
+        <div class="p1"><i class="dotk g" aria-hidden="true"></i><span>直连 MacBook · 14 ms</span></div>
         <div class="p2">加载记录与收发文件直接连电脑；发消息和审批始终经中继。</div>
         <div class="pfoot"><span>连接稳定</span><a href="#direct-wide-settings">连接设置<svg class="ic" width="14" height="14"><use href="#lu-chevron-right"/></svg></a></div>
       </div>
@@ -2663,7 +2763,7 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
       </div>
     </div>
   </div>
-  <p class="wcap"><b>宽屏会话 · 顶栏直连标记与点开气泡。</b>工具栏状态文字「运行中 · 询问」后面紧跟 <code>⚡ 直连</code>（走中继时不出现）；点击在正下方锚定弹出级 3（<code>s3</code> + <code>0.5px rim</code> + <code>elev</code>，圆角 14）轻气泡，显示当前电脑、直连响应时间与职责说明，点外部或按 <code>Esc</code> 关闭。</p>
+  <p class="wcap"><b>宽屏会话 · 顶栏直连标记与点开气泡。</b>工具栏状态文字「运行中 · 询问」后面紧跟 <code>⚡ 直连</code>（悬停盖 5% <code>hov</code>，按下盖 8% <code>press</code>，键盘聚焦描 2px <code>blue</code> 环）；点击在正下方锚定弹出级 3（<code>s3</code> + <code>0.5px rim</code> + <code>elev</code>，圆角 14）轻气泡，点外部或按 <code>Esc</code> 关闭并将焦点还给标记。</p>
 
   <div style="height:32px"></div>
 
@@ -2702,30 +2802,30 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
         </div>
       </div>
       <div class="wdim"></div>
-      <div class="wdlg" role="dialog" aria-label="为什么没连上">
+      <div class="wdlg" role="dialog" aria-modal="true" aria-label="为什么没连上">
         <div class="whd"><b>为什么没连上</b><span class="ta">完成</span></div>
         <div class="verdict" role="status">
           <h4>两边的网络隔开了，不能直接连通</h4>
           <p>常见于蜂窝移动网、公司防火墙或开启了隔离的访客 Wi-Fi。当前所有操作都已自动走中继，不影响正常使用。</p>
         </div>
         <div class="grp">
-          <div class="mi"><span class="n">电脑在线并响应</span><span class="chk-tag ok">正常</span></div>
-          <div class="mi"><span class="n">局域网或公网直通<small>两边都在运营商共享网关后，未能直通</small></span><span class="chk-tag">未通</span></div>
-          <div class="mi"><span class="n">后台自动重试<small>切换 Wi-Fi 或网络变化时会自动再试</small></span><span class="chk-tag">已开启</span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">电脑在线并响应</span><span class="chk-tag">正常</span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk off" aria-hidden="true"></i></span><span class="n">局域网或公网直通<small>两边都在运营商共享网关后，未能直通</small></span><span class="chk-tag">未通</span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk g" aria-hidden="true"></i></span><span class="n">后台自动重试<small>切换 Wi-Fi 或网络变化时会自动再试</small></span><span class="chk-tag">已开启</span></div>
         </div>
         <div class="wacts">
           <div class="why-copy"><svg class="ic" width="14" height="14"><use href="#lu-copy"/></svg>复制诊断给支持</div>
-          <button class="cb">重新尝试</button>
+          <button class="cb why-btn">重新尝试</button>
         </div>
         <div class="why-gf">复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。</div>
       </div>
     </div>
   </div>
-  <p class="wcap"><b>宽屏设置列（640 宽）与「为什么没连上」居中对话框。</b>宽屏下开关取 40×24（触区 44×44），正常直连仅 2 行；未连通时点「为什么没连上 ›」打开宽 460 的级 3 居中对话框（外圆角 18、内分组级 2 圆角 14、按钮圆角 8 同心），没有手机抓手条。</p>
+  <p class="wcap"><b>宽屏设置列（640 宽）与「为什么没连上」居中对话框。</b>宽屏下开关取 40×24（触区 44×44），正常直连仅 2 行；未连通时点「为什么没连上 ›」打开宽 460 的级 3 居中对话框（外圆角 18、内分组级 2 圆角 14、按钮圆角 8 同心；自检卡同样用行首绿点 / 浅灰点 + 行尾 <code>ink2</code>），<code>Tab</code> 焦点循环在对话框内，按 <code>Esc</code> 关闭。</p>
 </div>
 
-<h3 class="sub" id="direct-motion">动效</h3>
-<p class="hint">会话顶栏 <code>⚡ 直连</code> 标记和「连接」组状态词变化均用 200 ms 交叉淡入，不弹提示条或震动；轻气泡按常档（200 ms）淡入并下移不超过 8px；状态行与「为什么没连上 ›」出现或收起做高度过渡，页面刚打开时已有的行不播进入；开启「减少动态效果」时去掉位移和高度动画，只留不超过 120 ms 的淡入淡出。</p>
+<h3 class="sub" id="direct-motion">动效、无障碍与三端组件</h3>
+<p class="hint">会话顶栏 <code>⚡ 直连</code> 标记和「连接」组状态词变化均用常档 200 ms 交叉淡入（退出 160 ms <code>ease-in</code>），不弹提示条或震动；轻气泡按常档 200 ms 从 <code>translateY(-6px) scale(0.98)</code> 淡入落位；状态行与「为什么没连上 ›」出现或收起做常档高度过渡，页面刚打开时已有的行不播进入；开启「减少动态效果」时去掉位移、缩放和高度动画，只留不超过 120 ms 的淡入淡出，转圈改为静止半环。三端映射：网页用 <code>&lt;button aria-expanded&gt;</code> + 锚定浮层 / <code>&lt;dialog&gt;</code>；iOS 用副标题 <code>Button</code> + SF Symbols <code>bolt.horizontal</code>、紧凑 <code>.popover</code>、<code>.sheet(.medium)</code>（iPad 为 <code>.formSheet</code>）；Android 用 <code>Popup(focusable=true)</code> 与 <code>ModalBottomSheet</code>（平板 ≥840dp 为居中对话框）。</p>
 </section>
 <!-- ===== phone-image-storage ===== -->
 <style>
