@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
+import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
 import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 
 import io.github.lewin671.remoteagent.proto.*
@@ -672,9 +673,10 @@ class RemoteTest {
             r.awaitState("all bulk sessions listed") { st -> sids.all { st.sessions[it]?.info != null } }
             // Watch all 10 sessions concurrently while cache disk writes are gated,
             // so >4096 event objects pass through Core before cache writes drain.
+            val win = SessionWindowRequest.newBuilder().setLimit(eventsPerSession).build()
             val jobs = sids.map { sid ->
                 async {
-                    r.events(sid).first { it.events.size == eventsPerSession }
+                    r.watchSession(sid, win).first { it.timeline.itemsCount == eventsPerSession }
                 }
             }
             jobs.forEach { it.await() }
@@ -693,8 +695,8 @@ class RemoteTest {
             closers += AutoCloseable { cold.close() }
             cold.start()
             for (sid in sids) {
-                val restored = withTimeout(10_000) { cold.events(sid).first { it.events.size == eventsPerSession } }
-                assertEquals(eventsPerSession, restored.events.size)
+                val restored = withTimeout(10_000) { cold.watchSession(sid, win).first { it.timeline.itemsCount == eventsPerSession } }
+                assertEquals(eventsPerSession, restored.timeline.itemsCount)
             }
         }
 
