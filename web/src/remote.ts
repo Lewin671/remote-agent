@@ -454,6 +454,10 @@ export class Remote implements CoreExecutor {
 
   protected api: Client<typeof ClientService>;
   private unwatchDirectInstall?: () => void;
+  private unwatchSecurityPush?: () => void;
+  private securityTimer?: ReturnType<typeof setInterval>;
+  private foreground = true;
+  private lastSecuritySyncAt = 0;
   private directTransfers = new Map<string, "image" | "file">();
   private directReadyCache = new Map<string, boolean>();
   private token = "";
@@ -613,6 +617,9 @@ export class Remote implements CoreExecutor {
       account,
       async () => {
         await this.checkNetworkSecurity();
+        if (Date.now() - this.lastSecuritySyncAt >= 10_000) {
+          await this.security.sync(undefined, 5000);
+        }
         await this.security.verifiedRecord();
       },
       () => {
@@ -623,6 +630,7 @@ export class Remote implements CoreExecutor {
       },
     );
     this.security.onSync = (record, started) => {
+      this.lastSecuritySyncAt = started;
       void this.direct.synced(record, started);
       this.applySecurityRecordSets(record);
       if (this.coreSyncDepth === 0 && !this.closed) {
@@ -708,6 +716,16 @@ export class Remote implements CoreExecutor {
     this.closed = false;
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = watchSecurityInstall((record) => this.direct.install(record));
+    this.unwatchSecurityPush?.();
+    this.unwatchSecurityPush = watchSecurityPush(() => {
+      if (!this.closed) void this.security.sync(undefined, 5000).catch(() => undefined);
+    });
+    clearInterval(this.securityTimer);
+    this.securityTimer = setInterval(() => {
+      if (!this.closed && this.foreground && this.conn === "online") {
+        void this.security.sync(undefined, 5000).catch(() => undefined);
+      }
+    }, 12_000);
     this.authority.lifecycle.resume();
     void this.watchPairingDelivery();
     this.ensureHost().start();
@@ -718,6 +736,10 @@ export class Remote implements CoreExecutor {
     this.direct.close();
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = undefined;
+    this.unwatchSecurityPush?.();
+    this.unwatchSecurityPush = undefined;
+    clearInterval(this.securityTimer);
+    this.securityTimer = undefined;
     this.stopPairingDelivery();
     this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
     this.retireNetworkIO();
@@ -774,6 +796,7 @@ export class Remote implements CoreExecutor {
   }
 
   setForeground(active: boolean) {
+    this.foreground = active;
     this.direct.setForeground(active);
     this.ensureHost().setForeground(active);
   }
@@ -3313,5 +3336,3 @@ export async function resumeRegistration(): Promise<void> {
   await clearPairingIdentity(pending.account.server, approval.pairingId);
   await clearRegistration(pending);
 }
-
-void watchSecurityPush;

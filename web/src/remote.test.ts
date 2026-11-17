@@ -1398,3 +1398,26 @@ it("classifies readOnlyCommand consistently with shared transport fixtures", asy
     }
   }
 });
+
+it("proactively renews security every 12s while foreground and online so direct stays authorized", async () => {
+  const r = await probe();
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"] });
+  try {
+    const syncSpy = vi.spyOn((r as unknown as { security: { sync: () => Promise<unknown> } }).security, "sync");
+    vi.spyOn(r, "conn", "get").mockReturnValue("online");
+    r.start();
+    const before = syncSpy.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(syncSpy.mock.calls.length).toBeGreaterThan(before);
+    const afterOnline = syncSpy.mock.calls.length;
+    r.setForeground(false);
+    await vi.advanceTimersByTimeAsync(24_000);
+    expect(syncSpy.mock.calls.length).toBe(afterOnline);
+    r.setForeground(true);
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(syncSpy.mock.calls.length).toBeGreaterThan(afterOnline);
+  } finally {
+    r.stop();
+    vi.useRealTimers();
+  }
+});

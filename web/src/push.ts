@@ -119,7 +119,7 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
 /** A foreground signal carries no private material; always pull the signed
  * chain and recovery hints, including when both session switches are off. */
 export function watchSecurityPush(sync: () => void): () => void {
-  if (!("serviceWorker" in navigator)) return () => undefined;
+  if (typeof navigator === "undefined" || typeof navigator.serviceWorker?.addEventListener !== "function") return () => undefined;
   const onMessage = (event: MessageEvent) => {
     if (event.data?.type === "security") sync();
   };
