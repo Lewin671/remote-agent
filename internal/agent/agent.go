@@ -113,7 +113,7 @@ type AccountLimitsSource interface {
 // actively probed via a non-model command after passive log-directory activity.
 type UsageProbeSource interface {
 	LogDir() string
-	ProbeUsage(ctx context.Context, triggerLogPath string) (*pb.AgentQuota, error)
+	ProbeUsage(ctx context.Context) (*pb.AgentQuota, error)
 }
 
 // QuotaWindowOrder orders a provider's merged windows for all clients.

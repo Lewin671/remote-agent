@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -35,7 +34,6 @@ type agyQuotaMonitor struct {
 	pending         bool
 	firstActivityAt time.Time
 	lastActivityAt  time.Time
-	latestLogPath   string
 }
 
 func newAgyQuotaMonitor() *agyQuotaMonitor {
@@ -99,18 +97,18 @@ func (d *Daemon) stepAgyQuota(ctx context.Context, m *agyQuotaMonitor) {
 	now := m.clockNow()
 
 	if !m.baselineReady {
-		m.baseline, _, _ = scanAgyLogDir(logDir, nil)
+		m.baseline, _ = scanAgyLogDir(logDir, nil)
 		m.baselineReady = true
 		if !m.startupChecked {
 			m.startupChecked = true
 			if !d.hasSavedQuota(pb.Agent_AGENT_ANTIGRAVITY) {
-				d.runAgyQuotaProbe(ctx, m, src, "")
+				d.runAgyQuotaProbe(ctx, m, src)
 			}
 		}
 		return
 	}
 
-	snap, changed, newestPath := scanAgyLogDir(logDir, m.baseline)
+	snap, changed := scanAgyLogDir(logDir, m.baseline)
 	m.baseline = snap
 	if changed {
 		if !m.pending {
@@ -118,9 +116,6 @@ func (d *Daemon) stepAgyQuota(ctx context.Context, m *agyQuotaMonitor) {
 			m.firstActivityAt = now
 		}
 		m.lastActivityAt = now
-		if newestPath != "" {
-			m.latestLogPath = newestPath
-		}
 	}
 
 	if !m.pending {
@@ -131,13 +126,12 @@ func (d *Daemon) stepAgyQuota(ctx context.Context, m *agyQuotaMonitor) {
 	if !quietReady && !maxWaitReady {
 		return
 	}
-	triggerLog := m.latestLogPath
-	d.runAgyQuotaProbe(ctx, m, src, triggerLog)
+	d.runAgyQuotaProbe(ctx, m, src)
 }
 
-func (d *Daemon) runAgyQuotaProbe(ctx context.Context, m *agyQuotaMonitor, src agent.UsageProbeSource, triggerLog string) {
+func (d *Daemon) runAgyQuotaProbe(ctx context.Context, m *agyQuotaMonitor, src agent.UsageProbeSource) {
 	started := m.clockNow()
-	q, err := src.ProbeUsage(ctx, triggerLog)
+	q, err := src.ProbeUsage(ctx)
 	finished := m.clockNow()
 	elapsed := finished.Sub(started)
 	if elapsed < 0 {
@@ -146,10 +140,9 @@ func (d *Daemon) runAgyQuotaProbe(ctx context.Context, m *agyQuotaMonitor, src a
 
 	// Re-baseline after the probe exits so the probe's own cli-*.log file
 	// cannot self-trigger a follow-up probe.
-	m.baseline, _, _ = scanAgyLogDir(src.LogDir(), nil)
+	m.baseline, _ = scanAgyLogDir(src.LogDir(), nil)
 	m.baselineReady = true
 	m.pending = false
-	m.latestLogPath = ""
 
 	if ctx.Err() != nil {
 		return
@@ -198,17 +191,17 @@ func classifyAgyProbeError(err error) (reasonClass, detail string) {
 	}
 }
 
-func scanAgyLogDir(logDir string, prev map[string]agyFileStamp) (snap map[string]agyFileStamp, changed bool, newestChangedPath string) {
+// scanAgyLogDir stamps agy's per-run logs by name, time and size only; it
+// never reads them.
+func scanAgyLogDir(logDir string, prev map[string]agyFileStamp) (snap map[string]agyFileStamp, changed bool) {
 	snap = map[string]agyFileStamp{}
 	if logDir == "" {
-		return snap, false, ""
+		return snap, false
 	}
 	entries, err := os.ReadDir(logDir)
 	if err != nil {
-		return snap, false, ""
+		return snap, false
 	}
-	var newestTime time.Time
-	var newestName string
 	for _, entry := range entries {
 		name := entry.Name()
 		if entry.IsDir() || !strings.HasPrefix(name, "cli-") || !strings.HasSuffix(name, ".log") {
@@ -220,20 +213,11 @@ func scanAgyLogDir(logDir string, prev map[string]agyFileStamp) (snap map[string
 		}
 		st := agyFileStamp{modTime: info.ModTime(), size: info.Size()}
 		snap[name] = st
-		if prev == nil {
-			continue
-		}
-		old, ok := prev[name]
-		if !ok || !old.modTime.Equal(st.modTime) || old.size != st.size {
-			changed = true
-			if newestName == "" || st.modTime.After(newestTime) || (st.modTime.Equal(newestTime) && name > newestName) {
-				newestTime = st.modTime
-				newestName = name
+		if prev != nil {
+			if old, ok := prev[name]; !ok || !old.modTime.Equal(st.modTime) || old.size != st.size {
+				changed = true
 			}
 		}
 	}
-	if newestName != "" {
-		newestChangedPath = filepath.Join(logDir, newestName)
-	}
-	return snap, changed, newestChangedPath
+	return snap, changed
 }

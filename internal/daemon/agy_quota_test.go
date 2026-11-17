@@ -40,7 +40,7 @@ printf '%%s' "$n" > %q
 
 # Every agy invocation (including /usage itself) creates a cli-*.log file.
 mkdir -p %q
-printf 'probe run %%s\n' "$n" > %q/cli-probe-${n}.log
+printf 'I1117 10:00:00.000 server_oauth.go:221] applyAuthResult: email=probe-user@example.com\n' > %q/cli-probe-${n}.log
 
 mode=$(cat %q 2>/dev/null || echo ok)
 case "$mode" in
@@ -105,7 +105,7 @@ func TestAgyQuotaStartupAndNoSelfExcitation(t *testing.T) {
 		t.Fatalf("startup probe count = %d, want 1", got)
 	}
 	q := agyQuota(h.d)
-	if len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_OK || q[0].Account != "" || q[0].SourceSessionId != agyUsageProbeSource {
+	if len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_OK || q[0].Account != antigravity.EmailFingerprint("probe-user@example.com") {
 		t.Fatalf("unexpected startup quota: %v", q)
 	}
 	if len(q[0].Windows) != 2 || math.Abs(q[0].Windows[0].GetUsedPercent()-40) > 1e-6 {
@@ -210,8 +210,8 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 		t.Fatalf("expected probe after 20s quiet, got %d", got)
 	}
 	q := agyQuota(h.d)
-	if len(q) != 1 || q[0].Account != antigravity.EmailFingerprint("ext-user@example.com") || q[0].Login != pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION {
-		t.Fatalf("expected fingerprinted external account without duplicates, got %v", q)
+	if len(q) != 1 || q[0].Account != antigravity.EmailFingerprint("probe-user@example.com") || q[0].Login != pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION {
+		t.Fatalf("expected the probe login account without duplicates, got %v", q)
 	}
 }
 
@@ -293,7 +293,7 @@ func TestAgyQuotaErrorsPreserveLastDataAndDistinguishReasons(t *testing.T) {
 	if math.Abs(qList[0].Windows[0].GetUsedPercent()-30) > 1e-6 {
 		t.Fatalf("credit recovery rejected: %v", qList[0].Windows[0])
 	}
-	if qList[0].Account != antigravity.EmailFingerprint("err@example.com") {
+	if qList[0].Account != antigravity.EmailFingerprint("probe-user@example.com") {
 		t.Fatalf("account fingerprint missing after recovery: %v", qList[0])
 	}
 }

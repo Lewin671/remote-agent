@@ -185,14 +185,16 @@ func (a *Adapter) SetAccountInfo(email, planTier string) {
 	}
 }
 
-func (a *Adapter) setAccountFingerprint(fp string) {
+// observeAccountFingerprint records the login a /usage run answered for. A
+// different login than the status line's drops that login's plan tier.
+func (a *Adapter) observeAccountFingerprint(fp string) {
 	if fp == "" {
 		return
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.account == "" {
-		a.account = fp
+	if a.account != fp {
+		a.account, a.planTier = fp, ""
 	}
 }
 

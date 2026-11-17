@@ -144,8 +144,8 @@ func TestProbeUsageExecutionAndAccount(t *testing.T) {
 	if err := os.MkdirAll(logDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	triggerLog := filepath.Join(logDir, "cli-20261117_090000.log")
-	if err := os.WriteFile(triggerLog, []byte("I1117 09:00:00.123 server_oauth.go:221] applyAuthResult: email=probe-user@example.com, authMethod=consumer, quotaProject=\n"), 0o600); err != nil {
+	// An earlier run's log names another login; only the probe's own counts.
+	if err := os.WriteFile(filepath.Join(logDir, "cli-20261117_090000.log"), []byte("I1117 09:00:00.123 server_oauth.go:221] applyAuthResult: email=earlier@example.com, authMethod=consumer\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -153,15 +153,16 @@ func TestProbeUsageExecutionAndAccount(t *testing.T) {
 	script := writeFakeAgyScript(t, fmt.Sprintf(`#!/bin/sh
 printf 'ARGS=%%s\nAUTO=%%s\nPROXY=%%s\nBROWSER=%%s\nPWD=%%s\n' "$*" "$AGY_CLI_DISABLE_AUTO_UPDATE" "$HTTPS_PROXY" "$BROWSER" "$PWD" > %s
 if [ -s /dev/stdin ]; then exit 2; fi
+printf 'I1117 09:05:00.000 server_oauth.go:221] applyAuthResult: email=probe-user@example.com, authMethod=consumer\n' > %s/cli-own-$$.log
 cat <<'EOF'
 {"status":"SUCCESS","command":{"name":"usage","data":{"groups":[{"name":"Gemini Models","buckets":[{"id":"gemini-5h","window":"5h","remaining_fraction":0.5,"reset_time":"2026-11-17T17:00:00Z"}]}]}}}
 EOF
-`, shellQuote(envRecord)))
+`, shellQuote(envRecord), shellQuote(logDir)))
 
 	a := New(script, home)
 	a.SetCommandEnv(map[string]string{"HTTPS_PROXY": "http://127.0.0.1:7897"})
 
-	q, err := a.ProbeUsage(context.Background(), triggerLog)
+	q, err := a.ProbeUsage(context.Background())
 	if err != nil {
 		t.Fatalf("ProbeUsage failed: %v", err)
 	}
@@ -183,21 +184,27 @@ EOF
 		t.Fatalf("expected private temp cwd/browser shim: %s", gotEnv)
 	}
 	if q.Account != EmailFingerprint("probe-user@example.com") {
-		t.Fatalf("expected log email fingerprint, got %q", q.Account)
+		t.Fatalf("expected the probe's own log account, got %q", q.Account)
 	}
 	if strings.Contains(q.String(), "probe-user@example.com") {
 		t.Fatal("plaintext email leaked into AgentQuota")
 	}
 
-	// Existing statusline Account() + planTier takes priority over trigger log.
-	a2 := New(script, home)
-	a2.SetAccountInfo("statusline@example.com", "Google AI Pro")
-	q2, err := a2.ProbeUsage(context.Background(), triggerLog)
-	if err != nil {
-		t.Fatalf("ProbeUsage with existing account failed: %v", err)
-	}
-	if q2.Account != EmailFingerprint("statusline@example.com") || q2.Plan != "Google AI Pro" {
-		t.Fatalf("expected statusline account+plan, got account=%q plan=%q", q2.Account, q2.Plan)
+	// The login that answered wins over the status line's; its plan is
+	// kept only for the same login.
+	for _, tc := range []struct{ statusEmail, wantPlan string }{
+		{"switched-away@example.com", ""},
+		{"probe-user@example.com", "Google AI Pro"},
+	} {
+		a2 := New(script, home)
+		a2.SetAccountInfo(tc.statusEmail, "Google AI Pro")
+		q2, err := a2.ProbeUsage(context.Background())
+		if err != nil {
+			t.Fatalf("ProbeUsage failed: %v", err)
+		}
+		if q2.Account != EmailFingerprint("probe-user@example.com") || q2.Plan != tc.wantPlan {
+			t.Fatalf("status line %s: got account=%q plan=%q", tc.statusEmail, q2.Account, q2.Plan)
+		}
 	}
 }
 
@@ -206,7 +213,7 @@ func TestProbeUsageOversizeOutput(t *testing.T) {
 dd if=/dev/zero bs=1024 count=1100 2>/dev/null | tr '\0' 'a'
 `)
 	a := New(script, t.TempDir())
-	_, err := a.ProbeUsage(context.Background(), "")
+	_, err := a.ProbeUsage(context.Background())
 	if !errors.Is(err, ErrUsageOutputLimit) {
 		t.Fatalf("got %v, want ErrUsageOutputLimit", err)
 	}
@@ -218,7 +225,7 @@ open https://accounts.example.com/oauth
 exit 1
 `)
 	a := New(script, t.TempDir())
-	_, err := a.ProbeUsage(context.Background(), "")
+	_, err := a.ProbeUsage(context.Background())
 	if !errors.Is(err, ErrUsageNotLoggedIn) {
 		t.Fatalf("got %v, want ErrUsageNotLoggedIn", err)
 	}
@@ -241,7 +248,7 @@ wait
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		_, err := a.ProbeUsage(ctx, "")
+		_, err := a.ProbeUsage(ctx)
 		done <- err
 	}()
 	rawPID, err := os.ReadFile(fifo) // blocks until the fake agy started its child

@@ -127,7 +127,9 @@ func ParseUsageOutput(raw []byte) (*pb.AgentQuota, error) {
 
 // ProbeUsage runs `agy -p /usage --output-format json` in a private temporary
 // directory, blocking browser OAuth popups and keeping the process group bounded.
-func (a *Adapter) ProbeUsage(ctx context.Context, triggerLogPath string) (*pb.AgentQuota, error) {
+// The account is read from the log this very run writes, so it is the login
+// that answered, even after the user switched accounts outside remote-agent.
+func (a *Adapter) ProbeUsage(ctx context.Context) (*pb.AgentQuota, error) {
 	a.probeMu.Lock()
 	defer a.probeMu.Unlock()
 
@@ -136,6 +138,7 @@ func (a *Adapter) ProbeUsage(ctx context.Context, triggerLogPath string) (*pb.Ag
 		return nil, exec.ErrNotFound
 	}
 
+	before := cliLogNames(a.LogDir())
 	timeout := a.usageTimeout
 	if timeout <= 0 {
 		timeout = usageProbeTimeout
@@ -222,11 +225,10 @@ func (a *Adapter) ProbeUsage(ctx context.Context, triggerLogPath string) (*pb.Ag
 	if len(bytes.TrimSpace(raw)) > 0 {
 		q, parseErr := ParseUsageOutput(raw)
 		if parseErr == nil {
-			fp, plan, _ := a.Account()
-			if fp == "" && triggerLogPath != "" {
-				fp = ExtractLogEmailFingerprint(triggerLogPath)
-				a.setAccountFingerprint(fp)
+			if own := newestNewCLILog(a.LogDir(), before); own != "" {
+				a.observeAccountFingerprint(ExtractLogEmailFingerprint(own))
 			}
+			fp, plan, _ := a.Account()
 			q.Account = fp
 			q.Plan = plan
 			if fp != "" {
@@ -251,6 +253,41 @@ func (a *Adapter) ProbeUsage(ctx context.Context, triggerLogPath string) (*pb.Ag
 		return nil, waitErr
 	}
 	return nil, errors.New("agy /usage returned empty output")
+}
+
+// cliLogNames lists agy's per-run log files.
+func cliLogNames(dir string) map[string]bool {
+	names := map[string]bool{}
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if n := e.Name(); !e.IsDir() && strings.HasPrefix(n, "cli-") && strings.HasSuffix(n, ".log") {
+			names[n] = true
+		}
+	}
+	return names
+}
+
+// newestNewCLILog returns the newest log file that is not in before: the
+// probe's own (another agy starting at the same moment is the same login).
+func newestNewCLILog(dir string, before map[string]bool) string {
+	var newest string
+	var newestAt time.Time
+	for n := range cliLogNames(dir) {
+		if before[n] {
+			continue
+		}
+		info, err := os.Stat(filepath.Join(dir, n))
+		if err != nil {
+			continue
+		}
+		if newest == "" || info.ModTime().After(newestAt) {
+			newest, newestAt = n, info.ModTime()
+		}
+	}
+	if newest == "" {
+		return ""
+	}
+	return filepath.Join(dir, newest)
 }
 
 // ExtractLogEmailFingerprint reads only the `applyAuthResult: email=...` line
