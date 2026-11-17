@@ -223,7 +223,7 @@
   .cbar .ph { flex: 1; font-size: 17px; color: var(--ink3); }
   .snd { width: 40px; height: 40px; border-radius: 50%; background: var(--btn); color: var(--btn-fg); display: flex; align-items: center; justify-content: center; flex: none; }
   .snd.off { background: var(--fill2); color: var(--ink3); }
-  .snd.sec { background: var(--fill2); color: var(--ink); }
+  .snd.demote { background: var(--fill2); color: var(--ink); padding: 0; }
   .dock { position: absolute; left: 12px; right: 12px; bottom: 90px; z-index: 6; }
   .dock .tc { margin: 0; box-shadow: var(--float); }
   :is([data-theme="dark"], [data-theme="dark"] *) .dock .tc { box-shadow: inset 0 1px 0 rgba(255,255,255,.07), var(--float); }
@@ -684,7 +684,7 @@ NOT-A-RECOVERY-CODE</div><div class="grp"><div class="mi"><svg class="ic ck" wid
       <span class="appmark sm" style="background:var(--paper);margin:0 auto" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24"><use href="#app-mark"/></svg></span>
       <b style="display:block;font-size:17px;font-weight:600;margin-top:12px">暂时打不开本机数据</b>
       <p style="font-size:13px;line-height:1.45;color:var(--ink2);margin:6px 0 14px">浏览器拒绝了本地存储访问，请关闭无痕限制或检查站点权限后重试。</p>
-      <button class="cb sec sm" style="min-height:44px;padding:0 22px">重新加载</button>
+      <button class="cb sm" style="min-height:44px;padding:0 22px;margin:0 auto;background:var(--fill2);color:var(--ink)">重新加载</button>
     </div>
     <p style="font-size:13px;line-height:1.55;color:var(--ink2);margin:10px 0 0">单色 <code>AppMark</code> 对读屏设 <code>aria-hidden="true"</code>；300ms 内完成直接进主页不闪字；出错不放空白屏，给出原因与次级按钮「重新加载」。</p>
   </div>
@@ -1041,7 +1041,7 @@ git status --short gen/</div><div class="y">清理旧的生成文件后重新生
     <div style="background:var(--gbg);border-radius:18px;padding:12px">
       <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">① 停靠卡展开（含携带草稿又手动点「处理」展开时）→ 圆钮降为 <code>fill2 + ink</code>（仍可点，不置灰 40%）</div>
       <div class="tc" style="margin:0 0 8px"><div class="k"><i></i>请求执行<span>剩 8 分钟</span><a>收起</a></div><div class="cmd mono" style="margin-top:8px"><b>❯ </b>go test ./... -count=1</div><div class="bs"><button class="cb no">拒绝</button><button class="cb">允许</button></div></div>
-      <div class="cbar glass" style="position:static;box-shadow:0 2px 10px rgba(0,0,0,.08)"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="tx">顺便看下 lint</span><span class="snd sec" title="次级样式但照常可点"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div>
+      <div class="cbar glass" style="position:static;box-shadow:0 2px 10px rgba(0,0,0,.08)"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="tx">顺便看下 lint</span><span class="snd demote" title="次级样式但照常可点"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div>
     </div>
     <div style="background:var(--gbg);border-radius:18px;padding:12px;margin-top:10px">
       <div style="font-size:12px;color:var(--ink2);margin-bottom:8px">② 收成单行 <code>.tc.line</code> 或处理完消失 → 120 ms 恢复 <code>btn</code> 墨色主按钮</div>
@@ -1060,7 +1060,7 @@ buf generate --template buf.gen.yaml &amp;&amp; \
 go build ./... &amp;&amp; \
 go test ./internal/... -count=1 -run 'Test(Pair|Session|Terminal)' &amp;&amp; \
 git status --short gen/</div>
-      <div class="ml">还有 2 行没显示<a>看完整命令</a></div>
+      <div class="ml">还有 2 行没显示<a style="color:#6cb4ff;margin-left:8px">看完整命令</a></div>
       <div class="inp typed" style="border:1px solid rgba(255,255,255,.28)">别删 gen，直接 buf generate 覆盖就行</div>
       <div style="font-size:13px;color:#ff6b6b;margin-top:8px" role="alert">没送到：连接中断，已保留你写的理由</div>
       <div class="bs"><button class="cb no">取消</button><button class="cb">重试拒绝</button></div>
@@ -1253,7 +1253,7 @@ go test ./internal/... -count=1 \
         </div>
       </div>
     </div>
-    <div class="wcomp" style="position:static;max-width:none;margin-top:8px;border-color:var(--in-edge-hi)">
+    <div class="wcomp" style="position:static;max-width:none;margin-top:8px;background:var(--gbg);border:1px solid var(--sep)">
       <div class="tx">顺便检查 Redis 连接池回收<i style="display:inline-block;width:2px;height:16px;background:var(--orange);vertical-align:-3px;margin-left:2px"></i></div>
       <div class="wbar">
         <span class="plus"><svg class="ic" width="18" height="18"><use href="#lu-plus"/></svg></span>
