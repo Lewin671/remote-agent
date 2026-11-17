@@ -406,23 +406,26 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
                 style = T.s13, color = p.ink2, maxLines = 1,
             )
         }
-        if (m.pathState.reachable) for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, t, copy = copy)) {
-            val row = g.rows.filter { it.percent != null }.maxByOrNull { it.percent!! } ?: continue
-            val left = (100 - row.percent!!).coerceIn(0.0, 100.0)
-            val low = left <= 20.0
+        val settingsView by LocalRemote.current.settingsView.collectAsState()
+        val mCard = settingsView.machinesList.firstOrNull { it.machineId == m.id }
+        if (m.pathState.reachable && mCard != null) for (sec in mCard.quotaSummariesList) {
+            val row = sec.takeIf { it.hasSummaryRow() }?.summaryRow?.takeIf { it.hasPercent } ?: continue
+            val left = row.remainingPercent.coerceIn(0, 100)
+            val low = row.tone == io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_WARN ||
+                row.tone == io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_FULL
             Column(Modifier.padding(top = 14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        AgentMarkLead(g.agent, T.s15b, p.ink)
-                        Text(agentName(g.agent, copy = copy), style = T.s15b, color = p.ink, maxLines = 1)
+                        AgentMarkLead(sec.agent, T.s15b, p.ink)
+                        Text(sec.agentName, style = T.s15b, color = p.ink, maxLines = 1)
                     }
-                    Text(copy(UiMessages.quotaLeft((left.roundToInt()).toString())), style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
+                    Text(uiText(row.remainingText), style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
                 }
                 Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(5.dp).clip(Radii.Pill).background(p.fill2)) {
-                    Box(Modifier.fillMaxWidth((left / 100).toFloat()).height(5.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink))
+                    Box(Modifier.fillMaxWidth((left / 100f).coerceIn(0f, 1f)).height(5.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink))
                 }
-                // The reset time is long ("2 天 15 小时后重置 · 11月14日 周六 1:00"); under the bar it leaves the CLI's name whole.
-                if (row.reset.isNotEmpty()) Text(row.reset, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 4.dp))
+                val reset = uiText(row.resetText)
+                if (reset.isNotEmpty()) Text(reset, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 4.dp))
             }
         }
     }
@@ -584,10 +587,10 @@ fun DeviceScreen(
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
+            val machineSettings by remote.machineSettingsView.collectAsState()
+            LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
             if (member && m.pathState.capabilities?.machineStatus == true) {
                 val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-                val machineSettings by remote.machineSettingsView.collectAsState()
-                LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
                 DisposableEffect(id, owner) {
                     val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
                         when (ev) {
@@ -620,45 +623,43 @@ fun DeviceScreen(
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
             val meta = m.meta
-            val groups =
-                io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis(), copy = copy)
             // A line for each CLI's quota, leading to all of it.
             GLabel(copy(UiMessages.settingsAccountQuota()))
             Group(
                 rows =
-                    groups.map { g ->
+                    machineSettings.quotaRowsList.map { sec ->
                         @Composable {
-                            val qline = io.github.lewin671.remoteagent.core.quotaLine(g, copy = copy)
-                            val sepIdx = qline.indexOf(" · ")
-                            if (sepIdx != -1) {
-                                GRow(
-                                    g.title.substringBefore(" · "),
-                                    icon = AgentMarks.of(g.agent),
-                                    trailing = {
+                            val summary = sec.takeIf { it.hasSummaryRow() }?.summaryRow
+                            val rem = summary?.let { uiText(it.remainingText) }.orEmpty()
+                            val win = summary?.let { uiText(it.label) }.orEmpty()
+                            val fallback = uiText(sec.emptyOrErrorText)
+                            GRow(
+                                sec.agentName,
+                                icon = AgentMarks.of(sec.agent),
+                                trailing = {
+                                    if (rem.isNotEmpty() && win.isNotEmpty()) {
                                         Text(
                                             androidx.compose.ui.text.buildAnnotatedString {
-                                                append(qline.substring(0, sepIdx))
+                                                append(rem)
                                                 pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
                                                 append(" · ")
-                                                append(qline.substring(sepIdx + 3))
+                                                append(win)
                                                 pop()
                                             },
                                             style = T.s13,
                                             color = p.ink,
                                         )
-                                    },
-                                    onClick = { nav.quota(id) },
-                                    chevron = true,
-                                )
-                            } else {
-                                GRow(
-                                    g.title.substringBefore(" · "),
-                                    icon = AgentMarks.of(g.agent),
-                                    value = qline,
-                                    onClick = { nav.quota(id) },
-                                    chevron = true,
-                                )
-                            }
+                                    } else {
+                                        Text(
+                                            rem.ifEmpty { fallback },
+                                            style = T.s13,
+                                            color = p.ink2,
+                                        )
+                                    }
+                                },
+                                onClick = { nav.quota(id) },
+                                chevron = true,
+                            )
                         }
                     },
             )
@@ -1017,30 +1018,37 @@ internal fun idleCloseLabel(minutes: Int, copy: io.github.lewin671.remoteagent.c
 internal fun idleCloseChoice(minutes: Int): Int =
     IDLE_CLOSE_CHOICES.indexOf(if (minutes < 0) -1 else if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes)
 
-/** One usage window: its name, what is left, a bar of it, and when it resets. */
+/** One usage window rendered from Core's [QuotaRowView]. */
 @Composable
-private fun QuotaRowView(
-    r: io.github.lewin671.remoteagent.core.QuotaRow,
-    received: String = "",
-    compact: Boolean = false,
-) {
+private fun QuotaRowItem(r: io.github.lewin671.remoteagent.core.proto.QuotaRowView) {
     val p = pal
+    val label = uiText(r.label)
+    val left = uiText(r.remainingText)
+    val reset = uiText(r.resetText)
+    val clock = uiText(r.resetClockText)
+    val footnote = uiText(r.footnote)
+    val pool = uiText(r.poolName)
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(r.label, style = T.s15, color = p.ink, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text(label, style = T.s15, color = p.ink)
+                if (pool.isNotEmpty() && pool != label) {
+                    Text(pool, style = T.s12, color = p.ink2)
+                }
+            }
             Text(
-                if (compact && r.reset.isNotEmpty()) "${r.left} · ${r.reset}" else r.left,
+                left,
                 style = T.s13,
-                color =
-                    when (r.tone) {
-                        io.github.lewin671.remoteagent.core.QuotaTone.FULL,
-                        io.github.lewin671.remoteagent.core.QuotaTone.WARN -> p.orangeInk
-                        io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.faint
-                        else -> p.ink2
-                    },
+                color = when (r.tone) {
+                    io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_FULL -> p.red
+                    io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_WARN -> p.orangeInk
+                    io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_STALE -> p.faint
+                    else -> p.ink2
+                },
             )
         }
-        r.percent?.let { pc ->
+        if (r.hasPercent) {
+            val fill = (r.remainingPercent / 100f).coerceIn(0f, 1f)
             Box(
                 Modifier.padding(top = 6.dp)
                     .fillMaxWidth()
@@ -1049,24 +1057,24 @@ private fun QuotaRowView(
                     .background(p.fill2),
             ) {
                 Box(
-                    Modifier.fillMaxWidth(((100 - pc) / 100).toFloat().coerceIn(0f, 1f))
+                    Modifier.fillMaxWidth(fill)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(
                             when (r.tone) {
-                                io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.faint
-                                io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.ink
+                                io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_STALE -> p.faint
+                                io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_NORMAL -> p.ink
+                                io.github.lewin671.remoteagent.core.proto.QuotaTone.QUOTA_TONE_FULL -> p.red
                                 else -> p.orange
                             },
                         ),
                 )
             }
         }
-        val sub =
-            if (compact) ""
-            else listOf(r.reset, r.note, received).filter { it.isNotEmpty() }.joinToString(" · ")
-        if (sub.isNotEmpty())
+        val sub = listOf(reset, clock, footnote).filter { it.isNotEmpty() }.joinToString(" · ")
+        if (sub.isNotEmpty()) {
             Text(sub, style = T.s12, color = p.ink2, modifier = Modifier.padding(top = 8.dp))
+        }
     }
 }
 
@@ -1169,106 +1177,122 @@ private fun DefaultModelSheet(
 }
 
 /**
- * 账户额度: each CLI's account usage on this machine, apart, as the daemon reads it. What is not known
- * is said, never shown as 0%; an offline machine's or a failed read's numbers are the last record,
- * and a reset time that passed only waits for an update.
+ * 账户额度: renders Core's [QuotaViewModel] directly for the requested computer.
  */
 @Composable
 fun QuotaScreen(id: String) {
-    val copy = uiText()
     val remote = LocalRemote.current
-    val nav = LocalNav.current
-    val state by remote.state.collectAsState()
-    val m = state.machines[id]
+    val view by remote.quotaView.collectAsState()
+    LaunchedEffect(id) { remote.coreHost.openQuota(id) }
+    QuotaScreenContent(view)
+}
+
+@Composable
+internal fun QuotaScreenContent(view: io.github.lewin671.remoteagent.core.proto.QuotaViewModel) {
+    val copy = uiText()
     val p = pal
-    val t = now()
-    val groups = m?.let { io.github.lewin671.remoteagent.core.quotaGroups(it, t, copy = copy) }.orEmpty()
+    val subtitle = if (view.found) {
+        val conn = if (view.reachable) copy(UiMessages.settingsAndroidOnlineB90866()) else copy(UiMessages.settingsOffline())
+        if (view.machineName.isNotEmpty()) "${view.machineName} · $conn" else conn
+    } else null
     PageScaffold(
         copy(UiMessages.settingsAccountQuota()),
-        subtitle = m?.let { machineLabel(state, id) + " · " + if (it.pathState.reachable) copy(UiMessages.settingsAndroidOnlineB90866()) else copy(UiMessages.settingsOffline()) },
+        subtitle = subtitle,
         readable = true,
     ) {
-        if (m == null) {
+        if (!view.found) {
             PageNote(copy(UiMessages.settingsAndroidThisMachineHasBeenRemoved()))
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
-            if (!m.pathState.reachable)
+            val offlineNotice = uiText(view.offlineNotice)
+            if (offlineNotice.isNotEmpty()) {
                 Text(
-                    copy(UiMessages.settingsComputerOfflineShowingTheLastReading()),
+                    offlineNotice,
                     style = T.s13,
                     color = p.orangeInk,
                     modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
                 )
-            for (g in groups) {
-                if (g.status == io.github.lewin671.remoteagent.core.QuotaStatus.FAILED)
+            }
+            if (view.hasBanner()) {
+                val bannerText = uiText(view.banner.message)
+                if (bannerText.isNotEmpty()) {
+                    val color = if (view.banner.severity == io.github.lewin671.remoteagent.core.proto.QuotaBannerSeverity.QUOTA_BANNER_SEVERITY_FULL) p.red else p.orangeInk
                     Text(
-                        uiText(if (g.detail.isNotEmpty()) UiMessages.quotaFailure(g.detail, agentName(g.agent, copy = copy)) else UiMessages.quotaFailureNoReason(agentName(g.agent, copy = copy))),
+                        bannerText,
                         style = T.s13,
-                        color = p.red,
-                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
+                        color = color,
+                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
                     )
-                if (g.sections.isNotEmpty()) {
-                    for (sec in g.sections) {
-                        GLabel(sec.title)
-                        val srows = sec.rows.map { r ->
-                            @Composable { QuotaRowView(r) }
+                }
+            }
+            val emptyTop = uiText(view.emptyText)
+            if (view.sectionsList.isEmpty() && emptyTop.isNotEmpty()) {
+                PageNote(emptyTop)
+            }
+            for (sec in view.sectionsList) {
+                val emptyOrError = uiText(sec.emptyOrErrorText)
+                val hint = uiText(sec.usageHint)
+                if (sec.accountsList.isEmpty()) {
+                    GLabel(sec.agentName)
+                    if (sec.state == io.github.lewin671.remoteagent.core.proto.QuotaSectionState.QUOTA_SECTION_STATE_FAILED && emptyOrError.isNotEmpty()) {
+                        Text(
+                            emptyOrError,
+                            style = T.s13,
+                            color = p.red,
+                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
+                        )
+                    } else if (emptyOrError.isNotEmpty() || hint.isNotEmpty()) {
+                        Group(
+                            rows = listOf {
+                                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                    if (emptyOrError.isNotEmpty()) {
+                                        Text(emptyOrError, style = T.s15b, color = p.ink)
+                                    }
+                                    if (hint.isNotEmpty()) {
+                                        Text(hint, style = T.s12, color = p.ink2)
+                                    }
+                                }
+                            },
+                        )
+                    }
+                    continue
+                }
+                for (acct in sec.accountsList) {
+                    val acctErr = uiText(acct.errorText)
+                    if (acctErr.isNotEmpty()) {
+                        Text(
+                            acctErr,
+                            style = T.s13,
+                            color = p.red,
+                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
+                        )
+                    }
+                    val headerBase = listOf(sec.agentName, acct.account, acct.plan).filter { it.isNotEmpty() }.joinToString(" · ")
+                    if (acct.groupsList.isEmpty()) {
+                        GLabel(headerBase + if (acct.lastRecord) copy(UiMessages.quotaLastReading()) else "")
+                    } else {
+                        for (wg in acct.groupsList) {
+                            val wgTitle = uiText(wg.groupLabel).ifEmpty { headerBase + if (acct.lastRecord) copy(UiMessages.quotaLastReading()) else "" }
+                            GLabel(wgTitle)
+                            if (wg.rowsList.isNotEmpty()) {
+                                Group(rows = wg.rowsList.map { r -> @Composable { QuotaRowItem(r) } })
+                            }
                         }
-                        Group(rows = srows)
                     }
-                } else {
-                    GLabel(g.title + if (g.lastRecord) copy(UiMessages.quotaLastReading()) else "")
-                    val rows = mutableListOf<@Composable () -> Unit>()
-                    when (g.status) {
-                        io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED ->
-                            rows +=
-                                @Composable {
-                                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                        Text(copy(UiMessages.quotaQuotaLookupIsNotSupportedYet()), style = T.s15b, color = p.ink)
-                                        Text(
-                                            g.detail.ifEmpty {
-                                                copy(UiMessages.settingsAndroidRemoteAgentOnThisComputerCannotReadValue1Quotas((agentName(g.agent, copy = copy)).toString()))
-                                            } + agentInfo(g.agent).usageHint?.resolve(copy).orEmpty(),
-                                            style = T.s12,
-                                            color = p.ink2,
-                                        )
-                                    }
-                                }
-                        io.github.lewin671.remoteagent.core.QuotaStatus.WAITING ->
-                            rows +=
-                                @Composable {
-                                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                        Text(copy(UiMessages.quotaQuotaNotAvailableYet()), style = T.s15b, color = p.ink)
-                                        Text(
-                                            g.detail.ifEmpty { uiText(UiMessages.quotaWaiting(agentName(g.agent, copy = copy))) },
-                                            style = T.s12,
-                                            color = p.ink2,
-                                        )
-                                    }
-                                }
-                        else -> {}
+                    val statusLine = uiText(acct.statusText)
+                    val freshnessLine = uiText(acct.freshnessText)
+                    if (freshnessLine.isNotEmpty()) {
+                        Text(freshnessLine, style = T.s12, color = p.ink2, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp))
                     }
-                    for (r in g.rows) rows += @Composable { QuotaRowView(r) }
-                    if (rows.isNotEmpty()) Group(rows = rows)
-                }
-                // The warning stays next to its card, before observation metadata.
-                io.github.lewin671.remoteagent.core.quotaBanner(g, copy = copy)?.let {
-                    Text(uiText(it), style = T.s13, color = p.orangeInk,
-                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
-                }
-                if (g.rows.isNotEmpty()) {
-                    g.freshness?.let {
-                        Text(uiText(it), style = T.s12, color = p.ink2,
-                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
-                    }
-                    g.received?.let {
-                        Text(uiText(it), style = T.s12, color = p.ink2,
-                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
+                    if (statusLine.isNotEmpty()) {
+                        Text(statusLine, style = T.s12, color = p.ink2, modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
                     }
                 }
             }
+            val footer = uiText(view.footerNote).ifEmpty { copy(UiMessages.settingsTimesAreShownInBeijingTimeQuotasBelongTo()) }
             Text(
-                copy(UiMessages.settingsTimesAreShownInBeijingTimeQuotasBelongTo()),
+                footer,
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

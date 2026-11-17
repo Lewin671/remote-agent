@@ -270,12 +270,13 @@ class CoreHost(
     }
 
     private fun flushPendingRenders() {
-        if (pendingRenders.isEmpty() || closed.get()) {
-            pendingRenders.clear()
-            return
+        val targets = synchronized(pendingRenders) {
+            if (pendingRenders.isEmpty() || closed.get()) {
+                pendingRenders.clear()
+                return
+            }
+            pendingRenders.toList().also { pendingRenders.clear() }
         }
-        val targets = pendingRenders.toList()
-        pendingRenders.clear()
         if (!testOverrideViews) {
             for (target in targets) refreshScreenOnWorker(target)
         }
@@ -287,7 +288,9 @@ class CoreHost(
             Effect.EffectCase.RENDER -> {
                 val targets = effect.render.screensList
                 if (coalescingRenders) {
-                    pendingRenders.addAll(targets)
+                    synchronized(pendingRenders) {
+                        pendingRenders.addAll(targets)
+                    }
                 } else {
                     if (!testOverrideViews) {
                         for (target in targets) refreshScreenOnWorker(target)
