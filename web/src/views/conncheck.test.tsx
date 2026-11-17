@@ -27,7 +27,21 @@ function open(query: string, patch?: (r: DemoRemote) => void) {
   act(() => root!.render(<ConnCheck remote={r} onClose={() => undefined} />));
   return r;
 }
-const rows = () => Object.fromEntries([...host.querySelectorAll(".conn-check .mi")].map((e) => [e.firstElementChild!.firstChild!.textContent, e.lastElementChild!.textContent!.trim()]));
+const directRows = () => {
+  const out: Record<string, { detail?: string; trailing?: string }> = {};
+  for (const el of host.querySelectorAll<HTMLElement>(".conn-check .mi.conn-direct")) {
+    const id = el.dataset.machineId!;
+    out[id] = {
+      detail: el.querySelector(".mt small")?.textContent ?? undefined,
+      trailing: el.querySelector(".mv em")?.textContent?.trim() || undefined,
+    };
+  }
+  return out;
+};
+const rows = () => Object.fromEntries(
+  [...host.querySelectorAll<HTMLElement>(".conn-check .mi:not(.conn-direct)")]
+    .map((e) => [e.firstElementChild!.firstChild!.textContent, e.lastElementChild!.textContent!.trim()]),
+);
 
 describe("connection check", () => {
   it("takes the middle sample", () => {
@@ -64,8 +78,7 @@ describe("connection check", () => {
   });
 });
 
-describe("direct path summary lines", () => {
-  const lines = () => Object.fromEntries([...host.querySelectorAll(".conn-check .mi")].map((e) => [e.firstElementChild!.firstChild!.textContent, [...e.querySelectorAll(".mt small")].map((s) => s.textContent)]));
+describe("direct path rows", () => {
   const settle = () => vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(".conn-again button")!.disabled).toBe(false));
   const quiet = (r: DemoRemote) => { r.pingServer = async () => 40; r.pingMachine = async () => 180; };
   const footer = () => host.querySelector(".gf")!.textContent!;
@@ -73,26 +86,26 @@ describe("direct path summary lines", () => {
   beforeEach(() => vi.stubGlobal("RTCPeerConnection", class {}));
   afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
-  it("says 正在用中继 and nothing more when no reason is known", async () => {
+  it("shows security_pending reason rather than blank 正在用中继 when security is not fresh", async () => {
     open("", quiet);
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用中继"]);
+    expect(directRows()["mac"]).toEqual({ detail: "安全状态待刷新", trailing: "正在用中继" });
   });
 
-  it("names the cause in the same short sentence as the computer's page, and says nothing for an offline computer", async () => {
+  it("names the cause in the direct row, and omits direct rows for offline computers", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "failed", "no_traversal"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连不可用：两边的网络不能直接连通"]);
-    expect(lines()["Mac mini"]).toEqual([]);
+    expect(directRows()["mac"]).toEqual({ detail: "两边的网络不能直接连通", trailing: "正在用中继" });
+    expect(directRows()["mini"]).toBeUndefined();
   });
 
   it("shows an attempt in progress", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connecting"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在建立直连…"]);
+    expect(directRows()["mac"]).toEqual({ detail: undefined, trailing: "正在建立直连…" });
   });
 
-  it("says which purposes go direct, and never prints a speed", async () => {
+  it("says which purposes go direct, includes direct RTT when measured, and never prints a speed", async () => {
     open("", (r) => {
       quiet(r); setDirect(r.direct, "mac", "connected");
       const route = r.direct.routing("mac");
@@ -101,44 +114,57 @@ describe("direct path summary lines", () => {
       route.observe({ kind: "bulk", file: "f" }, "direct", 8 << 20, 500);
     });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用直连 · 加载暂时用中继"]);
+    expect(directRows()["mac"]).toEqual({ detail: "加载暂时用中继", trailing: "正在用直连" });
     expect(host.textContent).not.toContain("MiB/s");
     expect(footer()).not.toMatch(/速度取自|实际传输/);
+  });
+
+  it("displays measured direct RTT on the direct row", async () => {
+    open("", (r) => {
+      quiet(r); setDirect(r.direct, "mac", "connected");
+      const route = r.direct.routing("mac");
+      for (let i = 0; i < 3; i++) route.observe({ kind: "read" }, "direct", 0, 16);
+    });
+    await settle();
+    expect(directRows()["mac"]).toEqual({ detail: undefined, trailing: "正在用直连 · 直连 16 ms" });
   });
 
   const fallbackBoth = (r: DemoRemote) => {
     const route = r.direct.routing("mac");
     for (let i = 0; i < 8; i++) route.observe({ kind: "read" }, "direct", 0, 200);
     for (let i = 0; i < 4; i++) route.observe({ kind: "read" }, "relay", 0, 40);
+    for (let i = 0; i < 3; i++) route.observe({ kind: "read" }, "relay", 0, 40);
     route.observe({ kind: "bulk", file: "f" }, "relay", 8 << 20, 1000);
     route.observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 1000);
   };
 
-  it("says 正在用中继 · 直连较慢，暂时改用中继 when both purposes fell back", async () => {
+  it("says 正在用中继 + 直连较慢，暂时改用中继 when both purposes fell back", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); fallbackBoth(r); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连较慢，暂时改用中继"]);
+    expect(directRows()["mac"]).toEqual({ detail: "直连较慢，暂时改用中继", trailing: "正在用中继 · 中继 40 ms" });
   });
 
   it("starts on direct right after connecting, with no measuring state", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在用直连"]);
+    expect(directRows()["mac"]).toEqual({ detail: undefined, trailing: "正在用直连" });
   });
 
-  it("draws no second dot: the one on the right of the row is the latency's", async () => {
+  it("draws one mark on the machine row and one mark on the direct row", async () => {
     open("", (r) => { quiet(r); setDirect(r.direct, "mac", "connected"); });
     await settle();
-    const row = [...host.querySelectorAll(".conn-check .mi")].find((e) => e.textContent!.startsWith("MacBook"))!;
+    const row = [...host.querySelectorAll(".conn-check .mi:not(.conn-direct)")].find((e) => e.textContent!.startsWith("MacBook"))!;
     expect(row.querySelectorAll(".mark").length).toBe(1);
     expect(row.querySelector(".mt .mark")).toBeNull();
     expect(row.querySelector(".mv .mark")).not.toBeNull();
+    const directRow = host.querySelector('.conn-check .mi.conn-direct[data-machine-id="mac"]')!;
+    expect(directRow.querySelectorAll(".mark").length).toBe(1);
   });
 
   it("says 直连已关闭 when this device turned it off", async () => {
     open("", (r) => { quiet(r); r.direct.setEnabled("mac", false); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["直连已关闭"]);
+    expect(directRows()["mac"]).toEqual({ detail: undefined, trailing: "直连已关闭" });
   });
 
   it("adds the relay sentence to the footer, and the browser sentence once, not on every computer", async () => {
@@ -149,8 +175,8 @@ describe("direct path summary lines", () => {
     vi.stubGlobal("RTCPeerConnection", undefined);
     open("", quiet);
     await settle();
-    expect(lines()["MacBook"]).toEqual([]);
-    expect(lines()["VPS-dev"]).toEqual([]);
+    expect(directRows()["mac"]).toBeUndefined();
+    expect(directRows()["vps"]).toBeUndefined();
     expect(footer()).toBe(base() + "这个浏览器不支持直连。");
   });
 
@@ -167,8 +193,8 @@ describe("direct path summary lines", () => {
   it("updates when the engine reports a change", async () => {
     const r = open("", (x) => { quiet(x); setDirect(x.direct, "mac", "connecting"); });
     await settle();
-    expect(lines()["MacBook"]).toEqual(["正在建立直连…"]);
+    expect(directRows()["mac"]).toEqual({ detail: undefined, trailing: "正在建立直连…" });
     act(() => { setDirect(r.direct, "mac", "connected"); fallbackBoth(r); (r.direct as unknown as { notify(): void }).notify(); });
-    expect(lines()["MacBook"]).toEqual(["正在用中继 · 直连较慢，暂时改用中继"]);
+    expect(directRows()["mac"]).toEqual({ detail: "直连较慢，暂时改用中继", trailing: "正在用中继 · 中继 40 ms" });
   });
 });

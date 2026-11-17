@@ -109,12 +109,20 @@ describe("the status row", () => {
     const r = open();
     show(r, { state: "none" });
     expect(statusRow()!.querySelector("i.mark")!.className).toContain("off");
-    expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("正在用中继");
-    expect(statusRow()!.querySelector("small")).toBeNull();
-    const reasons = ["电脑上的版本太旧，更新后可用", "电脑没有回应，可能在电脑上关了直连", "两边的网络不能直接连通", "没连上，稍后会自动再试"];
-    for (const [i, reason] of (["peer_unsupported", "no_response", "no_traversal", "failed"] as const).entries()) {
+    expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("正在用中继正在准备直连");
+    expect(statusRow()!.querySelector("small")!.textContent).toBe("正在准备直连");
+    const reasons = [
+      ["peer_unsupported", "电脑上的版本太旧，更新后可用"],
+      ["no_response", "电脑没有回应，可能在电脑上关了直连"],
+      ["no_traversal", "两边的网络不能直接连通"],
+      ["failed", "没连上，稍后会自动再试"],
+      ["at_cap", "同时直连的电脑已达上限"],
+      ["security_pending", "安全状态待刷新"],
+      ["starting", "正在准备直连"],
+    ] as const;
+    for (const [reason, text] of reasons) {
       show(r, { state: "none", reason });
-      expect(statusRow()!.querySelector("small")!.textContent).toBe(`直连不可用：${reasons[i]}`);
+      expect(statusRow()!.querySelector("small")!.textContent).toBe(text);
     }
   });
 
@@ -197,10 +205,10 @@ describe("the switch", () => {
     setDirect(r.direct, "mac", "failed", "no_traversal");
     notify(r);
     expect(statusRow()!.querySelector(".dx-text > .mo-swap")!.textContent).toBe("正在用中继");
-    expect(statusRow()!.querySelector("small")!.textContent).toBe("直连不可用：两边的网络不能直接连通");
+    expect(statusRow()!.querySelector("small")!.textContent).toBe("两边的网络不能直接连通");
   });
 
-  it("falls back to 正在用中继 if nothing at all is reported for a while", () => {
+  it("falls back to 正在用中继 with security/starting reason if nothing at all is reported for a while", () => {
     vi.useFakeTimers();
     try {
       open();
@@ -208,7 +216,8 @@ describe("the switch", () => {
       act(() => sw().click());
       expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("正在建立直连…");
       act(() => { vi.advanceTimersByTime(10_001); });
-      expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("正在用中继");
+      expect(statusRow()!.querySelector(".dx-text > .mo-swap")!.textContent).toBe("正在用中继");
+      expect(statusRow()!.querySelector("small")!.textContent).toBe("安全状态待刷新");
     } finally { vi.useRealTimers(); }
   });
 
@@ -236,12 +245,12 @@ describe("a browser without it", () => {
 });
 
 describe("in English", () => {
-  it("says the same things with the same rows", () => {
+  it("in English says the same things with the same rows", () => {
     localeStore.overrideForTesting("en");
     const r = open();
     show(r, { state: "none", reason: "no_response" });
     expect(group().previousElementSibling!.textContent).toBe("Connection");
-    expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("Using relay" + "Direct unavailable: The computer didn't answer; direct may be turned off there");
+    expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("Using relayThe computer didn't answer; direct may be turned off there");
     show(r, { state: "connected", file: "direct", read: "direct", fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { direct: 12, relay: 180 } });
     expect(statusRow()!.querySelector(".dx-text")!.textContent).toBe("Using direct");
     expect(speedRows()).toEqual([["File transfer", "Direct 6.3 · Relay 4.1 MiB/s"], ["Response time", "Direct 12 · Relay 180 ms"]]);
@@ -259,11 +268,11 @@ describe("the demo's ?direct= states, which the design review looks at", () => {
     ["file-fallback", "正在用直连", "文件暂时用中继", 2],
     ["relay", "正在用中继", "直连较慢，暂时改用中继", 2],
     ["trying", "正在建立直连…", undefined, 0],
-    ["none", "正在用中继", undefined, 0],
-    ["peer_unsupported", "正在用中继", "直连不可用：电脑上的版本太旧，更新后可用", 0],
-    ["no_response", "正在用中继", "直连不可用：电脑没有回应，可能在电脑上关了直连", 0],
-    ["no_traversal", "正在用中继", "直连不可用：两边的网络不能直接连通", 0],
-    ["failed", "正在用中继", "直连不可用：没连上，稍后会自动再试", 0],
+    ["none", "正在用中继", "正在准备直连", 0],
+    ["peer_unsupported", "直连不可用：电脑上的版本太旧，更新后可用", "电脑上的版本太旧，更新后可用", 0],
+    ["no_response", "正在用中继", "电脑没有回应，可能在电脑上关了直连", 0],
+    ["no_traversal", "正在用中继", "两边的网络不能直接连通", 0],
+    ["failed", "正在用中继", "没连上，稍后会自动再试", 0],
   ])("direct=%s", (name, w, s, rows) => {
     open("mac", `direct=${name}`);
     expect([word(), sub(), speedRows().length]).toEqual([w, s, rows]);

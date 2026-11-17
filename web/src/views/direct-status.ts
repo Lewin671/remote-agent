@@ -1,19 +1,27 @@
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import * as l10n from "../i18n";
+import { getCore } from "../core/runtime";
+import { renderCoreText } from "../core/text";
+import {
+  type ConnCheckDirectRowView,
+  ConnectionGroupStage,
+  type ConnectionGroupView,
+  DirectPathChoice,
+  DirectRouteReason,
+  DirectRouteReportSchema,
+  DirectRouteState,
+  DirectViewsRequestSchema,
+  DirectViewsResponseSchema,
+} from "../gen/remoteagent/core/v1/settings_view_pb";
 import type { Mark } from "../ui";
 import type { DirectEngine, DirectStatus } from "../transport/direct-engine";
 
-// The direct path in words (design-system §6 「连接」组). One place says it, so
-// the computer's settings page and the connection check never disagree: the
-// settings page draws the whole of it, the connection check one line of it.
-// The status says only the result, which path is in use now; the graphic is a
-// green dot (direct), an ink ring that turns (setting up) or a gray dot (relay).
-// Never a hollow ring: it reads as a radio button that does nothing when pressed.
-
-// One decimal below 100, whole numbers from there; 99.96 is already 100.
-const mibps = (n: number) => (Math.round(n * 10) / 10 >= 100 ? String(Math.round(n)) : n.toFixed(1));
-const ms = (n: number) => String(Math.round(n));
+// Mirrors clientcore/domain/machine/direct.go so web, Android, and iOS share
+// the same Connection group and ConnCheck Direct row semantics.
 
 type Purpose = "file" | "read";
+const FILE_PURPOSE: Purpose = "file";
+const READ_PURPOSE: Purpose = "read";
 
 export type DirectKind = "direct" | "relay" | "trying" | "off" | "unsupported";
 
@@ -23,87 +31,195 @@ export interface DirectView {
   mark: Mark;
   /** The state word; ink2, never colored. */
   word: string;
-  /** Second line of the status row: which single purpose goes direct, or why the relay is in use. */
+  /** Second line of the status row: which single purpose goes direct, or why relay is in use. */
   sub?: string;
-  /** The one line the connection check puts under a computer's name. */
+  /** Active read latency text when available. */
+  metric?: string;
+  /** The one line the connection check summarizes. */
   summary?: string;
   /** Measured speeds only, one per purpose. */
   speeds: { key: Purpose; name: string; value: string }[];
+  /** Toggle and diagnostics controls driven by clientcore. */
+  toggleVisible: boolean;
+  toggleEnabled: boolean;
+  toggleChecked: boolean;
+  showDiagnosticsEntry: boolean;
+  footer: string;
 }
 
-function reason(r: NonNullable<DirectStatus["reason"]>): string | undefined {
-  switch (r) {
-    case "peer_unsupported": return l10n.t("transport.reason_peer_unsupported");
-    case "no_response": return l10n.t("transport.reason_no_response");
-    case "no_traversal": return l10n.t("transport.reason_no_traversal");
-    case "failed": return l10n.t("transport.reason_failed");
-    case "disabled": return undefined;
+export interface ConnCheckDirectView {
+  visible: boolean;
+  mark: Mark;
+  label: string;
+  status: string;
+  detail?: string;
+  metric?: string;
+  summary?: string;
+}
+
+function toCoreReason(reason: DirectStatus["reason"]): DirectRouteReason {
+  switch (reason) {
+    case "disabled": return DirectRouteReason.DISABLED;
+    case "peer_unsupported": return DirectRouteReason.PEER_UNSUPPORTED;
+    case "no_response": return DirectRouteReason.NO_RESPONSE;
+    case "no_traversal": return DirectRouteReason.NO_TRAVERSAL;
+    case "failed": return DirectRouteReason.FAILED;
+    case "at_cap": return DirectRouteReason.AT_CAP;
+    case "security_pending": return DirectRouteReason.SECURITY_PENDING;
+    case "starting": return DirectRouteReason.STARTING;
+    default: return DirectRouteReason.UNSPECIFIED;
   }
 }
 
-function speeds(s: DirectStatus): DirectView["speeds"] {
+function toCoreState(state: DirectStatus["state"]): DirectRouteState {
+  switch (state) {
+    case "unsupported": return DirectRouteState.UNSUPPORTED;
+    case "connected": return DirectRouteState.CONNECTED;
+    case "connecting": return DirectRouteState.CONNECTING;
+    case "none": return DirectRouteState.NONE;
+  }
+}
+
+function stageToMark(stage: ConnectionGroupStage): Mark {
+  switch (stage) {
+    case ConnectionGroupStage.DIRECT: return "online";
+    case ConnectionGroupStage.CONNECTING:
+    case ConnectionGroupStage.MEASURING: return "run";
+    default: return "off";
+  }
+}
+
+function stageToKind(stage: ConnectionGroupStage, toggleVisible: boolean): DirectKind {
+  if (!toggleVisible) return "unsupported";
+  switch (stage) {
+    case ConnectionGroupStage.DIRECT: return "direct";
+    case ConnectionGroupStage.CONNECTING:
+    case ConnectionGroupStage.MEASURING: return "trying";
+    case ConnectionGroupStage.DISABLED: return "off";
+    case ConnectionGroupStage.UNSUPPORTED: return "unsupported";
+    default: return "relay";
+  }
+}
+
+export function buildCoreDirectViews(
+  s: DirectStatus,
+  online = true,
+  prefEnabled?: boolean,
+): { connection: ConnectionGroupView; connCheckDirect: ConnCheckDirectRowView } {
+  const enabled = prefEnabled ?? (s.reason !== "disabled");
+  const activeRtt = s.read === "direct"
+    ? s.readMs.direct
+    : s.state === "connected"
+      ? s.readMs.relay
+      : undefined;
+  const report = create(DirectRouteReportSchema, {
+    enabled,
+    capable: s.state !== "unsupported",
+    state: toCoreState(s.state),
+    reason: toCoreReason(s.reason),
+    fileRoute: s.file === "direct" ? DirectPathChoice.DIRECT : DirectPathChoice.RELAY,
+    readRoute: s.read === "direct" ? DirectPathChoice.DIRECT : DirectPathChoice.RELAY,
+    warming: false,
+    compared: Boolean(s.readSlow || s.fileSlow),
+    readSlow: Boolean(s.readSlow),
+    fileSlow: Boolean(s.fileSlow),
+    hasDiagnostics: s.reason === "no_response" || s.reason === "no_traversal" || s.reason === "failed",
+    hasDirectFileMibps: s.fileMiBps.direct !== undefined,
+    directFileMibps: s.fileMiBps.direct ?? 0,
+    hasRelayFileMibps: s.fileMiBps.relay !== undefined,
+    relayFileMibps: s.fileMiBps.relay ?? 0,
+    hasDirectReadMs: s.readMs.direct !== undefined,
+    directReadMs: s.readMs.direct !== undefined ? Math.round(s.readMs.direct) : 0,
+    hasRelayReadMs: s.readMs.relay !== undefined,
+    relayReadMs: s.readMs.relay !== undefined ? Math.round(s.readMs.relay) : 0,
+    hasActiveRttMs: activeRtt !== undefined,
+    activeRttMs: activeRtt !== undefined ? Math.round(activeRtt) : 0,
+  });
+  const req = create(DirectViewsRequestSchema, {
+    online,
+    prefEnabled: enabled,
+    report,
+  });
+  const raw = getCore().buildDirectViews(toBinary(DirectViewsRequestSchema, req));
+  const resp = fromBinary(DirectViewsResponseSchema, raw);
+  return {
+    connection: resp.connection!,
+    connCheckDirect: resp.connCheckDirect!,
+  };
+}
+
+function buildSpeeds(s: DirectStatus, cg: ConnectionGroupView): DirectView["speeds"] {
   const out: DirectView["speeds"] = [];
-  const f = s.fileMiBps, r = s.readMs;
-  const purposeName = (key: Purpose) => (key === "file" ? l10n.t("transport.speed_file") : l10n.t("transport.speed_read"));
-  if (s.state === "connected" && f.direct === undefined && f.relay === undefined) out.push({ key: "file", name: purposeName("file"), value: l10n.t("transport.file_speed_pending") });
-  else if (f.direct !== undefined && f.relay !== undefined) out.push({ key: "file", name: purposeName("file"), value: l10n.t("transport.file_speed_both", { direct: mibps(f.direct), relay: mibps(f.relay) }) });
-  else if (f.direct !== undefined) out.push({ key: "file", name: purposeName("file"), value: l10n.t("transport.file_speed_direct", { direct: mibps(f.direct) }) });
-  else if (f.relay !== undefined) out.push({ key: "file", name: purposeName("file"), value: l10n.t("transport.file_speed_relay", { relay: mibps(f.relay) }) });
-  if (r.direct !== undefined && r.relay !== undefined) out.push({ key: "read", name: purposeName("read"), value: l10n.t("transport.read_latency_both", { direct: ms(r.direct), relay: ms(r.relay) }) });
-  else if (r.direct !== undefined) out.push({ key: "read", name: purposeName("read"), value: l10n.t("transport.read_latency_direct", { direct: ms(r.direct) }) });
-  else if (r.relay !== undefined) out.push({ key: "read", name: purposeName("read"), value: l10n.t("transport.read_latency_relay", { relay: ms(r.relay) }) });
+  const fileValue = renderCoreText(cg.fileSpeedText);
+  const readValue = renderCoreText(cg.readLatencyText);
+  if (fileValue) {
+    out.push({ key: FILE_PURPOSE, name: l10n.t("transport.speed_file"), value: fileValue });
+  } else if (s.state === "connected") {
+    out.push({ key: FILE_PURPOSE, name: l10n.t("transport.speed_file"), value: l10n.t("transport.file_speed_pending") });
+  }
+  if (readValue) {
+    out.push({ key: READ_PURPOSE, name: l10n.t("transport.speed_read"), value: readValue });
+  }
   return out;
 }
 
-/** What a computer's direct path looks like to the user right now. */
-export function directView(s: DirectStatus): DirectView {
-  if (s.state === "unsupported") return { kind: "unsupported", mark: "off", word: l10n.t("transport.status_unsupported"), speeds: [] };
-  if (s.state === "none" && s.reason === "disabled") return { kind: "off", mark: "off", word: "", summary: l10n.t("transport.summary_off"), speeds: [] };
-  const shown = speeds(s);
-  const line = (word: string, sub?: string) => (sub ? `${word} · ${sub}` : word);
-  if (s.state === "connected") {
-    const file = s.file === "direct", read = s.read === "direct";
-    if (file || read) {
-      const word = l10n.t("transport.status_direct");
-      // Both purposes direct say nothing more; one slow fallback or single purpose says which.
-      const sub = file && read
-        ? undefined
-        : read && s.fileSlow
-          ? l10n.t("transport.file_fallback")
-          : file && s.readSlow
-            ? l10n.t("transport.read_fallback")
-            : file
-              ? l10n.t("transport.use_file")
-              : l10n.t("transport.use_read");
-      return { kind: "direct", mark: "online", word, sub, summary: line(word, sub), speeds: shown };
-    }
-    const word = l10n.t("transport.status_relay");
-    const sub = s.readSlow || s.fileSlow ? l10n.t("transport.direct_slow") : undefined;
-    return { kind: "relay", mark: "off", word, sub, summary: line(word, sub), speeds: shown };
-  }
-  if (s.state === "connecting") {
-    const word = l10n.t("transport.status_connecting");
-    return { kind: "trying", mark: "run", word, summary: word, speeds: shown };
-  }
-  const word = l10n.t("transport.status_relay");
-  const why = s.reason ? reason(s.reason) : undefined;
-  const sub = why ? l10n.t("transport.unavailable", { reason: why }) : undefined;
-  return { kind: "relay", mark: "off", word, sub, summary: line(word, sub), speeds: shown };
+/** What a computer's direct path looks like to the user right now, computed by clientcore. */
+export function directView(s: DirectStatus, online = true, prefEnabled?: boolean): DirectView {
+  const { connection: cg, connCheckDirect: row } = buildCoreDirectViews(s, online, prefEnabled);
+  const word = s.state === "unsupported" ? l10n.t("transport.status_unsupported") : renderCoreText(cg.statusText);
+  const sub = renderCoreText(cg.detailText) || undefined;
+  const metric = renderCoreText(cg.metricText) || undefined;
+  const footer = renderCoreText(cg.footerText) || l10n.t("transport.footer");
+  const rowStatus = renderCoreText(row.statusText);
+  const rowDetail = renderCoreText(row.detailText) || undefined;
+  const summary = !row.visible
+    ? undefined
+    : [rowStatus, rowDetail].filter(Boolean).join(" · ") || undefined;
+
+  return {
+    kind: stageToKind(cg.stage, cg.toggleVisible),
+    mark: stageToMark(cg.stage),
+    word,
+    sub,
+    metric,
+    summary,
+    speeds: buildSpeeds(s, cg),
+    toggleVisible: cg.toggleVisible,
+    toggleEnabled: cg.toggleEnabled,
+    toggleChecked: cg.toggleChecked,
+    showDiagnosticsEntry: cg.showDiagnosticsEntry,
+    footer,
+  };
+}
+
+export function connCheckDirectView(s: DirectStatus, online = true, prefEnabled?: boolean): ConnCheckDirectView {
+  const { connCheckDirect: row } = buildCoreDirectViews(s, online, prefEnabled);
+  const label = renderCoreText(row.labelText) || l10n.t("transport.direct");
+  const status = renderCoreText(row.statusText);
+  const detail = renderCoreText(row.detailText) || undefined;
+  const metric = renderCoreText(row.metricText) || undefined;
+  const summary = !row.visible ? undefined : [status, detail, metric].filter(Boolean).join(" · ") || undefined;
+  return {
+    visible: row.visible,
+    mark: stageToMark(row.stage),
+    label,
+    status,
+    detail,
+    metric,
+    summary,
+  };
 }
 
 /** The state shown for a computer whose direct path was only just turned on
  * and has not reported anything yet: trying, which is what is happening. */
 export function directTrying(): DirectView {
-  const word = l10n.t("transport.status_connecting");
-  return { kind: "trying", mark: "run", word, summary: word, speeds: [] };
+  return directView({ state: "connecting", file: "relay", read: "relay", fileMiBps: {}, readMs: {} });
 }
 
 /** The connection check's note under its list: the old explanation of a
- * latency, then that a computer's is measured through the relay, then (once,
- * not on every computer's line) that this browser cannot do it. */
+ * latency, then (once, not on every computer's line) that this browser cannot do it. */
 export function connFooter(engine: DirectEngine, ids: string[]): string {
   const unsupported = ids.some(id => directView(engine.status(id)).kind === "unsupported");
-  const sentences = [l10n.t("connection.latency_is_one_round_trip_the_server_row_measures"), ...(unsupported ? [l10n.t("transport.conn_footer_unsupported")] : [])];
-  // Chinese sentences end in a full stop and need no space between them.
-  return sentences.join(l10n.localeStore.snapshot().startsWith("zh") ? "" : " ");
+  const base = l10n.t("connection.latency_is_one_round_trip_the_server_row_measures");
+  return unsupported ? `${base}${base.endsWith(".") ? " " : ""}${l10n.t("transport.conn_footer_unsupported")}` : base;
 }

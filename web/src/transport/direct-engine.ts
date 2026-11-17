@@ -21,7 +21,7 @@ type Pending = { peer: Peer; use: number; resolve: (env: Envelope) => void };
 export type DirectState = "unsupported" | "connected" | "connecting" | "none";
 /** Only causes this side can establish. "no_response" means the computer never
  * answered the handshake: its direct setting may be off, or it may not support it. */
-export type DirectReason = "disabled" | "peer_unsupported" | "no_response" | "no_traversal" | "failed";
+export type DirectReason = "disabled" | "peer_unsupported" | "no_response" | "no_traversal" | "failed" | "at_cap" | "security_pending" | "starting";
 /** Read-only snapshot for display. Speeds are present only when measured. */
 export interface DirectStatus {
   state: DirectState;
@@ -63,6 +63,8 @@ export class DirectEngine {
   private codec?: w.Codec;
   private head = "";
   private freshUntil = 0;
+  private lastAuthorizeAt = 0;
+  private authorizeInFlight = false;
   private syncRevision = 0;
   private lifetime = 0;
   private foreground = true;
@@ -142,11 +144,41 @@ export class DirectEngine {
     if (enabled && this.foreground) this.refreshAndDiscover();
   }
 
+  private triggerAuthorize(force = false) {
+    if (!this.foreground || !this.leg?.ready || this.authorizeInFlight) return;
+    const now = Date.now();
+    const minInterval = force ? 0 : (this.freshUntil - now <= 7_000 ? 2_000 : 12_000);
+    if (!force && this.lastAuthorizeAt > 0 && now - this.lastAuthorizeAt < minInterval) return;
+    this.authorizeInFlight = true;
+    this.lastAuthorizeAt = now;
+    void this.authorize()
+      .then(() => this.discover())
+      .catch(() => undefined)
+      .finally(() => { this.authorizeInFlight = false; });
+  }
+
+  private ensureTimer() {
+    if (this.timer) return;
+    const timer = setInterval(() => {
+      if (this.timer !== timer) return;
+      const now = Date.now();
+      if (!this.current()) {
+        if (this.peers.size) this.invalidate();
+      } else {
+        void this.discover();
+      }
+      if (this.foreground && this.leg?.ready && (this.freshUntil - now <= 7_000 || now - this.lastAuthorizeAt >= 12_000)) {
+        this.triggerAuthorize();
+      }
+    }, 1000);
+    this.timer = timer;
+  }
+
   private refreshAndDiscover() {
     if (this.current()) {
       void this.discover();
     } else if (this.leg?.ready) {
-      void this.authorize().then(() => this.discover()).catch(() => undefined);
+      this.triggerAuthorize(true);
     }
   }
 
@@ -156,20 +188,11 @@ export class DirectEngine {
     if (!active) {
       clearInterval(this.timer);
       this.timer = undefined;
+      this.lastAuthorizeAt = 0;
       this.invalidate();
       return;
     }
-    if (this.leg && !this.timer) {
-      const timer = setInterval(() => {
-        if (this.timer !== timer) return;
-        if (!this.current()) {
-          if (this.peers.size) this.invalidate();
-        } else {
-          void this.discover();
-        }
-      }, 1000);
-      this.timer = timer;
-    }
+    if (this.leg) this.ensureTimer();
     this.retryAfter.clear();
     this.refreshAndDiscover();
   }
@@ -232,6 +255,7 @@ export class DirectEngine {
       this.record = record;
       this.head = hash;
       this.freshUntil = Math.min(started + 20_000, Number(record.lease!.notAfter));
+      if (!this.lastAuthorizeAt) this.lastAuthorizeAt = Date.now();
       this.self = {
         id: w.utf8(member.id),
         role: 1n,
@@ -252,17 +276,7 @@ export class DirectEngine {
   attach(leg: FrameStream) {
     this.leg = leg;
     if (!this.foreground) return;
-    if (!this.timer) {
-      const timer = setInterval(() => {
-        if (this.timer !== timer) return;
-        if (!this.current()) {
-          if (this.peers.size) this.invalidate();
-        } else {
-          void this.discover();
-        }
-      }, 1000);
-      this.timer = timer;
-    }
+    this.ensureTimer();
     // The main connection is back: the computer can be reached again, so a retry waiting out its delay need not.
     this.retryAfter.clear();
     for (const p of this.sessions.values()) p.session.discovered();
@@ -697,7 +711,10 @@ export class DirectEngine {
       };
     }
     if (live) return { ...base, state: "connecting" };
-    return { ...base, state: "none", reason: this.failures.get(id) };
+    const reason: DirectReason =
+      this.failures.get(id) ??
+      (!this.current() ? "security_pending" : this.peers.size >= 4 ? "at_cap" : "starting");
+    return { ...base, state: "none", reason };
   }
 
   filePath(id: string) {

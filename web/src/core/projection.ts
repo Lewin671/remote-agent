@@ -9,6 +9,7 @@ export interface CoreWasmApi {
   projectionCurrentActions(handle: number, liveBytes?: Uint8Array): CoreWasmResult;
   projectionFree(handle: number): void;
   reduceProjection(agent: number, batchBytes?: Uint8Array): CoreWasmResult;
+  buildDirectViews(reqBytes?: Uint8Array): CoreWasmResult;
 }
 
 type CoreWasmResult = { data: Uint8Array } | { error: string };
@@ -143,5 +144,9 @@ export class RemoteAgentCore {
 
   reduce(agent: number, eventBatchBytes?: Uint8Array): Uint8Array {
     return unwrap(this.api.reduceProjection(agent, eventBatchBytes));
+  }
+
+  buildDirectViews(reqBytes?: Uint8Array): Uint8Array {
+    return unwrap(this.api.buildDirectViews(reqBytes));
   }
 }

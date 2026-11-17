@@ -52,14 +52,14 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
   }, [turnedOn]);
 
   const status = remote.direct.status(id);
-  let view: DirectView = directView(status);
-  // Just turned on, nothing reported yet: "trying" is what is happening.
-  if (turnedOn !== undefined && status.state === "none" && !status.reason) view = directTrying();
-  const supported = view.kind !== "unsupported";
-  const on = supported && view.kind !== "off";
+  const isTurnedOnPending = turnedOn !== undefined && status.state === "none" && (!status.reason || status.reason === "starting" || status.reason === "security_pending");
+  const view: DirectView = isTurnedOnPending ? directTrying() : directView(status, online);
+  const supported = view.toggleVisible;
+  const on = supported && view.toggleChecked;
   const enter = armed.current;
   // An offline computer has no status to show; the switch stays, it is this device's.
   const showStatus = !supported || (on && online);
+  const showDiagEntry = view.showDiagnosticsEntry || (on && remote.direct.diagnostics(id).rounds.length > 0);
   const name = l10n.t("transport.direct");
 
   const change = (next: boolean) => {
@@ -76,7 +76,7 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
       <div className="label">{l10n.t("transport.group")}</div>
       <div className="grp conn-grp" aria-live="polite">
         <div className="row">
-          {name}<Switch label={name} on={on} disabled={!supported} onChange={change} />
+          {name}<Switch label={name} on={on} disabled={!view.toggleEnabled && supported ? true : !supported} onChange={change} />
         </div>
         {showStatus && (
           <GroupRow className="row dx" enter={enter}>
@@ -92,9 +92,9 @@ export function ConnectionGroup({ remote, id, online }: { remote: Remote; id: st
             <span>{s.name}</span><span className="v">{s.value}</span>
           </GroupRow>
         ))}
-        {on && <NavRow enter={enter} onClick={() => setDiag(true)}>{l10n.t("transport.diag")}</NavRow>}
+        {showDiagEntry && <NavRow enter={enter} onClick={() => setDiag(true)}>{l10n.t("transport.diag")}</NavRow>}
       </div>
-      <p className="gf">{l10n.t("transport.footer")}</p>
+      <p className="gf">{view.footer}</p>
       {diag && <DirectDiagSheet remote={remote} id={id} onClose={() => setDiag(false)} />}
     </>
   );

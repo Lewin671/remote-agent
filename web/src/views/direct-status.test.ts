@@ -35,8 +35,8 @@ describe("directView", () => {
     expect([onlyOneFallback.kind, onlyOneFallback.sub]).toEqual(["relay", "直连较慢，暂时改用中继"]);
 
     const noFallback = directView(make({ state: "connected" }));
-    expect([noFallback.kind, noFallback.word, noFallback.sub, noFallback.summary]).toEqual([
-      "relay", "正在用中继", undefined, "正在用中继",
+    expect([noFallback.kind, noFallback.mark, noFallback.word, noFallback.sub, noFallback.summary]).toEqual([
+      "relay", "off", "正在用中继", "直连通道尚未就绪", "正在用中继 · 直连通道尚未就绪",
     ]);
 
     // Not connected never shows slow-fallback wording.
@@ -53,16 +53,23 @@ describe("directView", () => {
 
   it("is a gray dot and 正在用中继 when not established, with the reason as the second line", () => {
     const none = directView(make({ state: "none" }));
-    expect([none.kind, none.mark, none.word, none.sub, none.summary]).toEqual(["relay", "off", "正在用中继", undefined, "正在用中继"]);
+    expect([none.kind, none.mark, none.word, none.sub, none.summary]).toEqual(["relay", "off", "正在用中继", "正在准备直连", "正在用中继 · 正在准备直连"]);
     const reasons = {
       peer_unsupported: "电脑上的版本太旧，更新后可用",
       no_response: "电脑没有回应，可能在电脑上关了直连",
       no_traversal: "两边的网络不能直接连通",
       failed: "没连上，稍后会自动再试",
+      at_cap: "同时直连的电脑已达上限",
+      security_pending: "安全状态待刷新",
+      starting: "正在准备直连",
     } as const;
     for (const [reason, text] of Object.entries(reasons)) {
       const v = directView(make({ state: "none", reason: reason as keyof typeof reasons }));
-      expect([v.sub, v.summary]).toEqual([`直连不可用：${text}`, `正在用中继 · 直连不可用：${text}`]);
+      const expectedSub = reason === "peer_unsupported" ? `直连不可用：${text}` : text;
+      expect([v.sub, v.summary]).toEqual([
+        reason === "peer_unsupported" ? text : expectedSub,
+        `正在用中继 · ${expectedSub}`,
+      ]);
     }
   });
 
@@ -82,7 +89,7 @@ describe("directView", () => {
   it("speaks English with the same shape", () => {
     localeStore.overrideForTesting("en");
     const v = directView(make({ state: "none", reason: "no_traversal", fileMiBps: { relay: 4.1 } }));
-    expect(v.summary).toBe("Using relay · Direct unavailable: The two networks can't reach each other directly");
+    expect(v.summary).toBe("Using relay · The two networks can't reach each other directly");
     expect(v.speeds[0].value).toBe("Relay 4.1 MiB/s");
     expect(directView(make({ state: "connected", file: "direct" })).summary).toBe("Using direct · Used for files");
     expect(directView(make({ state: "connected", read: "direct", fileSlow: true })).sub).toBe("Files using relay for now");
@@ -90,9 +97,9 @@ describe("directView", () => {
     expect(directView(make({ state: "connecting" })).word).toBe("Setting up direct…");
   });
 
-  it("calls a switched-off path off in the check and draws no status row", () => {
+  it("calls a switched-off path off in the check and reports relay with empty detail", () => {
     const v = directView(make({ state: "none", reason: "disabled" }));
-    expect([v.kind, v.word, v.summary]).toEqual(["off", "", "直连已关闭"]);
+    expect([v.kind, v.word, v.summary]).toEqual(["off", "正在用中继", "直连已关闭"]);
   });
 
   it("names a browser without it, and leaves the check no line of its own", () => {

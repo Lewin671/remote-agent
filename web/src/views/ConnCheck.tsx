@@ -4,12 +4,12 @@ import * as l10n from "../i18n";
 // each computer through the server. Opened by hand when things feel slow
 // or stuck; nothing is measured in the background.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
-import { connFooter, directView } from "./direct-status";
+import { connCheckDirectView, connFooter } from "./direct-status";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
 
@@ -129,16 +129,27 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           <Result p={server} slow={SLOW_SERVER_MS} />
         </div>
         {list.map((m) => {
-          // One line, the same words as the computer's page; none for a computer that is not online, nor where the browser cannot do it (the footer says so).
-          const summary = remote.peer(m.id).reachable ? directView(remote.direct.status(m.id)).summary : undefined;
+          const reachable = remote.peer(m.id).reachable;
+          const directRow = reachable ? connCheckDirectView(remote.direct.status(m.id), true, remote.direct.enabled(m.id)) : undefined;
+          const trailing = directRow ? [directRow.status, directRow.metric].filter(Boolean).join(" · ") : "";
           return (
-          <div key={m.id} className="mi">
-            <span className="mt">
-              {machineName(m)}
-              {summary && <small className="direct-line">{summary}</small>}
-            </span>
-            {remote.peer(m.id).reachable ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
-          </div>
+            <Fragment key={m.id}>
+              <div className="mi">
+                <span className="mt">{machineName(m)}</span>
+                {reachable ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
+              </div>
+              {directRow?.visible && (
+                <div className="mi conn-direct" data-machine-id={m.id}>
+                  <span className="mt">
+                    {directRow.label}
+                    {directRow.detail && <small className="direct-line">{directRow.detail}</small>}
+                  </span>
+                  {trailing && (
+                    <span className="mv"><StateMark kind={directRow.mark} /><em>{trailing}</em></span>
+                  )}
+                </div>
+              )}
+            </Fragment>
           );
         })}
       </div>

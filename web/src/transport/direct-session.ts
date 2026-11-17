@@ -287,7 +287,7 @@ export class DirectSession {
       if (!this.active || p.channel !== channel || p.gate.generation !== generation || channel.signal.aborted) return;
       p.confirmed = confirmed;
     }
-    if (channel.traversalReady && p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; p.diag?.observe({ ready: true }); this.options.diag?.establish(); channel.confirm(); this.options.ready(index + 1, channel); }
+    if (p.confirmed && !p.announced && p.gate.ready()) { p.announced = true; this.established = true; p.diag?.observe({ ready: true }); this.options.diag?.establish(); channel.confirm(); this.options.ready(index + 1, channel); }
   }
   private async tick() {
     const now = Date.now();

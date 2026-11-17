@@ -132,9 +132,11 @@ test.describe("status snapshot",()=>{
   const {engine}=readyEngine();stub();engine.setEnabled("machine",false);
   expect(engine.status("machine")).toMatchObject({state:"none",reason:"disabled",file:"relay",read:"relay"});
  });
- test("no session at all is plain none, with no invented reason",()=>{
+ test("no session reports explicit starting or security_pending reason rather than blank none",()=>{
   const {engine}=readyEngine();stub();Object.assign(engine,{peers:new Map()});
-  expect(engine.status("machine").state).toBe("none");expect(engine.status("machine").reason).toBeUndefined();
+  expect(engine.status("machine")).toMatchObject({state:"none",reason:"starting"});
+  Object.assign(engine,{freshUntil:Date.now()-1});
+  expect(engine.status("machine")).toMatchObject({state:"none",reason:"security_pending"});
  });
  test("a live session without a ready path is connecting; a ready path is connected and direct-first",()=>{
   const {engine,peer}=readyEngine();stub();peer.paths.clear();
@@ -376,4 +378,32 @@ test("install of new security state and setEnabled(true) when stale re-authorize
     expect(authorize).toHaveBeenCalledTimes(2);
     expect(discover).toHaveBeenCalledTimes(2);
   });
+});
+
+test("proactive keepalive renews security before 20s window expires without interrupting established session", async () => {
+  vi.useFakeTimers();
+  try {
+    vi.stubGlobal("RTCPeerConnection", class {});
+    const { engine, peer } = readyEngine();
+    peer.paths.set(1, { ready: true });
+    let authCalls = 0;
+    const authorize = vi.spyOn(engine as unknown as { authorize(): Promise<void> }, "authorize").mockImplementation(async () => {
+      authCalls++;
+      (engine as unknown as { freshUntil: number }).freshUntil = Date.now() + 20_000;
+    });
+    vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+
+    // Seed remaining freshness inside the 7s proactive threshold and advance timer 2.5s.
+    (engine as unknown as { freshUntil: number }).freshUntil = Date.now() + 6_500;
+    engine.attach({ ready: true, send: vi.fn() } as never);
+    await vi.advanceTimersByTimeAsync(2_500);
+
+    expect(authCalls).toBeGreaterThanOrEqual(1);
+    expect(authorize).toHaveBeenCalled();
+    expect(engine.status("machine").state).toBe("connected");
+    engine.close();
+  } finally {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  }
 });

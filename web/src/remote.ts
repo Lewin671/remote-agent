@@ -1746,7 +1746,7 @@ export class Remote {
     // within a minute, and an unknown state is fetched at once.
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = watchSecurityInstall(record => this.direct.install(record));
-    this.securityTimer = setInterval(() => void this.syncSecurity(), 15_000);
+    this.securityTimer = setInterval(() => void this.syncSecurity(), 12_000);
     void this.watchPairingDelivery();
     this.scheduleReconnect();
   }
