@@ -17,9 +17,10 @@ DEFAULT_APK = ROOT / "android/app/build/outputs/apk/release/app-release.apk"
 DEX_FILE = re.compile(r"classes\d*\.dex")
 DEX_ENDIAN_CONSTANT = 0x12345678
 
-# Wire.java loads BouncyCastle's Ed25519/X25519 JCA algorithms by name at
-# runtime; R8 strips these reflection-loaded SPI classes without proguard keep
-# rules, causing direct connections to fail on real devices.
+# Classes looked up by name at runtime that R8 would strip without keep rules:
+# BouncyCastle's Ed25519/X25519 JCA SPI (Wire.java; missing ones made Direct
+# never authorize) and the classes libjingle_peerconnection's JNI_OnLoad finds
+# (missing ones abort the process when Direct first loads WebRTC).
 REQUIRED_CLASSES = (
     "Lorg/bouncycastle/jce/provider/BouncyCastleProvider;",
     "Lorg/bouncycastle/jcajce/provider/asymmetric/EdEC$Mappings;",
@@ -34,6 +35,8 @@ REQUIRED_CLASSES = (
     "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCEdDSAPublicKey;",
     "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCXDHPrivateKey;",
     "Lorg/bouncycastle/jcajce/provider/asymmetric/edec/BCXDHPublicKey;",
+    "Lorg/jni_zero/JniZero;",
+    "Lorg/webrtc/WebRtcClassLoader;",
 )
 
 
@@ -92,7 +95,7 @@ def verify_apk(apk_path: Path, required: tuple[str, ...] = REQUIRED_CLASSES) -> 
     missing = [cls for cls in required if cls not in classes]
     if missing:
         formatted = ", ".join(cls[1:-1] if cls.startswith("L") and cls.endswith(";") else cls for cls in missing)
-        raise ValueError(f"{apk_path} is missing BouncyCastle JCA SPI classes after R8: {formatted}")
+        raise ValueError(f"{apk_path} is missing reflectively loaded classes after R8: {formatted}")
     return dex_count, len(classes)
 
 
@@ -106,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, zipfile.BadZipFile, struct.error, ValueError) as exc:
         print(f"verify_apk: {exc}", file=sys.stderr)
         return 1
-    print(f"verify_apk: OK ({class_count} classes across {dex_count} dex file(s); {len(REQUIRED_CLASSES)} required BouncyCastle SPI classes present)")
+    print(f"verify_apk: OK ({class_count} classes across {dex_count} dex file(s); {len(REQUIRED_CLASSES)} required reflectively loaded classes present)")
     return 0
 
 
