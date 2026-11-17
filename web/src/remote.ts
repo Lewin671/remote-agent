@@ -1200,6 +1200,7 @@ export class Remote implements CoreExecutor {
   }
 
   async syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent> {
+    const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
     const gen = Number(networkGeneration);
     if (gen > this.networkGeneration) { this.networkGeneration = gen; this.retireNetworkIO(); }
     if (touch) this.touchAfterWake();
@@ -1216,10 +1217,8 @@ export class Remote implements CoreExecutor {
       }
       if (this.needsDescribeSelf) await this.describeSelf();
       if (record.member === false) { this.removalVerified = true; this.discardToken(); await this.tokenWrites; }
-      const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
       return this.snapshotFromRecord(opId, networkGeneration, record, pushSeq);
     } catch (e) {
-      const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
       return create(SecuritySnapshotEventSchema, {
         opId, pushSeq, selfDeviceId: this.account.deviceId,
         clockSkewed: this.serverAhead || (e instanceof SecurityError && e.code === "clock"),

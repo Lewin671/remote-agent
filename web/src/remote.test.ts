@@ -1439,24 +1439,51 @@ it("proactively renews security every 12s while foreground and online so direct 
   }
 });
 
-it("disposes its CoreHost on dispose() and assigns monotonic pushSeq in sync completion order", async () => {
+it("disposes its CoreHost on dispose() and drops an earlier-started snapshot that finishes late", async () => {
   const r = await probe();
+  const olderRecord = await r.security.verifiedRecord();
+  await r.world.fixture.remove([r.machine]);
+  const newerRecord = await r.security.sync();
+
   const { getCoreHost } = await import("./core/host");
+  const { DevicesFetchedEventSchema, EventSchema: CoreEventSchema, PlainDeviceSchema } = await import("./gen/remoteagent/core/v1/app_pb");
+  const { DeviceKind } = await import("./gen/remoteagent/v1/relay_pb");
   const host = getCoreHost(r);
-  const record = await r.security.verifiedRecord();
-  let resolveFirst!: (rec: typeof record) => void;
-  let resolveSecond!: (rec: typeof record) => void;
+  host.dispatch(
+    create(CoreEventSchema, {
+      event: {
+        case: "devicesFetched",
+        value: create(DevicesFetchedEventSchema, {
+          opId: 0n,
+          pushSeq: 1n,
+          devices: [create(PlainDeviceSchema, { deviceId: r.machine, kind: DeviceKind.MACHINE })],
+        }),
+      },
+    }),
+  );
+
+  let resolveFirst!: (rec: typeof olderRecord) => void;
+  let resolveSecond!: (rec: typeof newerRecord) => void;
   vi.spyOn(r.security, "sync")
     .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
     .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
-  const first = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<{ pushSeq: bigint }> }).syncSecurity(0n, 0n, false);
-  const second = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<{ pushSeq: bigint }> }).syncSecurity(0n, 0n, false);
-  resolveSecond(record);
+  const syncSecurity = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<{ pushSeq: bigint }> }).syncSecurity.bind(r);
+  const first = syncSecurity(0n, 0n, false);
+  const second = syncSecurity(0n, 0n, false);
+  resolveSecond(newerRecord);
   const secondSnap = await second;
-  resolveFirst(record);
+  resolveFirst(olderRecord);
   const firstSnap = await first;
-  expect(secondSnap.pushSeq).toBeLessThan(firstSnap.pushSeq);
+  expect(firstSnap.pushSeq).toBeLessThan(secondSnap.pushSeq);
+
+  host.dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: secondSnap as never } }));
+  expect(host.viewSyncState().securityLoaded).toBe(true);
+  expect(r.devices.get(r.machine)).toBeUndefined();
+
+  // Earlier-started snapshot finishing late must be dropped by Core instead of re-trusting the removed machine.
+  host.dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: firstSnap as never } }));
+  expect(r.devices.get(r.machine)).toBeUndefined();
 
   r.dispose();
   expect(() => host.viewHome()).toThrow(/closed/);
