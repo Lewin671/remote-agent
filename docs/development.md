@@ -63,6 +63,7 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - `clientcore/` 是独立的客户端共享 Go 核心 module（事件归约等纯逻辑，供 Android/iOS gomobile 与网页 WASM 复用）；`cd clientcore && go test ./...` 运行其单测，三端产物用 `scripts/core/build.sh android|ios|web` 构建到 `build/core/`
 - Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
 - Android 要复用编译缓存但完整重跑 JVM 测试，用 `cd android && ./gradlew --build-cache :core:test --rerun :terminal:testReleaseUnitTest --rerun :app:testDebugUnitTest --rerun :app:lintVitalRelease`。每个测试任务后的 `--rerun` 强制它执行，禁止复用该任务的增量结果或缓存；编译和 lint 仍可复用未变输入的结果，Go 集成夹具仍从当前 checkout 构建。Release 工作流也用这些任务选项，签名构建与公开扫描照常执行。
+- 打出 Android 正式包（`cd android && ./gradlew :app:assembleRelease`）后，可用 `python3 scripts/verify_apk.py [apk路径]` 校验 dex 中保留了 BouncyCastle JCA SPI 类（Release 工作流的 `android-build` 也会执行该检查，防止 R8 裁剪掉反射加载的加密实现）。
 
 ### 迭代与交付检查
 
@@ -112,7 +113,7 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 
 ## iOS App Store 自动发布
 
-`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。先串行运行 Swift package 测试，再归档签名的 Release 并上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；前一个版本还在 Apple 手里（等待审核、审核中、等待上架）时，这一版不提交，工作流正常结束并写明原因，不算失败：不撤回审核，等它结束后手动重跑，或由下一次发布带上这些变化。前一个版本待手动发布或状态异常时仍明确失败；不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
+`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。iOS 单元测试已在 `Release` 工作流的 `ios-checks` 通过，本工作流只负责归档签名的 Release 并上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；前一个版本还在 Apple 手里（等待审核、审核中、等待上架）时，这一版不提交，工作流正常结束并写明原因，不算失败：不撤回审核，等它结束后手动重跑，或由下一次发布带上这些变化。前一个版本待手动发布或状态异常时仍明确失败；不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
 
 初次配置：
 

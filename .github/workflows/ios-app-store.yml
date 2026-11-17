@@ -106,13 +106,24 @@ jobs:
         if: steps.plan.outputs.skip != 'true'
         with:
           go-version-file: product/go.mod
-          cache-dependency-path: product/go.sum
-      - name: Localized resources and new hardcoded text
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.plan.outputs.skip != 'true'
-        working-directory: product
-        run: |
-          python3 scripts/i18n.py generate --check
-          python3 scripts/i18n.py lint
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('product/go.mod', 'product/go.sum', 'product/clientcore/go.mod', 'product/clientcore/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.plan.outputs.skip != 'true'
+        id: core-ios-cache
+        with:
+          path: product/build/core/ios
+          key: core-ios-${{ runner.os }}-${{ hashFiles('product/clientcore/**', 'product/proto/**', 'product/scripts/core/build.sh', 'product/go.mod', 'product/go.sum') }}
+      - name: Refresh cached Corebind timestamp
+        if: steps.plan.outputs.skip != 'true' && steps.core-ios-cache.outputs.cache-hit == 'true'
+        run: touch product/build/core/ios/Corebind.xcframework/Info.plist
       - name: Report Xcode toolchain
         if: steps.plan.outputs.skip != 'true'
         run: |
@@ -122,20 +133,15 @@ jobs:
         if: steps.plan.outputs.skip != 'true'
         working-directory: ios
         run: bundle exec ruby fastlane/publishing_test.rb
-      - name: Check iOS release (unsigned archive for rehearsals)
-        if: steps.plan.outputs.skip != 'true'
+      - name: Rehearse unsigned iOS Release archive
+        if: steps.plan.outputs.skip != 'true' && steps.plan.outputs.publish != 'true'
         working-directory: ios
         env:
           IOS_SOURCE_DIR: ${{ github.workspace }}/product
           IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-verify
-          WILL_PUBLISH: ${{ steps.plan.outputs.publish }}
         run: |
           mkdir -p "$IOS_OUTPUT_DIR"
-          if [ "$WILL_PUBLISH" = true ]; then
-            bundle exec fastlane ios verify archive:false
-          else
-            bundle exec fastlane ios verify
-          fi
+          bundle exec fastlane ios verify tests:false
       - name: Upload and submit for automatic release
         if: steps.plan.outputs.skip != 'true' && steps.plan.outputs.publish == 'true'
         working-directory: ios

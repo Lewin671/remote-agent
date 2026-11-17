@@ -13,8 +13,10 @@ platform :ios do
     FileUtils.mkdir_p(ENV.fetch('IOS_OUTPUT_DIR'))
     root = Publishing.source
     sh(File.join(root, 'scripts/core/build.sh'), 'ios')
-    # Swift Testing otherwise runs socket/deadline tests alongside unrelated fixture builds.
-    sh('swift', 'test', '--no-parallel', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
+    if options[:tests].to_s != 'false'
+      # Swift Testing otherwise runs socket/deadline tests alongside unrelated fixture builds.
+      sh('swift', 'test', '--no-parallel', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
+    end
     # A publishing run archives with its distribution signature in the next lane.
     if options[:archive].to_s != 'false'
       sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
