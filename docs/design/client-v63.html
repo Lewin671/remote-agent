@@ -4309,6 +4309,15 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-cli-switches .win .sw { width: 40px; height: 24px; border-radius: 12px; }
 .sx-cli-switches .win .sw::after { width: 20px; height: 20px; }
 .sx-cli-switches .win .seg.wide { margin: 0 16px 10px; }
+.sx-cli-switches .cs-stg { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-top: 14px; }
+.sx-cli-switches .cs-box { width: 375px; background: var(--paper); color: var(--ink); border-radius: 24px; padding: 16px; box-shadow: inset 0 0 0 .5px var(--sep); overflow: hidden; }
+.sx-cli-switches .cs-box .st-h { font-size: 13px; font-weight: 600; color: var(--ink2); margin-bottom: 12px; }
+.sx-cli-switches .cs-box .st-c { font-size: 13px; line-height: 1.55; color: var(--ink2); margin-top: 12px; }
+.sx-cli-switches .cs-box .grp { margin: 0; background: var(--gbg); }
+.sx-cli-switches .cs-box .banner { margin: 0 0 10px; }
+.sx-cli-switches .cs-box .rc { margin: 0; }
+.sx-cli-switches .cs-x2 .mi { font-size: 28px; min-height: 68px; flex-wrap: wrap; padding-top: 14px; padding-bottom: 14px; }
+.sx-cli-switches .cs-x2 .mi .n small { font-size: 21px; line-height: 1.35; }
 </style>
 <section id="cli-switches" class="sx-cli-switches">
 <h2>按电脑选择启用哪些 CLI</h2>
@@ -4443,6 +4452,60 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
   </div>
 </div>
 <p class="wcap"><b>宽屏 1360 · 设置 › 电脑（启用的 CLI）。</b>主工作区 640px 居中设置栏采用四级 <code>s0–s3</code> 桌面表面与 40×24 桌面开关；关掉 Antigravity 后，右侧账户额度与默认设置分段同步收敛为两项，左侧栏里已有的 Antigravity 会话（「梳理登录流程」）继续保留可操作。</p>
+
+<h3 class="sub" id="cli-switch-edge-states">启用的 CLI · 离线、并发回滚、定时任务拦截与 200% 字号</h3>
+<div class="cs-stg">
+  <div class="cs-box">
+    <div class="st-h">保存确认中 &amp; 失败回滚（断线或双端并发撞车）</div>
+    <div class="grp cli-sw-grp">
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small>0.163.0</small></span><span class="sw"></span></div>
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small style="display:flex;align-items:center;gap:5px"><i class="spin" style="width:11px;height:11px;border-width:1.5px;margin:0"></i>保存中…</small></span><span class="sw off" style="opacity:.6"></span></div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="banner err"><span>没能更新启用的 CLI：电脑连接中断，已还原</span><span class="ta">重试</span></div>
+    <div class="grp cli-sw-grp">
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small>0.163.0 · 至少保留一个启用</small></span><span class="sw dis"></span></div>
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw off"></span></div>
+    </div>
+    <div class="st-c">拨动超过 150ms 未回时第二行显「保存中…」；若恰逢断线或另一台客户端抢先关掉仅剩的另一项导致冲突，滑块以 200ms 退回并同步到最新状态，上方出错误提示条与「重试」。</div>
+  </div>
+
+  <div class="cs-box">
+    <div class="st-h">电脑离线只读 &amp; 远程控制租约到期</div>
+    <div class="banner"><svg class="ic" width="16" height="16"><use href="#lu-cloud-off"/></svg><span>iMac 未连接，显示的是上次的状态</span></div>
+    <div class="grp cli-sw-grp">
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small>0.163.0</small></span><span class="sw dis"></span></div>
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw dis"></span></div>
+      <div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw off dis"></span></div>
+    </div>
+    <div class="gf" style="padding:8px 4px 0">远程控制有效期已过时同样置灰只读，并追加说明：「远程控制已暂停，在管理端续期后可修改。」旧版 daemon 不支持该能力时退回只读「CLI 版本」行。</div>
+    <div class="st-c">离线不缓存待执行开关变更，避免几小时后重连突然改变环境；管理端与普通已配对客户端在有效租约内均有权修改。</div>
+  </div>
+
+  <div class="cs-box">
+    <div class="st-h">已有定时任务指向被停用 CLI（不删任务、不偷换）</div>
+    <div class="rc warn">
+      <div class="t"><i class="dotk o"></i><b>每日回归巡检</b><time>09:00</time></div>
+      <p><b>没能运行</b> · MacBook 已停用 Antigravity，启用或改用其他 CLI 后可恢复</p>
+      <div class="f"><span>每天 09:00 · billing · MacBook</span><a>去处理<svg class="ic" width="15" height="15"><use href="#lu-chevron-right"/></svg></a></div>
+    </div>
+    <div class="banner warn" style="margin-top:12px;margin-bottom:8px"><svg class="ic" width="16" height="16"><use href="#lu-info"/></svg><span>MacBook 已停用 Antigravity，启用该 CLI 或编辑改用其他 CLI 后点下面恢复。</span></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="cb" style="height:40px;font-size:15px">恢复</button>
+      <span class="ta" style="margin-left:auto">去启用 CLI<svg class="ic" width="15" height="15"><use href="#lu-chevron-right"/></svg></span>
+    </div>
+    <div class="st-c">「每次新开对话」的定时任务到点遇到被停用的 CLI 时置为「已停下」，不擅自换成别的 CLI 执行；「发到已有对话」的定时轮照常投递。</div>
+  </div>
+
+  <div class="cs-box cs-x2">
+    <div class="st-h">200% 字号 &amp; English</div>
+    <div class="grp cli-sw-grp">
+      <div class="mi"><span class="n">Codex<small>0.163.0 · Keep at least one on</small></span><span class="sw dis"></span></div>
+      <div class="mi"><span class="n">Claude Code<small>2.4.12</small></span><span class="sw off"></span></div>
+    </div>
+    <div class="st-c">200% 字号下锁定原因自动换行，右侧开关保持完整触区，不把标题挤成竖排。</div>
+  </div>
+</div>
 </section>
 </div>
 <script>
