@@ -474,7 +474,7 @@ func (p *Path) expire(now time.Time) {
 func (p *Path) Close() {
 	p.once.Do(func() {
 		p.cancel()
-		p.diag.end(p.cfg.Use, p.cfg.Generation)
+		p.diag.end(p.cfg.Use, p.cfg.Generation, p.cfg.Peer)
 		if p.cfg.Ended != nil {
 			p.cfg.Ended()
 		}

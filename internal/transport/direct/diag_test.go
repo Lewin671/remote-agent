@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
 )
 
 type lockedBuffer struct {
@@ -56,13 +58,30 @@ func TestPathEndNamesTheGateThatRefusedIt(t *testing.T) {
 	}
 	p.Close()
 	out := buf.String()
-	if strings.Count(out, "direct path ended") != 1 || !strings.Contains(out, "reason=round_deadline") || !strings.Contains(out, "use=2") || !strings.Contains(out, "generation=3") {
+	if strings.Count(out, "direct path ended") != 1 || !strings.Contains(out, "peer=…cret") || !strings.Contains(out, "reason=round_deadline") || !strings.Contains(out, "use=2") || !strings.Contains(out, "generation=3") {
 		t.Fatalf("log = %q", out)
 	}
 	for _, secret := range []string{"owner-secret", "peer-secret", "candidate", "ufrag"} {
 		if strings.Contains(out, secret) {
 			t.Fatalf("log leaks %q: %s", secret, out)
 		}
+	}
+}
+
+func TestRoundEndIncludesShortPeerIDWithoutFullID(t *testing.T) {
+	buf := captureLog(t)
+	s := &Session{born: time.Now(), cfg: SessionConfig{}}
+	s.cfg.Peer.ID = []byte("client-device-secret-9f2a")
+	s.pcs[0].signal = &peerwire.Signal{}
+	s.pcs[1].signal = &peerwire.Signal{}
+	s.endFor("not_allowed")
+	s.logEnd()
+	out := buf.String()
+	if !strings.Contains(out, "direct round ended") || !strings.Contains(out, "peer=…9f2a") || !strings.Contains(out, "reason=not_allowed") {
+		t.Fatalf("log = %q", out)
+	}
+	if strings.Contains(out, "client-device-secret-9f2a") {
+		t.Fatalf("log leaks full peer ID: %s", out)
 	}
 }
 

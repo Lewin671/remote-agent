@@ -939,7 +939,7 @@ func (s *Session) endFor(reason string) { s.endReason.CompareAndSwap(nil, reason
 // peer connection had reached. Fixed words and flags only.
 func (s *Session) logEnd() {
 	reason, _ := s.endReason.Load().(string)
-	args := []any{"reason", reason, "at_ms", time.Since(s.born).Milliseconds(), "established", s.established.Load()}
+	args := []any{"peer", shortPeerID(string(s.cfg.Peer.ID)), "reason", reason, "at_ms", time.Since(s.born).Milliseconds(), "established", s.established.Load()}
 	for i := range s.pcs {
 		p := &s.pcs[i]
 		n := "pc" + string(rune('1'+i))
@@ -957,7 +957,7 @@ func (s *Session) logSignals(use uint64) {
 	s.traceMu.Lock()
 	t := strings.Join(s.trace, " ")
 	s.traceMu.Unlock()
-	slog.Info("direct signals at path end", "use", use, "at_ms", time.Since(s.born).Milliseconds(), "signals", t)
+	slog.Info("direct signals at path end", "peer", shortPeerID(string(s.cfg.Peer.ID)), "use", use, "at_ms", time.Since(s.born).Milliseconds(), "signals", t)
 }
 
 // fmtSteps: boot, local SDP, remote SDP, DTLS, confirm sent, announced; one

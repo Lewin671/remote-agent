@@ -44,9 +44,16 @@ func (d *pathDiag) probe(answered bool) {
 		d.unready.Add(1)
 	}
 }
+func shortPeerID(id string) string {
+	if len(id) <= 4 {
+		return id
+	}
+	return "…" + id[len(id)-4:]
+}
+
 func (d *pathDiag) open()    { d.openMs.CompareAndSwap(0, d.since()) }
 func (d *pathDiag) confirm() { d.cfm.CompareAndSwap(0, d.since()) }
-func (d *pathDiag) end(use, generation uint64) {
+func (d *pathDiag) end(use, generation uint64, peer string) {
 	d.why("closed_by_owner")
 	word := func(v *atomic.Value) string {
 		if s, ok := v.Load().(string); ok {
@@ -54,7 +61,7 @@ func (d *pathDiag) end(use, generation uint64) {
 		}
 		return "none"
 	}
-	slog.Info("direct path ended", "use", use, "generation", generation, "reason", d.reason, "at_ms", d.since()-1,
+	slog.Info("direct path ended", "peer", shortPeerID(peer), "use", use, "generation", generation, "reason", d.reason, "at_ms", d.since()-1,
 		"ice_ms", d.iceMs.Load()-1, "dtls_ms", d.dtlsMs.Load()-1, "channel_ms", d.openMs.Load()-1, "confirm_ms", d.cfm.Load()-1,
 		"probe_ms", d.probeMs.Load()-1, "probes_echoed", d.echoed.Load(), "probes_unready", d.unready.Load(),
 		"ice", word(&d.iceState), "conn", word(&d.connState))
