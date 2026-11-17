@@ -185,7 +185,7 @@ internal class DirectEngine(
         }
         if (!active) {
             timerToCancel?.cancel()
-            closePeers()
+            invalidate()
         } else if (canDiscoverNow) {
             scope.launch { discover() }
         } else if (shouldAuthorize) {
@@ -193,15 +193,13 @@ internal class DirectEngine(
         }
     }
 
-    private fun closePeers(clearFreshness: Boolean = false) {
+    private fun closePeers() {
         val toClose: List<DirectSession>
         val allRoutes: List<DirectRouting>
         val toFailPending: List<PendingRequest>
         synchronized(stateLock) {
-            if (clearFreshness) {
-                syncRevision++
-                freshUntil = 0L
-            }
+            syncRevision++
+            freshUntil = 0L
             lifetime++
             routingOwners.clear()
             retryAfter.clear()
@@ -243,7 +241,7 @@ internal class DirectEngine(
         if (shouldInvalidate) invalidate()
     }
 
-    fun invalidate() = closePeers(clearFreshness = true)
+    fun invalidate() = closePeers()
 
     suspend fun synced(r: DeviceSecurity.Record, started: Long) {
         val revision = synchronized(stateLock) { ++syncRevision }
@@ -311,6 +309,12 @@ internal class DirectEngine(
     fun detach(stream: FrameStream) {
         synchronized(stateLock) {
             if (leg === stream) leg = null
+        }
+    }
+
+    fun detachAll() {
+        synchronized(stateLock) {
+            leg = null
         }
     }
 

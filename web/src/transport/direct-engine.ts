@@ -148,7 +148,7 @@ export class DirectEngine {
     if (!active) {
       clearInterval(this.timer);
       this.timer = undefined;
-      this.closePeers();
+      this.invalidate();
       return;
     }
     if (this.leg && !this.timer) {

@@ -1657,4 +1657,71 @@ class DirectTransportTest {
             server.close()
         }
     }
+
+    @Test
+    fun foregroundResumeMustSyncSecurityBeforeNegotiatingDirect(): Unit = runBlocking {
+        val server = TestServer()
+        val failSecuritySync = java.util.concurrent.atomic.AtomicBoolean(false)
+        val baseHttp = Api.defaultHttp()
+        val clientHttp = baseHttp.newBuilder()
+            .addInterceptor { chain ->
+                if (failSecuritySync.get() && chain.request().url.encodedPath.contains("GetSecurityStates")) {
+                    throw java.io.IOException("simulated post-wake GetSecurityStates failure")
+                }
+                chain.proceed(chain.request())
+            }
+            .build()
+        try {
+            val phone = newAuthorityAccount(ByteArray(32) { 14 }, server.url, baseHttp, server.setupToken)
+            val daemonAccount = approvedClient(phone, baseHttp, DeviceKind.DEVICE_KIND_MACHINE)
+            val clientAccount = approvedClient(phone, baseHttp, DeviceKind.DEVICE_KIND_CLIENT)
+            val bridge = FakeRtcBridge()
+            val daemon = DirectBridgeDaemon(daemonAccount, server.url, baseHttp, System::currentTimeMillis, bridge.daemonFactory)
+            daemon.start()
+            val remote = Remote(
+                account = clientAccount,
+                http = clientHttp,
+                securityStorage = TestSecurity.find(server.url)?.stores?.get(clientAccount.deviceId),
+                rtcFactory = bridge.phoneFactory,
+                directPrefs = InMemoryDirectPreferenceStore(),
+                stunUrls = emptyList(),
+            )
+            val id = daemonAccount.deviceId
+            try {
+                remote.start()
+                remote.foregroundChanged(true)
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                remote.syncSecurity()
+                awaitCondition("initial direct ready", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+                val pcsBeforeBackground = bridge.phonePcs.size
+
+                // Background + stop must invalidate direct security freshness and bump syncRevision.
+                remote.foregroundChanged(false)
+                remote.stop()
+                awaitCondition("direct closed on stop", 3_000) { !remote.direct.ready(id, RouteHint.Read) }
+
+                // Fail post-wake GetSecurityStates and resume within 20s window.
+                failSecuritySync.set(true)
+                remote.foregroundChanged(true)
+                remote.start()
+                withTimeout(10_000) { remote.state.first { it.conn == ConnState.ONLINE && id in it.machines } }
+                delay(400)
+                assertEquals(
+                    "DirectEngine must not negotiate PeerConnections before post-wake security sync succeeds",
+                    pcsBeforeBackground,
+                    bridge.phonePcs.size,
+                )
+
+                // Once security sync recovers, Direct re-establishes cleanly.
+                failSecuritySync.set(false)
+                remote.syncSecurity()
+                awaitCondition("direct ready after post-wake sync", 10_000) { remote.direct.ready(id, RouteHint.Read) }
+            } finally {
+                remote.close()
+                daemon.close()
+            }
+        } finally {
+            server.close()
+        }
+    }
 }

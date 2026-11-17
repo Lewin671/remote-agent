@@ -243,10 +243,11 @@ test("one end of a round that had a ready path counts once however many of its p
   expect(state.retryAfter.get(id)! - Date.now()).toBe(500); expect(state.failureCount.get(id)).toBe(1);
  } finally { engine.close(); vi.useRealTimers(); }
 });
-test("background closes all direct peers and foreground restores discovery", async () => {
+test("background closes all direct peers and foreground restores discovery after security sync", async () => {
  const { engine, peer } = readyEngine();
- Object.assign(engine, { sessions: new Map([["s1", peer]]) });
+ Object.assign(engine, { sessions: new Map([["s1", peer]]), leg: { ready: true } });
  const discover = vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+ const authorize = vi.spyOn(engine as unknown as { authorize(): Promise<void> }, "authorize").mockResolvedValue();
  peer.paths.set(1, { ready: true });
  expect(engine.ready("machine", { kind: "read" })).toBe(true);
 
@@ -256,7 +257,8 @@ test("background closes all direct peers and foreground restores discovery", asy
  expect(engine.ready("machine", { kind: "bulk", file: "f" })).toBe(false);
 
  engine.setForeground(true);
- expect(discover).toHaveBeenCalledTimes(1);
+ expect(authorize).toHaveBeenCalledTimes(1);
+ await vi.waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
 });
 
 test("attemptInteractive returns a direct attempt only when use=1 is ready", () => {
@@ -316,4 +318,23 @@ test("a round refused for lack of slots is reported as such and does not add rou
  expect(engine.diagnostics("machine").rounds).toEqual([]);expect(engine.diagnostics("machine").blockedAt).toBeTypeOf("number");
  owner.diag.begin("machine");expect(engine.diagnostics("machine").blockedAt).toBeUndefined();
  expect(engine.diagnostics("machine").rounds).toHaveLength(1);
+});
+
+test("background invalidates direct freshness and bumps syncRevision so resume requires fresh sync", () => {
+  const { engine, peer } = readyEngine();
+  peer.paths.set(1, { ready: true });
+  const state = engine as unknown as { freshUntil: number; syncRevision: number };
+  state.syncRevision = 1;
+  expect(state.freshUntil).toBeGreaterThan(Date.now());
+
+  engine.setForeground(false);
+  expect(state.freshUntil).toBe(0);
+  expect(state.syncRevision).toBe(2);
+
+  const discover = vi.spyOn(engine as unknown as { discover(): Promise<void> }, "discover").mockResolvedValue();
+  const authorize = vi.spyOn(engine as unknown as { authorize(): Promise<void> }, "authorize").mockRejectedValue(new Error("offline"));
+  Object.assign(engine, { leg: { ready: true, send: vi.fn() } });
+  engine.setForeground(true);
+  expect(discover).not.toHaveBeenCalled();
+  expect(authorize).toHaveBeenCalledTimes(1);
 });

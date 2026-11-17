@@ -1678,6 +1678,7 @@ class Remote(
         running = false
         authorityJob.cancel()
         lastDirectReady.clear()
+        direct.detachAll()
         direct.setForeground(false)
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)
         scope.launch { closeStreamLeg(0L) }
