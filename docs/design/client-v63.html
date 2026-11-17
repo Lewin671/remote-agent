@@ -585,6 +585,7 @@
 <symbol id="lu-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
 <symbol id="lu-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
 <symbol id="lu-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+<symbol id="lu-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
 <symbol id="lu-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor" stroke="none"/></symbol>
 </svg>
 
@@ -603,6 +604,7 @@
   <li><b>交互与排版细节</b>：<a href="#home">主页焦点卡</a>支持 ≤3 选项简短单选提问原地作答，拒绝写理由保留 5 行命令；<a href="#input">运行中发送</a>在有草稿时显式露出「插入这一轮 ⌄」轻胶囊；<a href="#account-management">未登录首屏与启动壳</a>改用 <code>AppMark</code> 呼吸感布局，电脑卡额度条减重为 4px + 30% 墨色，推送未开提示统一用中性灰底。</li>
   <li><b>Token 输出速度（按 agent + 模型被动记录）</b>：在<a href="#models">会话设置</a>和<a href="#machine-status">电脑状态页</a>新增速度摘要入口，进入独立的<a href="#speed">输出速度</a>页（今天 / 7 天 / 30 天 / 自定义，切换输出速度与首字延迟，单色线型+节点形状多线区分 + p10–p90 浅色带 + 对比表，覆盖没有数据、样本太少、电脑离线、正在补算历史四种状态）。</li>
   <li><b>按电脑选择启用哪些 CLI</b>：装了多个 CLI 的电脑在<a href="#machine-detail">设置 › 电脑</a>用「启用的 CLI」分组合并展示版本与开关（详态见<a href="#cli-switches">启用 CLI</a>）；停用的 CLI 立即从新任务、新定时、默认设置分段、额度和输出速度里隐藏，已有会话与历史照常可用，只留最后一个启用时锁定在开启态并写明「至少保留一个启用」，只启用一个时按只装一个处理。</li>
+  <li><b>直连改版（顶栏轻气泡 + 人话排障单）</b>：直连生效时在手机与宽屏<a href="#direct-session">会话顶栏</a>显示 <code>⚡ 直连</code>，点开轻气泡看当前毫秒数与职责边界；电脑设置页<a href="#direct">「连接」组</a>删掉双路测速对比行，收敛为 <b>5 种状态</b>，仅在未连通时露出<a href="#direct-diag">「为什么没连上 ›」</a>半屏人话排障单（宽屏为居中对话框），ICE / DTLS / 候选对计数只保留在「复制诊断给支持」的无地址纯文本里。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#direct">电脑 › 连接</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#shared-files">Agent 发来的文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#machine-status">电脑状态与磁盘</a><a href="#speed">输出速度</a><a href="#cli-switches">启用 CLI</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
@@ -1306,15 +1308,15 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 <h2>连接检测</h2>
 <p class="hint">连着但觉得慢、或者时断时续时，用它看是哪一段的问题。入口有两个：设置 › 账户里的「连接检测」一行（行尾写当前的连接状态），和宽屏侧栏底部的连接状态。打开就测一次，「再测一次」重测，平时不在后台测。网页和 Android 第一行是实时推送的主连接状态：进行中写当前步骤和已用秒数，失败后才写原因；主连接不在线时多一个「立即重连」。iOS 不列实时推送。下面按离本机由近到远列出本机网络、服务器、每台电脑；延时是一次往返的时间，服务器一行取三次里居中的一次。服务器 500 ms 以上、电脑 1500 ms 以上用浅灰点，延时后面写「较慢」；橙色只留给等你处理的事。</p>
 <div class="screens">
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：两边的网络不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">再测一次</button></div></div><div class="homebar"></div></div>
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">再测一次</button></div></div><div class="homebar"></div></div>
   <p class="cap"><b>测完</b>：从近到远每一段一行，行尾是状态图形和结果。延时正常是绿点；服务器 500 ms 以上、电脑 1500 ms 以上是浅灰点，延时后面写「较慢」。不在线的电脑不测，写「不在线」，也不写直连摘要。电脑名下一行是直连摘要，写法见<a href="#direct-conncheck">电脑 › 连接</a>。</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="spin"></i>检测中…</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="spin"></i>检测中…</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb dis">再测一次</button></div></div><div class="homebar"></div></div>
   <p class="cap"><b>检测中</b>：打开时和点「再测一次」后，先测服务器，再同时测各台在线的电脑；测的时候按钮置灰。</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v red">服务器没有回应</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v">未检测</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">再测一次</button></div></div><div class="homebar"></div></div>
   <p class="cap"><b>服务器没有回应</b>：原因用红字写在这一行，后面的电脑不测，写「未检测」。</p></div>
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="banner"><i class="spin"></i><span>正在重连：同步设备状态，已 3 秒。</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="spin"></i>重连中</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：两边的网络不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">立即重连</button><button class="cb sec">再测一次</button></div></div><div class="homebar"></div></div>
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="banner"><i class="spin"></i><span>正在重连：同步设备状态，已 3 秒。</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="spin"></i>重连中</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">立即重连</button><button class="cb sec">再测一次</button></div></div><div class="homebar"></div></div>
   <p class="cap"><b>正在重连</b>：上面一条写当前步骤和已用秒数，持续更新。延时测通不代表实时推送已连接。「立即重连」重新建立主连接，「再测一次」只重测延时。Android 按实际流程显示读取本机状态、登录或建立推送连接。</p></div>
-  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="banner"><span>实时推送未连接，会话变化可能延迟。最近一次失败：连接超时</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="spin"></i>重连中</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：两边的网络不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">立即重连</button><button class="cb sec">再测一次</button></div></div><div class="homebar"></div></div>
+  <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><span class="sp"></span></div><div class="scroll" style="padding-bottom:40px"><div class="hl">设置</div><div class="gl">账户</div><div class="grp"><div class="mi"><span class="n">服务器</span><span class="v">ra.remote-agent.top</span></div><div class="mi"><span class="n">连接检测</span><span class="v"><i class="dotk g" style="margin:0"></i>已连接</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">版本</span><span class="v">0.29.0</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="hd"><span class="hsp"></span><b>连接检测</b><span class="ta">完成</span></div><div class="banner"><span>实时推送未连接，会话变化可能延迟。最近一次失败：连接超时</span></div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="spin"></i>重连中</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.remote-agent.top</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="bs"><button class="cb">立即重连</button><button class="cb sec">再测一次</button></div></div><div class="homebar"></div></div>
   <p class="cap"><b>等待重试</b>：两次重连之间写失败原因；按钮和正在重连时一样。</p></div>
 </div>
 </section>
@@ -2187,8 +2189,8 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 <div class="screens">
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>修复登录超时</b><span>空闲 · 询问</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">读了 6 个文件，运行了 3 条命令</span></div><div class="ai">问题在 <code>auth/login.go:58</code>，我改成复用连接池并加上 <code>2s</code> 超时。</div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="who"><b>会话设置</b><span>Codex · 修复登录超时</span></div><div class="grp ctx"><div class="mi"><div class="n"><b>11%</b><small>上下文占用 87k / 760k</small><div class="bar"><i style="width:11%"></i></div></div><button class="cb sec sm">压缩</button></div><a class="mi" href="#speed"><span class="n">输出速度<small>首字 0.9 s · 近 10 次中位数</small></span><span class="v" style="font-variant-numeric:tabular-nums">92 tok/s</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">模型</div><div class="grp"><div class="mi"><span class="n">GPT-6-Astra</span><svg class="ic ck" width="20" height="20"><use href="#lu-check"/></svg></div><div class="mi"><span class="n">GPT-6-Sol</span></div><div class="mi"><span class="n">GPT-6-Luna<small>最高 max</small></span></div><div class="mi act"><span class="n">全部模型</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">推理强度</div><div class="seg wide"><span>low</span><span class="on">medium</span><span>high</span><span>xhigh</span><span>max</span><span>ultra</span></div><div class="gf">只在空闲时能切换；运行中置灰，见<a href="#states">状态集</a>。</div></div><div class="homebar"></div></div><p class="cap"><b>会话设置（含输出速度入口）。</b>从会话右上角 ⋯ 菜单的「模型」或「上下文占用」打开：第一组是上下文占用与当前这一对「CLI + 模型」最近几次请求的中位速度（第二行写首字延迟，点开进入<a href="#speed">输出速度</a>页）；下面是模型和推理强度</p></div>
   <div><div class="phone"><div class="sb"><span>9:41</span><i></i></div><div class="edge t tall"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>重写支付模块</b><span>空闲 · 自动</span></div><div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg><i class="dotk o"></i></div></div><div class="vseg glass"><span class="on">聊天</span><span>终端</span></div><div class="scroll chat"><div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>编辑 9 个文件  +412 −288</code></div><div class="ai">支付回调和退款流程都已迁移到新接口，测试全部通过。</div><div class="turn">本轮用时 4 分 12 秒</div><div class="me"><div>继续把对账逻辑也迁过去</div></div></div><div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd off"><svg class="ic" width="20" height="20"><use href="#lu-arrow-up"/></svg></span></div><div class="homebar"></div></div><p class="cap"><b>上下文超过 80%。</b>右上角 ⋯ 上出现橙点，⋯ 菜单里「上下文占用」一行写橙色的「已用 86%」，点进会话设置压缩。压缩后对话里留一行「上下文已压缩 · 86% → 14%」，橙点消失</p></div>
-  <div><div class="phone" id="machine-detail"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota-agy"><span class="n">Antigravity</span><span class="v">剩 60% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="gl">启用的 CLI</div><div class="grp cli-sw-grp"><div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small><span class="warn">未验证</span> · 0.163.0</small></span><span class="sw"></span></div><div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw"></span></div><div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw"></span></div></div><div class="gf">停用的 CLI 不出现在新任务、新定时、额度和输出速度里；已有会话和历史照常可用。</div><div class="gl">新项目默认设置</div><div class="seg wide"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">Gemini 4 Argon</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">high</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">自动</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件<small>可清理 120.0 MiB</small></span><span class="v">200.0 MiB</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">32.0 MiB</span></div><div class="mi act"><span class="n">清理…</span><span class="v">可释放 152.0 MiB</span></div></div><div class="gf">附件存在这台电脑上。会话用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">blog</span><span class="v"><span class="mono">~/Code/blog</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div><div class="gf">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认「删除这台电脑的记录？」才清除档案。</div></div><div class="homebar"></div></div><p class="cap"><b>设置 › 电脑。</b>账户额度只列这台电脑已装且已启用的 CLI，每行只摘要剩得最少的窗口（如「剩 38% · 5 小时」），保持一行。账户额度之后是「连接」组（各状态见<a href="#direct">电脑 › 连接</a>），接着在装了 2 个及以上 CLI 的电脑上用「启用的 CLI」分组合并展示版本与按电脑独立的启用开关（交互详态见<a href="#cli-switches">启用 CLI</a>）。新项目默认设置用分段切换已启用的 CLI，整台电脑共用的「审批超时」单独一组。最下面的「移除这台电脑…」打开二次确认</p></div>
-  <div><div class="phone" id="machine-detail-sparse"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>VPS-dev</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 78% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：两边的网络不能直接连通</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div></div><div class="gl">新项目默认设置 · Codex</div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件</span><span class="v">0 B</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">0 B</span></div><div class="mi dis"><span class="n">清理…</span><span class="v">无可清理内容</span></div></div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">remote-agent</span><span class="v"><span class="mono">~/Code/remote-agent</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div></div><div class="homebar"></div></div><p class="cap"><b>只装了一个 CLI 的电脑。</b>账户额度和版本都只列 Codex，「连接」组示例是正在用中继加原因；新项目默认设置没有分段按钮，分组标题直接写「新项目默认设置 · Codex」。没有可清理的内容时「清理…」置灰</p></div>
+  <div><div class="phone" id="machine-detail"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>MacBook</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota-agy"><span class="n">Antigravity</span><span class="v">剩 60% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span><span class="v" style="font-variant-numeric:tabular-nums">14 ms</span></div></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="gl">启用的 CLI</div><div class="grp cli-sw-grp"><div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-codex"/></svg><span class="n">Codex<small><span class="warn">未验证</span> · 0.163.0</small></span><span class="sw"></span></div><div class="mi"><svg class="amk" width="18" height="18" viewBox="0 0 24 24"><use href="#mark-claude"/></svg><span class="n">Claude Code<small>2.4.12</small></span><span class="sw"></span></div><div class="mi"><svg class="amk" width="18" height="18" viewBox="10.9 12.2 90 90"><use href="#mark-agy"/></svg><span class="n">Antigravity<small>1.9.4</small></span><span class="sw"></span></div></div><div class="gf">停用的 CLI 不出现在新任务、新定时、额度和输出速度里；已有会话和历史照常可用。</div><div class="gl">新项目默认设置</div><div class="seg wide"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">Gemini 4 Argon</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">high</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">自动</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件<small>可清理 120.0 MiB</small></span><span class="v">200.0 MiB</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">32.0 MiB</span></div><div class="mi act"><span class="n">清理…</span><span class="v">可释放 152.0 MiB</span></div></div><div class="gf">附件存在这台电脑上。会话用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">blog</span><span class="v"><span class="mono">~/Code/blog</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div><div class="gf">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认「删除这台电脑的记录？」才清除档案。</div></div><div class="homebar"></div></div><p class="cap"><b>设置 › 电脑。</b>账户额度只列这台电脑已装且已启用的 CLI，每行只摘要剩得最少的窗口（如「剩 38% · 5 小时」），保持一行。账户额度之后是收敛后的「连接」组（正常直连只有 2 行，完整 5 种状态见<a href="#direct">电脑 › 连接</a>），接着在装了 2 个及以上 CLI 的电脑上用「启用的 CLI」分组合并展示版本与按电脑独立的启用开关（交互详态见<a href="#cli-switches">启用 CLI</a>）。新项目默认设置用分段切换已启用的 CLI，整台电脑共用的「审批超时」单独一组。最下面的「移除这台电脑…」打开二次确认</p></div>
+  <div><div class="phone" id="machine-detail-sparse"><div class="sb"><span>9:41</span><i></i></div><div class="edge t"></div><div class="edge b"></div><div class="tbar"><div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div><div class="ttl"><b>VPS-dev</b></div><span class="ph44"></span></div><div class="scroll" style="padding-bottom:40px"><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 78% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>两边的网络隔开了，不能直接连通</small></span><span class="v" style="font-variant-numeric:tabular-nums">168 ms</span></div><a class="mi" href="#direct-diag"><span class="n">为什么没连上</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div></div><div class="gl">新项目默认设置 · Codex</div><div class="grp"><div class="mi"><span class="n">模型</span><span class="v">GPT-6-Astra</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">推理强度</span><span class="v">medium</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">审批模式</span><span class="v">询问</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="grp"><div class="mi"><span class="n">审批超时</span><span class="v">10 分钟</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div><div class="gl">附件存储</div><div class="grp"><div class="mi"><span class="n">上传的图片和文件</span><span class="v">0 B</span></div><div class="mi"><span class="n">空间上限</span><span class="v">1.0 GiB</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div><div class="mi"><span class="n">预览缓存</span><span class="v">0 B</span></div><div class="mi dis"><span class="n">清理…</span><span class="v">无可清理内容</span></div></div><div class="gl">项目</div><div class="grp"><div class="mi"><span class="n">foo</span><span class="v"><span class="mono">~/Code/foo</span></span></div><div class="mi"><span class="n">remote-agent</span><span class="v"><span class="mono">~/Code/remote-agent</span></span></div></div><div class="grp"><a class="mi red" href="#machine-removal"><span class="n">移除这台电脑…</span></a></div></div><div class="homebar"></div></div><p class="cap"><b>只装了一个 CLI 的电脑。</b>账户额度和版本都只列 Codex，「连接」组示例是直连未连通自动走中继（此时才出现最后一行「为什么没连上 ›」）；新项目默认设置没有分段按钮，分组标题直接写「新项目默认设置 · Codex」。没有可清理的内容时「清理…」置灰</p></div>
 </div>
 </section>
 
@@ -2196,36 +2198,112 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 
 <style>
 .sx-direct .stg { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
-.sx-direct .st { width: 375px; background: var(--paper); color: var(--ink); border-radius: 24px; padding: 16px; min-width: 0; overflow: hidden; }
-.sx-direct .st-h { font-size: 13px; font-weight: 600; color: var(--ink2); margin-bottom: 12px; }
+.sx-direct .stg > .st, .sx-direct .screens > .st { width: 375px; background: var(--paper); color: var(--ink); border-radius: 24px; padding: 16px; min-width: 0; overflow: hidden; box-shadow: inset 0 0 0 .5px var(--sep); }
+.sx-direct .st-h { font-size: 13px; font-weight: 600; color: var(--ink2); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.sx-direct .st-tag { font-size: 11px; font-weight: 600; color: var(--ink2); background: var(--fill); border-radius: 6px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
 .sx-direct .st-c { font-size: 13px; line-height: 1.55; color: var(--ink2); margin-top: 12px; }
-.sx-direct .st .grp { margin: 0; background: var(--gbg); }
-.sx-direct .st .gl { padding: 4px 12px 8px; }
-.sx-direct .st .gf { padding: 8px 12px 0; margin: 0; }
-/* 「连接」组：状态行和速度行（design-system §6） */
+.sx-direct :is(.stg, .screens) > .st .grp { margin: 0; background: var(--gbg); }
+.sx-direct :is(.stg, .screens) > .st .gl { padding: 4px 12px 8px; }
+.sx-direct :is(.stg, .screens) > .st .gf { padding: 8px 12px 0; margin: 0; }
 .sx-direct a.mi { color: inherit; text-decoration: none; }
 .sx-direct .mi .sw { margin-left: auto; }
 .sx-direct .mi .sw.dis { opacity: .4; }
 .sx-direct .mi.dx { position: relative; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; row-gap: 2px; padding: 14px 16px 14px 44px; }
 .sx-direct .mi.dx .mk { position: absolute; left: 18px; top: 14px; width: 14px; height: 22px; display: flex; align-items: center; justify-content: center; }
-.sx-direct .mi.dx .mk .dotk, .sx-direct .mi.dx .mk .spin, .sx-direct .mi.dx .mk .hol { margin: 0; }
+.sx-direct .mi.dx .mk .dotk, .sx-direct .mi.dx .mk .spin { margin: 0; }
 .sx-direct .mi.dx .mk .dotk { width: 9px; height: 9px; }
 .sx-direct .mi.dx .mk .spin { width: 14px; height: 14px; }
-.sx-direct .mi.dx .n { flex: 0 1 auto; max-width: 100%; color: var(--ink2); overflow-wrap: anywhere; }
-.sx-direct .mi.dx .n small { margin-top: 2px; line-height: 1.35; }
-.sx-direct .mi.dx .v, .sx-direct .mi.sp .v { max-width: 100%; white-space: normal; overflow: visible; display: block; flex: 0 1 auto; overflow-wrap: anywhere; }
-.sx-direct .mi.sp { flex-wrap: wrap; justify-content: space-between; row-gap: 2px; padding-top: 10px; padding-bottom: 10px; }
-.sx-direct .mi.sp .n { flex: 0 0 auto; }
-.sx-direct .mi.sp .v { font-variant-numeric: tabular-nums; }
+.sx-direct .mi.dx .n { flex: 1 1 160px; min-width: 0; color: var(--ink); overflow-wrap: anywhere; }
+.sx-direct .mi.dx .n small { margin-top: 2px; line-height: 1.38; white-space: normal; }
+.sx-direct .mi.dx .v { flex: none; font-variant-numeric: tabular-nums; color: var(--ink2); padding-top: 1px; }
 .sx-direct .mi .n small { white-space: normal; }
-/* 连接检测里的摘要 */
-.sx-direct .cc .mi .n small { white-space: normal; }
 .sx-direct .mi .n { overflow-wrap: anywhere; }
-.sx-direct .mi .v { max-width: 60%; }
-.sx-direct .mi .v .dotk, .sx-direct .mi .v .spin { margin: 0 4px 0 0; }
-.sx-direct .mi .v .spin { width: 12px; height: 12px; border-width: 1.5px; }
-.sx-direct .mi .v { flex: none; }
-/* 200% 字号（允许换行，值靠右另起一行，不把左列挤成一字一行） */
+.sx-direct .cc .mi .v { max-width: 60%; flex: none; }
+.sx-direct .cc .mi .v .dotk, .sx-direct .cc .mi .v .spin { margin: 0 4px 0 0; }
+.sx-direct .cc .mi .v .spin { width: 12px; height: 12px; border-width: 1.5px; }
+
+/* 会话顶栏直连标记与轻气泡（手机圆角 18，宽屏级 3 圆角 14） */
+.sx-direct .ttl .dtag { display: inline-flex; align-items: center; gap: 2px; color: var(--ink2); }
+.sx-direct .ttl .dtag svg { margin-top: -1px; }
+.sx-direct .ttl span.tap { background: var(--fill); border-radius: 999px; padding: 1px 8px; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
+.sx-direct .path-pop {
+  position: absolute; top: 104px; left: 20px; right: 20px; z-index: 8;
+  border-radius: 18px; padding: 13px 15px;
+  background: var(--lift); box-shadow: 0 0 0 .5px var(--sep), var(--float);
+  font-size: 14px; line-height: 1.45;
+}
+.sx-direct .path-pop .p1 { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sx-direct .path-pop .p1 .dotk { margin: 0; width: 8px; height: 8px; }
+.sx-direct .path-pop .p2 { margin-top: 5px; font-size: 13px; color: var(--ink2); line-height: 1.45; }
+.sx-direct .path-pop .pfoot { margin-top: 9px; padding-top: 8px; border-top: .5px solid var(--sep); display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink2); }
+.sx-direct .path-pop .pfoot a { color: var(--blue); font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 2px; }
+
+/* 宽屏会话顶栏直连标记与轻气泡 */
+.sx-direct .tool .dchip { display: inline-flex; align-items: center; gap: 3px; height: 26px; padding: 0 8px; border-radius: 8px; color: var(--ink2); font-size: 13px; }
+.sx-direct .tool .dchip.open { background: var(--s3); color: var(--ink); box-shadow: inset 0 0 0 .5px var(--rim), 0 1px 2px rgba(0,0,0,.06); }
+.sx-direct .win .path-pop {
+  top: 48px; left: 128px; right: auto; width: 332px;
+  border-radius: 14px; padding: 12px 14px;
+  background: var(--s3); box-shadow: var(--elev);
+}
+.sx-direct .win .path-pop .p1 { font-size: 14px; }
+
+/* 人话排障单（手机 .sheet 与宽屏居中对话框 .wdlg） */
+.sx-direct .sheet .hd .hsp, .sx-direct .sheet .hd .ta { width: 48px; flex: none; }
+.sx-direct .sheet .hd .ta { justify-content: flex-end; }
+.sx-direct .verdict { padding: 2px 20px 12px; }
+.sx-direct .verdict h4 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -.015em; line-height: 1.3; color: var(--ink); text-wrap: balance; }
+.sx-direct .verdict p { margin: 5px 0 0; font-size: 14px; color: var(--ink2); line-height: 1.45; }
+.sx-direct .chk-tag { font-size: 14px; font-weight: 600; color: var(--ink2); flex: none; }
+.sx-direct .chk-tag.ok { color: var(--green); }
+.sx-direct .sheet .why-btn { margin: 14px 16px 0; height: 48px; border-radius: 12px; width: calc(100% - 32px); flex: none; }
+.sx-direct .why-copy { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 4px; font-size: 15px; font-weight: 500; color: var(--blue); }
+.sx-direct .why-copy.done { color: var(--ink2); }
+.sx-direct .sheet .why-gf { padding: 4px 20px 0; margin: 0; font-size: 13px; color: var(--ink2); line-height: 1.45; }
+
+/* 卡片内的排障单静态壳与剪贴板纯文本示意 */
+.sx-direct .shbox { background: var(--sheet); border-radius: 24px; padding: 12px; box-shadow: inset 0 0 0 .5px var(--sep); }
+.sx-direct .shbox .grp { background: var(--lift); }
+.sx-direct .shbox .shh { display: flex; align-items: center; justify-content: space-between; min-height: 36px; padding: 0 6px 8px; }
+.sx-direct .shbox .shh b { font-size: 17px; font-weight: 600; }
+.sx-direct .shbox .shh .ta { min-height: 32px; font-size: 15px; }
+.sx-direct .shbox .verdict { padding: 2px 6px 10px; }
+.sx-direct .shbox .verdict h4 { font-size: 17px; }
+.sx-direct .shbox .why-btn { margin: 12px 0 0; width: 100%; height: 44px; border-radius: 12px; flex: none; }
+.sx-direct .shbox .why-gf { padding: 4px 4px 0; font-size: 12.5px; color: var(--ink2); line-height: 1.45; }
+.sx-direct .clip-card { width: 420px; max-width: 100%; background: var(--paper); border-radius: 24px; padding: 16px 18px; box-shadow: inset 0 0 0 .5px var(--sep); }
+.sx-direct .clip-card pre { margin: 8px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--gbg); color: var(--ink2); font: 12px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* 宽屏设置与居中排障对话框（外 18 / 内组 14 / 按钮 8 同心） */
+.sx-direct .win { font-size: 13px; }
+.sx-direct .win .mi.dx .n { font-size: 15px; }
+.sx-direct .win .gf { padding: 0 28px 12px; }
+.sx-direct .win .pane .hl { padding-left: 16px; font-size: 28px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sx-direct .win .pane .gl { padding-left: 28px; }
+.sx-direct .win .sw { width: 40px; height: 24px; border-radius: 12px; }
+.sx-direct .win .sw::after { width: 20px; height: 20px; }
+.sx-direct .win .pg { flex: 1; overflow-y: auto; padding: 36px 0 40px; scrollbar-width: none; }
+.sx-direct .win .wdim { position: absolute; inset: 0; background: rgba(0,0,0,.24); z-index: 6; }
+:is([data-theme="dark"], [data-theme="dark"] *) .sx-direct .win .wdim { background: rgba(0,0,0,.48); }
+.sx-direct .win .wdlg {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7;
+  width: 460px; border-radius: 18px; padding: 16px;
+  background: var(--s3); box-shadow: var(--elev);
+}
+.sx-direct .win .wdlg .whd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+.sx-direct .win .wdlg .whd b { font-size: 15px; font-weight: 600; color: var(--ink); }
+.sx-direct .win .wdlg .whd .ta { min-height: 28px; font-size: 13px; }
+.sx-direct .win .wdlg .verdict { padding: 0 2px 12px; }
+.sx-direct .win .wdlg .verdict h4 { font-size: 17px; }
+.sx-direct .win .wdlg .verdict p { font-size: 13px; }
+.sx-direct .win .wdlg .grp { margin: 0; background: var(--s2); border-radius: 14px; }
+.sx-direct .win .wdlg .chk-tag { font-size: 13px; }
+.sx-direct .win .wdlg .wacts { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.sx-direct .win .wdlg .wacts .cb { flex: none; height: 34px; padding: 0 16px; border-radius: 8px; font-size: 13px; }
+.sx-direct .win .wdlg .why-copy { min-height: 34px; margin: 0; font-size: 13px; }
+.sx-direct .win .wdlg .why-gf { padding: 10px 2px 0; font-size: 12px; color: var(--ink2); line-height: 1.45; }
+
+/* 200% 大字号（允许换行，值靠右另起一行，绝不挤成一字一行） */
 .sx-direct .x2 .mi { font-size: 30px; min-height: 64px; flex-wrap: wrap; row-gap: 4px; padding-top: 14px; padding-bottom: 14px; }
 .sx-direct .x2 .mi .n { flex: 1 1 180px; min-width: 0; overflow-wrap: break-word; }
 .sx-direct .x2 .mi .n small { font-size: 22px; line-height: 1.35; }
@@ -2233,98 +2311,420 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
 .sx-direct .x2 .mi.dx { padding: 18px 16px 18px 52px; }
 .sx-direct .x2 .mi.dx .mk { left: 18px; top: 18px; height: 36px; }
 .sx-direct .x2 .mi .v { font-size: 28px; max-width: 100%; margin-left: auto; text-align: right; white-space: normal; }
-.sx-direct .win { font-size: 13px; }
-.sx-direct .win .mi.dx .n, .sx-direct .win .mi.sp .n { font-size: 15px; }
-.sx-direct .win .gf { padding: 0 28px 12px; }
-.sx-direct .win .pane .hl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sx-direct .win .sw { width: 40px; height: 24px; border-radius: 12px; }
-.sx-direct .win .sw::after { width: 20px; height: 20px; }
-.sx-direct .win .pane .hl { padding-left: 16px; font-size: 28px; }
-.sx-direct .win .pane .gl { padding-left: 28px; }
-.sx-direct .win .pg { flex: 1; overflow-y: auto; padding: 36px 0 40px; scrollbar-width: none; }
-.sx-direct .spec td, .sx-direct .spec th { text-align: left; padding: 6px 14px 6px 0; vertical-align: top; font-size: 13px; line-height: 1.5; }
-.sx-direct .spec { border-collapse: collapse; color: var(--ink2); margin: 0 0 20px; }
+
+.sx-direct .spec td, .sx-direct .spec th { text-align: left; padding: 6px 14px 6px 0; vertical-align: top; font-size: 13px; line-height: 1.5; border-bottom: .5px solid var(--sep); }
+.sx-direct .spec tr:last-child td { border-bottom: 0; }
+.sx-direct .spec { border-collapse: collapse; color: var(--ink2); margin: 0 0 20px; max-width: 920px; }
 .sx-direct .spec th { color: var(--ink); font-weight: 600; }
-.sx-direct .shbox { background: var(--gbg); border-radius: 28px; padding: 12px 12px 14px; }
-.sx-direct .shbox .grp { background: var(--paper); }
-.sx-direct .shbox .shh { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 4px; }
-.sx-direct .shbox .shh b { flex: 1; text-align: center; font-size: 17px; font-weight: 600; }
-.sx-direct .shbox .shh .hsp, .sx-direct .shbox .shh .ta { width: 64px; flex: none; }
-.sx-direct .shbox .shh .ta { color: var(--blue); text-align: right; }
-.sx-direct .shbox .vd { margin: 4px 8px 8px; font-size: 17px; font-weight: 600; line-height: 1.35; }
-.sx-direct .shbox .gl { padding: 12px 10px 6px; }
-.sx-direct .shbox .mi.dg { align-items: flex-start; }
-.sx-direct .shbox .mi.dg .n { padding: 13px 0; }
-.sx-direct .shbox .mi.dg .v { display: block; max-width: 66%; padding: 13px 0; text-align: right; font-size: 15px; white-space: normal; overflow: visible; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.sx-direct .shbox .grp.acts { margin-top: 16px; }
-.sx-direct .shbox .mi.act.dis { opacity: .4; }
-.sx-direct .shbox .gf { padding: 8px 10px 0; margin: 0; }
-.sx-direct .x2 .shbox .vd { font-size: 34px; } .sx-direct .x2 .shbox .mi.dg .v { font-size: 30px; }
 </style>
 
 <section id="direct" class="sx-direct">
-<h2>电脑 › 连接</h2>
-<p class="hint">直连是电脑的一项属性，完整信息只放在电脑设置页的「连接」组里，位置在账户额度之后、CLI 版本之前（整页见<a href="#machine-detail">设置 › 电脑</a>）。连接检测里每台电脑只有一行摘要，用同一套状态词、不放速度（见<a href="#conncheck">连接检测</a>）；电脑状态页只讲数值，不再有传输路径。风格是 iOS 设置里无线局域网详情的「开关行、状态行、数值行、组下说明」。三端用同一组件和同一套文案，本稿以网页为例。</p>
-<table class="spec"><tr><th>行</th><th>怎么画</th></tr>
-<tr><td>「直连」开关行</td><td>开关，不用下拉框；开 = 自动（默认），关 = 关闭，打开时为绿色。点击区不小于 44×44，切换立即生效，只影响这台设备。浏览器不支持时置灰（40%）。</td></tr>
-<tr><td>状态行</td><td>只在开关打开时出现，电脑离线时不画。<b>只说结果：现在用的是哪条路。</b>行首一格状态图形，后面是状态词（<code>ink2</code>），补充写在第二行（13 号 <code>ink2</code>）。图形只用绿点、墨色转圈和浅灰实心点，不用空心圈。</td></tr>
-<tr><td>速度行</td><td>只在确实测到时出现，每种用途一行：左边「文件传输」「响应时间」，右边等宽数字的值（「直连 48 · 中继 175 ms」；只测到一条路就只写那一条）。文件还没传过时写「下次传输时比较」，不写「暂无数据」。窄屏放不下时值换到名称下面，不缩小字号。</td></tr>
-<tr><td>组下说明</td><td>一句话，13 号 <code>ink2</code>：「直连只用于加载和文件，发消息和审批始终经中继。」不写测速来源。</td></tr>
-<tr><td>「诊断信息」行</td><td>组内最后一行，和开关同样显示（开关关闭、浏览器不支持时不画）。导航行：名称加行尾 <code>›</code>，点开诊断页，见<a href="#direct-diag">下文</a>。</td></tr>
-</table>
-<table class="spec"><tr><th>情况</th><th>图形</th><th>状态词</th><th>第二行</th></tr>
-<tr><td>至少一种用途走直连</td><td>绿点</td><td>正在用直连</td><td>只有一种用途走直连时写「用于加载」或「用于文件」，两种都走不写</td></tr>
-<tr><td>已连上、热身中（至多 5 秒）</td><td>墨色转圈</td><td>直连已连上，正在测速</td><td>—</td></tr>
-<tr><td>正在建立</td><td>墨色转圈</td><td>正在建立直连…</td><td>—</td></tr>
-<tr><td>已连上，但没有明显更快</td><td>浅灰点</td><td>正在用中继</td><td>中继更快写「中继更快」；差距小、未达升级条件写「直连没有明显更快」</td></tr>
-<tr><td>未建立</td><td>浅灰点</td><td>正在用中继</td><td>「直连不可用：原因」，不知道原因就不写</td></tr>
-<tr><td>开关关闭、电脑离线</td><td colspan="3">不显示状态行</td></tr>
+<h2>直连（顶栏轻气泡 + 人话排障单）</h2>
+<p class="hint">v63 将直连界面更新为「<b>顶栏轻气泡 + 设置 5 状态 + 人话排障单</b>」：① 在用户真正感知快慢的<b>会话顶栏</b>（手机副标题、宽屏工具栏状态区），直连生效时追加 12px <code>zap</code>（iOS 为 <code>bolt.horizontal</code>）与「直连」二字，点开 2 行轻气泡看当前毫秒数并说明「发消息和审批始终经中继」，走中继时不加标记；② 电脑设置页<b>「连接」组收敛为 5 种状态</b>，彻底删掉「文件传输 / 响应时间 直连 X · 中继 Y」双路跑分对比，只在状态行右侧写当前生效路径的响应时间，且<b>只在直连未连通时才出现最后一行「为什么没连上 ›」</b>；③ 点开「为什么没连上」是无术语的半屏<b>人话排障单</b>（宽屏为居中对话框），ICE / DTLS / 候选对与收发包计数从主界面移除，只保留在「复制诊断给支持」的纯文本里（不含任何具体 IP 地址、端口或对话内容）。传输规则见 <a href="../transport.md#7-界面规则">transport.md §7</a>。</p>
+
+<table class="spec">
+  <tr><th>#</th><th>「连接」组的 5 种状态</th><th>图形</th><th>状态行文字与行尾 RTT</th><th>第二行（13 号 <code>ink2</code>）</th><th>排障入口行</th></tr>
+  <tr><td>1</td><td><b>正在用直连</b></td><td>绿点</td><td>正在用直连 · <code>14 ms</code></td><td>两种用途都走直连时不写；仅一种走直连时写「用于加载」或「用于文件」</td><td>不显示</td></tr>
+  <tr><td>2</td><td><b>正在建立 / 测速热身</b></td><td>墨色转圈</td><td>正在建立直连… / 直连已连上，正在测速</td><td>—</td><td>不显示</td></tr>
+  <tr><td>3</td><td><b>自动留在中继（中继已够快）</b></td><td>浅灰实心点</td><td>正在用中继 · <code>34 ms</code></td><td>当前网络下中继同样顺畅，已自动选用（或「当前网络下中继响应更快，已自动选用」；样本不足不写）</td><td>不显示</td></tr>
+  <tr><td>4</td><td><b>直连未连通（自动走中继）</b></td><td>浅灰实心点</td><td>正在用中继 · <code>168 ms</code></td><td>人话原因（两边的网络隔开了，不能直接连通 / 电脑没有回应… / 版本太旧… / 没连上，稍后会自动再试）</td><td><code>为什么没连上 ›</code></td></tr>
+  <tr><td>5</td><td><b>已关闭 / 不支持</b></td><td>关（不支持置灰）</td><td>本机关闭或电脑离线时不显示状态行；不支持或电脑端关闭时写浅灰点 + 原因</td><td>电脑端策略关闭时写「在电脑设置或管理端开启后可用」</td><td>不显示</td></tr>
 </table>
 
-<h3 class="sub" id="direct-states">手机 · 「连接」组的每一种状态</h3>
-<div class="stg"><div class="st "><div class="st-h">正在用直连 · 两种用途</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">绿点加状态词。加载和文件都走直连，不写第二行。响应时间是最近一分钟样本的中位数，直连 48 · 中继 175 ms 就是选路比较的那两个数。</div></div><div class="st "><div class="st-h">正在用直连 · 只用于文件</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连<small>用于文件</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">只有一种用途走直连时，第二行写是哪一种。响应时间只测到中继一条路，只写「中继 175 ms」，不编造直连的数。</div></div><div class="st "><div class="st-h">正在用直连 · 只用于加载</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连<small>用于加载</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">第二行写「用于加载」。文件还没传过，如实写「下次传输时比较」，不假装已经测过。</div></div><div class="st "><div class="st-h">直连已连上，正在测速</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">直连已连上，正在测速</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">中继 217 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">墨色转圈，没有第二行。直连连上后用至多 5 秒交替测直连和中继；此时往往只有中继的数。5 秒内一定变成下面的「正在用直连」或「正在用中继」，不会停在这里。</div></div><div class="st "><div class="st-h">正在用中继 · 直连没有明显更快</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连没有明显更快</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 160 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">浅灰实心点。直连已连上并测过，但没有快到值得切换（直连不超过中继的 0.7 倍才升级），所以继续用中继，不来回切。</div></div><div class="st "><div class="st-h">正在用中继 · 中继更快</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>中继更快</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 3.2 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 220 · 中继 180 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">两边都测过且中继不慢于直连时，第二行写「中继更快」。</div></div><div class="st "><div class="st-h">正在建立直连…</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">正在建立直连…</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">墨色转圈；没有第二行。开关刚打开时先显示这一行，再是「直连已连上，正在测速」，最后是实际状态。</div></div><div class="st "><div class="st-h">正在用中继 · 原因未知</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">浅灰点。直连没建立、又不知道原因，不写第二行。</div></div><div class="st "><div class="st-h">正在用中继 · 电脑上的版本太旧</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：电脑上的版本太旧，更新后可用</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">peer_unsupported</div></div><div class="st "><div class="st-h">正在用中继 · 电脑没有回应</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：电脑没有回应，可能在电脑上关了直连</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">no_response</div></div><div class="st "><div class="st-h">正在用中继 · 网络不能直接连通</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：两边的网络不能直接连通</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">no_traversal</div></div><div class="st "><div class="st-h">正在用中继 · 没连上</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：没连上，稍后会自动再试</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">failed；会自动再试，不需要你做什么，所以不用橙色。</div></div><div class="st "><div class="st-h">开关关闭</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw off"></span></div></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">关闭时状态行和速度行收起，只剩开关和说明。开关只影响这台设备。</div></div><div class="st "><div class="st-h">这个浏览器不支持直连</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw off dis"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">这个浏览器不支持直连</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">开关置灰（40% 不透明度）并保持关，状态行写这一句；没有 WebRTC 时连测速也无从谈起。</div></div><div class="st "><div class="st-h">电脑离线</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">电脑离线时不显示状态行，开关仍可调（这是本机的设置）；测过的速度若还在，照常显示。</div></div></div>
+<h3 class="sub" id="direct-session">手机 · 会话顶栏直连标记与轻气泡</h3>
+<div class="screens">
+  <div>
+    <div class="phone" id="direct-session-open">
+      <div class="sb"><span>9:41</span><i></i></div>
+      <div class="edge t tall"></div><div class="edge b"></div>
+      <div class="tbar">
+        <div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div>
+        <div class="ttl">
+          <b>修复登录超时</b>
+          <span class="tap">运行中 · 询问 · <span class="dtag"><svg class="ic" width="12" height="12"><use href="#lu-zap"/></svg>直连</span></span>
+        </div>
+        <div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div>
+      </div>
+      <div class="vseg glass"><span class="on">聊天</span><span>终端</span></div>
+      <div class="path-pop" role="dialog" aria-label="直连状态">
+        <div class="p1"><i class="dotk g"></i><span>直连 MacBook · 14 ms</span></div>
+        <div class="p2">加载记录与收发文件直接连电脑；发消息和审批始终经中继。</div>
+        <div class="pfoot"><span>连接稳定</span><a href="#machine-detail">连接设置<svg class="ic" width="14" height="14"><use href="#lu-chevron-right"/></svg></a></div>
+      </div>
+      <div class="scroll chat" style="padding-top:242px">
+        <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
+        <div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>读取 auth/login.go · 运行 go test ./auth/...</code></div>
+        <div class="ai">定位到 <code>auth/login.go:58</code> 在高并发重试时没有归还连接槽，正在跑压力测试确认。</div>
+      </div>
+      <div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><b>直连生效 · 点开顶栏轻气泡。</b>交互/读取走直连时，会话顶栏状态行末尾加上 12px <code>zap</code>（iOS 为 <code>bolt.horizontal</code>）+「直连」二字（图形加文字，不用彩色药丸）。点一下副标题浮出圆角 18 的无遮罩轻气泡：第一行报出电脑名与当前 RTT（<code>14 ms</code>），第二行讲清职责边界，右下「连接设置 ›」直达该电脑的「连接」组，点外部即收。</p>
+  </div>
 
-<h3 class="sub" id="direct-themes">亮色与暗色</h3>
-<p class="hint">页面右上角的主题切换会整页换色；这里把同一状态的亮色和暗色并排放出来。绿点、墨色转圈和浅灰实心点在两套主题里都取第 2 节的 token。状态图形不用空心圈：它在手机上像点了没反应的单选框。</p>
-<div class="stg"><div class="st " data-theme="light"><div class="st-h">正在用直连 · 亮色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="dark"><div class="st-h">正在用直连 · 暗色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="light"><div class="st-h">正在用中继 · 没有明显更快 · 亮色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连没有明显更快</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 160 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="dark"><div class="st-h">正在用中继 · 没有明显更快 · 暗色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连没有明显更快</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 160 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="light"><div class="st-h">直连已连上，正在测速 · 亮色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">直连已连上，正在测速</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">中继 217 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="dark"><div class="st-h">直连已连上，正在测速 · 暗色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">直连已连上，正在测速</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">中继 217 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="light"><div class="st-h">正在用中继 · 不可用 · 亮色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：两边的网络不能直接连通</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div><div class="st " data-theme="dark"><div class="st-h">正在用中继 · 不可用 · 暗色</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：两边的网络不能直接连通</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div></div></div>
-
-<h3 class="sub" id="direct-edge">边界 · 英文与 200% 字号</h3>
-<div class="stg"><div class="st "><div class="st-h">English · Using direct</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">Using direct</span></div><div class="mi sp"><span class="n">File transfer</span><span class="v">Direct 6.3 · Relay 4.1 MiB/s</span></div><div class="mi sp"><span class="n">Response time</span><span class="v">Direct 48 · Relay 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Using direct, one purpose</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">Using direct<small>Used for loading</small></span></div><div class="mi sp"><span class="n">File transfer</span><span class="v">Compared on the next transfer</span></div><div class="mi sp"><span class="n">Response time</span><span class="v">Direct 48 · Relay 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Direct connected, measuring</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">Direct connected, measuring speed</span></div><div class="mi sp"><span class="n">File transfer</span><span class="v">Compared on the next transfer</span></div><div class="mi sp"><span class="n">Response time</span><span class="v">Relay 217 ms</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Using relay</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Using relay<small>Direct isn't clearly faster</small></span></div><div class="mi sp"><span class="n">File transfer</span><span class="v">Compared on the next transfer</span></div><div class="mi sp"><span class="n">Response time</span><span class="v">Direct 160 · Relay 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Using relay · Relay is faster</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Using relay<small>Relay is faster</small></span></div><div class="mi sp"><span class="n">File transfer</span><span class="v">Direct 3.2 · Relay 4.1 MiB/s</span></div><div class="mi sp"><span class="n">Response time</span><span class="v">Direct 220 · Relay 180 ms</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Direct unavailable (longest reason)</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Using relay<small>Direct unavailable: The computer's version is too old; update it to use direct</small></span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Setting up</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">Setting up direct…</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st "><div class="st-h">English · Browser unsupported</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw off dis"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">This browser doesn't support direct connections</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div><div class="st x2"><div class="st-h">200% 字号 · 正在用直连</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">速度行的值放不下时换到名称下面，不缩小字号。</div></div><div class="st x2"><div class="st-h">200% 字号 · 正在用中继</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：电脑没有回应，可能在电脑上关了直连</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">第二行照常换行，开关的点击区仍不小于 44×44。</div></div><div class="st x2"><div class="st-h">200% 字号 · 测速</div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">直连已连上，正在测速</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">下次传输时比较</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="st-c">状态词放不下时换行，转圈留在行首。</div></div><div class="st x2"><div class="st-h">200% 字号 · English</div><div class="gl">Connection</div><div class="grp"><div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Using relay<small>Direct isn't clearly faster</small></span></div><div class="mi sp"><span class="n">Response time</span><span class="v">Direct 160 · Relay 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">Diagnostics</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div></div></div>
-
-<h3 class="sub" id="direct-conncheck">连接检测 · 电脑行的摘要</h3>
-<p class="hint">右侧保持原样：状态图形加延时结果。电脑名下加一行摘要（13 号 <code>ink2</code>），<b>不加状态图形</b>；不放速度。浏览器不支持直连时页脚末尾加「这个浏览器不支持直连。」整页的连接检测见<a href="#conncheck">连接检测</a>一章。</p>
-<div class="stg cc"><div class="st " ><div class="st-h">连接检测 · 各种直连状态</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">iMac<small>正在用直连 · 用于文件</small></span><span class="v"><i class="dotk g"></i>148 ms</span></div><div class="mi"><span class="n">Studio<small>正在用中继 · 直连没有明显更快</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div><div class="mi"><span class="n">Mini<small>正在建立直连…</small></span><span class="v"><i class="dotk g"></i>110 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：两边的网络不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div><div class="mi"><span class="n">NAS<small>正在用中继 · 直连不可用：电脑上的版本太旧，更新后可用</small></span><span class="v"><i class="dotk g"></i>240 ms</span></div><div class="mi"><span class="n">Lab<small>直连已关闭</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="st-c">电脑名下一行 13 号 ink2 的摘要，用和状态行相同的词；右侧仍是延时结果。摘要前不放图形，因为同一行右侧已经有一个点。离线的电脑不写摘要，也不放速度，数字只在电脑设置页。</div></div><div class="st " ><div class="st-h">连接检测 · 浏览器不支持</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook</span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。这个浏览器不支持直连。</div><div class="st-c">浏览器不支持时不在每一行写，只在页脚末尾加一句「这个浏览器不支持直连。」</div></div><div class="st " ><div class="st-h">连接检测 · 检测中与未检测</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="spin"></i>检测中…</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：没连上，稍后会自动再试</small></span><span class="v">未检测</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="st-c">摘要只讲直连，和延时是否测完无关；服务器没有回应时电脑写「未检测」，摘要照常。</div></div><div class="st " ><div class="st-h">连接检测 · 长电脑名与长原因</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">这是一个非常非常长的电脑名称用来看省略和换行的位置<small>正在用中继 · 直连不可用：电脑没有回应，可能在电脑上关了直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">MacBook-Pro-with-a-very-long-English-hostname-example<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>148 ms</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="st-c">电脑名一行内截断，摘要最多换行显示完整，不截断原因。</div></div><div class="st " ><div class="st-h">连接检测 · English</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>Using direct</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>Using relay · Direct unavailable: The two networks can't reach each other directly</small></span><span class="v"><i class="dotk off"></i>2140 ms · Slow</span></div><div class="mi"><span class="n">Studio<small>Using relay · Direct isn't clearly faster</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div><div class="mi"><span class="n">Mini<small>Direct is off</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div></div><div class="gf">Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower.</div><div class="st-c">英文用同一套状态词；摘要在窄屏换行，延时结果不挤压。</div></div><div class="st x2" ><div class="st-h">连接检测 · 200% 字号</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：两边的网络不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div><div class="st-c">摘要照常换行，不缩小字号。</div></div><div class="st " data-theme="dark"><div class="st-h">连接检测 · 暗色</div><div class="grp"><div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div><div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div><div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div><div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div><div class="mi"><span class="n">VPS-dev<small>正在用中继 · 直连不可用：两边的网络不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div></div><div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div></div></div>
-
-<h3 class="sub" id="direct-wide">宽屏 · 设置列宽 640</h3>
-<div class="screens" style="display:block">
-<div class="win" style="height:620px" ><div class="side"><div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div><div class="whl"><em>1</em> 件事等你</div><div class="wsub">1 个会话在运行，1 个空闲</div><div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div><div class="slist"><div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div><div class="slabel">进行中</div><div class="srow sel"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">Codex · MacBook</div></div></div><div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="r3">Claude Code · MacBook</div></div></div><div class="slabel">今天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>7:10</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>给登录接口加限流</b><time>6:42</time></div></div></div></div><div class="conn"><i class="dotk g"></i>已连接</div><div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div></div><div class="main"><div class="pg"><div class="pane"><div class="hl">MacBook</div><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 6.3 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 48 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp" style="margin-top:12px"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div><div class="mi"><span class="n">Claude Code 版本</span><span class="v">示例版本</span></div></div></div></div></div></div>
-<p class="wcap"><b>设置 › 电脑 · 正在用直连。</b>内容限制在约 640 宽的居中列里；「连接」组仍在账户额度之后、CLI 版本之前，开关按宽屏取 40×24（点击区加到 44×44）。</p>
-<div style="height:32px"></div>
-<div class="win" style="height:560px" ><div class="side"><div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div><div class="whl"><em>1</em> 件事等你</div><div class="wsub">1 个会话在运行，1 个空闲</div><div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div><div class="slist"><div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div><div class="slabel">进行中</div><div class="srow sel"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">Codex · MacBook</div></div></div><div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="r3">Claude Code · MacBook</div></div></div><div class="slabel">今天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>7:10</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>给登录接口加限流</b><time>6:42</time></div></div></div></div><div class="conn"><i class="dotk g"></i>已连接</div><div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div></div><div class="main"><div class="pg"><div class="pane"><div class="hl">MacBook</div><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>中继更快</small></span></div><div class="mi sp"><span class="n">文件传输</span><span class="v">直连 3.2 · 中继 4.1 MiB/s</span></div><div class="mi sp"><span class="n">响应时间</span><span class="v">直连 220 · 中继 175 ms</span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp" style="margin-top:12px"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div><div class="mi"><span class="n">Claude Code 版本</span><span class="v">示例版本</span></div></div></div></div></div></div>
-<p class="wcap"><b>正在用中继 · 中继更快。</b></p>
-<div style="height:32px"></div>
-<div class="win" style="height:560px" data-theme="dark"><div class="side"><div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div><div class="whl"><em>1</em> 件事等你</div><div class="wsub">1 个会话在运行，1 个空闲</div><div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div><div class="slist"><div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div><div class="slabel">进行中</div><div class="srow sel"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">Codex · MacBook</div></div></div><div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="r3">Claude Code · MacBook</div></div></div><div class="slabel">今天</div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>7:10</time></div></div></div><div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>给登录接口加限流</b><time>6:42</time></div></div></div></div><div class="conn"><i class="dotk g"></i>已连接</div><div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div></div><div class="main"><div class="pg"><div class="pane"><div class="hl">这是一个非常非常长的电脑名称用来看宽屏标题的截断位置</div><div class="gl">账户额度</div><div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 38% · 5 小时</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a><a class="mi" href="#quota"><span class="n">Claude Code</span><span class="v">剩 54% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gl">连接</div><div class="grp"><div class="mi"><span class="n">直连</span><span class="sw"></span></div><div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>直连不可用：电脑没有回应，可能在电脑上关了直连</small></span></div><a class="mi" href="#direct-diag"><span class="n">诊断信息</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div><div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div><div class="grp" style="margin-top:12px"><div class="mi"><span class="n">Codex 版本</span><span class="v">示例版本</span></div><div class="mi"><span class="n">Claude Code 版本</span><span class="v">示例版本</span></div></div></div></div></div></div>
-<p class="wcap"><b>暗色 · 长电脑名 · 正在用中继。</b>电脑名在标题里截断，状态行的原因照常换行。</p>
+  <div>
+    <div class="phone" id="direct-session-relay">
+      <div class="sb"><span>9:41</span><i></i></div>
+      <div class="edge t tall"></div><div class="edge b"></div>
+      <div class="tbar">
+        <div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div>
+        <div class="ttl">
+          <b>重构 API 层</b>
+          <span>运行中 · 询问</span>
+        </div>
+        <div class="gbtn glass"><svg class="ic" width="22" height="22"><use href="#lu-ellipsis"/></svg></div>
+      </div>
+      <div class="vseg glass"><span class="on">聊天</span><span>终端</span></div>
+      <div class="scroll chat">
+        <div class="me"><div>把路由中间件拆成独立包，补齐单元测试</div></div>
+        <div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><code>读取 server/router.go</code></div>
+        <div class="ai">正在整理鉴权与限流中间件的依赖边界。</div>
+      </div>
+      <div class="cbar glass"><span class="plus"><svg class="ic" width="20" height="20"><use href="#lu-plus"/></svg></span><span class="ph">消息</span><span class="snd"><svg class="ic" width="20" height="20"><use href="#lu-stop"/></svg></span></div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><b>走中继时 · 顶栏零打扰。</b>无论直连是自动留在中继、未连通还是已关闭，中继本来就能完成 100% 操作，会话副标题保持原本的「运行中 · 询问」，不挂灰标或警告图标；路径切换只用 200 ms 淡入淡出，不弹提示条。</p>
+  </div>
 </div>
 
-<h3 class="sub" id="direct-diag">诊断信息 · 为什么没直连</h3>
-<p class="hint">「连接」组的最后一行「诊断信息 ›」，点开是一张弹层（手机从底部升起，宽屏是居中的对话框），让用户不用 chrome://webrtc-internals 就能看到直连卡在哪一步，也能把同样的内容复制给支持。数据只来自浏览器这一侧，每台电脑保留最近三次尝试，不加任何网络流量。<b>不显示具体地址</b>：只写类型（本机网卡 / 公网映射 / 对端发现 / 中继）、地址族和范围。弹层依次是：一句结论（17 / 600，<code>ink</code>）；本机地址、电脑地址、连通检查、结果四个分组（列表行，值在行尾、<code>ink2</code>、右对齐、放不下时换行，不缩小字号）；两行蓝字操作「复制诊断信息」「重新尝试」（操作行，不放 <code>›</code>）；底部一句隐私说明。右上角是「完成」。</p>
-<table class="spec"><tr><th>结论</th><th>什么时候写</th></tr>
-<tr><td>本机拿到了 IPv6，但电脑的 IPv6 地址没有回应</td><td>两边都给出公网 IPv6，本机发出的 IPv6 检查一个回应也没收到</td></tr>
-<tr><td>两边地址都有，连通检查全部失败</td><td>两边都有地址，检查全失败（含没读到检查记录时）</td></tr>
-<tr><td>本机没有拿到任何可用地址</td><td>浏览器一个地址也没收集到</td></tr>
-<tr><td>本机没有拿到公网映射地址，网络可能挡了 STUN</td><td>只有本机网卡地址，没有 STUN 给的公网映射地址</td></tr>
-<tr><td>没有收到电脑的任何地址</td><td>本机有地址，电脑的候选地址一个也没到</td></tr>
-<tr><td>已连上，加密握手没完成 / 加密握手完成，数据通道没有打开 / 数据通道已打开，但电脑没有确认</td><td>连通检查成功，卡在后面某一步</td></tr>
-<tr><td>电脑拒绝了这次直连（版本、策略或数量上限）</td><td>电脑回复了不支持</td></tr>
-<tr><td>电脑没有回应直连握手，可能在电脑上关了直连</td><td>握手消息发出后电脑始终没有回应</td></tr>
-<tr><td>握手消息被中继限速了 / 握手消息没送到：电脑当前不在线</td><td>中继对握手消息的回执</td></tr>
-<tr><td>本机的直连名额已满，这次没有尝试 / 浏览器没能创建直连</td><td>没能开始一轮</td></tr>
-<tr><td>直连已连上 / 直连连上后又断开了 / 这次尝试被取消了 / 没连上，原因不明</td><td>其余情况；有更新的一轮正在进行时，结论仍是最近一次完成的那轮，「结果」里最上面写「进行中」</td></tr>
-</table>
-<div class="stg"><div class="st "><div class="st-h">本机拿到了 IPv6，电脑的 IPv6 没回应</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">本机拿到了 IPv6，但电脑的 IPv6 地址没有回应</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">本机网卡 ×1（全球）</span></div><div class="mi dg"><span class="n">已隐藏的地址</span><span class="v">×1</span></div><div class="mi dg"><span class="n">收集地址</span><span class="v">进行中 0.0 秒 → 已完成 0.4 秒</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">本机网卡 ×1（全球）</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">IPv6 → IPv6</span><span class="v">失败 1 · 发出 14 · 收到 0</span></div><div class="mi dg"><span class="n">IPv4 → IPv4</span><span class="v">失败 2 · 发出 24 · 收到 0</span></div><div class="mi dg"><span class="n">ICE 状态</span><span class="v">进行中 0.5 秒 → 失败 8.9 秒</span></div><div class="mi dg"><span class="n">加密握手</span><span class="v">—</span></div><div class="mi dg"><span class="n">数据通道</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">连通检查</span></div><div class="mi dg"><span class="n">刚刚</span><span class="v">没连上 · 9.9 秒</span></div><div class="mi dg"><span class="n">1 分钟前</span><span class="v">没连上 · 9.9 秒</span></div><div class="mi dg"><span class="n">3 分钟前</span><span class="v">电脑没回应 · 10.0 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div><div class="st-c">顶部一句话是结论，下面是它背后的计数，按「本机地址、电脑地址、连通检查、结果」四组排。只写地址的类型、地址族和范围（IPv6 全球 / 本地唯一 / 链路本地，IPv4 私网 / 公网 / 运营商共享），不写具体地址和端口。「结果」里先写停在哪一步，再列最近三次尝试（最新的在上）。「复制诊断信息」把同样的内容（含两条通道、三次尝试）复制成纯文字，发给支持即可；「重新尝试」立即再试一次，正在建立或已连上时置灰。</div></div><div class="st "><div class="st-h">本机没有拿到任何地址</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">本机没有拿到任何可用地址</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">没有</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div><div class="mi dg"><span class="n">收集地址</span><span class="v">进行中 0.0 秒 → 已完成 0.4 秒</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">没有读到检查记录</span><span class="v">—</span></div><div class="mi dg"><span class="n">加密握手</span><span class="v">—</span></div><div class="mi dg"><span class="n">数据通道</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">连通检查</span></div><div class="mi dg"><span class="n">刚刚</span><span class="v">没连上 · 9.9 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div><div class="st-c">结论只在浏览器一个地址也没收集到时这样写。</div></div><div class="st "><div class="st-h">两边地址都有，连通检查全部失败</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">两边地址都有，连通检查全部失败</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div><div class="mi dg"><span class="n">收集地址</span><span class="v">进行中 0.0 秒 → 已完成 0.4 秒</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">IPv4 → IPv4</span><span class="v">失败 2 · 发出 24 · 收到 0</span></div><div class="mi dg"><span class="n">ICE 状态</span><span class="v">进行中 0.5 秒 → 失败 8.9 秒</span></div><div class="mi dg"><span class="n">加密握手</span><span class="v">—</span></div><div class="mi dg"><span class="n">数据通道</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">连通检查</span></div><div class="mi dg"><span class="n">刚刚</span><span class="v">没连上 · 9.9 秒</span></div><div class="mi dg"><span class="n">1 分钟前</span><span class="v">没连上 · 9.9 秒</span></div><div class="mi dg"><span class="n">2 分钟前</span><span class="v">没连上 · 9.9 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div></div><div class="st "><div class="st-h">已连上，加密握手没完成</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">已连上，加密握手没完成</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">IPv4 → IPv4</span><span class="v">成功 1 · 48 ms · 发出 6 · 收到 5</span></div><div class="mi dg"><span class="n">ICE 状态</span><span class="v">进行中 0.4 秒 → 已完成 0.5 秒</span></div><div class="mi dg"><span class="n">加密握手</span><span class="v">失败</span></div><div class="mi dg"><span class="n">数据通道</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">加密握手</span></div><div class="mi dg"><span class="n">刚刚</span><span class="v">没连上 · 9.9 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div></div><div class="st "><div class="st-h">电脑拒绝了这次直连</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">电脑拒绝了这次直连（版本、策略或数量上限）</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">没有创建连接</span><span class="v">—</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">没有创建连接</span><span class="v">—</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">没有创建连接</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">等电脑回应握手</span></div><div class="mi dg"><span class="n">握手消息</span><span class="v">电脑回复不支持</span></div><div class="mi dg"><span class="n">刚刚</span><span class="v">电脑拒绝 · 1.2 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div></div><div class="st "><div class="st-h">已连上</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">直连已连上</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">本机网卡 ×1（全球）</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">IPv4 → IPv4</span><span class="v">成功 1 · 12 ms · 发出 6 · 收到 6</span></div><div class="mi dg"><span class="n">ICE 状态</span><span class="v">进行中 0.4 秒 → 已完成 0.5 秒</span></div><div class="mi dg"><span class="n">加密握手</span><span class="v">已完成</span></div><div class="mi dg"><span class="n">数据通道</span><span class="v">已打开</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">刚刚</span><span class="v">已连上 · 3.0 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act dis"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div><div class="st-c">已连上时「重新尝试」置灰。</div></div><div class="st " data-theme="dark"><div class="st-h">暗色 · 本机拿到了 IPv6，电脑的 IPv6 没回应</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">本机拿到了 IPv6，但电脑的 IPv6 地址没有回应</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">本机网卡 ×1（全球）</span></div><div class="mi dg"><span class="n">已隐藏的地址</span><span class="v">×1</span></div><div class="mi dg"><span class="n">收集地址</span><span class="v">进行中 0.0 秒 → 已完成 0.4 秒</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网） · 公网映射 ×1（公网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">本机网卡 ×1（全球）</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">IPv6 → IPv6</span><span class="v">失败 1 · 发出 14 · 收到 0</span></div><div class="mi dg"><span class="n">IPv4 → IPv4</span><span class="v">失败 2 · 发出 24 · 收到 0</span></div><div class="mi dg"><span class="n">ICE 状态</span><span class="v">进行中 0.5 秒 → 失败 8.9 秒</span></div><div class="mi dg"><span class="n">加密握手</span><span class="v">—</span></div><div class="mi dg"><span class="n">数据通道</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">连通检查</span></div><div class="mi dg"><span class="n">刚刚</span><span class="v">没连上 · 9.9 秒</span></div><div class="mi dg"><span class="n">1 分钟前</span><span class="v">没连上 · 9.9 秒</span></div><div class="mi dg"><span class="n">3 分钟前</span><span class="v">电脑没回应 · 10.0 秒</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div></div><div class="st "><div class="st-h">English · IPv6 did not answer</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>Diagnostics</b><span class="ta">Done</span></div><p class="vd">This device has IPv6, but the computer's IPv6 address didn't answer</p><div class="gl">This device's addresses</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">Local interface ×1 (private) · Public mapped ×1 (public)</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">Local interface ×1 (global)</span></div><div class="mi dg"><span class="n">Hidden addresses</span><span class="v">×1</span></div><div class="mi dg"><span class="n">Gathering</span><span class="v">In progress 0.0 s → Done 0.4 s</span></div></div><div class="gl">The computer's addresses</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">Local interface ×1 (private) · Public mapped ×1 (public)</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">Local interface ×1 (global)</span></div></div><div class="gl">Connectivity checks</div><div class="grp"><div class="mi dg"><span class="n">IPv6 → IPv6</span><span class="v">1 failed · sent 14 · got 0</span></div><div class="mi dg"><span class="n">IPv4 → IPv4</span><span class="v">2 failed · sent 24 · got 0</span></div><div class="mi dg"><span class="n">ICE state</span><span class="v">In progress 0.5 s → Failed 8.9 s</span></div><div class="mi dg"><span class="n">Encryption handshake</span><span class="v">—</span></div><div class="mi dg"><span class="n">Data channel</span><span class="v">—</span></div></div><div class="gl">Result</div><div class="grp"><div class="mi dg"><span class="n">Stopped at</span><span class="v">Connectivity checks</span></div><div class="mi dg"><span class="n">Just now</span><span class="v">Didn't connect · 9.9 s</span></div><div class="mi dg"><span class="n">1 minute ago</span><span class="v">Didn't connect · 9.9 s</span></div><div class="mi dg"><span class="n">3 minutes ago</span><span class="v">No answer · 10.0 s</span></div></div><div class="grp acts"><div class="mi act"><span class="n">Copy diagnostics</span></div><div class="mi act"><span class="n">Try again</span></div></div><div class="gf">Diagnostics show address types and ranges only, never the addresses themselves.</div></div></div><div class="st x2"><div class="st-h">200% 字号</div><div class="shbox"><div class="shh"><span class="hsp"></span><b>诊断信息</b><span class="ta">完成</span></div><p class="vd">本机没有拿到任何可用地址</p><div class="gl">本机地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">没有</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">电脑地址</div><div class="grp"><div class="mi dg"><span class="n">IPv4</span><span class="v">本机网卡 ×1（私网）</span></div><div class="mi dg"><span class="n">IPv6</span><span class="v">没有</span></div></div><div class="gl">连通检查</div><div class="grp"><div class="mi dg"><span class="n">没有读到检查记录</span><span class="v">—</span></div></div><div class="gl">结果</div><div class="grp"><div class="mi dg"><span class="n">停在</span><span class="v">连通检查</span></div></div><div class="grp acts"><div class="mi act"><span class="n">复制诊断信息</span></div><div class="mi act"><span class="n">重新尝试</span></div></div><div class="gf">诊断信息只包含地址的类型和范围，不含具体地址。</div></div></div></div>
+<h3 class="sub" id="direct-states">手机 · 设置 › 电脑 › 「连接」组（收敛后共 5 种状态）</h3>
+<p class="hint">现在「连接」组<b>一共只有 5 种状态</b>（见上表及下面 5 张状态卡）：① 正在用直连、② 正在建立 / 测速热身、③ 自动留在中继（中继已够快）、④ 直连未连通（自动走中继）、⑤ 已关闭 / 不支持。旧设计里的双路跑分对比行已全部移除，只在状态行右侧报出当前正在走的那条路的响应时间；常态下只有 2 行，仅第 4 种（直连未连通）才露出第 3 行「为什么没连上 ›」。</p>
+<div class="stg" id="direct-states-grid">
+  <div class="st">
+    <div class="st-h"><span class="st-tag">状态 1 / 5</span>正在用直连</div>
+    <div class="gl">连接</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span><span class="v">14 ms</span></div>
+    </div>
+    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+    <div class="gl" style="padding-top:14px">连接（仅单一用途走直连时）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连<small>用于加载</small></span><span class="v">18 ms</span></div>
+    </div>
+    <div class="st-c">绿点 + 当前直连响应时间（最近 60 秒中位数）。两种用途都走直连时不写第二行；只有一种走直连时写「用于加载」或「用于文件」。已连通时不显示排障入口。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h"><span class="st-tag">状态 2 / 5</span>正在建立 / 测速热身</div>
+    <div class="gl">连接（刚打开或重连中）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">正在建立直连…</span></div>
+    </div>
+    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+    <div class="gl" style="padding-top:14px">连接（已连上，至多 5 秒热身）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="spin"></i></span><span class="n">直连已连上，正在测速</span><span class="v">142 ms</span></div>
+    </div>
+    <div class="st-c">墨色转圈，无第二行、无排障行。热身至多 5 秒内必定落定为状态 1 或状态 3，不会无限停在测速。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h"><span class="st-tag">状态 3 / 5</span>自动留在中继 · 中继已够快</div>
+    <div class="gl">连接（差距小，防抖留在中继）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>当前网络下中继同样顺畅，已自动选用</small></span><span class="v">34 ms</span></div>
+    </div>
+    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+    <div class="gl" style="padding-top:14px">连接（中继实测更快）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>当前网络下中继响应更快，已自动选用</small></span><span class="v">28 ms</span></div>
+    </div>
+    <div class="st-c">直连实际已通，只是比较后中继同样顺畅或更快；用正向表述代替旧版绕口的「直连没有明显更快」，不并列双路跑分，也不出排障入口。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h"><span class="st-tag">状态 4 / 5</span>直连未连通 · 自动走中继</div>
+    <div class="gl">连接</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>两边的网络隔开了，不能直接连通</small></span><span class="v">168 ms</span></div>
+      <a class="mi" href="#direct-diag"><span class="n">为什么没连上</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+    </div>
+    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+    <div class="st-c">只有直连真的没建立时，组末才出现第 3 行「为什么没连上 ›」。第二行直接写人话原因（网络隔开 / 电脑没有回应，可能在电脑上关了直连 / 电脑上的版本太旧，更新后可用 / 没连上，稍后会自动再试），去掉「直连不可用：」前缀；后台自动重试，不用橙色。</div>
+  </div>
+
+  <div class="st">
+    <div class="st-h"><span class="st-tag">状态 5 / 5</span>已关闭 / 不支持</div>
+    <div class="gl">连接（本机关闭，或电脑当前离线）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw off"></span></div>
+    </div>
+    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+    <div class="gl" style="padding-top:14px">连接（浏览器不支持 / 电脑端已关闭）</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw off dis"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">这个浏览器不支持直连</span></div>
+    </div>
+    <div class="grp" style="margin-top:8px">
+      <div class="mi"><span class="n">直连</span><span class="sw off dis"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">电脑上已关闭直连<small>在电脑设置或管理端开启后可用</small></span></div>
+    </div>
+    <div class="st-c">本机关闭（或电脑离线）时状态行收起，只剩开关与说明；浏览器/设备不支持 WebRTC 或电脑策略关闭直连时，开关 40% 置灰并说明限制来源。</div>
+  </div>
+</div>
+
+<h3 class="sub" id="direct-diag">手机 · 「为什么没连上」半屏人话排障单与支持纯文本</h3>
+<p class="hint">点状态 4 的「为什么没连上 ›」从底部升起半屏排障单（支持第 4 节跟手下拉关闭）：主界面用三行人话自检回答「电脑有没有掉线、为什么直通不了、会不会自动重试」，给一个主按钮「重新尝试」和一行蓝字「复制诊断给支持」。原本满屏的 IPv4/IPv6 候选分类、ICE 状态、加密握手、数据通道和收发包计数从界面上彻底删掉，<b>只保留在剪贴板纯文本里供支持人员排查，且始终不含具体地址、端口或对话内容</b>。</p>
+<div class="screens" style="align-items:flex-start">
+  <div>
+    <div class="phone" id="direct-why-phone">
+      <div class="sb"><span>9:41</span><i></i></div>
+      <div class="edge t"></div>
+      <div class="tbar">
+        <div class="gbtn glass"><svg class="ic" width="24" height="24"><use href="#lu-chevron-left"/></svg></div>
+        <div class="ttl"><b>VPS-dev</b></div>
+        <span class="ph44"></span>
+      </div>
+      <div class="scroll">
+        <div class="gl">账户额度</div>
+        <div class="grp"><div class="mi"><span class="n">Codex</span><span class="v">剩 78% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div></div>
+        <div class="gl">连接</div>
+        <div class="grp">
+          <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+          <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>两边的网络隔开了，不能直接连通</small></span><span class="v">168 ms</span></div>
+          <div class="mi"><span class="n">为什么没连上</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+        </div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="hd"><span class="hsp"></span><b>为什么没连上</b><span class="ta">完成</span></div>
+        <div class="verdict" role="status">
+          <h4>两边的网络隔开了，不能直接连通</h4>
+          <p>常见于蜂窝移动网、公司防火墙或开启了隔离的访客 Wi-Fi。当前所有操作都已自动走中继，不影响正常使用。</p>
+        </div>
+        <div class="grp">
+          <div class="mi"><span class="n">电脑在线并响应</span><span class="chk-tag ok">正常</span></div>
+          <div class="mi"><span class="n">局域网或公网直通<small>两边都在运营商共享网关后，未能直通</small></span><span class="chk-tag">未通</span></div>
+          <div class="mi"><span class="n">后台自动重试<small>切换 Wi-Fi 或网络变化时会自动再试</small></span><span class="chk-tag">已开启</span></div>
+        </div>
+        <button class="cb why-btn">重新尝试</button>
+        <div class="why-copy"><svg class="ic" width="15" height="15"><use href="#lu-copy"/></svg>复制诊断给支持</div>
+        <p class="why-gf">复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。</p>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <p class="cap"><b>网络隔开（最常见）。</b>全屏唯一一个墨色主按钮是「重新尝试」（两次至少隔 2 秒，不重置退避；正在建立时 40% 置灰）；下方「复制诊断给支持」点后 1.5 秒内变为「已复制 ✓」。</p>
+  </div>
+
+  <div class="st" id="direct-why-cases">
+    <div class="st-h">另一类常见原因 · 电脑未回应 + 已复制反馈</div>
+    <div class="shbox">
+      <div class="shh"><b>为什么没连上</b><span class="ta">完成</span></div>
+      <div class="verdict" role="status">
+        <h4>电脑没有回应直连握手，可能在电脑上关了直连</h4>
+        <p>电脑本身在线，但没有答复直连请求。当前所有操作都已自动走中继，不影响正常使用。</p>
+      </div>
+      <div class="grp">
+        <div class="mi"><span class="n">电脑在线并响应<small>电脑未答复直连握手，检查电脑是否关了直连</small></span><span class="chk-tag">未响应</span></div>
+        <div class="mi"><span class="n">局域网或公网直通</span><span class="chk-tag">未开始</span></div>
+        <div class="mi"><span class="n">后台自动重试<small>电脑开启直连或重连后会自动恢复</small></span><span class="chk-tag">已开启</span></div>
+      </div>
+      <button class="cb why-btn dis">重新尝试</button>
+      <div class="why-copy done"><svg class="ic" width="15" height="15"><use href="#lu-check"/></svg>已复制</div>
+      <p class="why-gf">复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。</p>
+    </div>
+    <div class="st-c">正在重试或刚点完 2 秒冷却期内，「重新尝试」40% 置灰；点「复制诊断给支持」后短暂显示「已复制 ✓」。其他结论（版本太旧、所在网络限制探测、中继限速稍后再试）按同一张 3 行卡片归类呈现。</div>
+  </div>
+
+  <div class="clip-card" id="direct-clipboard-spec">
+    <div class="st-h">「复制诊断给支持」剪贴板纯文本示意（界面不展示）</div>
+    <pre>直连诊断
+结论：两边的网络隔开了，不能直接连通
+浏览器：Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X)
+
+第 1 次 · 刚刚 · 没连上 · 9.9 秒
+  加载 · 停在: 连通检查
+    本机地址
+      IPv4: 本机网卡 ×1（私网） · 公网映射 ×1（运营商共享）
+      IPv6: 没有
+      已隐藏的地址: ×1
+      收集地址: 进行中 0.0 秒 → 已完成 0.4 秒
+    电脑地址
+      IPv4: 本机网卡 ×1（私网） · 公网映射 ×1（运营商共享）
+      IPv6: 没有
+    连通检查
+      IPv4 → IPv4: 失败 2 · 发出 24 · 收到 0
+      ICE 状态: 进行中 0.5 秒 → 失败 8.9 秒
+      加密握手: —
+      数据通道: —
+  文件 · 停在: 连通检查
+    （同上保留最近 3 轮双通道分类计数，零具体 IP 地址与端口）</pre>
+    <div class="st-c">工程计数（最近 3 轮、加载与文件两条通道、候选地址类型与范围、mDNS 隐藏个数、STUN 错误码、ICE/DTLS/通道耗时与收发计数）全部留在剪贴板纯文本中，地址在入内存前只取分类即丢弃，绝不暴露具体 IP 或端口。</div>
+  </div>
+</div>
+
+<h3 class="sub" id="direct-edge">边界 · 英文与 200% 字号</h3>
+<div class="stg">
+  <div class="st">
+    <div class="st-h">English · Direct &amp; Unreachable</div>
+    <div class="gl">Connection (Direct)</div>
+    <div class="grp">
+      <div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">Using direct</span><span class="v">14 ms</span></div>
+    </div>
+    <div class="gl" style="padding-top:14px">Connection (Isolated networks)</div>
+    <div class="grp">
+      <div class="mi"><span class="n">Direct connection</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">Using relay<small>The two networks are isolated and can't reach each other directly</small></span><span class="v">168 ms</span></div>
+      <a class="mi" href="#direct-diag"><span class="n">Why direct didn't connect</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a>
+    </div>
+    <div class="gf">Direct is used only for loading and files; messages and approvals always go through the relay.</div>
+  </div>
+
+  <div class="st x2" id="direct-200pct">
+    <div class="st-h">200% 字号 · 直连生效与未连通</div>
+    <div class="gl">连接</div>
+    <div class="grp">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span><span class="v">14 ms</span></div>
+    </div>
+    <div class="grp" style="margin-top:12px">
+      <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+      <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>两边的网络隔开了，不能直接连通</small></span><span class="v">168 ms</span></div>
+      <a class="mi" href="#direct-diag"><span class="n">为什么没连上</span><svg class="ic chev" width="22" height="22"><use href="#lu-chevron-right"/></svg></a>
+    </div>
+    <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+    <div class="st-c">200% 字号下状态文字保持完整横排换行，右侧毫秒数自动折到下一行靠右，绝不挤成一字一行。</div>
+  </div>
+
+  <div class="st cc" id="direct-conncheck">
+    <div class="st-h">连接检测 · 电脑行的直连摘要</div>
+    <div class="grp">
+      <div class="mi"><span class="n">实时推送</span><span class="v"><i class="dotk g"></i>已连接</span></div>
+      <div class="mi"><span class="n">本机网络</span><span class="v"><i class="dotk g"></i>正常</span></div>
+      <div class="mi"><span class="n">服务器<small>ra.example.com</small></span><span class="v"><i class="dotk g"></i>86 ms</span></div>
+      <div class="mi"><span class="n">MacBook<small>正在用直连</small></span><span class="v"><i class="dotk g"></i>132 ms</span></div>
+      <div class="mi"><span class="n">Studio<small>正在用中继 · 当前网络下中继同样顺畅，已自动选用</small></span><span class="v"><i class="dotk g"></i>96 ms</span></div>
+      <div class="mi"><span class="n">VPS-dev<small>正在用中继 · 两边的网络隔开了，不能直接连通</small></span><span class="v"><i class="dotk off"></i>2140 ms · 较慢</span></div>
+      <div class="mi"><span class="n">Lab<small>直连已关闭</small></span><span class="v"><i class="dotk g"></i>101 ms</span></div>
+      <div class="mi"><span class="n">Mac mini</span><span class="v"><i class="dotk off"></i>不在线</span></div>
+    </div>
+    <div class="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div>
+    <div class="st-c">在线电脑名下一行 13 号 <code>ink2</code> 摘要与「连接」组同词（去掉「直连不可用：」前缀）；离线电脑不写摘要。整页见<a href="#conncheck">连接检测</a>。</div>
+  </div>
+</div>
+
+<h3 class="sub" id="direct-wide">宽屏 · 会话顶栏轻气泡、连接组与排障对话框</h3>
+<div class="screens" style="display:block">
+  <div class="win" id="direct-wide-session" style="height:600px">
+    <div class="side">
+      <div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div>
+      <div class="whl"><em>1</em> 件事等你</div>
+      <div class="wsub">1 个会话在运行，1 个空闲</div>
+      <div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div>
+      <div class="slist">
+        <div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div>
+        <div class="slabel">进行中</div>
+        <div class="srow sel"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">Codex · MacBook</div></div></div>
+        <div class="srow"><span class="gut"><i class="hol"></i></span><div class="rb"><div class="r1"><b>补充接口文档</b><time>8:12</time></div><div class="r2">空闲 · 已补充 12 个接口的说明</div><div class="r3">Claude Code · MacBook</div></div></div>
+        <div class="slabel">今天</div>
+        <div class="srow done"><span class="gut"></span><div class="rb"><div class="r1"><b>拆分 handler 包</b><time>7:10</time></div></div></div>
+      </div>
+      <div class="conn"><i class="dotk g"></i>已连接</div>
+      <div class="sfoot"><div class="seg"><span class="on"><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div>
+    </div>
+    <div class="main">
+      <div class="tool">
+        <b>修复登录超时</b>
+        <span class="st"><i class="spin"></i>运行中 · 询问 · <span class="dchip open"><svg class="ic" width="12" height="12"><use href="#lu-zap"/></svg>直连</span></span>
+        <span class="sp"></span>
+        <div class="seg"><span class="on">聊天</span><span>终端</span><span>并排</span></div>
+        <span class="ib"><svg class="ic" width="18" height="18"><use href="#lu-ellipsis"/></svg></span>
+      </div>
+      <div class="path-pop" role="dialog" aria-label="直连状态">
+        <div class="p1"><i class="dotk g"></i><span>直连 MacBook · 14 ms</span></div>
+        <div class="p2">加载记录与收发文件直接连电脑；发消息和审批始终经中继。</div>
+        <div class="pfoot"><span>连接稳定</span><a href="#direct-wide-settings">连接设置<svg class="ic" width="14" height="14"><use href="#lu-chevron-right"/></svg></a></div>
+      </div>
+      <div class="split" style="padding-right:0">
+        <div class="col">
+          <div class="colin">
+            <div class="solo">
+              <div class="me"><div>登录接口偶尔超时，帮我查一下原因并修掉</div></div>
+              <div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-check"/></svg><span class="g">读了 6 个文件，运行了 3 条命令</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></div>
+              <div class="ai">定位到 <code>auth/login.go:58</code>：每次登录重试都新建连接且未归还连接池，我已改为复用池连接并加上 <code>2s</code> 超时。</div>
+              <div class="now"><i class="spin"></i><code>go test ./auth/... -race</code><span>已运行 0:12</span></div>
+            </div>
+          </div>
+          <div class="wcomp solo">
+            <div class="ph">消息 · ⌘↵ 发送</div>
+            <div class="wbar"><span class="plus"><svg class="ic" width="18" height="18"><use href="#lu-plus"/></svg></span><span class="snd"><svg class="ic" width="16" height="16"><use href="#lu-stop"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="wcap"><b>宽屏会话 · 顶栏直连标记与点开气泡。</b>工具栏状态文字「运行中 · 询问」后面紧跟 <code>⚡ 直连</code>（走中继时不出现）；点击在正下方锚定弹出级 3（<code>s3</code> + <code>0.5px rim</code> + <code>elev</code>，圆角 14）轻气泡，显示当前电脑、直连响应时间与职责说明，点外部或按 <code>Esc</code> 关闭。</p>
+
+  <div style="height:32px"></div>
+
+  <div class="win" id="direct-wide-settings" style="height:620px">
+    <div class="side">
+      <div class="side-top"><span class="scp"><span class="av">f</span><span>foo</span><svg class="ic" width="14" height="14"><use href="#lu-chevron-down"/></svg></span><span class="sp"></span><span class="mini"><svg class="ic" width="15" height="15"><use href="#lu-square-pen"/></svg>新任务</span></div>
+      <div class="whl"><em>1</em> 件事等你</div>
+      <div class="wsub">1 个会话在运行，1 个空闲</div>
+      <div class="find"><svg class="ic" width="14" height="14"><use href="#lu-search"/></svg>按标题筛选<kbd>⌘K</kbd></div>
+      <div class="slist">
+        <div class="srow"><span class="gut"><i class="dotk o"></i></span><div class="rb"><div class="r1"><b>重构 API 层</b><time>剩 8 分钟</time></div><div class="r2">等待审批 · 请求执行 go test ./... -count=1</div><div class="r3">Codex · VPS-dev</div></div></div>
+        <div class="slabel">进行中</div>
+        <div class="srow"><span class="gut"><i class="spin"></i></span><div class="rb"><div class="r1"><b>修复登录超时</b><time>刚刚</time></div><div class="r2">运行中 · 正在执行 <code>go test ./auth/...</code></div><div class="r3">Codex · MacBook</div></div></div>
+      </div>
+      <div class="conn"><i class="dotk g"></i>已连接</div>
+      <div class="sfoot"><div class="seg"><span><svg class="ic" width="14" height="14"><use href="#lu-message-circle"/></svg>会话</span><span><svg class="ic" width="14" height="14"><use href="#lu-clock"/></svg>定时</span></div><span class="ib on"><svg class="ic" width="17" height="17"><use href="#lu-settings"/></svg></span></div>
+    </div>
+    <div class="main">
+      <div class="pg">
+        <div class="pane">
+          <div class="hl">VPS-dev</div>
+          <div class="gl">账户额度</div>
+          <div class="grp"><a class="mi" href="#quota"><span class="n">Codex</span><span class="v">剩 78% · 7 天</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></a></div>
+          <div class="gl">连接</div>
+          <div class="grp">
+            <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+            <div class="mi dx"><span class="mk"><i class="dotk off"></i></span><span class="n">正在用中继<small>两边的网络隔开了，不能直接连通</small></span><span class="v">168 ms</span></div>
+            <div class="mi"><span class="n">为什么没连上</span><svg class="ic chev" width="16" height="16"><use href="#lu-chevron-right"/></svg></div>
+          </div>
+          <div class="gf">直连只用于加载和文件，发消息和审批始终经中继。</div>
+          <div class="gl">连接（对比：MacBook 直连生效时仅 2 行）</div>
+          <div class="grp">
+            <div class="mi"><span class="n">直连</span><span class="sw"></span></div>
+            <div class="mi dx"><span class="mk"><i class="dotk g"></i></span><span class="n">正在用直连</span><span class="v">14 ms</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="wdim"></div>
+      <div class="wdlg" role="dialog" aria-label="为什么没连上">
+        <div class="whd"><b>为什么没连上</b><span class="ta">完成</span></div>
+        <div class="verdict" role="status">
+          <h4>两边的网络隔开了，不能直接连通</h4>
+          <p>常见于蜂窝移动网、公司防火墙或开启了隔离的访客 Wi-Fi。当前所有操作都已自动走中继，不影响正常使用。</p>
+        </div>
+        <div class="grp">
+          <div class="mi"><span class="n">电脑在线并响应</span><span class="chk-tag ok">正常</span></div>
+          <div class="mi"><span class="n">局域网或公网直通<small>两边都在运营商共享网关后，未能直通</small></span><span class="chk-tag">未通</span></div>
+          <div class="mi"><span class="n">后台自动重试<small>切换 Wi-Fi 或网络变化时会自动再试</small></span><span class="chk-tag">已开启</span></div>
+        </div>
+        <div class="wacts">
+          <div class="why-copy"><svg class="ic" width="14" height="14"><use href="#lu-copy"/></svg>复制诊断给支持</div>
+          <button class="cb">重新尝试</button>
+        </div>
+        <div class="why-gf">复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。</div>
+      </div>
+    </div>
+  </div>
+  <p class="wcap"><b>宽屏设置列（640 宽）与「为什么没连上」居中对话框。</b>宽屏下开关取 40×24（触区 44×44），正常直连仅 2 行；未连通时点「为什么没连上 ›」打开宽 460 的级 3 居中对话框（外圆角 18、内分组级 2 圆角 14、按钮圆角 8 同心），没有手机抓手条。</p>
+</div>
+
 <h3 class="sub" id="direct-motion">动效</h3>
-<p class="hint">状态词变化用 200 ms 交叉淡入；状态行和速度行出现、消失时做高度过渡；开启「减少动态效果」时只留淡入淡出。开关切换立即生效：关闭时状态行和速度行收起；打开后状态行先显示「正在建立直连…」，连上后是至多 5 秒的「直连已连上，正在测速」，再变成实际状态。页面刚打开时已有的行不播进入动效。</p>
+<p class="hint">会话顶栏 <code>⚡ 直连</code> 标记和「连接」组状态词变化均用 200 ms 交叉淡入，不弹提示条或震动；轻气泡按常档（200 ms）淡入并下移不超过 8px；状态行与「为什么没连上 ›」出现或收起做高度过渡，页面刚打开时已有的行不播进入；开启「减少动态效果」时去掉位移和高度动画，只留不超过 120 ms 的淡入淡出。</p>
 </section>
 <!-- ===== phone-image-storage ===== -->
 <style>
