@@ -101,8 +101,11 @@ func (s *Scheduler) Submit(waiting context.Context, j *Job) bool {
 	}
 	j.timer = time.AfterFunc(wait, func() { s.expire(j) })
 	j.stopWait = context.AfterFunc(waiting, func() { s.expire(j) })
-	s.pumpLocked()
+	dropped := s.pumpLocked()
 	s.mu.Unlock()
+	for _, dj := range dropped {
+		dj.Reject()
+	}
 	return true
 }
 func (s *Scheduler) expire(j *Job) {
@@ -115,11 +118,15 @@ func (s *Scheduler) expire(j *Job) {
 	j.state = 3
 	j.timer.Stop()
 	j.stopWait()
-	s.pumpLocked()
+	dropped := s.pumpLocked()
 	s.mu.Unlock()
 	j.Reject()
+	for _, dj := range dropped {
+		dj.Reject()
+	}
 }
-func (s *Scheduler) pumpLocked() {
+func (s *Scheduler) pumpLocked() []*Job {
+	var dropped []*Job
 	limits := [3]int{2, 4, 2}
 	for _, class := range []Class{Control, Input, Ordinary, Bulk} {
 		pool := class.pool()
@@ -179,11 +186,12 @@ func (s *Scheduler) pumpLocked() {
 				j.Run(run, ex)
 			}) {
 				s.releaseLocked(ex)
-				// Shutdown is already observable to every path; no reply worker
-				// is created after the lifetime has ended.
+				j.state = 3
+				dropped = append(dropped, j)
 			}
 		}
 	}
+	return dropped
 }
 
 type Execution struct {
@@ -236,8 +244,11 @@ func (x *Execution) Finish() {
 	s := x.owner
 	s.mu.Lock()
 	s.releaseLocked(x)
-	s.pumpLocked()
+	dropped := s.pumpLocked()
 	s.mu.Unlock()
+	for _, dj := range dropped {
+		dj.Reject()
+	}
 }
 func (s *Scheduler) Active() [3]int { s.mu.Lock(); defer s.mu.Unlock(); return s.used }
 func (s *Scheduler) Close() {

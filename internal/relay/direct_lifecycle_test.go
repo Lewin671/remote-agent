@@ -1065,3 +1065,197 @@ func TestCoalescedOwnerContextCancelDoesNotAbortSurvivingWaiter(t *testing.T) {
 	}
 	_ = leg1Ch
 }
+
+type notifiedWaitCtx struct {
+	context.Context
+	notify chan<- struct{}
+}
+
+func (c notifiedWaitCtx) Done() <-chan struct{} {
+	select {
+	case c.notify <- struct{}{}:
+	default:
+	}
+	return c.Context.Done()
+}
+
+func replyReason(t *testing.T, clientEndpoint *deviceauth.Endpoint, rep *pb.ForwardReply) string {
+	t.Helper()
+	if rep.Reason != "" {
+		return rep.Reason
+	}
+	if rep.Result == nil {
+		return ""
+	}
+	wire, err := deviceauth.FromEnvelope(rep.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, body, err := clientEndpoint.Open(wire, nil, true, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err = deviceauth.Unpack(got, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := &pb.CommandResult{}
+	if err := proto.Unmarshal(body, res); err != nil {
+		t.Fatal(err)
+	}
+	return res.Reason
+}
+
+func TestCombinedInflightAndEndpointWaiterLimitRespectsMaxPerKey(t *testing.T) {
+	ctx, cancel, ep, clientEndpoint, _, _, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+
+	// Block scheduler slot for s-dual so owner + first batch of duplicates sit in a.inflight.
+	blockerEnv := sealCmd("req-blocker-waitcap-111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	sendEnv := sealCmd("req-waitcap-11111111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	replies := make(chan *pb.ForwardReply, 80)
+	replied := make(chan struct{}, 80)
+	reply := func(rep *pb.ForwardReply) {
+		replies <- rep
+		select {
+		case replied <- struct{}{}:
+		default:
+		}
+	}
+
+	// 1 owner + 20 waiters in a.inflight (pacing each so a.frames PeerEntries=8 never drops any).
+	ep.dispatch(ctx, &pb.ForwardCall{CallId: 2, Command: sendEnv}, reply)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		n := len(ep.admission.inflight)
+		ep.admission.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	for i := range 20 {
+		ep.dispatch(ctx, &pb.ForwardCall{CallId: uint64(10 + i), Command: sendEnv}, reply)
+		for time.Now().Before(deadline) {
+			ep.admission.mu.Lock()
+			w := ep.admission.inflightWaiters
+			ep.admission.mu.Unlock()
+			if w == i+1 {
+				break
+			}
+			time.Sleep(2 * time.Millisecond)
+		}
+	}
+
+	// Release blocker so owner enters Send (blocks on sendRelease) and registers e.running[key].
+	close(blockRelease)
+	// Wait until Send is actually running inside AcceptAuthenticated.
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		// Wait until owner entered backend Send (execCount incremented by Send won't work since started was closed; sleep briefly after release).
+		ep.admission.mu.Unlock()
+		time.Sleep(80 * time.Millisecond)
+		break
+	}
+
+	// Send 20 more duplicates one by one so none hit PeerEntries=8 in a.frames;
+	// combined with 20 already waiting in inflight, 40 total > MaxWaitersPerKey (32), so >=8 must be busy.
+	for i := range 20 {
+		doneCh := make(chan struct{}, 1)
+		wc := notifiedWaitCtx{Context: ctx, notify: doneCh}
+		ep.dispatch(wc, &pb.ForwardCall{CallId: uint64(100 + i), Command: sendEnv}, reply)
+		select {
+		case <-doneCh:
+		case <-replied:
+		case <-time.After(time.Second):
+			t.Fatalf("duplicate %d did not reach waiter table or reply", i)
+		}
+	}
+
+	close(sendRelease)
+	// Drain all 41 replies (1 owner + 40 duplicates).
+	busyCount := 0
+	for range 41 {
+		select {
+		case rep := <-replies:
+			if replyReason(t, clientEndpoint, rep) == "busy" {
+				busyCount++
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for replies; saw busyCount=%d", busyCount)
+		}
+	}
+	if busyCount < 8 {
+		t.Fatalf("expected at least 8 busy rejections across combined inflight+endpoint tables (limit %d), got %d", deviceauth.MaxWaitersPerKey, busyCount)
+	}
+}
+
+func TestClaimInflightWaitersWakeOnAdmissionCloseAndNoLeakOnLinkShutdown(t *testing.T) {
+	ctx, cancel, ep, _, _, _, blockEntered, blockRelease, sendRelease, sealCmd := setupDualAdmissionFixture(t)
+	defer cancel()
+	defer close(sendRelease)
+
+	blockerEnv := sealCmd("req-blocker-closewake-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
+	<-blockEntered
+
+	sendEnv := sealCmd("req-closewake-1111111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(*pb.ForwardReply) {})
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		n := len(ep.admission.inflight)
+		ep.admission.mu.Unlock()
+		if n == 1 {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	// Duplicate waiter uses Background context AND join goes through link.Run -> claimInflight;
+	// verify cancelling admission (a.cancel) wakes the waiter immediately even while pc.done is still open
+	// (e.g. before Scheduler drains or if an owner is stalled).
+	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 3, Command: sendEnv}, func(*pb.ForwardReply) {})
+	for time.Now().Before(deadline) {
+		ep.admission.mu.Lock()
+		w := ep.admission.inflightWaiters
+		ep.admission.mu.Unlock()
+		if w == 1 {
+			break
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	ep.admission.mu.Lock()
+	ep.admission.cancel()
+	ep.admission.mu.Unlock()
+	woke := false
+	for deadlineWake := time.Now().Add(time.Second); time.Now().Before(deadlineWake); {
+		ep.admission.mu.Lock()
+		w := ep.admission.inflightWaiters
+		ep.admission.mu.Unlock()
+		if w == 0 {
+			woke = true
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !woke {
+		close(blockRelease)
+		t.Fatal("claimInflight waiter did not wake on admission cancel (a.ctx)")
+	}
+
+	// Clean up blocker and admission.
+	close(blockRelease)
+	ep.admission.close()
+	ep.link.Close()
+	ep.admission.mu.Lock()
+	leaked := len(ep.admission.inflight)
+	ep.admission.mu.Unlock()
+	if leaked != 0 {
+		t.Fatalf("expected a.inflight empty after close, got %d entries", leaked)
+	}
+}

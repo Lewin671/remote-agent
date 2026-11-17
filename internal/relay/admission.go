@@ -406,9 +406,32 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 			a.result(route, p, nil, p.Conflict(), false)
 			return nil, nil, false
 		}
-		if pc.waiters >= deviceauth.MaxWaitersPerKey || a.inflightWaiters >= deviceauth.MaxWaiters {
-			a.mu.Unlock()
+		a.mu.Unlock()
+		// Reserve against Endpoint's shared waiter table outside a.mu so e.mu -> a.mu lock order is never inverted.
+		releaseWaiter, ok := a.endpoint.security.endpoint.ReserveWaiter(p.Key())
+		if !ok {
 			a.result(route, p, nil, p.Decision("busy", deviceauth.ErrOutcomeUnknown), raw)
+			return nil, nil, false
+		}
+		a.mu.Lock()
+		if a.closed || waiting.Err() != nil {
+			a.mu.Unlock()
+			releaseWaiter()
+			return nil, nil, false
+		}
+		pc = a.inflight[p.Key()]
+		if pc == nil {
+			a.mu.Unlock()
+			releaseWaiter()
+			if !a.existing(waiting, route, p) {
+				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+			}
+			return nil, nil, false
+		}
+		if pc.payload != p.Payload() {
+			a.mu.Unlock()
+			releaseWaiter()
+			a.result(route, p, nil, p.Conflict(), false)
 			return nil, nil, false
 		}
 		leg := &inflightLeg{waiting: waiting, binding: route.binding, allow: route.allow, active: true}
@@ -419,9 +442,10 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 		a.mu.Unlock()
 		stop := a.watchInflight(waiting, pc)
 		timeout := min(max(time.Until(time.UnixMilli(int64(p.Header().Deadline))), 0), 30*time.Second)
-		if !a.endpoint.link.Run(func(context.Context) {
+		if !a.endpoint.link.Run(func(runCtx context.Context) {
 			defer func() {
 				stop()
+				releaseWaiter()
 				a.mu.Lock()
 				leg.active = false
 				pc.waiters--
@@ -441,11 +465,16 @@ func (a *commandAdmission) claimInflight(waiting context.Context, route *callRou
 				a.result(route, p, bytes.Clone(pc.body), pc.err, pc.raw)
 			case <-waiting.Done():
 				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+			case <-runCtx.Done():
+				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
+			case <-a.ctx.Done():
+				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
 			case <-timer.C:
 				a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrOutcomeUnknown), raw)
 			}
 		}) {
 			stop()
+			releaseWaiter()
 			a.mu.Lock()
 			leg.active = false
 			pc.waiters--
@@ -633,6 +662,15 @@ func (a *commandAdmission) close() {
 	a.cancel()
 	a.mu.Unlock()
 	a.scheduler.Close()
+	a.mu.Lock()
+	remaining := make([]*pendingExecution, 0, len(a.inflight))
+	for _, pc := range a.inflight {
+		remaining = append(remaining, pc)
+	}
+	a.mu.Unlock()
+	for _, pc := range remaining {
+		a.finishInflight(pc, nil, deviceauth.ErrOutcomeUnknown, pc.raw, false)
+	}
 	a.workers.Wait()
 }
 

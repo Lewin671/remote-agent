@@ -105,8 +105,10 @@ type Endpoint struct {
 	volatileBytes  int
 	volatileExpiry acceptedHeap
 	durableExpiry  acceptedHeap
-	running        map[string]*runningCall
-	waiters        int
+	running              map[string]*runningCall
+	waiters              int
+	externalWaiters      map[string]int
+	externalWaitersTotal int
 	// Tests can shorten the production wait bound without sleeping.
 	waitTimeout time.Duration
 }

@@ -364,3 +364,48 @@ func TestSnapshotPeerLimitAndApprovalPriority(t *testing.T) {
 		}
 	})
 }
+
+func TestSchedulerPumpDropCallsRejectOnClosedLink(t *testing.T) {
+	link := NewLink(context.Background())
+	s := NewScheduler(link)
+	defer s.Close()
+
+	entered := make(chan struct{})
+	if !s.Submit(context.Background(), &Job{
+		Class:    Input,
+		Peer:     "peer",
+		Session:  "sess",
+		Bytes:    1,
+		Deadline: time.Now().Add(time.Minute),
+		Reject:   func() {},
+		Run: func(ctx context.Context, _ *Execution) {
+			close(entered)
+			<-ctx.Done()
+		},
+	}) {
+		t.Fatal("submit first")
+	}
+	<-entered
+
+	rejected := make(chan struct{})
+	if !s.Submit(context.Background(), &Job{
+		Class:    Input,
+		Peer:     "peer",
+		Session:  "sess",
+		Bytes:    1,
+		Deadline: time.Now().Add(time.Minute),
+		Reject:   func() { close(rejected) },
+		Run:      func(context.Context, *Execution) { t.Error("queued job ran after link closed") },
+	}) {
+		t.Fatal("submit queued")
+	}
+
+	// Closing the link cancels j1; j1 exits and calls Execution.Finish -> pumpLocked,
+	// which pops j2 (with Background ctx, not expired by ctx) and sees !s.link.Run(...).
+	go link.Close()
+	select {
+	case <-rejected:
+	case <-time.After(time.Second):
+		t.Fatal("Scheduler.pumpLocked dropped queued job on !s.link.Run without calling Reject()")
+	}
+}

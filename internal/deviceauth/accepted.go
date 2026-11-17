@@ -695,12 +695,42 @@ func (e *Endpoint) waitLocked(ctx context.Context, key string, run *runningCall,
 	return wait.Wait()
 }
 
+func (e *Endpoint) ReserveWaiter(key string) (func(), bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.closed {
+		return nil, false
+	}
+	runWaiters := 0
+	if run := e.running[key]; run != nil {
+		runWaiters = run.waiters
+	}
+	if e.waiters+e.externalWaitersTotal >= MaxWaiters || runWaiters+e.externalWaiters[key] >= MaxWaitersPerKey {
+		return nil, false
+	}
+	if e.externalWaiters == nil {
+		e.externalWaiters = map[string]int{}
+	}
+	e.externalWaitersTotal++
+	e.externalWaiters[key]++
+	return sync.OnceFunc(func() {
+		e.mu.Lock()
+		e.externalWaitersTotal--
+		if left := e.externalWaiters[key] - 1; left <= 0 {
+			delete(e.externalWaiters, key)
+		} else {
+			e.externalWaiters[key] = left
+		}
+		e.mu.Unlock()
+	}), true
+}
+
 func (e *Endpoint) registerWaitLocked(ctx context.Context, key string, run *runningCall, now uint64) (*ResultWaiter, error) {
 	now = maxU64(maxU64(now, e.data.Floor), e.data.AcceptedFloor)
 	if run.isAbandoned() || now >= run.deadline || now >= run.retainUntil {
 		return nil, ErrOutcomeUnknown
 	}
-	if e.waiters >= MaxWaiters || run.waiters >= MaxWaitersPerKey {
+	if e.waiters+e.externalWaitersTotal >= MaxWaiters || run.waiters+e.externalWaiters[key] >= MaxWaitersPerKey {
 		return nil, notAdmitted("busy", ErrOutcomeUnknown)
 	}
 	timeout := e.waitTimeout
